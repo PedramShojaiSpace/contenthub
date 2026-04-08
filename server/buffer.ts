@@ -1,15 +1,21 @@
 /**
  * Buffer API integration for Urban Monk Productions Content Hub.
- * Handles pushing approved content to Buffer for scheduling/publishing.
+ * Uses the new Buffer GraphQL API (https://api.buffer.com).
  *
- * Buffer API docs: https://buffer.com/developers/api
- * We use the v1 API with an access token.
+ * Buffer GraphQL API docs: https://developers.buffer.com
+ * Authentication: Bearer token via Authorization header.
  */
+
+const BUFFER_GQL_ENDPOINT = "https://api.buffer.com";
+
+// Urban Monk Productions organization ID (discovered via account query)
+const UMP_ORG_ID = "6577bd3c147566efe2fa9201";
 
 export type BufferProfile = {
   id: string;
-  platform: "linkedin" | "meta" | "x" | "youtube";
+  platform: "linkedin" | "meta" | "x" | "youtube" | "tiktok" | "other";
   name: string;
+  service: string;
 };
 
 export type BufferUpdateResult = {
@@ -18,143 +24,209 @@ export type BufferUpdateResult = {
   error?: string;
 };
 
-const BUFFER_API_BASE = "https://api.bufferapp.com/1";
-
 function getAccessToken(): string {
   return process.env.BUFFER_ACCESS_TOKEN ?? "";
 }
 
 /**
- * Fetch all connected Buffer profiles (social accounts).
+ * Execute a GraphQL query/mutation against the Buffer API.
+ */
+async function bufferGql<T>(
+  query: string,
+  variables?: Record<string, unknown>
+): Promise<{ data?: T; errors?: Array<{ message: string }> }> {
+  const token = getAccessToken();
+  const res = await fetch(BUFFER_GQL_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  return res.json() as Promise<{ data?: T; errors?: Array<{ message: string }> }>;
+}
+
+/**
+ * Fetch all connected Buffer channels (social accounts) for Urban Monk Productions.
  */
 export async function getBufferProfiles(): Promise<BufferProfile[]> {
   const token = getAccessToken();
   if (!token) return [];
 
   try {
-    const res = await fetch(`${BUFFER_API_BASE}/profiles.json`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const responseText = await res.text();
-    console.log("[Buffer] profiles response status:", res.status);
-    console.log("[Buffer] profiles response body:", responseText.slice(0, 500));
+    const result = await bufferGql<{
+      channels: Array<{ id: string; service: string; name: string }>;
+    }>(`
+      query GetChannels($orgId: OrganizationId!) {
+        channels(input: { organizationId: $orgId }) {
+          id
+          service
+          name
+        }
+      }
+    `, { orgId: UMP_ORG_ID });
 
-    if (!res.ok) {
-      console.warn("[Buffer] Failed to fetch profiles:", res.status, responseText.slice(0, 200));
+    if (result.errors?.length) {
+      console.warn("[Buffer] GraphQL errors:", result.errors.map((e) => e.message).join(", "));
       return [];
     }
 
-    let data: Array<{ id: string; service: string; service_username: string }>;
-    try {
-      data = JSON.parse(responseText);
-    } catch {
-      console.warn("[Buffer] Could not parse profiles JSON:", responseText.slice(0, 200));
-      return [];
-    }
-
-    if (!Array.isArray(data)) {
-      console.warn("[Buffer] Profiles response is not an array:", typeof data);
-      return [];
-    }
-
-    return data
-      .map((p) => {
-        const platform = mapBufferService(p.service);
-        if (!platform) return null;
-        return {
-          id: p.id,
-          platform,
-          name: p.service_username,
-        };
-      })
-      .filter(Boolean) as BufferProfile[];
+    const channels = result.data?.channels ?? [];
+    return channels.map((ch) => ({
+      id: ch.id,
+      platform: mapBufferService(ch.service),
+      name: ch.name,
+      service: ch.service,
+    }));
   } catch (err) {
-    console.warn("[Buffer] Error fetching profiles:", err);
+    console.warn("[Buffer] Error fetching channels:", err);
     return [];
   }
 }
 
 /**
- * Diagnostic: returns the raw Buffer API response for debugging.
+ * Diagnostic: returns raw Buffer API response for debugging.
  */
-export async function getBufferProfilesRaw(): Promise<{ status: number; body: string; tokenPresent: boolean }> {
+export async function getBufferProfilesRaw(): Promise<{
+  status: number;
+  body: string;
+  tokenPresent: boolean;
+}> {
   const token = getAccessToken();
-  if (!token) return { status: 0, body: "BUFFER_ACCESS_TOKEN is not set", tokenPresent: false };
+  if (!token) {
+    return { status: 0, body: "BUFFER_ACCESS_TOKEN is not set", tokenPresent: false };
+  }
 
   try {
-    // Try Bearer header first
-    const res = await fetch(`${BUFFER_API_BASE}/profiles.json`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await fetch(BUFFER_GQL_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        query: `query { channels(input: { organizationId: "${UMP_ORG_ID}" }) { id service name } }`,
+      }),
     });
     const body = await res.text();
-    return { status: res.status, body: body.slice(0, 1000), tokenPresent: true };
+    return { status: res.status, body: body.slice(0, 2000), tokenPresent: true };
   } catch (err) {
     return { status: -1, body: String(err), tokenPresent: true };
   }
 }
 
 /**
- * Push a content item to Buffer for the specified profile IDs.
- * Optionally schedule it at a specific UTC timestamp.
+ * Push a content item to Buffer for the specified channel IDs.
+ * Uses addToQueue scheduling (next available slot in the channel's schedule).
  */
 export async function pushToBuffer(params: {
   text: string;
-  profileIds: string[];
+  profileIds: string[]; // these are channel IDs in the new API
   imageUrl?: string;
-  scheduledAt?: number; // UTC ms timestamp
+  scheduledAt?: number; // UTC ms timestamp (optional — if not set, addToQueue is used)
 }): Promise<BufferUpdateResult> {
   const token = getAccessToken();
   if (!token) {
     return { success: false, error: "BUFFER_ACCESS_TOKEN not configured" };
   }
   if (!params.profileIds.length) {
-    return { success: false, error: "No profile IDs provided" };
+    return { success: false, error: "No channel IDs provided" };
   }
 
-  try {
-    const body = new URLSearchParams();
-    body.append("text", params.text);
-    params.profileIds.forEach((id) => body.append("profile_ids[]", id));
+  // Push to each channel and collect results
+  const results: BufferUpdateResult[] = [];
 
-    if (params.imageUrl) {
-      body.append("media[photo]", params.imageUrl);
+  for (const channelId of params.profileIds) {
+    try {
+      const mode = params.scheduledAt ? "customScheduled" : "addToQueue";
+      const dueAt = params.scheduledAt
+        ? new Date(params.scheduledAt).toISOString()
+        : undefined;
+
+      // Build assets array if image is provided
+      const assetsFragment = params.imageUrl
+        ? `, assets: [{ url: "${params.imageUrl}", type: image }]`
+        : "";
+
+      const dueAtFragment = dueAt ? `, dueAt: "${dueAt}"` : "";
+
+      const mutation = `
+        mutation CreatePost {
+          createPost(input: {
+            text: ${JSON.stringify(params.text)},
+            channelId: "${channelId}",
+            schedulingType: automatic,
+            mode: ${mode}${dueAtFragment}${assetsFragment}
+          }) {
+            ... on PostActionSuccess {
+              post {
+                id
+                text
+                dueAt
+              }
+            }
+            ... on MutationError {
+              message
+            }
+          }
+        }
+      `;
+
+      const result = await bufferGql<{
+        createPost:
+          | { post: { id: string; text: string; dueAt: string } }
+          | { message: string };
+      }>(mutation);
+
+      if (result.errors?.length) {
+        results.push({
+          success: false,
+          error: result.errors.map((e) => e.message).join(", "),
+        });
+        continue;
+      }
+
+      const createResult = result.data?.createPost;
+      if (!createResult) {
+        results.push({ success: false, error: "No response from Buffer API" });
+        continue;
+      }
+
+      // Check if it's a success or error response
+      if ("post" in createResult) {
+        results.push({ success: true, bufferId: createResult.post.id });
+      } else {
+        results.push({ success: false, error: createResult.message });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({ success: false, error: msg });
     }
-
-    if (params.scheduledAt) {
-      // Buffer expects scheduled_at as a Unix timestamp in seconds
-      body.append("scheduled_at", Math.floor(params.scheduledAt / 1000).toString());
-    }
-
-    const res = await fetch(`${BUFFER_API_BASE}/updates/create.json`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Bearer ${token}`,
-      },
-      body: body.toString(),
-    });
-
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      return { success: false, error: `Buffer API error ${res.status}: ${detail}` };
-    }
-
-    const data = (await res.json()) as { success?: boolean; updates?: Array<{ id: string }> };
-    const bufferId = data.updates?.[0]?.id;
-    return { success: true, bufferId };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, error: msg };
   }
+
+  // Return combined result: success if at least one succeeded
+  const anySuccess = results.some((r) => r.success);
+  const firstSuccess = results.find((r) => r.success);
+  const errors = results
+    .filter((r) => !r.success)
+    .map((r) => r.error)
+    .filter(Boolean);
+
+  if (anySuccess) {
+    return { success: true, bufferId: firstSuccess?.bufferId };
+  }
+  return { success: false, error: errors.join("; ") };
 }
 
-function mapBufferService(service: string): BufferProfile["platform"] | null {
+function mapBufferService(service: string): BufferProfile["platform"] {
   const map: Record<string, BufferProfile["platform"]> = {
     linkedin: "linkedin",
     facebook: "meta",
     instagram: "meta",
     twitter: "x",
     youtube: "youtube",
+    tiktok: "tiktok",
   };
-  return map[service.toLowerCase()] ?? null;
+  return map[service.toLowerCase()] ?? "other";
 }

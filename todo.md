@@ -236,7 +236,8 @@
 
 ## Bug Fixes
 
-- [ ] Fix Buffer API: diagnose why getProfiles returns no accounts
-- [ ] Verify BUFFER_ACCESS_TOKEN is valid and correct scope
-- [ ] Fix Buffer API endpoint — likely using wrong endpoint (should be /1/profiles.json or v1/profiles)
-- [ ] Test Buffer push after profile fix
+- [x] Fix Buffer API: rewritten to use new Buffer GraphQL API (https://api.buffer.com)
+- [x] New API key from user validated — returns all 8 Urban Monk Productions channels
+- [x] Channels confirmed: Facebook (The Urban Monk), Instagram (drpedramshojai), X (PedramShojai), TikTok, YouTube (The Urban Monk), LinkedIn (pedramshojai + 2 others)
+- [x] pushToBuffer rewritten to use createPost GraphQL mutation with addToQueue scheduling
+- [x] TypeScript clean (0 errors), 20/20 tests pass

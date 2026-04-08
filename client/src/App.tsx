@@ -8,6 +8,7 @@ import CommandCenter from "./pages/CommandCenter";
 import CreationStudio from "./pages/CreationStudio";
 import AssetLibrary from "./pages/AssetLibrary";
 import StrategyBrain from "./pages/StrategyBrain";
+import ResearchIntelligence from "./pages/ResearchIntelligence";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path={"/studio"} component={CreationStudio} />
       <Route path={"/assets"} component={AssetLibrary} />
       <Route path={"/strategy"} component={StrategyBrain} />
+      <Route path={"/research"} component={ResearchIntelligence} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

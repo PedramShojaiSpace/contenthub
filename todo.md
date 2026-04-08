@@ -131,3 +131,42 @@
 - [x] Analytics panel on Published cards (editable stub fields)
 - [x] Summary analytics row in Command Center stats bar
 - [x] Run db:push after schema changes
+
+## Research Intelligence Module (v5)
+
+### Database Schema
+- [ ] Add research_reports table (reportId, reportName, reportFocus, reportDescription, uploadedAt, weekLabel, rawJson, rawCsv)
+- [ ] Add research_personas table (reportId, personaName, personaDescription)
+- [ ] Add research_queries table (reportId, personaName, query, topicTags JSON)
+- [ ] Add research_competitor_mentions table (reportId, query, brand, rank, reason, model)
+- [ ] Run db:push after schema changes
+
+### Backend Parsers
+- [ ] Parse Gumshoe JSON: extract reportId, reportName, personas, queries, competitor mentions per model
+- [ ] Parse Gumshoe CSV: extract query rows, persona names, topic tag columns (X = tagged)
+- [ ] Merge JSON + CSV data into unified research_queries rows
+- [ ] Build getCompetitorGapAnalysis: queries where Urban Monk is NOT mentioned but competitors are
+- [ ] Build getTopicTagFrequency: count which topic tags appear most across all queries
+- [ ] Build getPersonaQueries: all queries grouped by persona
+- [ ] Build getCompetitorLeaderboard: brands ranked by total mention count across all queries/models
+
+### Research Intelligence UI (new sidebar section)
+- [ ] New "Research" sidebar nav item with upload icon
+- [ ] Upload page: drag-and-drop or file picker for JSON + CSV pair, with week label input
+- [ ] Report list: reverse-chronological list of uploaded reports with summary stats
+- [ ] Competitive Gap Dashboard: queries where Urban Monk is absent, sorted by competitor density
+- [ ] Competitor Leaderboard: top 10 brands mentioned across all queries with mention counts
+- [ ] Persona Browser: tab per persona showing all their queries and which topics they care about
+- [ ] Topic Tag Heatmap: which topic tags appear most, cross-referenced by persona
+- [ ] "Create Content from Gap" button: pre-fills Creation Studio with the gap query as the idea
+
+### Creation Studio Integration
+- [ ] "Research Context" panel in Creation Studio showing top 3 unanswered gap queries
+- [ ] Inject selected gap query + persona description into AI generation prompt
+- [ ] Show which competitor brands are winning that query so content can be differentiated
+- [ ] Track gap query status: unused / in-progress / published (update when content item is created)
+
+### Tests
+- [ ] Vitest tests for Gumshoe JSON parser
+- [ ] Vitest tests for CSV parser and topic tag extraction
+- [ ] Vitest tests for competitor gap analysis query

@@ -84,3 +84,64 @@ export const generatedImages = mysqlTable("generated_images", {
 
 export type GeneratedImage = typeof generatedImages.$inferSelect;
 export type InsertGeneratedImage = typeof generatedImages.$inferInsert;
+
+// ─── Research Intelligence (Gumshoe AI) ──────────────────────────────────────
+
+/**
+ * One uploaded Gumshoe report run (JSON + CSV pair).
+ * weekLabel is a human-readable label like "2026-W15" or "April 8 2026".
+ */
+export const researchReports = mysqlTable("research_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  gumshoeReportId: int("gumshoeReportId"),
+  reportName: varchar("reportName", { length: 255 }),
+  reportFocus: varchar("reportFocus", { length: 255 }),
+  reportDescription: text("reportDescription"),
+  weekLabel: varchar("weekLabel", { length: 64 }),
+  totalQueries: int("totalQueries").default(0),
+  totalPersonas: int("totalPersonas").default(0),
+  totalCompetitorMentions: int("totalCompetitorMentions").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ResearchReport = typeof researchReports.$inferSelect;
+export type InsertResearchReport = typeof researchReports.$inferInsert;
+
+/**
+ * Each unique query from the Gumshoe report, enriched with topic tags from the CSV.
+ * gapScore: how many LLM models answered without mentioning Urban Monk (0-10).
+ */
+export const researchQueries = mysqlTable("research_queries", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull(),
+  gumshoeQueryId: int("gumshoeQueryId"),
+  personaName: varchar("personaName", { length: 128 }),
+  query: text("query").notNull(),
+  topicTags: text("topicTags"),           // JSON array of tag strings
+  gapScore: int("gapScore").default(0),   // 0-10: higher = bigger opportunity
+  urbanMonkMentioned: int("urbanMonkMentioned").default(0), // 0 or 1
+  contentItemId: int("contentItemId"),    // linked when content is created from this gap
+  status: mysqlEnum("queryStatus", ["unused", "in_progress", "published"]).default("unused"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ResearchQuery = typeof researchQueries.$inferSelect;
+export type InsertResearchQuery = typeof researchQueries.$inferInsert;
+
+/**
+ * Each competitor brand mention from a Gumshoe query answer.
+ * Stores which model mentioned which brand, at what rank, and why.
+ */
+export const researchCompetitorMentions = mysqlTable("research_competitor_mentions", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull(),
+  queryId: int("queryId").notNull(),
+  brand: varchar("brand", { length: 255 }).notNull(),
+  model: varchar("model", { length: 128 }),
+  rank: int("rank"),
+  reason: text("reason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ResearchCompetitorMention = typeof researchCompetitorMentions.$inferSelect;
+export type InsertResearchCompetitorMention = typeof researchCompetitorMentions.$inferInsert;

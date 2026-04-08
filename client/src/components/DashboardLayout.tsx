@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Brain, Image, LayoutDashboard, LogOut, PanelLeft, PenSquare } from "lucide-react";
+import { Brain, Image, LayoutDashboard, LogOut, PanelLeft, PenSquare, FlaskConical } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -30,6 +30,7 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: LayoutDashboard, label: "Command Center", path: "/" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
+  { icon: FlaskConical, label: "Research Intelligence", path: "/research" },
   { icon: Brain, label: "Strategy Brain", path: "/strategy" },
   { icon: Image, label: "Asset Library", path: "/assets" },
 ];

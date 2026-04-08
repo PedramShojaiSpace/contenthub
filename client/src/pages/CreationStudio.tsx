@@ -31,7 +31,8 @@ import {
   Wand2,
   Youtube,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { FlaskConical, Target } from "lucide-react";
 import { toast } from "sonner";
 
 type Platform = "meta" | "linkedin" | "x" | "youtube" | "all";
@@ -157,6 +158,20 @@ export default function CreationStudio() {
       setAttachingImage(false);
     },
   });
+
+  // Gumshoe Research Context — top gap queries from latest report
+  const { data: topGaps = [] } = trpc.research.getTopGaps.useQuery({ limit: 5 }, { retry: false });
+  const [showResearchPanel, setShowResearchPanel] = useState(true);
+
+  // Pick up a brief pre-loaded from the Research Intelligence page
+  useEffect(() => {
+    const brief = sessionStorage.getItem("gumshoe_brief");
+    if (brief) {
+      setIdea(brief);
+      sessionStorage.removeItem("gumshoe_brief");
+      toast.success("Research brief loaded — ready to generate!");
+    }
+  }, []);
 
   // Buffer profiles
   const { data: bufferProfiles, isLoading: loadingProfiles } = trpc.syndication.getProfiles.useQuery(undefined, {
@@ -284,6 +299,62 @@ export default function CreationStudio() {
             Drop an idea. Generate voice-matched content and on-brand visuals for every platform.
           </p>
         </div>
+
+        {/* Gumshoe Research Context Panel */}
+        {topGaps.length > 0 && showResearchPanel && (
+          <Card className="bg-amber-950/20 border-amber-800/30">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-amber-400 flex items-center gap-2">
+                  <FlaskConical className="w-4 h-4" />
+                  Research Intelligence — Top LLM Search Gaps
+                </CardTitle>
+                <button
+                  onClick={() => setShowResearchPanel(false)}
+                  className="text-zinc-500 hover:text-zinc-300 text-xs"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500">
+                These are queries where Urban Monk is not appearing in LLM answers. Click any to use as your content starting point.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {(topGaps as Array<{ id: number; query: string; personaName: string | null; gapScore: number | null; topicTags: string | null }>).map((gap) => {
+                const tags = (() => { try { return JSON.parse(gap.topicTags ?? "[]") as string[]; } catch { return []; } })();
+                return (
+                  <button
+                    key={gap.id}
+                    onClick={() => {
+                      setIdea(`Answer this LLM search query for the persona "${gap.personaName ?? "Wellness Seeker"}": ${gap.query}`);
+                      toast.success("Gap query loaded as idea!");
+                    }}
+                    className="w-full text-left p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 hover:border-amber-700/50 transition-colors group"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <p className="text-zinc-300 text-sm group-hover:text-white transition-colors">{gap.query}</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {gap.personaName && (
+                            <Badge variant="outline" className="text-zinc-500 border-zinc-700 text-xs">{gap.personaName}</Badge>
+                          )}
+                          {gap.gapScore != null && gap.gapScore >= 5 && (
+                            <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">Gap {gap.gapScore}/10 🔥</Badge>
+                          )}
+                          {tags.slice(0, 2).map((t: string) => (
+                            <Badge key={t} className="bg-zinc-800 text-zinc-500 text-xs border-zinc-700">{t}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <Target className="w-4 h-4 text-amber-500/50 group-hover:text-amber-400 shrink-0 mt-0.5 transition-colors" />
+                    </div>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Input Panel */}
         <Card className="bg-card border-border">

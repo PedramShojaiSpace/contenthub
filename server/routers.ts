@@ -17,6 +17,18 @@ import {
   upsertPlatformStrategy,
 } from "./db";
 import { getBufferProfiles, pushToBuffer } from "./buffer";
+import {
+  getCompetitorLeaderboard,
+  getPersonaQueries,
+  getQueryCompetitors,
+  getTopGapQueries,
+  getResearchReport,
+  ingestGumshoeReport,
+  linkQueryToContentItem,
+  listResearchQueriesByReport,
+  listResearchReports,
+  markQueryPublished,
+} from "./gumshoe";
 import { sendWeeklyDigest } from "./digest";
 import { notifyOwner } from "./_core/notification";
 
@@ -365,6 +377,131 @@ Rules:
         }
 
         return result;
+      }),
+  }),
+
+  // ─── Research Intelligence (Gumshoe AI) ──────────────────────────────────
+  research: router({
+    // List all uploaded reports
+    listReports: protectedProcedure.query(async () => {
+      return listResearchReports();
+    }),
+
+    // Get a single report
+    getReport: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return getResearchReport(input.id);
+      }),
+
+    // Ingest a new Gumshoe report (JSON + CSV text pair)
+    ingest: protectedProcedure
+      .input(
+        z.object({
+          jsonText: z.string().min(1),
+          csvText: z.string().min(1),
+          weekLabel: z.string().min(1),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return ingestGumshoeReport(input.jsonText, input.csvText, input.weekLabel);
+      }),
+
+    // Get all queries for a report
+    listQueries: protectedProcedure
+      .input(z.object({ reportId: z.number() }))
+      .query(async ({ input }) => {
+        return listResearchQueriesByReport(input.reportId);
+      }),
+
+    // Get top gap queries (for Creation Studio context panel)
+    getTopGaps: protectedProcedure
+      .input(z.object({ limit: z.number().default(5) }))
+      .query(async ({ input }) => {
+        return getTopGapQueries(input.limit);
+      }),
+
+    // Get competitor leaderboard for a report (or all reports)
+    getCompetitorLeaderboard: protectedProcedure
+      .input(z.object({ reportId: z.number().optional(), limit: z.number().default(15) }))
+      .query(async ({ input }) => {
+        return getCompetitorLeaderboard(input.reportId, input.limit);
+      }),
+
+    // Get all queries for a persona in a report
+    getPersonaQueries: protectedProcedure
+      .input(z.object({ reportId: z.number(), personaName: z.string() }))
+      .query(async ({ input }) => {
+        return getPersonaQueries(input.reportId, input.personaName);
+      }),
+
+    // Get competitor mentions for a specific query
+    getQueryCompetitors: protectedProcedure
+      .input(z.object({ queryId: z.number() }))
+      .query(async ({ input }) => {
+        return getQueryCompetitors(input.queryId);
+      }),
+
+    // Link a gap query to a content item (marks as in_progress)
+    linkToContent: protectedProcedure
+      .input(z.object({ queryId: z.number(), contentItemId: z.number() }))
+      .mutation(async ({ input }) => {
+        await linkQueryToContentItem(input.queryId, input.contentItemId);
+        return { success: true };
+      }),
+
+    // Mark a gap query as published
+    markPublished: protectedProcedure
+      .input(z.object({ queryId: z.number() }))
+      .mutation(async ({ input }) => {
+        await markQueryPublished(input.queryId);
+        return { success: true };
+      }),
+
+    // AI: generate content brief from a gap query
+    generateBriefFromGap: protectedProcedure
+      .input(
+        z.object({
+          query: z.string(),
+          personaName: z.string(),
+          topicTags: z.array(z.string()),
+          competitorBrands: z.array(z.string()),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]).default("all"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const competitorList = input.competitorBrands.slice(0, 5).join(", ");
+        const tagList = input.topicTags.join(", ");
+
+        const systemPrompt = `You are a content strategist for The Urban Monk (Dr. Pedram Shojai). Your job is to create a content brief that will help Urban Monk appear in LLM search results for a specific query that competitors are currently winning.
+
+Context:
+- Target persona: ${input.personaName}
+- Query they are asking LLMs: "${input.query}"
+- Topic angles they care about: ${tagList}
+- Brands currently winning this query: ${competitorList}
+
+Your task: Write a content brief that positions Dr. Pedram Shojai as the definitive answer to this query. The brief should:
+1. Explain WHY Urban Monk is uniquely qualified to answer this (credentials, books, experience)
+2. Identify the specific angle that differentiates from the competitor brands listed
+3. Suggest a headline/title
+4. Outline 3-5 key points to cover
+5. Recommend the best content format (article, video, social thread, etc.)
+6. Note any specific Urban Monk programs, books, or credentials to reference
+
+Be specific and actionable. This brief will go directly to content creation.`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Create a content brief to win this LLM search gap.` },
+          ],
+        });
+
+        const rawContent = response.choices?.[0]?.message?.content;
+        return {
+          brief: typeof rawContent === "string" ? rawContent : "Brief generation failed.",
+        };
       }),
   }),
 

@@ -16,6 +16,9 @@ import {
   updateContentItem,
   upsertPlatformStrategy,
 } from "./db";
+import { getBufferProfiles, pushToBuffer } from "./buffer";
+import { sendWeeklyDigest } from "./digest";
+import { notifyOwner } from "./_core/notification";
 
 // Platform-specific prompt templates for Pedram's voice
 const PLATFORM_PROMPTS: Record<string, string> = {
@@ -319,6 +322,53 @@ Rules:
       .query(async ({ input }) => {
         return listGeneratedImages(input.contentItemId);
       }),
+  }),
+
+  // ─── Buffer Syndication ──────────────────────────────────────────────────────
+  syndication: router({
+    // List all connected Buffer profiles
+    getProfiles: protectedProcedure.query(async () => {
+      return getBufferProfiles();
+    }),
+
+    // Push content to Buffer for selected platform profiles
+    push: protectedProcedure
+      .input(
+        z.object({
+          contentItemId: z.number(),
+          text: z.string().min(1),
+          profileIds: z.array(z.string()).min(1),
+          imageUrl: z.string().optional(),
+          scheduledAt: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const result = await pushToBuffer({
+          text: input.text,
+          profileIds: input.profileIds,
+          imageUrl: input.imageUrl,
+          scheduledAt: input.scheduledAt,
+        });
+
+        // If successful, update the content item status to 'scheduled'
+        if (result.success) {
+          await updateContentItem(input.contentItemId, {
+            status: "scheduled",
+            notes: `Buffer ID: ${result.bufferId ?? "queued"}`,
+          });
+        }
+
+        return result;
+      }),
+  }),
+
+  // ─── Weekly Digest ───────────────────────────────────────────────────────────
+  digest: router({
+    // Manually trigger the weekly digest (admin only)
+    sendNow: protectedProcedure.mutation(async () => {
+      await sendWeeklyDigest();
+      return { success: true };
+    }),
   }),
 });
 

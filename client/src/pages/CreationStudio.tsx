@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -13,18 +14,22 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Facebook,
   Image,
   Linkedin,
   Loader2,
+  Paperclip,
   Save,
+  Send,
   Sparkles,
   Twitter,
-  Youtube,
   Wand2,
-  ChevronDown,
-  ChevronUp,
+  Youtube,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -46,32 +51,26 @@ const PLATFORM_LABELS: Record<string, string> = {
   youtube: "YouTube",
 };
 
-// Platform-specific style descriptions shown in the UI
-const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string; palette: string }> = {
+const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string }> = {
   linkedin: {
     label: "Corporate Wellness",
     description: "Minimalist editorial — deep navy, gold accents, authority & expertise",
-    palette: "from-navy-900 to-slate-800",
   },
   meta: {
     label: "Lifestyle & Aspiration",
     description: "Warm, earthy, authentic — deep greens, terracotta, natural light",
-    palette: "from-emerald-900 to-amber-900",
   },
   x: {
     label: "Bold & Cinematic",
     description: "High-contrast, typographic — stark black, single dramatic light source",
-    palette: "from-slate-900 to-zinc-800",
   },
   youtube: {
     label: "Epic Documentary",
     description: "Chiaroscuro thumbnail — rich shadows, prestige film still quality",
-    palette: "from-red-950 to-slate-900",
   },
   all: {
     label: "Urban Monk Signature",
     description: "Dark, moody, cinematic — deep blacks, warm gold, timeless editorial",
-    palette: "from-stone-900 to-yellow-950",
   },
 };
 
@@ -84,15 +83,24 @@ export default function CreationStudio() {
   const [imagePrompt, setImagePrompt] = useState("");
   const [generatedImageUrl, setGeneratedImageUrl] = useState("");
   const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
+  const [savedItemIds, setSavedItemIds] = useState<Record<string, number>>({});
   const [imageStylePlatform, setImageStylePlatform] = useState<Platform>("all");
   const [showStyleDetails, setShowStyleDetails] = useState(false);
   const [styleOverride, setStyleOverride] = useState("");
+  const [attachingImage, setAttachingImage] = useState(false);
+  const [attachedToIds, setAttachedToIds] = useState<number[]>([]);
+
+  // Buffer syndication state
+  const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
+  const [syndicatingPlatform, setSyndicatingPlatform] = useState<string | null>(null);
+  const [syndicationResults, setSyndicationResults] = useState<Record<string, { success: boolean; error?: string }>>({});
+
+  const utils = trpc.useUtils();
 
   const generateContentMutation = trpc.ai.generateContent.useMutation({
     onSuccess: (data) => {
       setGeneratedContent(data);
       setEditedContent(data);
-      // Auto-set image style platform to match content platform
       if (platform !== "all") setImageStylePlatform(platform);
       toast.success("Content generated for all platforms!");
     },
@@ -124,13 +132,53 @@ export default function CreationStudio() {
   });
 
   const createContentMutation = trpc.content.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Saved to Command Center!");
+      if (data?.id && savingPlatform) {
+        setSavedItemIds((prev) => ({ ...prev, [savingPlatform]: data.id }));
+      }
       setSavingPlatform(null);
+      utils.content.list.invalidate();
     },
     onError: (err) => {
       toast.error("Save failed: " + err.message);
       setSavingPlatform(null);
+    },
+  });
+
+  const updateContentMutation = trpc.content.update.useMutation({
+    onSuccess: () => {
+      toast.success("Image attached to card!");
+      setAttachingImage(false);
+      utils.content.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error("Attach failed: " + err.message);
+      setAttachingImage(false);
+    },
+  });
+
+  // Buffer profiles
+  const { data: bufferProfiles, isLoading: loadingProfiles } = trpc.syndication.getProfiles.useQuery(undefined, {
+    retry: false,
+  });
+
+  const syndicationMutation = trpc.syndication.push.useMutation({
+    onSuccess: (data, variables) => {
+      const p = syndicatingPlatform ?? "unknown";
+      if (data.success) {
+        setSyndicationResults((prev) => ({ ...prev, [p]: { success: true } }));
+        toast.success(`Pushed to Buffer! ID: ${data.bufferId ?? "queued"}`);
+      } else {
+        setSyndicationResults((prev) => ({ ...prev, [p]: { success: false, error: data.error } }));
+        toast.error("Buffer push failed: " + data.error);
+      }
+      setSyndicatingPlatform(null);
+      utils.content.list.invalidate();
+    },
+    onError: (err) => {
+      setSyndicatingPlatform(null);
+      toast.error("Syndication error: " + err.message);
     },
   });
 
@@ -176,6 +224,42 @@ export default function CreationStudio() {
     });
   };
 
+  const handleAttachImage = (itemId: number) => {
+    if (!generatedImageUrl) {
+      toast.error("No image to attach. Generate an image first.");
+      return;
+    }
+    setAttachingImage(true);
+    updateContentMutation.mutate({
+      id: itemId,
+      imageUrl: generatedImageUrl,
+      imagePrompt: imagePrompt || undefined,
+    });
+    setAttachedToIds((prev) => [...prev, itemId]);
+  };
+
+  const handleSyndicate = (p: string) => {
+    const itemId = savedItemIds[p];
+    if (!itemId) {
+      toast.error("Save this platform's content to a card first.");
+      return;
+    }
+    if (!selectedProfileIds.length) {
+      toast.error("Select at least one Buffer profile.");
+      return;
+    }
+    const text = editedContent[p] || generatedContent[p];
+    if (!text) return;
+
+    setSyndicatingPlatform(p);
+    syndicationMutation.mutate({
+      contentItemId: itemId,
+      text,
+      profileIds: selectedProfileIds,
+      imageUrl: generatedImageUrl || undefined,
+    });
+  };
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
@@ -187,6 +271,8 @@ export default function CreationStudio() {
       : [platform];
 
   const currentStyleInfo = PLATFORM_STYLE_LABELS[imageStylePlatform] ?? PLATFORM_STYLE_LABELS.all;
+  const hasBufferToken = bufferProfiles !== undefined;
+  const hasProfiles = (bufferProfiles?.length ?? 0) > 0;
 
   return (
     <DashboardLayout>
@@ -283,6 +369,9 @@ export default function CreationStudio() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {outputPlatforms.map((p) => {
                 const platformInfo = PLATFORMS.find((pl) => pl.key === p);
+                const savedId = savedItemIds[p];
+                const isAttached = savedId && attachedToIds.includes(savedId);
+                const syndicationResult = syndicationResults[p];
                 return (
                   <Card key={p} className="bg-card border-border">
                     <CardHeader className="pb-3">
@@ -292,6 +381,17 @@ export default function CreationStudio() {
                           <CardTitle className="text-sm font-semibold text-foreground">
                             {PLATFORM_LABELS[p] || p}
                           </CardTitle>
+                          {savedId && (
+                            <Badge variant="outline" className="text-[10px] border-green-500/40 text-green-400">
+                              Saved
+                            </Badge>
+                          )}
+                          {isAttached && (
+                            <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                              <Paperclip className="h-2.5 w-2.5 mr-1" />
+                              Image attached
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -314,14 +414,14 @@ export default function CreationStudio() {
                             ) : (
                               <>
                                 <Save className="h-3 w-3 mr-1" />
-                                Save
+                                {savedId ? "Re-save" : "Save"}
                               </>
                             )}
                           </Button>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent className="pt-0 space-y-3">
                       <Textarea
                         value={editedContent[p] || ""}
                         onChange={(e) =>
@@ -330,6 +430,50 @@ export default function CreationStudio() {
                         rows={10}
                         className="bg-background border-border resize-none text-sm text-foreground font-mono leading-relaxed"
                       />
+
+                      {/* Attach image to this card */}
+                      {generatedImageUrl && savedId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={`w-full text-xs h-8 ${isAttached ? "border-primary/40 text-primary" : ""}`}
+                          onClick={() => handleAttachImage(savedId)}
+                          disabled={attachingImage || !!isAttached}
+                        >
+                          {attachingImage ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : isAttached ? (
+                            <CheckCircle2 className="h-3 w-3 mr-1 text-primary" />
+                          ) : (
+                            <Paperclip className="h-3 w-3 mr-1" />
+                          )}
+                          {isAttached ? "Image attached to card" : "Attach generated image to card"}
+                        </Button>
+                      )}
+
+                      {generatedImageUrl && !savedId && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Save to a card first to attach the image.
+                        </p>
+                      )}
+
+                      {/* Syndication result badge */}
+                      {syndicationResult && (
+                        <div className={`flex items-center gap-2 text-xs p-2 rounded-md ${
+                          syndicationResult.success
+                            ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                            : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        }`}>
+                          {syndicationResult.success ? (
+                            <CheckCircle2 className="h-3 w-3 shrink-0" />
+                          ) : (
+                            <AlertCircle className="h-3 w-3 shrink-0" />
+                          )}
+                          {syndicationResult.success
+                            ? "Pushed to Buffer successfully"
+                            : syndicationResult.error}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -499,25 +643,134 @@ export default function CreationStudio() {
                       Copy URL
                     </Button>
                   </div>
+                  {Object.keys(savedItemIds).length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Save content to a card above to attach this image to it.
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* Syndication Placeholder */}
+        {/* Buffer Syndication Panel */}
         {Object.keys(editedContent).length > 0 && (
-          <Card className="bg-card border-border border-dashed">
-            <CardContent className="p-6 text-center">
-              <Badge variant="outline" className="mb-3 border-primary/30 text-primary">
-                Coming Soon
-              </Badge>
-              <h3 className="font-serif font-semibold text-foreground mb-1">
-                One-Click Syndication
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Buffer and Duvo API integration for direct publishing will be available soon.
-              </p>
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-medium text-foreground flex items-center gap-2">
+                  <Send className="h-4 w-4 text-primary" />
+                  Buffer Syndication
+                </CardTitle>
+                <Badge variant="outline" className="border-primary/40 text-primary text-xs">
+                  One-Click Publish
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!hasBufferToken ? (
+                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400">
+                  <p className="font-medium mb-1">Buffer Access Token Required</p>
+                  <p className="text-xs text-amber-400/80">
+                    Add your <code className="bg-black/30 px-1 rounded">BUFFER_ACCESS_TOKEN</code> in the project Secrets settings to enable one-click syndication to LinkedIn, Meta, X, and YouTube via Buffer.
+                  </p>
+                </div>
+              ) : !hasProfiles ? (
+                <div className="p-4 rounded-lg bg-muted/20 border border-border text-sm text-muted-foreground">
+                  <p>No Buffer profiles found. Connect your social accounts in Buffer, then return here.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Profile selector */}
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                      Select Buffer Profiles
+                    </Label>
+                    <div className="space-y-2">
+                      {bufferProfiles?.map((profile) => {
+                        const platformMeta = PLATFORMS.find((p) => p.key === profile.platform);
+                        const isChecked = selectedProfileIds.includes(profile.id);
+                        return (
+                          <div
+                            key={profile.id}
+                            className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-background hover:bg-muted/20 transition-colors cursor-pointer"
+                            onClick={() => {
+                              setSelectedProfileIds((prev) =>
+                                isChecked
+                                  ? prev.filter((id) => id !== profile.id)
+                                  : [...prev, profile.id]
+                              );
+                            }}
+                          >
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                setSelectedProfileIds((prev) =>
+                                  checked
+                                    ? [...prev, profile.id]
+                                    : prev.filter((id) => id !== profile.id)
+                                );
+                              }}
+                            />
+                            <span className={platformMeta?.color}>{platformMeta?.icon}</span>
+                            <span className="text-sm text-foreground">{profile.name}</span>
+                            <Badge variant="outline" className="ml-auto text-[10px]">
+                              {profile.platform}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Push buttons per platform */}
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                      Push to Buffer
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {outputPlatforms.map((p) => {
+                        const savedId = savedItemIds[p];
+                        const platformMeta = PLATFORMS.find((pl) => pl.key === p);
+                        const result = syndicationResults[p];
+                        return (
+                          <Button
+                            key={p}
+                            variant="outline"
+                            size="sm"
+                            className={`h-9 text-xs justify-start gap-2 ${
+                              result?.success ? "border-green-500/40 text-green-400" : ""
+                            }`}
+                            onClick={() => handleSyndicate(p)}
+                            disabled={
+                              !savedId ||
+                              !selectedProfileIds.length ||
+                              syndicatingPlatform === p ||
+                              syndicationMutation.isPending
+                            }
+                          >
+                            {syndicatingPlatform === p ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : result?.success ? (
+                              <CheckCircle2 className="h-3 w-3 text-green-400" />
+                            ) : (
+                              <span className={platformMeta?.color}>{platformMeta?.icon}</span>
+                            )}
+                            {result?.success ? "Pushed" : `Push ${PLATFORM_LABELS[p] || p}`}
+                            {!savedId && (
+                              <span className="ml-auto text-muted-foreground text-[10px]">save first</span>
+                            )}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    {!selectedProfileIds.length && (
+                      <p className="text-xs text-muted-foreground">Select at least one Buffer profile above to enable pushing.</p>
+                    )}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

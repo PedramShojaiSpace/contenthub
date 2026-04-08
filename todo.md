@@ -25,7 +25,7 @@
 - [x] Kanban board with columns: Idea → Drafting → Review → Approved → Scheduled → Published
 - [x] Stats bar showing count per status
 - [x] Content item cards with platform badges, status, and quick actions
-- [x] Calendar view placeholder
+- [x] Calendar view (real monthly grid with drag-to-schedule)
 - [x] Create new content dialog
 - [x] Delete and status change via dropdown
 
@@ -37,9 +37,11 @@
 - [x] Four-panel output (one per platform) with editable textareas
 - [x] Copy and Save buttons per platform panel
 - [x] Image prompt generator
-- [x] "Generate Image" button
+- [x] "Generate Image" button (Nano Banana)
+- [x] Platform-specific visual style selector (LinkedIn, Meta, X, YouTube, Signature)
 - [x] Image preview and URL copy
-- [x] Syndication placeholder with "coming soon" badge
+- [x] "Attach to Card" button after image generation
+- [x] Buffer Syndication panel with profile selector and per-platform Push buttons
 
 ## Frontend — Strategy Brain
 - [x] Platform profile tabs (LinkedIn, Meta, X, YouTube)
@@ -55,39 +57,59 @@
 
 ## AI Integration
 - [x] invokeLLM for multi-platform content generation with Pedram's voice
-- [x] generateImage for visual asset creation (dark, moody, cinematic style)
-- [x] Platform-specific prompt templates embedded in backend
+- [x] generateImage (Nano Banana) for visual asset creation
+- [x] Platform-specific brand style prompts (LinkedIn, Meta, X, YouTube, Signature)
 - [x] Image prompt auto-generation from content
 
-## Testing
-- [x] Vitest tests for auth.logout
-- [x] Vitest tests for content, strategy, ai, and assets router structure
-
-## Syndication (Placeholder)
-- [ ] Buffer API integration UI (placeholder with "coming soon" toast)
-- [ ] Duvo API integration UI (placeholder with "coming soon" toast)
-
 ## Calendar View (v2)
-- [ ] Real monthly calendar grid with day cells
-- [ ] Approved/Scheduled content items displayed on their scheduled date
-- [ ] Click-to-schedule: click a day to assign a content item to that date
-- [ ] Drag-to-reschedule: drag cards between days
-- [ ] Month navigation (prev/next)
-- [ ] Platform color-coded badges on calendar cards
-- [ ] Unscheduled content sidebar panel
+- [x] Real monthly calendar grid with day cells
+- [x] Approved/Scheduled content items displayed on their scheduled date
+- [x] Click-to-schedule: click a day to assign a content item to that date
+- [x] Drag-to-reschedule: drag cards between days
+- [x] Month navigation (prev/next)
+- [x] Platform color-coded badges on calendar cards
+- [x] Unscheduled content sidebar panel
 
 ## Nano Banana Image Generation (v2)
-- [ ] Platform-specific brand style prompts (LinkedIn, Meta, X, YouTube)
-- [ ] LinkedIn: clean, professional, corporate wellness aesthetic
-- [ ] Meta/Instagram: warm, lifestyle, aspirational, nature + human connection
-- [ ] X/Twitter: bold, high-contrast, typographic, minimal
-- [ ] YouTube: cinematic thumbnail style, dramatic lighting, bold composition
-- [ ] Style selector UI in Creation Studio image panel
-- [ ] Preview style descriptions before generating
-- [ ] Auto-select platform style based on active platform tab
+- [x] Platform-specific brand style prompts (LinkedIn, Meta, X, YouTube)
+- [x] LinkedIn: Corporate Wellness — minimalist editorial, deep navy, gold accents
+- [x] Meta: Lifestyle & Aspiration — warm, earthy, natural light
+- [x] X: Bold & Cinematic — high-contrast, typographic, stark black
+- [x] YouTube: Epic Documentary — chiaroscuro thumbnail, prestige film still
+- [x] Urban Monk Signature: dark, moody, cinematic, deep blacks, warm gold
+- [x] Style selector UI in Creation Studio image panel
+- [x] Preview style descriptions before generating
+- [x] Auto-select platform style based on active platform tab
 
 ## App Rename (v2)
 - [x] Rename app title to "Urban Monk Productions Content Hub" in index.html
 - [x] Rename sidebar header from "Content Engine" to "UMP Content Hub"
 - [x] Update VITE_APP_TITLE to match
 - [x] Update all page titles and meta tags
+
+## v3 Features
+
+### Image-to-Card Attachment
+- [x] Add "Attach to Card" button in Creation Studio after image is generated
+- [x] Save imageUrl to content item via update mutation
+- [x] Show "Image attached" badge on content card panels
+- [x] Attach image prompt alongside URL
+
+### Buffer Syndication
+- [x] Build buffer.ts module with getBufferProfiles and pushToBuffer
+- [x] Add syndication.getProfiles and syndication.push tRPC procedures
+- [x] Add syndication panel in Creation Studio with profile checkboxes and Push buttons
+- [x] Show syndication success/failure status per platform
+- [x] Update content item status to 'scheduled' after successful push
+- [x] Graceful no-token state (shows setup instructions)
+
+### Weekly Digest Notification
+- [x] Build sendWeeklyDigest function (scheduled, stuck, aging items)
+- [x] Wire digest cron into server startup (Monday 08:00 UTC)
+- [x] Add digest.sendNow procedure for manual trigger
+- [x] Send via notifyOwner helper
+
+## Testing
+- [x] Vitest tests for auth.logout
+- [x] Vitest tests for content, strategy, ai, and assets router structure
+- [x] Vitest tests for syndication.getProfiles, syndication.push, digest.sendNow, content.update (image attachment)

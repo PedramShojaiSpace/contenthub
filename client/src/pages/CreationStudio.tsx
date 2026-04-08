@@ -350,6 +350,82 @@ export default function CreationStudio() {
     });
   };
 
+  // Direct push to Buffer — saves card first if not already saved, then syndicates
+  const handleSyndicateDirect = async (p: string) => {
+    const text = editedText[p] || generatedContent[p]?.text;
+    if (!text) {
+      toast.error("No content to push.");
+      return;
+    }
+    // Check if Buffer is configured
+    if (!hasBufferToken) {
+      toast.error("Buffer is not connected. Add your BUFFER_ACCESS_TOKEN in Settings → Secrets.");
+      return;
+    }
+    if (!hasProfiles) {
+      toast.error("No Buffer profiles found. Connect your social accounts in Buffer first.");
+      return;
+    }
+
+    setSyndicatingPlatform(p);
+
+    // If not saved yet, save first then syndicate
+    let itemId = savedItemIds[p];
+    if (!itemId) {
+      // Save to Kanban first
+      try {
+        const result = await new Promise<{ id: number } | undefined>((resolve) => {
+          setSavingPlatform(p);
+          createContentMutation.mutate(
+            {
+              title: idea.slice(0, 80) + (idea.length > 80 ? "..." : ""),
+              rawIdea: idea,
+              platform: p as Platform,
+              status: "drafting",
+              textContent: text,
+              gapQueryId: activeGapQueryId ?? undefined,
+            },
+            {
+              onSuccess: (data) => {
+                if (data?.id) {
+                  setSavedItemIds((prev) => ({ ...prev, [p]: data.id }));
+                  resolve(data);
+                } else {
+                  resolve(undefined);
+                }
+                setSavingPlatform(null);
+              },
+              onError: () => {
+                setSavingPlatform(null);
+                resolve(undefined);
+              },
+            }
+          );
+        });
+        if (result?.id) itemId = result.id;
+      } catch {
+        setSyndicatingPlatform(null);
+        toast.error("Failed to save content before pushing.");
+        return;
+      }
+    }
+
+    // Use all available Buffer profiles for this platform
+    const profileIds = (bufferProfiles ?? []).map((pr: { id: string }) => pr.id);
+    if (!profileIds.length) {
+      setSyndicatingPlatform(null);
+      toast.error("No Buffer profiles available.");
+      return;
+    }
+
+    syndicationMutation.mutate({
+      contentItemId: itemId ?? 0,
+      text,
+      profileIds,
+      imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
+    });
+  };
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
@@ -568,6 +644,7 @@ export default function CreationStudio() {
                             size="icon"
                             className="h-7 w-7"
                             onClick={() => handleCopy(editedText[p] || "")}
+                            title="Copy to clipboard"
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
@@ -577,6 +654,7 @@ export default function CreationStudio() {
                             className="h-7 px-2 text-xs"
                             onClick={() => handleSave(p)}
                             disabled={savingPlatform === p || createContentMutation.isPending}
+                            title="Save to Command Center"
                           >
                             {savingPlatform === p ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
@@ -584,6 +662,32 @@ export default function CreationStudio() {
                               <>
                                 <Save className="h-3 w-3 mr-1" />
                                 {savedId ? "Re-save" : "Save"}
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-7 px-2 text-xs ${
+                              syndicationResult?.success
+                                ? "text-green-400 hover:text-green-300"
+                                : "text-blue-400 hover:text-blue-300"
+                            }`}
+                            onClick={() => handleSyndicateDirect(p)}
+                            disabled={syndicatingPlatform === p || syndicationMutation.isPending}
+                            title="Push to Buffer"
+                          >
+                            {syndicatingPlatform === p ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : syndicationResult?.success ? (
+                              <>
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Sent
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-3 w-3 mr-1" />
+                                Push to Buffer
                               </>
                             )}
                           </Button>

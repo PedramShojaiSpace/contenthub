@@ -199,3 +199,17 @@
 - [ ] Frontend: show image loading skeleton while image generates
 - [ ] Frontend: "Regenerate Image" button per panel to swap the image without regenerating copy
 - [ ] Frontend: "Attach to Card" auto-includes the image when saving to Kanban
+
+## v8 Features
+
+### Clean Publishable Copy
+- [ ] Fix AI system prompt to produce clean copy with zero internal markup, stage labels, or section headers
+- [ ] Remove all non-publishable text from generated output (e.g., "Hook:", "CTA:", "---", "[Image suggestion:]")
+- [ ] Ensure generated copy is directly copy-paste ready for each platform
+
+### Push to Buffer (Per Panel)
+- [ ] Add "Push to Buffer" button directly on each platform output panel in Creation Studio
+- [ ] Button sends the panel's clean copy + attached image URL to Buffer in one click
+- [ ] Show success/error toast on the panel after push
+- [ ] Disable button with tooltip if Buffer is not configured
+- [ ] Auto-update content item status to "scheduled" after successful push

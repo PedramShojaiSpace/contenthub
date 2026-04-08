@@ -18,7 +18,9 @@ import {
 } from "./db";
 import { getBufferProfiles, pushToBuffer } from "./buffer";
 import {
+  countAddressedGaps,
   getCompetitorLeaderboard,
+  getCoverageTrend,
   getPersonaQueries,
   getQueryCompetitors,
   getTopGapQueries,
@@ -135,10 +137,16 @@ export const appRouter = router({
             .default("idea"),
           textContent: z.string().optional(),
           notes: z.string().optional(),
+          gapQueryId: z.number().optional(), // Research Intelligence: link to source Gumshoe gap query
         })
       )
       .mutation(async ({ input }) => {
-        return createContentItem(input);
+        const item = await createContentItem(input);
+        // If created from a gap query, mark the query as in_progress
+        if (input.gapQueryId && item) {
+          await linkQueryToContentItem(input.gapQueryId, (item as { id: number }).id);
+        }
+        return item;
       }),
 
     update: protectedProcedure
@@ -187,6 +195,15 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         await updateContentItem(input.id, { status: input.status });
+
+        // If moving to Published, auto-mark any linked gap query as addressed
+        if (input.status === "published") {
+          const item = await getContentItem(input.id);
+          if (item?.gapQueryId) {
+            await markQueryPublished(item.gapQueryId);
+          }
+        }
+
         return { success: true };
       }),
   }),
@@ -456,6 +473,19 @@ Rules:
       .mutation(async ({ input }) => {
         await markQueryPublished(input.queryId);
         return { success: true };
+      }),
+
+    // Get coverage trend data for the chart
+    getCoverageTrend: protectedProcedure.query(async () => {
+      return getCoverageTrend();
+    }),
+
+    // Count addressed gaps for a report
+    countAddressedGaps: protectedProcedure
+      .input(z.object({ reportId: z.number() }))
+      .query(async ({ input }) => {
+        const count = await countAddressedGaps(input.reportId);
+        return { count };
       }),
 
     // AI: generate content brief from a gap query

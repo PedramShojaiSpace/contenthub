@@ -1,4 +1,16 @@
 import { useState, useRef } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +22,7 @@ import { toast } from "sonner";
 import {
   Upload,
   TrendingUp,
+  LineChart as LineChartIcon,
   Users,
   Target,
   BarChart3,
@@ -210,15 +223,25 @@ function GapDashboard({ reportId }: { reportId: number }) {
     .sort((a, b) => (b.gapScore ?? 0) - (a.gapScore ?? 0));
   const personas = Array.from(new Set((queries as ResearchQuery[]).map((q) => q.personaName).filter(Boolean))) as string[];
 
+  const [pendingGapQuery, setPendingGapQuery] = useState<ResearchQuery | null>(null);
+
   const generateBrief = trpc.research.generateBriefFromGap.useMutation({
     onSuccess: (data) => {
       // Navigate to Creation Studio with the brief pre-loaded
-      // Store in sessionStorage for pickup
+      // Store in sessionStorage for pickup, including gap query ID for auto-tagging
       sessionStorage.setItem("gumshoe_brief", data.brief);
+      if (pendingGapQuery) {
+        sessionStorage.setItem("gumshoe_gap_query_id", String(pendingGapQuery.id));
+        sessionStorage.setItem("gumshoe_gap_query_text", pendingGapQuery.query);
+        setPendingGapQuery(null);
+      }
       navigate("/studio");
       toast.success("Brief generated — opening Creation Studio");
     },
-    onError: (err) => toast.error(`Brief generation failed: ${err.message}`),
+    onError: (err) => {
+      setPendingGapQuery(null);
+      toast.error(`Brief generation failed: ${err.message}`);
+    },
   });
 
   const handleCreateContent = (q: ResearchQuery) => {
@@ -227,6 +250,7 @@ function GapDashboard({ reportId }: { reportId: number }) {
       .slice(0, 5)
       .map((c) => c.brand);
 
+    setPendingGapQuery(q);
     generateBrief.mutate({
       query: q.query,
       personaName: q.personaName ?? "Unknown Persona",
@@ -464,6 +488,174 @@ function PersonaBrowser({ reportId }: { reportId: number }) {
   );
 }
 
+// ─── Coverage Trend Chart ────────────────────────────────────────────────────
+
+interface CoverageSnapshot {
+  id: number;
+  reportId: number;
+  weekLabel: string;
+  totalQueries: number;
+  mentionedCount: number;
+  gapCount: number;
+  addressedCount: number;
+  snapshotAt: Date;
+}
+
+function CoverageTrendChart() {
+  const { data: snapshots = [], isLoading } = trpc.research.getCoverageTrend.useQuery();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-48 text-zinc-500">
+        Loading coverage data...
+      </div>
+    );
+  }
+
+  if ((snapshots as CoverageSnapshot[]).length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 text-zinc-500 gap-2">
+        <LineChartIcon className="w-10 h-10 text-zinc-700" />
+        <p className="text-sm">No trend data yet. Upload your first Gumshoe report to start tracking.</p>
+      </div>
+    );
+  }
+
+  const chartData = (snapshots as CoverageSnapshot[]).map((s) => ({
+    week: s.weekLabel,
+    "Gap Queries": s.gapCount,
+    "Mentioned": s.mentionedCount,
+    "Addressed": s.addressedCount,
+    total: s.totalQueries,
+  }));
+
+  // Calculate week-over-week delta for the latest two snapshots
+  const sorted = [...(snapshots as CoverageSnapshot[])].sort(
+    (a, b) => new Date(a.snapshotAt).getTime() - new Date(b.snapshotAt).getTime()
+  );
+  const latest = sorted[sorted.length - 1];
+  const previous = sorted[sorted.length - 2];
+  const gapDelta = previous ? (latest?.gapCount ?? 0) - (previous?.gapCount ?? 0) : null;
+  const addressedDelta = previous ? (latest?.addressedCount ?? 0) - (previous?.addressedCount ?? 0) : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-white">{latest?.totalQueries ?? 0}</div>
+            <div className="text-zinc-400 text-sm">Total Queries</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-950/30 border-red-900/30">
+          <CardContent className="p-4">
+            <div className="flex items-end gap-2">
+              <div className="text-2xl font-bold text-red-400">{latest?.gapCount ?? 0}</div>
+              {gapDelta !== null && (
+                <div className={`text-sm mb-0.5 ${gapDelta < 0 ? "text-green-400" : gapDelta > 0 ? "text-red-400" : "text-zinc-500"}`}>
+                  {gapDelta > 0 ? `+${gapDelta}` : gapDelta} vs last week
+                </div>
+              )}
+            </div>
+            <div className="text-zinc-400 text-sm">Open Gaps</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-950/30 border-green-900/30">
+          <CardContent className="p-4">
+            <div className="flex items-end gap-2">
+              <div className="text-2xl font-bold text-green-400">{latest?.addressedCount ?? 0}</div>
+              {addressedDelta !== null && addressedDelta > 0 && (
+                <div className="text-sm mb-0.5 text-green-400">+{addressedDelta} this week</div>
+              )}
+            </div>
+            <div className="text-zinc-400 text-sm">Gaps Addressed</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-amber-950/30 border-amber-900/30">
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-amber-400">
+              {latest && latest.totalQueries > 0
+                ? `${Math.round(((latest.mentionedCount) / latest.totalQueries) * 100)}%`
+                : "0%"}
+            </div>
+            <div className="text-zinc-400 text-sm">Mention Rate</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Line chart */}
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <CardTitle className="text-white text-base flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-amber-400" />
+            LLM Coverage Trend — Week over Week
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <defs>
+                <linearGradient id="gapGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="mentionGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="addressedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+              <XAxis dataKey="week" tick={{ fill: "#71717a", fontSize: 12 }} />
+              <YAxis tick={{ fill: "#71717a", fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px" }}
+                labelStyle={{ color: "#e4e4e7" }}
+                itemStyle={{ color: "#a1a1aa" }}
+              />
+              <Legend wrapperStyle={{ color: "#a1a1aa", fontSize: 12 }} />
+              <Area type="monotone" dataKey="Gap Queries" stroke="#ef4444" fill="url(#gapGrad)" strokeWidth={2} dot={{ fill: "#ef4444" }} />
+              <Area type="monotone" dataKey="Mentioned" stroke="#f59e0b" fill="url(#mentionGrad)" strokeWidth={2} dot={{ fill: "#f59e0b" }} />
+              <Area type="monotone" dataKey="Addressed" stroke="#22c55e" fill="url(#addressedGrad)" strokeWidth={2} dot={{ fill: "#22c55e" }} />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className="flex gap-6 mt-4 text-xs text-zinc-500">
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500" /> Gap Queries — queries where Urban Monk is not mentioned</div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-amber-500" /> Mentioned — queries where Urban Monk appears in LLM answers</div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-green-500" /> Addressed — gap queries with published content</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Snapshot history table */}
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <CardTitle className="text-white text-sm">Snapshot History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {[...(snapshots as CoverageSnapshot[])].reverse().map((s) => (
+              <div key={s.id} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
+                <div className="text-zinc-300 text-sm font-medium">{s.weekLabel}</div>
+                <div className="flex gap-4 text-xs">
+                  <span className="text-zinc-400">{s.totalQueries} queries</span>
+                  <span className="text-red-400">{s.gapCount} gaps</span>
+                  <span className="text-amber-400">{s.mentionedCount} mentioned</span>
+                  <span className="text-green-400">{s.addressedCount} addressed</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Report Selector ──────────────────────────────────────────────────────────
 
 function ReportSelector({
@@ -576,6 +768,10 @@ export default function ResearchIntelligence() {
                 <Users className="w-4 h-4 mr-1.5" />
                 Persona Browser
               </TabsTrigger>
+              <TabsTrigger value="trend" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400">
+                <TrendingUp className="w-4 h-4 mr-1.5" />
+                Coverage Trend
+              </TabsTrigger>
               <TabsTrigger value="upload" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400">
                 <Upload className="w-4 h-4 mr-1.5" />
                 Upload New Report
@@ -597,6 +793,10 @@ export default function ResearchIntelligence() {
             ) : (
               <div className="text-zinc-500 text-center py-12">Select a report to view personas.</div>
             )}
+          </TabsContent>
+
+          <TabsContent value="trend" className="mt-6">
+            <CoverageTrendChart />
           </TabsContent>
 
           <TabsContent value="upload" className="mt-6">

@@ -162,14 +162,27 @@ export default function CreationStudio() {
   // Gumshoe Research Context — top gap queries from latest report
   const { data: topGaps = [] } = trpc.research.getTopGaps.useQuery({ limit: 5 }, { retry: false });
   const [showResearchPanel, setShowResearchPanel] = useState(true);
+  // Track which gap query this content is addressing (for auto-tagging)
+  const [activeGapQueryId, setActiveGapQueryId] = useState<number | null>(null);
+  const [activeGapQueryText, setActiveGapQueryText] = useState<string | null>(null);
 
   // Pick up a brief pre-loaded from the Research Intelligence page
   useEffect(() => {
     const brief = sessionStorage.getItem("gumshoe_brief");
+    const gapQueryId = sessionStorage.getItem("gumshoe_gap_query_id");
+    const gapQueryText = sessionStorage.getItem("gumshoe_gap_query_text");
     if (brief) {
       setIdea(brief);
       sessionStorage.removeItem("gumshoe_brief");
       toast.success("Research brief loaded — ready to generate!");
+    }
+    if (gapQueryId) {
+      setActiveGapQueryId(parseInt(gapQueryId, 10));
+      sessionStorage.removeItem("gumshoe_gap_query_id");
+    }
+    if (gapQueryText) {
+      setActiveGapQueryText(gapQueryText);
+      sessionStorage.removeItem("gumshoe_gap_query_text");
     }
   }, []);
 
@@ -236,6 +249,8 @@ export default function CreationStudio() {
       platform: p as Platform,
       status: "drafting",
       textContent: text,
+      // Auto-tag with source gap query if this content was generated from a Gumshoe gap
+      gapQueryId: activeGapQueryId ?? undefined,
     });
   };
 
@@ -366,6 +381,25 @@ export default function CreationStudio() {
               <Label className="text-muted-foreground text-xs uppercase tracking-wider">
                 Raw Idea / Topic
               </Label>
+
+              {/* Active Gumshoe gap query indicator */}
+              {activeGapQueryText && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-green-950/30 border border-green-800/40">
+                  <Target className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-green-400 text-xs font-medium mb-0.5">Addressing LLM Search Gap</div>
+                    <p className="text-zinc-300 text-xs leading-relaxed line-clamp-2">{activeGapQueryText}</p>
+                    <p className="text-zinc-500 text-xs mt-1">This content will be auto-tagged to close this gap. Saving to Kanban will mark it as In Progress.</p>
+                  </div>
+                  <button
+                    onClick={() => { setActiveGapQueryId(null); setActiveGapQueryText(null); }}
+                    className="text-zinc-600 hover:text-zinc-400 text-xs shrink-0"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
               <Textarea
                 placeholder="Drop a raw thought, a link to an article, or paste a voice memo transcript... e.g. 'Let's talk about how mouthwash destroys the gut microbiome'"
                 value={idea}

@@ -52,6 +52,8 @@ export const contentItems = mysqlTable("content_items", {
   analyticsLikes: int("analyticsLikes").default(0),
   analyticsComments: int("analyticsComments").default(0),
   analyticsShares: int("analyticsShares").default(0),
+  // Research Intelligence: link to the Gumshoe gap query this content addresses
+  gapQueryId: int("gapQueryId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -145,3 +147,21 @@ export const researchCompetitorMentions = mysqlTable("research_competitor_mentio
 
 export type ResearchCompetitorMention = typeof researchCompetitorMentions.$inferSelect;
 export type InsertResearchCompetitorMention = typeof researchCompetitorMentions.$inferInsert;
+
+/**
+ * Weekly coverage snapshot — taken automatically on each Gumshoe report upload.
+ * Tracks how many gap queries Urban Monk has closed over time.
+ */
+export const coverageSnapshots = mysqlTable("coverage_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull(),
+  weekLabel: varchar("weekLabel", { length: 64 }).notNull(),
+  totalQueries: int("totalQueries").default(0).notNull(),
+  mentionedCount: int("mentionedCount").default(0).notNull(),  // queries where Urban Monk IS mentioned
+  gapCount: int("gapCount").default(0).notNull(),              // queries where Urban Monk is NOT mentioned
+  addressedCount: int("addressedCount").default(0).notNull(),  // gap queries with published content
+  snapshotAt: timestamp("snapshotAt").defaultNow().notNull(),
+});
+
+export type CoverageSnapshot = typeof coverageSnapshots.$inferSelect;
+export type InsertCoverageSnapshot = typeof coverageSnapshots.$inferInsert;

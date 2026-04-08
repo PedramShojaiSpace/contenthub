@@ -11,6 +11,8 @@
 
 import { desc, eq, sql } from "drizzle-orm";
 import {
+  coverageSnapshots,
+  InsertCoverageSnapshot,
   InsertResearchCompetitorMention,
   InsertResearchQuery,
   InsertResearchReport,
@@ -187,6 +189,7 @@ export interface IngestResult {
   totalPersonas: number;
   totalCompetitorMentions: number;
   gapQueries: number;
+  mentionedCount: number;
 }
 
 /**
@@ -309,12 +312,25 @@ export async function ingestGumshoeReport(
     })
     .where(eq(researchReports.id, dbReportId));
 
+  const mentionedCount = totalQueries - gapQueries;
+
+  // Auto-snapshot coverage for trend chart
+  await takeCoverageSnapshot(
+    dbReportId,
+    weekLabel,
+    totalQueries,
+    mentionedCount,
+    gapQueries,
+    0 // addressedCount starts at 0 for a new report
+  );
+
   return {
     reportId: dbReportId,
     totalQueries,
     totalPersonas: report.personas?.length ?? 0,
     totalCompetitorMentions,
     gapQueries,
+    mentionedCount,
   };
 }
 
@@ -420,4 +436,62 @@ export async function markQueryPublished(queryId: number) {
     .update(researchQueries)
     .set({ status: "published" })
     .where(eq(researchQueries.id, queryId));
+}
+
+// ─── Coverage Snapshots ───────────────────────────────────────────────────────
+
+/**
+ * Take a coverage snapshot for a given report.
+ * Called automatically at the end of ingestGumshoeReport.
+ * Records how many queries Urban Monk is mentioned in vs. gap queries.
+ */
+export async function takeCoverageSnapshot(
+  reportId: number,
+  weekLabel: string,
+  totalQueries: number,
+  mentionedCount: number,
+  gapCount: number,
+  addressedCount: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  const snapshot: InsertCoverageSnapshot = {
+    reportId,
+    weekLabel,
+    totalQueries,
+    mentionedCount,
+    gapCount,
+    addressedCount,
+  };
+
+  await db.insert(coverageSnapshots).values(snapshot);
+}
+
+/**
+ * Get all coverage snapshots ordered by snapshot date (oldest first) for charting.
+ */
+export async function getCoverageTrend() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(coverageSnapshots)
+    .orderBy(coverageSnapshots.snapshotAt);
+}
+
+/**
+ * Count how many gap queries have been addressed (linked to published content)
+ * for a given report.
+ */
+export async function countAddressedGaps(reportId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select()
+    .from(researchQueries)
+    .where(
+      sql`${researchQueries.reportId} = ${reportId} AND ${researchQueries.status} = 'published'`
+    );
+  return rows.length;
 }

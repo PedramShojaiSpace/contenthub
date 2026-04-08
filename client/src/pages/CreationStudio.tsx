@@ -15,10 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
   AlertCircle,
+  BookOpen,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Copy,
+  Download,
   ExternalLink,
   Facebook,
   Image,
@@ -37,7 +39,38 @@ import { useState, useEffect } from "react";
 import { FlaskConical, Target } from "lucide-react";
 import { toast } from "sonner";
 
-type Platform = "meta" | "linkedin" | "x" | "youtube" | "all";
+// Diagnostic component to show raw Buffer API response
+function BufferDiagnostic() {
+  const [show, setShow] = useState(false);
+  const diagnose = trpc.syndication.diagnose.useQuery(undefined, {
+    enabled: show,
+    retry: false,
+  });
+
+  return (
+    <div className="mt-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-xs border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+        onClick={() => setShow(true)}
+        disabled={diagnose.isFetching}
+      >
+        {diagnose.isFetching ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+        Run Buffer Diagnostic
+      </Button>
+      {diagnose.data && (
+        <div className="mt-2 p-2 rounded bg-black/30 text-xs font-mono text-amber-300 break-all whitespace-pre-wrap max-h-40 overflow-y-auto">
+          <div>HTTP Status: {diagnose.data.status}</div>
+          <div>Token present: {diagnose.data.tokenPresent ? "yes" : "no"}</div>
+          <div>Response: {diagnose.data.body}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Platform = "meta" | "linkedin" | "x" | "youtube" | "blog" | "all";
 
 // Per-platform generated output: text + auto-generated image
 type PlatformOutput = {
@@ -51,6 +84,7 @@ const PLATFORMS: { key: Platform; label: string; icon: React.ReactNode; color: s
   { key: "meta", label: "Meta", icon: <Facebook className="h-4 w-4" />, color: "text-blue-400" },
   { key: "x", label: "X (Twitter)", icon: <Twitter className="h-4 w-4" />, color: "text-slate-300" },
   { key: "youtube", label: "YouTube", icon: <Youtube className="h-4 w-4" />, color: "text-red-400" },
+  { key: "blog", label: "Blog Post", icon: <BookOpen className="h-4 w-4" />, color: "text-emerald-400" },
 ];
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -58,6 +92,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   meta: "Meta (Instagram/Facebook)",
   x: "X (Twitter)",
   youtube: "YouTube",
+  blog: "Blog Post (theurbanmonk.com)",
 };
 
 const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string }> = {
@@ -80,6 +115,10 @@ const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string
   all: {
     label: "Urban Monk Signature",
     description: "Dark, moody, cinematic — deep blacks, warm gold, timeless editorial",
+  },
+  blog: {
+    label: "Editorial Feature",
+    description: "Rich, textured editorial — deep forest greens, warm candlelight, contemplative atmosphere",
   },
 };
 
@@ -431,10 +470,89 @@ export default function CreationStudio() {
     toast.success("Copied to clipboard!");
   };
 
+  // Blog generation state
+  const [blogContent, setBlogContent] = useState<{
+    title: string;
+    slug: string;
+    metaDescription: string;
+    body: string;
+    imageUrl?: string;
+  } | null>(null);
+  const [isBlogGenerating, setIsBlogGenerating] = useState(false);
+
+  const generateBlogMutation = trpc.ai.generateBlog.useMutation({
+    onSuccess: (data) => {
+      setBlogContent({
+        title: data.title,
+        slug: data.slug,
+        metaDescription: data.metaDescription,
+        body: data.article,
+        imageUrl: data.heroImageUrl,
+      });
+      setIsBlogGenerating(false);
+      toast.success("Blog post generated!");
+    },
+    onError: (err) => {
+      setIsBlogGenerating(false);
+      toast.error("Blog generation failed: " + err.message);
+    },
+  });
+
+  const handleGenerateBlog = () => {
+    if (!idea.trim()) {
+      toast.error("Please enter an idea first.");
+      return;
+    }
+    setIsBlogGenerating(true);
+    setBlogContent(null);
+    generateBlogMutation.mutate({
+      idea,
+      generateImage: true,
+      customInstructions: customInstructions || undefined,
+      gapQueryId: activeGapQueryId ?? undefined,
+      gapQueryText: activeGapQueryText ?? undefined,
+    });
+  };
+
+  const handleCopyBlog = () => {
+    if (!blogContent) return;
+    const md = `# ${blogContent.title}\n\n${blogContent.body}`;
+    navigator.clipboard.writeText(md);
+    toast.success("Blog post copied as Markdown!");
+  };
+
+  const handleDownloadBlog = () => {
+    if (!blogContent) return;
+    const md = `---\ntitle: ${blogContent.title}\nslug: ${blogContent.slug}\ndescription: ${blogContent.metaDescription}\n---\n\n${blogContent.body}`;
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${blogContent.slug}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Blog post downloaded as Markdown!");
+  };
+
+  const handleSaveBlog = () => {
+    if (!blogContent) return;
+    setSavingPlatform("blog");
+    createContentMutation.mutate({
+      title: blogContent.title,
+      rawIdea: idea,
+      platform: "blog" as Platform,
+      status: "drafting",
+      textContent: blogContent.body,
+      gapQueryId: activeGapQueryId ?? undefined,
+    });
+  };
+
   const outputPlatforms =
     platform === "all"
       ? (["linkedin", "meta", "x", "youtube"] as const)
-      : [platform];
+      : platform === "blog"
+        ? ([] as const)
+        : [platform];
 
   const currentStyleInfo = PLATFORM_STYLE_LABELS[imageStylePlatform] ?? PLATFORM_STYLE_LABELS.all;
   const hasBufferToken = bufferProfiles !== undefined;
@@ -579,26 +697,28 @@ export default function CreationStudio() {
             </div>
 
             <Button
-              onClick={handleGenerate}
-              disabled={isGenerating || !idea.trim()}
+              onClick={platform === "blog" ? handleGenerateBlog : handleGenerate}
+              disabled={(platform === "blog" ? isBlogGenerating : isGenerating) || !idea.trim()}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-11"
             >
-              {isGenerating ? (
+              {(platform === "blog" ? isBlogGenerating : isGenerating) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating content + images (20–40 seconds)...
+                  {platform === "blog" ? "Writing blog post + featured image (30–60 seconds)..." : "Generating content + images (20–40 seconds)..."}
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Content + Images
+                  {platform === "blog" ? <BookOpen className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {platform === "blog" ? "Generate Blog Post" : "Generate Content + Images"}
                 </>
               )}
             </Button>
 
-            {isGenerating && (
+            {(platform === "blog" ? isBlogGenerating : isGenerating) && (
               <p className="text-xs text-muted-foreground text-center">
-                Writing platform copy and generating Nano Banana visuals in parallel — this takes a moment.
+                {platform === "blog"
+                  ? "Writing a full SEO-optimized article for theurbanmonk.com with featured image — this takes a moment."
+                  : "Writing platform copy and generating Nano Banana visuals in parallel — this takes a moment."}
               </p>
             )}
           </CardContent>
@@ -817,6 +937,108 @@ export default function CreationStudio() {
           </div>
         )}
 
+        {/* Blog Post Panel */}
+        {platform === "blog" && blogContent && (
+          <Card className="bg-card border-border overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-amber-400" />
+                  <CardTitle className="text-base font-semibold text-foreground">Blog Post — theurbanmonk.com</CardTitle>
+                  <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-400">SEO Optimized</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={handleCopyBlog}
+                    title="Copy as Markdown"
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy Markdown
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={handleDownloadBlog}
+                    title="Download .md file"
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Download .md
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={handleSaveBlog}
+                    disabled={savingPlatform === "blog" || createContentMutation.isPending}
+                    title="Save to Command Center"
+                  >
+                    {savingPlatform === "blog" ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Save className="h-3 w-3 mr-1" />
+                        Save to Kanban
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-5 space-y-5">
+              {/* Featured Image */}
+              {blogContent.imageUrl && (
+                <div className="rounded-lg overflow-hidden border border-border">
+                  <img
+                    src={blogContent.imageUrl}
+                    alt={blogContent.title}
+                    className="w-full object-cover max-h-72"
+                  />
+                </div>
+              )}
+
+              {/* SEO Meta */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Title</p>
+                  <p className="text-base font-semibold text-foreground leading-snug">{blogContent.title}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">URL Slug</p>
+                  <p className="text-sm font-mono text-amber-400">/{blogContent.slug}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Meta Description</p>
+                <p className="text-sm text-muted-foreground leading-relaxed border border-border rounded-md px-3 py-2 bg-background">{blogContent.metaDescription}</p>
+              </div>
+
+              {/* Full Article Body */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Article Body</p>
+                <Textarea
+                  value={blogContent.body}
+                  onChange={(e) => setBlogContent(prev => prev ? { ...prev, body: e.target.value } : null)}
+                  rows={28}
+                  className="bg-background border-border resize-y text-sm text-foreground font-mono leading-relaxed"
+                />
+              </div>
+
+              {/* WordPress placeholder */}
+              <div className="flex items-center gap-2 p-3 rounded-md bg-amber-500/5 border border-amber-500/20">
+                <ExternalLink className="h-4 w-4 text-amber-400 shrink-0" />
+                <p className="text-xs text-amber-400/80">
+                  WordPress direct publish coming soon. For now, copy the Markdown or download the .md file and paste into your WordPress editor.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Nano Banana Manual Image Generator */}
         {Object.keys(generatedContent).length > 0 && (
           <Card className="bg-card border-border">
@@ -905,7 +1127,7 @@ export default function CreationStudio() {
                     variant="outline"
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => handleGenerateImagePrompt(outputPlatforms[0])}
+                    onClick={() => handleGenerateImagePrompt(outputPlatforms[0] ?? imageStylePlatform)}
                     disabled={generateImagePromptMutation.isPending}
                   >
                     {generateImagePromptMutation.isPending ? (
@@ -1010,8 +1232,20 @@ export default function CreationStudio() {
                   </p>
                 </div>
               ) : !hasProfiles ? (
-                <div className="p-4 rounded-lg bg-muted/20 border border-border text-sm text-muted-foreground">
-                  <p>No Buffer profiles found. Connect your social accounts in Buffer, then return here.</p>
+                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400 space-y-3">
+                  <p className="font-medium">No Buffer profiles found</p>
+                  <p className="text-xs text-amber-400/80">
+                    This usually means one of the following:
+                  </p>
+                  <ul className="text-xs text-amber-400/80 space-y-1 list-disc list-inside">
+                    <li>The <code className="bg-black/30 px-1 rounded">BUFFER_ACCESS_TOKEN</code> is expired or invalid</li>
+                    <li>The token belongs to a Buffer account with no connected social profiles</li>
+                    <li>The token was generated for a different Buffer account</li>
+                  </ul>
+                  <p className="text-xs text-amber-400/80">
+                    To get a valid token: go to <strong>buffer.com/developers/apps</strong>, open your app, and copy the <strong>Access Token</strong> shown there. Then update it in <strong>Settings → Secrets</strong>.
+                  </p>
+                  <BufferDiagnostic />
                 </div>
               ) : (
                 <>

@@ -30,6 +30,7 @@ export const platformEnum = mysqlEnum("platform", [
   "linkedin",
   "x",
   "youtube",
+  "blog",
   "all",
 ]);
 

@@ -125,7 +125,36 @@ const PLATFORM_IMAGE_STYLES: Record<string, string> = {
   youtube: `Epic cinematic thumbnail composition. Dramatic chiaroscuro lighting — deep shadows, single powerful light source. Rich, saturated colors with dark base. Evokes mystery, discovery, and transformation. Strong foreground subject (anonymous human silhouette or symbolic object). Feels like a film still from a prestige documentary. Aspect ratio 16:9. High visual impact at small sizes.`,
 
   all: `Dark, moody, cinematic. Deep blacks with warm gold and amber accents. High-end photography aesthetic. Professional, sophisticated. Bridges ancient wisdom and modern science. Wellness and peak performance theme. Timeless, editorial quality.`,
+
+  blog: `Wide-format editorial hero image (16:9). Cinematic, authoritative, and contemplative. Deep blacks and warm amber-gold tones. A single dramatic light source illuminating a symbolic object or anonymous human figure from behind. Think prestige documentary meets wellness editorial — the kind of image that appears in a high-end health magazine or a Netflix documentary thumbnail. No text overlay. Evokes wisdom, transformation, and scientific depth. Timeless quality.`,
 };
+
+// Blog-specific AI prompt — produces a full SEO-optimized article in clean Markdown
+const BLOG_PROMPT = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a long-form blog article for theurbanmonk.com.
+
+His audience is educated, health-conscious adults aged 30-55 who are serious about optimizing their biology, reducing stress, and integrating ancient wisdom with modern science. They are skeptical of hype but open to evidence-based alternatives.
+
+VOICE: Authoritative, educational, deeply knowledgeable. Pedram writes as a doctor, a Taoist monk, a filmmaker, and a father. He bridges Eastern philosophy and Western medicine without being preachy. He challenges conventional thinking with science and story. Warm but direct. No fluff.
+
+CRITICAL OUTPUT RULES:
+- Output ONLY a valid JSON object — nothing else, no preamble, no explanation
+- The JSON must have exactly these fields:
+  {
+    "title": "The SEO-optimized article title",
+    "slug": "url-friendly-slug-with-hyphens",
+    "metaDescription": "150-160 character meta description for SEO",
+    "focusKeyword": "primary SEO keyword phrase",
+    "article": "the full article in clean Markdown"
+  }
+- The article field must be clean Markdown only — no JSON escaping issues, use \\n for newlines
+- Do NOT include the title as an H1 in the article body (it will be rendered separately)
+- Article structure: intro paragraph (hook), 4-6 H2 sections with 2-4 paragraphs each, conclusion paragraph, CTA paragraph linking to the Urban Monk Academy
+- Total article length: 800-1200 words
+- Use H2 headings (##) for main sections, H3 (###) for subsections if needed
+- Include 1-2 relevant internal references to Pedram's books or the Academy naturally in the text
+- End with a CTA paragraph that naturally leads to the Urban Monk Academy
+
+CONTENT PILLARS: Gut-brain axis, sleep optimization, stress physiology, energy management, Taoist philosophy applied to modern life, functional medicine, the cost of ignoring upstream health, ancient practices with scientific backing.`;
 
 const DEFAULT_IMAGE_STYLE = PLATFORM_IMAGE_STYLES.all;
 
@@ -155,7 +184,7 @@ export const appRouter = router({
         z.object({
           title: z.string().min(1),
           rawIdea: z.string().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]).default("all"),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]).default("all"),
           status: z
             .enum(["idea", "drafting", "review", "approved", "scheduled", "published"])
             .default("idea"),
@@ -179,7 +208,7 @@ export const appRouter = router({
           id: z.number(),
           title: z.string().optional(),
           rawIdea: z.string().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]).optional(),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]).optional(),
           status: z
             .enum(["idea", "drafting", "review", "approved", "scheduled", "published"])
             .optional(),
@@ -238,7 +267,7 @@ export const appRouter = router({
       .input(
         z.object({
           idea: z.string().min(1),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]),
           customInstructions: z.string().optional(),
           generateImages: z.boolean().default(true), // auto-generate images alongside content
         })
@@ -335,7 +364,7 @@ Rules:
       .input(
         z.object({
           textContent: z.string(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]),
         })
       )
       .mutation(async ({ input }) => {
@@ -373,7 +402,7 @@ Rules:
         z.object({
           prompt: z.string(),
           contentItemId: z.number().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]).optional(),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]).optional(),
           styleOverride: z.string().optional(),
         })
       )
@@ -399,6 +428,102 @@ Rules:
         }
 
         return { url };
+      }),
+
+    generateBlog: protectedProcedure
+      .input(
+        z.object({
+          idea: z.string().min(1),
+          customInstructions: z.string().optional(),
+          generateImage: z.boolean().default(true),
+          gapQueryId: z.number().optional(),
+          gapQueryText: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Step 1: Generate the full blog article as structured JSON
+        const userMessage = [
+          `Raw idea: ${input.idea}`,
+          input.gapQueryText ? `\nThis article should directly answer the LLM search query: "${input.gapQueryText}"` : "",
+          input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
+        ]
+          .filter(Boolean)
+          .join("");
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: BLOG_PROMPT },
+            { role: "user", content: userMessage },
+          ],
+        });
+
+        const rawContent = response.choices?.[0]?.message?.content;
+        let blogData: {
+          title: string;
+          slug: string;
+          metaDescription: string;
+          focusKeyword: string;
+          article: string;
+        } | null = null;
+
+        if (typeof rawContent === "string") {
+          try {
+            // Strip any markdown code fences if present
+            const cleaned = rawContent.replace(/^```json\n?|^```\n?|\n?```$/g, "").trim();
+            blogData = JSON.parse(cleaned);
+          } catch {
+            // Fallback: treat the whole response as the article
+            blogData = {
+              title: input.idea.slice(0, 80),
+              slug: input.idea.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),
+              metaDescription: "",
+              focusKeyword: "",
+              article: rawContent,
+            };
+          }
+        }
+
+        if (!blogData) {
+          throw new Error("Blog generation failed — no content returned.");
+        }
+
+        // Step 2: Generate the hero image in parallel (16:9 blog style)
+        let heroImageUrl: string | undefined;
+        if (input.generateImage) {
+          try {
+            const blogStyle = PLATFORM_IMAGE_STYLES.blog ?? DEFAULT_IMAGE_STYLE;
+            const promptResponse = await invokeLLM({
+              messages: [
+                {
+                  role: "system",
+                  content: `You are an expert visual director for The Urban Monk brand. Write a concise, evocative image generation prompt (max 80 words) for a blog hero image. Style: ${blogStyle}. Return ONLY the prompt, no explanation.`,
+                },
+                {
+                  role: "user",
+                  content: `Blog title: ${blogData.title}\nArticle intro: ${blogData.article.slice(0, 400)}`,
+                },
+              ],
+            });
+            const rawPrompt = promptResponse.choices?.[0]?.message?.content;
+            const imagePrompt = typeof rawPrompt === "string" ? rawPrompt : input.idea;
+            const fullPrompt = `${imagePrompt}. Visual style: ${blogStyle}`;
+            const { url } = await generateImage({ prompt: fullPrompt });
+            heroImageUrl = url;
+          } catch (err) {
+            console.warn("[AI] Blog hero image generation failed:", err);
+          }
+        }
+
+        // Estimate read time (avg 200 words/min)
+        const wordCount = blogData.article.split(/\s+/).length;
+        const readTime = Math.max(1, Math.round(wordCount / 200));
+
+        return {
+          ...blogData,
+          heroImageUrl,
+          wordCount,
+          readTime,
+        };
       }),
   }),
 
@@ -443,6 +568,12 @@ Rules:
     // List all connected Buffer profiles
     getProfiles: protectedProcedure.query(async () => {
       return getBufferProfiles();
+    }),
+
+    // Diagnostic: returns raw Buffer API response for debugging token/scope issues
+    diagnose: protectedProcedure.query(async () => {
+      const { getBufferProfilesRaw } = await import("./buffer");
+      return getBufferProfilesRaw();
     }),
 
     // Push content to Buffer for selected platform profiles
@@ -575,7 +706,7 @@ Rules:
           personaName: z.string(),
           topicTags: z.array(z.string()),
           competitorBrands: z.array(z.string()),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]).default("all"),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]).default("all"),
         })
       )
       .mutation(async ({ input }) => {

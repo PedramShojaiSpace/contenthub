@@ -32,16 +32,30 @@ export async function getBufferProfiles(): Promise<BufferProfile[]> {
   if (!token) return [];
 
   try {
-    const res = await fetch(`${BUFFER_API_BASE}/profiles.json?access_token=${token}`);
+    const res = await fetch(`${BUFFER_API_BASE}/profiles.json`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const responseText = await res.text();
+    console.log("[Buffer] profiles response status:", res.status);
+    console.log("[Buffer] profiles response body:", responseText.slice(0, 500));
+
     if (!res.ok) {
-      console.warn("[Buffer] Failed to fetch profiles:", res.status);
+      console.warn("[Buffer] Failed to fetch profiles:", res.status, responseText.slice(0, 200));
       return [];
     }
-    const data = (await res.json()) as Array<{
-      id: string;
-      service: string;
-      service_username: string;
-    }>;
+
+    let data: Array<{ id: string; service: string; service_username: string }>;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      console.warn("[Buffer] Could not parse profiles JSON:", responseText.slice(0, 200));
+      return [];
+    }
+
+    if (!Array.isArray(data)) {
+      console.warn("[Buffer] Profiles response is not an array:", typeof data);
+      return [];
+    }
 
     return data
       .map((p) => {
@@ -57,6 +71,25 @@ export async function getBufferProfiles(): Promise<BufferProfile[]> {
   } catch (err) {
     console.warn("[Buffer] Error fetching profiles:", err);
     return [];
+  }
+}
+
+/**
+ * Diagnostic: returns the raw Buffer API response for debugging.
+ */
+export async function getBufferProfilesRaw(): Promise<{ status: number; body: string; tokenPresent: boolean }> {
+  const token = getAccessToken();
+  if (!token) return { status: 0, body: "BUFFER_ACCESS_TOKEN is not set", tokenPresent: false };
+
+  try {
+    // Try Bearer header first
+    const res = await fetch(`${BUFFER_API_BASE}/profiles.json`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const body = await res.text();
+    return { status: res.status, body: body.slice(0, 1000), tokenPresent: true };
+  } catch (err) {
+    return { status: -1, body: String(err), tokenPresent: true };
   }
 }
 
@@ -81,7 +114,6 @@ export async function pushToBuffer(params: {
   try {
     const body = new URLSearchParams();
     body.append("text", params.text);
-    body.append("access_token", token);
     params.profileIds.forEach((id) => body.append("profile_ids[]", id));
 
     if (params.imageUrl) {
@@ -95,7 +127,10 @@ export async function pushToBuffer(params: {
 
     const res = await fetch(`${BUFFER_API_BASE}/updates/create.json`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Bearer ${token}`,
+      },
       body: body.toString(),
     });
 

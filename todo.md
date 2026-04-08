@@ -213,3 +213,30 @@
 - [ ] Show success/error toast on the panel after push
 - [ ] Disable button with tooltip if Buffer is not configured
 - [ ] Auto-update content item status to "scheduled" after successful push
+
+## v9 Features
+
+### Blog Platform for theurbanmonk.com
+- [x] Add "blog" to PLATFORMS enum in drizzle schema
+- [x] Run db:push after schema update
+- [x] Write blog AI prompt: SEO-optimized long-form article, Pedram's voice, bridges science + ancient wisdom
+- [x] Blog prompt: outputs title, meta description, slug, focus keyword, full article in clean Markdown
+- [x] Blog prompt: structure = intro hook, 4-6 H2 sections with subheadings, conclusion, CTA to Academy
+- [x] Blog prompt: no internal markup, labels, or structural markers in output
+- [x] Add blog image style: 16:9 hero image, editorial cinematic, warm and dark
+- [x] Add blog platform selector button in Creation Studio
+- [x] Blog output panel: full-width layout (not 2-col grid)
+- [x] Blog panel: SEO metadata row (title, slug, meta description)
+- [x] Blog panel: editable article body textarea (Markdown)
+- [x] Blog panel: "Copy as Markdown" and "Download .md" export buttons
+- [x] Blog panel: featured hero image generation (16:9 wide format)
+- [x] Blog panel: Save to Kanban with blog platform tag
+- [x] Blog panel: WordPress direct publish placeholder (coming soon)
+- [x] TypeScript clean (0 errors), 20/20 tests pass
+
+## Bug Fixes
+
+- [ ] Fix Buffer API: diagnose why getProfiles returns no accounts
+- [ ] Verify BUFFER_ACCESS_TOKEN is valid and correct scope
+- [ ] Fix Buffer API endpoint — likely using wrong endpoint (should be /1/profiles.json or v1/profiles)
+- [ ] Test Buffer push after profile fix

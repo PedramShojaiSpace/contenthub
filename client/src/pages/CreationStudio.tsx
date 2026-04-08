@@ -19,11 +19,13 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  ExternalLink,
   Facebook,
   Image,
   Linkedin,
   Loader2,
   Paperclip,
+  RefreshCw,
   Save,
   Send,
   Sparkles,
@@ -36,6 +38,12 @@ import { FlaskConical, Target } from "lucide-react";
 import { toast } from "sonner";
 
 type Platform = "meta" | "linkedin" | "x" | "youtube" | "all";
+
+// Per-platform generated output: text + auto-generated image
+type PlatformOutput = {
+  text: string;
+  imageUrl?: string;
+};
 
 const PLATFORMS: { key: Platform; label: string; icon: React.ReactNode; color: string }[] = [
   { key: "all", label: "All Platforms", icon: <Sparkles className="h-4 w-4" />, color: "text-primary" },
@@ -79,15 +87,23 @@ export default function CreationStudio() {
   const [idea, setIdea] = useState("");
   const [platform, setPlatform] = useState<Platform>("all");
   const [customInstructions, setCustomInstructions] = useState("");
-  const [generatedContent, setGeneratedContent] = useState<Record<string, string>>({});
-  const [editedContent, setEditedContent] = useState<Record<string, string>>({});
+
+  // New unified state: each platform key maps to { text, imageUrl }
+  const [generatedContent, setGeneratedContent] = useState<Record<string, PlatformOutput>>({});
+  const [editedText, setEditedText] = useState<Record<string, string>>({});
+
+  // Per-platform regenerating image state
+  const [regeneratingImageFor, setRegeneratingImageFor] = useState<string | null>(null);
+
+  // Manual image generator (separate section)
   const [imagePrompt, setImagePrompt] = useState("");
   const [generatedImageUrl, setGeneratedImageUrl] = useState("");
-  const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
-  const [savedItemIds, setSavedItemIds] = useState<Record<string, number>>({});
   const [imageStylePlatform, setImageStylePlatform] = useState<Platform>("all");
   const [showStyleDetails, setShowStyleDetails] = useState(false);
   const [styleOverride, setStyleOverride] = useState("");
+
+  const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
+  const [savedItemIds, setSavedItemIds] = useState<Record<string, number>>({});
   const [attachingImage, setAttachingImage] = useState(false);
   const [attachedToIds, setAttachedToIds] = useState<number[]>([]);
 
@@ -100,10 +116,18 @@ export default function CreationStudio() {
 
   const generateContentMutation = trpc.ai.generateContent.useMutation({
     onSuccess: (data) => {
-      setGeneratedContent(data);
-      setEditedContent(data);
+      // data is now Record<string, { text: string; imageUrl?: string }>
+      const outputs: Record<string, PlatformOutput> = {};
+      const texts: Record<string, string> = {};
+      for (const [p, val] of Object.entries(data)) {
+        const v = val as PlatformOutput;
+        outputs[p] = { text: v.text, imageUrl: v.imageUrl };
+        texts[p] = v.text;
+      }
+      setGeneratedContent(outputs);
+      setEditedText(texts);
       if (platform !== "all") setImageStylePlatform(platform);
-      toast.success("Content generated for all platforms!");
+      toast.success("Content and images generated for all platforms!");
     },
     onError: (err) => {
       toast.error("Generation failed: " + err.message);
@@ -129,6 +153,27 @@ export default function CreationStudio() {
     },
     onError: (err) => {
       toast.error("Image generation failed: " + err.message);
+    },
+  });
+
+  // Per-platform image regeneration
+  const regenerateImageMutation = trpc.ai.generateImage.useMutation({
+    onSuccess: (data, variables) => {
+      if (data.url) {
+        const p = regeneratingImageFor;
+        if (p) {
+          setGeneratedContent((prev) => ({
+            ...prev,
+            [p]: { ...prev[p], imageUrl: data.url },
+          }));
+          toast.success(`New image generated for ${PLATFORM_LABELS[p] || p}!`);
+        }
+      }
+      setRegeneratingImageFor(null);
+    },
+    onError: (err) => {
+      toast.error("Image regeneration failed: " + err.message);
+      setRegeneratingImageFor(null);
     },
   });
 
@@ -162,7 +207,6 @@ export default function CreationStudio() {
   // Gumshoe Research Context — top gap queries from latest report
   const { data: topGaps = [] } = trpc.research.getTopGaps.useQuery({ limit: 5 }, { retry: false });
   const [showResearchPanel, setShowResearchPanel] = useState(true);
-  // Track which gap query this content is addressing (for auto-tagging)
   const [activeGapQueryId, setActiveGapQueryId] = useState<number | null>(null);
   const [activeGapQueryText, setActiveGapQueryText] = useState<string | null>(null);
 
@@ -187,12 +231,12 @@ export default function CreationStudio() {
   }, []);
 
   // Buffer profiles
-  const { data: bufferProfiles, isLoading: loadingProfiles } = trpc.syndication.getProfiles.useQuery(undefined, {
+  const { data: bufferProfiles } = trpc.syndication.getProfiles.useQuery(undefined, {
     retry: false,
   });
 
   const syndicationMutation = trpc.syndication.push.useMutation({
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       const p = syndicatingPlatform ?? "unknown";
       if (data.success) {
         setSyndicationResults((prev) => ({ ...prev, [p]: { success: true } }));
@@ -215,11 +259,27 @@ export default function CreationStudio() {
       toast.error("Please enter an idea first.");
       return;
     }
-    generateContentMutation.mutate({ idea, platform, customInstructions: customInstructions || undefined });
+    generateContentMutation.mutate({
+      idea,
+      platform,
+      customInstructions: customInstructions || undefined,
+      generateImages: true,
+    });
+  };
+
+  const handleRegenerateImage = (p: string) => {
+    const text = editedText[p] || generatedContent[p]?.text;
+    if (!text) return;
+    setRegeneratingImageFor(p);
+    // Use the idea + platform style directly for regeneration
+    regenerateImageMutation.mutate({
+      prompt: text.slice(0, 300),
+      platform: p as Platform,
+    });
   };
 
   const handleGenerateImagePrompt = (p: string) => {
-    const text = editedContent[p] || generatedContent[p];
+    const text = editedText[p] || generatedContent[p]?.text;
     if (!text) {
       toast.error("Generate content first.");
       return;
@@ -240,7 +300,8 @@ export default function CreationStudio() {
   };
 
   const handleSave = (p: string) => {
-    const text = editedContent[p] || generatedContent[p];
+    const text = editedText[p] || generatedContent[p]?.text;
+    const imgUrl = generatedContent[p]?.imageUrl;
     if (!text) return;
     setSavingPlatform(p);
     createContentMutation.mutate({
@@ -249,7 +310,6 @@ export default function CreationStudio() {
       platform: p as Platform,
       status: "drafting",
       textContent: text,
-      // Auto-tag with source gap query if this content was generated from a Gumshoe gap
       gapQueryId: activeGapQueryId ?? undefined,
     });
   };
@@ -278,7 +338,7 @@ export default function CreationStudio() {
       toast.error("Select at least one Buffer profile.");
       return;
     }
-    const text = editedContent[p] || generatedContent[p];
+    const text = editedText[p] || generatedContent[p]?.text;
     if (!text) return;
 
     setSyndicatingPlatform(p);
@@ -286,7 +346,7 @@ export default function CreationStudio() {
       contentItemId: itemId,
       text,
       profileIds: selectedProfileIds,
-      imageUrl: generatedImageUrl || undefined,
+      imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
     });
   };
 
@@ -303,6 +363,7 @@ export default function CreationStudio() {
   const currentStyleInfo = PLATFORM_STYLE_LABELS[imageStylePlatform] ?? PLATFORM_STYLE_LABELS.all;
   const hasBufferToken = bufferProfiles !== undefined;
   const hasProfiles = (bufferProfiles?.length ?? 0) > 0;
+  const isGenerating = generateContentMutation.isPending;
 
   return (
     <DashboardLayout>
@@ -311,12 +372,29 @@ export default function CreationStudio() {
         <div>
           <h1 className="text-2xl font-serif font-bold text-foreground">Creation Studio</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Drop an idea. Generate voice-matched content and on-brand visuals for every platform.
+            Drop an idea. Generate voice-matched content and on-brand visuals for every platform — automatically.
           </p>
         </div>
 
+        {/* Active Gap Query Banner */}
+        {activeGapQueryText && (
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+            <Target className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-green-400">Addressing LLM Search Gap</p>
+              <p className="text-xs text-zinc-400 mt-0.5 truncate">{activeGapQueryText}</p>
+            </div>
+            <button
+              onClick={() => { setActiveGapQueryId(null); setActiveGapQueryText(null); }}
+              className="text-zinc-600 hover:text-zinc-400 text-xs shrink-0"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {/* Gumshoe Research Context Panel */}
-        {topGaps.length > 0 && showResearchPanel && (
+        {(topGaps as Array<{ id: number; query: string; personaName: string | null; gapScore: number | null; topicTags: string | null }>).length > 0 && showResearchPanel && (
           <Card className="bg-amber-950/20 border-amber-800/30">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -343,6 +421,8 @@ export default function CreationStudio() {
                     key={gap.id}
                     onClick={() => {
                       setIdea(`Answer this LLM search query for the persona "${gap.personaName ?? "Wellness Seeker"}": ${gap.query}`);
+                      setActiveGapQueryId(gap.id);
+                      setActiveGapQueryText(gap.query);
                       toast.success("Gap query loaded as idea!");
                     }}
                     className="w-full text-left p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 hover:border-amber-700/50 transition-colors group"
@@ -378,30 +458,8 @@ export default function CreationStudio() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                Raw Idea / Topic
-              </Label>
-
-              {/* Active Gumshoe gap query indicator */}
-              {activeGapQueryText && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-green-950/30 border border-green-800/40">
-                  <Target className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-green-400 text-xs font-medium mb-0.5">Addressing LLM Search Gap</div>
-                    <p className="text-zinc-300 text-xs leading-relaxed line-clamp-2">{activeGapQueryText}</p>
-                    <p className="text-zinc-500 text-xs mt-1">This content will be auto-tagged to close this gap. Saving to Kanban will mark it as In Progress.</p>
-                  </div>
-                  <button
-                    onClick={() => { setActiveGapQueryId(null); setActiveGapQueryText(null); }}
-                    className="text-zinc-600 hover:text-zinc-400 text-xs shrink-0"
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
-
               <Textarea
-                placeholder="Drop a raw thought, a link to an article, or paste a voice memo transcript... e.g. 'Let's talk about how mouthwash destroys the gut microbiome'"
+                placeholder="Drop a raw idea, topic, or question here. The AI will transform it into platform-optimized content with matching visuals..."
                 value={idea}
                 onChange={(e) => setIdea(e.target.value)}
                 rows={4}
@@ -409,76 +467,82 @@ export default function CreationStudio() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                  Target Platform
-                </Label>
-                <Select value={platform} onValueChange={(v) => {
-                  setPlatform(v as Platform);
-                  if (v !== "all") setImageStylePlatform(v as Platform);
-                }}>
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PLATFORMS.map((p) => (
-                      <SelectItem key={p.key} value={p.key}>
-                        <div className="flex items-center gap-2">
-                          <span className={p.color}>{p.icon}</span>
-                          <span>{p.label}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Platform</Label>
+                <div className="flex flex-wrap gap-2">
+                  {PLATFORMS.map((p) => (
+                    <button
+                      key={p.key}
+                      onClick={() => setPlatform(p.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        platform === p.key
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      <span className={platform === p.key ? "text-primary" : p.color}>{p.icon}</span>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
               <div className="space-y-2">
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">
                   Custom Instructions (optional)
                 </Label>
                 <Textarea
-                  placeholder="Any specific angle, tone, or format notes..."
+                  placeholder="e.g. Focus on the gut-brain connection, mention the Academy..."
                   value={customInstructions}
                   onChange={(e) => setCustomInstructions(e.target.value)}
-                  rows={1}
-                  className="bg-background border-border resize-none text-foreground placeholder:text-muted-foreground/50"
+                  rows={2}
+                  className="bg-background border-border resize-none text-sm text-foreground placeholder:text-muted-foreground/50"
                 />
               </div>
             </div>
 
             <Button
               onClick={handleGenerate}
-              disabled={generateContentMutation.isPending || !idea.trim()}
+              disabled={isGenerating || !idea.trim()}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-11"
             >
-              {generateContentMutation.isPending ? (
+              {isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating content...
+                  Generating content + images (20–40 seconds)...
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Content
+                  Generate Content + Images
                 </>
               )}
             </Button>
+
+            {isGenerating && (
+              <p className="text-xs text-muted-foreground text-center">
+                Writing platform copy and generating Nano Banana visuals in parallel — this takes a moment.
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        {/* Generated Content Panels */}
-        {Object.keys(editedContent).length > 0 && (
+        {/* Generated Content Panels — each with inline image */}
+        {Object.keys(generatedContent).length > 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-serif font-semibold text-foreground">Generated Content</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {outputPlatforms.map((p) => {
                 const platformInfo = PLATFORMS.find((pl) => pl.key === p);
+                const output = generatedContent[p];
                 const savedId = savedItemIds[p];
                 const isAttached = savedId && attachedToIds.includes(savedId);
                 const syndicationResult = syndicationResults[p];
+                const isRegeneratingThisImage = regeneratingImageFor === p;
+
                 return (
-                  <Card key={p} className="bg-card border-border">
+                  <Card key={p} className="bg-card border-border overflow-hidden">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -503,7 +567,7 @@ export default function CreationStudio() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={() => handleCopy(editedContent[p] || "")}
+                            onClick={() => handleCopy(editedText[p] || "")}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
@@ -527,16 +591,84 @@ export default function CreationStudio() {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
+
+                      {/* Auto-generated platform image */}
+                      {(output?.imageUrl || isRegeneratingThisImage) && (
+                        <div className="relative rounded-lg overflow-hidden border border-border bg-muted/20">
+                          {isRegeneratingThisImage ? (
+                            <div className="flex items-center justify-center h-40 bg-muted/30">
+                              <div className="text-center space-y-2">
+                                <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                                <p className="text-xs text-muted-foreground">Regenerating image...</p>
+                              </div>
+                            </div>
+                          ) : output?.imageUrl ? (
+                            <>
+                              <img
+                                src={output.imageUrl}
+                                alt={`${PLATFORM_LABELS[p]} visual`}
+                                className="w-full object-cover"
+                              />
+                              <div className="absolute top-2 left-2">
+                                <Badge className="bg-black/70 text-white border-0 text-[10px]">
+                                  {PLATFORM_STYLE_LABELS[p]?.label ?? "Urban Monk Style"}
+                                </Badge>
+                              </div>
+                              <div className="absolute top-2 right-2 flex gap-1">
+                                <button
+                                  onClick={() => window.open(output.imageUrl, "_blank")}
+                                  className="p-1 rounded bg-black/60 hover:bg-black/80 transition-colors"
+                                  title="Open full size"
+                                >
+                                  <ExternalLink className="h-3 w-3 text-white" />
+                                </button>
+                                <button
+                                  onClick={() => handleRegenerateImage(p)}
+                                  className="p-1 rounded bg-black/60 hover:bg-black/80 transition-colors"
+                                  title="Regenerate image"
+                                >
+                                  <RefreshCw className="h-3 w-3 text-white" />
+                                </button>
+                              </div>
+                            </>
+                          ) : null}
+                        </div>
+                      )}
+
+                      {/* Image loading skeleton while main generation is running */}
+                      {isGenerating && !output?.imageUrl && (
+                        <div className="rounded-lg border border-border bg-muted/20 h-40 flex items-center justify-center">
+                          <div className="text-center space-y-2">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
+                            <p className="text-xs text-muted-foreground">Generating visual...</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* If no image was generated, show a generate button */}
+                      {!output?.imageUrl && !isGenerating && !isRegeneratingThisImage && output?.text && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs h-8 border-dashed"
+                          onClick={() => handleRegenerateImage(p)}
+                        >
+                          <Image className="h-3 w-3 mr-1" />
+                          Generate image for this platform
+                        </Button>
+                      )}
+
+                      {/* Editable copy */}
                       <Textarea
-                        value={editedContent[p] || ""}
+                        value={editedText[p] || ""}
                         onChange={(e) =>
-                          setEditedContent((prev) => ({ ...prev, [p]: e.target.value }))
+                          setEditedText((prev) => ({ ...prev, [p]: e.target.value }))
                         }
                         rows={10}
                         className="bg-background border-border resize-none text-sm text-foreground font-mono leading-relaxed"
                       />
 
-                      {/* Attach image to this card */}
+                      {/* Attach manual image to this card */}
                       {generatedImageUrl && savedId && (
                         <Button
                           variant="outline"
@@ -552,14 +684,8 @@ export default function CreationStudio() {
                           ) : (
                             <Paperclip className="h-3 w-3 mr-1" />
                           )}
-                          {isAttached ? "Image attached to card" : "Attach generated image to card"}
+                          {isAttached ? "Manual image attached" : "Attach manual image to card"}
                         </Button>
-                      )}
-
-                      {generatedImageUrl && !savedId && (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Save to a card first to attach the image.
-                        </p>
                       )}
 
                       {/* Syndication result badge */}
@@ -587,19 +713,22 @@ export default function CreationStudio() {
           </div>
         )}
 
-        {/* Nano Banana Image Generation */}
-        {Object.keys(editedContent).length > 0 && (
+        {/* Nano Banana Manual Image Generator */}
+        {Object.keys(generatedContent).length > 0 && (
           <Card className="bg-card border-border">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-medium text-foreground flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-primary" />
-                  Nano Banana Visual Generator
+                  Custom Visual Generator
                 </CardTitle>
                 <Badge variant="outline" className="border-primary/40 text-primary text-xs">
-                  AI Image
+                  Manual Override
                 </Badge>
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Generate a custom image with full control over the prompt and style. Use this to override the auto-generated visuals above.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
 
@@ -617,11 +746,10 @@ export default function CreationStudio() {
                       <button
                         key={p}
                         onClick={() => setImageStylePlatform(p)}
-                        className={`relative p-2.5 rounded-lg border text-left transition-all
-                          ${isActive
-                            ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                            : "border-border bg-background hover:border-primary/30 hover:bg-muted/20"
-                          }`}
+                        className={`relative p-2.5 rounded-lg border text-left transition-all ${isActive
+                          ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                          : "border-border bg-background hover:border-primary/30 hover:bg-muted/20"
+                        }`}
                       >
                         <div className={`mb-1 ${platformMeta?.color ?? "text-primary"}`}>
                           {platformMeta?.icon}
@@ -634,7 +762,6 @@ export default function CreationStudio() {
                   })}
                 </div>
 
-                {/* Style description */}
                 <div className="p-3 rounded-lg bg-muted/20 border border-border/50">
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-muted-foreground">
@@ -686,15 +813,12 @@ export default function CreationStudio() {
                   </Button>
                 </div>
                 <Textarea
-                  placeholder="Describe the image you want, or click Auto-generate above to let the AI craft a platform-optimized prompt..."
+                  placeholder="Describe the image you want, or click Auto-generate above..."
                   value={imagePrompt}
                   onChange={(e) => setImagePrompt(e.target.value)}
                   rows={3}
                   className="bg-background border-border resize-none text-foreground placeholder:text-muted-foreground/50"
                 />
-                <p className="text-xs text-muted-foreground">
-                  The <span className="text-primary font-medium">{currentStyleInfo.label}</span> brand style will be automatically applied to the generation.
-                </p>
               </div>
 
               <Button
@@ -710,7 +834,7 @@ export default function CreationStudio() {
                 ) : (
                   <>
                     <Image className="h-4 w-4 mr-2" />
-                    Generate with Nano Banana
+                    Generate Custom Image
                   </>
                 )}
               </Button>
@@ -760,7 +884,7 @@ export default function CreationStudio() {
         )}
 
         {/* Buffer Syndication Panel */}
-        {Object.keys(editedContent).length > 0 && (
+        {Object.keys(generatedContent).length > 0 && (
           <Card className="bg-card border-border">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
@@ -778,7 +902,7 @@ export default function CreationStudio() {
                 <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400">
                   <p className="font-medium mb-1">Buffer Access Token Required</p>
                   <p className="text-xs text-amber-400/80">
-                    Add your <code className="bg-black/30 px-1 rounded">BUFFER_ACCESS_TOKEN</code> in the project Secrets settings to enable one-click syndication to LinkedIn, Meta, X, and YouTube via Buffer.
+                    Add your <code className="bg-black/30 px-1 rounded">BUFFER_ACCESS_TOKEN</code> in the project Secrets settings to enable one-click syndication.
                   </p>
                 </div>
               ) : !hasProfiles ? (
@@ -787,7 +911,6 @@ export default function CreationStudio() {
                 </div>
               ) : (
                 <>
-                  {/* Profile selector */}
                   <div className="space-y-2">
                     <Label className="text-muted-foreground text-xs uppercase tracking-wider">
                       Select Buffer Profiles
@@ -829,7 +952,6 @@ export default function CreationStudio() {
                     </div>
                   </div>
 
-                  {/* Push buttons per platform */}
                   <div className="space-y-2">
                     <Label className="text-muted-foreground text-xs uppercase tracking-wider">
                       Push to Buffer

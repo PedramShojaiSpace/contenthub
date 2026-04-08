@@ -174,18 +174,28 @@
 ## v6 Features
 
 ### Coverage Trend Chart
-- [ ] Add coverage_snapshots table (reportId, weekLabel, totalQueries, mentionedCount, gapCount, snapshotAt)
-- [ ] Auto-snapshot on each Gumshoe report upload
-- [ ] Add research.getCoverageTrend tRPC procedure
-- [ ] Build Coverage Trend recharts line chart in Research Intelligence dashboard
-- [ ] Show week-over-week delta (gaps closed per week)
+- [x] Add coverage_snapshots table (reportId, weekLabel, totalQueries, mentionedCount, gapCount, snapshotAt)
+- [x] Auto-snapshot on each Gumshoe report upload
+- [x] Add research.getCoverageTrend tRPC procedure
+- [x] Build Coverage Trend recharts line chart in Research Intelligence dashboard
+- [x] Show week-over-week delta (gaps closed per week)
 
 ### Gap Query Auto-Tagging
-- [ ] Add gapQueryId column to content_items schema
-- [ ] Pass gapQueryId when generating brief from gap query
-- [ ] Store gapQueryId on content item creation
-- [ ] Add research.markGapAddressed tRPC procedure
-- [ ] Auto-mark gap as addressed when linked content item moves to Published
-- [ ] Show "Addressed" badge on gap queries in Research Intelligence
-- [ ] Show source gap query link on Kanban content cards
-- [ ] Write vitest tests for both features
+- [x] Add gapQueryId column to content_items schema
+- [x] Pass gapQueryId when generating brief from gap query
+- [x] Store gapQueryId on content item creation
+- [x] Add research.markGapAddressed tRPC procedure
+- [x] Auto-mark gap as addressed when linked content item moves to Published
+- [x] Show "Addressed" badge on gap queries in Research Intelligence
+- [x] Show source gap query link on Kanban content cards
+- [x] Write vitest tests for both features
+
+## v7 Features
+
+### Auto-Image with Content Generation
+- [ ] Backend: generate platform-specific image in parallel with content text generation
+- [ ] Backend: return imageUrl per platform output alongside the copy
+- [ ] Frontend: display generated image inline in each platform output panel (above the copy)
+- [ ] Frontend: show image loading skeleton while image generates
+- [ ] Frontend: "Regenerate Image" button per panel to swap the image without regenerating copy
+- [ ] Frontend: "Attach to Card" auto-includes the image when saving to Kanban

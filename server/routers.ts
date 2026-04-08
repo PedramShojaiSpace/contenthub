@@ -216,32 +216,87 @@ export const appRouter = router({
           idea: z.string().min(1),
           platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]),
           customInstructions: z.string().optional(),
+          generateImages: z.boolean().default(true), // auto-generate images alongside content
         })
       )
       .mutation(async ({ input }) => {
         const platforms =
           input.platform === "all"
             ? (["linkedin", "meta", "x", "youtube"] as const)
-            : [input.platform];
+            : ([input.platform] as const);
 
-        const results: Record<string, string> = {};
+        // Step 1: Generate all platform text in parallel
+        const textResults = await Promise.all(
+          platforms.map(async (platform) => {
+            const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
+            const userMessage = input.customInstructions
+              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}`
+              : `Raw idea: ${input.idea}`;
 
-        for (const platform of platforms) {
-          const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
-          const userMessage = input.customInstructions
-            ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}`
-            : `Raw idea: ${input.idea}`;
+            const response = await invokeLLM({
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userMessage },
+              ],
+            });
 
-          const response = await invokeLLM({
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userMessage },
-            ],
-          });
+            const rawContent = response.choices?.[0]?.message?.content;
+            return {
+              platform,
+              text: typeof rawContent === "string" ? rawContent : "Content generation failed.",
+            };
+          })
+        );
 
-          const rawContent = response.choices?.[0]?.message?.content;
-          results[platform] =
-            typeof rawContent === "string" ? rawContent : "Content generation failed.";
+        // Step 2: Generate platform-specific images in parallel (if enabled)
+        const imageResults: Record<string, string> = {};
+        if (input.generateImages) {
+          await Promise.all(
+            textResults.map(async ({ platform, text }) => {
+              try {
+                const platformStyle = PLATFORM_IMAGE_STYLES[platform] ?? DEFAULT_IMAGE_STYLE;
+
+                // First generate a tailored image prompt from the content
+                const promptResponse = await invokeLLM({
+                  messages: [
+                    {
+                      role: "system",
+                      content: `You are an expert visual director for The Urban Monk brand (Dr. Pedram Shojai). You write precise, evocative image generation prompts.
+
+Platform visual style for ${platform.toUpperCase()}: ${platformStyle}
+
+Rules:
+- Generate a concise, vivid image prompt (max 80 words)
+- Focus on mood, lighting, composition, and symbolic elements that reinforce the message
+- Do NOT include people who look like the author — use anonymous silhouettes or symbolic objects
+- The image should convey the FEELING of the content, not illustrate it literally
+- Return ONLY the image prompt, no explanation or preamble`,
+                    },
+                    {
+                      role: "user",
+                      content: `Generate a Nano Banana image prompt for this ${platform} content:\n\n${text.slice(0, 600)}`,
+                    },
+                  ],
+                });
+
+                const rawPrompt = promptResponse.choices?.[0]?.message?.content;
+                const imagePrompt = typeof rawPrompt === "string" ? rawPrompt : input.idea;
+                const fullPrompt = `${imagePrompt}. Visual style: ${platformStyle}`;
+
+                const { url } = await generateImage({ prompt: fullPrompt });
+                if (url) imageResults[platform] = url;
+              } catch (err) {
+                // Image generation failure is non-fatal — content still returns
+                console.warn(`[AI] Image generation failed for ${platform}:`, err);
+              }
+            })
+          );
+        }
+
+        // Step 3: Assemble combined results
+        const results: Record<string, { text: string; imageUrl?: string }> = {};
+        for (const { platform, text } of textResults) {
+          results[platform] = { text, imageUrl: imageResults[platform] };
         }
 
         return results;

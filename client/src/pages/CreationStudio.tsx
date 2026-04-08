@@ -22,6 +22,9 @@ import {
   Sparkles,
   Twitter,
   Youtube,
+  Wand2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -29,31 +32,11 @@ import { toast } from "sonner";
 type Platform = "meta" | "linkedin" | "x" | "youtube" | "all";
 
 const PLATFORMS: { key: Platform; label: string; icon: React.ReactNode; color: string }[] = [
-  {
-    key: "all",
-    label: "All Platforms",
-    icon: <Sparkles className="h-4 w-4" />,
-    color: "text-primary",
-  },
-  {
-    key: "linkedin",
-    label: "LinkedIn",
-    icon: <Linkedin className="h-4 w-4" />,
-    color: "text-sky-400",
-  },
-  {
-    key: "meta",
-    label: "Meta",
-    icon: <Facebook className="h-4 w-4" />,
-    color: "text-blue-400",
-  },
+  { key: "all", label: "All Platforms", icon: <Sparkles className="h-4 w-4" />, color: "text-primary" },
+  { key: "linkedin", label: "LinkedIn", icon: <Linkedin className="h-4 w-4" />, color: "text-sky-400" },
+  { key: "meta", label: "Meta", icon: <Facebook className="h-4 w-4" />, color: "text-blue-400" },
   { key: "x", label: "X (Twitter)", icon: <Twitter className="h-4 w-4" />, color: "text-slate-300" },
-  {
-    key: "youtube",
-    label: "YouTube",
-    icon: <Youtube className="h-4 w-4" />,
-    color: "text-red-400",
-  },
+  { key: "youtube", label: "YouTube", icon: <Youtube className="h-4 w-4" />, color: "text-red-400" },
 ];
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -61,6 +44,35 @@ const PLATFORM_LABELS: Record<string, string> = {
   meta: "Meta (Instagram/Facebook)",
   x: "X (Twitter)",
   youtube: "YouTube",
+};
+
+// Platform-specific style descriptions shown in the UI
+const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string; palette: string }> = {
+  linkedin: {
+    label: "Corporate Wellness",
+    description: "Minimalist editorial — deep navy, gold accents, authority & expertise",
+    palette: "from-navy-900 to-slate-800",
+  },
+  meta: {
+    label: "Lifestyle & Aspiration",
+    description: "Warm, earthy, authentic — deep greens, terracotta, natural light",
+    palette: "from-emerald-900 to-amber-900",
+  },
+  x: {
+    label: "Bold & Cinematic",
+    description: "High-contrast, typographic — stark black, single dramatic light source",
+    palette: "from-slate-900 to-zinc-800",
+  },
+  youtube: {
+    label: "Epic Documentary",
+    description: "Chiaroscuro thumbnail — rich shadows, prestige film still quality",
+    palette: "from-red-950 to-slate-900",
+  },
+  all: {
+    label: "Urban Monk Signature",
+    description: "Dark, moody, cinematic — deep blacks, warm gold, timeless editorial",
+    palette: "from-stone-900 to-yellow-950",
+  },
 };
 
 export default function CreationStudio() {
@@ -72,11 +84,16 @@ export default function CreationStudio() {
   const [imagePrompt, setImagePrompt] = useState("");
   const [generatedImageUrl, setGeneratedImageUrl] = useState("");
   const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
+  const [imageStylePlatform, setImageStylePlatform] = useState<Platform>("all");
+  const [showStyleDetails, setShowStyleDetails] = useState(false);
+  const [styleOverride, setStyleOverride] = useState("");
 
   const generateContentMutation = trpc.ai.generateContent.useMutation({
     onSuccess: (data) => {
       setGeneratedContent(data);
       setEditedContent(data);
+      // Auto-set image style platform to match content platform
+      if (platform !== "all") setImageStylePlatform(platform);
       toast.success("Content generated for all platforms!");
     },
     onError: (err) => {
@@ -87,7 +104,7 @@ export default function CreationStudio() {
   const generateImagePromptMutation = trpc.ai.generateImagePrompt.useMutation({
     onSuccess: (data) => {
       setImagePrompt(data.prompt);
-      toast.success("Image prompt generated!");
+      toast.success("Nano Banana image prompt generated!");
     },
     onError: (err) => {
       toast.error("Failed: " + err.message);
@@ -131,7 +148,7 @@ export default function CreationStudio() {
       toast.error("Generate content first.");
       return;
     }
-    generateImagePromptMutation.mutate({ textContent: text, platform: p as Platform });
+    generateImagePromptMutation.mutate({ textContent: text, platform: imageStylePlatform });
   };
 
   const handleGenerateImage = () => {
@@ -139,7 +156,11 @@ export default function CreationStudio() {
       toast.error("Generate or enter an image prompt first.");
       return;
     }
-    generateImageMutation.mutate({ prompt: imagePrompt, platform });
+    generateImageMutation.mutate({
+      prompt: imagePrompt,
+      platform: imageStylePlatform,
+      styleOverride: styleOverride || undefined,
+    });
   };
 
   const handleSave = (p: string) => {
@@ -165,6 +186,8 @@ export default function CreationStudio() {
       ? (["linkedin", "meta", "x", "youtube"] as const)
       : [platform];
 
+  const currentStyleInfo = PLATFORM_STYLE_LABELS[imageStylePlatform] ?? PLATFORM_STYLE_LABELS.all;
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -172,7 +195,7 @@ export default function CreationStudio() {
         <div>
           <h1 className="text-2xl font-serif font-bold text-foreground">Creation Studio</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Drop an idea. Generate voice-matched content for every platform.
+            Drop an idea. Generate voice-matched content and on-brand visuals for every platform.
           </p>
         </div>
 
@@ -200,7 +223,10 @@ export default function CreationStudio() {
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">
                   Target Platform
                 </Label>
-                <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+                <Select value={platform} onValueChange={(v) => {
+                  setPlatform(v as Platform);
+                  if (v !== "all") setImageStylePlatform(v as Platform);
+                }}>
                   <SelectTrigger className="bg-background border-border">
                     <SelectValue />
                   </SelectTrigger>
@@ -312,16 +338,84 @@ export default function CreationStudio() {
           </div>
         )}
 
-        {/* Image Generation */}
+        {/* Nano Banana Image Generation */}
         {Object.keys(editedContent).length > 0 && (
           <Card className="bg-card border-border">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base font-medium text-foreground flex items-center gap-2">
-                <Image className="h-4 w-4 text-primary" />
-                Visual Asset Generator
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-medium text-foreground flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-primary" />
+                  Nano Banana Visual Generator
+                </CardTitle>
+                <Badge variant="outline" className="border-primary/40 text-primary text-xs">
+                  AI Image
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
+
+              {/* Platform Style Selector */}
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                  Visual Style — Platform
+                </Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {(["all", "linkedin", "meta", "x", "youtube"] as Platform[]).map((p) => {
+                    const info = PLATFORM_STYLE_LABELS[p];
+                    const platformMeta = PLATFORMS.find((pl) => pl.key === p);
+                    const isActive = imageStylePlatform === p;
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setImageStylePlatform(p)}
+                        className={`relative p-2.5 rounded-lg border text-left transition-all
+                          ${isActive
+                            ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                            : "border-border bg-background hover:border-primary/30 hover:bg-muted/20"
+                          }`}
+                      >
+                        <div className={`mb-1 ${platformMeta?.color ?? "text-primary"}`}>
+                          {platformMeta?.icon}
+                        </div>
+                        <div className="text-[10px] font-semibold text-foreground leading-tight">
+                          {info.label}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Style description */}
+                <div className="p-3 rounded-lg bg-muted/20 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      <span className="text-foreground font-medium">{currentStyleInfo.label}:</span>{" "}
+                      {currentStyleInfo.description}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs shrink-0 ml-2"
+                      onClick={() => setShowStyleDetails(!showStyleDetails)}
+                    >
+                      {showStyleDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                  {showStyleDetails && (
+                    <div className="mt-2 pt-2 border-t border-border/30">
+                      <Textarea
+                        value={styleOverride}
+                        onChange={(e) => setStyleOverride(e.target.value)}
+                        placeholder={`Override style (leave blank to use the ${currentStyleInfo.label} preset)...`}
+                        rows={2}
+                        className="bg-background border-border resize-none text-xs text-foreground placeholder:text-muted-foreground/50"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Image Prompt */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-muted-foreground text-xs uppercase tracking-wider">
@@ -337,20 +431,20 @@ export default function CreationStudio() {
                     {generateImagePromptMutation.isPending ? (
                       <Loader2 className="h-3 w-3 animate-spin mr-1" />
                     ) : (
-                      <Sparkles className="h-3 w-3 mr-1" />
+                      <Wand2 className="h-3 w-3 mr-1" />
                     )}
-                    Auto-generate prompt
+                    Auto-generate for {imageStylePlatform === "all" ? "Urban Monk" : imageStylePlatform.toUpperCase()}
                   </Button>
                 </div>
                 <Textarea
-                  placeholder="Describe the image you want, or click Auto-generate above..."
+                  placeholder="Describe the image you want, or click Auto-generate above to let the AI craft a platform-optimized prompt..."
                   value={imagePrompt}
                   onChange={(e) => setImagePrompt(e.target.value)}
                   rows={3}
                   className="bg-background border-border resize-none text-foreground placeholder:text-muted-foreground/50"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Style is automatically applied: dark, moody, cinematic, gold accents
+                  The <span className="text-primary font-medium">{currentStyleInfo.label}</span> brand style will be automatically applied to the generation.
                 </p>
               </div>
 
@@ -362,23 +456,30 @@ export default function CreationStudio() {
                 {generateImageMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating image (10-20 seconds)...
+                    Generating image (10–20 seconds)...
                   </>
                 ) : (
                   <>
                     <Image className="h-4 w-4 mr-2" />
-                    Generate Image
+                    Generate with Nano Banana
                   </>
                 )}
               </Button>
 
               {generatedImageUrl && (
                 <div className="space-y-3">
-                  <img
-                    src={generatedImageUrl}
-                    alt="Generated visual"
-                    className="w-full rounded-lg border border-border"
-                  />
+                  <div className="relative rounded-lg overflow-hidden border border-border">
+                    <img
+                      src={generatedImageUrl}
+                      alt="Generated visual"
+                      className="w-full"
+                    />
+                    <div className="absolute top-2 right-2">
+                      <Badge className="bg-black/70 text-white border-0 text-xs">
+                        {currentStyleInfo.label}
+                      </Badge>
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -394,6 +495,7 @@ export default function CreationStudio() {
                       className="flex-1"
                       onClick={() => handleCopy(generatedImageUrl)}
                     >
+                      <Copy className="h-3 w-3 mr-1" />
                       Copy URL
                     </Button>
                   </div>

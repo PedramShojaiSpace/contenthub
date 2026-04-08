@@ -72,8 +72,21 @@ FORMAT:
 CONTENT PILLARS: Deep dives on gut health, sleep optimization, stress physiology, ancient practices, functional medicine, the Urban Monk Academy curriculum.`,
 };
 
-const DEFAULT_IMAGE_STYLE =
-  "dark, moody, cinematic, high-end photography aesthetic, deep blacks, warm gold accents, professional, sophisticated, wellness and performance theme";
+// ─── Nano Banana Platform Brand Style Presets ──────────────────────────────
+// Each platform has a distinct visual identity tuned for its audience and format.
+const PLATFORM_IMAGE_STYLES: Record<string, string> = {
+  linkedin: `Clean, professional, corporate wellness aesthetic. Minimalist composition with deep navy or charcoal backgrounds. Warm gold or amber accent lighting. High-end editorial photography feel. Subtle geometric elements. Conveys authority, expertise, and high performance. No clutter. Think Harvard Business Review meets functional medicine. Aspect ratio 1:1 or 4:5.`,
+
+  meta: `Warm, lifestyle-driven, aspirational photography. Natural light, earthy tones — deep greens, warm terracottas, soft golds. Human connection with nature or quiet contemplative moments. Evokes transformation, vitality, and inner peace. No stock-photo feel — raw, authentic, cinematic. Think National Geographic meets wellness retreat. Aspect ratio 4:5 or 9:16 for Stories.`,
+
+  x: `Bold, high-contrast, typographic-forward. Stark black backgrounds with single dramatic light source. Minimal elements — one strong visual metaphor. Cinematic still-frame quality. Slightly edgy, intellectual, provocative. Think Criterion Collection poster meets health science. Aspect ratio 16:9 or 1:1.`,
+
+  youtube: `Epic cinematic thumbnail composition. Dramatic chiaroscuro lighting — deep shadows, single powerful light source. Rich, saturated colors with dark base. Evokes mystery, discovery, and transformation. Strong foreground subject (anonymous human silhouette or symbolic object). Feels like a film still from a prestige documentary. Aspect ratio 16:9. High visual impact at small sizes.`,
+
+  all: `Dark, moody, cinematic. Deep blacks with warm gold and amber accents. High-end photography aesthetic. Professional, sophisticated. Bridges ancient wisdom and modern science. Wellness and peak performance theme. Timeless, editorial quality.`,
+};
+
+const DEFAULT_IMAGE_STYLE = PLATFORM_IMAGE_STYLES.all;
 
 export const appRouter = router({
   system: systemRouter,
@@ -196,6 +209,11 @@ export const appRouter = router({
         return results;
       }),
 
+    // Return all platform style descriptions for the UI
+    getPlatformStyles: protectedProcedure.query(() => {
+      return PLATFORM_IMAGE_STYLES;
+    }),
+
     generateImagePrompt: protectedProcedure
       .input(
         z.object({
@@ -204,19 +222,25 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        const platformStyle = PLATFORM_IMAGE_STYLES[input.platform] ?? DEFAULT_IMAGE_STYLE;
         const response = await invokeLLM({
             messages: [
               {
                 role: "system",
-                content: `You are an expert at writing image generation prompts for The Urban Monk brand. 
-The visual style is: ${DEFAULT_IMAGE_STYLE}.
-Generate a concise, vivid image prompt (max 100 words) based on the content provided. 
-Focus on mood, composition, and symbolic elements that reinforce the message.
-Return ONLY the image prompt, no explanation.`,
+                content: `You are an expert visual director for The Urban Monk brand (Dr. Pedram Shojai). You write precise, evocative image generation prompts.
+
+Platform visual style for ${input.platform.toUpperCase()}: ${platformStyle}
+
+Rules:
+- Generate a concise, vivid image prompt (max 120 words)
+- Focus on mood, lighting, composition, and symbolic elements that reinforce the message
+- Do NOT include people who look like the author — use anonymous silhouettes or symbolic objects
+- The image should convey the FEELING of the content, not illustrate it literally
+- Return ONLY the image prompt, no explanation or preamble`,
               },
               {
                 role: "user",
-                content: `Generate an image prompt for this ${input.platform} content:\n\n${input.textContent}`,
+                content: `Generate a Nano Banana image prompt for this ${input.platform} content:\n\n${input.textContent}`,
               },
             ],
           });
@@ -233,10 +257,13 @@ Return ONLY the image prompt, no explanation.`,
           prompt: z.string(),
           contentItemId: z.number().optional(),
           platform: z.enum(["meta", "linkedin", "x", "youtube", "all"]).optional(),
+          styleOverride: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const fullPrompt = `${input.prompt}, ${DEFAULT_IMAGE_STYLE}`;
+        const platformStyle = PLATFORM_IMAGE_STYLES[input.platform ?? "all"] ?? DEFAULT_IMAGE_STYLE;
+        const styleToUse = input.styleOverride || platformStyle;
+        const fullPrompt = `${input.prompt}. Visual style: ${styleToUse}`;
         const { url } = await generateImage({ prompt: fullPrompt });
 
         // Save to generated_images table

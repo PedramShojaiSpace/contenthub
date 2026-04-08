@@ -66,3 +66,28 @@
 ## Syndication (Placeholder)
 - [ ] Buffer API integration UI (placeholder with "coming soon" toast)
 - [ ] Duvo API integration UI (placeholder with "coming soon" toast)
+
+## Calendar View (v2)
+- [ ] Real monthly calendar grid with day cells
+- [ ] Approved/Scheduled content items displayed on their scheduled date
+- [ ] Click-to-schedule: click a day to assign a content item to that date
+- [ ] Drag-to-reschedule: drag cards between days
+- [ ] Month navigation (prev/next)
+- [ ] Platform color-coded badges on calendar cards
+- [ ] Unscheduled content sidebar panel
+
+## Nano Banana Image Generation (v2)
+- [ ] Platform-specific brand style prompts (LinkedIn, Meta, X, YouTube)
+- [ ] LinkedIn: clean, professional, corporate wellness aesthetic
+- [ ] Meta/Instagram: warm, lifestyle, aspirational, nature + human connection
+- [ ] X/Twitter: bold, high-contrast, typographic, minimal
+- [ ] YouTube: cinematic thumbnail style, dramatic lighting, bold composition
+- [ ] Style selector UI in Creation Studio image panel
+- [ ] Preview style descriptions before generating
+- [ ] Auto-select platform style based on active platform tab
+
+## App Rename (v2)
+- [x] Rename app title to "Urban Monk Productions Content Hub" in index.html
+- [x] Rename sidebar header from "Content Engine" to "UMP Content Hub"
+- [x] Update VITE_APP_TITLE to match
+- [x] Update all page titles and meta tags

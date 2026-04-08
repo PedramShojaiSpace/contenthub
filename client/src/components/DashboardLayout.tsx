@@ -67,10 +67,10 @@ export default function DashboardLayout({
               <span className="text-primary font-serif font-bold text-2xl">UM</span>
             </div>
             <h1 className="text-2xl font-serif font-semibold tracking-tight text-center text-foreground">
-              Content Engine
+              UMP Content Hub
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              The Urban Monk AI-powered content command center. Sign in to access your dashboard.
+              Urban Monk Productions AI-powered content command center. Sign in to access your dashboard.
             </p>
           </div>
           <Button
@@ -173,8 +173,8 @@ function DashboardLayoutContent({
                   <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
                     <span className="text-primary font-serif font-bold text-xs">UM</span>
                   </div>
-                  <span className="font-serif font-semibold tracking-tight truncate text-foreground">
-                    Content Engine
+                  <span className="font-serif font-semibold tracking-tight truncate text-foreground text-sm">
+                    UMP Content Hub
                   </span>
                 </div>
               ) : null}

@@ -113,3 +113,21 @@
 - [x] Vitest tests for auth.logout
 - [x] Vitest tests for content, strategy, ai, and assets router structure
 - [x] Vitest tests for syndication.getProfiles, syndication.push, digest.sendNow, content.update (image attachment)
+
+## v4 Features
+
+### Image Thumbnails on Kanban & Calendar
+- [x] Show image thumbnail on Kanban cards when imageUrl is set
+- [x] Show image thumbnail chip on Calendar day cells
+- [x] Lightbox/expand on thumbnail click
+
+### Published Confirmation Flow
+- [x] "Mark as Published" dialog with publish date picker and URL field
+- [x] Save publishedAt timestamp and publishUrl to content item
+- [x] Show published date and URL on Published column cards
+
+### Analytics Stub
+- [x] Add analytics fields to content_items (views, likes, comments, shares)
+- [x] Analytics panel on Published cards (editable stub fields)
+- [x] Summary analytics row in Command Center stats bar
+- [x] Run db:push after schema changes

@@ -144,7 +144,13 @@ export const appRouter = router({
           imageKey: z.string().optional(),
           imagePrompt: z.string().optional(),
           scheduledAt: z.number().optional(),
+          publishedAt: z.number().optional(),
+          publishUrl: z.string().optional(),
           notes: z.string().optional(),
+          analyticsViews: z.number().optional(),
+          analyticsLikes: z.number().optional(),
+          analyticsComments: z.number().optional(),
+          analyticsShares: z.number().optional(),
         })
       )
       .mutation(async ({ input }) => {

@@ -15,6 +15,13 @@
       "when": 1775664896886,
       "tag": "0001_chunky_redwing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1775669380881,
+      "tag": "0002_bright_boom_boom",
+      "breakpoints": true
     }
   ]
 }

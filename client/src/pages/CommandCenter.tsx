@@ -31,14 +31,20 @@ import {
 } from "@dnd-kit/core";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
+  BarChart2,
   Calendar,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Facebook,
+  Heart,
   Linkedin,
   Loader2,
+  MessageCircle,
   MoreHorizontal,
   Plus,
+  Repeat2,
   Twitter,
   Youtube,
 } from "lucide-react";
@@ -54,6 +60,21 @@ import { toast } from "sonner";
 
 type Platform = "meta" | "linkedin" | "x" | "youtube" | "all";
 type Status = "idea" | "drafting" | "review" | "approved" | "scheduled" | "published";
+
+type ContentItem = {
+  id: number;
+  title: string;
+  platform: string;
+  status: string;
+  imageUrl: string | null;
+  scheduledAt: number | null;
+  publishedAt: number | null;
+  publishUrl: string | null;
+  analyticsViews: number | null;
+  analyticsLikes: number | null;
+  analyticsComments: number | null;
+  analyticsShares: number | null;
+};
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
   { key: "idea", label: "Idea", color: "bg-muted/50 border-border" },
@@ -82,17 +103,192 @@ const PLATFORM_COLORS: Record<Platform, string> = {
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// ─── Published Confirmation Dialog ──────────────────────────────────────────
+function PublishConfirmDialog({
+  item,
+  onConfirm,
+  onClose,
+}: {
+  item: ContentItem;
+  onConfirm: (id: number, publishUrl: string, publishedAt: number) => void;
+  onClose: () => void;
+}) {
+  const [publishUrl, setPublishUrl] = useState(item.publishUrl ?? "");
+  const today = new Date().toISOString().split("T")[0];
+  const [publishDate, setPublishDate] = useState(today);
+
+  const handleConfirm = () => {
+    const ts = new Date(publishDate).getTime();
+    onConfirm(item.id, publishUrl, ts);
+    onClose();
+  };
+
+  return (
+    <DialogContent className="bg-card border-border max-w-md">
+      <DialogHeader>
+        <DialogTitle className="font-serif">Mark as Published</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 pt-2">
+        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+          <p className="text-sm font-medium text-foreground line-clamp-2">{item.title}</p>
+          <div className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] border ${PLATFORM_COLORS[item.platform as Platform]}`}>
+            {PLATFORM_ICONS[item.platform as Platform]}
+            <span className="capitalize">{item.platform}</span>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+            Publish Date
+          </Label>
+          <Input
+            type="date"
+            value={publishDate}
+            onChange={(e) => setPublishDate(e.target.value)}
+            className="bg-background border-border text-foreground"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+            Published URL (optional)
+          </Label>
+          <Input
+            type="url"
+            placeholder="https://www.linkedin.com/posts/..."
+            value={publishUrl}
+            onChange={(e) => setPublishUrl(e.target.value)}
+            className="bg-background border-border text-foreground placeholder:text-muted-foreground/50"
+          />
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button variant="outline" className="flex-1" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={handleConfirm}
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+            Confirm Published
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  );
+}
+
+// ─── Analytics Panel ─────────────────────────────────────────────────────────
+function AnalyticsPanel({
+  item,
+  onUpdate,
+}: {
+  item: ContentItem;
+  onUpdate: (id: number, analytics: { analyticsViews?: number; analyticsLikes?: number; analyticsComments?: number; analyticsShares?: number }) => void;
+}) {
+  const [views, setViews] = useState(String(item.analyticsViews ?? 0));
+  const [likes, setLikes] = useState(String(item.analyticsLikes ?? 0));
+  const [comments, setComments] = useState(String(item.analyticsComments ?? 0));
+  const [shares, setShares] = useState(String(item.analyticsShares ?? 0));
+  const [editing, setEditing] = useState(false);
+
+  const handleSave = () => {
+    onUpdate(item.id, {
+      analyticsViews: parseInt(views) || 0,
+      analyticsLikes: parseInt(likes) || 0,
+      analyticsComments: parseInt(comments) || 0,
+      analyticsShares: parseInt(shares) || 0,
+    });
+    setEditing(false);
+  };
+
+  const totalEngagement = (parseInt(likes) || 0) + (parseInt(comments) || 0) + (parseInt(shares) || 0);
+  const engagementRate = (parseInt(views) || 0) > 0
+    ? ((totalEngagement / (parseInt(views) || 1)) * 100).toFixed(1)
+    : "0.0";
+
+  return (
+    <div className="mt-3 p-3 rounded-lg bg-muted/20 border border-border/50 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <BarChart2 className="h-3 w-3" />
+          Analytics
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={() => editing ? handleSave() : setEditing(true)}
+        >
+          {editing ? "Save" : "Edit"}
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { label: "Views", value: views, setter: setViews, icon: <BarChart2 className="h-3 w-3" /> },
+          { label: "Likes", value: likes, setter: setLikes, icon: <Heart className="h-3 w-3" /> },
+          { label: "Comments", value: comments, setter: setComments, icon: <MessageCircle className="h-3 w-3" /> },
+          { label: "Shares", value: shares, setter: setShares, icon: <Repeat2 className="h-3 w-3" /> },
+        ].map(({ label, value, setter, icon }) => (
+          <div key={label} className="text-center">
+            <div className="flex items-center justify-center gap-0.5 text-muted-foreground mb-1">
+              {icon}
+            </div>
+            {editing ? (
+              <Input
+                type="number"
+                value={value}
+                onChange={(e) => setter(e.target.value)}
+                className="h-7 text-center text-xs bg-background border-border p-1"
+                min="0"
+              />
+            ) : (
+              <div className="text-base font-bold text-foreground">
+                {parseInt(value).toLocaleString()}
+              </div>
+            )}
+            <div className="text-[10px] text-muted-foreground">{label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/30">
+        <span>Engagement rate</span>
+        <span className="text-primary font-medium">{engagementRate}%</span>
+      </div>
+
+      {item.publishUrl && (
+        <a
+          href={item.publishUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-[10px] text-primary hover:underline"
+        >
+          <ExternalLink className="h-2.5 w-2.5" />
+          View published post
+        </a>
+      )}
+    </div>
+  );
+}
+
 // ─── Draggable Card ─────────────────────────────────────────────────────────
 function DraggableCard({
   item,
   onStatusChange,
   onDelete,
   onClick,
+  onPublish,
+  onAnalyticsUpdate,
 }: {
-  item: { id: number; title: string; platform: string; status: string; imageUrl: string | null };
+  item: ContentItem;
   onStatusChange: (id: number, status: Status) => void;
   onDelete: (id: number) => void;
   onClick: () => void;
+  onPublish: (item: ContentItem) => void;
+  onAnalyticsUpdate: (id: number, analytics: { analyticsViews?: number; analyticsLikes?: number; analyticsComments?: number; analyticsShares?: number }) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${item.id}`,
@@ -103,6 +299,8 @@ function DraggableCard({
     ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50, opacity: isDragging ? 0.5 : 1 }
     : undefined;
 
+  const isPublished = item.status === "published";
+
   return (
     <Card
       ref={setNodeRef}
@@ -112,7 +310,19 @@ function DraggableCard({
       {...listeners}
       {...attributes}
     >
-      <CardHeader className="p-3 pb-2">
+      {/* Image thumbnail */}
+      {item.imageUrl && (
+        <div className="relative overflow-hidden rounded-t-lg">
+          <img
+            src={item.imageUrl}
+            alt=""
+            className="w-full h-20 object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40" />
+        </div>
+      )}
+
+      <CardHeader className={`p-3 pb-2 ${item.imageUrl ? "pt-2" : ""}`}>
         <div className="flex items-start justify-between gap-1">
           <p className="text-xs font-medium text-foreground leading-snug line-clamp-2">
             {item.title}
@@ -128,16 +338,27 @@ function DraggableCard({
                 <MoreHorizontal className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-44">
               {STATUSES.filter((s) => s.key !== item.status).map((s) => (
                 <DropdownMenuItem
                   key={s.key}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onStatusChange(item.id, s.key);
+                    if (s.key === "published") {
+                      onPublish(item);
+                    } else {
+                      onStatusChange(item.id, s.key);
+                    }
                   }}
                 >
-                  Move to {s.label}
+                  {s.key === "published" ? (
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3 w-3 text-primary" />
+                      Mark as Published
+                    </span>
+                  ) : (
+                    `Move to ${s.label}`
+                  )}
                 </DropdownMenuItem>
               ))}
               <DropdownMenuItem
@@ -153,15 +374,26 @@ function DraggableCard({
           </DropdownMenu>
         </div>
       </CardHeader>
+
       <CardContent className="px-3 pb-3 pt-0">
-        <div
-          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${PLATFORM_COLORS[item.platform as Platform]}`}
-        >
-          {PLATFORM_ICONS[item.platform as Platform]}
-          <span className="capitalize">{item.platform}</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${PLATFORM_COLORS[item.platform as Platform]}`}
+          >
+            {PLATFORM_ICONS[item.platform as Platform]}
+            <span className="capitalize">{item.platform}</span>
+          </div>
+
+          {isPublished && item.publishedAt && (
+            <span className="text-[10px] text-muted-foreground">
+              {new Date(item.publishedAt).toLocaleDateString()}
+            </span>
+          )}
         </div>
-        {item.imageUrl && (
-          <img src={item.imageUrl} alt="" className="mt-2 w-full h-16 object-cover rounded" />
+
+        {/* Analytics panel for published items */}
+        {isPublished && (
+          <AnalyticsPanel item={item} onUpdate={onAnalyticsUpdate} />
         )}
       </CardContent>
     </Card>
@@ -231,6 +463,7 @@ export default function CommandCenter() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [scheduleDialogDate, setScheduleDialogDate] = useState<string | null>(null);
   const [scheduleItemId, setScheduleItemId] = useState<number | null>(null);
+  const [publishDialogItem, setPublishDialogItem] = useState<ContentItem | null>(null);
 
   const { data: items = [], refetch } = trpc.content.list.useQuery();
   const createMutation = trpc.content.create.useMutation({
@@ -249,7 +482,6 @@ export default function CommandCenter() {
   const updateMutation = trpc.content.update.useMutation({
     onSuccess: () => {
       refetch();
-      toast.success("Scheduled!");
     },
   });
   const deleteMutation = trpc.content.delete.useMutation({
@@ -275,6 +507,33 @@ export default function CommandCenter() {
     changeStatusMutation.mutate({ id, status });
   };
 
+  const handlePublishConfirm = (id: number, publishUrl: string, publishedAt: number) => {
+    updateMutation.mutate(
+      { id, status: "published", publishedAt, publishUrl: publishUrl || undefined },
+      {
+        onSuccess: () => {
+          refetch();
+          toast.success("Marked as published!");
+        },
+      }
+    );
+  };
+
+  const handleAnalyticsUpdate = (
+    id: number,
+    analytics: { analyticsViews?: number; analyticsLikes?: number; analyticsComments?: number; analyticsShares?: number }
+  ) => {
+    updateMutation.mutate(
+      { id, ...analytics },
+      {
+        onSuccess: () => {
+          refetch();
+          toast.success("Analytics updated.");
+        },
+      }
+    );
+  };
+
   // ─── Drag Handlers ───────────────────────────────────────────────────────
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -295,9 +554,14 @@ export default function CommandCenter() {
       const newStatus = overId.replace("col-", "") as Status;
       const item = items.find((i) => i.id === itemId);
       if (item && item.status !== newStatus) {
-        changeStatusMutation.mutate({ id: itemId, status: newStatus });
-        if (newStatus === "scheduled") {
-          toast.info("Item moved to Scheduled. Open Calendar to assign a date.");
+        if (newStatus === "published") {
+          // Open publish confirmation dialog
+          setPublishDialogItem(item as ContentItem);
+        } else {
+          changeStatusMutation.mutate({ id: itemId, status: newStatus });
+          if (newStatus === "scheduled") {
+            toast.info("Item moved to Scheduled. Open Calendar to assign a date.");
+          }
         }
       }
     }
@@ -306,7 +570,10 @@ export default function CommandCenter() {
     if (overId.startsWith("day-")) {
       const dateKey = overId.replace("day-", "");
       const scheduledAt = new Date(dateKey).getTime();
-      updateMutation.mutate({ id: itemId, scheduledAt, status: "scheduled" });
+      updateMutation.mutate(
+        { id: itemId, scheduledAt, status: "scheduled" },
+        { onSuccess: () => { refetch(); toast.success("Scheduled!"); } }
+      );
     }
   };
 
@@ -329,7 +596,7 @@ export default function CommandCenter() {
   const toDateKey = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-  const isToday = (d: Date) =>
+  const isTodayFn = (d: Date) =>
     d.getDate() === today.getDate() &&
     d.getMonth() === today.getMonth() &&
     d.getFullYear() === today.getFullYear();
@@ -356,7 +623,10 @@ export default function CommandCenter() {
   const handleDayClick = (dateKey: string) => {
     if (scheduleItemId) {
       const scheduledAt = new Date(dateKey).getTime();
-      updateMutation.mutate({ id: scheduleItemId, scheduledAt, status: "scheduled" });
+      updateMutation.mutate(
+        { id: scheduleItemId, scheduledAt, status: "scheduled" },
+        { onSuccess: () => { refetch(); toast.success("Scheduled!"); } }
+      );
       setScheduleItemId(null);
       setScheduleDialogDate(null);
     }
@@ -366,6 +636,11 @@ export default function CommandCenter() {
     "January","February","March","April","May","June",
     "July","August","September","October","November","December",
   ];
+
+  // Analytics summary for stats bar
+  const publishedItems = items.filter((i) => i.status === "published");
+  const totalViews = publishedItems.reduce((sum, i) => sum + ((i as ContentItem).analyticsViews ?? 0), 0);
+  const totalLikes = publishedItems.reduce((sum, i) => sum + ((i as ContentItem).analyticsLikes ?? 0), 0);
 
   return (
     <DashboardLayout>
@@ -476,6 +751,27 @@ export default function CommandCenter() {
             })}
           </div>
 
+          {/* Analytics Summary Row — shown when there are published items with data */}
+          {publishedItems.length > 0 && (totalViews > 0 || totalLikes > 0) && (
+            <div className="flex items-center gap-6 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <BarChart2 className="h-3.5 w-3.5 text-primary" />
+                <span className="font-medium text-foreground">Published Analytics</span>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-muted-foreground">
+                  <span className="text-foreground font-semibold">{totalViews.toLocaleString()}</span> views
+                </span>
+                <span className="text-muted-foreground">
+                  <span className="text-foreground font-semibold">{totalLikes.toLocaleString()}</span> likes
+                </span>
+                <span className="text-muted-foreground">
+                  <span className="text-foreground font-semibold">{publishedItems.length}</span> posts
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* ── KANBAN VIEW ──────────────────────────────────────────────────── */}
           {viewMode === "kanban" && (
             <div className="grid grid-cols-6 gap-4 overflow-x-auto">
@@ -496,10 +792,12 @@ export default function CommandCenter() {
                         {colItems.map((item) => (
                           <DraggableCard
                             key={item.id}
-                            item={item}
+                            item={item as ContentItem}
                             onStatusChange={handleStatusChange}
                             onDelete={(id) => deleteMutation.mutate({ id })}
                             onClick={() => setLocation(`/studio?id=${item.id}`)}
+                            onPublish={(itm) => setPublishDialogItem(itm)}
+                            onAnalyticsUpdate={handleAnalyticsUpdate}
                           />
                         ))}
                         {colItems.length === 0 && (
@@ -571,27 +869,46 @@ export default function CommandCenter() {
                         <DroppableCalendarDay
                           key={dateKey}
                           dateKey={dateKey}
-                          isToday={isToday(date)}
+                          isToday={isTodayFn(date)}
                           dayNum={date.getDate()}
                           isCurrentMonth={isCurrentMonth}
                           onClick={() => handleDayClick(dateKey)}
                         >
-                          {dayItems.slice(0, 3).map((item) => (
+                          {dayItems.slice(0, 2).map((item) => (
                             <div
                               key={item.id}
-                              className={`text-[10px] px-1.5 py-0.5 rounded truncate border cursor-pointer hover:opacity-80 ${PLATFORM_COLORS[item.platform as Platform]}`}
+                              className={`group relative rounded overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity ${PLATFORM_COLORS[item.platform as Platform]}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setLocation(`/studio?id=${item.id}`);
                               }}
                               title={item.title}
                             >
-                              {item.title}
+                              {/* Thumbnail if available */}
+                              {(item as ContentItem).imageUrl ? (
+                                <div className="relative">
+                                  <img
+                                    src={(item as ContentItem).imageUrl!}
+                                    alt=""
+                                    className="w-full h-10 object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/40" />
+                                  <div className="absolute bottom-0 left-0 right-0 px-1 pb-0.5">
+                                    <p className="text-[9px] text-white font-medium truncate leading-tight">
+                                      {item.title}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="px-1.5 py-0.5">
+                                  <p className="text-[10px] truncate">{item.title}</p>
+                                </div>
+                              )}
                             </div>
                           ))}
-                          {dayItems.length > 3 && (
+                          {dayItems.length > 2 && (
                             <div className="text-[9px] text-muted-foreground px-1">
-                              +{dayItems.length - 3} more
+                              +{dayItems.length - 2} more
                             </div>
                           )}
                         </DroppableCalendarDay>
@@ -620,7 +937,7 @@ export default function CommandCenter() {
                       {unscheduledApproved.map((item) => (
                         <div
                           key={item.id}
-                          className={`text-xs p-2 rounded border cursor-pointer transition-all
+                          className={`text-xs rounded border cursor-pointer transition-all overflow-hidden
                             ${scheduleItemId === item.id
                               ? "border-primary bg-primary/10 text-foreground"
                               : "border-border bg-card hover:border-primary/40 text-foreground"
@@ -632,10 +949,19 @@ export default function CommandCenter() {
                             }
                           }}
                         >
-                          <div className="font-medium line-clamp-2 mb-1">{item.title}</div>
-                          <div className={`inline-flex items-center gap-1 px-1 py-0.5 rounded text-[9px] border ${PLATFORM_COLORS[item.platform as Platform]}`}>
-                            {PLATFORM_ICONS[item.platform as Platform]}
-                            <span className="capitalize">{item.platform}</span>
+                          {(item as ContentItem).imageUrl && (
+                            <img
+                              src={(item as ContentItem).imageUrl!}
+                              alt=""
+                              className="w-full h-12 object-cover"
+                            />
+                          )}
+                          <div className="p-2">
+                            <div className="font-medium line-clamp-2 mb-1">{item.title}</div>
+                            <div className={`inline-flex items-center gap-1 px-1 py-0.5 rounded text-[9px] border ${PLATFORM_COLORS[item.platform as Platform]}`}>
+                              {PLATFORM_ICONS[item.platform as Platform]}
+                              <span className="capitalize">{item.platform}</span>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -720,6 +1046,17 @@ export default function CommandCenter() {
           )}
         </DragOverlay>
       </DndContext>
+
+      {/* Published Confirmation Dialog */}
+      <Dialog open={!!publishDialogItem} onOpenChange={(open) => { if (!open) setPublishDialogItem(null); }}>
+        {publishDialogItem && (
+          <PublishConfirmDialog
+            item={publishDialogItem}
+            onConfirm={handlePublishConfirm}
+            onClose={() => setPublishDialogItem(null)}
+          />
+        )}
+      </Dialog>
     </DashboardLayout>
   );
 }

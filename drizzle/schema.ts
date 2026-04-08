@@ -45,7 +45,13 @@ export const contentItems = mysqlTable("content_items", {
   imagePrompt: text("imagePrompt"),
   scheduledAt: bigint("scheduledAt", { mode: "number" }),
   publishedAt: bigint("publishedAt", { mode: "number" }),
+  publishUrl: text("publishUrl"),
   notes: text("notes"),
+  // Analytics stub fields (manually updated or future API sync)
+  analyticsViews: int("analyticsViews").default(0),
+  analyticsLikes: int("analyticsLikes").default(0),
+  analyticsComments: int("analyticsComments").default(0),
+  analyticsShares: int("analyticsShares").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

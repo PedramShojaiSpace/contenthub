@@ -597,3 +597,25 @@
 - [x] Build YouTube Competitive Intelligence panel in CreationStudio (collapsible, below idea input)
 - [x] Write Vitest tests for youtubeRouter
 - [x] TypeScript clean, all tests pass (64/64)
+
+## v18 Features — YouTube CI Enhancements (April 9, 2026)
+- [x] Add summarizeVideo tRPC procedure to youtubeRouter
+- [ ] Add "Summarize This Video" button per competitor card in CreationStudio
+- [ ] Add saveToScript tRPC procedure (creates Script Library entry from brief)
+- [ ] Add "Save to Script Library" button in differentiation brief panel
+- [ ] Add competitor_channels DB table (channelId, channelName, thumbnail, trackedAt)
+- [ ] Run pnpm db:push for competitor_channels migration
+- [ ] Add trackChannel, listTracked, untrackChannel, getChannelNewUploads procedures to youtubeRouter
+- [ ] Build Competitor Channel Watchlist page/panel with track/untrack UI and latest uploads
+- [ ] Add weekly digest for tracked channel new uploads
+- [ ] Write Vitest tests for new procedures
+- [ ] TypeScript clean, all tests pass
+
+## v19 Features — Typeform Audience Intelligence (April 9, 2026)
+- [ ] Store TYPEFORM_API_KEY as secret
+- [ ] Add typeformRouter.ts with listForms, getResponses, analyzeAudience, enrichPersona procedures
+- [ ] Wire typeformRouter into main appRouter
+- [ ] Build Typeform Audience Intelligence page: form selector, response viewer, AI pain point analysis
+- [ ] Add "Enrich Persona" button that appends Typeform insights to a persona profile
+- [ ] Write Vitest tests for typeformRouter
+- [ ] TypeScript clean, all tests pass

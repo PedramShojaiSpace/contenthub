@@ -316,3 +316,23 @@ export const landingPages = mysqlTable("landing_pages", {
 
 export type LandingPage = typeof landingPages.$inferSelect;
 export type InsertLandingPage = typeof landingPages.$inferInsert;
+
+// ─── Competitor Channel Watchlist ─────────────────────────────────────────────
+
+export const competitorChannels = mysqlTable("competitor_channels", {
+  id: int("id").autoincrement().primaryKey(),
+  channelId: varchar("channelId", { length: 64 }).notNull().unique(),
+  channelName: varchar("channelName", { length: 255 }).notNull(),
+  channelUrl: text("channelUrl"),
+  thumbnail: text("thumbnail"),
+  subscriberCount: int("subscriberCount"),
+  // Notes about why we're tracking this channel
+  notes: text("notes"),
+  // Last time we checked for new uploads
+  lastCheckedAt: bigint("lastCheckedAt", { mode: "number" }),
+  trackedAt: timestamp("trackedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CompetitorChannel = typeof competitorChannels.$inferSelect;
+export type InsertCompetitorChannel = typeof competitorChannels.$inferInsert;

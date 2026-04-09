@@ -434,6 +434,52 @@ export default function CreationStudio() {
     onError: (err) => toast.error("Analysis failed: " + err.message),
   });
 
+  // ── Summarize Video ──────────────────────────────────────────────────────────
+  const [ytSummaries, setYtSummaries] = useState<Record<string, string>>({});
+  const [ytSummarizing, setYtSummarizing] = useState<string | null>(null);
+  const ytSummarizeMutation = trpc.youtube.summarizeVideo.useMutation({
+    onSuccess: (data, vars) => {
+      setYtSummaries((prev) => ({ ...prev, [vars.videoId]: data.outline }));
+      setYtSummarizing(null);
+      toast.success("Video summarized!");
+    },
+    onError: (err) => { setYtSummarizing(null); toast.error("Summarize failed: " + err.message); },
+  });
+
+  const handleYTSummarize = (videoId: string) => {
+    const video = ytVideos.find((v) => v.id === videoId);
+    if (!video) return;
+    const transcript = ytTranscripts.find((t) => t.videoId === videoId);
+    setYtSummarizing(videoId);
+    ytSummarizeMutation.mutate({
+      videoId,
+      title: video.title,
+      channelName: video.channelName,
+      transcript: transcript?.text ?? "",
+    });
+  };
+
+  // ── Save to Script Library ────────────────────────────────────────────────────
+  const [ytSavedToScript, setYtSavedToScript] = useState(false);
+  const ytSaveToScriptMutation = trpc.youtube.saveToScript.useMutation({
+    onSuccess: (data) => {
+      setYtSavedToScript(true);
+      toast.success(`Saved to Script Library as "${data.title}" — open Script Library to refine it.`);
+    },
+    onError: (err) => toast.error("Save failed: " + err.message),
+  });
+
+  const handleYTSaveToScript = () => {
+    if (!ytBrief) { toast.error("Generate a differentiation brief first."); return; }
+    const title = `YT CI: ${ytSearchQuery || idea || "Competitor Analysis"} — ${new Date().toLocaleDateString()}`;
+    ytSaveToScriptMutation.mutate({
+      title,
+      brief: ytBrief,
+      topic: ytSearchQuery || idea,
+      competitorAngle: ytVideos.slice(0, 3).map((v) => v.title).join(" | "),
+    });
+  };
+
   const handleYTSearch = () => {
     const q = ytSearchQuery.trim() || idea.trim();
     if (!q) { toast.error("Enter a search term or fill in the idea field first."); return; }
@@ -1166,13 +1212,38 @@ export default function CreationStudio() {
                               <span className="text-xs text-muted-foreground">· {formatDuration(v.duration)}</span>
                             </div>
                             {ytTranscripts.find((t) => t.videoId === v.id) && (
-                              <Badge className={`mt-1 text-xs ${
-                                ytTranscripts.find((t) => t.videoId === v.id)?.error
-                                  ? "bg-red-500/20 text-red-400 border-red-500/30"
-                                  : "bg-green-500/20 text-green-400 border-green-500/30"
-                              }`}>
-                                {ytTranscripts.find((t) => t.videoId === v.id)?.error ? "No transcript" : "Transcript ready"}
-                              </Badge>
+                              <div className="flex items-center gap-2 flex-wrap mt-1">
+                                <Badge className={`text-xs ${
+                                  ytTranscripts.find((t) => t.videoId === v.id)?.error
+                                    ? "bg-red-500/20 text-red-400 border-red-500/30"
+                                    : "bg-green-500/20 text-green-400 border-green-500/30"
+                                }`}>
+                                  {ytTranscripts.find((t) => t.videoId === v.id)?.error ? "No transcript" : "Transcript ready"}
+                                </Badge>
+                                {!ytTranscripts.find((t) => t.videoId === v.id)?.error && !ytSummaries[v.id] && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-5 text-[10px] px-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                                    disabled={ytSummarizing === v.id}
+                                    onClick={(e) => { e.stopPropagation(); handleYTSummarize(v.id); }}
+                                  >
+                                    {ytSummarizing === v.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                                    <span className="ml-1">{ytSummarizing === v.id ? "Summarizing..." : "Summarize"}</span>
+                                  </Button>
+                                )}
+                                {ytSummaries[v.id] && (
+                                  <Badge className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30">Outlined</Badge>
+                                )}
+                              </div>
+                            )}
+                            {ytSummaries[v.id] && (
+                              <div
+                                className="mt-2 p-2 rounded bg-amber-500/5 border border-amber-500/20 text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {ytSummaries[v.id]}
+                              </div>
                             )}
                           </div>
                           <div className="shrink-0 flex items-start pt-1">
@@ -1252,6 +1323,22 @@ export default function CreationStudio() {
                         className="text-xs h-7 bg-primary text-primary-foreground hover:bg-primary/90"
                       >
                         <Wand2 className="h-3 w-3 mr-1" />Inform Script
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleYTSaveToScript}
+                        disabled={ytSaveToScriptMutation.isPending || ytSavedToScript}
+                        className="text-xs h-7 border-green-500/40 text-green-400 hover:bg-green-500/10"
+                      >
+                        {ytSaveToScriptMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : ytSavedToScript ? (
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                        ) : (
+                          <Save className="h-3 w-3 mr-1" />
+                        )}
+                        {ytSavedToScript ? "Saved!" : "Save to Script Library"}
                       </Button>
                     </div>
                   </div>

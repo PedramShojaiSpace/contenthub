@@ -38,6 +38,7 @@ import { personasRouter } from "./personasRouter";
 import { scriptsRouter } from "./scriptsRouter";
 import { landingPagesRouter } from "./landingPagesRouter";
 import { youtubeRouter } from "./youtubeRouter";
+import { typeformRouter } from "./typeformRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -935,5 +936,6 @@ Be specific and actionable. This brief will go directly to content creation.`;
   scripts: scriptsRouter,
   landingPages: landingPagesRouter,
   youtube: youtubeRouter,
+  typeform: typeformRouter,
 });
 export type AppRouter = typeof appRouter;

@@ -279,3 +279,13 @@
 - [x] All hardcoded zinc/gray dark classes replaced with semantic tokens across all pages
 - [x] AI image style prompts updated: warm, bright, inspirational (no more dark moody)
 - [x] TypeScript clean (0 errors), 20/20 tests pass
+
+## v13 Fixes
+
+- [x] Updated Urban Monk Signature style label: "Warm, bright, inspirational — golden light, sage greens, timeless wellness editorial"
+- [x] Updated X/Twitter style label: "Bold & Clean" (removed "stark black" language)
+- [x] Updated YouTube style label: "Inspiring Documentary" with golden-hour warmth
+- [x] Updated Blog style label: warm editorial hero with golden morning light
+- [x] All PLATFORM_STYLE_LABELS in CreationStudio now reflect warm, uplifting aesthetic
+- [x] routers.ts image style prompts already updated in v12 — confirmed no dark/moody language remains
+- [x] TypeScript clean (0 errors), 20/20 tests pass

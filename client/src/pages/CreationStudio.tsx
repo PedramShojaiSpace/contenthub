@@ -101,31 +101,31 @@ const PLATFORM_LABELS: Record<string, string> = {
 const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string }> = {
   linkedin: {
     label: "Corporate Wellness",
-    description: "Minimalist editorial — deep navy, gold accents, authority & expertise",
+    description: "Bright, airy editorial — warm cream, terracotta accents, clarity & expertise",
   },
   meta: {
     label: "Lifestyle & Aspiration",
-    description: "Warm, earthy, authentic — deep greens, terracotta, natural light",
+    description: "Warm, uplifting, authentic — sage greens, terracotta, golden morning light",
   },
   x: {
-    label: "Bold & Cinematic",
-    description: "High-contrast, typographic — stark black, single dramatic light source",
+    label: "Bold & Clean",
+    description: "High-contrast but bright — warm accent on light background, thought-provoking",
   },
   youtube: {
-    label: "Epic Documentary",
-    description: "Chiaroscuro thumbnail — rich shadows, prestige film still quality",
+    label: "Inspiring Documentary",
+    description: "Golden-hour warmth — inviting light, uplifting wellness documentary feel",
   },
   all: {
     label: "Urban Monk Signature",
-    description: "Dark, moody, cinematic — deep blacks, warm gold, timeless editorial",
+    description: "Warm, bright, inspirational — golden light, sage greens, timeless wellness editorial",
   },
   tiktok: {
     label: "Kinetic & Bold",
-    description: "High-energy vertical frame — vivid colors, dynamic composition, hook-first visual storytelling",
+    description: "High-energy vertical frame — vibrant warm colors, dynamic composition, hook-first visual storytelling",
   },
   blog: {
     label: "Editorial Feature",
-    description: "Rich, textured editorial — deep forest greens, warm candlelight, contemplative atmosphere",
+    description: "Warm editorial hero — golden morning light, sage tones, uplifting & contemplative",
   },
 };
 

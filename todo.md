@@ -501,3 +501,19 @@
 - [x] Start with: "Eastern medicine knew about leaky gut 3,000 years before Western science named it"
 - [x] Each carousel: hook slide, 7 content slides, CTA slide, cover caption
 - [x] Stored all 20 in Script Library via seedCarousels procedure — click "Seed Carousels" in Script Library to populate
+
+## v11 Features (April 9, 2026)
+
+### Script Library Redesign
+- [x] Fix dark theme bug — Script Library rewritten with CSS variables (bg-background, bg-card, text-foreground, border-border, bg-primary)
+- [x] Reorganize layout: platform bucket tabs at top (All | YouTube | Meta | LinkedIn | X) with platform brand colors
+- [x] Within each platform tab: show Kanban columns (Idea → Scripted → In Production → In Edit → Ready to Post → Published)
+- [x] YouTube tab shows 20 long-form video scripts; Meta tab shows carousels + HP-style scripts
+- [x] Seed Holistic Psychologist-style Instagram carousel scripts — 20 scripts in Nicole LePera format (reframe posts, nervous system, self-healing, inner child, Taoist wisdom layer)
+  - Full 10-slide scripts written for top 2 (nervous system survival mode, childhood love patterns)
+  - Outlines + competitor angles + notes for all 20
+- [x] Add seedLinkedIn procedure — 10 thought-leadership scripts for LinkedIn
+- [x] Add seedX procedure — 10 thread scripts for X
+- [x] All 80 scripts seeded via "Seed All" button or individual platform buttons in empty state
+- [x] Production workflow: advance status with one click (Idea → Scripted → In Production → In Edit → Ready to Post → Published)
+- [x] All 20/20 tests passing, TypeScript clean (0 errors)

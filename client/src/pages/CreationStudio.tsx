@@ -77,6 +77,7 @@ type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all
 type PlatformOutput = {
   text: string;
   imageUrl?: string;
+  title?: string;
 };
 
 const PLATFORMS: { key: Platform; label: string; icon: React.ReactNode; color: string }[] = [
@@ -179,7 +180,8 @@ export default function CreationStudio() {
       for (const [p, val] of Object.entries(outputs)) {
         const v = val as PlatformOutput;
         if (!v.text) continue;
-        const titleText = idea.slice(0, 80) + (idea.length > 80 ? "..." : "");
+        // Use AI-generated title if available, otherwise fall back to truncated idea
+        const titleText = v.title ?? (idea.slice(0, 80) + (idea.length > 80 ? "..." : ""));
         autoSaveMutation.mutate(
           {
             title: titleText,

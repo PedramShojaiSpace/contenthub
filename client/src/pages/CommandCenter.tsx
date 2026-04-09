@@ -68,6 +68,8 @@ type ContentItem = {
   title: string;
   platform: string;
   status: string;
+  textContent: string | null;
+  rawIdea: string | null;
   imageUrl: string | null;
   scheduledAt: number | null;
   publishedAt: number | null;
@@ -480,6 +482,9 @@ export default function CommandCenter() {
   const [scheduleItemId, setScheduleItemId] = useState<number | null>(null);
   const [publishDialogItem, setPublishDialogItem] = useState<ContentItem | null>(null);
   const [regeneratingId, setRegeneratingId] = useState<number | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [isSavingContent, setIsSavingContent] = useState(false);
 
   const regenerateImageMutation = trpc.ai.generateImage.useMutation({
     onSuccess: (data, variables) => {
@@ -849,7 +854,11 @@ export default function CommandCenter() {
                               item={item as ContentItem}
                               onStatusChange={handleStatusChange}
                               onDelete={(id) => deleteMutation.mutate({ id })}
-                              onClick={() => setLocation(`/studio?id=${item.id}`)}
+                              onClick={() => {
+                                const ci = item as ContentItem;
+                                setSelectedItem(ci);
+                                setEditingContent(ci.textContent ?? "");
+                              }}
                               onPublish={(itm) => setPublishDialogItem(itm)}
                               onAnalyticsUpdate={handleAnalyticsUpdate}
                               onRegenerate={handleRegenerate}
@@ -1111,6 +1120,120 @@ export default function CommandCenter() {
             onConfirm={handlePublishConfirm}
             onClose={() => setPublishDialogItem(null)}
           />
+        )}
+      </Dialog>
+
+      {/* ── Card Detail Dialog ─────────────────────────────────────────────── */}
+      <Dialog open={!!selectedItem} onOpenChange={(open) => { if (!open) setSelectedItem(null); }}>
+        {selectedItem && (
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+            <DialogHeader>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs border ${PLATFORM_COLORS[selectedItem.platform as Platform] ?? ""}`}>
+                  {PLATFORM_ICONS[selectedItem.platform as Platform]}
+                  <span className="capitalize">{selectedItem.platform}</span>
+                </div>
+                <span className="text-xs text-muted-foreground capitalize">{selectedItem.status}</span>
+              </div>
+              <DialogTitle className="font-serif text-base leading-snug mt-1">
+                {selectedItem.title}
+              </DialogTitle>
+            </DialogHeader>
+
+            {/* Hero image */}
+            {selectedItem.imageUrl && (
+              <img
+                src={selectedItem.imageUrl}
+                alt=""
+                className="w-full rounded-lg object-cover max-h-56"
+              />
+            )}
+
+            {/* Post content */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Post Content</Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={isSavingContent}
+                  onClick={() => {
+                    setIsSavingContent(true);
+                    updateMutation.mutate(
+                      { id: selectedItem.id, textContent: editingContent },
+                      {
+                        onSuccess: () => {
+                          refetch();
+                          setIsSavingContent(false);
+                          toast.success("Content saved!");
+                        },
+                        onError: () => setIsSavingContent(false),
+                      }
+                    );
+                  }}
+                >
+                  {isSavingContent ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                </Button>
+              </div>
+              <Textarea
+                value={editingContent}
+                onChange={(e) => setEditingContent(e.target.value)}
+                rows={12}
+                className="bg-background border-border resize-none text-sm font-mono leading-relaxed"
+                placeholder="No content yet — generate from Creation Studio"
+              />
+            </div>
+
+            {/* Copy button */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => {
+                  navigator.clipboard.writeText(editingContent);
+                  toast.success("Copied to clipboard!");
+                }}
+              >
+                Copy Content
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => {
+                  handleRegenerate(selectedItem);
+                  setSelectedItem(null);
+                }}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Regenerate Image
+              </Button>
+            </div>
+
+            {/* Status change */}
+            <div className="flex gap-2 flex-wrap">
+              {STATUSES.filter((s) => s.key !== selectedItem.status).slice(0, 4).map((s) => (
+                <Button
+                  key={s.key}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => {
+                    if (s.key === "published") {
+                      setPublishDialogItem(selectedItem);
+                    } else {
+                      handleStatusChange(selectedItem.id, s.key);
+                    }
+                    setSelectedItem(null);
+                  }}
+                >
+                  Move to {s.label}
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
         )}
       </Dialog>
     </DashboardLayout>

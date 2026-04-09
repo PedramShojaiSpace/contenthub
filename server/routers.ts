@@ -318,10 +318,25 @@ export const appRouter = router({
             });
 
             const rawContent = response.choices?.[0]?.message?.content;
-            return {
-              platform,
-              text: typeof rawContent === "string" ? rawContent : "Content generation failed.",
-            };
+            const text = typeof rawContent === "string" ? rawContent : "Content generation failed.";
+
+            // Generate a clean, short title for this content item (used as Kanban card title)
+            const titleResponse = await invokeLLM({
+              messages: [
+                {
+                  role: "system",
+                  content: `You are a content editor. Given a piece of social media content, write a clean, descriptive title for it. The title should:\n- Be 5-10 words maximum\n- Be specific and descriptive (not generic like "LinkedIn Post")\n- Capture the core message or hook\n- Read like a headline, not a label\n- Return ONLY the title — no quotes, no punctuation at the end, no explanation`,
+                },
+                {
+                  role: "user",
+                  content: `Write a title for this ${platform} content:\n\n${text.slice(0, 400)}`,
+                },
+              ],
+            });
+            const rawTitle = titleResponse.choices?.[0]?.message?.content;
+            const title = typeof rawTitle === "string" ? rawTitle.trim().replace(/^["']|["']$/g, "").slice(0, 80) : input.idea.slice(0, 80);
+
+            return { platform, text, title };
           })
         );
 
@@ -371,9 +386,9 @@ Rules:
         }
 
         // Step 3: Assemble combined results
-        const results: Record<string, { text: string; imageUrl?: string }> = {};
-        for (const { platform, text } of textResults) {
-          results[platform] = { text, imageUrl: imageResults[platform] };
+        const results: Record<string, { text: string; imageUrl?: string; title: string }> = {};
+        for (const { platform, text, title } of textResults) {
+          results[platform] = { text, imageUrl: imageResults[platform], title };
         }
 
         return results;

@@ -326,3 +326,40 @@
 - [x] Show loading spinner overlay on the card while regenerating
 - [x] After regeneration: update the card's imageUrl in the database and refresh the Kanban
 - [x] TypeScript clean (0 errors), 20/20 tests pass
+
+## v15 Features
+
+### Buffer X/Twitter Account Fix
+- [ ] Investigate why X/Twitter account is not appearing in the syndication panel
+- [ ] Check the Buffer GraphQL channels query — confirm X channel is returned from API
+- [ ] Check the platform-to-service mapping for X (currently maps to "twitter") vs what Buffer returns
+- [ ] Fix service name mapping so X account appears in the filtered channel list
+
+### Clean Card Titles
+- [ ] Update AI content generation prompt to produce a clean short title (under 60 chars) per platform
+- [ ] Update generateBlog to return a clean title (already does — check why cards show "## Urban Monk Content Brief:...")
+- [ ] Fix auto-save to use the AI-generated title, not the raw idea text truncated
+- [ ] Update content.create to accept and store the AI title separately from rawIdea
+
+### Batch Publish All Approved to WordPress
+- [ ] Add "Publish All Approved" button in Command Center header
+- [ ] Batch mutation: iterate all items in "approved" status, call blog.publish for blog platform items
+- [ ] Show progress toast: "Publishing X of Y..."
+- [ ] Move items to "scheduled" or "published" status after batch publish
+- [ ] Non-blog items in Approved: show "Mark as Published" dialog instead
+
+### Calendar-to-WordPress Scheduling Sync
+- [ ] When a content item is scheduled (scheduledAt set) and platform is "blog", push to WordPress as a scheduled post
+- [ ] Use WordPress REST API post status "future" with date field set to scheduledAt timestamp
+- [ ] Update content item status to "scheduled" after successful WP scheduling
+- [ ] Show "Scheduled in WordPress" badge on calendar cards for synced items
+
+## CRITICAL BUG — Content Not Saving — FIXED
+
+- [x] Diagnosed: textContent WAS being saved (17/18 items have content in DB) — the UI had no detail view
+- [x] DB schema confirmed: textContent column exists and is populated
+- [x] content.create and content.list procedures confirmed correct
+- [x] Built Card Detail Dialog: click any Kanban card to open full post content, edit inline, copy, save
+- [x] Dialog shows: hero image, platform badge, status, full editable post body, Copy/Save/Regenerate buttons
+- [x] Legacy titles cleaned: 17 items updated from raw AI brief headers to real post opening lines
+- [x] TypeScript clean (0 errors), 20/20 tests pass

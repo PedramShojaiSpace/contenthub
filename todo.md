@@ -569,3 +569,13 @@
 - [x] Add `/landing-pages` route in App.tsx
 - [x] Add "Landing Pages" nav link in all page sidebars
 - [x] All tests still passing, TypeScript clean (42/42 tests pass, 0 TS errors)
+
+## v16.1 Features (April 9, 2026)
+
+### Landing Page Generator Improvements
+- [x] Wire Urban Monk Gamma theme ID (4v2cznur3cs7d35) into publishToGamma API call
+- [x] Add generateVariant tRPC procedure (rewrites copy with different hook angle)
+- [x] Add "Generate A/B Variant" button in preview panel with angle selector (fear-based, aspiration-based, authority-based, curiosity-based)
+- [x] Add "Create Supporting Content" deep-link button from landing page preview → Creation Studio with persona + offer pre-filled
+- [x] Add same deep-link on history cards
+- [x] All tests passing, TypeScript clean (46/46 tests pass, 0 TS errors)

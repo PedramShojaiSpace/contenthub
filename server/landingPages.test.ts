@@ -47,6 +47,16 @@ describe("landingPagesRouter structure", () => {
     expect(procedures).toContain("publishToGamma");
     expect(procedures).toContain("pollGamma");
     expect(procedures).toContain("validateApiKey");
+    expect(procedures).toContain("generateVariant");
+  });
+
+  it("Urban Monk theme ID is set in the router module", async () => {
+    // Read the router source to confirm the theme ID constant is present
+    const fs = await import("fs");
+    const src = fs.readFileSync(new URL("./landingPagesRouter.ts", import.meta.url), "utf-8");
+    expect(src).toContain("4v2cznur3cs7d35");
+    expect(src).toContain("URBAN_MONK_THEME_ID");
+    expect(src).toContain("themeId: URBAN_MONK_THEME_ID");
   });
 });
 
@@ -136,6 +146,43 @@ describe("generateCopy input validation", () => {
     });
 
     const result = schema.safeParse({ offer: "invalid_offer" });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── generateVariant input validation ───────────────────────────────────────
+
+describe("generateVariant input validation", () => {
+  it("accepts all 4 valid variant angles", async () => {
+    const { z } = await import("zod");
+    const schema = z.object({
+      id: z.number(),
+      variantAngle: z.enum(["fear", "aspiration", "authority", "curiosity"]),
+    });
+
+    for (const angle of ["fear", "aspiration", "authority", "curiosity"] as const) {
+      const result = schema.safeParse({ id: 1, variantAngle: angle });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("rejects invalid variant angle", async () => {
+    const { z } = await import("zod");
+    const schema = z.object({
+      id: z.number(),
+      variantAngle: z.enum(["fear", "aspiration", "authority", "curiosity"]),
+    });
+    const result = schema.safeParse({ id: 1, variantAngle: "hype" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing id", async () => {
+    const { z } = await import("zod");
+    const schema = z.object({
+      id: z.number(),
+      variantAngle: z.enum(["fear", "aspiration", "authority", "curiosity"]),
+    });
+    const result = schema.safeParse({ variantAngle: "aspiration" });
     expect(result.success).toBe(false);
   });
 });

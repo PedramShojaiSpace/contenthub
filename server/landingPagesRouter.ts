@@ -163,6 +163,9 @@ async function deleteLandingPageFromDb(id: number) {
 
 const GAMMA_API_BASE = "https://public-api.gamma.app/v1.0";
 
+// Urban Monk brand theme ID in Gamma
+const URBAN_MONK_THEME_ID = "4v2cznur3cs7d35";
+
 async function startGammaGeneration(
   copyBody: string,
   title: string,
@@ -212,6 +215,8 @@ Design guidelines:
       sharingOptions: {
         externalAccess: "view",
       },
+      // Urban Monk brand theme — ensures every generated page uses the correct design template
+      themeId: URBAN_MONK_THEME_ID,
     }),
   });
 
@@ -426,6 +431,81 @@ export const landingPagesRouter = router({
       }
 
       return { status: "pending" as const, gammaUrl: null };
+    }),
+
+  // Generate an A/B variant — rewrites the copy with a different hook angle
+  generateVariant: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        variantAngle: z.enum(["fear", "aspiration", "authority", "curiosity"]),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const page = await getLandingPage(input.id);
+      if (!page) throw new Error("Landing page not found");
+      if (!page.copyBody) throw new Error("No copy to create a variant from");
+
+      const ANGLE_INSTRUCTIONS: Record<string, string> = {
+        fear: "Lead with the COST OF INACTION. Open with what the reader stands to lose if they don't act — their health, their relationships, their vitality. Make the pain of staying the same feel more real than the discomfort of change. Every section should subtly remind them of what's at stake.",
+        aspiration: "Lead with the BEST POSSIBLE FUTURE. Paint a vivid picture of who they become after taking action — energized, clear-headed, purposeful, free. Every section should pull them toward the vision, not push them away from pain.",
+        authority: "Lead with PEDRAM'S CREDENTIALS AND TRACK RECORD. Open with his OMD degree, his 20+ years of clinical practice, his NYT bestselling books, his films. Let the reader feel the weight of expertise behind every recommendation. Social proof and clinical evidence should anchor every section.",
+        curiosity: "Lead with A SURPRISING INSIGHT or COUNTERINTUITIVE TRUTH that challenges what the reader thinks they know. Open with a provocative question or a fact that makes them lean in. Every section should feel like peeling back a layer to reveal something they've never heard before.",
+      };
+
+      const angleInstruction = ANGLE_INSTRUCTIONS[input.variantAngle];
+
+      const variantPrompt = `You are Dr. Pedram Shojai (The Urban Monk). You have an existing landing page and you need to rewrite it with a different persuasion angle.
+
+ORIGINAL COPY:
+${page.copyBody}
+
+NEW ANGLE INSTRUCTION:
+${angleInstruction}
+
+Rewrite the entire landing page using this new angle. Keep the same offer, the same structure (headline → story → problem → bridge → benefits → CTA → reassurance), and the same persona targeting. But shift the emotional register and opening hook to match the new angle.
+
+Rules:
+- Keep Pedram's warm, direct, credible voice
+- Do NOT change the offer, price, or CTA button text
+- Do NOT add any meta-commentary or labels
+- Return ONLY the rewritten landing page copy in clean Markdown`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: variantPrompt },
+          { role: "user", content: `Rewrite with the ${input.variantAngle} angle.` },
+        ],
+      });
+
+      const rawContent = response.choices?.[0]?.message?.content;
+      const variantCopy = typeof rawContent === "string" ? rawContent : "";
+
+      if (!variantCopy) throw new Error("Variant generation failed — no content returned.");
+
+      // Extract title from variant
+      const titleLine = variantCopy.split("\n").find((l) => l.startsWith("#"));
+      const variantTitle = titleLine
+        ? titleLine.replace(/^#+\s*/, "").trim().slice(0, 200)
+        : `${page.title} (${input.variantAngle} variant)`;
+
+      // Save as a new draft page
+      const result = await createLandingPage({
+        title: variantTitle,
+        personaId: page.personaId,
+        personaName: page.personaName,
+        offer: page.offer as "academy" | "retreat" | "supplements" | "free_guide" | "custom",
+        offerCustomLabel: page.offerCustomLabel,
+        contentAngle: `${page.contentAngle} [${input.variantAngle} variant]`,
+        copyBody: variantCopy,
+      });
+
+      return {
+        id: (result as { insertId?: number })?.insertId ?? 0,
+        title: variantTitle,
+        copyBody: variantCopy,
+        variantAngle: input.variantAngle,
+      };
     }),
 
   // Validate Gamma API key (used in tests)

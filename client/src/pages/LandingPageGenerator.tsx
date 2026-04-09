@@ -33,6 +33,7 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  FlaskConical,
   Globe,
   Heart,
   Loader2,
@@ -400,12 +401,17 @@ export default function LandingPageGenerator() {
   const [gammaUrl, setGammaUrl] = useState<string | null>(null);
   const [gammaError, setGammaError] = useState<string | null>(null);
 
+  // A/B variant state
+  const [showVariantPanel, setShowVariantPanel] = useState(false);
+  const [selectedVariantAngle, setSelectedVariantAngle] = useState<"fear" | "aspiration" | "authority" | "curiosity">("aspiration");
+
   // tRPC
   const { data: pages, refetch: refetchPages } = trpc.landingPages.list.useQuery();
   const generateCopyMutation = trpc.landingPages.generateCopy.useMutation();
   const updateCopyMutation = trpc.landingPages.updateCopy.useMutation();
   const publishToGammaMutation = trpc.landingPages.publishToGamma.useMutation();
   const deleteMutation = trpc.landingPages.delete.useMutation();
+  const generateVariantMutation = trpc.landingPages.generateVariant.useMutation();
 
   // Poll for Gamma completion
   useGammaPoll(
@@ -492,6 +498,38 @@ export default function LandingPageGenerator() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start Gamma generation");
     }
+  };
+
+  const handleGenerateVariant = async () => {
+    if (!generatedPageId) return;
+    // Save latest edits first so the variant is based on current copy
+    await handleSaveCopy();
+    try {
+      const result = await generateVariantMutation.mutateAsync({
+        id: generatedPageId,
+        variantAngle: selectedVariantAngle,
+      });
+      // Load the new variant into the preview
+      setGeneratedPageId(result.id);
+      setEditableCopy(result.copyBody);
+      setPageTitle(result.title);
+      setGammaUrl(null);
+      setGammaError(null);
+      setIsPolling(false);
+      setShowVariantPanel(false);
+      refetchPages();
+      toast.success(`${selectedVariantAngle.charAt(0).toUpperCase() + selectedVariantAngle.slice(1)}-angle variant created! Review before publishing.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Variant generation failed");
+    }
+  };
+
+  const handleGoToCreationStudio = (personaName?: string | null, offer?: string | null) => {
+    // Build query params to pre-fill Creation Studio
+    const params = new URLSearchParams();
+    if (personaName) params.set("persona", personaName);
+    if (offer) params.set("offer", offer);
+    navigate(`/studio?${params.toString()}`);
   };
 
   const handleDeletePage = async (id: number) => {
@@ -760,6 +798,18 @@ export default function LandingPageGenerator() {
                   Back to configure
                 </button>
                 <div className="flex items-center gap-2">
+                  {/* A/B Variant button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowVariantPanel((v) => !v)}
+                    disabled={generateVariantMutation.isPending}
+                    className="border-[oklch(0.88_0.02_80)] text-[oklch(0.45_0.03_60)]"
+                    title="Generate an A/B variant with a different persuasion angle"
+                  >
+                    <FlaskConical className="h-4 w-4 mr-1.5" />
+                    A/B Variant
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -803,6 +853,57 @@ export default function LandingPageGenerator() {
                   </Button>
                 </div>
               </div>
+
+              {/* A/B Variant panel */}
+              {showVariantPanel && (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="font-semibold text-sm text-amber-900 flex items-center gap-2">
+                      <FlaskConical className="h-4 w-4" />
+                      Generate A/B Variant
+                    </div>
+                    <button onClick={() => setShowVariantPanel(false)} className="text-amber-600 hover:text-amber-800 text-xs">
+                      ✕ Close
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-700 mb-3 leading-relaxed">
+                    Rewrites the current copy with a different persuasion angle. Saves as a new draft — your original is preserved.
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                    {([
+                      { id: "aspiration" as const, label: "Aspiration", desc: "Best possible future", emoji: "✨" },
+                      { id: "fear" as const, label: "Fear", desc: "Cost of inaction", emoji: "⚠️" },
+                      { id: "authority" as const, label: "Authority", desc: "Credentials & proof", emoji: "🎓" },
+                      { id: "curiosity" as const, label: "Curiosity", desc: "Surprising insight", emoji: "🔍" },
+                    ]).map((angle) => (
+                      <button
+                        key={angle.id}
+                        onClick={() => setSelectedVariantAngle(angle.id)}
+                        className={`p-2.5 rounded-lg border-2 text-left transition-all ${
+                          selectedVariantAngle === angle.id
+                            ? "border-amber-500 bg-amber-100"
+                            : "border-amber-200 bg-white hover:border-amber-300"
+                        }`}
+                      >
+                        <div className="text-base mb-0.5">{angle.emoji}</div>
+                        <div className="text-xs font-semibold text-amber-900">{angle.label}</div>
+                        <div className="text-[10px] text-amber-700">{angle.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={handleGenerateVariant}
+                    disabled={generateVariantMutation.isPending}
+                    className="bg-amber-600 hover:bg-amber-700 text-white text-sm"
+                  >
+                    {generateVariantMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating variant...</>
+                    ) : (
+                      <><FlaskConical className="h-4 w-4 mr-2" />Generate {selectedVariantAngle.charAt(0).toUpperCase() + selectedVariantAngle.slice(1)} Variant</>
+                    )}
+                  </Button>
+                </div>
+              )}
 
               {/* Gamma result banner */}
               {gammaUrl && (
@@ -968,6 +1069,27 @@ export default function LandingPageGenerator() {
                     </CardContent>
                   </Card>
 
+                  {/* Creation Studio deep-link */}
+                  <Card className="border-[oklch(0.88_0.02_80)] bg-[oklch(0.97_0.02_160)]">
+                    <CardContent className="p-4">
+                      <div className="text-xs font-semibold text-[oklch(0.35_0.08_160)] mb-1.5 flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Create Supporting Content
+                      </div>
+                      <p className="text-[10px] text-[oklch(0.45_0.05_160)] leading-relaxed mb-2.5">
+                        Generate social posts, emails, and video scripts that drive traffic to this landing page.
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => handleGoToCreationStudio(selectedPersona?.name, selectedOffer)}
+                        className="w-full bg-[oklch(0.50_0.12_160)] hover:bg-[oklch(0.43_0.12_160)] text-white text-xs"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                        Open Creation Studio
+                      </Button>
+                    </CardContent>
+                  </Card>
+
                   {/* Tips */}
                   <Card className="border-[oklch(0.88_0.02_80)] bg-amber-50">
                     <CardContent className="p-4">
@@ -1062,6 +1184,16 @@ export default function LandingPageGenerator() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleGoToCreationStudio(page.personaName, page.offer)}
+                              className="border-[oklch(0.88_0.02_80)] text-[oklch(0.45_0.08_160)] hover:bg-[oklch(0.95_0.03_160)] text-xs"
+                              title="Create supporting social content for this landing page"
+                            >
+                              <Sparkles className="h-3.5 w-3.5 mr-1" />
+                              Content
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"

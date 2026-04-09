@@ -579,3 +579,12 @@
 - [x] Add "Create Supporting Content" deep-link button from landing page preview → Creation Studio with persona + offer pre-filled
 - [x] Add same deep-link on history cards
 - [x] All tests passing, TypeScript clean (46/46 tests pass, 0 TS errors)
+
+## v16.2 Features (April 9, 2026)
+
+### Landing Page Generator — UTM Builder + Variant Comparison
+- [x] UTM parameter builder panel in preview sidebar (source, medium, campaign, content fields; auto-generates tagged URL; copy button per link)
+- [x] Pre-populated UTM presets for common channels (Instagram Reel, LinkedIn Post, YouTube Description, Email Newsletter, TikTok Bio)
+- [x] Side-by-side variant comparison view in history (select 2 pages, diff the copy word-by-word with color highlights)
+- [x] "Compare" button on history cards; comparison panel shows metadata diff (persona, offer, angle) + copy diff
+- [x] All tests passing, TypeScript clean (54/54 tests pass, 0 TS errors)

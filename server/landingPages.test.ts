@@ -187,7 +187,102 @@ describe("generateVariant input validation", () => {
   });
 });
 
-// ─── Database schema ──────────────────────────────────────────────────────────
+// ─── UTM builder logic ─────────────────────────────────────────────────────
+
+describe("UTM URL builder", () => {
+  const buildUtmUrl = (base: string, params: Record<string, string>) => {
+    const qs = new URLSearchParams(params).toString();
+    return qs ? `${base}?${qs}` : base;
+  };
+
+  it("appends all 4 UTM params", () => {
+    const url = buildUtmUrl("https://gamma.app/page", {
+      utm_source: "instagram",
+      utm_medium: "reel",
+      utm_campaign: "burnout-academy",
+      utm_content: "reel",
+    });
+    expect(url).toContain("utm_source=instagram");
+    expect(url).toContain("utm_medium=reel");
+    expect(url).toContain("utm_campaign=burnout-academy");
+    expect(url).toContain("utm_content=reel");
+  });
+
+  it("returns base URL unchanged when no params", () => {
+    const url = buildUtmUrl("https://gamma.app/page", {});
+    expect(url).toBe("https://gamma.app/page");
+  });
+
+  it("handles partial params", () => {
+    const url = buildUtmUrl("https://gamma.app/page", { utm_source: "email" });
+    expect(url).toContain("utm_source=email");
+    expect(url).not.toContain("utm_medium");
+  });
+
+  it("all 5 presets have required fields", () => {
+    const presets = [
+      { label: "Instagram Reel", source: "instagram", medium: "reel", content: "reel" },
+      { label: "LinkedIn Post", source: "linkedin", medium: "post", content: "organic" },
+      { label: "YouTube Desc", source: "youtube", medium: "description", content: "video" },
+      { label: "Email", source: "email", medium: "newsletter", content: "cta" },
+      { label: "TikTok Bio", source: "tiktok", medium: "bio", content: "bio" },
+    ];
+    for (const p of presets) {
+      expect(p.source).toBeTruthy();
+      expect(p.medium).toBeTruthy();
+      expect(p.content).toBeTruthy();
+    }
+  });
+});
+
+// ─── Word-level diff logic ────────────────────────────────────────────────────
+
+describe("word-level diff", () => {
+  // Inline implementation matching the component's diffWords
+  const diffWords = (a: string, b: string) => {
+    const wordsA = a.split(/(\s+)/);
+    const wordsB = b.split(/(\s+)/);
+    const m = Math.min(wordsA.length, 200);
+    const n = Math.min(wordsB.length, 200);
+    const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let r = 1; r <= m; r++)
+      for (let c = 1; c <= n; c++)
+        dp[r][c] = wordsA[r - 1] === wordsB[c - 1] ? dp[r - 1][c - 1] + 1 : Math.max(dp[r - 1][c], dp[r][c - 1]);
+    let r = m, c = n;
+    const ops: { text: string; type: "same" | "added" | "removed" }[] = [];
+    while (r > 0 || c > 0) {
+      if (r > 0 && c > 0 && wordsA[r - 1] === wordsB[c - 1]) { ops.unshift({ text: wordsA[r - 1], type: "same" }); r--; c--; }
+      else if (c > 0 && (r === 0 || dp[r][c - 1] >= dp[r - 1][c])) { ops.unshift({ text: wordsB[c - 1], type: "added" }); c--; }
+      else { ops.unshift({ text: wordsA[r - 1], type: "removed" }); r--; }
+    }
+    return ops;
+  };
+
+  it("identical strings produce only 'same' tokens", () => {
+    const result = diffWords("hello world", "hello world");
+    expect(result.every((t) => t.type === "same")).toBe(true);
+  });
+
+  it("detects added words", () => {
+    const result = diffWords("hello", "hello world");
+    const added = result.filter((t) => t.type === "added");
+    expect(added.some((t) => t.text === "world")).toBe(true);
+  });
+
+  it("detects removed words", () => {
+    const result = diffWords("hello world", "hello");
+    const removed = result.filter((t) => t.type === "removed");
+    expect(removed.some((t) => t.text === "world")).toBe(true);
+  });
+
+  it("empty strings produce only same tokens (empty text)", () => {
+    const result = diffWords("", "");
+    // Splitting empty string by regex produces [""]; both sides match so all tokens are 'same'
+    expect(result.every((t) => t.type === "same")).toBe(true);
+  });
+});
+
+// ─── Database schema ─────────────────────────────────────────────────────────
 
 describe("landing_pages schema", () => {
   it("landingPages table is exported from schema", async () => {

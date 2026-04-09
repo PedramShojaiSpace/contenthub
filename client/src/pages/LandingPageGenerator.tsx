@@ -30,12 +30,14 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Columns2,
   Copy,
   ExternalLink,
   Eye,
   FlaskConical,
   Globe,
   Heart,
+  Link,
   Loader2,
   MessageCircle,
   Plus,
@@ -48,6 +50,7 @@ import {
   Trash2,
   TrendingUp,
   Users,
+  X,
   Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -405,6 +408,17 @@ export default function LandingPageGenerator() {
   const [showVariantPanel, setShowVariantPanel] = useState(false);
   const [selectedVariantAngle, setSelectedVariantAngle] = useState<"fear" | "aspiration" | "authority" | "curiosity">("aspiration");
 
+  // UTM builder state
+  const [showUtmPanel, setShowUtmPanel] = useState(false);
+  const [utmSource, setUtmSource] = useState("");
+  const [utmMedium, setUtmMedium] = useState("");
+  const [utmCampaign, setUtmCampaign] = useState("");
+  const [utmContent, setUtmContent] = useState("");
+
+  // Variant comparison state
+  const [compareIds, setCompareIds] = useState<[number | null, number | null]>([null, null]);
+  const [showCompareView, setShowCompareView] = useState(false);
+
   // tRPC
   const { data: pages, refetch: refetchPages } = trpc.landingPages.list.useQuery();
   const generateCopyMutation = trpc.landingPages.generateCopy.useMutation();
@@ -557,6 +571,95 @@ export default function LandingPageGenerator() {
     setGammaError(page.errorMessage);
     setIsPolling(page.status === "generating");
     setStep("preview");
+  };
+
+  // ─── UTM helpers ────────────────────────────────────────────────────────────
+
+  const buildUtmUrl = (base: string) => {
+    if (!base) return "";
+    const params = new URLSearchParams();
+    if (utmSource.trim()) params.set("utm_source", utmSource.trim());
+    if (utmMedium.trim()) params.set("utm_medium", utmMedium.trim());
+    if (utmCampaign.trim()) params.set("utm_campaign", utmCampaign.trim());
+    if (utmContent.trim()) params.set("utm_content", utmContent.trim());
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+  };
+
+  const UTM_PRESETS = [
+    { label: "Instagram Reel", source: "instagram", medium: "reel", content: "reel" },
+    { label: "LinkedIn Post", source: "linkedin", medium: "post", content: "organic" },
+    { label: "YouTube Desc", source: "youtube", medium: "description", content: "video" },
+    { label: "Email", source: "email", medium: "newsletter", content: "cta" },
+    { label: "TikTok Bio", source: "tiktok", medium: "bio", content: "bio" },
+  ];
+
+  const applyUtmPreset = (preset: typeof UTM_PRESETS[0]) => {
+    setUtmSource(preset.source);
+    setUtmMedium(preset.medium);
+    setUtmContent(preset.content);
+    // Auto-fill campaign from page title slug if empty
+    if (!utmCampaign.trim() && pageTitle) {
+      setUtmCampaign(
+        pageTitle
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .slice(0, 40)
+      );
+    }
+  };
+
+  // ─── Compare helpers ─────────────────────────────────────────────────────────
+
+  const toggleCompare = (id: number) => {
+    setCompareIds((prev) => {
+      if (prev[0] === id) return [null, prev[1]];
+      if (prev[1] === id) return [prev[0], null];
+      if (prev[0] === null) return [id, prev[1]];
+      if (prev[1] === null) return [prev[0], id];
+      // Both slots full — replace slot 0
+      return [id, prev[1]];
+    });
+  };
+
+  const isSelectedForCompare = (id: number) => compareIds[0] === id || compareIds[1] === id;
+
+  // Word-level diff: returns array of {text, type: 'same'|'added'|'removed'}
+  const diffWords = (a: string, b: string) => {
+    const wordsA = a.split(/(\s+)/);
+    const wordsB = b.split(/(\s+)/);
+    // Simple LCS-based diff
+    const result: { text: string; type: "same" | "added" | "removed" }[] = [];
+    let i = 0, j = 0;
+    // Build LCS table
+    const m = Math.min(wordsA.length, 200); // cap for performance
+    const n = Math.min(wordsB.length, 200);
+    const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let r = 1; r <= m; r++) {
+      for (let c = 1; c <= n; c++) {
+        dp[r][c] = wordsA[r - 1] === wordsB[c - 1] ? dp[r - 1][c - 1] + 1 : Math.max(dp[r - 1][c], dp[r][c - 1]);
+      }
+    }
+    // Traceback
+    let r = m, c = n;
+    const ops: { text: string; type: "same" | "added" | "removed" }[] = [];
+    while (r > 0 || c > 0) {
+      if (r > 0 && c > 0 && wordsA[r - 1] === wordsB[c - 1]) {
+        ops.unshift({ text: wordsA[r - 1], type: "same" });
+        r--; c--;
+      } else if (c > 0 && (r === 0 || dp[r][c - 1] >= dp[r - 1][c])) {
+        ops.unshift({ text: wordsB[c - 1], type: "added" });
+        c--;
+      } else {
+        ops.unshift({ text: wordsA[r - 1], type: "removed" });
+        r--;
+      }
+    }
+    // Append remaining words beyond cap
+    for (let k = m; k < wordsA.length; k++) ops.push({ text: wordsA[k], type: "removed" });
+    for (let k = n; k < wordsB.length; k++) ops.push({ text: wordsB[k], type: "added" });
+    return ops;
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────────
@@ -1090,6 +1193,81 @@ export default function LandingPageGenerator() {
                     </CardContent>
                   </Card>
 
+                  {/* UTM Builder */}
+                  <Card className="border-[oklch(0.88_0.02_80)] bg-white">
+                    <CardContent className="p-4">
+                      <button
+                        onClick={() => setShowUtmPanel((v) => !v)}
+                        className="w-full flex items-center justify-between text-xs font-semibold text-[oklch(0.35_0.03_60)] uppercase tracking-wide mb-1"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Link className="h-3.5 w-3.5" />
+                          UTM Link Builder
+                        </span>
+                        {showUtmPanel ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </button>
+                      {!showUtmPanel && (
+                        <p className="text-[10px] text-[oklch(0.65_0.03_60)]">Track which posts drive traffic to this page.</p>
+                      )}
+                      {showUtmPanel && (
+                        <div className="space-y-2 mt-2">
+                          {/* Presets */}
+                          <div className="flex flex-wrap gap-1">
+                            {UTM_PRESETS.map((p) => (
+                              <button
+                                key={p.label}
+                                onClick={() => applyUtmPreset(p)}
+                                className="px-2 py-0.5 rounded-full bg-[oklch(0.93_0.02_80)] border border-[oklch(0.88_0.02_80)] text-[10px] text-[oklch(0.45_0.03_60)] hover:bg-[oklch(0.88_0.02_80)] transition-colors"
+                              >
+                                {p.label}
+                              </button>
+                            ))}
+                          </div>
+                          {/* Fields */}
+                          <div className="space-y-1.5">
+                            {([
+                              { label: "Source", value: utmSource, set: setUtmSource, placeholder: "instagram" },
+                              { label: "Medium", value: utmMedium, set: setUtmMedium, placeholder: "reel" },
+                              { label: "Campaign", value: utmCampaign, set: setUtmCampaign, placeholder: "burnout-academy" },
+                              { label: "Content", value: utmContent, set: setUtmContent, placeholder: "reel" },
+                            ] as const).map((field) => (
+                              <div key={field.label} className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-[oklch(0.55_0.03_60)] w-14 shrink-0">{field.label}</span>
+                                <Input
+                                  value={field.value}
+                                  onChange={(e) => field.set(e.target.value)}
+                                  placeholder={field.placeholder}
+                                  className="h-6 text-[10px] border-[oklch(0.88_0.02_80)] px-2"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          {/* Generated URLs */}
+                          {gammaUrl && (
+                            <div className="mt-2 space-y-1.5">
+                              <div className="text-[10px] font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide">Tagged URL</div>
+                              <div className="flex items-start gap-1.5">
+                                <div className="flex-1 min-w-0 text-[10px] text-[oklch(0.45_0.03_60)] bg-[oklch(0.95_0.01_80)] rounded p-1.5 font-mono break-all leading-relaxed">
+                                  {buildUtmUrl(gammaUrl)}
+                                </div>
+                                <button
+                                  onClick={() => { navigator.clipboard.writeText(buildUtmUrl(gammaUrl!)); toast.success("UTM URL copied!"); }}
+                                  className="shrink-0 p-1 rounded hover:bg-[oklch(0.90_0.02_80)] text-[oklch(0.55_0.03_60)] transition-colors"
+                                  title="Copy tagged URL"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {!gammaUrl && (
+                            <p className="text-[10px] text-[oklch(0.65_0.03_60)] italic mt-1">Publish to Gamma first to generate tagged URLs.</p>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   {/* Tips */}
                   <Card className="border-[oklch(0.88_0.02_80)] bg-amber-50">
                     <CardContent className="p-4">
@@ -1112,17 +1290,49 @@ export default function LandingPageGenerator() {
           {step === "history" && (
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-[oklch(0.25_0.03_60)]">
-                  Landing Page History ({pages?.length ?? 0})
-                </h2>
-                <Button
-                  size="sm"
-                  onClick={() => setStep("configure")}
-                  className="bg-[oklch(0.65_0.12_50)] hover:bg-[oklch(0.58_0.12_50)] text-white"
-                >
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  New Page
-                </Button>
+                <div>
+                  <h2 className="text-base font-semibold text-[oklch(0.25_0.03_60)]">
+                    Landing Page History ({pages?.length ?? 0})
+                  </h2>
+                  {(compareIds[0] !== null || compareIds[1] !== null) && (
+                    <p className="text-xs text-[oklch(0.55_0.03_60)] mt-0.5">
+                      {compareIds[0] !== null && compareIds[1] !== null
+                        ? "2 pages selected — ready to compare"
+                        : "1 page selected — select one more to compare"}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {compareIds[0] !== null && compareIds[1] !== null && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowCompareView(true)}
+                      className="bg-[oklch(0.45_0.18_280)] hover:bg-[oklch(0.38_0.18_280)] text-white"
+                    >
+                      <Columns2 className="h-4 w-4 mr-1.5" />
+                      Compare Selected
+                    </Button>
+                  )}
+                  {(compareIds[0] !== null || compareIds[1] !== null) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setCompareIds([null, null]); setShowCompareView(false); }}
+                      className="border-[oklch(0.88_0.02_80)] text-xs"
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" />
+                      Clear
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => setStep("configure")}
+                    className="bg-[oklch(0.65_0.12_50)] hover:bg-[oklch(0.58_0.12_50)] text-white"
+                  >
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    New Page
+                  </Button>
+                </div>
               </div>
 
               {!pages || pages.length === 0 ? (
@@ -1187,6 +1397,20 @@ export default function LandingPageGenerator() {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => toggleCompare(page.id)}
+                              className={`text-xs transition-colors ${
+                                isSelectedForCompare(page.id)
+                                  ? "border-violet-400 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                                  : "border-[oklch(0.88_0.02_80)] text-[oklch(0.55_0.03_60)] hover:bg-[oklch(0.95_0.01_80)]"
+                              }`}
+                              title="Select for side-by-side comparison"
+                            >
+                              <Columns2 className="h-3.5 w-3.5 mr-1" />
+                              {isSelectedForCompare(page.id) ? "Selected" : "Compare"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => handleGoToCreationStudio(page.personaName, page.offer)}
                               className="border-[oklch(0.88_0.02_80)] text-[oklch(0.45_0.08_160)] hover:bg-[oklch(0.95_0.03_160)] text-xs"
                               title="Create supporting social content for this landing page"
@@ -1223,6 +1447,128 @@ export default function LandingPageGenerator() {
           )}
         </div>
       </main>
+
+      {/* ── COMPARE VIEW OVERLAY ── */}
+      {showCompareView && compareIds[0] !== null && compareIds[1] !== null && (() => {
+        const pageA = (pages as LandingPageRecord[] | undefined)?.find((p) => p.id === compareIds[0]);
+        const pageB = (pages as LandingPageRecord[] | undefined)?.find((p) => p.id === compareIds[1]);
+        if (!pageA || !pageB) return null;
+        const diffResult = diffWords(pageA.copyBody ?? "", pageB.copyBody ?? "");
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 flex flex-col">
+            {/* Header */}
+            <div className="bg-white border-b border-[oklch(0.88_0.02_80)] px-6 py-3 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <Columns2 className="h-5 w-5 text-violet-600" />
+                <span className="font-semibold text-sm text-[oklch(0.25_0.03_60)]">Side-by-Side Comparison</span>
+                <Badge variant="outline" className="text-[10px] bg-violet-50 text-violet-700 border-violet-200">
+                  {diffResult.filter((d) => d.type !== "same").length} differences
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => { handleLoadPage(pageA); setShowCompareView(false); }}
+                  className="bg-[oklch(0.65_0.12_50)] hover:bg-[oklch(0.58_0.12_50)] text-white text-xs"
+                >
+                  Open Original
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => { handleLoadPage(pageB); setShowCompareView(false); }}
+                  className="bg-[oklch(0.45_0.18_280)] hover:bg-[oklch(0.38_0.18_280)] text-white text-xs"
+                >
+                  Open Variant
+                </Button>
+                <button
+                  onClick={() => setShowCompareView(false)}
+                  className="p-1.5 rounded hover:bg-[oklch(0.93_0.02_80)] text-[oklch(0.55_0.03_60)] transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Metadata row */}
+            <div className="bg-[oklch(0.97_0.01_80)] border-b border-[oklch(0.88_0.02_80)] px-6 py-2 grid grid-cols-2 gap-4 shrink-0">
+              {[pageA, pageB].map((p, idx) => (
+                <div key={p.id} className="flex items-center gap-3">
+                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${idx === 0 ? "bg-[oklch(0.65_0.12_50)]" : "bg-violet-500"}`} />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-xs text-[oklch(0.25_0.03_60)] truncate">{p.title}</div>
+                    <div className="flex items-center gap-2 text-[10px] text-[oklch(0.55_0.03_60)] mt-0.5">
+                      {p.personaName && <span>{p.personaName}</span>}
+                      <span>·</span>
+                      <span>{OFFERS.find((o) => o.id === p.offer)?.label ?? p.offer}</span>
+                      <span>·</span>
+                      <span>{new Date(p.createdAt).toLocaleDateString()}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-[9px] ml-1 ${
+                          p.status === "published" ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-600 border-gray-200"
+                        }`}
+                      >
+                        {p.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Two-column diff body */}
+            <div className="flex-1 overflow-hidden grid grid-cols-2 divide-x divide-[oklch(0.88_0.02_80)]">
+              {/* Left: original */}
+              <div className="overflow-y-auto p-5">
+                <div className="text-[10px] font-semibold text-[oklch(0.65_0.12_50)] uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-[oklch(0.65_0.12_50)]" />
+                  Original
+                </div>
+                <pre className="text-xs text-[oklch(0.35_0.03_60)] whitespace-pre-wrap font-mono leading-relaxed">
+                  {diffResult.map((token, i) => (
+                    token.type === "removed" ? (
+                      <mark key={i} className="bg-red-100 text-red-800 rounded-sm px-0.5">{token.text}</mark>
+                    ) : token.type === "added" ? null : (
+                      <span key={i}>{token.text}</span>
+                    )
+                  ))}
+                </pre>
+              </div>
+              {/* Right: variant */}
+              <div className="overflow-y-auto p-5">
+                <div className="text-[10px] font-semibold text-violet-600 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-violet-500" />
+                  Variant
+                </div>
+                <pre className="text-xs text-[oklch(0.35_0.03_60)] whitespace-pre-wrap font-mono leading-relaxed">
+                  {diffResult.map((token, i) => (
+                    token.type === "added" ? (
+                      <mark key={i} className="bg-green-100 text-green-800 rounded-sm px-0.5">{token.text}</mark>
+                    ) : token.type === "removed" ? null : (
+                      <span key={i}>{token.text}</span>
+                    )
+                  ))}
+                </pre>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="bg-white border-t border-[oklch(0.88_0.02_80)] px-6 py-2 flex items-center gap-4 text-[10px] text-[oklch(0.55_0.03_60)] shrink-0">
+              <span className="flex items-center gap-1.5">
+                <mark className="bg-red-100 text-red-800 rounded-sm px-1">removed</mark>
+                Text only in original
+              </span>
+              <span className="flex items-center gap-1.5">
+                <mark className="bg-green-100 text-green-800 rounded-sm px-1">added</mark>
+                Text only in variant
+              </span>
+              <span className="ml-auto text-[oklch(0.65_0.03_60)]">
+                Showing first 200 words of diff — scroll to see full copy
+              </span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

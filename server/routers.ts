@@ -329,14 +329,18 @@ export const appRouter = router({
               const { eq } = await import("drizzle-orm");
               const found = await db.select().from(personas).where(eq(personas.id, input.personaId));
               if (found.length > 0) {
-                const p = found[0];
-                const pains: string[] = JSON.parse((p as any).painPoints ?? "[]");
-                const aspirations: string[] = JSON.parse((p as any).aspirations ?? "[]");
-                if (pains.length > 0 || aspirations.length > 0) {
-                  personaContext = `\n\nTARGET PERSONA — ${(p as any).name}:\n`;
-                  if (pains.length > 0) personaContext += `Real pain points from survey data: ${pains.slice(0, 6).join("; ")}\n`;
-                  if (aspirations.length > 0) personaContext += `Real aspirations from survey data: ${aspirations.slice(0, 4).join("; ")}\n`;
-                  personaContext += `Speak directly to these real concerns in the content.`;
+                const p = found[0] as any;
+                const pains: string[] = JSON.parse(p.painPoints ?? "[]");
+                const aspirations: string[] = JSON.parse(p.aspirations ?? "[]");
+                const topQs: string[] = JSON.parse(p.topQuestions ?? "[]");
+                const hasData = pains.length > 0 || aspirations.length > 0 || topQs.length > 0;
+                if (hasData) {
+                  personaContext = `\n\nTARGET PERSONA — ${p.name}:\n`;
+                  if (pains.length > 0) personaContext += `Real pain points from survey data: ${pains.slice(0, 8).join("; ")}\n`;
+                  if (aspirations.length > 0) personaContext += `Real aspirations from survey data: ${aspirations.slice(0, 6).join("; ")}\n`;
+                  if (topQs.length > 0) personaContext += `Top questions this persona asks: ${topQs.slice(0, 5).join("; ")}\n`;
+                  if (p.intelligenceReport) personaContext += `Intelligence notes: ${p.intelligenceReport.slice(0, 400)}\n`;
+                  personaContext += `Speak directly to these real concerns. Use their language, mirror their fears and desires.`;
                 }
               }
             }
@@ -543,14 +547,44 @@ Rules:
           generateImage: z.boolean().default(true),
           gapQueryId: z.number().optional(),
           gapQueryText: z.string().optional(),
+          personaId: z.number().optional(), // inject Typeform-enriched persona pain points
         })
       )
       .mutation(async ({ input }) => {
+        // Load persona pain points from DB if personaId is provided
+        let personaContext = "";
+        if (input.personaId) {
+          try {
+            const db = await getDb();
+            if (db) {
+              const { personas } = await import("../drizzle/schema");
+              const { eq } = await import("drizzle-orm");
+              const found = await db.select().from(personas).where(eq(personas.id, input.personaId));
+              if (found.length > 0) {
+                const p = found[0] as any;
+                const pains: string[] = JSON.parse(p.painPoints ?? "[]");
+                const aspirations: string[] = JSON.parse(p.aspirations ?? "[]");
+                const topQs: string[] = JSON.parse(p.topQuestions ?? "[]");
+                if (pains.length > 0 || aspirations.length > 0) {
+                  personaContext = `\n\nTARGET PERSONA — ${p.name}:\n`;
+                  if (pains.length > 0) personaContext += `Real pain points from survey data: ${pains.slice(0, 6).join("; ")}\n`;
+                  if (aspirations.length > 0) personaContext += `Real aspirations from survey data: ${aspirations.slice(0, 4).join("; ")}\n`;
+                  if (topQs.length > 0) personaContext += `Top questions this persona asks: ${topQs.slice(0, 4).join("; ")}\n`;
+                  personaContext += `Write the article to speak directly to this person's real concerns and goals.`;
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("[Blog] Could not load persona pain points:", err);
+          }
+        }
+
         // Step 1: Generate the full blog article as structured JSON
         const userMessage = [
           `Raw idea: ${input.idea}`,
           input.gapQueryText ? `\nThis article should directly answer the LLM search query: "${input.gapQueryText}"` : "",
           input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
+          personaContext,
         ]
           .filter(Boolean)
           .join("");

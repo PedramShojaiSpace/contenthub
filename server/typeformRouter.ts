@@ -262,6 +262,9 @@ Analyze the responses and return a JSON object with these exact keys:
           painPoints: JSON.stringify(mergedPains),
           aspirations: JSON.stringify(mergedAspirations),
           description: updatedDescription,
+          enrichedAt: new Date(),
+          surveySource: `Typeform: ${input.formTitle}`,
+          surveyResponseCount: (persona as any).surveyResponseCount ?? 0,
         })
         .where(eq(personas.id, input.personaId));
 
@@ -399,6 +402,9 @@ Return a JSON array of 8 persona segment objects.`;
               painPoints: JSON.stringify(mergedPains),
               aspirations: JSON.stringify(mergedAspirations),
               description: updatedDescription,
+              enrichedAt: new Date(),
+              surveySource: `Typeform: ${input.formTitle}`,
+              surveyResponseCount: Math.round((seg.percentMatch / 100) * sample.length),
             })
             .where(eq(personas.id, (match as any).id));
 

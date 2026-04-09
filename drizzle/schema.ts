@@ -210,6 +210,12 @@ export const personas = mysqlTable("personas", {
   icon: varchar("icon", { length: 8 }),
   // Display color for UI (hex)
   color: varchar("color", { length: 16 }),
+  // Last time this persona was enriched with real survey data
+  enrichedAt: timestamp("enrichedAt"),
+  // Source of enrichment (e.g. "Typeform: Gut Microbiome Survey")
+  surveySource: varchar("surveySource", { length: 512 }),
+  // Number of survey responses that contributed to this persona
+  surveyResponseCount: int("surveyResponseCount").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

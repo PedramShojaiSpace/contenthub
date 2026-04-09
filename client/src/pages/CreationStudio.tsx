@@ -397,6 +397,7 @@ export default function CreationStudio() {
       platform,
       customInstructions: customInstructions || undefined,
       generateImages: true,
+      personaId: selectedPersonaId ?? undefined,
     });
   };
 
@@ -798,6 +799,7 @@ export default function CreationStudio() {
       customInstructions: customInstructions || undefined,
       gapQueryId: activeGapQueryId ?? undefined,
       gapQueryText: activeGapQueryText ?? undefined,
+      personaId: selectedPersonaId ?? undefined,
     });
   };
 
@@ -1074,27 +1076,41 @@ export default function CreationStudio() {
                   </SelectContent>
                 </Select>
                 {/* Enrichment indicator below selector */}
-                {selectedPersonaId && enrichmentMap[selectedPersonaId] && (
-                  <div className={`flex items-center gap-1.5 text-[11px] mt-1 ${
-                    enrichmentMap[selectedPersonaId].isEnriched
-                      ? 'text-primary'
-                      : 'text-muted-foreground'
-                  }`}>
-                    {enrichmentMap[selectedPersonaId].isEnriched ? (
-                      <>
-                        <span className="text-primary">✦</span>
-                        <span>
-                          Enriched with <strong>{enrichmentMap[selectedPersonaId].painCount} real survey pain points</strong> — AI will speak to what your audience actually said
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span>○</span>
-                        <span>No survey data yet — run Typeform Intelligence to enrich this persona</span>
-                      </>
-                    )}
-                  </div>
-                )}
+                {selectedPersonaId && enrichmentMap[selectedPersonaId] && (() => {
+                  const ei = enrichmentMap[selectedPersonaId] as any;
+                  const daysAgo = ei.enrichedAt
+                    ? Math.floor((Date.now() - new Date(ei.enrichedAt).getTime()) / 86400000)
+                    : null;
+                  return (
+                    <div className={`text-[11px] mt-1.5 rounded-md px-2 py-1.5 border ${
+                      ei.isEnriched
+                        ? 'bg-primary/5 border-primary/20 text-primary'
+                        : 'bg-muted/40 border-border text-muted-foreground'
+                    }`}>
+                      {ei.isEnriched ? (
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 font-medium">
+                            <span>✦</span>
+                            <span>{ei.painCount} survey pain points + {ei.aspirationCount} aspirations active</span>
+                          </div>
+                          {ei.surveySource && (
+                            <div className="text-[10px] opacity-70">
+                              Source: {ei.surveySource}
+                              {ei.surveyResponseCount > 0 && ` · ${ei.surveyResponseCount} responses`}
+                              {daysAgo !== null && ` · enriched ${daysAgo === 0 ? 'today' : `${daysAgo}d ago`}`}
+                            </div>
+                          )}
+                          <div className="text-[10px] opacity-60">AI will use real audience language in every generation</div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span>○</span>
+                          <span>No survey data — run <strong>Typeform Intelligence</strong> to enrich this persona with real audience pain points</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Content Goal (optional)</Label>

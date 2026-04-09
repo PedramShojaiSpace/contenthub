@@ -54,6 +54,9 @@ export const personasRouter = router({
         aspirationCount,
         enrichedFromForms,
         isEnriched: painCount > 3, // >3 pain points means it has real survey data
+        enrichedAt: p.enrichedAt ?? null,
+        surveySource: p.surveySource ?? null,
+        surveyResponseCount: p.surveyResponseCount ?? 0,
       };
     });
   }),

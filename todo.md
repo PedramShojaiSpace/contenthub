@@ -241,3 +241,18 @@
 - [x] Channels confirmed: Facebook (The Urban Monk), Instagram (drpedramshojai), X (PedramShojai), TikTok, YouTube (The Urban Monk), LinkedIn (pedramshojai + 2 others)
 - [x] pushToBuffer rewritten to use createPost GraphQL mutation with addToQueue scheduling
 - [x] TypeScript clean (0 errors), 20/20 tests pass
+
+## v11 Features
+
+### TikTok Platform + Smart Channel Filtering
+- [x] Add "tiktok" to PLATFORMS enum in drizzle schema and run db:push
+- [x] Add TikTok AI prompt: short-form vertical video script, hook-first, 60-90 sec, Pedram's voice
+- [x] TikTok prompt: outputs hook line, 3-5 talking points, CTA, hashtags, on-screen text suggestions
+- [x] Add TikTok platform selector button in Creation Studio (with TikTok icon)
+- [x] TikTok output panel: script format with editable body, vertical visual, push to Buffer
+- [x] Filter Buffer channels in syndication panel: only show channels matching selected platform
+- [x] Platform-to-service mapping: linkedin→linkedin, instagram/facebook→meta, twitter→x, tiktok→tiktok, youtube→youtube
+- [x] Show "No channels connected for this platform" message if no matching channels
+- [x] TypeScript clean (0 errors), 20/20 tests pass
+- [x] Add back button to Research Intelligence page (navigate to Command Center)
+- [x] Fix Buffer createPost assets input format — corrected to { images: [{ url }] } object format

@@ -34,6 +34,7 @@ import {
   Trophy,
   FileJson,
   FileText,
+  ArrowLeft,
   ArrowRight,
   Brain,
 } from "lucide-react";
@@ -710,18 +711,31 @@ export default function ResearchIntelligence() {
 
   const hasReports = (reports as ResearchReport[]).length > 0;
 
+  const [, navigate] = useLocation();
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Brain className="w-6 h-6 text-amber-400" />
-            Research Intelligence
-          </h1>
-          <p className="text-zinc-400 mt-1">
-            Gumshoe AI competitive analysis — LLM search gaps and content opportunities
-          </p>
+        <div className="flex items-start gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-zinc-400 hover:text-white mt-0.5 shrink-0"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Brain className="w-6 h-6 text-amber-400" />
+              Research Intelligence
+            </h1>
+            <p className="text-zinc-400 mt-1">
+              Gumshoe AI competitive analysis — LLM search gaps and content opportunities
+            </p>
+          </div>
         </div>
       </div>
 

@@ -144,9 +144,10 @@ export async function pushToBuffer(params: {
         ? new Date(params.scheduledAt).toISOString()
         : undefined;
 
-      // Build assets array if image is provided
+      // Build assets object if image is provided
+      // Buffer GraphQL API expects: assets: { images: [{ url: "..." }] }
       const assetsFragment = params.imageUrl
-        ? `, assets: [{ url: "${params.imageUrl}", type: image }]`
+        ? `, assets: { images: [{ url: ${JSON.stringify(params.imageUrl)} }] }`
         : "";
 
       const dueAtFragment = dueAt ? `, dueAt: "${dueAt}"` : "";

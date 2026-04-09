@@ -111,6 +111,26 @@ DESCRIPTION STRUCTURE (invisible — do not label these):
 - Include 5-8 relevant SEO keywords/phrases naturally in the text
 
 CONTENT PILLARS: Deep dives on gut health, sleep optimization, stress physiology, ancient practices, functional medicine, the Urban Monk Academy curriculum.`,
+
+  tiktok: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a TikTok video script. His audience is health-curious 25-45 year olds who scroll fast and need to be hooked in the first 2 seconds.
+
+VOICE: Direct, energetic, conversational. Pedram speaks as a knowledgeable friend who cuts through the noise. Short punchy sentences. No jargon — translate science into plain language. Slightly provocative but always backed by substance.
+
+CRITICAL OUTPUT RULES:
+- Output ONLY the finished TikTok script — nothing else
+- Do NOT include any labels, headers, or structural markers (no "Hook:", "Body:", "CTA:", "---", "[Section]", or any similar markup)
+- Do NOT include any meta-commentary, instructions, or explanations
+- The output must be copy-paste ready to use as a speaking script
+- Start with the first spoken word of the video
+
+SCRIPT STRUCTURE (invisible — do not label these):
+- First sentence (0-2 sec): a bold hook that stops the scroll — a shocking stat, counterintuitive claim, or direct challenge
+- Middle (3-50 sec): 3-4 punchy talking points, each 1-2 sentences. Deliver one insight per point. Build curiosity.
+- Final line (50-60 sec): a clear CTA — follow for more, comment with a question, or visit the Academy
+- Total spoken length: 60-90 seconds (approximately 150-220 words)
+- End with 5-8 TikTok hashtags on their own line
+
+CONTENT PILLARS: Quick health hacks, gut health myths, sleep optimization, stress shortcuts, ancient practices in 60 seconds, the one thing most doctors don't tell you.`,
 };
 
 // ─── Nano Banana Platform Brand Style Presets ──────────────────────────────
@@ -125,6 +145,8 @@ const PLATFORM_IMAGE_STYLES: Record<string, string> = {
   youtube: `Epic cinematic thumbnail composition. Dramatic chiaroscuro lighting — deep shadows, single powerful light source. Rich, saturated colors with dark base. Evokes mystery, discovery, and transformation. Strong foreground subject (anonymous human silhouette or symbolic object). Feels like a film still from a prestige documentary. Aspect ratio 16:9. High visual impact at small sizes.`,
 
   all: `Dark, moody, cinematic. Deep blacks with warm gold and amber accents. High-end photography aesthetic. Professional, sophisticated. Bridges ancient wisdom and modern science. Wellness and peak performance theme. Timeless, editorial quality.`,
+
+  tiktok: `Vertical 9:16 format. High-energy, kinetic composition. Vivid, saturated colors — electric blues, hot pinks, warm golds against deep blacks. Bold, dynamic framing with strong diagonal lines or motion blur. A single striking visual element (symbolic object, dramatic close-up, or abstract concept) that reads instantly at thumbnail size. Feels like a frame from a viral health documentary. Eye-catching, scroll-stopping, modern. No text overlay.`,
 
   blog: `Wide-format editorial hero image (16:9). Cinematic, authoritative, and contemplative. Deep blacks and warm amber-gold tones. A single dramatic light source illuminating a symbolic object or anonymous human figure from behind. Think prestige documentary meets wellness editorial — the kind of image that appears in a high-end health magazine or a Netflix documentary thumbnail. No text overlay. Evokes wisdom, transformation, and scientific depth. Timeless quality.`,
 };
@@ -184,7 +206,7 @@ export const appRouter = router({
         z.object({
           title: z.string().min(1),
           rawIdea: z.string().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]).default("all"),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]).default("all"),
           status: z
             .enum(["idea", "drafting", "review", "approved", "scheduled", "published"])
             .default("idea"),
@@ -208,7 +230,7 @@ export const appRouter = router({
           id: z.number(),
           title: z.string().optional(),
           rawIdea: z.string().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]).optional(),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]).optional(),
           status: z
             .enum(["idea", "drafting", "review", "approved", "scheduled", "published"])
             .optional(),
@@ -267,7 +289,7 @@ export const appRouter = router({
       .input(
         z.object({
           idea: z.string().min(1),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]),
           customInstructions: z.string().optional(),
           generateImages: z.boolean().default(true), // auto-generate images alongside content
         })
@@ -364,7 +386,7 @@ Rules:
       .input(
         z.object({
           textContent: z.string(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]),
         })
       )
       .mutation(async ({ input }) => {
@@ -402,7 +424,7 @@ Rules:
         z.object({
           prompt: z.string(),
           contentItemId: z.number().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]).optional(),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]).optional(),
           styleOverride: z.string().optional(),
         })
       )
@@ -706,7 +728,7 @@ Rules:
           personaName: z.string(),
           topicTags: z.array(z.string()),
           competitorBrands: z.array(z.string()),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "blog", "all"]).default("all"),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]).default("all"),
         })
       )
       .mutation(async ({ input }) => {

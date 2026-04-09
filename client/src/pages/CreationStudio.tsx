@@ -26,6 +26,7 @@ import {
   Image,
   Linkedin,
   Loader2,
+  Music2,
   Paperclip,
   RefreshCw,
   Save,
@@ -70,7 +71,7 @@ function BufferDiagnostic() {
   );
 }
 
-type Platform = "meta" | "linkedin" | "x" | "youtube" | "blog" | "all";
+type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all";
 
 // Per-platform generated output: text + auto-generated image
 type PlatformOutput = {
@@ -84,6 +85,7 @@ const PLATFORMS: { key: Platform; label: string; icon: React.ReactNode; color: s
   { key: "meta", label: "Meta", icon: <Facebook className="h-4 w-4" />, color: "text-blue-400" },
   { key: "x", label: "X (Twitter)", icon: <Twitter className="h-4 w-4" />, color: "text-slate-300" },
   { key: "youtube", label: "YouTube", icon: <Youtube className="h-4 w-4" />, color: "text-red-400" },
+  { key: "tiktok", label: "TikTok", icon: <Music2 className="h-4 w-4" />, color: "text-pink-400" },
   { key: "blog", label: "Blog Post", icon: <BookOpen className="h-4 w-4" />, color: "text-emerald-400" },
 ];
 
@@ -92,6 +94,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   meta: "Meta (Instagram/Facebook)",
   x: "X (Twitter)",
   youtube: "YouTube",
+  tiktok: "TikTok",
   blog: "Blog Post (theurbanmonk.com)",
 };
 
@@ -115,6 +118,10 @@ const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string
   all: {
     label: "Urban Monk Signature",
     description: "Dark, moody, cinematic — deep blacks, warm gold, timeless editorial",
+  },
+  tiktok: {
+    label: "Kinetic & Bold",
+    description: "High-energy vertical frame — vivid colors, dynamic composition, hook-first visual storytelling",
   },
   blog: {
     label: "Editorial Feature",
@@ -550,13 +557,29 @@ export default function CreationStudio() {
   const outputPlatforms =
     platform === "all"
       ? (["linkedin", "meta", "x", "youtube"] as const)
-      : platform === "blog"
+      : platform === "blog" || platform === "tiktok"
         ? ([] as const)
         : [platform];
+
+  // Filter Buffer channels to only show those matching the selected platform
+  const PLATFORM_TO_SERVICES: Record<string, string[]> = {
+    linkedin: ["linkedin"],
+    meta: ["facebook", "instagram"],
+    x: ["twitter"],
+    youtube: ["youtube"],
+    tiktok: ["tiktok"],
+    all: ["linkedin", "facebook", "instagram", "twitter", "youtube", "tiktok"],
+    blog: [],
+  };
+  const filteredProfiles = (bufferProfiles ?? []).filter((pr: { id: string; service: string }) => {
+    const allowed = PLATFORM_TO_SERVICES[platform] ?? [];
+    return allowed.includes(pr.service);
+  });
 
   const currentStyleInfo = PLATFORM_STYLE_LABELS[imageStylePlatform] ?? PLATFORM_STYLE_LABELS.all;
   const hasBufferToken = bufferProfiles !== undefined;
   const hasProfiles = (bufferProfiles?.length ?? 0) > 0;
+  const hasFilteredProfiles = filteredProfiles.length > 0;
   const isGenerating = generateContentMutation.isPending;
 
   return (
@@ -704,12 +727,12 @@ export default function CreationStudio() {
               {(platform === "blog" ? isBlogGenerating : isGenerating) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {platform === "blog" ? "Writing blog post + featured image (30–60 seconds)..." : "Generating content + images (20–40 seconds)..."}
+                  {platform === "blog" ? "Writing blog post + featured image (30–60 seconds)..." : platform === "tiktok" ? "Writing TikTok script + vertical visual (20–40 seconds)..." : "Generating content + images (20–40 seconds)..."}
                 </>
               ) : (
                 <>
-                  {platform === "blog" ? <BookOpen className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                  {platform === "blog" ? "Generate Blog Post" : "Generate Content + Images"}
+                  {platform === "blog" ? <BookOpen className="h-4 w-4 mr-2" /> : platform === "tiktok" ? <Music2 className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {platform === "blog" ? "Generate Blog Post" : platform === "tiktok" ? "Generate TikTok Script + Visual" : "Generate Content + Images"}
                 </>
               )}
             </Button>
@@ -718,6 +741,8 @@ export default function CreationStudio() {
               <p className="text-xs text-muted-foreground text-center">
                 {platform === "blog"
                   ? "Writing a full SEO-optimized article for theurbanmonk.com with featured image — this takes a moment."
+                  : platform === "tiktok"
+                  ? "Writing a 60-90 second TikTok video script with vertical visual — this takes a moment."
                   : "Writing platform copy and generating Nano Banana visuals in parallel — this takes a moment."}
               </p>
             )}
@@ -935,6 +960,108 @@ export default function CreationStudio() {
               })}
             </div>
           </div>
+        )}
+
+        {/* TikTok Script Panel */}
+        {platform === "tiktok" && Object.keys(generatedContent).length > 0 && generatedContent["tiktok"] && (
+          <Card className="bg-card border-border overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Music2 className="h-4 w-4 text-pink-400" />
+                  <CardTitle className="text-base font-semibold text-foreground">TikTok Script</CardTitle>
+                  <Badge variant="outline" className="text-[10px] border-pink-500/40 text-pink-400">60–90 sec</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => handleCopy(editedText["tiktok"] || generatedContent["tiktok"]?.text || "")}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy Script
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => handleSave("tiktok")}
+                    disabled={savingPlatform === "tiktok" || createContentMutation.isPending}
+                  >
+                    {savingPlatform === "tiktok" ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Save className="h-3 w-3 mr-1" />
+                        {savedItemIds["tiktok"] ? "Re-save" : "Save to Kanban"}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-pink-400 hover:text-pink-300"
+                    onClick={() => handleSyndicateDirect("tiktok")}
+                    disabled={syndicatingPlatform === "tiktok" || syndicationMutation.isPending}
+                  >
+                    {syndicatingPlatform === "tiktok" ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : syndicationResults["tiktok"]?.success ? (
+                      <><CheckCircle2 className="h-3 w-3 mr-1" />Sent</>
+                    ) : (
+                      <><Send className="h-3 w-3 mr-1" />Push to Buffer</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-5 space-y-5">
+              {/* Vertical visual */}
+              {generatedContent["tiktok"]?.imageUrl && (
+                <div className="flex justify-center">
+                  <div className="relative rounded-lg overflow-hidden border border-border" style={{ maxWidth: 280 }}>
+                    <img
+                      src={generatedContent["tiktok"].imageUrl}
+                      alt="TikTok vertical visual"
+                      className="w-full object-cover"
+                    />
+                    <div className="absolute top-2 left-2">
+                      <Badge className="bg-black/70 text-white border-0 text-[10px]">9:16 Vertical</Badge>
+                    </div>
+                    <div className="absolute top-2 right-2">
+                      <button
+                        onClick={() => handleRegenerateImage("tiktok")}
+                        className="p-1 rounded bg-black/60 hover:bg-black/80 transition-colors"
+                        title="Regenerate image"
+                      >
+                        <RefreshCw className="h-3 w-3 text-white" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Script body */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Video Script</p>
+                <Textarea
+                  value={editedText["tiktok"] || generatedContent["tiktok"]?.text || ""}
+                  onChange={(e) => setEditedText((prev) => ({ ...prev, tiktok: e.target.value }))}
+                  rows={14}
+                  className="bg-background border-border resize-y text-sm text-foreground font-mono leading-relaxed"
+                />
+              </div>
+
+              {/* TikTok tip */}
+              <div className="flex items-center gap-2 p-3 rounded-md bg-pink-500/5 border border-pink-500/20">
+                <Music2 className="h-4 w-4 text-pink-400 shrink-0" />
+                <p className="text-xs text-pink-400/80">
+                  Script is 60–90 seconds when spoken at a natural pace. Hashtags are included at the end. Push to Buffer to schedule directly to your TikTok channel.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Blog Post Panel */}
@@ -1250,44 +1377,58 @@ export default function CreationStudio() {
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                      Select Buffer Profiles
-                    </Label>
-                    <div className="space-y-2">
-                      {bufferProfiles?.map((profile) => {
-                        const platformMeta = PLATFORMS.find((p) => p.key === profile.platform);
-                        const isChecked = selectedProfileIds.includes(profile.id);
-                        return (
-                          <div
-                            key={profile.id}
-                            className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-background hover:bg-muted/20 transition-colors cursor-pointer"
-                            onClick={() => {
-                              setSelectedProfileIds((prev) =>
-                                isChecked
-                                  ? prev.filter((id) => id !== profile.id)
-                                  : [...prev, profile.id]
-                              );
-                            }}
-                          >
-                            <Checkbox
-                              checked={isChecked}
-                              onCheckedChange={(checked) => {
+                    <div className="flex items-center justify-between">
+                      <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                        Buffer Channels — {platform === "all" ? "All" : PLATFORM_LABELS[platform] ?? platform}
+                      </Label>
+                      {platform !== "all" && (
+                        <span className="text-[10px] text-muted-foreground">
+                          Showing only {PLATFORM_LABELS[platform] ?? platform} channels
+                        </span>
+                      )}
+                    </div>
+                    {!hasFilteredProfiles && platform !== "blog" ? (
+                      <div className="p-3 rounded-lg bg-muted/20 border border-border text-xs text-muted-foreground">
+                        No {PLATFORM_LABELS[platform] ?? platform} channels connected in Buffer.
+                        {" "}<button onClick={() => {}} className="text-primary underline">Switch to All Platforms</button> to see all channels.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {filteredProfiles.map((profile: { id: string; service: string; name: string; platform: string }) => {
+                          const platformMeta = PLATFORMS.find((p) => p.key === profile.platform);
+                          const isChecked = selectedProfileIds.includes(profile.id);
+                          return (
+                            <div
+                              key={profile.id}
+                              className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-background hover:bg-muted/20 transition-colors cursor-pointer"
+                              onClick={() => {
                                 setSelectedProfileIds((prev) =>
-                                  checked
-                                    ? [...prev, profile.id]
-                                    : prev.filter((id) => id !== profile.id)
+                                  isChecked
+                                    ? prev.filter((id) => id !== profile.id)
+                                    : [...prev, profile.id]
                                 );
                               }}
-                            />
-                            <span className={platformMeta?.color}>{platformMeta?.icon}</span>
-                            <span className="text-sm text-foreground">{profile.name}</span>
-                            <Badge variant="outline" className="ml-auto text-[10px]">
-                              {profile.platform}
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
+                                  setSelectedProfileIds((prev) =>
+                                    checked
+                                      ? [...prev, profile.id]
+                                      : prev.filter((id) => id !== profile.id)
+                                  );
+                                }}
+                              />
+                              <span className={platformMeta?.color ?? "text-muted-foreground"}>{platformMeta?.icon}</span>
+                              <span className="text-sm text-foreground">{profile.name}</span>
+                              <Badge variant="outline" className="ml-auto text-[10px]">
+                                {profile.service}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">

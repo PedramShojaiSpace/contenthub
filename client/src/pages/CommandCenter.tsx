@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import { PersonasView } from "@/components/PersonasView";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -48,6 +49,10 @@ import {
   RefreshCw,
   Repeat2,
   Twitter,
+  Users,
+  Brain,
+  Target,
+  TrendingUp,
   Youtube,
 } from "lucide-react";
 import { useState } from "react";
@@ -475,7 +480,7 @@ export default function CommandCenter() {
   const [newTitle, setNewTitle] = useState("");
   const [newIdea, setNewIdea] = useState("");
   const [newPlatform, setNewPlatform] = useState<Platform>("all");
-  const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "calendar" | "personas">("kanban");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [scheduleDialogDate, setScheduleDialogDate] = useState<string | null>(null);
@@ -794,6 +799,15 @@ export default function CommandCenter() {
                 >
                   <Calendar className="h-3 w-3 mr-1" />
                   Calendar
+                </Button>
+                <Button
+                  variant={viewMode === "personas" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("personas")}
+                  className="h-7 px-3 text-xs"
+                >
+                  <Users className="h-3 w-3 mr-1" />
+                  Personas
                 </Button>
               </div>
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -1206,6 +1220,11 @@ export default function CommandCenter() {
             </div>
           )}
         </div>
+
+        {/* ── PERSONAS VIEW ─────────────────────────────────────────────────── */}
+        {viewMode === "personas" && (
+          <PersonasView items={items} />
+        )}
 
         {/* Drag Overlay */}
         <DragOverlay>

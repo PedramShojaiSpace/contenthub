@@ -386,3 +386,66 @@
 - [x] Filtered view shows only cards matching selected platform
 - [x] Active pill highlighted with primary color
 - [x] TypeScript clean (0 errors), 20/20 tests pass
+
+## v17 Overnight Build (Apr 9)
+
+### Phase 1: WordPress Post ID Deduplication
+- [ ] Add wpPostId (varchar) field to contentItems schema in drizzle/schema.ts
+- [ ] Run pnpm db:push to migrate
+- [ ] Update blog.publish procedure: if wpPostId exists, PATCH the existing WP post instead of creating new
+- [ ] Update blog.publishBatch to use same dedup logic
+- [ ] Store returned WP post ID after publish/update
+
+### Phase 2: #urbanmonk Hashtag on All Posts
+- [ ] Add #urbanmonk to all PLATFORM_PROMPTS in routers.ts (LinkedIn, Meta, X, YouTube, TikTok)
+- [ ] Add #urbanmonk to blog CTA section prompt
+- [ ] Ensure it appears at the end of every generated post naturally
+
+### Phase 3: Personas Schema + Intelligence Reports
+- [x] Add personas table to drizzle/schema.ts with: id, name, description, painPoints, aspirations, topQuestions (JSON), ctaCopy, landingPageUrl, contentGoal
+- [x] Add personaId (FK) to contentItems table
+- [x] Run pnpm db:push
+- [x] Seed the 8 personas with deep intelligence data:
+  - Burnout Recovery Seeker
+  - Midlife Vitality Optimizer
+  - Spiritual Growth Explorer
+  - Stressed Parent Multitasker
+  - Holistic Health Student
+  - Chronic Condition Navigator
+  - Corporate Wellness Advocate
+  - Digital Detox Pursuer
+- [x] For each persona: write 8-10 deep intelligence questions that drive traction
+- [x] For each persona: write CTA copy aligned to Urban Monk Academy offer
+
+### Phase 4: Content Goal Categories
+- [x] Add contentGoal enum to schema: audience_growth | llm_seo | community_engagement
+- [x] Run pnpm db:push
+- [x] Add contentGoal to content.create and content.update procedures
+- [x] Add goal category selector in Creation Studio (Audience Growth / LLM SEO / Community)
+- [x] Add goal category filter pills to Command Center Kanban
+
+### Phase 5: Persona Intelligence View in Command Center
+- [x] Add "Personas" tab/section to Command Center (or new sidebar page)
+- [x] Persona grid: 8 cards, each showing name, description, top pain points
+- [x] Persona detail panel: deep-dive intelligence report, top 10 questions, CTA copy, landing page URL
+- [x] Content by persona: show all content items tagged to this persona
+- [x] Persona assignment: dropdown on each Kanban card to assign a persona
+- [x] Auto-suggest persona based on content text (LLM classification)
+
+### Phase 6: Social Strategy Rebalance
+- [ ] Update Creation Studio goal selector to reflect balanced strategy:
+  - Audience Growth (community building, relationship, The Holistic Psychologist model)
+  - LLM SEO (answer-engine optimization, search query targeting)
+  - Community Engagement (comments, shares, conversation starters)
+- [ ] Update AI prompts to weight Audience Growth posts differently from LLM SEO posts
+- [ ] Audience Growth posts: conversational, story-driven, community-first, not robotic
+- [ ] LLM SEO posts: answer-format, authoritative, structured for AI indexing
+- [ ] Community posts: question-led, engagement hooks, reply bait
+
+### Phase 7: TikTok Panel Fix
+- [ ] Verify TikTok platform selector works in Creation Studio
+- [ ] Test generating a TikTok script end-to-end
+- [ ] Confirm TikTok cards appear in Kanban with TikTok filter pill
+
+- [x] TypeScript clean (0 errors), 20/20 tests pass
+- [x] Fix Buffer X/Twitter routing bug: X posts showing up as TikTok in Buffer queue — root cause: handleSyndicate was sending selectedProfileIds without filtering by target platform; fixed to cross-reference bufferProfiles service field against PLATFORM_SERVICE_MAP before sending

@@ -34,6 +34,7 @@ import {
 } from "./gumshoe";
 import { sendWeeklyDigest } from "./digest";
 import { notifyOwner } from "./_core/notification";
+import { personasRouter } from "./personasRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -54,7 +55,7 @@ POST STRUCTURE (invisible — do not label these):
 - 3-5 short paragraphs (2-4 sentences each)
 - Final line: a thought-provoking question or call to action
 - 150-300 words total
-- No hashtags in the body; add 3-5 relevant hashtags at the very end on their own line
+- No hashtags in the body; add 3-5 relevant hashtags at the very end on their own line — always include #urbanmonk as the first hashtag
 - Use blank lines between paragraphs for readability
 
 CONTENT PILLARS: Performance optimization, biological hardware, gut-brain connection, energy management, upstream medicine, the cost of ignoring your health, ancient wisdom applied to modern life.`,
@@ -75,7 +76,7 @@ POST STRUCTURE (invisible — do not label these):
 - 3-5 short paragraphs with a story, insight, or lesson
 - Final line: a clear call to action (comment, save, share, or link in bio)
 - 150-250 words
-- 5-10 relevant hashtags on their own line at the very end
+- 5-10 relevant hashtags on their own line at the very end — always include #urbanmonk as the first hashtag
 
 CONTENT PILLARS: Daily practices, mindfulness, gut health, energy, sleep, stress, the Urban Monk Academy, personal transformation stories.`,
 
@@ -90,6 +91,9 @@ CRITICAL OUTPUT RULES:
 - The output must be copy-paste ready to publish directly on X
 - For a thread: start each tweet on a new line, numbered as 1/, 2/, 3/ etc.
 - For a single tweet: output only the tweet text (max 280 characters)
+
+- For threads: add #urbanmonk at the end of the final tweet
+- For single tweets: add #urbanmonk at the end if character count allows
 
 CONTENT PILLARS: Counterintuitive health insights, performance hacks, mindset shifts, short wisdom nuggets, thread-worthy deep dives.`,
 
@@ -110,6 +114,7 @@ DESCRIPTION STRUCTURE (invisible — do not label these):
 - Final paragraph: call to action (subscribe, link to Academy, etc.)
 - 150-200 words total
 - Include 5-8 relevant SEO keywords/phrases naturally in the text
+- End with: #urbanmonk #theurbanmonk and 3-5 additional relevant hashtags
 
 CONTENT PILLARS: Deep dives on gut health, sleep optimization, stress physiology, ancient practices, functional medicine, the Urban Monk Academy curriculum.`,
 
@@ -129,7 +134,7 @@ SCRIPT STRUCTURE (invisible — do not label these):
 - Middle (3-50 sec): 3-4 punchy talking points, each 1-2 sentences. Deliver one insight per point. Build curiosity.
 - Final line (50-60 sec): a clear CTA — follow for more, comment with a question, or visit the Academy
 - Total spoken length: 60-90 seconds (approximately 150-220 words)
-- End with 5-8 TikTok hashtags on their own line
+- End with 5-8 TikTok hashtags on their own line — always include #urbanmonk #drpedramshojai as the first two hashtags
 
 CONTENT PILLARS: Quick health hacks, gut health myths, sleep optimization, stress shortcuts, ancient practices in 60 seconds, the one thing most doctors don't tell you.`,
 };
@@ -215,6 +220,8 @@ export const appRouter = router({
           textContent: z.string().optional(),
           notes: z.string().optional(),
           gapQueryId: z.number().optional(), // Research Intelligence: link to source Gumshoe gap query
+          personaId: z.number().optional(), // Target audience persona
+          contentGoal: z.enum(["audience_growth", "llm_seo", "community_engagement"]).optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -248,6 +255,9 @@ export const appRouter = router({
           analyticsLikes: z.number().optional(),
           analyticsComments: z.number().optional(),
           analyticsShares: z.number().optional(),
+          personaId: z.number().optional(),
+          contentGoal: z.enum(["audience_growth", "llm_seo", "community_engagement"]).optional(),
+          wpPostId: z.number().optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -917,5 +927,7 @@ Be specific and actionable. This brief will go directly to content creation.`;
         return { results, succeeded, failed };
       }),
   }),
+
+  personas: personasRouter,
 });
 export type AppRouter = typeof appRouter;

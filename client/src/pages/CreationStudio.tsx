@@ -134,6 +134,8 @@ export default function CreationStudio() {
   const [idea, setIdea] = useState("");
   const [platform, setPlatform] = useState<Platform>("all");
   const [customInstructions, setCustomInstructions] = useState("");
+  const [selectedPersonaId, setSelectedPersonaId] = useState<number | null>(null);
+  const [selectedContentGoal, setSelectedContentGoal] = useState<"audience_growth" | "llm_seo" | "community_engagement" | null>(null);
 
   // New unified state: each platform key maps to { text, imageUrl }
   const [generatedContent, setGeneratedContent] = useState<Record<string, PlatformOutput>>({});
@@ -160,6 +162,9 @@ export default function CreationStudio() {
   const [syndicationResults, setSyndicationResults] = useState<Record<string, { success: boolean; error?: string }>>({});
 
   const utils = trpc.useUtils();
+
+  // Personas for selector
+  const { data: personas = [] } = trpc.personas.list.useQuery();
 
   const generateContentMutation = trpc.ai.generateContent.useMutation({
     onSuccess: (data) => {
@@ -190,6 +195,8 @@ export default function CreationStudio() {
             status: "drafting",
             textContent: v.text,
             gapQueryId: activeGapQueryId ?? undefined,
+            personaId: selectedPersonaId ?? undefined,
+            contentGoal: selectedContentGoal ?? undefined,
           },
           {
             onSuccess: (saved) => {
@@ -437,11 +444,35 @@ export default function CreationStudio() {
     const text = editedText[p] || generatedContent[p]?.text;
     if (!text) return;
 
+    // CRITICAL FIX: Filter selectedProfileIds to only include channels matching the
+    // target platform p — prevents X posts from being sent to TikTok or other channels
+    // when multiple channels are checked in the profile selector.
+    const PLATFORM_SERVICE_MAP: Record<string, string[]> = {
+      linkedin: ["linkedin"],
+      meta: ["facebook", "instagram"],
+      x: ["twitter"],
+      youtube: ["youtube"],
+      tiktok: ["tiktok"],
+      all: ["linkedin", "facebook", "instagram", "twitter", "youtube", "tiktok"],
+      blog: [],
+    };
+    const allowedServices = PLATFORM_SERVICE_MAP[p] ?? [];
+    const platformFilteredIds = (bufferProfiles ?? [])
+      .filter((pr: { id: string; service: string }) =>
+        selectedProfileIds.includes(pr.id) && allowedServices.includes(pr.service)
+      )
+      .map((pr: { id: string }) => pr.id);
+
+    if (!platformFilteredIds.length) {
+      toast.error(`No ${PLATFORM_LABELS[p] ?? p} channels selected. Check the Buffer channel selector above.`);
+      return;
+    }
+
     setSyndicatingPlatform(p);
     syndicationMutation.mutate({
       contentItemId: itemId,
       text,
-      profileIds: selectedProfileIds,
+      profileIds: platformFilteredIds,
       imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
     });
   };
@@ -506,11 +537,23 @@ export default function CreationStudio() {
       }
     }
 
-    // Use all available Buffer profiles for this platform
-    const profileIds = (bufferProfiles ?? []).map((pr: { id: string }) => pr.id);
+    // Use only Buffer profiles matching the current platform (not all profiles)
+    const DIRECT_PLATFORM_TO_SERVICES: Record<string, string[]> = {
+      linkedin: ["linkedin"],
+      meta: ["facebook", "instagram"],
+      x: ["twitter"],
+      youtube: ["youtube"],
+      tiktok: ["tiktok"],
+      all: ["linkedin", "facebook", "instagram", "twitter", "youtube", "tiktok"],
+      blog: [],
+    };
+    const allowedServices = DIRECT_PLATFORM_TO_SERVICES[p] ?? [];
+    const profileIds = (bufferProfiles ?? [])
+      .filter((pr: { id: string; service: string }) => allowedServices.includes(pr.service))
+      .map((pr: { id: string }) => pr.id);
     if (!profileIds.length) {
       setSyndicatingPlatform(null);
-      toast.error("No Buffer profiles available.");
+      toast.error(`No Buffer channels connected for ${p}. Check your Buffer account.`);
       return;
     }
 
@@ -558,6 +601,8 @@ export default function CreationStudio() {
           status: "drafting",
           textContent: data.article,
           gapQueryId: activeGapQueryId ?? undefined,
+          personaId: selectedPersonaId ?? undefined,
+          contentGoal: selectedContentGoal ?? undefined,
         },
         {
           onSuccess: (saved) => {
@@ -832,6 +877,54 @@ export default function CreationStudio() {
                   rows={2}
                   className="bg-background border-border resize-none text-sm text-foreground placeholder:text-muted-foreground/50"
                 />
+              </div>
+            </div>
+
+            {/* Persona + Content Goal Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Target Persona (optional)</Label>
+                <Select
+                  value={selectedPersonaId ? String(selectedPersonaId) : "none"}
+                  onValueChange={(v) => setSelectedPersonaId(v === "none" ? null : parseInt(v))}
+                >
+                  <SelectTrigger className="bg-background border-border text-foreground h-9 text-sm">
+                    <SelectValue placeholder="Select audience persona..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No specific persona</SelectItem>
+                    {(personas as Array<{ id: number; name: string }>).map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Content Goal (optional)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: "audience_growth", label: "Audience Growth", color: "bg-green-500/20 text-green-700 border-green-500/40" },
+                    { key: "community_engagement", label: "Community", color: "bg-blue-500/20 text-blue-700 border-blue-500/40" },
+                    { key: "llm_seo", label: "LLM SEO", color: "bg-purple-500/20 text-purple-700 border-purple-500/40" },
+                  ].map((goal) => (
+                    <button
+                      key={goal.key}
+                      type="button"
+                      onClick={() => setSelectedContentGoal(
+                        selectedContentGoal === goal.key as "audience_growth" | "llm_seo" | "community_engagement"
+                          ? null
+                          : goal.key as "audience_growth" | "llm_seo" | "community_engagement"
+                      )}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                        selectedContentGoal === goal.key
+                          ? goal.color + " ring-1 ring-offset-1 ring-current"
+                          : "bg-muted/20 text-muted-foreground border-border hover:bg-muted/40"
+                      }`}
+                    >
+                      {goal.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

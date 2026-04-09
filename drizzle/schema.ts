@@ -35,6 +35,12 @@ export const platformEnum = mysqlEnum("platform", [
   "all",
 ]);
 
+export const contentGoalEnum = mysqlEnum("contentGoal", [
+  "audience_growth",
+  "llm_seo",
+  "community_engagement",
+]);
+
 export const contentItems = mysqlTable("content_items", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -48,6 +54,7 @@ export const contentItems = mysqlTable("content_items", {
   scheduledAt: bigint("scheduledAt", { mode: "number" }),
   publishedAt: bigint("publishedAt", { mode: "number" }),
   publishUrl: text("publishUrl"),
+  wpPostId: int("wpPostId"),          // WordPress post ID for dedup on re-publish
   notes: text("notes"),
   // Analytics stub fields (manually updated or future API sync)
   analyticsViews: int("analyticsViews").default(0),
@@ -56,6 +63,10 @@ export const contentItems = mysqlTable("content_items", {
   analyticsShares: int("analyticsShares").default(0),
   // Research Intelligence: link to the Gumshoe gap query this content addresses
   gapQueryId: int("gapQueryId"),
+  // Persona targeting
+  personaId: int("personaId"),
+  // Content strategy goal
+  contentGoal: contentGoalEnum.default("audience_growth"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -167,3 +178,39 @@ export const coverageSnapshots = mysqlTable("coverage_snapshots", {
 
 export type CoverageSnapshot = typeof coverageSnapshots.$inferSelect;
 export type InsertCoverageSnapshot = typeof coverageSnapshots.$inferInsert;
+
+// ─── Audience Personas ────────────────────────────────────────────────────────
+
+/**
+ * The 8 Urban Monk audience personas identified by Gumshoe.
+ * Each persona has deep intelligence data, CTA copy, and a landing page URL.
+ */
+export const personas = mysqlTable("personas", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull().unique(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  description: text("description"),
+  // Core pain points (JSON array of strings)
+  painPoints: text("painPoints"),
+  // Core aspirations (JSON array of strings)
+  aspirations: text("aspirations"),
+  // Top 8-10 intelligence questions that drive traction with this persona (JSON array)
+  topQuestions: text("topQuestions"),
+  // Deep intelligence report: what this persona searches for, fears, desires
+  intelligenceReport: text("intelligenceReport"),
+  // CTA copy tailored to this persona for Urban Monk Academy
+  ctaCopy: text("ctaCopy"),
+  // Primary offer landing page URL for this persona
+  landingPageUrl: varchar("landingPageUrl", { length: 512 }),
+  // Primary content goal for this persona
+  primaryGoal: mysqlEnum("primaryGoal", ["audience_growth", "llm_seo", "community_engagement"]).default("audience_growth"),
+  // Emoji icon for UI display
+  icon: varchar("icon", { length: 8 }),
+  // Display color for UI (hex)
+  color: varchar("color", { length: 16 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Persona = typeof personas.$inferSelect;
+export type InsertPersona = typeof personas.$inferInsert;

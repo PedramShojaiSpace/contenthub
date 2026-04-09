@@ -644,3 +644,12 @@
 - [x] Add enrichment badge to Creation Studio persona selector ("Enriched with X pain points")
 - [x] Add segment comparison view in Typeform Intelligence (run 2 forms, side-by-side diff)
 - [x] Run tests, TypeScript clean, save checkpoint
+
+## v22 Features — Press Intelligence & SEO/LLM Credibility
+- [ ] Add `press_hits` DB table (id, outlet, medium, description, impressions, date, url, topicTags, authorityTier)
+- [ ] Seed DB with all ~130 press hits from both CSVs (parsed and normalized)
+- [ ] Build pressRouter: list, getByTopic, getAuthoritySignals, generateSEOSnippet, generateLLMBio
+- [ ] Build Press Intelligence page (/press): coverage browser, authority dashboard, topic clusters, SEO snippet generator
+- [ ] Wire press authority signals into Creation Studio LLM prompts (as-seen-in credibility block)
+- [ ] Wire press authority signals into Landing Page Generator LLM prompts
+- [ ] Run tests, TypeScript clean, save checkpoint

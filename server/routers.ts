@@ -40,6 +40,7 @@ import { scriptsRouter } from "./scriptsRouter";
 import { landingPagesRouter } from "./landingPagesRouter";
 import { youtubeRouter } from "./youtubeRouter";
 import { typeformRouter } from "./typeformRouter";
+import { pressRouter } from "./pressRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -344,13 +345,36 @@ export const appRouter = router({
           }
         }
 
+        // Load press authority block from DB
+        let pressAuthorityContext = "";
+        try {
+          const db = await getDb();
+          if (db) {
+            const { pressHits } = await import("../drizzle/schema");
+            const { desc } = await import("drizzle-orm");
+            const topHits = await db.select().from(pressHits)
+              .orderBy(desc(pressHits.impressions))
+              .limit(20);
+            if (topHits.length > 0) {
+              const tierS = topHits.filter((h: any) => h.authorityTier === "S").slice(0, 5);
+              const tierA = topHits.filter((h: any) => h.authorityTier === "A").slice(0, 5);
+              const seenS = new Set<string>(); for (const h of tierS) seenS.add(h.outlet);
+              const seenA = new Set<string>(); for (const h of tierA) seenA.add(h.outlet);
+              const outlets = [...Array.from(seenS), ...Array.from(seenA)].join(", ");
+              pressAuthorityContext = `\n\nAUTHOR CREDENTIALS (weave naturally into content where relevant):\nDr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Taoist monk. He has been featured in: ${outlets}. His work has reached millions of readers and viewers across major national and industry publications.`;
+            }
+          }
+        } catch (err) {
+          console.warn("[AI] Could not load press authority block:", err);
+        }
+
         // Step 1: Generate all platform text in parallel
         const textResults = await Promise.all(
           platforms.map(async (platform) => {
             const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
             const userMessage = input.customInstructions
-              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}`
-              : `Raw idea: ${input.idea}${personaContext}`;
+              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}${pressAuthorityContext}`
+              : `Raw idea: ${input.idea}${personaContext}${pressAuthorityContext}`;
 
             const response = await invokeLLM({
               messages: [
@@ -965,5 +989,6 @@ Be specific and actionable. This brief will go directly to content creation.`;
   landingPages: landingPagesRouter,
   youtube: youtubeRouter,
   typeform: typeformRouter,
+  press: pressRouter,
 });
 export type AppRouter = typeof appRouter;

@@ -336,3 +336,31 @@ export const competitorChannels = mysqlTable("competitor_channels", {
 
 export type CompetitorChannel = typeof competitorChannels.$inferSelect;
 export type InsertCompetitorChannel = typeof competitorChannels.$inferInsert;
+
+// ─── Press Coverage & Authority Signals ──────────────────────────────────────
+
+/**
+ * Every press hit from Pedram's historical coverage.
+ * authorityTier: S = NYT/CNN/NBC/Good Housekeeping/Inc/Cosmopolitan
+ *                A = mindbodygreen/Well+Good/Thrive Global/Bulletproof/Dr. Hyman
+ *                B = niche/podcast/regional
+ * impressions: raw number parsed from the CSV (UMV or readership)
+ * topicTags: JSON array of topic strings (e.g. ["focus","meditation","time management"])
+ */
+export const pressHits = mysqlTable("press_hits", {
+  id: int("id").autoincrement().primaryKey(),
+  outlet: varchar("outlet", { length: 255 }).notNull(),
+  medium: mysqlEnum("medium", ["online", "print", "podcast", "broadcast", "social", "radio"]).notNull().default("online"),
+  description: text("description"),
+  impressions: bigint("impressions", { mode: "number" }),
+  impressionsLabel: varchar("impressionsLabel", { length: 128 }),
+  coverageDate: varchar("coverageDate", { length: 64 }),
+  url: text("url"),
+  topicTags: text("topicTags"),   // JSON string array
+  authorityTier: mysqlEnum("authorityTier", ["S", "A", "B"]).notNull().default("B"),
+  book: varchar("book", { length: 128 }),  // which book campaign this was tied to
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PressHit = typeof pressHits.$inferSelect;
+export type InsertPressHit = typeof pressHits.$inferInsert;

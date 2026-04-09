@@ -13,6 +13,7 @@ import ScriptLibrary from "./pages/ScriptLibrary";
 import LandingPageGenerator from "./pages/LandingPageGenerator";
 import ChannelWatchlist from "./pages/ChannelWatchlist";
 import TypeformIntelligence from "./pages/TypeformIntelligence";
+import PressIntelligence from "./pages/PressIntelligence";
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function Router() {
       <Route path={"/landing-pages"} component={LandingPageGenerator} />
       <Route path={"/channels"} component={ChannelWatchlist} />
       <Route path={"/typeform"} component={TypeformIntelligence} />
+      <Route path={"/press"} component={PressIntelligence} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

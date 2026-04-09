@@ -37,6 +37,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Brain,
+  Video,
+  Swords,
+  Play,
+  CircleDot,
+  ExternalLink,
+  Lightbulb,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -657,6 +663,319 @@ function CoverageTrendChart() {
   );
 }
 
+// ─── Competitor Intelligence ─────────────────────────────────────────────────
+
+const COMPETITOR_PROFILES = [
+  {
+    brand: "Headspace",
+    tier: 1,
+    mentionCount: 304,
+    whyAIRecommends: "Clinically validated mindfulness programs, peer-reviewed research citations, structured 30-day courses, mainstream press coverage",
+    weakness: "No Eastern lineage, no functional medicine integration, app-only format, no practitioner training",
+    displacementAngle: "Position Urban Monk as the East-West integrative alternative: same evidence base, deeper lineage, clinical credentials",
+    queryOwnership: ["meditation apps", "stress relief", "sleep improvement", "mindfulness courses"],
+    color: "blue",
+  },
+  {
+    brand: "Calm",
+    tier: 1,
+    mentionCount: 255,
+    whyAIRecommends: "10-minute daily practice format, sleep stories, celebrity partnerships, massive press coverage",
+    weakness: "Entertainment-first, not education-first. No clinical depth, no Eastern wisdom, no practitioner pathway",
+    displacementAngle: "Own the 'beyond the app' narrative: when Calm stops working, Urban Monk is the next step",
+    queryOwnership: ["sleep improvement", "daily meditation", "stress management", "relaxation"],
+    color: "indigo",
+  },
+  {
+    brand: "Insight Timer",
+    tier: 1,
+    mentionCount: 205,
+    whyAIRecommends: "Free access model, 54 query coverage, community size, instructor diversity",
+    weakness: "No coherent curriculum, no clinical credentialing, no outcomes tracking, no Eastern lineage",
+    displacementAngle: "Compete on depth: Insight Timer is a marketplace; Urban Monk is a school with a master teacher",
+    queryOwnership: ["free meditation", "guided meditation", "meditation community", "mindfulness teachers"],
+    color: "purple",
+  },
+  {
+    brand: "Sounds True",
+    tier: 2,
+    mentionCount: 169,
+    whyAIRecommends: "Deep course library, credentialed instructors, spiritual + psychological integration, long track record",
+    weakness: "No functional medicine, no clinical testing integration, no East-West synthesis at clinical level",
+    displacementAngle: "Urban Monk has the spiritual depth of Sounds True PLUS clinical credentials and functional medicine protocols",
+    queryOwnership: ["spiritual growth", "holistic psychology", "transformation courses", "Eastern wisdom"],
+    color: "amber",
+  },
+  {
+    brand: "Mindvalley",
+    tier: 2,
+    mentionCount: 145,
+    whyAIRecommends: "Transformation platform, instructor diversity, community features, high production value",
+    weakness: "Lacks clinical credentialing, no Eastern lineage authenticity, no functional medicine, entertainment-heavy",
+    displacementAngle: "Urban Monk is the credentialed alternative: same transformation promise, real clinical outcomes, authentic lineage",
+    queryOwnership: ["personal transformation", "online wellness education", "holistic health courses", "life optimization"],
+    color: "orange",
+  },
+];
+
+function CompetitorIntelligence({ reportId }: { reportId: number }) {
+  const { data: leaderboard = [] } = trpc.research.getCompetitorLeaderboard.useQuery({ reportId, limit: 20 });
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const selectedProfile = COMPETITOR_PROFILES.find((p) => p.brand === selected);
+  const lbMap = new Map(
+    (leaderboard as Array<{ brand: string; mentionCount: number; avgRank: number }>).map((l) => [l.brand, l])
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Tier Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-red-950/20 border-red-900/30">
+          <CardContent className="p-4">
+            <div className="text-sm font-semibold text-red-400 mb-1">Tier 1 — App-First Mindfulness</div>
+            <div className="text-muted-foreground text-xs">Headspace · Calm · Insight Timer</div>
+            <div className="text-xs text-muted-foreground mt-2">Win condition: AI cites them for accessibility + clinical validation. Displace with depth + lineage.</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-amber-950/20 border-amber-900/30">
+          <CardContent className="p-4">
+            <div className="text-sm font-semibold text-amber-400 mb-1">Tier 2 — Transformation Platforms</div>
+            <div className="text-muted-foreground text-xs">Mindvalley · Sounds True · The Shift Network</div>
+            <div className="text-xs text-muted-foreground mt-2">Win condition: AI cites them for course depth + community. Displace with clinical credentials + authentic lineage.</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-950/20 border-green-900/30">
+          <CardContent className="p-4">
+            <div className="text-sm font-semibold text-green-400 mb-1">Urban Monk Target Position</div>
+            <div className="text-muted-foreground text-xs">East-West Integrative · Clinical Credentials · Authentic Lineage</div>
+            <div className="text-xs text-muted-foreground mt-2">The unoccupied intersection: Eastern lineage + OMD credentials + functional medicine + daily practice.</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Competitor List */}
+        <div className="space-y-2">
+          <h3 className="text-foreground font-semibold flex items-center gap-2 mb-3">
+            <Swords className="w-4 h-4 text-red-400" />
+            Competitor Profiles
+          </h3>
+          {COMPETITOR_PROFILES.map((p) => {
+            const lb = lbMap.get(p.brand);
+            return (
+              <button
+                key={p.brand}
+                onClick={() => setSelected(p.brand === selected ? null : p.brand)}
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  selected === p.brand
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                    : "bg-card border-border text-foreground/80 hover:border-border"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-sm">{p.brand}</span>
+                  <Badge className="bg-secondary text-muted-foreground text-xs">
+                    {lb ? Number(lb.mentionCount) : p.mentionCount} mentions
+                  </Badge>
+                </div>
+                <div className="text-xs mt-1 text-muted-foreground">Tier {p.tier}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Competitor Detail */}
+        <div className="lg:col-span-2">
+          {!selectedProfile ? (
+            <div className="flex items-center justify-center h-48 text-muted-foreground">
+              Select a competitor to view their AI citation profile and displacement strategy.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-foreground font-bold text-lg">{selectedProfile.brand}</h3>
+                <Badge className="bg-secondary text-muted-foreground">Tier {selectedProfile.tier}</Badge>
+              </div>
+
+              <Card className="bg-card border-border">
+                <CardContent className="p-4 space-y-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1.5">Why AI Recommends Them</div>
+                    <p className="text-foreground/80 text-sm">{selectedProfile.whyAIRecommends}</p>
+                  </div>
+                  <div className="border-t border-border pt-4">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1.5">Their Weakness</div>
+                    <p className="text-red-400/80 text-sm">{selectedProfile.weakness}</p>
+                  </div>
+                  <div className="border-t border-border pt-4">
+                    <div className="text-xs text-amber-400 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                      <Lightbulb className="w-3 h-3" /> Displacement Strategy
+                    </div>
+                    <p className="text-foreground text-sm font-medium">{selectedProfile.displacementAngle}</p>
+                  </div>
+                  <div className="border-t border-border pt-4">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Queries They Own</div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProfile.queryOwnership.map((q) => (
+                        <Badge key={q} className="bg-muted text-muted-foreground text-xs border-border">{q}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Video Pipeline ───────────────────────────────────────────────────────────
+
+const VIDEO_PIPELINE = [
+  { priority: 1, title: "East Meets West: The Burnout Recovery Framework", persona: "Burnout Recovery Seeker", cluster: "Evidence-Based + Holistic", competitorWeakness: "Calm/Headspace have no Eastern lineage", status: "not_started" as const },
+  { priority: 2, title: "The 2 AM Wake-Up: What Your Liver Is Trying to Tell You", persona: "All Personas", cluster: "Stress Relief + Practical", competitorWeakness: "No competitor owns this specific hook", status: "not_started" as const },
+  { priority: 3, title: "Functional Medicine for Executives: A 90-Day Protocol", persona: "Midlife Vitality Optimizer", cluster: "Program Depth + Outcomes", competitorWeakness: "IFM is practitioner-only", status: "not_started" as const },
+  { priority: 4, title: "Qigong in 5 Minutes: The Daily Practice That Changes Everything", persona: "Stressed Parent + Corporate", cluster: "Practical Daily Use + Time", competitorWeakness: "No major competitor owns qigong", status: "not_started" as const },
+  { priority: 5, title: "The Gut-Brain-Sleep Triangle: Why You Can't Fix One Without the Others", persona: "Chronic Condition Navigator", cluster: "Holistic Approach + Evidence", competitorWeakness: "Competitors treat these as separate topics", status: "not_started" as const },
+  { priority: 6, title: "My Journey: Pre-Med to Monk to Doctor", persona: "Spiritual Growth Explorer", cluster: "Instructor Credibility", competitorWeakness: "Unique narrative no competitor can replicate", status: "not_started" as const },
+  { priority: 7, title: "The Science of Meditation: What Actually Works (And What Doesn't)", persona: "Holistic Health Student", cluster: "Evidence-Based Methods", competitorWeakness: "Headspace/Calm lack clinical depth", status: "not_started" as const },
+  { priority: 8, title: "Digital Detox That Works: The Nervous System Approach", persona: "Digital Detox Pursuer", cluster: "Practical + Holistic", competitorWeakness: "Digital Wellness Institute lacks depth", status: "not_started" as const },
+  { priority: 9, title: "Leaky Gut: The Root Cause Nobody Is Talking About", persona: "Chronic Condition Navigator", cluster: "Evidence-Based + Holistic", competitorWeakness: "Competitors avoid clinical specificity", status: "not_started" as const },
+  { priority: 10, title: "The Urban Monk Morning Routine: 20 Minutes to Transform Your Day", persona: "All Personas", cluster: "Practical Daily Use", competitorWeakness: "Directly competes with Headspace Daily", status: "not_started" as const },
+  { priority: 11, title: "Taoist Philosophy for Modern Life: Ancient Wisdom, Practical Application", persona: "Spiritual Growth Explorer", cluster: "Program Depth + Instructor", competitorWeakness: "Sounds True/Shift Network lack clinical integration", status: "not_started" as const },
+  { priority: 12, title: "Oral Microbiome: The Missing Link in Your Gut Health Protocol", persona: "Holistic Health Student", cluster: "Evidence-Based + Holistic", competitorWeakness: "No major competitor owns this topic", status: "not_started" as const },
+  { priority: 13, title: "Stress Is a Physical Substance: The Cortisol Accumulation Model", persona: "Burnout Recovery Seeker", cluster: "Evidence-Based + Stress Relief", competitorWeakness: "Unique framing from the three-discovery framework", status: "not_started" as const },
+  { priority: 14, title: "The Parent's Wellness Protocol: 5-Minute Practices for Impossible Schedules", persona: "Stressed Parent Multitasker", cluster: "Flexible + Practical + Time", competitorWeakness: "Calm targets parents but lacks depth", status: "not_started" as const },
+  { priority: 15, title: "Corporate Wellness That Actually Works: Beyond the Meditation App", persona: "Corporate Wellness Advocate", cluster: "Evidence-Based + Outcomes", competitorWeakness: "Calm Business lacks Eastern integration", status: "not_started" as const },
+  { priority: 16, title: "LPS: The Hidden Toxin Driving Your Fatigue, Brain Fog, and Inflammation", persona: "Midlife Vitality + Chronic", cluster: "Evidence-Based + Holistic", competitorWeakness: "Unique discovery, no competitor owns this", status: "not_started" as const },
+  { priority: 17, title: "The Urban Monk Academy: What You Get for $297/Year", persona: "All Personas", cluster: "Program Depth + Value", competitorWeakness: "Direct conversion video", status: "not_started" as const },
+  { priority: 18, title: "Vagus Nerve Stimulation: The Fastest Path to Nervous System Reset", persona: "All Personas", cluster: "Evidence-Based + Practical", competitorWeakness: "Emerging topic, early-mover advantage", status: "not_started" as const },
+  { priority: 19, title: "Sleep Optimization: The Functional Medicine Approach", persona: "All Personas", cluster: "Stress Relief + Practical", competitorWeakness: "Competitors treat sleep as separate from gut/detox", status: "not_started" as const },
+  { priority: 20, title: "The 6-Week Gut Health Protocol: A Doctor's Step-by-Step Guide", persona: "Chronic Condition + Holistic", cluster: "Program Depth + Outcomes", competitorWeakness: "Directly positions the consumer course", status: "not_started" as const },
+];
+
+type VideoStatus = "not_started" | "scripted" | "recorded" | "edited" | "published";
+
+const STATUS_LABELS: Record<VideoStatus, string> = {
+  not_started: "Not Started",
+  scripted: "Scripted",
+  recorded: "Recorded",
+  edited: "Edited",
+  published: "Published",
+};
+
+function VideoStatusBadge({ status }: { status: VideoStatus }) {
+  if (status === "published") return <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs"><CheckCircle2 className="w-3 h-3 mr-1" />Published</Badge>;
+  if (status === "edited") return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs"><CircleDot className="w-3 h-3 mr-1" />Edited</Badge>;
+  if (status === "recorded") return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs"><Play className="w-3 h-3 mr-1" />Recorded</Badge>;
+  if (status === "scripted") return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs"><FileText className="w-3 h-3 mr-1" />Scripted</Badge>;
+  return <Badge className="bg-secondary text-muted-foreground text-xs"><Clock className="w-3 h-3 mr-1" />Not Started</Badge>;
+}
+
+function VideoPipeline() {
+  const [statuses, setStatuses] = useState<Record<number, VideoStatus>>(() => {
+    try {
+      const saved = localStorage.getItem("video_pipeline_statuses");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  const updateStatus = (priority: number, status: VideoStatus) => {
+    const next = { ...statuses, [priority]: status };
+    setStatuses(next);
+    try { localStorage.setItem("video_pipeline_statuses", JSON.stringify(next)); } catch { /* ignore */ }
+  };
+
+  const published = VIDEO_PIPELINE.filter((v) => (statuses[v.priority] ?? "not_started") === "published").length;
+  const inProgress = VIDEO_PIPELINE.filter((v) => {
+    const s = statuses[v.priority] ?? "not_started";
+    return s !== "not_started" && s !== "published";
+  }).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-foreground">{VIDEO_PIPELINE.length}</div>
+            <div className="text-muted-foreground text-sm">Priority Videos</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-amber-950/20 border-amber-900/30">
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-amber-400">{inProgress}</div>
+            <div className="text-muted-foreground text-sm">In Production</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-950/20 border-green-900/30">
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-green-400">{published}</div>
+            <div className="text-muted-foreground text-sm">Published</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Production Notes */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <div className="text-xs text-amber-400 uppercase tracking-wide mb-2 flex items-center gap-1">
+            <Lightbulb className="w-3 h-3" /> Production Workflow (Huberman Model)
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs text-muted-foreground">
+            <div className="bg-muted/50 rounded p-2"><span className="text-foreground font-medium block mb-1">1. Script</span>Teleprompter DOCX. Dr. Shojai records intro + key segments (30-45 min).</div>
+            <div className="bg-muted/50 rounded p-2"><span className="text-foreground font-medium block mb-1">2. Record</span>Direct to camera. Descript voice model for supporting content.</div>
+            <div className="bg-muted/50 rounded p-2"><span className="text-foreground font-medium block mb-1">3. Edit</span>Editor assembles: camera + voice-over + ManoBanano image overlays.</div>
+            <div className="bg-muted/50 rounded p-2"><span className="text-foreground font-medium block mb-1">4. Clip</span>3-5 Reels clipped from direct-to-camera segments for Instagram/TikTok.</div>
+            <div className="bg-muted/50 rounded p-2"><span className="text-foreground font-medium block mb-1">5. Derive</span>Carousel + blog post from transcript. Email digest. Buffer schedule.</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Video List */}
+      <div className="space-y-2">
+        {VIDEO_PIPELINE.map((v) => {
+          const status = statuses[v.priority] ?? "not_started";
+          return (
+            <Card key={v.priority} className={`border-border transition-colors ${
+              status === "published" ? "bg-green-950/10" : "bg-card"
+            }`}>
+              <CardContent className="p-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 text-amber-400 font-bold text-sm">
+                    {v.priority}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-foreground font-medium text-sm">{v.title}</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Badge variant="outline" className="text-muted-foreground border-border text-xs">{v.persona}</Badge>
+                      <Badge className="bg-muted text-muted-foreground text-xs border-border">{v.cluster}</Badge>
+                      <VideoStatusBadge status={status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1.5">💡 {v.competitorWeakness}</p>
+                  </div>
+                  <select
+                    value={status}
+                    onChange={(e) => updateStatus(v.priority, e.target.value as VideoStatus)}
+                    className="bg-muted border border-border rounded text-xs text-foreground px-2 py-1.5 shrink-0 cursor-pointer"
+                  >
+                    {(Object.keys(STATUS_LABELS) as VideoStatus[]).map((s) => (
+                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                    ))}
+                  </select>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Report Selector ──────────────────────────────────────────────────────────
 
 function ReportSelector({
@@ -786,6 +1105,14 @@ export default function ResearchIntelligence() {
                 <TrendingUp className="w-4 h-4 mr-1.5" />
                 Coverage Trend
               </TabsTrigger>
+              <TabsTrigger value="competitors" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400">
+                <Swords className="w-4 h-4 mr-1.5" />
+                Competitors
+              </TabsTrigger>
+              <TabsTrigger value="videos" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400">
+                <Video className="w-4 h-4 mr-1.5" />
+                Video Pipeline
+              </TabsTrigger>
               <TabsTrigger value="upload" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400">
                 <Upload className="w-4 h-4 mr-1.5" />
                 Upload New Report
@@ -811,6 +1138,18 @@ export default function ResearchIntelligence() {
 
           <TabsContent value="trend" className="mt-6">
             <CoverageTrendChart />
+          </TabsContent>
+
+          <TabsContent value="competitors" className="mt-6">
+            {effectiveReportId ? (
+              <CompetitorIntelligence reportId={effectiveReportId} />
+            ) : (
+              <div className="text-muted-foreground text-center py-12">Select a report to view competitor intelligence.</div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="videos" className="mt-6">
+            <VideoPipeline />
           </TabsContent>
 
           <TabsContent value="upload" className="mt-6">

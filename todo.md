@@ -449,3 +449,9 @@
 
 - [x] TypeScript clean (0 errors), 20/20 tests pass
 - [x] Fix Buffer X/Twitter routing bug: X posts showing up as TikTok in Buffer queue — root cause: handleSyndicate was sending selectedProfileIds without filtering by target platform; fixed to cross-reference bufferProfiles service field against PLATFORM_SERVICE_MAP before sending
+
+### Phase 6: Strategy Analysis + Platform Enhancements (April 8, 2026)
+- [x] Deep Gumshoe data analysis — 80 queries, 5027 competitor mentions, 9 topic clusters, 8 persona gap map
+- [x] Comprehensive blended strategy document: Holistic Psychologist playbook + video-first architecture + LLM crawl infrastructure + 24-month roadmap
+- [x] Competitor Intelligence tab in Research Intelligence — tier overview, why AI recommends each, weakness, displacement angle
+- [x] Video Pipeline tab in Research Intelligence — 20 priority videos with status tracking, production workflow notes

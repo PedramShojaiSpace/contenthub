@@ -31,7 +31,10 @@ import {
   Zap,
   Link,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useLocation } from "wouter";  
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,18 +144,36 @@ function ScriptCard({
   onAdvance,
   onEdit,
   onDelete,
+  isHighlighted,
 }: {
   script: Script;
   onAdvance: (id: number, nextStatus: ProductionStatus) => void;
   onEdit: (script: Script) => void;
   onDelete: (id: number) => void;
+  isHighlighted?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-expand and scroll into view when highlighted
+  useEffect(() => {
+    if (isHighlighted && cardRef.current) {
+      setExpanded(true);
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
   const nextStatus = NEXT_STATUS[script.productionStatus];
   const nextLabel = NEXT_STATUS_LABEL[script.productionStatus];
 
   return (
-    <div className="bg-card border border-border rounded-xl p-3.5 hover:shadow-md hover:border-primary/30 transition-all group">
+    <div
+      ref={cardRef}
+      className={`bg-card border rounded-xl p-3.5 hover:shadow-md transition-all group ${
+        isHighlighted
+          ? "border-violet-400 ring-2 ring-violet-300 shadow-lg shadow-violet-100 animate-pulse"
+          : "border-border hover:border-primary/30"
+      }`}
+    >
       {/* Header row */}
       <div className="flex items-start gap-2 mb-2.5">
         {script.priority && (
@@ -433,8 +454,30 @@ export default function ScriptLibrary() {
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [highlightedScriptId, setHighlightedScriptId] = useState<number | null>(null);
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+  const [location] = useLocation();
 
   const { data: allScripts = [], isLoading } = trpc.scripts.list.useQuery({});
+
+  // Read scriptId from URL params and highlight that card
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const scriptId = params.get("scriptId");
+    if (scriptId && allScripts.length > 0) {
+      const id = parseInt(scriptId, 10);
+      if (!isNaN(id)) {
+        setHighlightedScriptId(id);
+        // Auto-switch to the correct platform tab
+        const targetScript = allScripts.find((s) => s.id === id);
+        if (targetScript?.platform && targetScript.platform !== "all") {
+          setPlatformFilter(targetScript.platform as Platform);
+        }
+        // Clear highlight after 5 seconds
+        setTimeout(() => setHighlightedScriptId(null), 5000);
+      }
+    }
+  }, [location, allScripts]);
 
   const advanceMutation = trpc.scripts.updateStatus.useMutation({
     onSuccess: () => utils.scripts.list.invalidate(),
@@ -684,6 +727,7 @@ export default function ScriptLibrary() {
                           onAdvance={handleAdvance}
                           onEdit={(s) => { setEditingScript(s); setShowDialog(true); }}
                           onDelete={handleDelete}
+                          isHighlighted={highlightedScriptId === script.id}
                         />
                       ))
                     )}

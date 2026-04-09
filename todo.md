@@ -530,3 +530,14 @@
 - [x] Script Library: show "Asset Created" badge (emerald) on cards with linkedContentItemId set
 - [x] Script Library card: "View in Kanban" button when linkedContentItemId is set
 - [x] Write vitest tests for the auto-create logic — 8 new tests, all passing (28/28 total)
+
+## v13 Features (April 9, 2026)
+
+### Bidirectional Script ↔ Kanban Navigation
+- [x] Add "View Script" button to Kanban DraggableCard — visible on hover when card has linkedScriptId set (violet styling to distinguish from amber Buffer button)
+- [x] Button navigates to /script-library?scriptId=N using wouter setLocation
+- [x] Script Library reads scriptId from URL params on mount and on location change
+- [x] Auto-switches to the correct platform tab for the target script
+- [x] Auto-expands the target script card and scrolls it into view
+- [x] Highlighted card shows violet ring + pulse animation for 5 seconds then clears
+- [x] All 28/28 tests passing, TypeScript clean (0 real errors)

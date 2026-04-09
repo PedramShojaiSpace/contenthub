@@ -55,7 +55,8 @@ import {
   Target,
   TrendingUp,
   Youtube,
-} from "lucide-react";
+  Film,
+} from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
 import {
@@ -84,6 +85,7 @@ type ContentItem = {
   analyticsLikes: number | null;
   analyticsComments: number | null;
   analyticsShares: number | null;
+  linkedScriptId: number | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -295,6 +297,7 @@ function DraggableCard({
   onRegenerate,
   onPushToBuffer,
   isPushingToBuffer,
+  onViewScript,
 }: {
   item: ContentItem;
   onStatusChange: (id: number, status: Status) => void;
@@ -305,6 +308,7 @@ function DraggableCard({
   onRegenerate: (item: ContentItem) => void;
   onPushToBuffer: (item: ContentItem) => void;
   isPushingToBuffer: boolean;
+  onViewScript?: (scriptId: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${item.id}`,
@@ -423,9 +427,9 @@ function DraggableCard({
           <AnalyticsPanel item={item} onUpdate={onAnalyticsUpdate} />
         )}
 
-        {/* Buffer push button — visible on hover */}
+        {/* Action buttons — visible on hover */}
         {!isPublished && (
-          <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity space-y-1">
             <Button
               size="sm"
               variant="outline"
@@ -443,6 +447,20 @@ function DraggableCard({
               )}
               {isPushingToBuffer ? "Pushing…" : "Push to Buffer"}
             </Button>
+            {item.linkedScriptId && onViewScript && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full h-6 text-[10px] border-violet-500/40 text-violet-600 hover:bg-violet-50 hover:text-violet-700 hover:border-violet-500 gap-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewScript(item.linkedScriptId!);
+                }}
+              >
+                <Film className="h-2.5 w-2.5" />
+                View Script
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -603,6 +621,10 @@ export default function CommandCenter() {
       contentItemId: item.id,
       platform: (item.platform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all") ?? "all",
     });
+  };
+
+  const handleViewScript = (scriptId: number) => {
+    setLocation(`/script-library?scriptId=${scriptId}`);
   };
 
   const { data: items = [], refetch } = trpc.content.list.useQuery();
@@ -1068,9 +1090,10 @@ export default function CommandCenter() {
                               onPublish={(itm) => setPublishDialogItem(itm)}
                               onAnalyticsUpdate={handleAnalyticsUpdate}
                               onRegenerate={handleRegenerate}
-                              onPushToBuffer={handlePushToBuffer}
-                              isPushingToBuffer={bufferPushingId === item.id}
-                            />
+                               onPushToBuffer={handlePushToBuffer}
+                               isPushingToBuffer={bufferPushingId === item.id}
+                               onViewScript={handleViewScript}
+                             />
                           </div>
                         ))}
                         {colItems.length === 0 && (

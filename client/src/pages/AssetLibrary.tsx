@@ -44,6 +44,8 @@ interface UnifiedAsset {
   subType?: string; // scriptType for scripts
   contentGoal?: string | null;
   personaId?: number | null;
+  linkedScriptId?: number | null;   // set when content item was auto-created from a script
+  linkedContentItemId?: number | null; // set on script assets that have a linked content item
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -151,6 +153,13 @@ function AssetCard({
           {asset.contentGoal && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-300">
               {GOAL_LABELS[asset.contentGoal] ?? asset.contentGoal}
+            </span>
+          )}
+          {/* From Script badge */}
+          {asset.linkedScriptId && (
+            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              From Script
             </span>
           )}
         </div>
@@ -317,6 +326,7 @@ export default function AssetLibrary() {
       createdAt: item.createdAt,
       rawId: item.id,
       contentGoal: item.contentGoal ?? null,
+      linkedScriptId: (item as { linkedScriptId?: number | null }).linkedScriptId ?? null,
     })),
     ...scripts.map((script) => ({
       id: `script-${script.id}`,

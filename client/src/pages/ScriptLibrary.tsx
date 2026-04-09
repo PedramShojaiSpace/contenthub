@@ -29,6 +29,8 @@ import {
   Linkedin,
   Twitter,
   Zap,
+  Link,
+  ExternalLink,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -194,6 +196,12 @@ function ScriptCard({
             {script.estimatedDurationMin}m
           </span>
         )}
+        {script.linkedContentItemId && (
+          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <Link className="w-3 h-3" />
+            Asset Created
+          </span>
+        )}
       </div>
 
       {/* Expanded detail */}
@@ -235,6 +243,17 @@ function ScriptCard({
           </Button>
         )}
         <div className="flex-1" />
+        {script.linkedContentItemId && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 text-xs text-sky-700 hover:text-sky-800 hover:bg-sky-50 px-2"
+            onClick={() => window.location.href = `/?highlight=${script.linkedContentItemId}`}
+          >
+            <ExternalLink className="w-3 h-3 mr-1" />
+            View in Kanban
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"

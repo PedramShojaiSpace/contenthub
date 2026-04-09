@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { scripts, Script } from "../drizzle/schema";
+import { scripts, Script, contentItems, platformEnum, contentGoalEnum } from "../drizzle/schema";
 import { eq, desc, asc } from "drizzle-orm";
 
 // ─── Script Library Router ────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ export const scriptsRouter = router({
       return updated ?? null;
     }),
 
-  // Quick status update
+  // Quick status update — auto-creates a linked content item when status reaches "ready_to_post"
   updateStatus: protectedProcedure
     .input(
       z.object({
@@ -134,11 +134,50 @@ export const scriptsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+
+      // Fetch the current script
+      const [script] = await db.select().from(scripts).where(eq(scripts.id, input.id));
+      if (!script) throw new Error("Script not found");
+
+      // Update the status
       await db
         .update(scripts)
         .set({ productionStatus: input.productionStatus })
         .where(eq(scripts.id, input.id));
-      return { success: true };
+
+      // Auto-create a content item when script reaches "ready_to_post" (idempotent)
+      let newContentItemId: number | null = null;
+      if (
+        input.productionStatus === "ready_to_post" &&
+        !script.linkedContentItemId
+      ) {
+        // Build a clean title: strip leading emoji/numbers if present
+        const contentTitle = script.title.replace(/^[\d.]+\s*/, "").trim();
+
+        // Map scriptType to a sensible content status
+        const contentStatus = "approved" as const;
+
+        // Insert the content item
+        const [insertResult] = await db.insert(contentItems).values({
+          title: contentTitle,
+          platform: (script.platform ?? "all") as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all",
+          status: contentStatus,
+          textContent: script.scriptBody ?? script.notes ?? "",
+          personaId: script.personaId ?? undefined,
+          contentGoal: (script.contentGoal ?? "audience_growth") as "audience_growth" | "llm_seo" | "community_engagement",
+          linkedScriptId: script.id,
+          notes: `Auto-created from Script Library: "${script.title}"${script.competitorAngle ? `\nCompetitor angle: ${script.competitorAngle}` : ""}`,
+        });
+        newContentItemId = (insertResult as { insertId: number }).insertId;
+
+        // Back-link the script to the new content item
+        await db
+          .update(scripts)
+          .set({ linkedContentItemId: newContentItemId })
+          .where(eq(scripts.id, input.id));
+      }
+
+      return { success: true, newContentItemId };
     }),
 
   // Delete a script

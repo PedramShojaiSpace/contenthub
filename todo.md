@@ -517,3 +517,16 @@
 - [x] All 80 scripts seeded via "Seed All" button or individual platform buttons in empty state
 - [x] Production workflow: advance status with one click (Idea → Scripted → In Production → In Edit → Ready to Post → Published)
 - [x] All 20/20 tests passing, TypeScript clean (0 errors)
+
+## v12 Features (April 9, 2026)
+
+### Script Library ↔ Asset Library Integration
+- [x] Add `linkedContentItemId` back-link: already exists on scripts table (links script → content item)
+- [x] Add `linkedScriptId` column to content_items table (links content item → script)
+- [x] Run pnpm db:push — migration 0009_oval_meltdown.sql applied successfully
+- [x] In scriptsRouter.updateStatus: when status transitions TO "ready_to_post", auto-create a content_item with title, platform, textContent (scriptBody), personaId, contentGoal, status="approved", and set linkedScriptId on the new item + linkedContentItemId on the script
+- [x] Idempotent: if script already has a linkedContentItemId, skip creation
+- [x] Asset Library: show "From Script" badge (emerald) on content items with linkedScriptId set
+- [x] Script Library: show "Asset Created" badge (emerald) on cards with linkedContentItemId set
+- [x] Script Library card: "View in Kanban" button when linkedContentItemId is set
+- [x] Write vitest tests for the auto-create logic — 8 new tests, all passing (28/28 total)

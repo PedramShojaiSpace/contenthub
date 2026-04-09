@@ -67,6 +67,8 @@ export const contentItems = mysqlTable("content_items", {
   personaId: int("personaId"),
   // Content strategy goal
   contentGoal: contentGoalEnum.default("audience_growth"),
+  // Script Library: link to the script this content item was auto-created from
+  linkedScriptId: int("linkedScriptId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

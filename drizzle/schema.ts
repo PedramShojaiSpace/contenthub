@@ -268,3 +268,51 @@ export const scripts = mysqlTable("scripts", {
 
 export type Script = typeof scripts.$inferSelect;
 export type InsertScript = typeof scripts.$inferInsert;
+
+// ─── Landing Page Generator ───────────────────────────────────────────────────
+
+/**
+ * A generated landing page: avatar + offer → AI copy → Gamma.app page.
+ * status tracks: draft (copy generated, not yet sent) | generating (Gamma job in progress)
+ *               | published (Gamma URL available) | failed
+ */
+export const landingPageStatusEnum = mysqlEnum("landingPageStatus", [
+  "draft",
+  "generating",
+  "published",
+  "failed",
+]);
+
+export const offerEnum = mysqlEnum("offer", [
+  "academy",
+  "retreat",
+  "supplements",
+  "free_guide",
+  "custom",
+]);
+
+export const landingPages = mysqlTable("landing_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  // Avatar (persona) this page targets
+  personaId: int("personaId"),
+  personaName: varchar("personaName", { length: 128 }),
+  // The offer being promoted
+  offer: offerEnum.notNull().default("academy"),
+  offerCustomLabel: varchar("offerCustomLabel", { length: 255 }),
+  // The content angle / key message (user-entered)
+  contentAngle: text("contentAngle"),
+  // AI-generated copy (full landing page copy in Markdown)
+  copyBody: text("copyBody"),
+  // Gamma generation tracking
+  gammaGenerationId: varchar("gammaGenerationId", { length: 128 }),
+  gammaUrl: text("gammaUrl"),
+  // Status
+  status: landingPageStatusEnum.notNull().default("draft"),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LandingPage = typeof landingPages.$inferSelect;
+export type InsertLandingPage = typeof landingPages.$inferInsert;

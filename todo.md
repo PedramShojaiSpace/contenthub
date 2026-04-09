@@ -557,3 +557,15 @@
 - [x] Add DOCX export button to the Edit Script dialog footer — exports the current edited version of the script body (violet styling, only shown when editing an existing script with content)
 - [x] Add "Export [Platform] ZIP" button to Script Library header — dynamically labeled by active platform tab, downloads all scripts with content as a ZIP of DOCX files, numbered by priority, uses jszip + docx client-side
 - [x] All 28/28 tests passing, TypeScript clean (0 real errors)
+
+## v16 Features (April 9, 2026)
+
+### Landing Page Generator (Gamma API Integration)
+- [x] Add `landing_pages` table to schema (id, title, avatarId, offer, copyBody, gammaUrl, gammaGenerationId, status, createdAt)
+- [x] Run `pnpm db:push` to migrate schema
+- [x] Store GAMMA_API_KEY as secret
+- [x] Add `landingPages` tRPC router with: `generateCopy` (LLM), `publishToGamma` (Gamma API POST + poll), `list`, `delete`
+- [x] Build `LandingPageGenerator.tsx` page: avatar picker (8 personas), offer selector (Academy $297/yr, Retreat $1200, Supplements), content angle input, AI copy generation panel (preview before publish), "Publish to Gamma" button (manual trigger only), results panel with Gamma URL
+- [x] Add `/landing-pages` route in App.tsx
+- [x] Add "Landing Pages" nav link in all page sidebars
+- [x] All tests still passing, TypeScript clean (42/42 tests pass, 0 TS errors)

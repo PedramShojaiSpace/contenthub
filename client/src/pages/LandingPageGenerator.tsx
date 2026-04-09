@@ -1,0 +1,1096 @@
+/**
+ * Landing Page Generator
+ *
+ * Flow:
+ *   1. Pick avatar (persona) — 8 Urban Monk personas
+ *   2. Pick offer — Academy $297/yr, Retreat $1,200, Supplements, Free Guide, Custom
+ *   3. Enter content angle / key message
+ *   4. Click "Generate Copy" → LLM writes full landing page copy (preview shown)
+ *   5. Edit copy if needed
+ *   6. Click "Publish to Gamma" → sends to Gamma API (MANUAL TRIGGER ONLY)
+ *   7. Poll for completion → show Gamma URL
+ *
+ * Gamma publish is NEVER automatic — always requires explicit button press.
+ */
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { trpc } from "@/lib/trpc";
+import {
+  AlertCircle,
+  ArrowLeft,
+  BarChart2,
+  BookOpen,
+  Brain,
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  ExternalLink,
+  Eye,
+  Globe,
+  Heart,
+  Loader2,
+  MessageCircle,
+  Plus,
+  RefreshCw,
+  Send,
+  ShoppingBag,
+  Sparkles,
+  Star,
+  Target,
+  Trash2,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { toast } from "sonner";
+
+// ─── Sidebar nav (shared across all pages) ────────────────────────────────────
+
+const NAV_ITEMS = [
+  { label: "Command Center", path: "/", icon: <BarChart2 className="h-4 w-4" /> },
+  { label: "Creation Studio", path: "/studio", icon: <Sparkles className="h-4 w-4" /> },
+  { label: "Script Library", path: "/scripts", icon: <BookOpen className="h-4 w-4" /> },
+  { label: "Asset Library", path: "/assets", icon: <Globe className="h-4 w-4" /> },
+  { label: "Research Intelligence", path: "/research", icon: <Brain className="h-4 w-4" /> },
+  { label: "Strategy Brain", path: "/strategy", icon: <Target className="h-4 w-4" /> },
+  { label: "Landing Pages", path: "/landing-pages", icon: <Globe className="h-4 w-4" />, active: true },
+];
+
+// ─── Persona data ─────────────────────────────────────────────────────────────
+
+type PersonaKey =
+  | "Burnout Recovery Seeker"
+  | "Midlife Vitality Optimizer"
+  | "Spiritual Growth Explorer"
+  | "Stressed Parent Multitasker"
+  | "Holistic Health Student"
+  | "Chronic Condition Navigator"
+  | "Corporate Wellness Advocate"
+  | "Digital Detox Pursuer";
+
+const PERSONAS: {
+  name: PersonaKey;
+  icon: React.ReactNode;
+  color: string;
+  tagline: string;
+  painPoints: string[];
+  aspirations: string[];
+  bestOffer: string;
+  contentHooks: string[];
+}[] = [
+  {
+    name: "Burnout Recovery Seeker",
+    icon: <Zap className="h-5 w-5" />,
+    color: "border-orange-300 bg-orange-50 hover:bg-orange-100",
+    tagline: "Exhausted high-achiever seeking sustainable energy",
+    painPoints: [
+      "Chronic exhaustion despite rest",
+      "Adrenal fatigue & cortisol dysregulation",
+      "Disconnected from purpose",
+      "Can't sustain energy past noon",
+    ],
+    aspirations: [
+      "Sustainable energy without stimulants",
+      "Reconnect with purpose and vitality",
+      "Heal the nervous system naturally",
+    ],
+    bestOffer: "academy",
+    contentHooks: [
+      "The 5-minute morning ritual that resets your adrenals",
+      "Why rest alone won't fix burnout (and what will)",
+      "The hidden energy leak draining high achievers",
+      "Qi Gong for burnout: ancient medicine meets modern stress",
+    ],
+  },
+  {
+    name: "Midlife Vitality Optimizer",
+    icon: <TrendingUp className="h-5 w-5" />,
+    color: "border-green-300 bg-green-50 hover:bg-green-100",
+    tagline: "40-55 professional optimizing health for longevity",
+    painPoints: [
+      "Declining energy & hormonal changes",
+      "Weight gain despite healthy habits",
+      "Brain fog & memory concerns",
+      "Fear of aging without vitality",
+    ],
+    aspirations: [
+      "Optimize hormones naturally",
+      "Reverse biological aging",
+      "Maintain peak performance into 60s",
+    ],
+    bestOffer: "retreat",
+    contentHooks: [
+      "The biohacker's guide to thriving at 50",
+      "5 longevity habits Pedram practices daily",
+      "Why your hormones are the key to sustained energy",
+      "Ancient Chinese medicine's secret to aging backwards",
+    ],
+  },
+  {
+    name: "Spiritual Growth Explorer",
+    icon: <Star className="h-5 w-5" />,
+    color: "border-purple-300 bg-purple-50 hover:bg-purple-100",
+    tagline: "Seeker integrating ancient wisdom into modern life",
+    painPoints: [
+      "Spiritual practice feels hollow",
+      "Meditation isn't 'working'",
+      "Seeking deeper meaning beyond material success",
+      "Wanting community of like-minded seekers",
+    ],
+    aspirations: [
+      "Deepen meditation and Qi Gong practice",
+      "Find authentic spiritual community",
+      "Integrate wisdom into daily life",
+    ],
+    bestOffer: "academy",
+    contentHooks: [
+      "The Urban Monk path: ancient wisdom for modern chaos",
+      "Why your meditation isn't working (and the fix)",
+      "Qi Gong: the practice that changed everything for me",
+      "Finding stillness in the noise of modern life",
+    ],
+  },
+  {
+    name: "Stressed Parent Multitasker",
+    icon: <Heart className="h-5 w-5" />,
+    color: "border-pink-300 bg-pink-50 hover:bg-pink-100",
+    tagline: "Overwhelmed parent running on empty",
+    painPoints: [
+      "Zero time for self-care",
+      "Running on caffeine and adrenaline",
+      "Guilt about not being present",
+      "Health declining due to neglect",
+    ],
+    aspirations: [
+      "5-minute practices that actually work",
+      "More patience and presence with family",
+      "Sustainable energy without burnout",
+    ],
+    bestOffer: "academy",
+    contentHooks: [
+      "The 5-minute morning ritual busy parents swear by",
+      "How to meditate when you have zero time",
+      "The stress response hack every parent needs",
+      "Raising healthy kids starts with a healthy you",
+    ],
+  },
+  {
+    name: "Holistic Health Student",
+    icon: <BookOpen className="h-5 w-5" />,
+    color: "border-blue-300 bg-blue-50 hover:bg-blue-100",
+    tagline: "Curious learner seeking credible holistic knowledge",
+    painPoints: [
+      "Information overload from conflicting advice",
+      "Wants science-backed holistic knowledge",
+      "Seeking a trusted teacher/mentor",
+      "Wants to understand the 'why'",
+    ],
+    aspirations: [
+      "Master TCM and integrative medicine",
+      "Find a credible teacher to follow",
+      "Build a complete wellness framework",
+    ],
+    bestOffer: "academy",
+    contentHooks: [
+      "The science behind Qi Gong (it's not what you think)",
+      "TCM explained: what 3,000 years of medicine knows",
+      "Why I became an OMD instead of an MD",
+      "The 5 elements framework that explains everything",
+    ],
+  },
+  {
+    name: "Chronic Condition Navigator",
+    icon: <Brain className="h-5 w-5" />,
+    color: "border-red-300 bg-red-50 hover:bg-red-100",
+    tagline: "Frustrated patient seeking root-cause healing",
+    painPoints: [
+      "Conventional medicine isn't solving the problem",
+      "Frustrated with symptom management",
+      "Autoimmune, gut, or inflammatory conditions",
+      "Seeking integrative approaches",
+    ],
+    aspirations: [
+      "Find root-cause healing",
+      "Reduce inflammation naturally",
+      "Understand the mind-body connection",
+    ],
+    bestOffer: "supplements",
+    contentHooks: [
+      "What Western medicine misses about chronic illness",
+      "The gut-brain-spirit connection explained",
+      "How I've helped thousands find root-cause healing",
+      "The inflammation protocol from ancient Chinese medicine",
+    ],
+  },
+  {
+    name: "Corporate Wellness Advocate",
+    icon: <BarChart2 className="h-5 w-5" />,
+    color: "border-sky-300 bg-sky-50 hover:bg-sky-100",
+    tagline: "High-performing executive optimizing for longevity",
+    painPoints: [
+      "High-performing but burning out",
+      "Leadership stress & decision fatigue",
+      "Wants productivity without sacrificing health",
+      "Seeking ROI-framed wellness solutions",
+    ],
+    aspirations: [
+      "Peak cognitive performance",
+      "Build resilience as a leader",
+      "Competitive edge through wellness",
+    ],
+    bestOffer: "retreat",
+    contentHooks: [
+      "The morning routine of high-performing executives",
+      "How mindfulness became my competitive advantage",
+      "The Lights On framework for peak executive performance",
+      "Why the best CEOs prioritize stillness",
+    ],
+  },
+  {
+    name: "Digital Detox Pursuer",
+    icon: <MessageCircle className="h-5 w-5" />,
+    color: "border-teal-300 bg-teal-50 hover:bg-teal-100",
+    tagline: "Screen-addicted professional reclaiming attention",
+    painPoints: [
+      "Screen addiction & dopamine dysregulation",
+      "Anxiety from constant connectivity",
+      "Wanting to reclaim attention & focus",
+      "Feeling enslaved by technology",
+    ],
+    aspirations: [
+      "Break free from phone addiction",
+      "Reclaim deep focus and presence",
+      "Live intentionally with technology",
+    ],
+    bestOffer: "academy",
+    contentHooks: [
+      "I deleted social media for 30 days — here's what happened",
+      "The attention economy is stealing your life force",
+      "How to reclaim your mind from the algorithm",
+      "The Urban Monk's guide to conscious technology use",
+    ],
+  },
+];
+
+// ─── Offer data ───────────────────────────────────────────────────────────────
+
+const OFFERS = [
+  {
+    id: "academy",
+    label: "Urban Monk Academy",
+    price: "$297/year",
+    icon: <BookOpen className="h-5 w-5" />,
+    description: "Year-long membership — weekly practices, masterclasses, community",
+    color: "border-amber-300 bg-amber-50 hover:bg-amber-100",
+  },
+  {
+    id: "retreat",
+    label: "Urban Monk Retreat",
+    price: "$1,200",
+    icon: <Calendar className="h-5 w-5" />,
+    description: "Immersive 3-day retreat — Taoist medicine, breathwork, deep dives",
+    color: "border-green-300 bg-green-50 hover:bg-green-100",
+  },
+  {
+    id: "supplements",
+    label: "Urban Monk Supplements",
+    price: "From $49",
+    icon: <ShoppingBag className="h-5 w-5" />,
+    description: "Clinically-informed adaptogens, gut health, and performance blends",
+    color: "border-orange-300 bg-orange-50 hover:bg-orange-100",
+  },
+  {
+    id: "free_guide",
+    label: "Free Wellness Guide",
+    price: "Free",
+    icon: <Star className="h-5 w-5" />,
+    description: "Lead magnet — practical tools to reclaim energy and vitality",
+    color: "border-purple-300 bg-purple-50 hover:bg-purple-100",
+  },
+  {
+    id: "custom",
+    label: "Custom Offer",
+    price: "Custom",
+    icon: <Target className="h-5 w-5" />,
+    description: "Define your own offer label and description",
+    color: "border-gray-300 bg-gray-50 hover:bg-gray-100",
+  },
+];
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type LandingPageRecord = {
+  id: number;
+  title: string;
+  personaName: string | null;
+  offer: string;
+  copyBody: string | null;
+  gammaUrl: string | null;
+  gammaGenerationId: string | null;
+  status: "draft" | "generating" | "published" | "failed";
+  errorMessage: string | null;
+  createdAt: Date;
+};
+
+// ─── Polling hook ─────────────────────────────────────────────────────────────
+
+function useGammaPoll(
+  pageId: number | null,
+  enabled: boolean,
+  onComplete: (gammaUrl: string) => void,
+  onFailed: (error: string) => void
+) {
+  const utils = trpc.useUtils();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !pageId) return;
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const result = await utils.landingPages.pollGamma.fetch({ id: pageId });
+        if (result.status === "completed" && result.gammaUrl) {
+          clearInterval(pollRef.current!);
+          onComplete(result.gammaUrl);
+        } else if (result.status === "failed") {
+          clearInterval(pollRef.current!);
+          onFailed(result.error ?? "Generation failed");
+        }
+      } catch {
+        // Network error — keep polling
+      }
+    }, 5000);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [enabled, pageId]);
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function LandingPageGenerator() {
+  const [, navigate] = useLocation();
+
+  // Step state
+  const [step, setStep] = useState<"configure" | "preview" | "history">("configure");
+
+  // Form state
+  const [selectedPersona, setSelectedPersona] = useState<(typeof PERSONAS)[0] | null>(null);
+  const [selectedOffer, setSelectedOffer] = useState<string>("academy");
+  const [customOfferLabel, setCustomOfferLabel] = useState("");
+  const [contentAngle, setContentAngle] = useState("");
+
+  // Generated copy state
+  const [generatedPageId, setGeneratedPageId] = useState<number | null>(null);
+  const [editableCopy, setEditableCopy] = useState("");
+  const [pageTitle, setPageTitle] = useState("");
+
+  // Gamma publish state
+  const [isPolling, setIsPolling] = useState(false);
+  const [gammaUrl, setGammaUrl] = useState<string | null>(null);
+  const [gammaError, setGammaError] = useState<string | null>(null);
+
+  // tRPC
+  const { data: pages, refetch: refetchPages } = trpc.landingPages.list.useQuery();
+  const generateCopyMutation = trpc.landingPages.generateCopy.useMutation();
+  const updateCopyMutation = trpc.landingPages.updateCopy.useMutation();
+  const publishToGammaMutation = trpc.landingPages.publishToGamma.useMutation();
+  const deleteMutation = trpc.landingPages.delete.useMutation();
+
+  // Poll for Gamma completion
+  useGammaPoll(
+    generatedPageId,
+    isPolling,
+    (url) => {
+      setGammaUrl(url);
+      setIsPolling(false);
+      toast.success("Landing page published to Gamma!", { duration: 5000 });
+      refetchPages();
+    },
+    (error) => {
+      setGammaError(error);
+      setIsPolling(false);
+      toast.error(`Gamma generation failed: ${error}`);
+      refetchPages();
+    }
+  );
+
+  // ─── Handlers ───────────────────────────────────────────────────────────────
+
+  const handleGenerateCopy = async () => {
+    if (!selectedPersona) {
+      toast.error("Please select an avatar first");
+      return;
+    }
+    if (!contentAngle.trim()) {
+      toast.error("Please enter a content angle / key message");
+      return;
+    }
+    if (selectedOffer === "custom" && !customOfferLabel.trim()) {
+      toast.error("Please enter a custom offer label");
+      return;
+    }
+
+    try {
+      const result = await generateCopyMutation.mutateAsync({
+        personaName: selectedPersona.name,
+        personaPainPoints: selectedPersona.painPoints.join("; "),
+        personaAspirations: selectedPersona.aspirations.join("; "),
+        offer: selectedOffer as "academy" | "retreat" | "supplements" | "free_guide" | "custom",
+        offerCustomLabel: selectedOffer === "custom" ? customOfferLabel : undefined,
+        contentAngle: contentAngle.trim(),
+      });
+
+      setGeneratedPageId(result.id);
+      setEditableCopy(result.copyBody);
+      setPageTitle(result.title);
+      setGammaUrl(null);
+      setGammaError(null);
+      setIsPolling(false);
+      setStep("preview");
+      toast.success("Copy generated! Review and edit before publishing to Gamma.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Copy generation failed");
+    }
+  };
+
+  const handleSaveCopy = async () => {
+    if (!generatedPageId) return;
+    try {
+      await updateCopyMutation.mutateAsync({
+        id: generatedPageId,
+        copyBody: editableCopy,
+        title: pageTitle,
+      });
+      toast.success("Copy saved");
+    } catch {
+      toast.error("Failed to save copy");
+    }
+  };
+
+  const handlePublishToGamma = async () => {
+    if (!generatedPageId) return;
+
+    // Save latest edits first
+    await handleSaveCopy();
+
+    try {
+      await publishToGammaMutation.mutateAsync({ id: generatedPageId });
+      setIsPolling(true);
+      setGammaError(null);
+      toast.info("Gamma generation started — polling for completion (this takes 30-60 seconds)...");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to start Gamma generation");
+    }
+  };
+
+  const handleDeletePage = async (id: number) => {
+    try {
+      await deleteMutation.mutateAsync({ id });
+      toast.success("Landing page deleted");
+      refetchPages();
+      if (generatedPageId === id) {
+        setGeneratedPageId(null);
+        setEditableCopy("");
+        setPageTitle("");
+        setGammaUrl(null);
+        setStep("configure");
+      }
+    } catch {
+      toast.error("Failed to delete");
+    }
+  };
+
+  const handleLoadPage = (page: LandingPageRecord) => {
+    setGeneratedPageId(page.id);
+    setEditableCopy(page.copyBody ?? "");
+    setPageTitle(page.title);
+    setGammaUrl(page.gammaUrl);
+    setGammaError(page.errorMessage);
+    setIsPolling(page.status === "generating");
+    setStep("preview");
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="flex h-screen bg-[oklch(0.98_0.01_80)] text-foreground overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-56 shrink-0 border-r border-[oklch(0.88_0.02_80)] bg-white flex flex-col">
+        <div className="p-4 border-b border-[oklch(0.88_0.02_80)]">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-[oklch(0.65_0.12_50)] flex items-center justify-center">
+              <span className="text-white font-bold text-xs">UM</span>
+            </div>
+            <span className="font-semibold text-sm text-[oklch(0.25_0.03_60)]">UMP Content Hub</span>
+          </div>
+        </div>
+        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+                item.active
+                  ? "bg-[oklch(0.65_0.12_50)]/10 text-[oklch(0.45_0.12_50)] font-medium"
+                  : "text-[oklch(0.45_0.03_60)] hover:bg-[oklch(0.93_0.02_80)] hover:text-[oklch(0.25_0.03_60)]"
+              }`}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="border-b border-[oklch(0.88_0.02_80)] bg-white px-6 py-4 flex items-center justify-between shrink-0">
+          <div>
+            <h1 className="text-xl font-bold text-[oklch(0.25_0.03_60)] flex items-center gap-2">
+              <Globe className="h-5 w-5 text-[oklch(0.55_0.12_50)]" />
+              Landing Page Generator
+            </h1>
+            <p className="text-sm text-[oklch(0.55_0.03_60)] mt-0.5">
+              Pick an avatar + offer → AI writes copy in Pedram's voice → publish to Gamma
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setStep("history")}
+              className="border-[oklch(0.88_0.02_80)]"
+            >
+              <Eye className="h-4 w-4 mr-1.5" />
+              History ({pages?.length ?? 0})
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => { setStep("configure"); setGeneratedPageId(null); setEditableCopy(""); setGammaUrl(null); }}
+              className="bg-[oklch(0.65_0.12_50)] hover:bg-[oklch(0.58_0.12_50)] text-white"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              New Page
+            </Button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* ── CONFIGURE STEP ── */}
+          {step === "configure" && (
+            <div className="max-w-4xl mx-auto space-y-8">
+              {/* Step 1: Avatar */}
+              <section>
+                <h2 className="text-base font-semibold text-[oklch(0.25_0.03_60)] mb-1 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[oklch(0.65_0.12_50)] text-white text-xs flex items-center justify-center font-bold">1</span>
+                  Choose Your Avatar
+                </h2>
+                <p className="text-sm text-[oklch(0.55_0.03_60)] mb-4 ml-8">
+                  Who is this landing page speaking to? The copy will be written specifically for their pain points and language.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {PERSONAS.map((persona) => (
+                    <button
+                      key={persona.name}
+                      onClick={() => setSelectedPersona(persona)}
+                      className={`relative p-3 rounded-xl border-2 text-left transition-all ${
+                        selectedPersona?.name === persona.name
+                          ? "border-[oklch(0.65_0.12_50)] bg-[oklch(0.65_0.12_50)]/10 shadow-sm"
+                          : `${persona.color} border`
+                      }`}
+                    >
+                      {selectedPersona?.name === persona.name && (
+                        <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-[oklch(0.55_0.12_50)]" />
+                      )}
+                      <div className="text-[oklch(0.45_0.12_50)] mb-2">{persona.icon}</div>
+                      <div className="font-medium text-xs text-[oklch(0.25_0.03_60)] leading-tight mb-1">
+                        {persona.name}
+                      </div>
+                      <div className="text-[10px] text-[oklch(0.55_0.03_60)] leading-tight">
+                        {persona.tagline}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Selected persona detail */}
+                {selectedPersona && (
+                  <div className="mt-3 p-3 rounded-lg bg-white border border-[oklch(0.88_0.02_80)] ml-0">
+                    <div className="text-xs font-medium text-[oklch(0.45_0.03_60)] mb-1">Pain points the copy will address:</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedPersona.painPoints.map((p) => (
+                        <Badge key={p} variant="outline" className="text-[10px] border-[oklch(0.88_0.02_80)] text-[oklch(0.45_0.03_60)]">
+                          {p}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Step 2: Offer */}
+              <section>
+                <h2 className="text-base font-semibold text-[oklch(0.25_0.03_60)] mb-1 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[oklch(0.65_0.12_50)] text-white text-xs flex items-center justify-center font-bold">2</span>
+                  Select the Offer
+                </h2>
+                <p className="text-sm text-[oklch(0.55_0.03_60)] mb-4 ml-8">
+                  What are you selling? The copy structure, CTA, and urgency will be tailored to this offer.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {OFFERS.map((offer) => (
+                    <button
+                      key={offer.id}
+                      onClick={() => setSelectedOffer(offer.id)}
+                      className={`relative p-3 rounded-xl border-2 text-left transition-all ${
+                        selectedOffer === offer.id
+                          ? "border-[oklch(0.65_0.12_50)] bg-[oklch(0.65_0.12_50)]/10 shadow-sm"
+                          : `${offer.color} border`
+                      }`}
+                    >
+                      {selectedOffer === offer.id && (
+                        <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-[oklch(0.55_0.12_50)]" />
+                      )}
+                      <div className="text-[oklch(0.45_0.12_50)] mb-2">{offer.icon}</div>
+                      <div className="font-semibold text-xs text-[oklch(0.25_0.03_60)] mb-0.5">{offer.label}</div>
+                      <div className="text-[10px] font-medium text-[oklch(0.55_0.12_50)] mb-1">{offer.price}</div>
+                      <div className="text-[10px] text-[oklch(0.55_0.03_60)] leading-tight">{offer.description}</div>
+                    </button>
+                  ))}
+                </div>
+
+                {selectedOffer === "custom" && (
+                  <div className="mt-3 ml-0">
+                    <Label className="text-xs text-[oklch(0.45_0.03_60)]">Custom Offer Label</Label>
+                    <Input
+                      value={customOfferLabel}
+                      onChange={(e) => setCustomOfferLabel(e.target.value)}
+                      placeholder="e.g. The Urban Monk Masterclass — $497"
+                      className="mt-1 text-sm border-[oklch(0.88_0.02_80)]"
+                    />
+                  </div>
+                )}
+              </section>
+
+              {/* Step 3: Content Angle */}
+              <section>
+                <h2 className="text-base font-semibold text-[oklch(0.25_0.03_60)] mb-1 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[oklch(0.65_0.12_50)] text-white text-xs flex items-center justify-center font-bold">3</span>
+                  Content Angle / Key Message
+                </h2>
+                <p className="text-sm text-[oklch(0.55_0.03_60)] mb-4 ml-8">
+                  What's the core insight or hook this page leads with? This shapes the entire narrative arc.
+                </p>
+                <div className="space-y-2">
+                  <Textarea
+                    value={contentAngle}
+                    onChange={(e) => setContentAngle(e.target.value)}
+                    placeholder={
+                      selectedPersona
+                        ? `e.g. "${selectedPersona.contentHooks?.[0] ?? "The hidden reason your health isn't improving despite doing everything right"}"` 
+                        : "e.g. The hidden reason your health isn't improving despite doing everything right..."
+                    }
+                    className="min-h-[80px] text-sm border-[oklch(0.88_0.02_80)] resize-none"
+                  />
+                  {selectedPersona && (
+                    <div className="text-xs text-[oklch(0.55_0.03_60)]">
+                      Suggested hooks for {selectedPersona.name}:
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {selectedPersona.contentHooks.map((hook: string) => (
+                          <button
+                            key={hook}
+                            onClick={() => setContentAngle(hook)}
+                            className="px-2 py-0.5 rounded-full bg-[oklch(0.93_0.02_80)] border border-[oklch(0.88_0.02_80)] text-[10px] text-[oklch(0.45_0.03_60)] hover:bg-[oklch(0.88_0.02_80)] transition-colors"
+                          >
+                            {hook}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Generate button */}
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={handleGenerateCopy}
+                  disabled={generateCopyMutation.isPending || !selectedPersona || !contentAngle.trim()}
+                  className="bg-[oklch(0.65_0.12_50)] hover:bg-[oklch(0.58_0.12_50)] text-white px-8 py-2.5 text-sm font-semibold"
+                >
+                  {generateCopyMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Writing copy in Pedram's voice...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Landing Page Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── PREVIEW / EDIT STEP ── */}
+          {step === "preview" && (
+            <div className="max-w-5xl mx-auto space-y-4">
+              {/* Toolbar */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setStep("configure")}
+                  className="flex items-center gap-1.5 text-sm text-[oklch(0.55_0.03_60)] hover:text-[oklch(0.25_0.03_60)] transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to configure
+                </button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveCopy}
+                    disabled={updateCopyMutation.isPending}
+                    className="border-[oklch(0.88_0.02_80)]"
+                  >
+                    {updateCopyMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Save Edits"
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handlePublishToGamma}
+                    disabled={publishToGammaMutation.isPending || isPolling || !!gammaUrl}
+                    className="bg-[oklch(0.45_0.18_280)] hover:bg-[oklch(0.38_0.18_280)] text-white font-semibold"
+                  >
+                    {isPolling ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating in Gamma...
+                      </>
+                    ) : publishToGammaMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Starting...
+                      </>
+                    ) : gammaUrl ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Published to Gamma
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Publish to Gamma
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Gamma result banner */}
+              {gammaUrl && (
+                <div className="p-4 rounded-xl bg-green-50 border border-green-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-sm text-green-800">Landing page published to Gamma!</div>
+                      <a
+                        href={gammaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-green-700 hover:underline flex items-center gap-1 mt-0.5"
+                      >
+                        {gammaUrl}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { navigator.clipboard.writeText(gammaUrl); toast.success("URL copied!"); }}
+                      className="border-green-300 text-green-700 hover:bg-green-100"
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      Copy URL
+                    </Button>
+                    <a href={gammaUrl} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                        <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                        Open in Gamma
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Gamma error banner */}
+              {gammaError && !gammaUrl && (
+                <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-sm text-red-800">Gamma generation failed</div>
+                    <div className="text-xs text-red-700 mt-0.5">{gammaError}</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePublishToGamma}
+                    className="ml-auto border-red-300 text-red-700 hover:bg-red-100"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                    Retry
+                  </Button>
+                </div>
+              )}
+
+              {/* Polling indicator */}
+              {isPolling && !gammaUrl && (
+                <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 flex items-center gap-3">
+                  <Loader2 className="h-4 w-4 text-violet-600 animate-spin shrink-0" />
+                  <div className="text-sm text-violet-800">
+                    Gamma is generating your landing page... This typically takes 30–90 seconds. Polling every 5 seconds.
+                  </div>
+                </div>
+              )}
+
+              {/* Two-column layout: edit + info */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* Copy editor */}
+                <div className="col-span-2">
+                  <Card className="border-[oklch(0.88_0.02_80)] bg-white">
+                    <CardHeader className="pb-2 pt-4 px-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide">
+                          Page Title
+                        </Label>
+                      </div>
+                      <Input
+                        value={pageTitle}
+                        onChange={(e) => setPageTitle(e.target.value)}
+                        className="text-sm font-medium border-[oklch(0.88_0.02_80)] mt-1"
+                        placeholder="Page title..."
+                      />
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4">
+                      <Label className="text-xs font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide mb-2 block">
+                        Landing Page Copy (Markdown)
+                      </Label>
+                      <Textarea
+                        value={editableCopy}
+                        onChange={(e) => setEditableCopy(e.target.value)}
+                        className="min-h-[600px] text-sm font-mono border-[oklch(0.88_0.02_80)] resize-none leading-relaxed"
+                        placeholder="AI-generated copy will appear here..."
+                      />
+                      <div className="flex justify-between items-center mt-2 text-xs text-[oklch(0.65_0.03_60)]">
+                        <span>{editableCopy.split(/\s+/).filter(Boolean).length} words</span>
+                        <span>{editableCopy.length} characters</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Sidebar info */}
+                <div className="space-y-3">
+                  {/* Publish info */}
+                  <Card className="border-[oklch(0.88_0.02_80)] bg-white">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="text-xs font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide">
+                        Publish to Gamma
+                      </div>
+                      <div className="text-xs text-[oklch(0.55_0.03_60)] leading-relaxed">
+                        Clicking "Publish to Gamma" sends this copy to the Gamma API to generate a
+                        fully designed landing page. This uses Gamma credits — only click when ready.
+                      </div>
+                      <div className="text-xs text-[oklch(0.55_0.03_60)]">
+                        <span className="font-medium text-[oklch(0.35_0.03_60)]">Format:</span> Webpage (not presentation)
+                      </div>
+                      <div className="text-xs text-[oklch(0.55_0.03_60)]">
+                        <span className="font-medium text-[oklch(0.35_0.03_60)]">Style:</span> Warm, earthy, wellness aesthetic
+                      </div>
+                      <div className="text-xs text-[oklch(0.55_0.03_60)]">
+                        <span className="font-medium text-[oklch(0.35_0.03_60)]">Time:</span> ~30–90 seconds
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Page details */}
+                  <Card className="border-[oklch(0.88_0.02_80)] bg-white">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="text-xs font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide mb-2">
+                        Page Details
+                      </div>
+                      {selectedPersona && (
+                        <div className="flex items-start gap-2">
+                          <Users className="h-3.5 w-3.5 text-[oklch(0.55_0.03_60)] mt-0.5 shrink-0" />
+                          <div>
+                            <div className="text-[10px] text-[oklch(0.65_0.03_60)]">Avatar</div>
+                            <div className="text-xs font-medium text-[oklch(0.35_0.03_60)]">{selectedPersona.name}</div>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-start gap-2">
+                        <Target className="h-3.5 w-3.5 text-[oklch(0.55_0.03_60)] mt-0.5 shrink-0" />
+                        <div>
+                          <div className="text-[10px] text-[oklch(0.65_0.03_60)]">Offer</div>
+                          <div className="text-xs font-medium text-[oklch(0.35_0.03_60)]">
+                            {OFFERS.find((o) => o.id === selectedOffer)?.label ?? selectedOffer}
+                          </div>
+                        </div>
+                      </div>
+                      {contentAngle && (
+                        <div className="flex items-start gap-2">
+                          <Sparkles className="h-3.5 w-3.5 text-[oklch(0.55_0.03_60)] mt-0.5 shrink-0" />
+                          <div>
+                            <div className="text-[10px] text-[oklch(0.65_0.03_60)]">Content Angle</div>
+                            <div className="text-xs text-[oklch(0.45_0.03_60)] leading-tight">{contentAngle}</div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Tips */}
+                  <Card className="border-[oklch(0.88_0.02_80)] bg-amber-50">
+                    <CardContent className="p-4">
+                      <div className="text-xs font-semibold text-amber-800 mb-2">Editing Tips</div>
+                      <ul className="text-[10px] text-amber-700 space-y-1.5 leading-relaxed">
+                        <li>• Edit the headline (first # line) to be punchier</li>
+                        <li>• Replace the sample testimonials with real ones</li>
+                        <li>• Add Pedram's real credentials where marked</li>
+                        <li>• Adjust the price/CTA to match your current offer</li>
+                        <li>• Save edits before publishing to Gamma</li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── HISTORY STEP ── */}
+          {step === "history" && (
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-[oklch(0.25_0.03_60)]">
+                  Landing Page History ({pages?.length ?? 0})
+                </h2>
+                <Button
+                  size="sm"
+                  onClick={() => setStep("configure")}
+                  className="bg-[oklch(0.65_0.12_50)] hover:bg-[oklch(0.58_0.12_50)] text-white"
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  New Page
+                </Button>
+              </div>
+
+              {!pages || pages.length === 0 ? (
+                <div className="text-center py-16 text-[oklch(0.65_0.03_60)]">
+                  <Globe className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <div className="font-medium">No landing pages yet</div>
+                  <div className="text-sm mt-1">Generate your first landing page above</div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(pages as LandingPageRecord[]).slice().reverse().map((page) => (
+                    <Card key={page.id} className="border-[oklch(0.88_0.02_80)] bg-white hover:shadow-sm transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-sm text-[oklch(0.25_0.03_60)] truncate">
+                                {page.title}
+                              </span>
+                              <Badge
+                                className={`text-[10px] shrink-0 ${
+                                  page.status === "published"
+                                    ? "bg-green-100 text-green-700 border-green-200"
+                                    : page.status === "generating"
+                                    ? "bg-violet-100 text-violet-700 border-violet-200"
+                                    : page.status === "failed"
+                                    ? "bg-red-100 text-red-700 border-red-200"
+                                    : "bg-gray-100 text-gray-600 border-gray-200"
+                                }`}
+                                variant="outline"
+                              >
+                                {page.status === "generating" && <Loader2 className="h-2.5 w-2.5 mr-1 animate-spin" />}
+                                {page.status}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-[oklch(0.55_0.03_60)]">
+                              {page.personaName && (
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {page.personaName}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Target className="h-3 w-3" />
+                                {OFFERS.find((o) => o.id === page.offer)?.label ?? page.offer}
+                              </span>
+                              <span>{new Date(page.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            {page.gammaUrl && (
+                              <a
+                                href={page.gammaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-violet-600 hover:underline flex items-center gap-1 mt-1"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                View on Gamma
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLoadPage(page)}
+                              className="border-[oklch(0.88_0.02_80)] text-xs"
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              Open
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeletePage(page.id)}
+                              disabled={deleteMutation.isPending}
+                              className="border-red-200 text-red-600 hover:bg-red-50 text-xs"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

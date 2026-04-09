@@ -10,6 +10,7 @@ import AssetLibrary from "./pages/AssetLibrary";
 import StrategyBrain from "./pages/StrategyBrain";
 import ResearchIntelligence from "./pages/ResearchIntelligence";
 import ScriptLibrary from "./pages/ScriptLibrary";
+import LandingPageGenerator from "./pages/LandingPageGenerator";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path={"/strategy"} component={StrategyBrain} />
       <Route path={"/research"} component={ResearchIntelligence} />
       <Route path={"/scripts"} component={ScriptLibrary} />
+      <Route path={"/landing-pages"} component={LandingPageGenerator} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

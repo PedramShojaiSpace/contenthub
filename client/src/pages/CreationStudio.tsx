@@ -37,7 +37,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { FlaskConical, Target } from "lucide-react";
+import { FlaskConical, Globe, Target } from "lucide-react";
 import { toast } from "sonner";
 
 // Diagnostic component to show raw Buffer API response
@@ -621,6 +621,50 @@ export default function CreationStudio() {
       status: "drafting",
       textContent: blogContent.body,
       gapQueryId: activeGapQueryId ?? undefined,
+    });
+  };
+
+  // WordPress publish state
+  const [isPublishingToWP, setIsPublishingToWP] = useState(false);
+  const [wpPublishResult, setWpPublishResult] = useState<{ postUrl: string; editUrl: string } | null>(null);
+
+  const [wpPublishStatus, setWpPublishStatus] = useState<"draft" | "publish">("draft");
+
+  const publishToWPMutation = trpc.blog.publish.useMutation({
+    onSuccess: (data) => {
+      setIsPublishingToWP(false);
+      setWpPublishResult({ postUrl: data.postUrl, editUrl: data.editUrl });
+      toast.success(
+        wpPublishStatus === "publish"
+          ? "Published to WordPress!"
+          : "Saved as draft in WordPress!"
+      );
+      utils.content.list.invalidate();
+    },
+    onError: (err) => {
+      setIsPublishingToWP(false);
+      toast.error("WordPress publish failed: " + err.message);
+    },
+  });
+
+  const handlePublishToWP = (status: "draft" | "publish") => {
+    if (!blogContent) return;
+    const contentItemId = savedItemIds["blog"];
+    if (!contentItemId) {
+      toast.error("Please save the blog post to Kanban first.");
+      return;
+    }
+    setIsPublishingToWP(true);
+    setWpPublishResult(null);
+    setWpPublishStatus(status);
+    publishToWPMutation.mutate({
+      contentItemId,
+      title: blogContent.title,
+      slug: blogContent.slug,
+      body: blogContent.body,
+      metaDescription: blogContent.metaDescription,
+      heroImageUrl: blogContent.imageUrl,
+      status,
     });
   };
 
@@ -1225,12 +1269,69 @@ export default function CreationStudio() {
                 />
               </div>
 
-              {/* WordPress placeholder */}
-              <div className="flex items-center gap-2 p-3 rounded-md bg-amber-500/5 border border-amber-500/20">
-                <ExternalLink className="h-4 w-4 text-amber-400 shrink-0" />
-                <p className="text-xs text-amber-400/80">
-                  WordPress direct publish coming soon. For now, copy the Markdown or download the .md file and paste into your WordPress editor.
-                </p>
+              {/* WordPress Publish */}
+              <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium text-foreground">Publish to theurbanmonk.com</p>
+                </div>
+                {wpPublishResult ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-green-600 font-medium">
+                      {wpPublishStatus === "publish" ? "Published live!" : "Saved as draft in WordPress"}
+                    </p>
+                    <div className="flex gap-2">
+                      <a
+                        href={wpPublishResult.postUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" /> View Post
+                      </a>
+                      <span className="text-muted-foreground">·</span>
+                      <a
+                        href={wpPublishResult.editUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" /> Edit in WP Admin
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePublishToWP("draft")}
+                      disabled={isPublishingToWP || !savedItemIds["blog"]}
+                      className="flex-1 text-xs"
+                    >
+                      {isPublishingToWP ? (
+                        <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Publishing...</>
+                      ) : (
+                        <>Save as Draft</>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handlePublishToWP("publish")}
+                      disabled={isPublishingToWP || !savedItemIds["blog"]}
+                      className="flex-1 text-xs"
+                    >
+                      {isPublishingToWP ? (
+                        <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Publishing...</>
+                      ) : (
+                        <>Publish Live</>
+                      )}
+                    </Button>
+                  </div>
+                )}
+                {!savedItemIds["blog"] && (
+                  <p className="text-xs text-muted-foreground">Save to Kanban first to enable WordPress publish.</p>
+                )}
               </div>
             </CardContent>
           </Card>

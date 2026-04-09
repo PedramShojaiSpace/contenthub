@@ -17,6 +17,7 @@ import {
   upsertPlatformStrategy,
 } from "./db";
 import { getBufferProfiles, pushToBuffer } from "./buffer";
+import { uploadMediaFromUrl, createWpPost } from "./wordpress";
 import {
   countAddressedGaps,
   getCompetitorLeaderboard,
@@ -768,7 +769,7 @@ Be specific and actionable. This brief will go directly to content creation.`;
       }),
   }),
 
-  // ─── Weekly Digest ───────────────────────────────────────────────────────────
+  // ─── Weekly Digest ─────────────────────────────────────────────────────────────────────────────
   digest: router({
     // Manually trigger the weekly digest (admin only)
     sendNow: protectedProcedure.mutation(async () => {
@@ -776,6 +777,65 @@ Be specific and actionable. This brief will go directly to content creation.`;
       return { success: true };
     }),
   }),
-});
 
+  // ─── WordPress Publish ──────────────────────────────────────────────────────────────────────────
+  blog: router({
+    publish: protectedProcedure
+      .input(
+        z.object({
+          contentItemId: z.number(),
+          title: z.string(),
+          slug: z.string(),
+          body: z.string(),
+          metaDescription: z.string().optional(),
+          heroImageUrl: z.string().optional(),
+          status: z.enum(["draft", "publish", "pending"]).default("draft"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Step 1: Upload hero image to WordPress media library (if provided)
+        let featuredMediaId: number | undefined;
+        let wpImageUrl: string | undefined;
+        if (input.heroImageUrl) {
+          try {
+            const filename = `${input.slug}-hero.jpg`;
+            const media = await uploadMediaFromUrl(
+              input.heroImageUrl,
+              filename,
+              input.title
+            );
+            featuredMediaId = media.id;
+            wpImageUrl = media.url;
+          } catch (err) {
+            // Non-fatal — publish continues without featured image
+            console.warn("[WP] Hero image upload failed:", err);
+          }
+        }
+
+        // Step 2: Create the WordPress post
+        const post = await createWpPost({
+          title: input.title,
+          slug: input.slug,
+          content: input.body,
+          excerpt: input.metaDescription,
+          status: input.status,
+          featuredMediaId,
+          metaDescription: input.metaDescription,
+        });
+
+        // Step 3: Update the content item status in the database
+        await updateContentItem(input.contentItemId, {
+          status: input.status === "publish" ? "published" : "scheduled",
+        });
+
+        return {
+          success: true,
+          postId: post.id,
+          postUrl: post.link,
+          editUrl: post.editLink,
+          wpImageUrl,
+        };
+      }),
+  }),
+});
 export type AppRouter = typeof appRouter;

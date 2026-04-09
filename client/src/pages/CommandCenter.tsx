@@ -39,11 +39,13 @@ import {
   ExternalLink,
   Facebook,
   Heart,
+  ImageIcon,
   Linkedin,
   Loader2,
   MessageCircle,
   MoreHorizontal,
   Plus,
+  RefreshCw,
   Repeat2,
   Twitter,
   Youtube,
@@ -282,6 +284,7 @@ function DraggableCard({
   onClick,
   onPublish,
   onAnalyticsUpdate,
+  onRegenerate,
 }: {
   item: ContentItem;
   onStatusChange: (id: number, status: Status) => void;
@@ -289,6 +292,7 @@ function DraggableCard({
   onClick: () => void;
   onPublish: (item: ContentItem) => void;
   onAnalyticsUpdate: (id: number, analytics: { analyticsViews?: number; analyticsLikes?: number; analyticsComments?: number; analyticsShares?: number }) => void;
+  onRegenerate: (item: ContentItem) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${item.id}`,
@@ -361,6 +365,17 @@ function DraggableCard({
                   )}
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRegenerate(item);
+                }}
+              >
+                <span className="flex items-center gap-1.5">
+                  <ImageIcon className="h-3 w-3" />
+                  Regenerate Image
+                </span>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={(e) => {
@@ -464,6 +479,40 @@ export default function CommandCenter() {
   const [scheduleDialogDate, setScheduleDialogDate] = useState<string | null>(null);
   const [scheduleItemId, setScheduleItemId] = useState<number | null>(null);
   const [publishDialogItem, setPublishDialogItem] = useState<ContentItem | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<number | null>(null);
+
+  const regenerateImageMutation = trpc.ai.generateImage.useMutation({
+    onSuccess: (data, variables) => {
+      if (data.url && variables.contentItemId) {
+        updateMutation.mutate(
+          { id: variables.contentItemId, imageUrl: data.url },
+          {
+            onSuccess: () => {
+              refetch();
+              setRegeneratingId(null);
+              toast.success("Image regenerated!");
+            },
+          }
+        );
+      } else {
+        setRegeneratingId(null);
+        toast.error("Image regeneration failed.");
+      }
+    },
+    onError: (err) => {
+      setRegeneratingId(null);
+      toast.error("Image regeneration failed: " + err.message);
+    },
+  });
+
+  const handleRegenerate = (item: ContentItem) => {
+    setRegeneratingId(item.id);
+    regenerateImageMutation.mutate({
+      prompt: item.title,
+      contentItemId: item.id,
+      platform: (item.platform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all") ?? "all",
+    });
+  };
 
   const { data: items = [], refetch } = trpc.content.list.useQuery();
   const createMutation = trpc.content.create.useMutation({
@@ -790,15 +839,22 @@ export default function CommandCenter() {
                     <DroppableColumn status={col.key}>
                       <div className="space-y-2">
                         {colItems.map((item) => (
-                          <DraggableCard
-                            key={item.id}
-                            item={item as ContentItem}
-                            onStatusChange={handleStatusChange}
-                            onDelete={(id) => deleteMutation.mutate({ id })}
-                            onClick={() => setLocation(`/studio?id=${item.id}`)}
-                            onPublish={(itm) => setPublishDialogItem(itm)}
-                            onAnalyticsUpdate={handleAnalyticsUpdate}
-                          />
+                          <div key={item.id} className="relative">
+                            {regeneratingId === item.id && (
+                              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 rounded-lg">
+                                <RefreshCw className="h-4 w-4 text-primary animate-spin" />
+                              </div>
+                            )}
+                            <DraggableCard
+                              item={item as ContentItem}
+                              onStatusChange={handleStatusChange}
+                              onDelete={(id) => deleteMutation.mutate({ id })}
+                              onClick={() => setLocation(`/studio?id=${item.id}`)}
+                              onPublish={(itm) => setPublishDialogItem(itm)}
+                              onAnalyticsUpdate={handleAnalyticsUpdate}
+                              onRegenerate={handleRegenerate}
+                            />
+                          </div>
                         ))}
                         {colItems.length === 0 && (
                           <div className="border border-dashed border-border/50 rounded-lg p-4 text-center">

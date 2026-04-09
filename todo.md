@@ -289,3 +289,40 @@
 - [x] All PLATFORM_STYLE_LABELS in CreationStudio now reflect warm, uplifting aesthetic
 - [x] routers.ts image style prompts already updated in v12 — confirmed no dark/moody language remains
 - [x] TypeScript clean (0 errors), 20/20 tests pass
+
+## v14 Features
+
+### WordPress Direct Publish
+- [ ] Add WORDPRESS_URL, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD secrets
+- [ ] Add wordpress.ts server module: uploadMedia() and createPost() using WP REST API
+- [ ] Add blog.publish tRPC procedure: upload hero image to WP media, create draft post with featured image
+- [ ] Add "Publish to WordPress" button in Blog panel (replaces placeholder)
+- [ ] Show published post URL and "View on WordPress" link after successful publish
+- [ ] Handle errors gracefully (auth failure, duplicate slug, etc.)
+- [ ] Write vitest test for WordPress publish procedure
+
+### Kanban Card Image Regeneration
+- [ ] Add "Regenerate Image" button to each Kanban card in Command Center
+- [ ] Clicking opens a small popover/modal with the current image and a "Regenerate" button
+- [ ] Calls ai.generateImage mutation with the card's platform and text content
+- [ ] Updates the card's imageUrl in the database after regeneration
+- [ ] Show loading spinner during regeneration
+- [ ] Write vitest test for image regeneration from Kanban
+
+## v14 Features — Completed
+
+### WordPress Direct Publish
+- [x] Create server/wordpress.ts module with uploadMediaFromUrl and createWpPost functions
+- [x] Use WORDPRESS_URL, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD env vars (pre-configured)
+- [x] Add blog.publish tRPC procedure: upload hero image to WP media, create post, update content item status
+- [x] Blog panel: real "Save as Draft" and "Publish Live" buttons (replaces placeholder)
+- [x] After publish: show "View Post" and "Edit in WP Admin" links
+- [x] Disable publish buttons until blog is auto-saved to Kanban
+- [x] WordPress credentials verified (authenticated as Pedram Shojai, user ID 13)
+
+### Regenerate Image on Kanban Cards
+- [x] Add "Regenerate Image" option to the card dropdown menu (three-dot menu)
+- [x] Wire to ai.generateImage mutation with the card's title + platform as prompt
+- [x] Show loading spinner overlay on the card while regenerating
+- [x] After regeneration: update the card's imageUrl in the database and refresh the Kanban
+- [x] TypeScript clean (0 errors), 20/20 tests pass

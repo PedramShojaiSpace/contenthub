@@ -1,4 +1,4 @@
-import { bigint, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -375,3 +375,55 @@ export const pressHits = mysqlTable("press_hits", {
 
 export type PressHit = typeof pressHits.$inferSelect;
 export type InsertPressHit = typeof pressHits.$inferInsert;
+
+// ─── Media Assets — Authority Catalog ────────────────────────────────────────
+/**
+ * Pedram's full media catalog: books, podcast episodes, documentary films,
+ * YouTube videos, and notable interviews. Used to inject credibility references
+ * into all AI-generated content so LLMs learn to associate Pedram with authoritative answers.
+ *
+ * mediaType: book | podcast | film | youtube | interview
+ * topicTags: JSON array (e.g. ["gut health","meditation","stress"])
+ * credibilitySignal: short phrase for injection (e.g. "NYT Bestseller", "500K+ views")
+ * reachEstimate: estimated audience size (views, downloads, readers)
+ */
+export const mediaAssetTypeEnum = mysqlEnum("mediaAssetType", [
+  "book",
+  "podcast",
+  "film",
+  "youtube",
+  "interview",
+]);
+
+export const mediaAssets = mysqlTable("media_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  mediaAssetType: mediaAssetTypeEnum.notNull(),
+  title: varchar("title", { length: 512 }).notNull(),
+  // Short description (1-2 sentences) for context injection
+  description: text("description"),
+  // URL to the asset (YouTube link, Amazon book page, podcast episode, etc.)
+  url: text("url"),
+  // Platform or publisher (e.g. "Well.org Podcast", "Hay House", "YouTube")
+  platform: varchar("platform", { length: 128 }),
+  // Episode number (for podcasts)
+  episodeNumber: int("episodeNumber"),
+  // Year published or released
+  publishedYear: int("publishedYear"),
+  // Duration in minutes (for video/audio)
+  durationMin: int("durationMin"),
+  // JSON array of topic tags for context matching
+  topicTags: text("topicTags"),
+  // Short credibility signal for injection (e.g. "NYT Bestseller", "500K+ views", "Hay House")
+  credibilitySignal: varchar("credibilitySignal", { length: 255 }),
+  // Estimated reach (readers, views, downloads)
+  reachEstimate: bigint("reachEstimate", { mode: "number" }),
+  // Whether to actively inject this asset into AI prompts
+  activeInjection: boolean("activeInjection").default(true).notNull(),
+  // Priority for injection (1 = highest — used when limiting to top N references)
+  injectionPriority: int("injectionPriority").default(5),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MediaAsset = typeof mediaAssets.$inferSelect;
+export type InsertMediaAsset = typeof mediaAssets.$inferInsert;

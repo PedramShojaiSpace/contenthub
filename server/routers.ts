@@ -41,6 +41,7 @@ import { landingPagesRouter } from "./landingPagesRouter";
 import { youtubeRouter } from "./youtubeRouter";
 import { typeformRouter } from "./typeformRouter";
 import { pressRouter } from "./pressRouter";
+import { mediaRouter } from "./mediaRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -371,14 +372,21 @@ export const appRouter = router({
         } catch (err) {
           console.warn("[AI] Could not load press authority block:", err);
         }
-
+        // Load media authority context block
+        let mediaAuthorityContext = "";
+        try {
+          const { getMediaContextBlock } = await import("./mediaRouter");
+          mediaAuthorityContext = await getMediaContextBlock(input.idea, { maxAssets: 4 });
+        } catch (err) {
+          console.warn("[AI] Could not load media authority context:", err);
+        }
         // Step 1: Generate all platform text in parallel
         const textResults = await Promise.all(
           platforms.map(async (platform) => {
             const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
             const userMessage = input.customInstructions
-              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}${pressAuthorityContext}`
-              : `Raw idea: ${input.idea}${personaContext}${pressAuthorityContext}`;
+              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}`
+              : `Raw idea: ${input.idea}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}`;;
 
             const response = await invokeLLM({
               messages: [
@@ -579,16 +587,24 @@ Rules:
           }
         }
 
+         // Load media authority context block
+        let blogMediaContext = "";
+        try {
+          const { getMediaContextBlock } = await import("./mediaRouter");
+          blogMediaContext = await getMediaContextBlock(input.idea, { maxAssets: 4 });
+        } catch (err) {
+          console.warn("[Blog] Could not load media authority context:", err);
+        }
         // Step 1: Generate the full blog article as structured JSON
         const userMessage = [
           `Raw idea: ${input.idea}`,
           input.gapQueryText ? `\nThis article should directly answer the LLM search query: "${input.gapQueryText}"` : "",
           input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
           personaContext,
+          blogMediaContext,
         ]
           .filter(Boolean)
           .join("");
-
         const response = await invokeLLM({
           messages: [
             { role: "system", content: BLOG_PROMPT },
@@ -922,21 +938,26 @@ SCRIPT REQUIREMENTS:
 - Reference relevant books or programs where appropriate
 
 Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
-
+        // Inject media authority context
+        let scriptMediaContext = "";
+        try {
+          const { getMediaContextBlock } = await import("./mediaRouter");
+          scriptMediaContext = await getMediaContextBlock(input.title, { maxAssets: 5, includeTypes: ["book", "podcast", "film", "youtube"] });
+        } catch (err) {
+          console.warn("[Script] Could not load media authority context:", err);
+        }
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Write the full teleprompter script for: "${input.title}"` },
+            { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptMediaContext}` },
           ],
         });
-
         const rawContent = response.choices?.[0]?.message?.content;
         return {
           script: typeof rawContent === "string" ? rawContent : "Script generation failed.",
         };
       }),
-
-    // AI: generate a social post caption + image prompt from a gap query or video topic
+    // AI: generate a social post caption + image prompt from a gap query or video topicpic
     generatePostAndImage: protectedProcedure
       .input(
         z.object({
@@ -983,11 +1004,18 @@ Return BOTH in this exact format:
 
 [IMAGE PROMPT]
 (the image generation prompt here)`;
-
+        // Inject media authority context
+        let postMediaContext = "";
+        try {
+          const { getMediaContextBlock } = await import("./mediaRouter");
+          postMediaContext = await getMediaContextBlock(input.title, { maxAssets: 3, includeTypes: ["book", "podcast", "interview"] });
+        } catch (err) {
+          console.warn("[Post] Could not load media authority context:", err);
+        }
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Generate the social post and image prompt for: "${input.title}"` },
+            { role: "user", content: `Generate the social post and image prompt for: "${input.title}"${postMediaContext}` },
           ],
         });
 
@@ -1146,5 +1174,6 @@ Return BOTH in this exact format:
   youtube: youtubeRouter,
   typeform: typeformRouter,
   press: pressRouter,
+  media: mediaRouter,
 });
 export type AppRouter = typeof appRouter;

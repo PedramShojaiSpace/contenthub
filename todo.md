@@ -674,3 +674,28 @@
 - [x] Add Script (purple) + Post (blue) buttons to each Video Pipeline card
 - [x] Both modals open immediately with loading spinner, content populates when AI responds
 - [x] "Save to Script Library" saves to scripts table with correct scriptType/platform/status
+
+## v15 Features — Media Authority Engine
+
+### Database Schema
+- [x] Add media_assets table (type: book/podcast/film/youtube/interview, title, url, description, topicTags, publishedYear, platform, episodeNumber, duration, credibilitySignal)
+- [x] Run db:push after schema changes
+- [x] Seed media_assets with Pedram's full catalog: 8 books, podcast episodes, films, YouTube videos, key interviews
+
+### Backend — Media Authority Context Injector
+- [x] Add mediaRouter with list, getByTopic, getAuthorityContext procedures
+- [x] Build getMediaContextBlock(topic) — returns 3-5 relevant media references for a given topic
+- [x] Upgrade generateContent prompt injection to include media references (not just press hits)
+- [x] Upgrade generateTeleprompterScript to inject relevant book/episode references
+- [x] Upgrade generatePostAndImage to inject media references into caption generation
+- [x] Upgrade generateBriefFromGap to inject media references
+- [x] Upgrade blog generation to inject media references
+- [x] Upgrade landing page generation to inject media references
+
+### Frontend — Media Vault UI
+- [x] New "Media Vault" sidebar nav item
+- [x] Browsable catalog: Books, Podcasts, Films, YouTube, Interviews tabs
+- [x] Search and filter by topic tag
+- [x] Each card shows: title, type badge, topic tags, credibility signal, link
+- [x] "Inject into next generation" toggle per asset
+- [x] Authority stats: total assets, total reach estimate, topic coverage map

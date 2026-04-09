@@ -363,3 +363,26 @@
 - [x] Dialog shows: hero image, platform badge, status, full editable post body, Copy/Save/Regenerate buttons
 - [x] Legacy titles cleaned: 17 items updated from raw AI brief headers to real post opening lines
 - [x] TypeScript clean (0 errors), 20/20 tests pass
+
+## v16 Features
+
+### Batch WordPress Publish
+- [x] Add blog.publishBatch tRPC procedure: accepts array of content item IDs, publishes each to WordPress as draft
+- [x] "Publish All Approved to WordPress" button above Kanban (only visible when Approved column has items)
+- [x] Show success/warning toast with count of succeeded and failed items
+- [x] After batch: moves all published items to Scheduled status in DB
+- [x] Handles partial failures gracefully
+
+### Calendar-to-WordPress Scheduling
+- [x] When a blog card is dragged to a calendar day, also creates a "future" scheduled post in WordPress
+- [x] When a blog card is scheduled via handleDayClick, also schedules in WordPress
+- [x] blog.publish procedure updated to accept scheduledAt param and set WP status to "future"
+- [x] WP date set via date_gmt field for accurate UTC scheduling
+
+### Kanban Platform Filter Pills
+- [x] Platform filter state added (default: "all")
+- [x] Filter pill row above Kanban: All, LinkedIn, Meta, X, YouTube, TikTok, Blog
+- [x] Filter pills show total item count per platform
+- [x] Filtered view shows only cards matching selected platform
+- [x] Active pill highlighted with primary color
+- [x] TypeScript clean (0 errors), 20/20 tests pass

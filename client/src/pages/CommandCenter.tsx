@@ -485,6 +485,8 @@ export default function CommandCenter() {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [isSavingContent, setIsSavingContent] = useState(false);
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [isBatchPublishing, setIsBatchPublishing] = useState(false);
 
   const regenerateImageMutation = trpc.ai.generateImage.useMutation({
     onSuccess: (data, variables) => {
@@ -536,6 +538,34 @@ export default function CommandCenter() {
   const updateMutation = trpc.content.update.useMutation({
     onSuccess: () => {
       refetch();
+    },
+  });
+
+  const batchPublishMutation = trpc.blog.publishBatch.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      setIsBatchPublishing(false);
+      if (data.failed === 0) {
+        toast.success(`${data.succeeded} post${data.succeeded !== 1 ? "s" : ""} sent to WordPress as drafts!`);
+      } else {
+        toast.warning(`${data.succeeded} published, ${data.failed} failed. Check WordPress for details.`);
+      }
+    },
+    onError: (err) => {
+      setIsBatchPublishing(false);
+      toast.error("Batch publish failed: " + err.message);
+    },
+  });
+
+  const wpScheduleMutation = trpc.blog.publish.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      if (data.wpStatus === "future") {
+        toast.success("Post scheduled in WordPress!");
+      }
+    },
+    onError: () => {
+      // Non-fatal — calendar scheduling still works even if WP fails
     },
   });
   const deleteMutation = trpc.content.delete.useMutation({
@@ -626,7 +656,26 @@ export default function CommandCenter() {
       const scheduledAt = new Date(dateKey).getTime();
       updateMutation.mutate(
         { id: itemId, scheduledAt, status: "scheduled" },
-        { onSuccess: () => { refetch(); toast.success("Scheduled!"); } }
+        {
+          onSuccess: () => {
+            refetch();
+            toast.success("Scheduled!");
+            // Also schedule in WordPress if it's a blog post with content
+            const draggedItem = items.find((i) => i.id === itemId);
+            if (draggedItem?.platform === "blog" && draggedItem.textContent) {
+              const slug = draggedItem.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80);
+              wpScheduleMutation.mutate({
+                contentItemId: draggedItem.id,
+                title: draggedItem.title,
+                slug,
+                body: draggedItem.textContent,
+                heroImageUrl: draggedItem.imageUrl ?? undefined,
+                status: "future",
+                scheduledAt,
+              });
+            }
+          }
+        }
       );
     }
   };
@@ -677,9 +726,28 @@ export default function CommandCenter() {
   const handleDayClick = (dateKey: string) => {
     if (scheduleItemId) {
       const scheduledAt = new Date(dateKey).getTime();
+      const itemToSchedule = items.find((i) => i.id === scheduleItemId);
       updateMutation.mutate(
         { id: scheduleItemId, scheduledAt, status: "scheduled" },
-        { onSuccess: () => { refetch(); toast.success("Scheduled!"); } }
+        {
+          onSuccess: () => {
+            refetch();
+            toast.success("Scheduled!");
+            // Also schedule in WordPress if it's a blog post with content
+            if (itemToSchedule?.platform === "blog" && itemToSchedule.textContent) {
+              const slug = itemToSchedule.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80);
+              wpScheduleMutation.mutate({
+                contentItemId: itemToSchedule.id,
+                title: itemToSchedule.title,
+                slug,
+                body: itemToSchedule.textContent,
+                heroImageUrl: itemToSchedule.imageUrl ?? undefined,
+                status: "future",
+                scheduledAt,
+              });
+            }
+          }
+        }
       );
       setScheduleItemId(null);
       setScheduleDialogDate(null);
@@ -826,11 +894,56 @@ export default function CommandCenter() {
             </div>
           )}
 
+          {/* ── Platform Filter Pills ─────────────────────────────────────── */}
+          {viewMode === "kanban" && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {["all", "linkedin", "meta", "x", "youtube", "tiktok", "blog"].map((p) => {
+                const count = p === "all" ? items.length : items.filter((i) => i.platform === p).length;
+                const labels: Record<string, string> = {
+                  all: "All", linkedin: "LinkedIn", meta: "Meta", x: "X",
+                  youtube: "YouTube", tiktok: "TikTok", blog: "Blog",
+                };
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPlatformFilter(p)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      platformFilter === p
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    {labels[p]}
+                    <span className={`text-[10px] ${ platformFilter === p ? "opacity-80" : "opacity-60" }`}>{count}</span>
+                  </button>
+                );
+              })}
+              {/* Batch Publish Approved button */}
+              {items.filter((i) => i.status === "approved").length > 0 && (
+                <button
+                  onClick={() => {
+                    const approvedIds = items.filter((i) => i.status === "approved").map((i) => i.id);
+                    setIsBatchPublishing(true);
+                    batchPublishMutation.mutate({ contentItemIds: approvedIds });
+                  }}
+                  disabled={isBatchPublishing}
+                  className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-green-600/50 bg-green-50 text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50"
+                >
+                  {isBatchPublishing ? (
+                    <><span className="h-3 w-3 border border-green-600 border-t-transparent rounded-full animate-spin" />Publishing...</>
+                  ) : (
+                    <><span>⬆</span> Publish All Approved to WordPress ({items.filter((i) => i.status === "approved").length})</>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* ── KANBAN VIEW ──────────────────────────────────────────────────── */}
           {viewMode === "kanban" && (
             <div className="grid grid-cols-6 gap-4 overflow-x-auto">
               {STATUSES.map((col) => {
-                const colItems = items.filter((i) => i.status === col.key);
+                const colItems = (platformFilter === "all" ? items : items.filter((i) => i.platform === platformFilter)).filter((i) => i.status === col.key);
                 return (
                   <div key={col.key} className="min-w-[180px]">
                     <div className="flex items-center justify-between mb-3">

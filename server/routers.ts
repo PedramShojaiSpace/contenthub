@@ -804,7 +804,8 @@ Be specific and actionable. This brief will go directly to content creation.`;
           body: z.string(),
           metaDescription: z.string().optional(),
           heroImageUrl: z.string().optional(),
-          status: z.enum(["draft", "publish", "pending"]).default("draft"),
+          status: z.enum(["draft", "publish", "pending", "future"]).default("draft"),
+          scheduledAt: z.number().optional(), // UTC ms timestamp for scheduled posts
         })
       )
       .mutation(async ({ input }) => {
@@ -822,9 +823,16 @@ Be specific and actionable. This brief will go directly to content creation.`;
             featuredMediaId = media.id;
             wpImageUrl = media.url;
           } catch (err) {
-            // Non-fatal — publish continues without featured image
             console.warn("[WP] Hero image upload failed:", err);
           }
+        }
+
+        // Determine WP status and date
+        let wpStatus = input.status;
+        let wpDate: string | undefined;
+        if (input.scheduledAt && input.scheduledAt > Date.now()) {
+          wpStatus = "future";
+          wpDate = new Date(input.scheduledAt).toISOString();
         }
 
         // Step 2: Create the WordPress post
@@ -833,14 +841,17 @@ Be specific and actionable. This brief will go directly to content creation.`;
           slug: input.slug,
           content: input.body,
           excerpt: input.metaDescription,
-          status: input.status,
+          status: wpStatus,
           featuredMediaId,
           metaDescription: input.metaDescription,
+          date: wpDate,
         });
 
         // Step 3: Update the content item status in the database
+        const newStatus = wpStatus === "publish" ? "published" : wpStatus === "future" ? "scheduled" : "drafting";
         await updateContentItem(input.contentItemId, {
-          status: input.status === "publish" ? "published" : "scheduled",
+          status: newStatus,
+          publishUrl: post.link,
         });
 
         return {
@@ -849,7 +860,61 @@ Be specific and actionable. This brief will go directly to content creation.`;
           postUrl: post.link,
           editUrl: post.editLink,
           wpImageUrl,
+          wpStatus,
         };
+      }),
+
+    // Batch publish all approved blog posts to WordPress as drafts
+    publishBatch: protectedProcedure
+      .input(z.object({ contentItemIds: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        const results: Array<{ id: number; success: boolean; postUrl?: string; error?: string }> = [];
+
+        for (const id of input.contentItemIds) {
+          try {
+            const item = await getContentItem(id);
+            if (!item || !item.textContent) {
+              results.push({ id, success: false, error: "No content" });
+              continue;
+            }
+
+            // Generate a slug from the title
+            const slug = item.title
+              .toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, "")
+              .replace(/\s+/g, "-")
+              .substring(0, 80);
+
+            // Upload hero image if available
+            let featuredMediaId: number | undefined;
+            if (item.imageUrl) {
+              try {
+                const media = await uploadMediaFromUrl(item.imageUrl, `${slug}-hero.jpg`, item.title);
+                featuredMediaId = media.id;
+              } catch {
+                // Non-fatal
+              }
+            }
+
+            const post = await createWpPost({
+              title: item.title,
+              slug,
+              content: item.textContent,
+              status: "draft",
+              featuredMediaId,
+            });
+
+            await updateContentItem(id, { status: "scheduled", publishUrl: post.link });
+            results.push({ id, success: true, postUrl: post.link });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            results.push({ id, success: false, error: msg });
+          }
+        }
+
+        const succeeded = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
+        return { results, succeeded, failed };
       }),
   }),
 });

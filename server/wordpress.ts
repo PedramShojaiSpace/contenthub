@@ -74,11 +74,12 @@ export interface WpPostInput {
   slug: string;
   content: string; // HTML or Markdown — WP stores as-is
   excerpt?: string;
-  status?: "draft" | "publish" | "pending";
+  status?: "draft" | "publish" | "pending" | "future";
   featuredMediaId?: number;
   categories?: number[];
   tags?: number[];
   metaDescription?: string; // Stored in Yoast SEO meta if available
+  date?: string; // ISO 8601 UTC date string for scheduled posts (status: "future")
 }
 
 export interface WpPostResult {
@@ -106,6 +107,7 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
   if (input.featuredMediaId) body.featured_media = input.featuredMediaId;
   if (input.categories?.length) body.categories = input.categories;
   if (input.tags?.length) body.tags = input.tags;
+  if (input.date) body.date_gmt = input.date; // Schedule in UTC
 
   // Yoast SEO meta description (stored as post meta)
   if (input.metaDescription) {

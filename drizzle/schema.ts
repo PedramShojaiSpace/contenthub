@@ -214,3 +214,55 @@ export const personas = mysqlTable("personas", {
 
 export type Persona = typeof personas.$inferSelect;
 export type InsertPersona = typeof personas.$inferInsert;
+
+// ─── Script Library ───────────────────────────────────────────────────────────
+
+/**
+ * Master library of all scripts: video scripts, carousel outlines, blog posts, emails.
+ * Production status tracks the asset through the full production pipeline.
+ */
+export const scriptTypeEnum = mysqlEnum("scriptType", [
+  "video",
+  "carousel",
+  "blog",
+  "email",
+  "reel",
+]);
+
+export const scriptStatusEnum = mysqlEnum("scriptStatus", [
+  "idea",
+  "scripted",
+  "in_production",
+  "in_edit",
+  "ready_to_post",
+  "published",
+]);
+
+export const scripts = mysqlTable("scripts", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  scriptType: scriptTypeEnum.notNull().default("video"),
+  platform: platformEnum.default("all"),
+  personaId: int("personaId"),
+  contentGoal: contentGoalEnum.default("audience_growth"),
+  productionStatus: scriptStatusEnum.notNull().default("idea"),
+  // The full script / outline body
+  scriptBody: text("scriptBody"),
+  // Production notes (director notes, voice model instructions, etc.)
+  notes: text("notes"),
+  // Thumbnail or cover image URL
+  thumbnailUrl: text("thumbnailUrl"),
+  // Link to a content item in the Kanban (if this script was derived from one)
+  linkedContentItemId: int("linkedContentItemId"),
+  // Priority order (1 = highest)
+  priority: int("priority"),
+  // Duration estimate in minutes (for videos)
+  estimatedDurationMin: int("estimatedDurationMin"),
+  // Competitor weakness this script exploits
+  competitorAngle: text("competitorAngle"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Script = typeof scripts.$inferSelect;
+export type InsertScript = typeof scripts.$inferInsert;

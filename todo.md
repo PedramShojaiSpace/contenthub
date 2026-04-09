@@ -455,3 +455,49 @@
 - [x] Comprehensive blended strategy document: Holistic Psychologist playbook + video-first architecture + LLM crawl infrastructure + 24-month roadmap
 - [x] Competitor Intelligence tab in Research Intelligence — tier overview, why AI recommends each, weakness, displacement angle
 - [x] Video Pipeline tab in Research Intelligence — 20 priority videos with status tracking, production workflow notes
+
+## v10 Features (April 9, 2026)
+
+### Script Library Module
+- [x] Add scripts table to drizzle/schema.ts: id, title, scriptType (video|carousel|blog|email), platform, personaId (FK), contentGoal, productionStatus (idea|scripted|in_production|in_edit|ready_to_post|published), scriptBody (text), notes, thumbnailUrl, linkedContentItemId, createdAt, updatedAt
+- [x] Run pnpm db:push
+- [x] Add scripts.list, scripts.get, scripts.create, scripts.update, scripts.delete tRPC procedures
+- [x] Add scripts.updateStatus procedure
+- [x] New sidebar nav item: "Script Library" with film icon
+- [x] Script Library page: Kanban-style columns — Idea | Scripted | In Production | In Edit | Ready to Post | Published
+- [x] Script cards: title, type badge, platform badge, persona badge, notes preview
+- [x] Script detail panel: full script body editor, notes, status dropdown, linked content item
+- [x] "New Script" button: type selector, platform, persona, content goal, title, body
+- [x] Seed 20 video scripts from Video Pipeline priority list
+- [x] Seed 20 Instagram carousel outlines from Reframe Post library
+
+### Asset Library Overhaul
+- [x] Rebuild Asset Library to show ALL asset types: images (from generated_images), scripts (from scripts table), content items (from content_items), blog posts
+- [x] Asset type filter tabs: All | Images | Videos/Scripts | Carousels | Blog Posts
+- [x] Status filter: All | Draft | Approved | Scheduled | Published
+- [x] Platform filter: All | LinkedIn | Meta | X | YouTube | TikTok | Blog
+- [x] Each asset card shows: thumbnail/icon, title, type badge, platform badge, status badge, created date
+- [x] Click to expand: full content preview, edit link, Buffer push button for applicable assets
+- [x] Auto-archive: every content item saved from Creation Studio appears in Asset Library automatically
+- [x] Every generated image appears in Asset Library with its linked content item
+
+### Buffer Push on Kanban Cards
+- [x] Add "Push to Buffer" button on each Kanban card (visible on hover or in card dropdown menu)
+- [x] On click: auto-selects the correct Buffer channel for the card's platform
+- [x] One-click push to the correct Buffer channel from the Kanban card
+- [x] Show success/error toast after push
+- [x] Platform filtering fixed: handleSyndicate now cross-references bufferProfiles service field
+
+### Burnout Recovery Definitive Guide
+- [x] Write 3,000+ word SEO blog post: "The East-West Approach to Burnout Recovery"
+- [x] Include 5+ research citations (PubMed/peer-reviewed)
+- [x] Full FAQ section answering top 10 Gumshoe gap queries for Burnout Recovery Seeker persona
+- [x] Published to theurbanmonk.com via WordPress REST API — Post ID 9574, status: draft, edit at /wp-admin/post.php?post=9574&action=edit
+- [ ] Store as a Script Library entry (type: blog) with status: published (manual step)
+
+### Instagram Reframe Post Carousel Library
+- [x] Generate 20 carousel outlines (10 slides each) for the Reframe Post series
+- [x] Start with: "Your 2 AM wake-up isn't insomnia — it's your liver talking"
+- [x] Start with: "Eastern medicine knew about leaky gut 3,000 years before Western science named it"
+- [x] Each carousel: hook slide, 7 content slides, CTA slide, cover caption
+- [x] Stored all 20 in Script Library via seedCarousels procedure — click "Seed Carousels" in Script Library to populate

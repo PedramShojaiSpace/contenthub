@@ -35,6 +35,7 @@ import {
 import { sendWeeklyDigest } from "./digest";
 import { notifyOwner } from "./_core/notification";
 import { personasRouter } from "./personasRouter";
+import { scriptsRouter } from "./scriptsRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -929,5 +930,6 @@ Be specific and actionable. This brief will go directly to content creation.`;
   }),
 
   personas: personasRouter,
+  scripts: scriptsRouter,
 });
 export type AppRouter = typeof appRouter;

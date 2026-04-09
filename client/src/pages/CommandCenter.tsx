@@ -48,6 +48,7 @@ import {
   Plus,
   RefreshCw,
   Repeat2,
+  Send,
   Twitter,
   Users,
   Brain,
@@ -292,6 +293,8 @@ function DraggableCard({
   onPublish,
   onAnalyticsUpdate,
   onRegenerate,
+  onPushToBuffer,
+  isPushingToBuffer,
 }: {
   item: ContentItem;
   onStatusChange: (id: number, status: Status) => void;
@@ -300,6 +303,8 @@ function DraggableCard({
   onPublish: (item: ContentItem) => void;
   onAnalyticsUpdate: (id: number, analytics: { analyticsViews?: number; analyticsLikes?: number; analyticsComments?: number; analyticsShares?: number }) => void;
   onRegenerate: (item: ContentItem) => void;
+  onPushToBuffer: (item: ContentItem) => void;
+  isPushingToBuffer: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${item.id}`,
@@ -417,6 +422,29 @@ function DraggableCard({
         {isPublished && (
           <AnalyticsPanel item={item} onUpdate={onAnalyticsUpdate} />
         )}
+
+        {/* Buffer push button — visible on hover */}
+        {!isPublished && (
+          <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full h-6 text-[10px] border-amber-600/40 text-amber-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-600 gap-1"
+              disabled={isPushingToBuffer}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPushToBuffer(item);
+              }}
+            >
+              {isPushingToBuffer ? (
+                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              ) : (
+                <Send className="h-2.5 w-2.5" />
+              )}
+              {isPushingToBuffer ? "Pushing…" : "Push to Buffer"}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -492,6 +520,57 @@ export default function CommandCenter() {
   const [isSavingContent, setIsSavingContent] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
+  const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
+
+  // Buffer profiles (cached — fetched once)
+  const { data: bufferProfiles = [] } = trpc.syndication.getProfiles.useQuery();
+
+  const syndicationMutation = trpc.syndication.push.useMutation({
+    onSuccess: (result, variables) => {
+      setBufferPushingId(null);
+      if (result.success) {
+        refetch();
+        toast.success("Pushed to Buffer queue!");
+      } else {
+        toast.error("Buffer push failed: " + (result.error ?? "Unknown error"));
+      }
+    },
+    onError: (err) => {
+      setBufferPushingId(null);
+      toast.error("Buffer error: " + err.message);
+    },
+  });
+
+  // Platform → Buffer service names map (same fix as Creation Studio)
+  const PLATFORM_SERVICE_MAP: Record<string, string[]> = {
+    linkedin: ["linkedin"],
+    meta: ["facebook", "instagram"],
+    x: ["twitter"],
+    youtube: ["youtube"],
+    tiktok: ["tiktok"],
+  };
+
+  const handlePushToBuffer = (item: ContentItem) => {
+    const services = PLATFORM_SERVICE_MAP[item.platform] ?? [];
+    const matchedProfiles = bufferProfiles.filter((p) =>
+      services.includes(p.service.toLowerCase())
+    );
+    if (matchedProfiles.length === 0) {
+      toast.error(`No Buffer channel found for platform "${item.platform}". Check your Buffer connections.`);
+      return;
+    }
+    if (!item.textContent && !item.title) {
+      toast.error("This item has no text content to push.");
+      return;
+    }
+    setBufferPushingId(item.id);
+    syndicationMutation.mutate({
+      contentItemId: item.id,
+      text: item.textContent ?? item.title,
+      profileIds: matchedProfiles.map((p) => p.id),
+      imageUrl: item.imageUrl ?? undefined,
+    });
+  };
 
   const regenerateImageMutation = trpc.ai.generateImage.useMutation({
     onSuccess: (data, variables) => {
@@ -989,6 +1068,8 @@ export default function CommandCenter() {
                               onPublish={(itm) => setPublishDialogItem(itm)}
                               onAnalyticsUpdate={handleAnalyticsUpdate}
                               onRegenerate={handleRegenerate}
+                              onPushToBuffer={handlePushToBuffer}
+                              isPushingToBuffer={bufferPushingId === item.id}
                             />
                           </div>
                         ))}

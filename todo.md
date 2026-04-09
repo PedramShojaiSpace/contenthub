@@ -588,3 +588,12 @@
 - [x] Side-by-side variant comparison view in history (select 2 pages, diff the copy word-by-word with color highlights)
 - [x] "Compare" button on history cards; comparison panel shows metadata diff (persona, offer, angle) + copy diff
 - [x] All tests passing, TypeScript clean (54/54 tests pass, 0 TS errors)
+
+## v17 Features — YouTube Competitive Intelligence (April 9, 2026)
+- [x] Store SUPADATA_API_KEY as secret
+- [x] Install @supadata/js npm package
+- [x] Add youtubeRouter.ts with searchSimilar, fetchTranscript, analyzeCompetitors tRPC procedures
+- [x] Wire youtubeRouter into main appRouter
+- [x] Build YouTube Competitive Intelligence panel in CreationStudio (collapsible, below idea input)
+- [x] Write Vitest tests for youtubeRouter
+- [x] TypeScript clean, all tests pass (64/64)

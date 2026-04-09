@@ -22,6 +22,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Eye,
   Facebook,
   Image,
   Linkedin,
@@ -30,11 +31,13 @@ import {
   Paperclip,
   RefreshCw,
   Save,
+  Search,
   Send,
   Sparkles,
   Twitter,
   Wand2,
   Youtube,
+  Zap,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { FlaskConical, Globe, Target } from "lucide-react";
@@ -159,7 +162,30 @@ export default function CreationStudio() {
   // Buffer syndication state
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [syndicatingPlatform, setSyndicatingPlatform] = useState<string | null>(null);
-  const [syndicationResults, setSyndicationResults] = useState<Record<string, { success: boolean; error?: string }>>({});
+  const [syndicationResults, setSyndicationResults] = useState<Record<string, { success: boolean; error?: string }>>({})
+
+  // ── YouTube Competitive Intelligence state ──────────────────────────────────
+  type YTVideo = {
+    id: string;
+    title: string;
+    description: string;
+    thumbnail: string;
+    duration: number;
+    viewCount: number;
+    uploadDate: string;
+    channelName: string;
+    channelId: string;
+    url: string;
+  };
+  type YTTranscript = { videoId: string; text: string; lang: string; error?: string };
+
+  const [showYTPanel, setShowYTPanel] = useState(false);
+  const [ytSearchQuery, setYtSearchQuery] = useState("");
+  const [ytVideos, setYtVideos] = useState<YTVideo[]>([]);
+  const [ytSelectedIds, setYtSelectedIds] = useState<string[]>([]);
+  const [ytTranscripts, setYtTranscripts] = useState<YTTranscript[]>([]);
+  const [ytBrief, setYtBrief] = useState("");
+  const [ytStep, setYtStep] = useState<"idle" | "searched" | "transcripts" | "brief">("idle");
 
   const utils = trpc.useUtils();
 
@@ -368,6 +394,93 @@ export default function CreationStudio() {
       customInstructions: customInstructions || undefined,
       generateImages: true,
     });
+  };
+
+  // ── YouTube Competitive Intelligence mutations & handlers ──────────────────
+  const ytSearchMutation = trpc.youtube.searchSimilar.useMutation({
+    onSuccess: (data) => {
+      setYtVideos(data.videos);
+      setYtSelectedIds([]);
+      setYtTranscripts([]);
+      setYtBrief("");
+      setYtStep("searched");
+      if (data.videos.length === 0) {
+        toast.error("No videos found — try a different search term.");
+      } else {
+        toast.success(`Found ${data.videos.length} competitor videos`);
+      }
+    },
+    onError: (err) => toast.error("YouTube search failed: " + err.message),
+  });
+
+  const ytTranscriptMutation = trpc.youtube.fetchTranscripts.useMutation({
+    onSuccess: (data) => {
+      setYtTranscripts(data.transcripts);
+      setYtStep("transcripts");
+      const ok = data.transcripts.filter((t) => t.text && !t.error).length;
+      const fail = data.transcripts.filter((t) => t.error).length;
+      if (ok > 0) toast.success(`Fetched ${ok} transcript${ok > 1 ? "s" : ""}${fail > 0 ? ` (${fail} unavailable)` : ""}`);
+      else toast.error("No transcripts available for selected videos — try different videos.");
+    },
+    onError: (err) => toast.error("Transcript fetch failed: " + err.message),
+  });
+
+  const ytAnalyzeMutation = trpc.youtube.analyzeCompetitors.useMutation({
+    onSuccess: (data) => {
+      setYtBrief(typeof data.brief === "string" ? data.brief : String(data.brief));
+      setYtStep("brief");
+      toast.success("Differentiation brief ready!");
+    },
+    onError: (err) => toast.error("Analysis failed: " + err.message),
+  });
+
+  const handleYTSearch = () => {
+    const q = ytSearchQuery.trim() || idea.trim();
+    if (!q) { toast.error("Enter a search term or fill in the idea field first."); return; }
+    setYtVideos([]);
+    setYtTranscripts([]);
+    setYtBrief("");
+    setYtStep("idle");
+    ytSearchMutation.mutate({ query: q, limit: 5, sortBy: "views", uploadDate: "year" });
+  };
+
+  const handleYTFetchTranscripts = () => {
+    if (ytSelectedIds.length === 0) { toast.error("Select at least one video."); return; }
+    ytTranscriptMutation.mutate({ videoIds: ytSelectedIds });
+  };
+
+  const handleYTAnalyze = () => {
+    const videosWithTranscripts = ytSelectedIds.map((id) => {
+      const video = ytVideos.find((v) => v.id === id)!;
+      const transcript = ytTranscripts.find((t) => t.videoId === id);
+      return {
+        videoId: id,
+        title: video.title,
+        channelName: video.channelName,
+        viewCount: video.viewCount,
+        transcript: transcript?.text ?? "",
+      };
+    }).filter((v) => v.title);
+    if (videosWithTranscripts.length === 0) { toast.error("No valid videos to analyze."); return; }
+    ytAnalyzeMutation.mutate({
+      idea: idea.trim() || ytSearchQuery.trim(),
+      videos: videosWithTranscripts,
+    });
+  };
+
+  const handleYTInformScript = () => {
+    if (!ytBrief) return;
+    const briefSummary = ytBrief.slice(0, 800);
+    setCustomInstructions((prev) =>
+      prev ? prev + "\n\n[Competitor Differentiation Brief]\n" + briefSummary : "[Competitor Differentiation Brief]\n" + briefSummary
+    );
+    toast.success("Differentiation brief injected into Custom Instructions!");
+  };
+
+  const formatDuration = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   const handleRegenerateImage = (p: string) => {
@@ -956,6 +1069,202 @@ export default function CreationStudio() {
               </p>
             )}
           </CardContent>
+        </Card>
+
+        {/* ── YouTube Competitive Intelligence Panel ─────────────────────────── */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Youtube className="h-4 w-4 text-red-400" />
+                <CardTitle className="text-sm font-medium text-foreground">YouTube Competitive Intelligence</CardTitle>
+                <Badge variant="outline" className="text-xs border-red-500/30 text-red-400">Beta</Badge>
+              </div>
+              <button
+                onClick={() => setShowYTPanel((v) => !v)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showYTPanel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+            </div>
+            {!showYTPanel && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Search competitor videos, pull transcripts, and get a differentiation brief — then inject it into your script.
+              </p>
+            )}
+          </CardHeader>
+
+          {showYTPanel && (
+            <CardContent className="space-y-4">
+              {/* Step 1: Search */}
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Step 1 — Search Competitor Videos</Label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={ytSearchQuery}
+                    onChange={(e) => setYtSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleYTSearch()}
+                    placeholder={idea.trim() ? `Search: "${idea.slice(0, 50)}..."` : "Enter topic to search YouTube..."}
+                    className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <Button
+                    onClick={handleYTSearch}
+                    disabled={ytSearchMutation.isPending}
+                    size="sm"
+                    className="bg-red-600 hover:bg-red-700 text-white shrink-0"
+                  >
+                    {ytSearchMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    <span className="ml-1.5 hidden sm:inline">{ytSearchMutation.isPending ? "Searching..." : "Search"}</span>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Searches YouTube for the top 5 most-viewed videos on this topic from the past year. 1 credit per search.</p>
+              </div>
+
+              {/* Step 2: Video Results */}
+              {ytVideos.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                    Step 2 — Select Videos to Analyze (max 3)
+                  </Label>
+                  <div className="space-y-2">
+                    {ytVideos.map((v) => {
+                      const isSelected = ytSelectedIds.includes(v.id);
+                      const canSelect = isSelected || ytSelectedIds.length < 3;
+                      return (
+                        <div
+                          key={v.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setYtSelectedIds((prev) => prev.filter((id) => id !== v.id));
+                            } else if (canSelect) {
+                              setYtSelectedIds((prev) => [...prev, v.id]);
+                            }
+                          }}
+                          className={`flex gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                            isSelected
+                              ? "border-red-500/50 bg-red-500/5"
+                              : canSelect
+                              ? "border-border hover:border-red-500/30 bg-card/40"
+                              : "border-border bg-card/20 opacity-40 cursor-not-allowed"
+                          }`}
+                        >
+                          <img
+                            src={v.thumbnail}
+                            alt={v.title}
+                            className="w-20 h-14 object-cover rounded shrink-0"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground line-clamp-2 leading-tight">{v.title}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="text-xs text-muted-foreground">{v.channelName}</span>
+                              <span className="text-xs text-muted-foreground">·</span>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Eye className="h-3 w-3" />{v.viewCount.toLocaleString()} views
+                              </span>
+                              <span className="text-xs text-muted-foreground">· {formatDuration(v.duration)}</span>
+                            </div>
+                            {ytTranscripts.find((t) => t.videoId === v.id) && (
+                              <Badge className={`mt-1 text-xs ${
+                                ytTranscripts.find((t) => t.videoId === v.id)?.error
+                                  ? "bg-red-500/20 text-red-400 border-red-500/30"
+                                  : "bg-green-500/20 text-green-400 border-green-500/30"
+                              }`}>
+                                {ytTranscripts.find((t) => t.videoId === v.id)?.error ? "No transcript" : "Transcript ready"}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="shrink-0 flex items-start pt-1">
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                              isSelected ? "border-red-500 bg-red-500" : "border-border"
+                            }`}>
+                              {isSelected && <div className="w-2 h-2 rounded-sm bg-white" />}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{ytSelectedIds.length}/3 selected</p>
+                </div>
+              )}
+
+              {/* Step 3: Fetch Transcripts */}
+              {ytStep === "searched" && ytSelectedIds.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">Step 3 — Pull Transcripts</Label>
+                  <Button
+                    onClick={handleYTFetchTranscripts}
+                    disabled={ytTranscriptMutation.isPending}
+                    variant="outline"
+                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                  >
+                    {ytTranscriptMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Fetching transcripts...</>
+                    ) : (
+                      <><BookOpen className="h-4 w-4 mr-2" />Fetch Transcripts for {ytSelectedIds.length} Video{ytSelectedIds.length > 1 ? "s" : ""}</>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">Pulls existing captions only (no AI generation). 1 credit per video.</p>
+                </div>
+              )}
+
+              {/* Step 4: Analyze */}
+              {(ytStep === "transcripts" || (ytStep === "searched" && ytTranscripts.length > 0)) && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">Step 4 — Analyze & Differentiate</Label>
+                  <Button
+                    onClick={handleYTAnalyze}
+                    disabled={ytAnalyzeMutation.isPending}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {ytAnalyzeMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing competitors (15–30 seconds)...</>
+                    ) : (
+                      <><Zap className="h-4 w-4 mr-2" />Analyze Competitors + Generate Differentiation Brief</>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">LLM analyzes hooks, structure, gaps, and generates Pedram's unique angle. No additional credits.</p>
+                </div>
+              )}
+
+              {/* Step 5: Differentiation Brief */}
+              {ytBrief && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground text-xs uppercase tracking-wider">Differentiation Brief</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(ytBrief);
+                          toast.success("Brief copied!");
+                        }}
+                        className="text-xs h-7 border-border"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />Copy
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleYTInformScript}
+                        className="text-xs h-7 bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        <Wand2 className="h-3 w-3 mr-1" />Inform Script
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 max-h-96 overflow-y-auto">
+                    <pre className="text-xs text-foreground/90 whitespace-pre-wrap font-sans leading-relaxed">{ytBrief}</pre>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Click <strong>Inform Script</strong> to inject the differentiation brief into Custom Instructions — then hit Generate Content.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          )}
         </Card>
 
         {/* Generated Content Panels — each with inline image */}

@@ -894,7 +894,7 @@ export default function CommandCenter() {
                                   />
                                   <div className="absolute inset-0 bg-black/40" />
                                   <div className="absolute bottom-0 left-0 right-0 px-1 pb-0.5">
-                                    <p className="text-[9px] text-white font-medium truncate leading-tight">
+                                    <p className="text-[9px] text-foreground font-medium truncate leading-tight">
                                       {item.title}
                                     </p>
                                   </div>

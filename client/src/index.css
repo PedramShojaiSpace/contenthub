@@ -33,59 +33,60 @@
 }
 
 :root {
-  /* Dark theme by default for this premium aesthetic */
-  --background: oklch(0.15 0 0); /* Very dark gray/black */
-  --foreground: oklch(0.98 0 0); /* White */
-  
-  --card: oklch(0.2 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  
-  --popover: oklch(0.2 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  
-  /* Gold primary */
-  --primary: oklch(0.75 0.15 85); /* Gold */
-  --primary-foreground: oklch(0.15 0 0); /* Black text on gold */
-  
-  --secondary: oklch(0.25 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  
-  --muted: oklch(0.25 0 0);
-  --muted-foreground: oklch(0.7 0 0);
-  
-  --accent: oklch(0.25 0 0);
-  --accent-foreground: oklch(0.98 0 0);
-  
+  /* Light, warm, inspirational theme — The Urban Monk */
+  --background: oklch(0.98 0.008 85);   /* Warm off-white / parchment */
+  --foreground: oklch(0.2 0.02 60);     /* Deep warm charcoal */
+
+  --card: oklch(1.0 0 0);               /* Pure white cards */
+  --card-foreground: oklch(0.2 0.02 60);
+
+  --popover: oklch(1.0 0 0);
+  --popover-foreground: oklch(0.2 0.02 60);
+
+  /* Warm terracotta / sunrise gold primary */
+  --primary: oklch(0.58 0.14 42);       /* Terracotta / warm amber */
+  --primary-foreground: oklch(0.99 0 0); /* White text on primary */
+
+  --secondary: oklch(0.93 0.012 85);    /* Warm light cream */
+  --secondary-foreground: oklch(0.3 0.02 60);
+
+  --muted: oklch(0.94 0.008 85);        /* Soft warm gray */
+  --muted-foreground: oklch(0.5 0.02 60);
+
+  --accent: oklch(0.88 0.04 120);       /* Soft sage green accent */
+  --accent-foreground: oklch(0.2 0.04 120);
+
   --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  
-  --border: oklch(0.3 0 0);
-  --input: oklch(0.3 0 0);
-  --ring: oklch(0.75 0.15 85); /* Gold ring */
-  
-  --radius: 0.5rem;
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.88 0.01 85);        /* Soft warm border */
+  --input: oklch(0.92 0.008 85);
+  --ring: oklch(0.58 0.14 42);          /* Terracotta ring */
+
+  --radius: 0.625rem;
 }
 
 .dark {
-  --background: oklch(0.12 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.18 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.18 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.75 0.15 85);
-  --primary-foreground: oklch(0.12 0 0);
-  --secondary: oklch(0.22 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.7 0 0);
-  --accent: oklch(0.22 0 0);
-  --accent-foreground: oklch(0.98 0 0);
+  /* Keep a dark variant available but shift it to warm dark tones */
+  --background: oklch(0.16 0.02 60);
+  --foreground: oklch(0.96 0.008 85);
+  --card: oklch(0.22 0.02 60);
+  --card-foreground: oklch(0.96 0.008 85);
+  --popover: oklch(0.22 0.02 60);
+  --popover-foreground: oklch(0.96 0.008 85);
+  --primary: oklch(0.72 0.14 55);
+  --primary-foreground: oklch(0.16 0.02 60);
+  --secondary: oklch(0.28 0.02 60);
+  --secondary-foreground: oklch(0.96 0.008 85);
+  --muted: oklch(0.28 0.02 60);
+  --muted-foreground: oklch(0.65 0.01 85);
+  --accent: oklch(0.32 0.04 120);
+  --accent-foreground: oklch(0.88 0.04 120);
   --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.25 0 0);
-  --input: oklch(0.25 0 0);
-  --ring: oklch(0.75 0.15 85);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.3 0.02 60);
+  --input: oklch(0.3 0.02 60);
+  --ring: oklch(0.72 0.14 55);
 }
 
 @layer base {
@@ -93,7 +94,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/30 selection:text-primary;
+    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/20 selection:text-primary;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif tracking-tight;

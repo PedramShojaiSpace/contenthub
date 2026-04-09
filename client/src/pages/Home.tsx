@@ -37,9 +37,9 @@ export default function Home() {
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
             <span className="text-primary font-serif font-bold text-lg">UM</span>
           </div>
-          <span className="font-serif font-semibold tracking-wide text-lg text-white/90">The Urban Monk</span>
+          <span className="font-serif font-semibold tracking-wide text-lg text-foreground/90">The Urban Monk</span>
         </div>
-        <div className="text-sm text-white/60 hidden md:block">
+        <div className="text-sm text-foreground/60 hidden md:block">
           Dr. Pedram Shojai, OMD
         </div>
       </header>
@@ -61,21 +61,21 @@ export default function Home() {
                 </div>
                 
                 <div className="space-y-4">
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold leading-[1.1] text-white">
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold leading-[1.1] text-foreground">
                     The 3 Tests That Reveal the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-amber-200">True Cause</span> of Executive Burnout
                   </h1>
-                  <p className="text-lg md:text-xl text-white/70 leading-relaxed max-w-xl font-light">
+                  <p className="text-lg md:text-xl text-foreground/70 leading-relaxed max-w-xl font-light">
                     What your doctor never ordered — and why it's costing you your edge. Stop managing symptoms and fix the underlying physiological hardware.
                   </p>
                 </div>
 
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 backdrop-blur-sm shadow-2xl shadow-black/50">
-                  <h3 className="text-lg font-medium text-white mb-4">Where should we send your free guide?</h3>
+                  <h3 className="text-lg font-medium text-foreground mb-4">Where should we send your free guide?</h3>
                   <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
                     <Input 
                       type="email" 
                       placeholder="Enter your best email..." 
-                      className="h-12 bg-black/50 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-primary"
+                      className="h-12 bg-black/50 border-white/20 text-foreground placeholder:text-foreground/40 focus-visible:ring-primary"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
@@ -88,7 +88,7 @@ export default function Home() {
                       {!isSubmitting && <ArrowRight className="ml-2 w-4 h-4" />}
                     </Button>
                   </form>
-                  <p className="text-xs text-white/40 mt-4 text-center sm:text-left">
+                  <p className="text-xs text-foreground/40 mt-4 text-center sm:text-left">
                     100% secure. We never share your email.
                   </p>
                 </div>
@@ -101,8 +101,8 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                  <div className="text-sm text-white/60">
-                    Join <span className="text-white font-medium">10,000+</span> executives optimizing their performance.
+                  <div className="text-sm text-foreground/60">
+                    Join <span className="text-foreground font-medium">10,000+</span> executives optimizing their performance.
                   </div>
                 </div>
               </div>
@@ -132,8 +132,8 @@ export default function Home() {
         <section className="py-20 bg-black/40 border-y border-white/5">
           <div className="container max-w-5xl mx-auto px-4">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">Inside The Protocol</h2>
-              <p className="text-white/60 max-w-2xl mx-auto">Discover the biological levers that dictate your cognitive endurance, decision-making capacity, and stress resilience.</p>
+              <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4">Inside The Protocol</h2>
+              <p className="text-foreground/60 max-w-2xl mx-auto">Discover the biological levers that dictate your cognitive endurance, decision-making capacity, and stress resilience.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -141,8 +141,8 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
                   <Brain className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-serif font-semibold text-white mb-3">The Brain Fog Illusion</h3>
-                <p className="text-white/60 text-sm leading-relaxed">
+                <h3 className="text-xl font-serif font-semibold text-foreground mb-3">The Brain Fog Illusion</h3>
+                <p className="text-foreground/60 text-sm leading-relaxed">
                   Why your inability to focus isn't a character flaw, but a symptom of neuroinflammation starting in your gut.
                 </p>
               </div>
@@ -151,8 +151,8 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
                   <Moon className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-serif font-semibold text-white mb-3">The 3 AM Wake-Up</h3>
-                <p className="text-white/60 text-sm leading-relaxed">
+                <h3 className="text-xl font-serif font-semibold text-foreground mb-3">The 3 AM Wake-Up</h3>
+                <p className="text-foreground/60 text-sm leading-relaxed">
                   The hidden metabolic and detoxification bottlenecks that are spiking your cortisol and destroying your sleep architecture.
                 </p>
               </div>
@@ -161,8 +161,8 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
                   <Zap className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-serif font-semibold text-white mb-3">The 3 Missing Tests</h3>
-                <p className="text-white/60 text-sm leading-relaxed">
+                <h3 className="text-xl font-serif font-semibold text-foreground mb-3">The 3 Missing Tests</h3>
+                <p className="text-foreground/60 text-sm leading-relaxed">
                   The specific functional medicine panels your primary care doctor isn't running that reveal the true state of your biological hardware.
                 </p>
               </div>
@@ -183,21 +183,21 @@ export default function Home() {
                 />
               </div>
               <div className="text-center md:text-left">
-                <h2 className="text-3xl font-serif font-bold text-white mb-2">Dr. Pedram Shojai, OMD</h2>
+                <h2 className="text-3xl font-serif font-bold text-foreground mb-2">Dr. Pedram Shojai, OMD</h2>
                 <p className="text-primary font-medium mb-6 tracking-wide">NYT Bestselling Author & Functional Medicine Authority</p>
-                <p className="text-white/70 leading-relaxed mb-6">
+                <p className="text-foreground/70 leading-relaxed mb-6">
                   Former Taoist monk turned Doctor of Oriental Medicine, Dr. Shojai helps high-performing executives and entrepreneurs optimize their health and performance through the integration of ancient wisdom and cutting-edge science.
                 </p>
                 <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                  <div className="flex items-center gap-2 text-sm text-white/50">
+                  <div className="flex items-center gap-2 text-sm text-foreground/50">
                     <CheckCircle2 className="w-4 h-4 text-primary" />
                     <span>NYT Bestseller</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-white/50">
+                  <div className="flex items-center gap-2 text-sm text-foreground/50">
                     <CheckCircle2 className="w-4 h-4 text-primary" />
                     <span>Taoist Abbot</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-white/50">
+                  <div className="flex items-center gap-2 text-sm text-foreground/50">
                     <CheckCircle2 className="w-4 h-4 text-primary" />
                     <span>OMD</span>
                   </div>
@@ -209,7 +209,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-white/5 text-center text-white/40 text-sm">
+      <footer className="py-8 border-t border-white/5 text-center text-foreground/40 text-sm">
         <div className="container">
           <p>© {new Date().getFullYear()} The Urban Monk Productions. All rights reserved.</p>
         </div>

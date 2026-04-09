@@ -114,7 +114,7 @@ export default function AssetLibrary() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 bg-white/10 hover:bg-white/20 text-white"
+                      className="h-8 w-8 bg-white/10 hover:bg-white/20 text-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCopy(img.imageUrl);
@@ -125,7 +125,7 @@ export default function AssetLibrary() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 bg-white/10 hover:bg-white/20 text-white"
+                      className="h-8 w-8 bg-white/10 hover:bg-white/20 text-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
                         window.open(img.imageUrl, "_blank");

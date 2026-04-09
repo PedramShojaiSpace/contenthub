@@ -173,7 +173,35 @@ export default function CreationStudio() {
       setGeneratedContent(outputs);
       setEditedText(texts);
       if (platform !== "all") setImageStylePlatform(platform);
-      toast.success("Content and images generated for all platforms!");
+      toast.success("Content generated — auto-saving to archive...");
+
+      // Auto-save each platform immediately to the database
+      for (const [p, val] of Object.entries(outputs)) {
+        const v = val as PlatformOutput;
+        if (!v.text) continue;
+        const titleText = idea.slice(0, 80) + (idea.length > 80 ? "..." : "");
+        autoSaveMutation.mutate(
+          {
+            title: titleText,
+            rawIdea: idea,
+            platform: p as Platform,
+            status: "drafting",
+            textContent: v.text,
+            gapQueryId: activeGapQueryId ?? undefined,
+          },
+          {
+            onSuccess: (saved) => {
+              if (saved?.id) {
+                setSavedItemIds((prev) => ({ ...prev, [p]: saved.id }));
+                // Attach image if available
+                if (v.imageUrl) {
+                  autoUpdateMutation.mutate({ id: saved.id, imageUrl: v.imageUrl });
+                }
+              }
+            },
+          }
+        );
+      }
     },
     onError: (err) => {
       toast.error("Generation failed: " + err.message);
@@ -247,6 +275,26 @@ export default function CreationStudio() {
     onError: (err) => {
       toast.error("Attach failed: " + err.message);
       setAttachingImage(false);
+    },
+  });
+
+  // Silent auto-save mutation — fires automatically after generation, no toast
+  const autoSaveMutation = trpc.content.create.useMutation({
+    onSuccess: () => {
+      utils.content.list.invalidate();
+    },
+    onError: () => {
+      // Silent failure — user can still manually save
+    },
+  });
+
+  // Silent auto-update mutation — attaches image URL after auto-save
+  const autoUpdateMutation = trpc.content.update.useMutation({
+    onSuccess: () => {
+      utils.content.list.invalidate();
+    },
+    onError: () => {
+      // Silent failure
     },
   });
 
@@ -497,7 +545,29 @@ export default function CreationStudio() {
         imageUrl: data.heroImageUrl,
       });
       setIsBlogGenerating(false);
-      toast.success("Blog post generated!");
+      toast.success("Blog post generated — auto-saving to archive...");
+
+      // Auto-save blog post immediately
+      autoSaveMutation.mutate(
+        {
+          title: data.title,
+          rawIdea: idea,
+          platform: "blog" as Platform,
+          status: "drafting",
+          textContent: data.article,
+          gapQueryId: activeGapQueryId ?? undefined,
+        },
+        {
+          onSuccess: (saved) => {
+            if (saved?.id) {
+              setSavedItemIds((prev) => ({ ...prev, blog: saved.id }));
+              if (data.heroImageUrl) {
+                autoUpdateMutation.mutate({ id: saved.id, imageUrl: data.heroImageUrl });
+              }
+            }
+          },
+        }
+      );
     },
     onError: (err) => {
       setIsBlogGenerating(false);
@@ -599,11 +669,11 @@ export default function CreationStudio() {
             <Target className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-green-400">Addressing LLM Search Gap</p>
-              <p className="text-xs text-zinc-400 mt-0.5 truncate">{activeGapQueryText}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{activeGapQueryText}</p>
             </div>
             <button
               onClick={() => { setActiveGapQueryId(null); setActiveGapQueryText(null); }}
-              className="text-zinc-600 hover:text-zinc-400 text-xs shrink-0"
+              className="text-zinc-600 hover:text-muted-foreground text-xs shrink-0"
             >
               Clear
             </button>
@@ -621,12 +691,12 @@ export default function CreationStudio() {
                 </CardTitle>
                 <button
                   onClick={() => setShowResearchPanel(false)}
-                  className="text-zinc-500 hover:text-zinc-300 text-xs"
+                  className="text-muted-foreground hover:text-foreground/80 text-xs"
                 >
                   Dismiss
                 </button>
               </div>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 These are queries where Urban Monk is not appearing in LLM answers. Click any to use as your content starting point.
               </p>
             </CardHeader>
@@ -642,20 +712,20 @@ export default function CreationStudio() {
                       setActiveGapQueryText(gap.query);
                       toast.success("Gap query loaded as idea!");
                     }}
-                    className="w-full text-left p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 hover:border-amber-700/50 transition-colors group"
+                    className="w-full text-left p-3 rounded-lg bg-card/60 border border-border hover:border-amber-700/50 transition-colors group"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <p className="text-zinc-300 text-sm group-hover:text-white transition-colors">{gap.query}</p>
+                        <p className="text-foreground/80 text-sm group-hover:text-foreground transition-colors">{gap.query}</p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {gap.personaName && (
-                            <Badge variant="outline" className="text-zinc-500 border-zinc-700 text-xs">{gap.personaName}</Badge>
+                            <Badge variant="outline" className="text-muted-foreground border-border text-xs">{gap.personaName}</Badge>
                           )}
                           {gap.gapScore != null && gap.gapScore >= 5 && (
                             <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">Gap {gap.gapScore}/10 🔥</Badge>
                           )}
                           {tags.slice(0, 2).map((t: string) => (
-                            <Badge key={t} className="bg-zinc-800 text-zinc-500 text-xs border-zinc-700">{t}</Badge>
+                            <Badge key={t} className="bg-muted text-muted-foreground text-xs border-border">{t}</Badge>
                           ))}
                         </div>
                       </div>
@@ -859,7 +929,7 @@ export default function CreationStudio() {
                                 className="w-full object-cover"
                               />
                               <div className="absolute top-2 left-2">
-                                <Badge className="bg-black/70 text-white border-0 text-[10px]">
+                                <Badge className="bg-black/70 text-foreground border-0 text-[10px]">
                                   {PLATFORM_STYLE_LABELS[p]?.label ?? "Urban Monk Style"}
                                 </Badge>
                               </div>
@@ -869,14 +939,14 @@ export default function CreationStudio() {
                                   className="p-1 rounded bg-black/60 hover:bg-black/80 transition-colors"
                                   title="Open full size"
                                 >
-                                  <ExternalLink className="h-3 w-3 text-white" />
+                                  <ExternalLink className="h-3 w-3 text-foreground" />
                                 </button>
                                 <button
                                   onClick={() => handleRegenerateImage(p)}
                                   className="p-1 rounded bg-black/60 hover:bg-black/80 transition-colors"
                                   title="Regenerate image"
                                 >
-                                  <RefreshCw className="h-3 w-3 text-white" />
+                                  <RefreshCw className="h-3 w-3 text-foreground" />
                                 </button>
                               </div>
                             </>
@@ -1027,7 +1097,7 @@ export default function CreationStudio() {
                       className="w-full object-cover"
                     />
                     <div className="absolute top-2 left-2">
-                      <Badge className="bg-black/70 text-white border-0 text-[10px]">9:16 Vertical</Badge>
+                      <Badge className="bg-black/70 text-foreground border-0 text-[10px]">9:16 Vertical</Badge>
                     </div>
                     <div className="absolute top-2 right-2">
                       <button
@@ -1035,7 +1105,7 @@ export default function CreationStudio() {
                         className="p-1 rounded bg-black/60 hover:bg-black/80 transition-colors"
                         title="Regenerate image"
                       >
-                        <RefreshCw className="h-3 w-3 text-white" />
+                        <RefreshCw className="h-3 w-3 text-foreground" />
                       </button>
                     </div>
                   </div>
@@ -1301,7 +1371,7 @@ export default function CreationStudio() {
                       className="w-full"
                     />
                     <div className="absolute top-2 right-2">
-                      <Badge className="bg-black/70 text-white border-0 text-xs">
+                      <Badge className="bg-black/70 text-foreground border-0 text-xs">
                         {currentStyleInfo.label}
                       </Badge>
                     </div>

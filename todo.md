@@ -256,3 +256,26 @@
 - [x] TypeScript clean (0 errors), 20/20 tests pass
 - [x] Add back button to Research Intelligence page (navigate to Command Center)
 - [x] Fix Buffer createPost assets input format — corrected to { images: [{ url }] } object format
+
+## v12 Features
+
+### Auto-Save Generated Content
+- [x] Auto-save all generated content to the database immediately when generation completes (no manual Save button needed)
+- [x] Each platform's generated text + imageUrl saved as a content item with status "drafting"
+- [x] Blog post auto-saved with title, slug, meta description, article body, and hero image URL
+- [x] TikTok script auto-saved with platform tag "tiktok"
+- [x] Keep manual "Re-save" button for re-saving edited content
+- [x] Content archive: all saved items visible in Kanban / Command Center
+
+### Light & Inspirational Theme Redesign
+- [x] Replace dark background with warm off-white parchment (oklch 0.98)
+- [x] Replace dark card backgrounds with clean white cards
+- [x] Primary color changed to warm terracotta/sunrise gold
+- [x] Text colors: deep warm charcoal for headings, medium warm gray for body
+- [x] Sidebar uses semantic tokens — automatically picks up light theme
+- [x] Borders: soft warm gray
+- [x] Button styles: warm terracotta primary
+- [x] ThemeProvider switched from dark to light
+- [x] All hardcoded zinc/gray dark classes replaced with semantic tokens across all pages
+- [x] AI image style prompts updated: warm, bright, inspirational (no more dark moody)
+- [x] TypeScript clean (0 errors), 20/20 tests pass

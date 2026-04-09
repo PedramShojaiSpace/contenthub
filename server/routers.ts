@@ -135,20 +135,21 @@ CONTENT PILLARS: Quick health hacks, gut health myths, sleep optimization, stres
 
 // ─── Nano Banana Platform Brand Style Presets ──────────────────────────────
 // Each platform has a distinct visual identity tuned for its audience and format.
+// Aesthetic: warm, light, inspirational — The Urban Monk brand is uplifting, not dark.
 const PLATFORM_IMAGE_STYLES: Record<string, string> = {
-  linkedin: `Clean, professional, corporate wellness aesthetic. Minimalist composition with deep navy or charcoal backgrounds. Warm gold or amber accent lighting. High-end editorial photography feel. Subtle geometric elements. Conveys authority, expertise, and high performance. No clutter. Think Harvard Business Review meets functional medicine. Aspect ratio 1:1 or 4:5.`,
+  linkedin: `Clean, professional, inspirational wellness aesthetic. Bright, airy composition with warm cream or soft white backgrounds. Warm terracotta and sage green accents. Natural morning light, soft shadows. Conveys clarity, wisdom, and high performance. Minimalist but warm. Think Harvard Business Review meets a mindful wellness retreat. Aspect ratio 1:1 or 4:5.`,
 
-  meta: `Warm, lifestyle-driven, aspirational photography. Natural light, earthy tones — deep greens, warm terracottas, soft golds. Human connection with nature or quiet contemplative moments. Evokes transformation, vitality, and inner peace. No stock-photo feel — raw, authentic, cinematic. Think National Geographic meets wellness retreat. Aspect ratio 4:5 or 9:16 for Stories.`,
+  meta: `Warm, uplifting, aspirational lifestyle photography. Bright natural light, earthy tones — warm sage greens, soft terracottas, golden morning light. Human connection with nature, open skies, peaceful contemplative moments. Evokes transformation, vitality, and inner peace. Authentic, radiant, hopeful. Think National Geographic meets a sunrise yoga retreat. Aspect ratio 4:5 or 9:16 for Stories.`,
 
-  x: `Bold, high-contrast, typographic-forward. Stark black backgrounds with single dramatic light source. Minimal elements — one strong visual metaphor. Cinematic still-frame quality. Slightly edgy, intellectual, provocative. Think Criterion Collection poster meets health science. Aspect ratio 16:9 or 1:1.`,
+  x: `Bold, clean, thought-provoking. Bright backgrounds with a single warm accent color. Minimal elements — one strong visual metaphor in warm tones. High-contrast but light and airy. Intellectual, provocative, but uplifting. Think a clean wellness editorial meets modern science communication. Aspect ratio 16:9 or 1:1.`,
 
-  youtube: `Epic cinematic thumbnail composition. Dramatic chiaroscuro lighting — deep shadows, single powerful light source. Rich, saturated colors with dark base. Evokes mystery, discovery, and transformation. Strong foreground subject (anonymous human silhouette or symbolic object). Feels like a film still from a prestige documentary. Aspect ratio 16:9. High visual impact at small sizes.`,
+  youtube: `Bright, inviting thumbnail composition. Warm golden-hour lighting — soft shadows, single warm light source. Rich, warm colors with a light base. Evokes discovery, wisdom, and transformation. Strong foreground subject (anonymous human silhouette or symbolic object bathed in warm light). Feels like a still from an uplifting wellness documentary. Aspect ratio 16:9. High visual impact at small sizes.`,
 
-  all: `Dark, moody, cinematic. Deep blacks with warm gold and amber accents. High-end photography aesthetic. Professional, sophisticated. Bridges ancient wisdom and modern science. Wellness and peak performance theme. Timeless, editorial quality.`,
+  all: `Warm, bright, inspirational. Soft morning light with golden and sage green accents. High-end wellness photography aesthetic. Professional, sophisticated, uplifting. Bridges ancient wisdom and modern science. Wellness and peak performance theme. Timeless, editorial quality. Light backgrounds, warm tones.`,
 
-  tiktok: `Vertical 9:16 format. High-energy, kinetic composition. Vivid, saturated colors — electric blues, hot pinks, warm golds against deep blacks. Bold, dynamic framing with strong diagonal lines or motion blur. A single striking visual element (symbolic object, dramatic close-up, or abstract concept) that reads instantly at thumbnail size. Feels like a frame from a viral health documentary. Eye-catching, scroll-stopping, modern. No text overlay.`,
+  tiktok: `Vertical 9:16 format. High-energy, vibrant composition. Warm, saturated colors — sunrise oranges, golden yellows, bright sage greens. Bold, dynamic framing. A single striking visual element (symbolic object, dramatic close-up, or abstract concept) that reads instantly at thumbnail size. Energetic, optimistic, scroll-stopping. No text overlay.`,
 
-  blog: `Wide-format editorial hero image (16:9). Cinematic, authoritative, and contemplative. Deep blacks and warm amber-gold tones. A single dramatic light source illuminating a symbolic object or anonymous human figure from behind. Think prestige documentary meets wellness editorial — the kind of image that appears in a high-end health magazine or a Netflix documentary thumbnail. No text overlay. Evokes wisdom, transformation, and scientific depth. Timeless quality.`,
+  blog: `Wide-format editorial hero image (16:9). Warm, authoritative, and contemplative. Soft golden morning light with warm cream and sage tones. A single light source illuminating a symbolic object or anonymous human figure from the side. Think a high-end wellness magazine or an uplifting documentary thumbnail. No text overlay. Evokes wisdom, transformation, hope, and scientific depth. Timeless, warm quality.`,
 };
 
 // Blog-specific AI prompt — produces a full SEO-optimized article in clean Markdown

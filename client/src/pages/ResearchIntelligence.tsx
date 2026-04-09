@@ -71,13 +71,13 @@ function GapBadge({ score }: { score: number | null }) {
   const s = score ?? 0;
   if (s >= 8) return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Gap {s}/10 🔥</Badge>;
   if (s >= 5) return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Gap {s}/10</Badge>;
-  return <Badge className="bg-zinc-700 text-zinc-400">Gap {s}/10</Badge>;
+  return <Badge className="bg-secondary text-muted-foreground">Gap {s}/10</Badge>;
 }
 
 function StatusBadge({ status }: { status: ResearchQuery["status"] }) {
   if (status === "published") return <Badge className="bg-green-500/20 text-green-400 border-green-500/30"><CheckCircle2 className="w-3 h-3 mr-1" />Published</Badge>;
   if (status === "in_progress") return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30"><Clock className="w-3 h-3 mr-1" />In Progress</Badge>;
-  return <Badge className="bg-zinc-700 text-zinc-500"><AlertCircle className="w-3 h-3 mr-1" />Unused</Badge>;
+  return <Badge className="bg-secondary text-muted-foreground"><AlertCircle className="w-3 h-3 mr-1" />Unused</Badge>;
 }
 
 // ─── Upload Panel ─────────────────────────────────────────────────────────────
@@ -122,13 +122,13 @@ function UploadPanel({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground flex items-center gap-2">
             <Upload className="w-5 h-5 text-amber-400" />
             Upload Gumshoe AI Report
           </CardTitle>
-          <p className="text-zinc-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Upload the two export files from your weekly Gumshoe AI report run. The system will
             parse all personas, queries, competitor mentions, and topic tags, then score each
             query by LLM search gap opportunity.
@@ -137,19 +137,19 @@ function UploadPanel({ onSuccess }: { onSuccess: () => void }) {
         <CardContent className="space-y-6">
           {/* Week Label */}
           <div className="space-y-2">
-            <Label className="text-zinc-300">Week Label</Label>
+            <Label className="text-foreground/80">Week Label</Label>
             <Input
               value={weekLabel}
               onChange={(e) => setWeekLabel(e.target.value)}
               placeholder="e.g. April 8 2026"
-              className="bg-zinc-800 border-zinc-700 text-white"
+              className="bg-muted border-border text-foreground"
             />
           </div>
 
           {/* JSON Upload */}
           <div
             className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-              jsonFile ? "border-amber-500/50 bg-amber-500/5" : "border-zinc-700 hover:border-zinc-500"
+              jsonFile ? "border-amber-500/50 bg-amber-500/5" : "border-border hover:border-zinc-500"
             }`}
             onClick={() => jsonRef.current?.click()}
           >
@@ -160,13 +160,13 @@ function UploadPanel({ onSuccess }: { onSuccess: () => void }) {
               className="hidden"
               onChange={(e) => setJsonFile(e.target.files?.[0] ?? null)}
             />
-            <FileJson className={`w-8 h-8 mx-auto mb-2 ${jsonFile ? "text-amber-400" : "text-zinc-500"}`} />
+            <FileJson className={`w-8 h-8 mx-auto mb-2 ${jsonFile ? "text-amber-400" : "text-muted-foreground"}`} />
             {jsonFile ? (
               <p className="text-amber-400 font-medium">{jsonFile.name}</p>
             ) : (
               <>
-                <p className="text-zinc-300 font-medium">Drop export.json here</p>
-                <p className="text-zinc-500 text-sm mt-1">Full report with personas, queries, and LLM answers</p>
+                <p className="text-foreground/80 font-medium">Drop export.json here</p>
+                <p className="text-muted-foreground text-sm mt-1">Full report with personas, queries, and LLM answers</p>
               </>
             )}
           </div>
@@ -174,7 +174,7 @@ function UploadPanel({ onSuccess }: { onSuccess: () => void }) {
           {/* CSV Upload */}
           <div
             className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-              csvFile ? "border-amber-500/50 bg-amber-500/5" : "border-zinc-700 hover:border-zinc-500"
+              csvFile ? "border-amber-500/50 bg-amber-500/5" : "border-border hover:border-zinc-500"
             }`}
             onClick={() => csvRef.current?.click()}
           >
@@ -185,13 +185,13 @@ function UploadPanel({ onSuccess }: { onSuccess: () => void }) {
               className="hidden"
               onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
             />
-            <FileText className={`w-8 h-8 mx-auto mb-2 ${csvFile ? "text-amber-400" : "text-zinc-500"}`} />
+            <FileText className={`w-8 h-8 mx-auto mb-2 ${csvFile ? "text-amber-400" : "text-muted-foreground"}`} />
             {csvFile ? (
               <p className="text-amber-400 font-medium">{csvFile.name}</p>
             ) : (
               <>
-                <p className="text-zinc-300 font-medium">Drop questions_export.csv here</p>
-                <p className="text-zinc-500 text-sm mt-1">Structured query rows with topic tag columns</p>
+                <p className="text-foreground/80 font-medium">Drop questions_export.csv here</p>
+                <p className="text-muted-foreground text-sm mt-1">Structured query rows with topic tag columns</p>
               </>
             )}
           </div>
@@ -265,30 +265,30 @@ function GapDashboard({ reportId }: { reportId: number }) {
     <div className="space-y-6">
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-white">{queries.length}</div>
-            <div className="text-zinc-400 text-sm">Total Queries</div>
+            <div className="text-2xl font-bold text-foreground">{queries.length}</div>
+            <div className="text-muted-foreground text-sm">Total Queries</div>
           </CardContent>
         </Card>
         <Card className="bg-red-950/30 border-red-900/30">
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-red-400">{gapQueries.length}</div>
-            <div className="text-zinc-400 text-sm">Gap Opportunities</div>
+            <div className="text-muted-foreground text-sm">Gap Opportunities</div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-amber-400">{personas.length}</div>
-            <div className="text-zinc-400 text-sm">Personas</div>
+            <div className="text-muted-foreground text-sm">Personas</div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               {(leaderboard as Array<{ brand: string }>).length}
             </div>
-            <div className="text-zinc-400 text-sm">Competitor Brands</div>
+            <div className="text-muted-foreground text-sm">Competitor Brands</div>
           </CardContent>
         </Card>
       </div>
@@ -296,22 +296,22 @@ function GapDashboard({ reportId }: { reportId: number }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Gap Queries */}
         <div className="lg:col-span-2 space-y-3">
-          <h3 className="text-white font-semibold flex items-center gap-2">
+          <h3 className="text-foreground font-semibold flex items-center gap-2">
             <Target className="w-4 h-4 text-red-400" />
             LLM Search Gaps — Urban Monk Not Appearing
           </h3>
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
             {gapQueries.length === 0 ? (
-              <div className="text-zinc-500 text-sm py-8 text-center">No gap queries found.</div>
+              <div className="text-muted-foreground text-sm py-8 text-center">No gap queries found.</div>
             ) : (
               gapQueries.map((q) => (
-                <Card key={q.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-600 transition-colors">
+                <Card key={q.id} className="bg-card border-border hover:border-border transition-colors">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-zinc-200 text-sm leading-relaxed">{q.query}</p>
+                        <p className="text-foreground text-sm leading-relaxed">{q.query}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Badge variant="outline" className="text-zinc-400 border-zinc-700 text-xs">
+                          <Badge variant="outline" className="text-muted-foreground border-border text-xs">
                             {q.personaName}
                           </Badge>
                           <GapBadge score={q.gapScore} />
@@ -320,7 +320,7 @@ function GapDashboard({ reportId }: { reportId: number }) {
                             try {
                               const tags = JSON.parse(q.topicTags) as string[];
                               return tags.slice(0, 2).map((t) => (
-                                <Badge key={t} className="bg-zinc-800 text-zinc-400 text-xs border-zinc-700">{t}</Badge>
+                                <Badge key={t} className="bg-muted text-muted-foreground text-xs border-border">{t}</Badge>
                               ));
                             } catch { return null; }
                           })()}
@@ -345,25 +345,25 @@ function GapDashboard({ reportId }: { reportId: number }) {
 
         {/* Competitor Leaderboard */}
         <div className="space-y-3">
-          <h3 className="text-white font-semibold flex items-center gap-2">
+          <h3 className="text-foreground font-semibold flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />
             Competitor Leaderboard
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 space-y-2">
               {(leaderboard as Array<{ brand: string; mentionCount: number; avgRank: number }>).length === 0 ? (
-                <div className="text-zinc-500 text-sm text-center py-4">No data yet.</div>
+                <div className="text-muted-foreground text-sm text-center py-4">No data yet.</div>
               ) : (
                 (leaderboard as Array<{ brand: string; mentionCount: number; avgRank: number }>).map((item, i) => (
-                  <div key={item.brand} className="flex items-center justify-between py-1.5 border-b border-zinc-800 last:border-0">
+                  <div key={item.brand} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold w-5 ${i < 3 ? "text-amber-400" : "text-zinc-500"}`}>
+                      <span className={`text-xs font-bold w-5 ${i < 3 ? "text-amber-400" : "text-muted-foreground"}`}>
                         #{i + 1}
                       </span>
-                      <span className="text-zinc-300 text-sm truncate max-w-[140px]">{item.brand}</span>
+                      <span className="text-foreground/80 text-sm truncate max-w-[140px]">{item.brand}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-zinc-400 text-xs">{Number(item.mentionCount)} mentions</span>
+                      <span className="text-muted-foreground text-xs">{Number(item.mentionCount)} mentions</span>
                       <span className="text-zinc-600 text-xs">avg #{Math.round(Number(item.avgRank))}</span>
                     </div>
                   </div>
@@ -405,7 +405,7 @@ function PersonaBrowser({ reportId }: { reportId: number }) {
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
       {/* Persona List */}
       <div className="space-y-2">
-        <h3 className="text-white font-semibold flex items-center gap-2 mb-3">
+        <h3 className="text-foreground font-semibold flex items-center gap-2 mb-3">
           <Users className="w-4 h-4 text-amber-400" />
           Personas
         </h3>
@@ -419,11 +419,11 @@ function PersonaBrowser({ reportId }: { reportId: number }) {
               className={`w-full text-left p-3 rounded-lg border transition-colors ${
                 selectedPersona === p
                   ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                  : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-600"
+                  : "bg-card border-border text-foreground/80 hover:border-border"
               }`}
             >
               <div className="font-medium text-sm">{p}</div>
-              <div className="text-xs mt-1 text-zinc-500">
+              <div className="text-xs mt-1 text-muted-foreground">
                 {count} queries · <span className="text-red-400">{gaps} gaps</span>
               </div>
             </button>
@@ -434,7 +434,7 @@ function PersonaBrowser({ reportId }: { reportId: number }) {
       {/* Persona Detail */}
       <div className="md:col-span-3 space-y-4">
         {!selectedPersona ? (
-          <div className="flex items-center justify-center h-48 text-zinc-500">
+          <div className="flex items-center justify-center h-48 text-muted-foreground">
             Select a persona to view their queries and topic priorities.
           </div>
         ) : (
@@ -442,7 +442,7 @@ function PersonaBrowser({ reportId }: { reportId: number }) {
             {/* Topic Tag Heatmap */}
             {sortedTags.length > 0 && (
               <div>
-                <h4 className="text-zinc-300 text-sm font-medium mb-2">Topic Priorities for {selectedPersona}</h4>
+                <h4 className="text-foreground/80 text-sm font-medium mb-2">Topic Priorities for {selectedPersona}</h4>
                 <div className="flex flex-wrap gap-2">
                   {sortedTags.map(([tag, count]) => (
                     <Badge
@@ -451,8 +451,8 @@ function PersonaBrowser({ reportId }: { reportId: number }) {
                         count >= 5
                           ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
                           : count >= 3
-                          ? "bg-zinc-700 text-zinc-300"
-                          : "bg-zinc-800 text-zinc-500"
+                          ? "bg-secondary text-foreground/80"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {tag} ({count})
@@ -467,10 +467,10 @@ function PersonaBrowser({ reportId }: { reportId: number }) {
               {personaQueries.map((q) => (
                 <div
                   key={q.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 flex items-start justify-between gap-3"
+                  className="bg-card border border-border rounded-lg p-3 flex items-start justify-between gap-3"
                 >
                   <div className="flex-1">
-                    <p className="text-zinc-200 text-sm">{q.query}</p>
+                    <p className="text-foreground text-sm">{q.query}</p>
                     <div className="flex gap-2 mt-1.5">
                       <GapBadge score={q.gapScore} />
                       <StatusBadge status={q.status} />
@@ -507,7 +507,7 @@ function CoverageTrendChart() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-48 text-zinc-500">
+      <div className="flex items-center justify-center h-48 text-muted-foreground">
         Loading coverage data...
       </div>
     );
@@ -515,7 +515,7 @@ function CoverageTrendChart() {
 
   if ((snapshots as CoverageSnapshot[]).length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-zinc-500 gap-2">
+      <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
         <LineChartIcon className="w-10 h-10 text-zinc-700" />
         <p className="text-sm">No trend data yet. Upload your first Gumshoe report to start tracking.</p>
       </div>
@@ -543,10 +543,10 @@ function CoverageTrendChart() {
     <div className="space-y-6">
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-white">{latest?.totalQueries ?? 0}</div>
-            <div className="text-zinc-400 text-sm">Total Queries</div>
+            <div className="text-2xl font-bold text-foreground">{latest?.totalQueries ?? 0}</div>
+            <div className="text-muted-foreground text-sm">Total Queries</div>
           </CardContent>
         </Card>
         <Card className="bg-red-950/30 border-red-900/30">
@@ -554,12 +554,12 @@ function CoverageTrendChart() {
             <div className="flex items-end gap-2">
               <div className="text-2xl font-bold text-red-400">{latest?.gapCount ?? 0}</div>
               {gapDelta !== null && (
-                <div className={`text-sm mb-0.5 ${gapDelta < 0 ? "text-green-400" : gapDelta > 0 ? "text-red-400" : "text-zinc-500"}`}>
+                <div className={`text-sm mb-0.5 ${gapDelta < 0 ? "text-green-400" : gapDelta > 0 ? "text-red-400" : "text-muted-foreground"}`}>
                   {gapDelta > 0 ? `+${gapDelta}` : gapDelta} vs last week
                 </div>
               )}
             </div>
-            <div className="text-zinc-400 text-sm">Open Gaps</div>
+            <div className="text-muted-foreground text-sm">Open Gaps</div>
           </CardContent>
         </Card>
         <Card className="bg-green-950/30 border-green-900/30">
@@ -570,7 +570,7 @@ function CoverageTrendChart() {
                 <div className="text-sm mb-0.5 text-green-400">+{addressedDelta} this week</div>
               )}
             </div>
-            <div className="text-zinc-400 text-sm">Gaps Addressed</div>
+            <div className="text-muted-foreground text-sm">Gaps Addressed</div>
           </CardContent>
         </Card>
         <Card className="bg-amber-950/30 border-amber-900/30">
@@ -580,15 +580,15 @@ function CoverageTrendChart() {
                 ? `${Math.round(((latest.mentionedCount) / latest.totalQueries) * 100)}%`
                 : "0%"}
             </div>
-            <div className="text-zinc-400 text-sm">Mention Rate</div>
+            <div className="text-muted-foreground text-sm">Mention Rate</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Line chart */}
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-white text-base flex items-center gap-2">
+          <CardTitle className="text-foreground text-base flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-amber-400" />
             LLM Coverage Trend — Week over Week
           </CardTitle>
@@ -624,7 +624,7 @@ function CoverageTrendChart() {
               <Area type="monotone" dataKey="Addressed" stroke="#22c55e" fill="url(#addressedGrad)" strokeWidth={2} dot={{ fill: "#22c55e" }} />
             </AreaChart>
           </ResponsiveContainer>
-          <div className="flex gap-6 mt-4 text-xs text-zinc-500">
+          <div className="flex gap-6 mt-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500" /> Gap Queries — queries where Urban Monk is not mentioned</div>
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-amber-500" /> Mentioned — queries where Urban Monk appears in LLM answers</div>
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-green-500" /> Addressed — gap queries with published content</div>
@@ -633,17 +633,17 @@ function CoverageTrendChart() {
       </Card>
 
       {/* Snapshot history table */}
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-white text-sm">Snapshot History</CardTitle>
+          <CardTitle className="text-foreground text-sm">Snapshot History</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {[...(snapshots as CoverageSnapshot[])].reverse().map((s) => (
-              <div key={s.id} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
-                <div className="text-zinc-300 text-sm font-medium">{s.weekLabel}</div>
+              <div key={s.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <div className="text-foreground/80 text-sm font-medium">{s.weekLabel}</div>
                 <div className="flex gap-4 text-xs">
-                  <span className="text-zinc-400">{s.totalQueries} queries</span>
+                  <span className="text-muted-foreground">{s.totalQueries} queries</span>
                   <span className="text-red-400">{s.gapCount} gaps</span>
                   <span className="text-amber-400">{s.mentionedCount} mentioned</span>
                   <span className="text-green-400">{s.addressedCount} addressed</span>
@@ -672,7 +672,7 @@ function ReportSelector({
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <span className="text-zinc-400 text-sm">Report:</span>
+      <span className="text-muted-foreground text-sm">Report:</span>
       {reports.map((r) => (
         <button
           key={r.id}
@@ -680,7 +680,7 @@ function ReportSelector({
           className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
             selectedId === r.id
               ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600"
+              : "bg-card border-border text-muted-foreground hover:border-border"
           }`}
         >
           {r.weekLabel ?? r.reportName ?? `Report #${r.id}`}
@@ -721,18 +721,18 @@ export default function ResearchIntelligence() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 px-2 text-zinc-400 hover:text-white mt-0.5 shrink-0"
+            className="h-8 px-2 text-muted-foreground hover:text-foreground mt-0.5 shrink-0"
             onClick={() => navigate("/")}
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Brain className="w-6 h-6 text-amber-400" />
               Research Intelligence
             </h1>
-            <p className="text-zinc-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Gumshoe AI competitive analysis — LLM search gaps and content opportunities
             </p>
           </div>
@@ -751,21 +751,21 @@ export default function ResearchIntelligence() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 text-zinc-500">Loading reports...</div>
+        <div className="flex items-center justify-center h-48 text-muted-foreground">Loading reports...</div>
       ) : !hasReports ? (
         /* No reports yet — show upload as primary CTA */
         <div className="space-y-8">
           <div className="text-center py-8">
             <BarChart3 className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-            <h2 className="text-white text-lg font-semibold mb-2">No reports ingested yet</h2>
-            <p className="text-zinc-400 max-w-md mx-auto">
+            <h2 className="text-foreground text-lg font-semibold mb-2">No reports ingested yet</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
               Upload your weekly Gumshoe AI export files to start tracking LLM search gaps and
               competitor brand positioning.
             </p>
-            <div className="flex items-center justify-center gap-2 mt-4 text-zinc-500 text-sm">
+            <div className="flex items-center justify-center gap-2 mt-4 text-muted-foreground text-sm">
               <ArrowRight className="w-4 h-4" />
-              Export <code className="bg-zinc-800 px-1 rounded">export.json</code> and{" "}
-              <code className="bg-zinc-800 px-1 rounded">questions_export.csv</code> from Gumshoe AI
+              Export <code className="bg-muted px-1 rounded">export.json</code> and{" "}
+              <code className="bg-muted px-1 rounded">questions_export.csv</code> from Gumshoe AI
             </div>
           </div>
           <UploadPanel onSuccess={handleIngestSuccess} />
@@ -773,7 +773,7 @@ export default function ResearchIntelligence() {
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <TabsList className="bg-zinc-900 border border-zinc-800">
+            <TabsList className="bg-card border border-border">
               <TabsTrigger value="gaps" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-400">
                 <Target className="w-4 h-4 mr-1.5" />
                 Gap Opportunities
@@ -797,7 +797,7 @@ export default function ResearchIntelligence() {
             {effectiveReportId ? (
               <GapDashboard reportId={effectiveReportId} />
             ) : (
-              <div className="text-zinc-500 text-center py-12">Select a report to view gaps.</div>
+              <div className="text-muted-foreground text-center py-12">Select a report to view gaps.</div>
             )}
           </TabsContent>
 
@@ -805,7 +805,7 @@ export default function ResearchIntelligence() {
             {effectiveReportId ? (
               <PersonaBrowser reportId={effectiveReportId} />
             ) : (
-              <div className="text-zinc-500 text-center py-12">Select a report to view personas.</div>
+              <div className="text-muted-foreground text-center py-12">Select a report to view personas.</div>
             )}
           </TabsContent>
 

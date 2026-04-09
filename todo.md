@@ -619,3 +619,21 @@
 - [ ] Add "Enrich Persona" button that appends Typeform insights to a persona profile
 - [ ] Write Vitest tests for typeformRouter
 - [ ] TypeScript clean, all tests pass
+
+## v20 Features — Typeform Deep Integration
+
+- [x] Add segmentByPersona tRPC procedure — maps Typeform responses to 8 Urban Monk personas, stores enriched pain points per persona in DB
+- [ ] Run Gut Microbiome segmentation analysis (m6EyBDzz, 2416 responses) mapped to all 8 personas
+- [ ] Add "Generate Landing Page" button in TypeformIntelligence results → pre-fills LandingPageGenerator via URL state
+- [ ] Inject persona Typeform pain points into every LLM call in Creation Studio (generateContent) and Landing Page Generator (generateCopy)
+- [ ] Add Typeform insights badge/panel on persona profiles in Strategy Brain
+- [ ] All tests passing, TypeScript clean
+
+## v20 Features — Typeform Deep Integration
+
+- [x] Add segmentByPersona tRPC procedure
+- [ ] Run Gut Microbiome segmentation (m6EyBDzz, 2416 responses) mapped to 8 personas
+- [ ] Add Generate Landing Page button in TypeformIntelligence
+- [ ] Inject persona Typeform pain points into Creation Studio and Landing Page Generator LLM calls
+- [ ] Add Typeform insights badge on persona profiles
+- [ ] All tests passing, TypeScript clean

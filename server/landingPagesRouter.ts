@@ -303,11 +303,38 @@ export const landingPagesRouter = router({
           ? input.offerCustomLabel
           : offerInfo.label;
 
-      // Build the system prompt
+      // Enrich pain points / aspirations from DB persona if personaId is provided
+      let enrichedPainPoints = input.personaPainPoints;
+      let enrichedAspirations = input.personaAspirations;
+      if (input.personaId) {
+        try {
+          const db = await getDb();
+          if (db) {
+            const { personas } = await import("../drizzle/schema");
+            const { eq: eqOp } = await import("drizzle-orm");
+            const found = await db.select().from(personas).where(eqOp(personas.id, input.personaId));
+            if (found.length > 0) {
+              const p = found[0] as any;
+              const dbPains: string[] = JSON.parse(p.painPoints ?? "[]");
+              const dbAspirations: string[] = JSON.parse(p.aspirations ?? "[]");
+              if (dbPains.length > 0) {
+                enrichedPainPoints = dbPains.join("; ");
+              }
+              if (dbAspirations.length > 0) {
+                enrichedAspirations = dbAspirations.join("; ");
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[LandingPages] Could not load persona pain points:", err);
+        }
+      }
+
+      // Build the system prompt with enriched (real survey) data
       const systemPrompt = buildCopyPrompt(
         input.personaName,
-        input.personaPainPoints,
-        input.personaAspirations,
+        enrichedPainPoints,
+        enrichedAspirations,
         input.offer,
         input.offerCustomLabel,
         input.contentAngle

@@ -17,13 +17,17 @@ import {
   ChevronDown,
   ChevronUp,
   ClipboardList,
+  ExternalLink,
+  Layers,
   Loader2,
+  PieChart,
   RefreshCw,
   Sparkles,
   UserCheck,
   Users,
   Zap,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -50,6 +54,8 @@ export default function TypeformIntelligence() {
   const [showResponses, setShowResponses] = useState(false);
   const [enrichTargetPersonaId, setEnrichTargetPersonaId] = useState<string>("");
   const [enriched, setEnriched] = useState(false);
+  const [segmentation, setSegmentation] = useState<any | null>(null);
+  const [, navigate] = useLocation();
 
   // ── Data ────────────────────────────────────────────────────────────────────
   const { data: formsData, isLoading: formsLoading } = trpc.typeform.listForms.useQuery();
@@ -103,6 +109,38 @@ export default function TypeformIntelligence() {
       personaInsights: analysis.personaInsights,
       formTitle: selectedFormTitle,
     });
+  };
+
+  const segmentMutation = trpc.typeform.segmentByPersona.useMutation({
+    onSuccess: (data) => {
+      setSegmentation(data);
+      toast.success(
+        `Segmented ${data.analyzedCount} responses across 8 personas — ${data.enrichedPersonas.length} persona profiles auto-enriched!`
+      );
+    },
+    onError: (err) => toast.error("Segmentation failed: " + err.message),
+  });
+
+  const handleSegment = () => {
+    if (!selectedFormId) { toast.error("Select a form first."); return; }
+    setSegmentation(null);
+    segmentMutation.mutate({
+      formId: selectedFormId,
+      formTitle: selectedFormTitle,
+      sampleSize: 200,
+    });
+  };
+
+  const handleGenerateLandingPage = (personaName: string, painPoints: string[], aspirations: string[], contentHooks: string[]) => {
+    const params = new URLSearchParams({
+      persona: personaName,
+      offer: "academy",
+      angle: contentHooks[0] ?? painPoints[0] ?? "",
+      painPoints: painPoints.slice(0, 3).join(" | "),
+      aspirations: aspirations.slice(0, 3).join(" | "),
+      source: "typeform",
+    });
+    navigate(`/landing-pages?${params.toString()}`);
   };
 
   const handleFormSelect = (formId: string) => {
@@ -212,6 +250,18 @@ export default function TypeformIntelligence() {
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing responses (20–40 seconds)...</>
                   ) : (
                     <><Zap className="h-4 w-4 mr-2" />Analyze Audience Intelligence</>
+                  )}
+                </Button>
+                <Button
+                  onClick={handleSegment}
+                  disabled={segmentMutation.isPending}
+                  variant="outline"
+                  className="border-primary/40 text-primary hover:bg-primary/10"
+                >
+                  {segmentMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Segmenting (30–60s)...</>
+                  ) : (
+                    <><PieChart className="h-4 w-4 mr-2" />Segment by Persona</>  
                   )}
                 </Button>
                 <Button
@@ -425,6 +475,95 @@ export default function TypeformIntelligence() {
                 )}
               </CardContent>
             </Card>
+          </>
+        )}
+
+        {/* Persona Segmentation Results */}
+        {segmentation && (
+          <>
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <PieChart className="h-4 w-4 text-primary" />
+                    Persona Segmentation — {selectedFormTitle}
+                  </CardTitle>
+                  <Badge variant="outline" className="border-primary/40 text-primary text-[10px]">
+                    {segmentation.analyzedCount} responses · {segmentation.enrichedPersonas.length} personas auto-enriched
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{segmentation.overallInsight}</p>
+              </CardHeader>
+            </Card>
+
+            {/* Persona segment cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(segmentation.segments ?? []).map((seg: any) => (
+                <Card key={seg.personaId} className={`border-border bg-card ${seg.percentMatch >= 20 ? 'border-primary/30' : ''}`}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Layers className="h-3.5 w-3.5 text-primary" />
+                        {seg.personaName}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${
+                            seg.percentMatch >= 20
+                              ? 'border-primary/50 text-primary'
+                              : seg.percentMatch >= 10
+                              ? 'border-amber-500/50 text-amber-400'
+                              : 'border-border text-muted-foreground'
+                          }`}
+                        >
+                          {seg.percentMatch}% match
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {/* Voice of Customer */}
+                    <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/30 pl-2">
+                      "{seg.voiceOfCustomer}"
+                    </blockquote>
+
+                    {/* Top pain points */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-1">Pain Points</p>
+                      <ul className="space-y-0.5">
+                        {seg.painPoints.slice(0, 3).map((p: string, i: number) => (
+                          <li key={i} className="text-[11px] text-foreground/80 flex items-start gap-1">
+                            <span className="text-red-400 shrink-0">•</span>{p}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Content hooks */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">Content Hooks</p>
+                      <div className="flex flex-wrap gap-1">
+                        {seg.contentHooks.map((h: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-[9px] border-amber-500/30 text-amber-400/80">{h}</Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Generate Landing Page button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-[11px] border-primary/30 text-primary hover:bg-primary/10 mt-1"
+                      onClick={() => handleGenerateLandingPage(seg.personaName, seg.painPoints, seg.aspirations, seg.contentHooks)}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1.5" />
+                      Generate Landing Page for this Persona
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </>
         )}
       </div>

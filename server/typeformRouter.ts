@@ -268,6 +268,152 @@ Analyze the responses and return a JSON object with these exact keys:
       return { success: true, mergedPainCount: mergedPains.length, mergedAspirationCount: mergedAspirations.length };
     }),
 
+  // ── Segment Typeform responses by Urban Monk persona ───────────────────────
+  segmentByPersona: publicProcedure
+    .input(
+      z.object({
+        formId: z.string(),
+        formTitle: z.string(),
+        sampleSize: z.number().min(10).max(500).default(200),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Fetch form fields
+      const formMeta = await typeformGet(`/forms/${input.formId}`);
+      const fields: any[] = formMeta.fields ?? [];
+
+      // Fetch up to sampleSize responses
+      const data = await typeformGet(
+        `/forms/${input.formId}/responses?page_size=${input.sampleSize}`
+      );
+      const items: any[] = data.items ?? [];
+      if (items.length === 0) throw new Error("No responses found for this form.");
+
+      // Build compact response text (max 150 for segmentation)
+      const sample = items.slice(0, 150);
+      const responseText = sample
+        .map((item, i) => {
+          const answers = flattenResponse(item, fields);
+          const lines = Object.entries(answers)
+            .map(([q, a]) => `  Q: ${q}\n  A: ${a}`)
+            .join("\n");
+          return `--- Response ${i + 1} ---\n${lines}`;
+        })
+        .join("\n\n");
+
+      const THE_8_PERSONAS = [
+        { id: "burnout-executive", name: "The Burned-Out Executive", description: "High-performing professional, 40-55, running on cortisol and caffeine. Chronic stress, poor sleep, gut issues from travel and bad food. Wants to perform without burning out." },
+        { id: "health-seeker", name: "The Awakening Health Seeker", description: "35-50, starting to question conventional medicine. Gut issues, brain fog, fatigue. Wants root-cause solutions, not symptom management." },
+        { id: "spiritual-entrepreneur", name: "The Spiritual Entrepreneur", description: "30-45, building a purpose-driven business. Wants to integrate mindfulness, ancient wisdom, and modern performance. Feels scattered and depleted." },
+        { id: "midlife-woman", name: "The Midlife Woman in Transition", description: "45-60, navigating hormonal shifts, weight changes, energy crashes. Wants to feel vital and reclaim herself. Open to holistic approaches." },
+        { id: "functional-parent", name: "The Functional Parent", description: "35-50, putting family first at the expense of their own health. Exhausted, inflamed, wants energy to show up fully for their kids." },
+        { id: "biohacker", name: "The Biohacker & Optimizer", description: "28-45, data-driven, already doing intermittent fasting, cold plunges, supplements. Wants the next level — ancient wisdom meets cutting-edge science." },
+        { id: "chronic-illness", name: "The Chronic Illness Warrior", description: "Any age, dealing with autoimmune, IBS, SIBO, Lyme, or mystery symptoms. Frustrated with conventional medicine. Wants a guide who understands complexity." },
+        { id: "conscious-professional", name: "The Conscious Professional", description: "30-50, values-driven career in medicine, coaching, or wellness. Wants to deepen their own practice and help clients more effectively." },
+      ];
+
+      const systemPrompt = `You are an expert audience segmentation analyst for The Urban Monk brand (Dr. Pedram Shojai, OMD).
+
+You have ${sample.length} Typeform survey responses from "${input.formTitle}" (${items.length} total).
+
+Your task: Segment these responses across the 8 Urban Monk audience personas. For EACH persona:
+1. Estimate what % of respondents match this persona (0-100, must sum to ~100)
+2. Extract 5-8 specific pain points that respondents in this persona cluster mentioned
+3. Extract 4-6 specific aspirations from this cluster
+4. Write a 2-sentence "voice of customer" quote that captures how someone in this persona would describe their situation
+5. Identify 3-5 content hooks that would resonate with this persona based on the survey data
+
+Return a JSON array of 8 persona segment objects.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: `The 8 Urban Monk personas:\n${THE_8_PERSONAS.map(p => `- ${p.name}: ${p.description}`).join("\n")}\n\nSurvey responses:\n${responseText}`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "persona_segments",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                segments: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      personaId: { type: "string" },
+                      personaName: { type: "string" },
+                      percentMatch: { type: "number" },
+                      painPoints: { type: "array", items: { type: "string" } },
+                      aspirations: { type: "array", items: { type: "string" } },
+                      voiceOfCustomer: { type: "string" },
+                      contentHooks: { type: "array", items: { type: "string" } },
+                    },
+                    required: ["personaId", "personaName", "percentMatch", "painPoints", "aspirations", "voiceOfCustomer", "contentHooks"],
+                    additionalProperties: false,
+                  },
+                },
+                overallInsight: { type: "string" },
+              },
+              required: ["segments", "overallInsight"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const raw = response.choices?.[0]?.message?.content;
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+      // Auto-enrich all matching personas in DB
+      const db = await getDb();
+      const enrichedPersonas: string[] = [];
+      if (db) {
+        const { personas } = await import("../drizzle/schema");
+        const { like, eq } = await import("drizzle-orm");
+        const allPersonas = await db.select().from(personas);
+
+        for (const seg of parsed.segments ?? []) {
+          if (seg.percentMatch < 5) continue; // skip negligible segments
+          // Match by name similarity
+          const match = allPersonas.find((p: any) =>
+            p.name?.toLowerCase().includes(seg.personaName.split(" ").slice(-1)[0]?.toLowerCase() ?? "")
+            || seg.personaName.toLowerCase().includes(p.name?.split(" ").slice(-1)[0]?.toLowerCase() ?? "")
+          );
+          if (!match) continue;
+
+          const currentPains: string[] = JSON.parse((match as any).painPoints ?? "[]");
+          const currentAspirations: string[] = JSON.parse((match as any).aspirations ?? "[]");
+          const mergedPains = Array.from(new Set([...currentPains, ...seg.painPoints])).slice(0, 15);
+          const mergedAspirations = Array.from(new Set([...currentAspirations, ...seg.aspirations])).slice(0, 15);
+          const appendNote = `\n\n[Typeform Segmentation — ${input.formTitle} — ${new Date().toLocaleDateString()} — ${seg.percentMatch}% match]\nVoice of Customer: "${seg.voiceOfCustomer}"\nContent Hooks: ${seg.contentHooks.join(" | ")}`;
+          const updatedDescription = ((match as any).description ?? "") + appendNote;
+
+          await db.update(personas)
+            .set({
+              painPoints: JSON.stringify(mergedPains),
+              aspirations: JSON.stringify(mergedAspirations),
+              description: updatedDescription,
+            })
+            .where(eq(personas.id, (match as any).id));
+
+          enrichedPersonas.push(seg.personaName);
+        }
+      }
+
+      return {
+        ...parsed,
+        responseCount: items.length,
+        analyzedCount: sample.length,
+        enrichedPersonas,
+      };
+    }),
+
   // ── Validate API key ──────────────────────────────────────────────────────
   validateApiKey: publicProcedure.query(async () => {
     try {

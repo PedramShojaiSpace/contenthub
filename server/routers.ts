@@ -9,6 +9,7 @@ import {
   createContentItem,
   deleteContentItem,
   getContentItem,
+  getDb,
   getPlatformStrategy,
   listContentItems,
   listGeneratedImages,
@@ -308,6 +309,7 @@ export const appRouter = router({
           platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]),
           customInstructions: z.string().optional(),
           generateImages: z.boolean().default(true), // auto-generate images alongside content
+          personaId: z.number().optional(), // inject Typeform-enriched persona pain points
         })
       )
       .mutation(async ({ input }) => {
@@ -316,13 +318,39 @@ export const appRouter = router({
             ? (["linkedin", "meta", "x", "youtube"] as const)
             : ([input.platform] as const);
 
+        // Load persona pain points from DB if personaId is provided
+        let personaContext = "";
+        if (input.personaId) {
+          try {
+            const db = await getDb();
+            if (db) {
+              const { personas } = await import("../drizzle/schema");
+              const { eq } = await import("drizzle-orm");
+              const found = await db.select().from(personas).where(eq(personas.id, input.personaId));
+              if (found.length > 0) {
+                const p = found[0];
+                const pains: string[] = JSON.parse((p as any).painPoints ?? "[]");
+                const aspirations: string[] = JSON.parse((p as any).aspirations ?? "[]");
+                if (pains.length > 0 || aspirations.length > 0) {
+                  personaContext = `\n\nTARGET PERSONA — ${(p as any).name}:\n`;
+                  if (pains.length > 0) personaContext += `Real pain points from survey data: ${pains.slice(0, 6).join("; ")}\n`;
+                  if (aspirations.length > 0) personaContext += `Real aspirations from survey data: ${aspirations.slice(0, 4).join("; ")}\n`;
+                  personaContext += `Speak directly to these real concerns in the content.`;
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("[AI] Could not load persona pain points:", err);
+          }
+        }
+
         // Step 1: Generate all platform text in parallel
         const textResults = await Promise.all(
           platforms.map(async (platform) => {
             const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
             const userMessage = input.customInstructions
-              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}`
-              : `Raw idea: ${input.idea}`;
+              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}`
+              : `Raw idea: ${input.idea}${personaContext}`;
 
             const response = await invokeLLM({
               messages: [

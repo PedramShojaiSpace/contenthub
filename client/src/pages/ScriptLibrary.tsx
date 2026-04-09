@@ -32,6 +32,7 @@ import {
   Link,
   ExternalLink,
   Sparkles,
+  Download,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";  
@@ -136,6 +137,87 @@ const NEXT_STATUS_LABEL: Record<ProductionStatus, string> = {
   ready_to_post: "Mark Published",
   published:     "",
 };
+
+// ─── DOCX Export ────────────────────────────────────────────────────────────
+
+async function exportScriptAsDocx(script: Script) {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } = await import("docx");
+
+  const titleLine = new Paragraph({
+    heading: HeadingLevel.HEADING_1,
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 200 },
+    children: [
+      new TextRun({
+        text: script.title,
+        bold: true,
+        size: 36,
+        font: "Georgia",
+      }),
+    ],
+  });
+
+  const metaLines: InstanceType<typeof Paragraph>[] = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [
+        new TextRun({ text: `Platform: ${(script.platform ?? "—").toUpperCase()}`, size: 22, color: "666666", font: "Calibri" }),
+        new TextRun({ text: "   |   ", size: 22, color: "AAAAAA" }),
+        new TextRun({ text: `Type: ${script.scriptType}`, size: 22, color: "666666", font: "Calibri" }),
+        ...(script.estimatedDurationMin ? [
+          new TextRun({ text: "   |   ", size: 22, color: "AAAAAA" }),
+          new TextRun({ text: `Est. ${script.estimatedDurationMin} min`, size: 22, color: "666666", font: "Calibri" }),
+        ] : []),
+      ],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC" } },
+      children: [
+        new TextRun({ text: `Status: ${script.productionStatus.replace(/_/g, " ").toUpperCase()}`, size: 20, color: "888888", italics: true }),
+      ],
+    }),
+  ];
+
+  const bodyParagraphs: InstanceType<typeof Paragraph>[] = (script.scriptBody ?? "")
+    .split("\n")
+    .map((line) => new Paragraph({
+      spacing: { after: 160, line: 480 },  // double-spaced for teleprompter
+      children: [
+        new TextRun({
+          text: line || " ",
+          size: 28,  // 14pt — comfortable teleprompter size
+          font: "Calibri",
+        }),
+      ],
+    }));
+
+  const doc = new Document({
+    creator: "Urban Monk Content Hub",
+    title: script.title,
+    description: `Teleprompter script for ${script.platform} — ${script.scriptType}`,
+    sections: [{
+      properties: {
+        page: {
+          margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 },  // 1 inch margins
+        },
+      },
+      children: [titleLine, ...metaLines, ...bodyParagraphs],
+    }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${script.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_").toLowerCase()}_teleprompter.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // ─── Script Card ─────────────────────────────────────────────────────────────
 
@@ -273,6 +355,17 @@ function ScriptCard({
           >
             <ExternalLink className="w-3 h-3 mr-1" />
             View in Kanban
+          </Button>
+        )}
+        {script.scriptBody && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 text-xs text-violet-700 hover:text-violet-800 hover:bg-violet-50 px-2"
+            onClick={() => exportScriptAsDocx(script)}
+          >
+            <Download className="w-3 h-3 mr-1" />
+            DOCX
           </Button>
         )}
         <Button
@@ -523,6 +616,20 @@ export default function ScriptLibrary() {
     deleteMutation.mutate({ id });
   };
 
+  const handleBulkMarkInProduction = () => {
+    const scriptedScripts = (scriptsByStatus["scripted"] ?? []);
+    if (scriptedScripts.length === 0) {
+      toast.info("No scripted items to advance");
+      return;
+    }
+    const count = scriptedScripts.length;
+    if (!confirm(`Advance ${count} scripted script${count !== 1 ? "s" : ""} to In Production?`)) return;
+    scriptedScripts.forEach((s) => {
+      advanceMutation.mutate({ id: s.id, productionStatus: "in_production" });
+    });
+    toast.success(`${count} script${count !== 1 ? "s" : ""} moved to In Production`);
+  };
+
   const handleSeedAll = async () => {
     setSeeding(true);
     try {
@@ -687,11 +794,29 @@ export default function ScriptLibrary() {
         </div>
       ) : (
         <div className="max-w-[1600px] mx-auto px-4 py-6 overflow-x-auto pb-8">
-          {/* Platform context label */}
+          {/* Platform context label + bulk action */}
           {platformFilter !== "all" && (
-            <div className="mb-4 flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground capitalize">{platformFilter}</span>
-              <span className="text-sm text-muted-foreground">— {filteredScripts.length} script{filteredScripts.length !== 1 ? "s" : ""}</span>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground capitalize">{platformFilter}</span>
+                <span className="text-sm text-muted-foreground">— {filteredScripts.length} script{filteredScripts.length !== 1 ? "s" : ""}</span>
+                {(scriptsByStatus["scripted"]?.length ?? 0) > 0 && (
+                  <span className="text-xs bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-md font-medium">
+                    {scriptsByStatus["scripted"].length} scripted
+                  </span>
+                )}
+              </div>
+              {(scriptsByStatus["scripted"]?.length ?? 0) > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+                  onClick={handleBulkMarkInProduction}
+                >
+                  <ArrowRight className="h-3 w-3 mr-1" />
+                  Mark All Scripted → In Production
+                </Button>
+              )}
             </div>
           )}
 

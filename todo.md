@@ -541,3 +541,11 @@
 - [x] Auto-expands the target script card and scrolls it into view
 - [x] Highlighted card shows violet ring + pulse animation for 5 seconds then clears
 - [x] All 28/28 tests passing, TypeScript clean (0 real errors)
+
+## v14 Features (April 9, 2026)
+
+### Script Library Enhancements (All Three)
+- [x] Add "Source Script" section to Kanban card detail dialog — violet banner with Film icon, shows Script #N, "View Script" button navigates to Script Library and highlights the script; only visible when linkedScriptId is set
+- [x] Add bulk "Mark as In Production" button to Script Library platform tab headers — amber styling, only appears when Scripted column has items, shows count badge, confirm dialog, advances all scripted scripts for the current platform filter
+- [x] Add "Export as DOCX" teleprompter button to each script card — violet styling, downloads title_teleprompter.docx; format: Georgia title, Calibri 14pt body, double-spaced (480 line height), 1-inch margins, platform/type/duration metadata header; uses docx v9.6.1 via dynamic import
+- [x] All 28/28 tests passing, TypeScript clean (0 real errors)

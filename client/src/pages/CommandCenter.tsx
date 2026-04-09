@@ -1448,6 +1448,31 @@ export default function CommandCenter() {
               </Button>
             </div>
 
+            {/* Source Script section */}
+            {selectedItem.linkedScriptId && (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Film className="h-4 w-4 text-violet-500 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-violet-700">Source Script</p>
+                    <p className="text-xs text-violet-500 truncate">Script #{selectedItem.linkedScriptId}</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs border-violet-300 text-violet-700 hover:bg-violet-100 shrink-0"
+                  onClick={() => {
+                    handleViewScript(selectedItem.linkedScriptId!);
+                    setSelectedItem(null);
+                  }}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  View Script
+                </Button>
+              </div>
+            )}
+
             {/* Status change */}
             <div className="flex gap-2 flex-wrap">
               {STATUSES.filter((s) => s.key !== selectedItem.status).slice(0, 4).map((s) => (

@@ -19,38 +19,83 @@ import { landingPages } from "../drizzle/schema";
 
 // ─── Offer metadata ───────────────────────────────────────────────────────────
 
-const OFFER_DETAILS: Record<string, { label: string; price: string; cta: string; description: string }> = {
-  academy: {
-    label: "Urban Monk Academy",
-    price: "$297/year",
-    cta: "Join the Urban Monk Academy",
+const OFFER_DETAILS: Record<string, { label: string; price: string; cta: string; url: string; description: string }> = {
+  upstream_bundle: {
+    label: "The Upstream Bundle",
+    price: "Bundle",
+    url: "https://go.theurbanmonk.com/upstream-diagnostic-bundle",
+    cta: "Get the Upstream Diagnostic Bundle",
     description:
-      "A year-long membership with Dr. Pedram Shojai — weekly practices, masterclasses, guided meditations, and a community of high-performers reclaiming their health.",
+      "A comprehensive diagnostic bundle from Dr. Pedram Shojai — the tests and tools to identify your upstream root cause and stop treating symptoms downstream.",
   },
-  retreat: {
-    label: "Urban Monk Retreat",
-    price: "$1,200",
-    cta: "Reserve Your Retreat Spot",
+  upstream_course: {
+    label: "The Upstream Course",
+    price: "$399",
+    url: "https://go.theurbanmonk.com/upstream",
+    cta: "Start the Upstream Course",
     description:
-      "An immersive 3-day retreat with Dr. Pedram Shojai — deep dives into Taoist medicine, energy cultivation, breathwork, and peak performance practices.",
+      "A 10-part docu-series with Dr. Pedram Shojai — the DIY path to finding and fixing your upstream health root cause, with all bonuses included.",
   },
-  supplements: {
-    label: "Urban Monk Supplements",
-    price: "Starting at $49",
-    cta: "Shop the Urban Monk Collection",
+  explorer_tier: {
+    label: "The Explorer Tier",
+    price: "Testing Tier",
+    url: "https://go.theurbanmonk.com/explore-tier",
+    cta: "Join the Explorer Tier",
     description:
-      "Clinically-informed supplements formulated by Dr. Pedram Shojai — adaptogens, gut health support, and performance blends rooted in East-West medicine.",
+      "The Explorer Tier from Dr. Pedram Shojai — KBMO FIT 176 food sensitivity testing, GI Map, and oral biome analysis for a complete diagnostic picture.",
   },
-  free_guide: {
-    label: "Free Wellness Guide",
+  lights_on_webinar: {
+    label: "Lights On Webinar",
     price: "Free",
-    cta: "Download Your Free Guide",
+    url: "https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1",
+    cta: "Reserve Your Free Seat",
     description:
-      "A free guide from Dr. Pedram Shojai — practical tools to reclaim your energy, focus, and vitality starting today.",
+      "A free live webinar with Dr. Pedram Shojai — 'Something Has Been Stolen From You' — discover what's draining your energy and vitality and how to get it back.",
+  },
+  deep_sleep_webinar: {
+    label: "Deep Sleep Solution Webinar",
+    price: "Free",
+    url: "https://theacademy.theurbanmonk.com/dss-webinar-kajabi",
+    cta: "Join the Free Sleep Webinar",
+    description:
+      "A free webinar with Dr. Pedram Shojai — the science-backed protocol to restore deep, restorative sleep without drugs or supplements.",
+  },
+  homesick_screening: {
+    label: "Homesick Home Free Screening",
+    price: "Free",
+    url: "https://theacademy.theurbanmonk.com/SqueezePage",
+    cta: "Watch the Free Screening",
+    description:
+      "A free documentary screening from Dr. Pedram Shojai — the environmental toxin conversation your doctor isn't having with you.",
+  },
+  interconnected_screening: {
+    label: "Interconnected Series Re-Screening",
+    price: "Free",
+    url: "https://theacademy.theurbanmonk.com/ic-interconnected-free-screening-Meta",
+    cta: "Watch the Interconnected Series Free",
+    description:
+      "A free docu-series from Dr. Pedram Shojai — the gut-brain-immune connection story that changes how you understand chronic illness.",
+  },
+  kbmo_testing: {
+    label: "KBMO Testing — $299",
+    price: "$299",
+    url: "https://theacademy.theurbanmonk.com/interconnected-kbmo-webinar-299",
+    cta: "Get Your KBMO Test for $299",
+    description:
+      "The KBMO FIT22 food sensitivity and gut permeability test — identifies the foods and gut barrier issues driving your symptoms, with a health coach consultation.",
+  },
+  gateway_to_health: {
+    label: "Gateway to Health — Free Screening",
+    price: "Free",
+    url: "https://www.gatewaytohealth.com/gatewaytohealth",
+    cta: "Watch the Gateway to Health Series Free",
+    description:
+      "A free screening series from Dr. Pedram Shojai — the entry point for anyone ready to understand the real root causes of modern chronic health challenges.",
   },
   custom: {
     label: "Custom Offer",
     price: "",
+    url: "",
     cta: "Learn More",
     description: "",
   },
@@ -66,7 +111,7 @@ function buildCopyPrompt(
   offerCustomLabel: string | null | undefined,
   contentAngle: string
 ): string {
-  const offerInfo = OFFER_DETAILS[offer] ?? OFFER_DETAILS.academy;
+  const offerInfo = OFFER_DETAILS[offer] ?? OFFER_DETAILS.upstream_bundle;
   const offerLabel = offer === "custom" && offerCustomLabel ? offerCustomLabel : offerInfo.label;
 
   return `You are Dr. Pedram Shojai (The Urban Monk) — a Doctor of Oriental Medicine, Taoist monk, filmmaker, and New York Times bestselling author. You bridge ancient Eastern wisdom with modern Western science. Your voice is warm, authoritative, direct, and deeply personal. You speak as a trusted guide who has walked this path himself.
@@ -81,6 +126,7 @@ OFFER: ${offerLabel}
 OFFER PRICE: ${offerInfo.price}
 PRIMARY CTA: ${offerInfo.cta}
 OFFER DESCRIPTION: ${offerInfo.description}
+OFFER URL: ${offerInfo.url || 'See website'}
 
 CONTENT ANGLE / KEY MESSAGE: ${contentAngle}
 
@@ -114,7 +160,7 @@ async function createLandingPage(data: {
   title: string;
   personaId?: number | null;
   personaName?: string | null;
-  offer: "academy" | "retreat" | "supplements" | "free_guide" | "custom";
+  offer: "upstream_bundle" | "upstream_course" | "explorer_tier" | "lights_on_webinar" | "deep_sleep_webinar" | "homesick_screening" | "interconnected_screening" | "kbmo_testing" | "gateway_health" | "custom";
   offerCustomLabel?: string | null;
   contentAngle?: string | null;
   copyBody?: string | null;
@@ -175,7 +221,7 @@ async function startGammaGeneration(
   const apiKey = process.env.GAMMA_API_KEY;
   if (!apiKey) throw new Error("GAMMA_API_KEY is not configured");
 
-  const offerInfo = OFFER_DETAILS[offer] ?? OFFER_DETAILS.academy;
+  const offerInfo = OFFER_DETAILS[offer] ?? OFFER_DETAILS.upstream_bundle;
 
   const additionalInstructions = `
 This is a landing page for The Urban Monk (Dr. Pedram Shojai).
@@ -291,7 +337,7 @@ export const landingPagesRouter = router({
         personaName: z.string().min(1),
         personaPainPoints: z.string().default(""),
         personaAspirations: z.string().default(""),
-        offer: z.enum(["academy", "retreat", "supplements", "free_guide", "custom"]),
+        offer: z.enum(["upstream_bundle", "upstream_course", "explorer_tier", "lights_on_webinar", "deep_sleep_webinar", "homesick_screening", "interconnected_screening", "kbmo_testing", "gateway_health", "custom"]),
         offerCustomLabel: z.string().optional(),
         contentAngle: z.string().min(1, "Please describe the key message or angle for this page"),
       })
@@ -521,7 +567,7 @@ Rules:
         title: variantTitle,
         personaId: page.personaId,
         personaName: page.personaName,
-        offer: page.offer as "academy" | "retreat" | "supplements" | "free_guide" | "custom",
+        offer: page.offer as "upstream_bundle" | "upstream_course" | "explorer_tier" | "lights_on_webinar" | "deep_sleep_webinar" | "homesick_screening" | "interconnected_screening" | "kbmo_testing" | "gateway_health" | "custom",
         offerCustomLabel: page.offerCustomLabel,
         contentAngle: `${page.contentAngle} [${input.variantAngle} variant]`,
         copyBody: variantCopy,

@@ -107,7 +107,7 @@ const PERSONAS: {
       "Reconnect with purpose and vitality",
       "Heal the nervous system naturally",
     ],
-    bestOffer: "academy",
+    bestOffer: "lights_on_webinar",
     contentHooks: [
       "The 5-minute morning ritual that resets your adrenals",
       "Why rest alone won't fix burnout (and what will)",
@@ -131,7 +131,7 @@ const PERSONAS: {
       "Reverse biological aging",
       "Maintain peak performance into 60s",
     ],
-    bestOffer: "retreat",
+    bestOffer: "upstream_bundle",
     contentHooks: [
       "The biohacker's guide to thriving at 50",
       "5 longevity habits Pedram practices daily",
@@ -155,7 +155,7 @@ const PERSONAS: {
       "Find authentic spiritual community",
       "Integrate wisdom into daily life",
     ],
-    bestOffer: "academy",
+    bestOffer: "upstream_course",
     contentHooks: [
       "The Urban Monk path: ancient wisdom for modern chaos",
       "Why your meditation isn't working (and the fix)",
@@ -179,7 +179,7 @@ const PERSONAS: {
       "More patience and presence with family",
       "Sustainable energy without burnout",
     ],
-    bestOffer: "academy",
+    bestOffer: "deep_sleep_webinar",
     contentHooks: [
       "The 5-minute morning ritual busy parents swear by",
       "How to meditate when you have zero time",
@@ -203,7 +203,7 @@ const PERSONAS: {
       "Find a credible teacher to follow",
       "Build a complete wellness framework",
     ],
-    bestOffer: "academy",
+    bestOffer: "upstream_course",
     contentHooks: [
       "The science behind Qi Gong (it's not what you think)",
       "TCM explained: what 3,000 years of medicine knows",
@@ -227,7 +227,7 @@ const PERSONAS: {
       "Reduce inflammation naturally",
       "Understand the mind-body connection",
     ],
-    bestOffer: "supplements",
+    bestOffer: "interconnected_screening",
     contentHooks: [
       "What Western medicine misses about chronic illness",
       "The gut-brain-spirit connection explained",
@@ -251,7 +251,7 @@ const PERSONAS: {
       "Build resilience as a leader",
       "Competitive edge through wellness",
     ],
-    bestOffer: "retreat",
+    bestOffer: "explorer_tier",
     contentHooks: [
       "The morning routine of high-performing executives",
       "How mindfulness became my competitive advantage",
@@ -275,7 +275,7 @@ const PERSONAS: {
       "Reclaim deep focus and presence",
       "Live intentionally with technology",
     ],
-    bestOffer: "academy",
+    bestOffer: "lights_on_webinar",
     contentHooks: [
       "I deleted social media for 30 days — here's what happened",
       "The attention economy is stealing your life force",
@@ -289,41 +289,91 @@ const PERSONAS: {
 
 const OFFERS = [
   {
-    id: "academy",
-    label: "Urban Monk Academy",
-    price: "$297/year",
-    icon: <BookOpen className="h-5 w-5" />,
-    description: "Year-long membership — weekly practices, masterclasses, community",
+    id: "upstream_bundle",
+    label: "The Upstream Bundle",
+    price: "Bundle",
+    url: "https://go.theurbanmonk.com/upstream-diagnostic-bundle",
+    icon: <FlaskConical className="h-5 w-5" />,
+    description: "Diagnostic bundle — tests + tools to find your upstream root cause",
     color: "border-amber-300 bg-amber-50 hover:bg-amber-100",
   },
   {
-    id: "retreat",
-    label: "Urban Monk Retreat",
-    price: "$1,200",
-    icon: <Calendar className="h-5 w-5" />,
-    description: "Immersive 3-day retreat — Taoist medicine, breathwork, deep dives",
+    id: "upstream_course",
+    label: "The Upstream Course",
+    price: "$399",
+    url: "https://go.theurbanmonk.com/upstream",
+    icon: <BookOpen className="h-5 w-5" />,
+    description: "10-part docu-series + bonuses — the DIY path to upstream health",
     color: "border-green-300 bg-green-50 hover:bg-green-100",
   },
   {
-    id: "supplements",
-    label: "Urban Monk Supplements",
-    price: "From $49",
+    id: "explorer_tier",
+    label: "The Explorer Tier",
+    price: "Tier",
+    url: "https://go.theurbanmonk.com/explore-tier",
+    icon: <Zap className="h-5 w-5" />,
+    description: "KBMO FIT 176 + GI Map + oral biome testing — full diagnostic picture",
+    color: "border-blue-300 bg-blue-50 hover:bg-blue-100",
+  },
+  {
+    id: "lights_on_webinar",
+    label: "Lights On Webinar",
+    price: "Free",
+    url: "https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1",
+    icon: <Star className="h-5 w-5" />,
+    description: "Free webinar — 'Something Has Been Stolen From You' — energy & vitality",
+    color: "border-yellow-300 bg-yellow-50 hover:bg-yellow-100",
+  },
+  {
+    id: "deep_sleep_webinar",
+    label: "Deep Sleep Solution Webinar",
+    price: "Free",
+    url: "https://theacademy.theurbanmonk.com/dss-webinar-kajabi",
+    icon: <Heart className="h-5 w-5" />,
+    description: "Free webinar — science-backed sleep restoration protocol",
+    color: "border-indigo-300 bg-indigo-50 hover:bg-indigo-100",
+  },
+  {
+    id: "homesick_screening",
+    label: "Homesick Home Free Screening",
+    price: "Free",
+    url: "https://theacademy.theurbanmonk.com/SqueezePage",
+    icon: <Users className="h-5 w-5" />,
+    description: "Free documentary screening — the environmental toxin conversation",
+    color: "border-teal-300 bg-teal-50 hover:bg-teal-100",
+  },
+  {
+    id: "interconnected_screening",
+    label: "Interconnected Series Re-Screening",
+    price: "Free",
+    url: "https://theacademy.theurbanmonk.com/ic-interconnected-free-screening-Meta",
+    icon: <Globe className="h-5 w-5" />,
+    description: "Free docu-series — the gut-brain-immune connection story",
+    color: "border-purple-300 bg-purple-50 hover:bg-purple-100",
+  },
+  {
+    id: "kbmo_testing",
+    label: "KBMO Testing",
+    price: "$299",
+    url: "https://theacademy.theurbanmonk.com/interconnected-kbmo-webinar-299",
     icon: <ShoppingBag className="h-5 w-5" />,
-    description: "Clinically-informed adaptogens, gut health, and performance blends",
+    description: "KBMO FIT22 food sensitivity + gut permeability test — $299",
     color: "border-orange-300 bg-orange-50 hover:bg-orange-100",
   },
   {
-    id: "free_guide",
-    label: "Free Wellness Guide",
+    id: "gateway_to_health",
+    label: "Gateway to Health — Free Screening",
     price: "Free",
-    icon: <Star className="h-5 w-5" />,
-    description: "Lead magnet — practical tools to reclaim energy and vitality",
-    color: "border-purple-300 bg-purple-50 hover:bg-purple-100",
+    url: "https://www.gatewaytohealth.com/gatewaytohealth",
+    icon: <TrendingUp className="h-5 w-5" />,
+    description: "Free screening — the gateway series for cold audiences",
+    color: "border-rose-300 bg-rose-50 hover:bg-rose-100",
   },
   {
     id: "custom",
     label: "Custom Offer",
     price: "Custom",
+    url: "",
     icon: <Target className="h-5 w-5" />,
     description: "Define your own offer label and description",
     color: "border-gray-300 bg-gray-50 hover:bg-gray-100",
@@ -390,7 +440,7 @@ export default function LandingPageGenerator() {
 
   // Form state
   const [selectedPersona, setSelectedPersona] = useState<(typeof PERSONAS)[0] | null>(null);
-  const [selectedOffer, setSelectedOffer] = useState<string>("academy");
+  const [selectedOffer, setSelectedOffer] = useState<string>("upstream_bundle");
   const [customOfferLabel, setCustomOfferLabel] = useState("");
   const [contentAngle, setContentAngle] = useState("");
 
@@ -466,7 +516,7 @@ export default function LandingPageGenerator() {
         personaName: selectedPersona.name,
         personaPainPoints: selectedPersona.painPoints.join("; "),
         personaAspirations: selectedPersona.aspirations.join("; "),
-        offer: selectedOffer as "academy" | "retreat" | "supplements" | "free_guide" | "custom",
+        offer: selectedOffer as "upstream_bundle" | "upstream_course" | "explorer_tier" | "lights_on_webinar" | "deep_sleep_webinar" | "homesick_screening" | "interconnected_screening" | "kbmo_testing" | "gateway_health" | "custom",
         offerCustomLabel: selectedOffer === "custom" ? customOfferLabel : undefined,
         contentAngle: contentAngle.trim(),
       });

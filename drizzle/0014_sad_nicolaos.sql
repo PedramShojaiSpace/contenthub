@@ -1,0 +1,1 @@
+ALTER TABLE `landing_pages` MODIFY COLUMN `offer` enum('upstream_bundle','upstream_course','explorer_tier','lights_on_webinar','deep_sleep_webinar','homesick_screening','interconnected_screening','kbmo_testing','gateway_health','custom') NOT NULL DEFAULT 'upstream_bundle';

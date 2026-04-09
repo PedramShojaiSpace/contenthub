@@ -290,10 +290,15 @@ export const landingPageStatusEnum = mysqlEnum("landingPageStatus", [
 ]);
 
 export const offerEnum = mysqlEnum("offer", [
-  "academy",
-  "retreat",
-  "supplements",
-  "free_guide",
+  "upstream_bundle",
+  "upstream_course",
+  "explorer_tier",
+  "lights_on_webinar",
+  "deep_sleep_webinar",
+  "homesick_screening",
+  "interconnected_screening",
+  "kbmo_testing",
+  "gateway_health",
   "custom",
 ]);
 
@@ -304,7 +309,7 @@ export const landingPages = mysqlTable("landing_pages", {
   personaId: int("personaId"),
   personaName: varchar("personaName", { length: 128 }),
   // The offer being promoted
-  offer: offerEnum.notNull().default("academy"),
+  offer: offerEnum.notNull().default("upstream_bundle"),
   offerCustomLabel: varchar("offerCustomLabel", { length: 255 }),
   // The content angle / key message (user-entered)
   contentAngle: text("contentAngle"),

@@ -653,3 +653,11 @@
 - [ ] Wire press authority signals into Creation Studio LLM prompts (as-seen-in credibility block)
 - [ ] Wire press authority signals into Landing Page Generator LLM prompts
 - [ ] Run tests, TypeScript clean, save checkpoint
+
+## v24 — Real Offer Catalog Update (April 9, 2026)
+- [ ] Replace placeholder OFFERS with 9 real Urban Monk offers + correct URLs in LandingPageGenerator.tsx
+- [ ] Replace placeholder OFFERS in server/landingPagesRouter.ts (LLM prompts)
+- [ ] Update personasRouter.ts CTA copy to reference real offer names
+- [ ] Update scriptsRouter.ts script ideas that reference old Academy $297/year placeholder
+- [ ] Update server/routers.ts system prompts to reference real offer names and URLs
+- [ ] Run tests, TypeScript check, save checkpoint

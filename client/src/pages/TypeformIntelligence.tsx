@@ -177,7 +177,7 @@ export default function TypeformIntelligence() {
   const handleGenerateLandingPage = (personaName: string, painPoints: string[], aspirations: string[], contentHooks: string[]) => {
     const params = new URLSearchParams({
       persona: personaName,
-      offer: "academy",
+      offer: "upstream_course",
       angle: contentHooks[0] ?? painPoints[0] ?? "",
       painPoints: painPoints.slice(0, 3).join(" | "),
       aspirations: aspirations.slice(0, 3).join(" | "),

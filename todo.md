@@ -661,3 +661,16 @@
 - [ ] Update scriptsRouter.ts script ideas that reference old Academy $297/year placeholder
 - [ ] Update server/routers.ts system prompts to reference real offer names and URLs
 - [ ] Run tests, TypeScript check, save checkpoint
+
+## v14 Features
+
+### Research Intelligence — YouTube Asset Generation
+- [x] Add generateTeleprompterScript tRPC mutation (research router) — full 8-12 min teleprompter script in Pedram's voice
+- [x] Add generatePostAndImage tRPC mutation (research router) — social post caption + AI image generation prompt
+- [x] Add TeleprompterScriptModal component with copy, save-to-library, and loading states
+- [x] Add PostAndImageModal component with separate caption + image prompt sections, copy buttons, and save-to-library
+- [x] Add CopyButton reusable component
+- [x] Add Script (purple) + Post (blue) buttons to each Gap Dashboard card
+- [x] Add Script (purple) + Post (blue) buttons to each Video Pipeline card
+- [x] Both modals open immediately with loading spinner, content populates when AI responds
+- [x] "Save to Script Library" saves to scripts table with correct scriptType/platform/status

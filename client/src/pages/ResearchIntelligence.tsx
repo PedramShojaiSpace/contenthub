@@ -43,7 +43,20 @@ import {
   CircleDot,
   ExternalLink,
   Lightbulb,
+  Mic,
+  ImageIcon,
+  Copy,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -69,6 +82,189 @@ interface ResearchReport {
   totalPersonas: number | null;
   totalCompetitorMentions: number | null;
   createdAt: Date;
+}
+
+// ─── Copy Button ─────────────────────────────────────────────────────────────
+
+function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <Button size="sm" variant="outline" onClick={handleCopy} className="shrink-0">
+      {copied ? <Check className="w-3 h-3 mr-1 text-green-400" /> : <Copy className="w-3 h-3 mr-1" />}
+      {copied ? "Copied!" : label}
+    </Button>
+  );
+}
+
+// ─── Teleprompter Script Modal ────────────────────────────────────────────────
+
+interface TeleprompterScriptModalProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  script: string;
+  isLoading: boolean;
+  onSaveToLibrary: () => void;
+  isSaving: boolean;
+}
+
+function TeleprompterScriptModal({
+  open,
+  onClose,
+  title,
+  script,
+  isLoading,
+  onSaveToLibrary,
+  isSaving,
+}: TeleprompterScriptModalProps) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col bg-card border-border">
+        <DialogHeader>
+          <DialogTitle className="text-foreground flex items-center gap-2">
+            <Mic className="w-5 h-5 text-amber-400" />
+            Teleprompter Script
+          </DialogTitle>
+          <p className="text-muted-foreground text-sm">{title}</p>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            <p className="text-muted-foreground text-sm">Writing your teleprompter script...</p>
+            <p className="text-muted-foreground text-xs">This takes 20-30 seconds for a full script</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto">
+              <Textarea
+                value={script}
+                readOnly
+                className="min-h-[400px] font-mono text-sm bg-muted border-border text-foreground resize-none leading-relaxed"
+              />
+            </div>
+            <div className="flex items-center justify-between pt-4 border-t border-border">
+              <div className="flex gap-2">
+                <CopyButton text={script} label="Copy Script" />
+                <Button
+                  size="sm"
+                  onClick={onSaveToLibrary}
+                  disabled={isSaving || !script}
+                  className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                >
+                  {isSaving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileText className="w-3 h-3 mr-1" />}
+                  {isSaving ? "Saving..." : "Save to Script Library"}
+                </Button>
+              </div>
+              <Button size="sm" variant="ghost" onClick={onClose} className="text-muted-foreground">
+                <X className="w-4 h-4 mr-1" /> Close
+              </Button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Post & Image Modal ───────────────────────────────────────────────────────
+
+interface PostAndImageModalProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  post: string;
+  imagePrompt: string;
+  isLoading: boolean;
+  onSaveToLibrary: () => void;
+  isSaving: boolean;
+}
+
+function PostAndImageModal({
+  open,
+  onClose,
+  title,
+  post,
+  imagePrompt,
+  isLoading,
+  onSaveToLibrary,
+  isSaving,
+}: PostAndImageModalProps) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col bg-card border-border">
+        <DialogHeader>
+          <DialogTitle className="text-foreground flex items-center gap-2">
+            <ImageIcon className="w-5 h-5 text-amber-400" />
+            Post & Image Assets
+          </DialogTitle>
+          <p className="text-muted-foreground text-sm">{title}</p>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            <p className="text-muted-foreground text-sm">Generating post caption and image prompt...</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto space-y-4">
+              {/* Post Caption */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-foreground/80 text-sm font-semibold">Post Caption</Label>
+                  <CopyButton text={post} label="Copy Caption" />
+                </div>
+                <Textarea
+                  value={post}
+                  readOnly
+                  className="min-h-[160px] text-sm bg-muted border-border text-foreground resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Image Prompt */}
+              {imagePrompt && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-foreground/80 text-sm font-semibold flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                      AI Image Generation Prompt
+                    </Label>
+                    <CopyButton text={imagePrompt} label="Copy Prompt" />
+                  </div>
+                  <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                    <p className="text-foreground/80 text-sm leading-relaxed font-mono">{imagePrompt}</p>
+                  </div>
+                  <p className="text-muted-foreground text-xs">Paste this prompt into DALL-E, Midjourney, or any AI image tool to generate the thumbnail.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-border">
+              <Button
+                size="sm"
+                onClick={onSaveToLibrary}
+                disabled={isSaving || !post}
+                className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30"
+              >
+                {isSaving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileText className="w-3 h-3 mr-1" />}
+                {isSaving ? "Saving..." : "Save to Script Library"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={onClose} className="text-muted-foreground">
+                <X className="w-4 h-4 mr-1" /> Close
+              </Button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ─── Gap Score Badge ──────────────────────────────────────────────────────────
@@ -232,10 +428,17 @@ function GapDashboard({ reportId }: { reportId: number }) {
 
   const [pendingGapQuery, setPendingGapQuery] = useState<ResearchQuery | null>(null);
 
+  // Teleprompter script modal state
+  const [teleprompterModal, setTeleprompterModal] = useState<{ open: boolean; title: string; script: string }>(
+    { open: false, title: "", script: "" }
+  );
+  // Post & Image modal state
+  const [postImageModal, setPostImageModal] = useState<{ open: boolean; title: string; post: string; imagePrompt: string }>(
+    { open: false, title: "", post: "", imagePrompt: "" }
+  );
+
   const generateBrief = trpc.research.generateBriefFromGap.useMutation({
     onSuccess: (data) => {
-      // Navigate to Creation Studio with the brief pre-loaded
-      // Store in sessionStorage for pickup, including gap query ID for auto-tagging
       sessionStorage.setItem("gumshoe_brief", data.brief);
       if (pendingGapQuery) {
         sessionStorage.setItem("gumshoe_gap_query_id", String(pendingGapQuery.id));
@@ -249,6 +452,30 @@ function GapDashboard({ reportId }: { reportId: number }) {
       setPendingGapQuery(null);
       toast.error(`Brief generation failed: ${err.message}`);
     },
+  });
+
+  const generateTeleprompter = trpc.research.generateTeleprompterScript.useMutation({
+    onSuccess: (data, variables) => {
+      setTeleprompterModal({ open: true, title: variables.title, script: data.script });
+    },
+    onError: (err) => toast.error(`Script generation failed: ${err.message}`),
+  });
+
+  const generatePostImage = trpc.research.generatePostAndImage.useMutation({
+    onSuccess: (data, variables) => {
+      setPostImageModal({ open: true, title: variables.title, post: data.post, imagePrompt: data.imagePrompt });
+    },
+    onError: (err) => toast.error(`Post generation failed: ${err.message}`),
+  });
+
+  const saveScript = trpc.scripts.create.useMutation({
+    onSuccess: () => {
+      toast.success("Saved to Script Library", {
+        description: "View it in the Script Library tab.",
+        action: { label: "Go to Scripts", onClick: () => navigate("/scripts") },
+      });
+    },
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
   });
 
   const handleCreateContent = (q: ResearchQuery) => {
@@ -267,8 +494,77 @@ function GapDashboard({ reportId }: { reportId: number }) {
     });
   };
 
+  const handleGenerateTeleprompter = (q: ResearchQuery) => {
+    const tags = q.topicTags ? JSON.parse(q.topicTags) : [];
+    const competitors = (leaderboard as Array<{ brand: string; mentionCount: number }>)
+      .slice(0, 5)
+      .map((c) => c.brand);
+    setTeleprompterModal({ open: true, title: q.query, script: "" });
+    generateTeleprompter.mutate({
+      title: q.query,
+      query: q.query,
+      personaName: q.personaName ?? "Unknown Persona",
+      topicTags: tags,
+      competitorBrands: competitors,
+      platform: "youtube",
+    });
+  };
+
+  const handleGeneratePostImage = (q: ResearchQuery) => {
+    const tags = q.topicTags ? JSON.parse(q.topicTags) : [];
+    setPostImageModal({ open: true, title: q.query, post: "", imagePrompt: "" });
+    generatePostImage.mutate({
+      title: q.query,
+      query: q.query,
+      personaName: q.personaName ?? "Unknown Persona",
+      topicTags: tags,
+      platform: "meta",
+    });
+  };
+
   return (
     <div className="space-y-6">
+      {/* Teleprompter Script Modal */}
+      <TeleprompterScriptModal
+        open={teleprompterModal.open}
+        onClose={() => setTeleprompterModal((s) => ({ ...s, open: false }))}
+        title={teleprompterModal.title}
+        script={teleprompterModal.script}
+        isLoading={generateTeleprompter.isPending}
+        isSaving={saveScript.isPending}
+        onSaveToLibrary={() =>
+          saveScript.mutate({
+            title: teleprompterModal.title,
+            scriptType: "video",
+            platform: "youtube",
+            scriptBody: teleprompterModal.script,
+            productionStatus: "scripted",
+            notes: "Generated from Research Intelligence gap query",
+          })
+        }
+      />
+
+      {/* Post & Image Modal */}
+      <PostAndImageModal
+        open={postImageModal.open}
+        onClose={() => setPostImageModal((s) => ({ ...s, open: false }))}
+        title={postImageModal.title}
+        post={postImageModal.post}
+        imagePrompt={postImageModal.imagePrompt}
+        isLoading={generatePostImage.isPending}
+        isSaving={saveScript.isPending}
+        onSaveToLibrary={() =>
+          saveScript.mutate({
+            title: postImageModal.title,
+            scriptType: "carousel",
+            platform: "meta",
+            scriptBody: postImageModal.post + (postImageModal.imagePrompt ? `\n\n---\nIMAGE PROMPT:\n${postImageModal.imagePrompt}` : ""),
+            productionStatus: "scripted",
+            notes: "Generated from Research Intelligence gap query — includes image prompt",
+          })
+        }
+      />
+
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-card border-border">
@@ -332,15 +628,35 @@ function GapDashboard({ reportId }: { reportId: number }) {
                           })()}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleCreateContent(q)}
-                        disabled={generateBrief.isPending}
-                        className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0"
-                      >
-                        <Zap className="w-3 h-3 mr-1" />
-                        Brief
-                      </Button>
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        <Button
+                          size="sm"
+                          onClick={() => handleCreateContent(q)}
+                          disabled={generateBrief.isPending || generateTeleprompter.isPending || generatePostImage.isPending}
+                          className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs h-7 px-2"
+                        >
+                          <Zap className="w-3 h-3 mr-1" />
+                          Brief
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleGenerateTeleprompter(q)}
+                          disabled={generateBrief.isPending || generateTeleprompter.isPending || generatePostImage.isPending}
+                          className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 text-xs h-7 px-2"
+                        >
+                          <Mic className="w-3 h-3 mr-1" />
+                          Script
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleGeneratePostImage(q)}
+                          disabled={generateBrief.isPending || generateTeleprompter.isPending || generatePostImage.isPending}
+                          className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs h-7 px-2"
+                        >
+                          <ImageIcon className="w-3 h-3 mr-1" />
+                          Post
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -876,11 +1192,45 @@ function VideoStatusBadge({ status }: { status: VideoStatus }) {
 }
 
 function VideoPipeline() {
+  const [, navigate] = useLocation();
   const [statuses, setStatuses] = useState<Record<number, VideoStatus>>(() => {
     try {
       const saved = localStorage.getItem("video_pipeline_statuses");
       return saved ? JSON.parse(saved) : {};
     } catch { return {}; }
+  });
+
+  // Teleprompter script modal state
+  const [teleprompterModal, setTeleprompterModal] = useState<{ open: boolean; title: string; script: string }>(
+    { open: false, title: "", script: "" }
+  );
+  // Post & Image modal state
+  const [postImageModal, setPostImageModal] = useState<{ open: boolean; title: string; post: string; imagePrompt: string }>(
+    { open: false, title: "", post: "", imagePrompt: "" }
+  );
+
+  const generateTeleprompter = trpc.research.generateTeleprompterScript.useMutation({
+    onSuccess: (data, variables) => {
+      setTeleprompterModal({ open: true, title: variables.title, script: data.script });
+    },
+    onError: (err) => toast.error(`Script generation failed: ${err.message}`),
+  });
+
+  const generatePostImage = trpc.research.generatePostAndImage.useMutation({
+    onSuccess: (data, variables) => {
+      setPostImageModal({ open: true, title: variables.title, post: data.post, imagePrompt: data.imagePrompt });
+    },
+    onError: (err) => toast.error(`Post generation failed: ${err.message}`),
+  });
+
+  const saveScript = trpc.scripts.create.useMutation({
+    onSuccess: () => {
+      toast.success("Saved to Script Library", {
+        description: "View it in the Script Library tab.",
+        action: { label: "Go to Scripts", onClick: () => navigate("/scripts") },
+      });
+    },
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
   });
 
   const updateStatus = (priority: number, status: VideoStatus) => {
@@ -897,6 +1247,47 @@ function VideoPipeline() {
 
   return (
     <div className="space-y-6">
+      {/* Teleprompter Script Modal */}
+      <TeleprompterScriptModal
+        open={teleprompterModal.open}
+        onClose={() => setTeleprompterModal((s) => ({ ...s, open: false }))}
+        title={teleprompterModal.title}
+        script={teleprompterModal.script}
+        isLoading={generateTeleprompter.isPending}
+        isSaving={saveScript.isPending}
+        onSaveToLibrary={() =>
+          saveScript.mutate({
+            title: teleprompterModal.title,
+            scriptType: "video",
+            platform: "youtube",
+            scriptBody: teleprompterModal.script,
+            productionStatus: "scripted",
+            notes: "Generated from Video Pipeline",
+          })
+        }
+      />
+
+      {/* Post & Image Modal */}
+      <PostAndImageModal
+        open={postImageModal.open}
+        onClose={() => setPostImageModal((s) => ({ ...s, open: false }))}
+        title={postImageModal.title}
+        post={postImageModal.post}
+        imagePrompt={postImageModal.imagePrompt}
+        isLoading={generatePostImage.isPending}
+        isSaving={saveScript.isPending}
+        onSaveToLibrary={() =>
+          saveScript.mutate({
+            title: postImageModal.title,
+            scriptType: "carousel",
+            platform: "meta",
+            scriptBody: postImageModal.post + (postImageModal.imagePrompt ? `\n\n---\nIMAGE PROMPT:\n${postImageModal.imagePrompt}` : ""),
+            productionStatus: "scripted",
+            notes: "Generated from Video Pipeline — includes image prompt",
+          })
+        }
+      />
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="bg-card border-border">
@@ -957,15 +1348,52 @@ function VideoPipeline() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1.5">💡 {v.competitorWeakness}</p>
                   </div>
-                  <select
-                    value={status}
-                    onChange={(e) => updateStatus(v.priority, e.target.value as VideoStatus)}
-                    className="bg-muted border border-border rounded text-xs text-foreground px-2 py-1.5 shrink-0 cursor-pointer"
-                  >
-                    {(Object.keys(STATUS_LABELS) as VideoStatus[]).map((s) => (
-                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                    ))}
-                  </select>
+                  <div className="flex flex-col gap-1.5 shrink-0 items-end">
+                    <select
+                      value={status}
+                      onChange={(e) => updateStatus(v.priority, e.target.value as VideoStatus)}
+                      className="bg-muted border border-border rounded text-xs text-foreground px-2 py-1.5 cursor-pointer w-full"
+                    >
+                      {(Object.keys(STATUS_LABELS) as VideoStatus[]).map((s) => (
+                        <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                      ))}
+                    </select>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setTeleprompterModal({ open: true, title: v.title, script: "" });
+                          generateTeleprompter.mutate({
+                            title: v.title,
+                            personaName: v.persona,
+                            platform: "youtube",
+                            competitorBrands: [],
+                          });
+                        }}
+                        disabled={generateTeleprompter.isPending || generatePostImage.isPending}
+                        className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 text-xs h-7 px-2"
+                      >
+                        <Mic className="w-3 h-3 mr-1" />
+                        Script
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setPostImageModal({ open: true, title: v.title, post: "", imagePrompt: "" });
+                          generatePostImage.mutate({
+                            title: v.title,
+                            personaName: v.persona,
+                            platform: "meta",
+                          });
+                        }}
+                        disabled={generateTeleprompter.isPending || generatePostImage.isPending}
+                        className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs h-7 px-2"
+                      >
+                        <ImageIcon className="w-3 h-3 mr-1" />
+                        Post
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

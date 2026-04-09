@@ -882,6 +882,128 @@ Be specific and actionable. This brief will go directly to content creation.`;
           brief: typeof rawContent === "string" ? rawContent : "Brief generation failed.",
         };
       }),
+
+    // AI: generate a full teleprompter script from a gap query or video topic
+    generateTeleprompterScript: protectedProcedure
+      .input(
+        z.object({
+          title: z.string(),
+          query: z.string().optional(),
+          personaName: z.string().optional(),
+          topicTags: z.array(z.string()).optional(),
+          competitorBrands: z.array(z.string()).optional(),
+          platform: z.enum(["youtube", "meta", "linkedin", "x", "tiktok", "blog", "all"]).default("youtube"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const tagList = (input.topicTags ?? []).join(", ");
+        const competitorList = (input.competitorBrands ?? []).slice(0, 5).join(", ");
+
+        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Taoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
+
+Your task: Write a FULL teleprompter-ready script for a ${input.platform === "youtube" ? "YouTube video" : input.platform + " video"} on the topic below.
+
+Topic: "${input.title}"
+${input.query ? `Audience question this addresses: "${input.query}"` : ""}
+${input.personaName ? `Primary audience persona: ${input.personaName}` : ""}
+${tagList ? `Key topic angles: ${tagList}` : ""}
+${competitorList ? `Competitors currently winning this topic: ${competitorList} — differentiate from them` : ""}
+
+SCRIPT REQUIREMENTS:
+- Open with a compelling hook (first 15 seconds are critical for retention)
+- Use teleprompter formatting: short paragraphs, natural speech rhythm, no jargon
+- Include [PAUSE] markers for emphasis
+- Include [B-ROLL: description] cues for the editor
+- Structure: Hook → Problem → Pedram's unique insight → Evidence/story → Practical steps → CTA
+- CTA must mention The Urban Monk Academy ($297/year) or a relevant free resource
+- Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
+- Voice: conversational, like Pedram is talking directly to one person
+- Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
+- Reference relevant books or programs where appropriate
+
+Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Write the full teleprompter script for: "${input.title}"` },
+          ],
+        });
+
+        const rawContent = response.choices?.[0]?.message?.content;
+        return {
+          script: typeof rawContent === "string" ? rawContent : "Script generation failed.",
+        };
+      }),
+
+    // AI: generate a social post caption + image prompt from a gap query or video topic
+    generatePostAndImage: protectedProcedure
+      .input(
+        z.object({
+          title: z.string(),
+          query: z.string().optional(),
+          personaName: z.string().optional(),
+          topicTags: z.array(z.string()).optional(),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "all"]).default("meta"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const tagList = (input.topicTags ?? []).join(", ");
+
+        const systemPrompt = `You are a social media content creator for Dr. Pedram Shojai (The Urban Monk). You write in his voice: grounded, wise, practical, bridges Eastern wisdom and Western science. Never preachy. Always actionable.
+
+Your task: Generate TWO things for the topic below:
+1. A platform-optimized social media post caption
+2. A detailed AI image generation prompt (DALL-E / Midjourney style) for the thumbnail/cover image
+
+Topic: "${input.title}"
+${input.query ? `Audience question: "${input.query}"` : ""}
+${input.personaName ? `Target persona: ${input.personaName}` : ""}
+${tagList ? `Key angles: ${tagList}` : ""}
+Platform: ${input.platform}
+
+POST CAPTION REQUIREMENTS:
+- Platform: ${input.platform}
+- ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "Punchy, under 280 characters, hook in first 5 words" : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
+- Write in Pedram's voice — no fluff, no hype
+- Include a clear call-to-action (link in bio / Urban Monk Academy / free resource)
+- Do NOT include any labels like "Caption:" — just write the post
+
+IMAGE PROMPT REQUIREMENTS:
+- Describe a compelling, professional thumbnail/cover image
+- Do NOT include faces or people (use symbolic, nature, or conceptual imagery)
+- Style: warm, earthy, cinematic — consistent with The Urban Monk brand (deep greens, amber, earth tones)
+- Should visually represent the core insight of the topic
+- Include lighting direction, mood, and composition details
+- Format: Start with "IMAGE PROMPT:" on its own line, then the description
+
+Return BOTH in this exact format:
+[POST]
+(the post caption here)
+
+[IMAGE PROMPT]
+(the image generation prompt here)`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Generate the social post and image prompt for: "${input.title}"` },
+          ],
+        });
+
+        const rawContent = typeof response.choices?.[0]?.message?.content === "string"
+          ? response.choices[0].message.content
+          : "";
+
+        // Parse the two sections
+        const postMatch = rawContent.match(/\[POST\]\s*([\s\S]*?)(?=\[IMAGE PROMPT\]|$)/);
+        const imageMatch = rawContent.match(/\[IMAGE PROMPT\]\s*([\s\S]*)$/);
+
+        return {
+          post: postMatch?.[1]?.trim() ?? rawContent,
+          imagePrompt: imageMatch?.[1]?.trim() ?? "",
+        };
+      }),
   }),
 
   // ─── Weekly Digest ─────────────────────────────────────────────────────────────────────────────

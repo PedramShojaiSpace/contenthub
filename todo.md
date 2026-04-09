@@ -637,3 +637,10 @@
 - [ ] Inject persona Typeform pain points into Creation Studio and Landing Page Generator LLM calls
 - [ ] Add Typeform insights badge on persona profiles
 - [ ] All tests passing, TypeScript clean
+
+## v21 Features — Enrichment Badges & Segment Comparison
+
+- [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona
+- [x] Add enrichment badge to Creation Studio persona selector ("Enriched with X pain points")
+- [x] Add segment comparison view in Typeform Intelligence (run 2 forms, side-by-side diff)
+- [x] Run tests, TypeScript clean, save checkpoint

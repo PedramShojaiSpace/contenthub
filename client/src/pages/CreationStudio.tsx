@@ -191,6 +191,10 @@ export default function CreationStudio() {
 
   // Personas for selector
   const { data: personas = [] } = trpc.personas.list.useQuery();
+  const { data: enrichmentSummary = [] } = trpc.personas.getEnrichmentSummary.useQuery();
+  const enrichmentMap = Object.fromEntries(
+    (enrichmentSummary as Array<{ id: number; painCount: number; isEnriched: boolean }>).map((e) => [e.id, e])
+  );
 
   const generateContentMutation = trpc.ai.generateContent.useMutation({
     onSuccess: (data) => {
@@ -1052,11 +1056,45 @@ export default function CreationStudio() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No specific persona</SelectItem>
-                    {(personas as Array<{ id: number; name: string }>).map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                    ))}
+                    {(personas as Array<{ id: number; name: string }>).map((p) => {
+                      const enrichInfo = enrichmentMap[p.id];
+                      return (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          <span className="flex items-center gap-2">
+                            {p.name}
+                            {enrichInfo?.isEnriched && (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
+                                ✦ {enrichInfo.painCount} survey insights
+                              </span>
+                            )}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+                {/* Enrichment indicator below selector */}
+                {selectedPersonaId && enrichmentMap[selectedPersonaId] && (
+                  <div className={`flex items-center gap-1.5 text-[11px] mt-1 ${
+                    enrichmentMap[selectedPersonaId].isEnriched
+                      ? 'text-primary'
+                      : 'text-muted-foreground'
+                  }`}>
+                    {enrichmentMap[selectedPersonaId].isEnriched ? (
+                      <>
+                        <span className="text-primary">✦</span>
+                        <span>
+                          Enriched with <strong>{enrichmentMap[selectedPersonaId].painCount} real survey pain points</strong> — AI will speak to what your audience actually said
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span>○</span>
+                        <span>No survey data yet — run Typeform Intelligence to enrich this persona</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground text-xs uppercase tracking-wider">Content Goal (optional)</Label>

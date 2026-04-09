@@ -24,6 +24,40 @@ export const personasRouter = router({
       return results[0] ?? null;
     }),
 
+  // Returns enrichment summary: how many real survey pain points each persona has
+  getEnrichmentSummary: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db.select().from(personas).orderBy(asc(personas.name));
+    return rows.map((p: any) => {
+      let painCount = 0;
+      let aspirationCount = 0;
+      let enrichedFromForms: string[] = [];
+      try {
+        const pains = JSON.parse(p.painPoints ?? "[]");
+        const aspirations = JSON.parse(p.aspirations ?? "[]");
+        painCount = Array.isArray(pains) ? pains.length : 0;
+        aspirationCount = Array.isArray(aspirations) ? aspirations.length : 0;
+      } catch {
+        // raw string pain points (legacy) — count words as proxy
+        painCount = p.painPoints ? 1 : 0;
+      }
+      try {
+        enrichedFromForms = JSON.parse(p.enrichedFromForms ?? "[]");
+      } catch {
+        enrichedFromForms = [];
+      }
+      return {
+        id: p.id,
+        name: p.name,
+        painCount,
+        aspirationCount,
+        enrichedFromForms,
+        isEnriched: painCount > 3, // >3 pain points means it has real survey data
+      };
+    });
+  }),
+
   generateCta: protectedProcedure
     .input(
       z.object({

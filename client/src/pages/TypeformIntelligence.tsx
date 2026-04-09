@@ -57,6 +57,13 @@ export default function TypeformIntelligence() {
   const [segmentation, setSegmentation] = useState<any | null>(null);
   const [, navigate] = useLocation();
 
+  // ── Comparison state ────────────────────────────────────────────────────────
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareFormId, setCompareFormId] = useState<string>("");
+  const [compareFormTitle, setCompareFormTitle] = useState<string>("");
+  const [compareAnalysis, setCompareAnalysis] = useState<AudienceAnalysis | null>(null);
+  const [compareSegmentation, setCompareSegmentation] = useState<any | null>(null);
+
   // ── Data ────────────────────────────────────────────────────────────────────
   const { data: formsData, isLoading: formsLoading } = trpc.typeform.listForms.useQuery();
   const forms = formsData?.forms ?? [];
@@ -131,6 +138,42 @@ export default function TypeformIntelligence() {
     });
   };
 
+  // Compare mutations
+  const compareAnalyzeMutation = trpc.typeform.analyzeAudience.useMutation({
+    onSuccess: (data) => {
+      setCompareAnalysis(data as AudienceAnalysis);
+      toast.success(`Comparison form analyzed — ${data.responseCount} responses ready!`);
+    },
+    onError: (err) => toast.error("Comparison analysis failed: " + err.message),
+  });
+
+  const compareSegmentMutation = trpc.typeform.segmentByPersona.useMutation({
+    onSuccess: (data) => {
+      setCompareSegmentation(data);
+      toast.success("Comparison segmentation complete!");
+    },
+    onError: (err) => toast.error("Comparison segmentation failed: " + err.message),
+  });
+
+  const handleCompareFormSelect = (formId: string) => {
+    const form = forms.find((f: { id: string; title: string }) => f.id === formId);
+    setCompareFormId(formId);
+    setCompareFormTitle(form?.title ?? formId);
+    setCompareAnalysis(null);
+    setCompareSegmentation(null);
+  };
+
+  const handleRunComparison = () => {
+    if (!selectedFormId) { toast.error("Select the primary form first."); return; }
+    if (!compareFormId) { toast.error("Select a comparison form."); return; }
+    if (selectedFormId === compareFormId) { toast.error("Select two different forms to compare."); return; }
+    // Run both segmentations in parallel
+    if (!segmentation) {
+      segmentMutation.mutate({ formId: selectedFormId, formTitle: selectedFormTitle, sampleSize: 200 });
+    }
+    compareSegmentMutation.mutate({ formId: compareFormId, formTitle: compareFormTitle, sampleSize: 200 });
+  };
+
   const handleGenerateLandingPage = (personaName: string, painPoints: string[], aspirations: string[], contentHooks: string[]) => {
     const params = new URLSearchParams({
       persona: personaName,
@@ -166,10 +209,21 @@ export default function TypeformIntelligence() {
               Pull real survey data from your Typeform account, extract pain points and aspirations, and enrich persona profiles with ground-truth audience intelligence.
             </p>
           </div>
-          <Badge variant="outline" className="border-green-500/40 text-green-400 shrink-0">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            {forms.length} forms connected
-          </Badge>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant={compareMode ? "default" : "outline"}
+              size="sm"
+              className={compareMode ? "bg-primary text-primary-foreground" : "border-primary/40 text-primary hover:bg-primary/10"}
+              onClick={() => setCompareMode(!compareMode)}
+            >
+              <Layers className="h-3.5 w-3.5 mr-1.5" />
+              {compareMode ? "Exit Compare" : "Compare Audiences"}
+            </Button>
+            <Badge variant="outline" className="border-green-500/40 text-green-400">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              {forms.length} forms
+            </Badge>
+          </div>
         </div>
 
         {/* Form Selector */}
@@ -565,6 +619,170 @@ export default function TypeformIntelligence() {
               ))}
             </div>
           </>
+        )}
+        {/* ── Segment Comparison View ──────────────────────────────────────────── */}
+        {compareMode && (
+          <Card className="border-primary/40 bg-primary/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                Audience Comparison — Side-by-Side Segment Diff
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Run segmentation on two different forms and compare how pain points, aspirations, and content hooks differ per persona — so you can tailor messaging by funnel entry point.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Form A + Form B selectors */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wider">Form A (Primary)</p>
+                  <div className="px-3 py-2 rounded-md border border-primary/30 bg-background/50 text-sm text-foreground">
+                    {selectedFormTitle || <span className="text-muted-foreground">Select a form above first</span>}
+                  </div>
+                  {segmentation && (
+                    <Badge variant="outline" className="border-green-500/40 text-green-400 text-[10px]">
+                      <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+                      {segmentation.analyzedCount} responses segmented
+                    </Badge>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Form B (Comparison)</p>
+                  <Select value={compareFormId} onValueChange={handleCompareFormSelect}>
+                    <SelectTrigger className="bg-background/50 border-amber-500/30 text-foreground text-sm">
+                      <SelectValue placeholder="Select comparison form..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {forms.filter((f: any) => f.id !== selectedFormId).map((f: any) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.title} {f.responseCount != null ? `(${f.responseCount} responses)` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {compareSegmentation && (
+                    <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px]">
+                      <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+                      {compareSegmentation.analyzedCount} responses segmented
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <Button
+                onClick={handleRunComparison}
+                disabled={!selectedFormId || !compareFormId || compareSegmentMutation.isPending || segmentMutation.isPending}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {(compareSegmentMutation.isPending || segmentMutation.isPending) ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Running comparison...</>
+                ) : (
+                  <><Layers className="h-4 w-4 mr-2" />Run Side-by-Side Comparison</>
+                )}
+              </Button>
+
+              {/* Side-by-side diff per persona */}
+              {segmentation && compareSegmentation && (
+                <div className="space-y-4 mt-2">
+                  <div className="grid grid-cols-2 gap-2 text-xs font-semibold uppercase tracking-wider">
+                    <div className="text-primary px-2">Form A: {selectedFormTitle}</div>
+                    <div className="text-amber-400 px-2">Form B: {compareFormTitle}</div>
+                  </div>
+                  {(segmentation.segments ?? []).map((segA: any) => {
+                    const segB = (compareSegmentation.segments ?? []).find((s: any) => s.personaId === segA.personaId);
+                    if (!segB) return null;
+                    const matchDiff = segB.percentMatch - segA.percentMatch;
+                    return (
+                      <div key={segA.personaId} className="border border-border rounded-lg overflow-hidden">
+                        {/* Persona header */}
+                        <div className="flex items-center justify-between px-3 py-2 bg-muted/20 border-b border-border">
+                          <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                            <Layers className="h-3 w-3 text-primary" />
+                            {segA.personaName}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[9px] border-primary/40 text-primary">
+                              A: {segA.percentMatch}%
+                            </Badge>
+                            <Badge variant="outline" className="text-[9px] border-amber-500/40 text-amber-400">
+                              B: {segB.percentMatch}%
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={`text-[9px] ${
+                                matchDiff > 5 ? 'border-green-500/40 text-green-400' :
+                                matchDiff < -5 ? 'border-red-500/40 text-red-400' :
+                                'border-border text-muted-foreground'
+                              }`}
+                            >
+                              {matchDiff > 0 ? '+' : ''}{matchDiff}% shift
+                            </Badge>
+                          </div>
+                        </div>
+                        {/* Side-by-side pain points */}
+                        <div className="grid grid-cols-2 divide-x divide-border">
+                          <div className="p-3 space-y-2">
+                            <p className="text-[9px] font-semibold text-red-400 uppercase tracking-wider">Pain Points (Form A)</p>
+                            <ul className="space-y-0.5">
+                              {segA.painPoints.slice(0, 3).map((p: string, i: number) => (
+                                <li key={i} className="text-[10px] text-foreground/80 flex items-start gap-1">
+                                  <span className="text-primary shrink-0">A</span>{p}
+                                </li>
+                              ))}
+                            </ul>
+                            <p className="text-[9px] font-semibold text-amber-400 uppercase tracking-wider mt-2">Hooks (Form A)</p>
+                            <div className="flex flex-wrap gap-1">
+                              {segA.contentHooks.map((h: string, i: number) => (
+                                <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full border border-primary/30 text-primary/80">{h}</span>
+                              ))}
+                            </div>
+                            <blockquote className="text-[10px] italic text-muted-foreground border-l-2 border-primary/30 pl-2 mt-2">
+                              "{segA.voiceOfCustomer}"
+                            </blockquote>
+                          </div>
+                          <div className="p-3 space-y-2">
+                            <p className="text-[9px] font-semibold text-red-400 uppercase tracking-wider">Pain Points (Form B)</p>
+                            <ul className="space-y-0.5">
+                              {segB.painPoints.slice(0, 3).map((p: string, i: number) => {
+                                const inA = segA.painPoints.some((ap: string) =>
+                                  ap.toLowerCase().split(' ').some(w => w.length > 4 && p.toLowerCase().includes(w))
+                                );
+                                return (
+                                  <li key={i} className={`text-[10px] flex items-start gap-1 ${
+                                    inA ? 'text-foreground/50' : 'text-green-400 font-medium'
+                                  }`}>
+                                    <span className="text-amber-400 shrink-0">B</span>{p}
+                                    {!inA && <span className="text-[8px] text-green-400 ml-1">(new)</span>}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                            <p className="text-[9px] font-semibold text-amber-400 uppercase tracking-wider mt-2">Hooks (Form B)</p>
+                            <div className="flex flex-wrap gap-1">
+                              {segB.contentHooks.map((h: string, i: number) => {
+                                const inA = segA.contentHooks.some((ah: string) =>
+                                  ah.toLowerCase().includes(h.toLowerCase().slice(0, 6))
+                                );
+                                return (
+                                  <span key={i} className={`text-[9px] px-1.5 py-0.5 rounded-full border ${
+                                    inA ? 'border-border text-muted-foreground' : 'border-green-500/40 text-green-400'
+                                  }`}>{h}{!inA && ' ✦'}</span>
+                                );
+                              })}
+                            </div>
+                            <blockquote className="text-[10px] italic text-muted-foreground border-l-2 border-amber-500/30 pl-2 mt-2">
+                              "{segB.voiceOfCustomer}"
+                            </blockquote>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
     </DashboardLayout>

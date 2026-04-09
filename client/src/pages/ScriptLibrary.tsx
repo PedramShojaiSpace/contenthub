@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,8 +32,11 @@ import {
   ExternalLink,
   Sparkles,
   Download,
+  Eye,
+  EyeOff,
+  Archive,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";  
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -219,6 +221,31 @@ async function exportScriptAsDocx(script: Script) {
   URL.revokeObjectURL(url);
 }
 
+// ─── Platform character limits ──────────────────────────────────────────────
+const CHAR_LIMITS: Partial<Record<Platform, number>> = {
+  x: 280,
+  linkedin: 3000,
+  meta: 2200,
+  youtube: 5000,
+};
+
+// Strip stage directions, slide labels, and internal markup from a script body
+function stripStageDirections(body: string, platform: Platform | null): string {
+  return body
+    .split("\n")
+    .filter((line) => {
+      const t = line.trim();
+      if (!t) return false;
+      // Remove lines that are purely stage directions or labels
+      if (/^(slide\s*\d+|hook|cta|caption|image suggestion|\[.*?\]|---+|\*\*\*+)/i.test(t)) return false;
+      if (/^(HOOK|CTA|BODY|INTRO|OUTRO|SLIDE|CAPTION|IMAGE|VISUAL|B-ROLL|NARRATOR|PEDRAM):?$/i.test(t)) return false;
+      return true;
+    })
+    .map((line) => line.replace(/^(HOOK|CTA|BODY|INTRO|OUTRO|SLIDE \d+|CAPTION|IMAGE|VISUAL|B-ROLL|NARRATOR|PEDRAM):\s*/i, "").trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
 // ─── Script Card ─────────────────────────────────────────────────────────────
 
 function ScriptCard({
@@ -235,6 +262,7 @@ function ScriptCard({
   isHighlighted?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-expand and scroll into view when highlighted
@@ -323,10 +351,44 @@ function ScriptCard({
             </div>
           )}
           {script.scriptBody && (
-            <div className="bg-secondary/60 rounded-lg p-2.5 max-h-48 overflow-y-auto border border-border">
-              <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed font-mono">
-                {script.scriptBody.substring(0, 800)}{script.scriptBody.length > 800 ? "\n…" : ""}
-              </p>
+            <div>
+              {/* Toggle between raw script and preview */}
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-muted-foreground">Script Body</span>
+                <button
+                  className="inline-flex items-center gap-1 text-xs text-violet-700 hover:text-violet-900 font-medium"
+                  onClick={() => setShowPreview(!showPreview)}
+                >
+                  {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  {showPreview ? "Show Raw" : "Preview Post"}
+                </button>
+              </div>
+              {showPreview ? (
+                <div className="bg-white border border-violet-200 rounded-lg p-3 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Post Preview</span>
+                    {script.platform && CHAR_LIMITS[script.platform as Platform] && (() => {
+                      const cleaned = stripStageDirections(script.scriptBody!, script.platform as Platform);
+                      const limit = CHAR_LIMITS[script.platform as Platform]!;
+                      const over = cleaned.length > limit;
+                      return (
+                        <span className={`text-xs font-mono font-semibold ${over ? "text-red-600" : "text-emerald-600"}`}>
+                          {cleaned.length.toLocaleString()} / {limit.toLocaleString()} chars
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                    {stripStageDirections(script.scriptBody!, script.platform as Platform)}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-secondary/60 rounded-lg p-2.5 max-h-48 overflow-y-auto border border-border">
+                  <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed font-mono">
+                    {script.scriptBody.substring(0, 800)}{script.scriptBody.length > 800 ? "\n…" : ""}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -528,8 +590,18 @@ function ScriptDialog({
               className="bg-background border-border text-foreground min-h-[80px]" />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex items-center gap-2">
           <Button variant="ghost" onClick={onClose} className="text-muted-foreground">Cancel</Button>
+          {initial && scriptBody && (
+            <Button
+              variant="outline"
+              onClick={() => exportScriptAsDocx({ ...initial, scriptBody })}
+              className="border-violet-300 text-violet-700 hover:bg-violet-50"
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              Export DOCX
+            </Button>
+          )}
           <Button onClick={handleSave} disabled={isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
             {isPending ? "Saving…" : initial ? "Save Changes" : "Create Script"}
           </Button>
@@ -547,6 +619,7 @@ export default function ScriptLibrary() {
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [batchExporting, setBatchExporting] = useState(false);
   const [highlightedScriptId, setHighlightedScriptId] = useState<number | null>(null);
   const highlightRef = useRef<HTMLDivElement | null>(null);
   const [location] = useLocation();
@@ -643,6 +716,69 @@ export default function ScriptLibrary() {
     }
   };
 
+  const handleBatchExportZip = async () => {
+    const scriptsToExport = filteredScripts.filter((s) => s.scriptBody);
+    if (scriptsToExport.length === 0) {
+      toast.error("No scripts with content to export");
+      return;
+    }
+    setBatchExporting(true);
+    try {
+      const { default: JSZip } = await import("jszip");
+      const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
+      const zip = new JSZip();
+      const platformLabel = platformFilter === "all" ? "All" : platformFilter.charAt(0).toUpperCase() + platformFilter.slice(1);
+      const folder = zip.folder(`Urban_Monk_Scripts_${platformLabel}`)!;
+
+      for (const script of scriptsToExport) {
+        const titleLine = new Paragraph({
+          text: script.title,
+          heading: HeadingLevel.HEADING_1,
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 240 },
+        });
+        const metaLines = [
+          `Platform: ${script.platform ?? "—"} | Type: ${script.scriptType} | Duration: ${script.estimatedDurationMin ?? "—"} min`,
+          `Status: ${script.productionStatus} | Content Goal: ${script.contentGoal ?? "—"}`,
+          script.competitorAngle ? `Angle: ${script.competitorAngle}` : "",
+        ].filter(Boolean).map((t) => new Paragraph({
+          children: [new TextRun({ text: t, size: 20, color: "666666" })],
+          spacing: { after: 120 },
+        }));
+        const divider = new Paragraph({ text: "─".repeat(60), spacing: { before: 240, after: 240 } });
+        const bodyParagraphs = (script.scriptBody ?? "").split("\n").map((line) =>
+          new Paragraph({
+            children: [new TextRun({ text: line, size: 28, font: "Calibri" })],
+            spacing: { line: 480, after: 0 },
+          })
+        );
+        const doc = new Document({
+          sections: [{ properties: { page: { margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 } } },
+            children: [titleLine, ...metaLines, divider, ...bodyParagraphs] }],
+        });
+        const blob = await Packer.toBlob(doc);
+        const safeName = script.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_").toLowerCase();
+        folder.file(`${script.priority ? String(script.priority).padStart(2, "0") + "_" : ""}${safeName}.docx`, blob);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Urban_Monk_Scripts_${platformLabel}_${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${scriptsToExport.length} scripts as ZIP`);
+    } catch (err) {
+      toast.error("Export failed — please try again");
+      console.error(err);
+    } finally {
+      setBatchExporting(false);
+    }
+  };
+
   // Filter by platform
   const filteredScripts = platformFilter === "all"
     ? allScripts
@@ -699,6 +835,18 @@ export default function ScriptLibrary() {
             >
               <RefreshCw className={`w-3.5 h-3.5 mr-2 ${seeding ? "animate-spin" : ""}`} />
               {seeding ? "Seeding…" : "Seed 40 Scripts"}
+            </Button>
+          )}
+          {allScripts.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBatchExportZip}
+              disabled={batchExporting}
+              className="border-violet-300 text-violet-700 hover:bg-violet-50"
+            >
+              <Archive className={`w-3.5 h-3.5 mr-1.5 ${batchExporting ? "animate-pulse" : ""}`} />
+              {batchExporting ? "Exporting…" : `Export${platformFilter !== "all" ? " " + platformFilter.charAt(0).toUpperCase() + platformFilter.slice(1) : " All"} ZIP`}
             </Button>
           )}
           <Button

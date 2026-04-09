@@ -549,3 +549,11 @@
 - [x] Add bulk "Mark as In Production" button to Script Library platform tab headers — amber styling, only appears when Scripted column has items, shows count badge, confirm dialog, advances all scripted scripts for the current platform filter
 - [x] Add "Export as DOCX" teleprompter button to each script card — violet styling, downloads title_teleprompter.docx; format: Georgia title, Calibri 14pt body, double-spaced (480 line height), 1-inch margins, platform/type/duration metadata header; uses docx v9.6.1 via dynamic import
 - [x] All 28/28 tests passing, TypeScript clean (0 real errors)
+
+## v15 Features (April 9, 2026)
+
+### Script Library Enhancements (Next Three)
+- [x] Add "Preview Post" toggle in ScriptCard expanded view — strips stage directions/slide labels/markup, shows clean formatted post text, character count vs platform limit (green/red), toggle between raw and preview
+- [x] Add DOCX export button to the Edit Script dialog footer — exports the current edited version of the script body (violet styling, only shown when editing an existing script with content)
+- [x] Add "Export [Platform] ZIP" button to Script Library header — dynamically labeled by active platform tab, downloads all scripts with content as a ZIP of DOCX files, numbered by priority, uses jszip + docx client-side
+- [x] All 28/28 tests passing, TypeScript clean (0 real errors)

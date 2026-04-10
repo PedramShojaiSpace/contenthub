@@ -606,4 +606,146 @@ Return ONLY the JSON object, no markdown wrapping.`;
       await updateWebinar(input.id, { kajabiExport });
       return { kajabiExport: JSON.parse(kajabiExport) };
     }),
+
+  // ─── Typeform Survey Builder ──────────────────────────────────────────────
+
+  // Generate AI survey questions based on webinar topic and personas
+  generateSurveyQuestions: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      topic: z.string().min(1),
+      cta: z.string().default(""),
+      personaIds: z.array(z.number()).default([]),
+    }))
+    .mutation(async ({ input }) => {
+      const personaData = await loadPersonasForIds(input.personaIds);
+      const personaNames = personaData.map((p) => p.name).join(", ") || "high-performing professionals";
+      const personaPains = personaData
+        .flatMap((p) => { try { return JSON.parse(p.painPoints) as string[]; } catch { return []; } })
+        .slice(0, 6).join("; ");
+
+      const systemPrompt = `You are a market research expert and conversion strategist for Dr. Pedram Shojai (The Urban Monk). Create a post-webinar survey that qualifies attendees and surfaces their deepest pain points so the sales team can follow up with precision.
+
+WEBINAR TOPIC: ${input.topic}
+AUDIENCE: ${personaNames}
+OFFER / CTA: ${input.cta || "The Upstream Bundle — $399"}
+KNOWN PAIN POINTS: ${personaPains || "chronic fatigue, stress, gut issues, poor sleep, brain fog"}
+
+Generate a survey with exactly 8-10 questions using this framework:
+1. What brought you to this webinar? (open text)
+2-4. Pain point questions — dig into their specific health struggles (mix of open text and multiple choice)
+5. How long have you been dealing with this? (multiple choice)
+6. What have you already tried? (multiple choice with "other")
+7. What would your life look like if this was resolved? (open text — aspirational)
+8. How serious are you about solving this in the next 90 days? (rating 1-10)
+9. Would you like a free 15-minute health strategy call? (yes/no)
+10. What's the best email to send your personalized plan? (email)
+
+Return a JSON array of question objects. Each object must have:
+- "ref": unique snake_case string (e.g. "pain_main")
+- "title": the question text (warm, conversational, Pedram's voice)
+- "type": one of: "short_text", "long_text", "multiple_choice", "rating", "yes_no", "email"
+- "required": boolean
+- "choices": array of {"label": string} objects (only for multiple_choice type)
+- "properties": object (for rating: {"steps": 10}; for multiple_choice: {"allow_multiple_selection": false, "allow_other_choice": true})
+
+Return ONLY the JSON array, no markdown wrapping.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Generate the survey questions for the webinar: "${input.topic}"` },
+        ],
+        response_format: { type: "json_object" } as any,
+      });
+
+      const rawMsg = response.choices?.[0]?.message?.content;
+      const rawContent = typeof rawMsg === "string" ? rawMsg : "{}";
+      let questions: any[] = [];
+      try {
+        const parsed = JSON.parse(rawContent);
+        // Handle both {questions: [...]} and [...] shapes
+        questions = Array.isArray(parsed) ? parsed : (parsed.questions ?? parsed.survey_questions ?? []);
+      } catch { questions = []; }
+
+      return { questions };
+    }),
+
+  // Push approved survey questions to Typeform and return the live URL
+  pushToTypeform: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      title: z.string().min(1),
+      questions: z.array(z.object({
+        ref: z.string(),
+        title: z.string(),
+        type: z.string(),
+        required: z.boolean().default(false),
+        choices: z.array(z.object({ label: z.string() })).optional(),
+        properties: z.record(z.string(), z.unknown()).optional(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const apiKey = process.env.TYPEFORM_API_KEY;
+      if (!apiKey) throw new Error("TYPEFORM_API_KEY is not configured");
+
+      // Build Typeform fields from question objects
+      const fields = input.questions.map((q) => {
+        const field: any = {
+          ref: q.ref,
+          title: q.title,
+          type: q.type,
+          validations: { required: q.required },
+        };
+        if (q.type === "multiple_choice" && q.choices && q.choices.length > 0) {
+          field.properties = {
+            choices: q.choices,
+            allow_multiple_selection: q.properties?.allow_multiple_selection ?? false,
+            allow_other_choice: q.properties?.allow_other_choice ?? true,
+            ...(q.properties ?? {}),
+          };
+        } else if (q.type === "rating") {
+          field.properties = { steps: q.properties?.steps ?? 10 };
+        }
+        return field;
+      });
+
+      // Create the Typeform
+      const response = await fetch("https://api.typeform.com/forms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          title: input.title,
+          fields,
+          settings: {
+            is_public: true,
+            is_trial: false,
+            show_progress_bar: true,
+            show_typeform_branding: false,
+          },
+          thankyou_screens: [{
+            ref: "thank_you",
+            title: "Thank you for sharing! We'll be in touch shortly with your personalized plan.",
+            type: "thankyou_screen",
+            properties: { show_button: false, share_icons: false },
+          }],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Typeform API error ${response.status}: ${errorText}`);
+      }
+
+      const data = (await response.json()) as { id: string; _links: { display: string } };
+      const typeformUrl = data._links?.display ?? `https://theurbanmonk.typeform.com/to/${data.id}`;
+
+      // Save the URL back to the webinar session
+      await updateWebinar(input.id, { thankYouTypeformUrl: typeformUrl });
+
+      return { typeformId: data.id, typeformUrl };
+    }),
 });

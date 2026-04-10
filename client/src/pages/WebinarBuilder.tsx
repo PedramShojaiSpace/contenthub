@@ -44,7 +44,7 @@ import {
   Play,
   ClipboardList,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
@@ -194,12 +194,22 @@ export default function WebinarBuilder() {
   const [gammaUrl, setGammaUrl] = useState("");
   const [gammaPolling, setGammaPolling] = useState(false);
 
+  // Gamma polling refs
+  const utils = trpc.useUtils();
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollAttemptsRef = useRef(0);
+
   // Step 4 state
   const [wistiaId, setWistiaId] = useState("");
   const [typeformUrl, setTypeformUrl] = useState("");
   const [thankYouCopy, setThankYouCopy] = useState("");
   const [kajabiPlan, setKajabiPlan] = useState<any>(null);
   const [showKajabiRaw, setShowKajabiRaw] = useState(false);
+
+  // Typeform survey state
+  const [surveyQuestions, setSurveyQuestions] = useState<any[]>([]);
+  const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
+  const [pushedTypeformUrl, setPushedTypeformUrl] = useState("");
 
   // Queries
   const { data: sessions = [], refetch: refetchSessions } = trpc.webinar.list.useQuery();
@@ -240,11 +250,48 @@ export default function WebinarBuilder() {
     onSuccess: (data) => {
       setGammaGenerationId(data.generationId);
       setGammaPolling(true);
-      toast.success("Sent to Gamma — polling for completion...");
-      pollGammaLoop(data.generationId);
+      pollAttemptsRef.current = 0;
+      toast.success("Sent to Gamma — generating your landing page...");
     },
     onError: (err) => toast.error("Gamma publish failed: " + err.message),
   });
+
+  // ─── Gamma polling via useEffect + setInterval (correct pattern) ────────────
+  useEffect(() => {
+    if (!gammaPolling || !gammaGenerationId || activeWebinarId === null) return;
+    const MAX_ATTEMPTS = 40; // 40 × 5s = 200s max
+    pollIntervalRef.current = setInterval(async () => {
+      pollAttemptsRef.current += 1;
+      if (pollAttemptsRef.current > MAX_ATTEMPTS) {
+        clearInterval(pollIntervalRef.current!);
+        setGammaPolling(false);
+        toast.error("Gamma generation timed out. Check your Gamma dashboard.");
+        return;
+      }
+      try {
+        const result = await utils.webinar.pollGamma.fetch({
+          id: activeWebinarId,
+          generationId: gammaGenerationId,
+        });
+        if (result.status === "completed" && result.gammaUrl) {
+          clearInterval(pollIntervalRef.current!);
+          setGammaUrl(result.gammaUrl);
+          setGammaPolling(false);
+          toast.success("🎉 Landing page published to Gamma!");
+        } else if (result.status === "failed") {
+          clearInterval(pollIntervalRef.current!);
+          setGammaPolling(false);
+          toast.error("Gamma generation failed. Try again.");
+        }
+        // else still pending — keep polling
+      } catch {
+        // Network hiccup — keep polling
+      }
+    }, 5000);
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, [gammaPolling, gammaGenerationId, activeWebinarId]);
 
   const generateThankYouMutation = trpc.webinar.generateThankYouCopy.useMutation({
     onSuccess: (data) => {
@@ -261,6 +308,23 @@ export default function WebinarBuilder() {
       toast.success("Kajabi automation plan generated!");
     },
     onError: (err) => toast.error("Kajabi export failed: " + err.message),
+  });
+
+  const generateSurveyMutation = trpc.webinar.generateSurveyQuestions.useMutation({
+    onSuccess: (data) => {
+      setSurveyQuestions(data.questions);
+      toast.success(`Generated ${data.questions.length} survey questions — review and edit below.`);
+    },
+    onError: (err) => toast.error("Survey generation failed: " + err.message),
+  });
+
+  const pushToTypeformMutation = trpc.webinar.pushToTypeform.useMutation({
+    onSuccess: (data) => {
+      setPushedTypeformUrl(data.typeformUrl);
+      setTypeformUrl(data.typeformUrl);
+      toast.success("Survey pushed to Typeform!");
+    },
+    onError: (err) => toast.error("Typeform push failed: " + err.message),
   });
 
   const updateMutation = trpc.webinar.update.useMutation({
@@ -322,36 +386,6 @@ export default function WebinarBuilder() {
     toast.success(`Loaded: ${s.topic.slice(0, 50)}`);
   }
 
-  async function pollGammaLoop(generationId: string) {
-    let attempts = 0;
-    const maxAttempts = 30;
-    const poll = async () => {
-      if (attempts >= maxAttempts) {
-        setGammaPolling(false);
-        toast.error("Gamma generation timed out. Check your Gamma dashboard.");
-        return;
-      }
-      attempts++;
-      try {
-        // Use fetch directly since trpc.webinar.pollGamma is a query procedure
-        const result = await (trpc as any).webinar.pollGamma.query({ id: activeWebinarId!, generationId });
-        if (result.status === "completed" && result.gammaUrl) {
-          setGammaUrl(result.gammaUrl);
-          setGammaPolling(false);
-          toast.success("Landing page published to Gamma!");
-          return;
-        } else if (result.status === "failed") {
-          setGammaPolling(false);
-          toast.error("Gamma generation failed. Try again.");
-          return;
-        }
-        setTimeout(poll, 3000);
-      } catch {
-        setTimeout(poll, 5000);
-      }
-    };
-    poll();
-  }
 
   function togglePersona(id: number) {
     setSelectedPersonaIds((prev) =>
@@ -864,17 +898,164 @@ export default function WebinarBuilder() {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Typeform Survey URL</Label>
-              <Input
-                value={typeformUrl}
-                onChange={(e) => setTypeformUrl(e.target.value)}
-                placeholder="https://form.typeform.com/to/..."
-                type="url"
-              />
-              <p className="text-xs text-muted-foreground">
-                A short Typeform survey to learn why registrants signed up — feeds into your Kajabi segmentation.
-              </p>
+            {/* ─── Typeform Survey Builder ─────────────────────────────── */}
+            <div className="space-y-3 pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-semibold">Post-Webinar Survey</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    AI generates 8–10 pain-point questions in Pedram's voice. Review, edit, then push to Typeform.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (activeWebinarId === null) return;
+                    generateSurveyMutation.mutate({
+                      id: activeWebinarId,
+                      topic,
+                      cta,
+                      personaIds: selectedPersonaIds,
+                    });
+                  }}
+                  disabled={generateSurveyMutation.isPending}
+                >
+                  {generateSurveyMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  {surveyQuestions.length > 0 ? "Regenerate Questions" : "Generate Survey Questions"}
+                </Button>
+              </div>
+
+              {/* Question review / edit list */}
+              {surveyQuestions.length > 0 && (
+                <div className="space-y-2">
+                  {surveyQuestions.map((q, i) => (
+                    <div key={i} className="rounded-lg border border-border/50 bg-muted/20 p-3">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs font-mono text-muted-foreground mt-0.5 w-5 shrink-0">{i + 1}.</span>
+                        <div className="flex-1 min-w-0">
+                          {editingQuestion === i ? (
+                            <div className="space-y-1.5">
+                              <Textarea
+                                value={q.title}
+                                onChange={(e) => {
+                                  const updated = [...surveyQuestions];
+                                  updated[i] = { ...updated[i], title: e.target.value };
+                                  setSurveyQuestions(updated);
+                                }}
+                                className="text-sm min-h-[60px]"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 text-xs"
+                                onClick={() => setEditingQuestion(null)}
+                              >
+                                Done
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-foreground/90 leading-snug">{q.title}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{q.type}</span>
+                            {q.required && <span className="text-[10px] text-orange-500">required</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => setEditingQuestion(editingQuestion === i ? null : i)}
+                          >
+                            <FileText className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            onClick={() => setSurveyQuestions((prev) => prev.filter((_, idx) => idx !== i))}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Push to Typeform */}
+                  {!pushedTypeformUrl ? (
+                    <Button
+                      className="w-full mt-2"
+                      onClick={() => {
+                        if (activeWebinarId === null) return;
+                        pushToTypeformMutation.mutate({
+                          id: activeWebinarId,
+                          title: `${topic} — Post-Webinar Survey`,
+                          questions: surveyQuestions,
+                        });
+                      }}
+                      disabled={pushToTypeformMutation.isPending || surveyQuestions.length === 0}
+                    >
+                      {pushToTypeformMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-2" />
+                      )}
+                      Push to Typeform
+                    </Button>
+                  ) : (
+                    <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 space-y-2">
+                      <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                        ✅ Survey live on Typeform
+                      </p>
+                      <a
+                        href={pushedTypeformUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary underline break-all"
+                      >
+                        {pushedTypeformUrl}
+                      </a>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => copyToClipboard(pushedTypeformUrl, "Typeform URL copied!")}
+                        >
+                          <Copy className="h-3 w-3 mr-1.5" />Copy URL
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => window.open(pushedTypeformUrl, "_blank")}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1.5" />Preview
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Manual override */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Or paste an existing Typeform URL</Label>
+                <Input
+                  value={typeformUrl}
+                  onChange={(e) => setTypeformUrl(e.target.value)}
+                  placeholder="https://theurbanmonk.typeform.com/to/..."
+                  type="url"
+                  className="h-8 text-xs"
+                />
+              </div>
             </div>
 
             <div className="flex gap-2">

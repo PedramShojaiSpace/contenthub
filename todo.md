@@ -853,3 +853,10 @@
 - [x] Add "Create Webinar" to DashboardLayout sidebar nav with Video icon
 - [x] Register /webinar route in App.tsx
 - [x] Add vitest for webinarRouter (10 tests, all passing)
+
+## v33 — Gamma Polling Fix + Typeform Survey Builder
+- [x] Fix Gamma polling in WebinarBuilder: replace (trpc as any).pollGamma.query() with useUtils().fetch() + setInterval + useEffect pattern
+- [x] Add generateSurveyQuestions procedure to webinarRouter (AI generates 8-10 pain-point questions based on topic/personas)
+- [x] Add pushToTypeform procedure to webinarRouter (creates Typeform via API, returns live URL)
+- [x] Add Typeform Survey Builder panel to Step 4 of WebinarBuilder: AI questions → review/edit → Push to Typeform → URL returned
+- [x] Store typeformUrl in webinar_sessions after push

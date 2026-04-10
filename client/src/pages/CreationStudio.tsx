@@ -42,6 +42,7 @@ import {
 import { useState, useEffect } from "react";
 import { FlaskConical, Globe, Target } from "lucide-react";
 import { toast } from "sonner";
+import { Streamdown } from "streamdown";
 
 // Diagnostic component to show raw Buffer API response
 function BufferDiagnostic() {
@@ -743,6 +744,7 @@ export default function CreationStudio() {
     imageUrl?: string;
   } | null>(null);
   const [isBlogGenerating, setIsBlogGenerating] = useState(false);
+  const [blogViewMode, setBlogViewMode] = useState<"preview" | "edit">("preview");
 
   const generateBlogMutation = trpc.ai.generateBlog.useMutation({
     onSuccess: (data) => {
@@ -1774,44 +1776,91 @@ export default function CreationStudio() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-5 space-y-5">
-              {/* Featured Image */}
+            <CardContent className="p-0">
+              {/* Hero Image — full bleed at top */}
               {blogContent.imageUrl && (
-                <div className="rounded-lg overflow-hidden border border-border">
+                <div className="relative w-full overflow-hidden rounded-t-none" style={{ maxHeight: 340 }}>
                   <img
                     src={blogContent.imageUrl}
                     alt={blogContent.title}
-                    className="w-full object-cover max-h-72"
+                    className="w-full object-cover"
+                    style={{ maxHeight: 340 }}
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  <div className="absolute bottom-3 left-4 right-4">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/80 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                      Hero Image — theurbanmonk.com
+                    </span>
+                  </div>
                 </div>
               )}
 
-              {/* SEO Meta */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Title</p>
-                  <p className="text-base font-semibold text-foreground leading-snug">{blogContent.title}</p>
+              <div className="p-5 space-y-5">
+                {/* SEO Meta row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-border">
+                  <div className="md:col-span-2 space-y-1">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Article Title</p>
+                    <p className="text-lg font-serif font-semibold text-foreground leading-snug">{blogContent.title}</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">URL Slug</p>
+                      <p className="text-xs font-mono text-primary">/{blogContent.slug}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Read Time</p>
+                      <p className="text-xs text-muted-foreground">{Math.max(1, Math.round((blogContent.body.split(/\s+/).length) / 200))} min · {blogContent.body.split(/\s+/).length.toLocaleString()} words</p>
+                    </div>
+                  </div>
                 </div>
+
                 <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">URL Slug</p>
-                  <p className="text-sm font-mono text-amber-400">/{blogContent.slug}</p>
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Meta Description (SEO)</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed border border-border rounded-md px-3 py-2 bg-muted/30">{blogContent.metaDescription}</p>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Meta Description</p>
-                <p className="text-sm text-muted-foreground leading-relaxed border border-border rounded-md px-3 py-2 bg-background">{blogContent.metaDescription}</p>
-              </div>
+                {/* Article Body — Preview / Edit toggle */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Article Body</p>
+                    <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
+                      <button
+                        onClick={() => setBlogViewMode("preview")}
+                        className={`px-3 py-1 text-xs rounded transition-colors ${
+                          blogViewMode === "preview"
+                            ? "bg-background text-foreground shadow-sm font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        onClick={() => setBlogViewMode("edit")}
+                        className={`px-3 py-1 text-xs rounded transition-colors ${
+                          blogViewMode === "edit"
+                            ? "bg-background text-foreground shadow-sm font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Edit Markdown
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Full Article Body */}
-              <div className="space-y-2">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Article Body</p>
-                <Textarea
-                  value={blogContent.body}
-                  onChange={(e) => setBlogContent(prev => prev ? { ...prev, body: e.target.value } : null)}
-                  rows={28}
-                  className="bg-background border-border resize-y text-sm text-foreground font-mono leading-relaxed"
-                />
+                  {blogViewMode === "preview" ? (
+                    <div className="blog-prose bg-background border border-border rounded-lg p-6 min-h-[400px]">
+                      <Streamdown>{blogContent.body}</Streamdown>
+                    </div>
+                  ) : (
+                    <Textarea
+                      value={blogContent.body}
+                      onChange={(e) => setBlogContent(prev => prev ? { ...prev, body: e.target.value } : null)}
+                      rows={32}
+                      className="bg-background border-border resize-y text-sm text-foreground font-mono leading-relaxed"
+                      placeholder="Article Markdown..."
+                    />
+                  )}
+                </div>
               </div>
 
               {/* WordPress Publish */}

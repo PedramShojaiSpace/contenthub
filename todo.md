@@ -708,3 +708,15 @@
 - [x] Total press_hits now 137: 50 S-tier, 41 A-tier, 46 B-tier
 - [x] Total combined impressions: 892M+ across CNN, NYT, Good Housekeeping, Huffington Post, POPSUGAR, Inc., Dr. Oz, The Doctors, Bulletproof, Dr. Mark Hyman, and 120+ more outlets
 - [x] Fix YouTube channel URL to @urbanmonkproductions with accurate 33.3K subscribers / 604 videos
+
+## v17 Features — Blog Post Publication-Ready Fix
+
+- [x] Increase blog article target length from 800-1200 to 1400-1800 words with explicit section structure
+- [x] Fix BLOG_PROMPT to enforce clean Markdown with no raw JSON artifacts or markup labels
+- [x] Always generate hero image by default (generateImage: true already wired in UI)
+- [x] Replace raw Textarea article body with rendered Markdown preview (Streamdown prose-styled)
+- [x] Add toggle between "Preview" (rendered) and "Edit" (raw Markdown) modes
+- [x] Add word count and read time display on the blog output card
+- [x] Full-bleed hero image with gradient overlay displayed prominently above article preview
+- [x] Add @source streamdown directive to index.css for proper Markdown styling
+- [x] Add blog-prose CSS class with h2/h3/p/blockquote/a/ul/li styling

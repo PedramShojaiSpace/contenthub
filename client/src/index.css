@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@source "../../node_modules/streamdown/dist/index.js";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -113,6 +114,47 @@
 }
 
 @layer components {
+  /* Blog article prose styles — applied to Streamdown rendered Markdown */
+  .blog-prose {
+    @apply text-foreground leading-relaxed;
+  }
+  .blog-prose h2 {
+    @apply text-xl font-serif font-semibold text-foreground mt-8 mb-3 leading-snug;
+  }
+  .blog-prose h3 {
+    @apply text-lg font-serif font-semibold text-foreground mt-6 mb-2 leading-snug;
+  }
+  .blog-prose p {
+    @apply text-base text-foreground leading-relaxed mb-4;
+  }
+  .blog-prose strong {
+    @apply font-semibold text-foreground;
+  }
+  .blog-prose em {
+    @apply italic;
+  }
+  .blog-prose blockquote {
+    @apply border-l-4 border-primary pl-4 py-1 my-5 text-muted-foreground italic bg-primary/5 rounded-r-md;
+  }
+  .blog-prose a {
+    @apply text-primary underline underline-offset-2 hover:text-primary/80;
+  }
+  .blog-prose ul {
+    @apply list-disc pl-6 mb-4 space-y-1;
+  }
+  .blog-prose ol {
+    @apply list-decimal pl-6 mb-4 space-y-1;
+  }
+  .blog-prose li {
+    @apply text-base text-foreground leading-relaxed;
+  }
+  .blog-prose hr {
+    @apply border-border my-6;
+  }
+  .blog-prose code {
+    @apply text-sm bg-muted px-1.5 py-0.5 rounded font-mono;
+  }
+
   .container {
     width: 100%;
     margin-left: auto;

@@ -27,6 +27,9 @@ async function createWebinar(data: {
   personaIds?: string;
   targetLengthMinutes?: number;
   registrationUrl?: string;
+  webinarDate?: string;
+  webinarTime?: string;
+  webinarTimezone?: string;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -36,6 +39,9 @@ async function createWebinar(data: {
     personaIds: data.personaIds ?? null,
     targetLengthMinutes: data.targetLengthMinutes ?? 60,
     registrationUrl: data.registrationUrl ?? null,
+    webinarDate: data.webinarDate ?? null,
+    webinarTime: data.webinarTime ?? null,
+    webinarTimezone: data.webinarTimezone ?? null,
     status: "draft",
   });
   return result;
@@ -162,6 +168,9 @@ export const webinarRouter = router({
         personaIds: z.array(z.number()).default([]),
         targetLengthMinutes: z.number().min(15).max(180).default(60),
         registrationUrl: z.string().url().optional().or(z.literal("")),
+        webinarDate: z.string().optional(),      // e.g. "2026-04-17"
+        webinarTime: z.string().optional(),      // e.g. "19:00"
+        webinarTimezone: z.string().optional(),  // e.g. "America/New_York"
       })
     )
     .mutation(async ({ input }) => {
@@ -171,6 +180,9 @@ export const webinarRouter = router({
         personaIds: JSON.stringify(input.personaIds),
         targetLengthMinutes: input.targetLengthMinutes,
         registrationUrl: input.registrationUrl || undefined,
+        webinarDate: input.webinarDate || undefined,
+        webinarTime: input.webinarTime || undefined,
+        webinarTimezone: input.webinarTimezone || undefined,
       });
       // Robustly extract insertId — Drizzle MySQL may return it directly or nested
       const rawId = (result as any)?.insertId ?? (result as any)?.[0]?.insertId;
@@ -199,6 +211,9 @@ export const webinarRouter = router({
         personaIds: z.array(z.number()).optional(),
         targetLengthMinutes: z.number().optional(),
         registrationUrl: z.string().optional(),
+        webinarDate: z.string().optional(),
+        webinarTime: z.string().optional(),
+        webinarTimezone: z.string().optional(),
         notes: z.string().optional(),
         status: z.enum(["draft", "ready", "live", "completed"]).optional(),
         thankYouWistiaId: z.string().optional(),
@@ -234,6 +249,9 @@ export const webinarRouter = router({
         personaIds: z.array(z.number()).default([]),
         targetLengthMinutes: z.number().default(60),
         registrationUrl: z.string().optional(),
+        webinarDate: z.string().optional(),
+        webinarTime: z.string().optional(),
+        webinarTimezone: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -289,6 +307,9 @@ WEBINAR TOPIC: ${input.topic}
 CTA / OFFER: ${input.cta || "The Upstream Bundle — $399 test kit + course"}
 TARGET LENGTH: ${input.targetLengthMinutes} minutes
 REGISTRATION LINK: ${input.registrationUrl || "(to be added)"}
+${input.webinarDate ? `WEBINAR DATE: ${input.webinarDate}` : ""}
+${input.webinarTime ? `WEBINAR TIME: ${input.webinarTime} ${input.webinarTimezone ?? "ET"}` : ""}
+${input.webinarDate && input.webinarTime ? `FULL DATE/TIME: ${input.webinarDate} at ${input.webinarTime} ${input.webinarTimezone ?? "ET"} — use this EXACT date and time in all urgency copy, countdown references, and promotion angles` : ""}
 
 Generate a complete, professional webinar outline. Structure it as follows:
 
@@ -478,33 +499,43 @@ Keep the tone warm, direct, and authoritative. No hype. No false promises. Pedra
       topic: z.string().min(1),
       cta: z.string().default(""),
       personaIds: z.array(z.number()).default([]),
-      wistiaId: z.string().optional(),
-      typeformUrl: z.string().optional(),
+      wistiaEmbed: z.string().optional(),  // Full Wistia embed code (script+div)
+      typeformUrl: z.string().optional(),  // Typeform URL — rendered as clickable button
     }))
     .mutation(async ({ input }) => {
       const personaData = await loadPersonasForIds(input.personaIds);
       const personaNames = personaData.map((p) => p.name).join(", ") || "high-performing professionals";
+
+      // Extract Wistia video ID from embed code for reference in copy
+      let wistiaVideoId = "";
+      if (input.wistiaEmbed) {
+        const match = input.wistiaEmbed.match(/wistia_async_([a-z0-9]+)/i) ||
+                      input.wistiaEmbed.match(/medias\/([a-z0-9]+)/i);
+        if (match) wistiaVideoId = match[1];
+      }
 
       const systemPrompt = `You are Dr. Pedram Shojai's copywriter. Write a warm, engaging Thank You page for someone who just registered for a free webinar.
 
 WEBINAR TOPIC: ${input.topic}
 AUDIENCE: ${personaNames}
 CTA AFTER REGISTRATION: ${input.cta || "Watch this short video from Dr. Pedram while you wait"}
-${input.wistiaId ? `WISTIA VIDEO: Embed video ID ${input.wistiaId} — write a compelling intro for it` : ""}
-${input.typeformUrl ? `TYPEFORM SURVEY: Include a prompt to fill out a short survey to help us personalize the webinar` : ""}
+${input.wistiaEmbed ? `WISTIA VIDEO: There is a Wistia video embed on this page. Write a compelling 2–3 sentence intro to the video. Use the placeholder [WISTIA_EMBED] exactly where the video player should appear.` : ""}
+${input.typeformUrl ? `TYPEFORM SURVEY: Include a section with a warm 2–3 sentence prompt encouraging them to fill out a short survey. Use the placeholder [TYPEFORM_BUTTON] exactly where the clickable button should appear. The button will link to: ${input.typeformUrl}` : ""}
 
-Write the Thank You page in Markdown:
+Write the Thank You page in Markdown. Use these EXACT placeholders where indicated:
+- [WISTIA_EMBED] — where the video player goes (only if wistia embed provided)
+- [TYPEFORM_BUTTON] — where the survey button goes (only if typeform URL provided)
 
 # You're In! See You on the Webinar.
 
 ## [Warm confirmation message — 2–3 sentences]
 
-${input.wistiaId ? `## While You Wait — Watch This:\n[Compelling 2–3 sentence intro to the video]\n\n[VIDEO EMBED: ${input.wistiaId}]\n` : ""}
+${input.wistiaEmbed ? `## While You Wait — Watch This:\n[Compelling 2–3 sentence intro to the video]\n\n[WISTIA_EMBED]\n` : ""}
 
 ## Add to Your Calendar:
 [Google Calendar] | [Apple Calendar] | [Outlook]
 
-${input.typeformUrl ? `## One Quick Question Before the Webinar:\n[2–3 sentence prompt explaining why the survey helps them get more value]\n\n[TYPEFORM EMBED: ${input.typeformUrl}]\n` : ""}
+${input.typeformUrl ? `## One Quick Question Before the Webinar:\n[2–3 sentence prompt explaining why the survey helps them get more value]\n\n[TYPEFORM_BUTTON]\n` : ""}
 
 ## What to Expect:
 (3 bullet points — what they'll learn, what to prepare, what happens after)
@@ -522,14 +553,28 @@ Keep the tone warm, grateful, and excited. Make them feel they made a great deci
       });
 
       const rawContent = response.choices?.[0]?.message?.content;
-      const thankYouPageCopy = typeof rawContent === "string" ? rawContent : "";
+      let thankYouPageCopy = typeof rawContent === "string" ? rawContent : "";
       if (!thankYouPageCopy) throw new Error("Thank you page generation failed.");
+
+      // Replace placeholders with actual HTML/markdown
+      if (input.wistiaEmbed) {
+        thankYouPageCopy = thankYouPageCopy.replace(
+          /\[WISTIA_EMBED\]/g,
+          `\n\n<div class="wistia-embed-wrapper">\n${input.wistiaEmbed}\n</div>\n\n`
+        );
+      }
+      if (input.typeformUrl) {
+        thankYouPageCopy = thankYouPageCopy.replace(
+          /\[TYPEFORM_BUTTON\]/g,
+          `\n\n[Take the Survey →](${input.typeformUrl})\n\n`
+        );
+      }
 
       await updateWebinar(input.id, {
         thankYouPageCopy,
-        thankYouWistiaId: input.wistiaId ?? undefined,
+        thankYouWistiaEmbed: input.wistiaEmbed ?? undefined,
         thankYouTypeformUrl: input.typeformUrl ?? undefined,
-      });
+      } as any);
       return { thankYouPageCopy };
     }),
 

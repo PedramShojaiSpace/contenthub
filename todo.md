@@ -893,3 +893,20 @@
 - [ ] Store thankYouGammaUrl and thankYouGammaGenerationId in webinar_sessions
 - [ ] Add "Publish to Gamma" button in Step 4 after thank you copy is generated
 - [ ] Add Gamma polling UI to Step 4 (same spinner + URL display as Step 3)
+
+## Webinar Date/Time Fields
+- [x] Add webinarDate, webinarTime, webinarTimezone columns to webinar_sessions DB schema
+- [x] Update webinarRouter create/update procedures to accept date/time/timezone
+- [x] Add date, time, timezone inputs to WebinarBuilder Step 1 UI
+- [x] Wire date/time/timezone into generateOutline prompt
+- [ ] Wire date/time/timezone into generateLandingCopy prompt
+- [x] Wire date/time/timezone into generateThankYouCopy prompt
+- [ ] Wire date/time/timezone into exportKajabiPlan prompt (email timing/urgency)
+
+## Wistia + Typeform Thank You Page Fix
+- [x] Add thankYouWistiaEmbed (text) column to webinar_sessions schema — stores full embed code
+- [x] Run db:push for new column
+- [x] Replace Wistia ID input with full embed code textarea in Step 4 UI
+- [x] Update generateThankYouCopy procedure: accept wistiaEmbed, use [WISTIA_EMBED] placeholder, inject real HTML after AI generation
+- [x] Update generateThankYouCopy procedure: accept typeformUrl, inject as clickable markdown button [Take the Survey →](url)
+- [x] Auto-populate Typeform URL from pushedTypeformUrl (survey builder) if available

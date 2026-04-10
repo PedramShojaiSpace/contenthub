@@ -1,0 +1,1 @@
+ALTER TABLE `webinar_sessions` ADD `thankYouWistiaEmbed` text;

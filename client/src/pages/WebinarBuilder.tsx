@@ -181,6 +181,9 @@ export default function WebinarBuilder() {
   );
   const [selectedPersonaIds, setSelectedPersonaIds] = useState<number[]>([]);
   const [targetLength, setTargetLength] = useState(60);
+  const [webinarDate, setWebinarDate] = useState("");
+  const [webinarTime, setWebinarTime] = useState("");
+  const [webinarTimezone, setWebinarTimezone] = useState("America/New_York");
 
   // Step 2 state
   const [outline, setOutline] = useState("");
@@ -414,6 +417,11 @@ export default function WebinarBuilder() {
     const ids = s.personaIds ? JSON.parse(s.personaIds) : [];
     setSelectedPersonaIds(ids);
     setTargetLength(s.targetLengthMinutes ?? 60);
+    setWebinarDate((s as any).webinarDate ?? "");
+    setWebinarTime((s as any).webinarTime ?? "");
+    setWebinarTimezone((s as any).webinarTimezone ?? "America/New_York");
+    // Restore Wistia embed code (prefer new embed field, fall back to legacy ID)
+    setWistiaId((s as any).thankYouWistiaEmbed ?? s.thankYouWistiaId ?? "");
     setOutline(s.outline ?? "");
     setHookScript(s.hookScript ?? "");
     setLandingPageCopy(s.landingPageCopy ?? "");
@@ -494,6 +502,60 @@ export default function WebinarBuilder() {
             <p className="text-xs text-muted-foreground">Your Zoom webinar registration URL — embedded in the landing page and thank you page.</p>
           </div>
 
+          {/* Webinar Date / Time / Timezone */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1.5">
+              Webinar Date &amp; Time
+              <span className="text-xs text-muted-foreground font-normal">(auto-populates in all generated copy)</span>
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Date</Label>
+                <Input
+                  type="date"
+                  value={webinarDate}
+                  onChange={(e) => setWebinarDate(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Time</Label>
+                <Input
+                  type="time"
+                  value={webinarTime}
+                  onChange={(e) => setWebinarTime(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Timezone</Label>
+                <Select value={webinarTimezone} onValueChange={setWebinarTimezone}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="America/New_York">ET (New York)</SelectItem>
+                    <SelectItem value="America/Chicago">CT (Chicago)</SelectItem>
+                    <SelectItem value="America/Denver">MT (Denver)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">PT (Los Angeles)</SelectItem>
+                    <SelectItem value="America/Phoenix">MST (Phoenix)</SelectItem>
+                    <SelectItem value="America/Anchorage">AKT (Anchorage)</SelectItem>
+                    <SelectItem value="Pacific/Honolulu">HST (Honolulu)</SelectItem>
+                    <SelectItem value="Europe/London">GMT (London)</SelectItem>
+                    <SelectItem value="Europe/Paris">CET (Paris)</SelectItem>
+                    <SelectItem value="Asia/Tokyo">JST (Tokyo)</SelectItem>
+                    <SelectItem value="Australia/Sydney">AEST (Sydney)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {webinarDate && webinarTime && (
+              <p className="text-xs text-primary font-medium">
+                📅 {new Date(`${webinarDate}T${webinarTime}`).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })} at {new Date(`${webinarDate}T${webinarTime}`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })} {webinarTimezone.split("/").pop()?.replace("_", " ")}
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label className="text-sm font-medium">Target Length</Label>
             <Select value={String(targetLength)} onValueChange={(v) => setTargetLength(Number(v))}>
@@ -565,6 +627,9 @@ export default function WebinarBuilder() {
                   registrationUrl,
                   personaIds: selectedPersonaIds,
                   targetLengthMinutes: targetLength,
+                  webinarDate: webinarDate || undefined,
+                  webinarTime: webinarTime || undefined,
+                  webinarTimezone: webinarTimezone || undefined,
                 });
                 markStepComplete(1);
                 setStep(2);
@@ -575,6 +640,9 @@ export default function WebinarBuilder() {
                   registrationUrl: registrationUrl || undefined,
                   personaIds: selectedPersonaIds,
                   targetLengthMinutes: targetLength,
+                  webinarDate: webinarDate || undefined,
+                  webinarTime: webinarTime || undefined,
+                  webinarTimezone: webinarTimezone || undefined,
                 });
               }
             }}
@@ -937,15 +1005,18 @@ export default function WebinarBuilder() {
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Wistia Video ID</Label>
-              <Input
+              <Label className="text-sm font-medium flex items-center gap-1.5">
+                <Play className="h-3.5 w-3.5 text-primary" />
+                Wistia Embed Code
+              </Label>
+              <Textarea
                 value={wistiaId}
                 onChange={(e) => setWistiaId(e.target.value)}
-                placeholder="e.g. abc123xyz (from your Wistia URL)"
+                placeholder={`Paste your full Wistia embed code here, e.g.:\n<script src="https://fast.wistia.com/embed/medias/abc123.jsonp" async></script>\n<div class="wistia_embed wistia_async_abc123"></div>`}
+                className="font-mono text-xs min-h-[100px] resize-y"
               />
               <p className="text-xs text-muted-foreground">
-                The Wistia video ID from your thank you video URL (e.g. fast.wistia.com/medias/<strong>abc123xyz</strong>).
-                Leave blank if you don't have a video yet.
+                In Wistia, click <strong>Embed &amp; Share</strong> → <strong>Standard</strong> → copy the full code block. Leave blank if you don't have a video yet.
               </p>
             </div>
 
@@ -1119,8 +1190,8 @@ export default function WebinarBuilder() {
                     topic,
                     cta,
                     personaIds: selectedPersonaIds,
-                    wistiaId: wistiaId || undefined,
-                    typeformUrl: typeformUrl || undefined,
+                    wistiaEmbed: wistiaId || undefined,
+                    typeformUrl: pushedTypeformUrl || typeformUrl || undefined,
                   });
                 }}
                 disabled={generateThankYouMutation.isPending}

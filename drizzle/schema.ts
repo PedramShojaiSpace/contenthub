@@ -551,6 +551,9 @@ export const webinarSessions = mysqlTable("webinar_sessions", {
   personaIds: text("personaIds"),            // JSON array of persona IDs e.g. "[1,3,5]"
   targetLengthMinutes: int("targetLengthMinutes").default(60),
   registrationUrl: text("registrationUrl"),  // Zoom webinar registration link
+  webinarDate: varchar("webinarDate", { length: 20 }),   // e.g. "2026-04-17"
+  webinarTime: varchar("webinarTime", { length: 10 }),   // e.g. "19:00"
+  webinarTimezone: varchar("webinarTimezone", { length: 64 }), // e.g. "America/New_York"
   // Step 2: AI-generated outline
   outline: text("outline"),                  // AI-generated markdown outline
   hookScript: text("hookScript"),            // AI-generated opening hook
@@ -559,7 +562,8 @@ export const webinarSessions = mysqlTable("webinar_sessions", {
   gammaUrl: text("gammaUrl"),                // Published Gamma landing page URL
   gammaGenerationId: varchar("gammaGenerationId", { length: 128 }),
   // Step 4: Thank you page
-  thankYouWistiaId: varchar("thankYouWistiaId", { length: 64 }), // Wistia video ID
+  thankYouWistiaId: varchar("thankYouWistiaId", { length: 64 }), // Wistia video ID (legacy)
+  thankYouWistiaEmbed: text("thankYouWistiaEmbed"),            // Full Wistia embed code (script+div)
   thankYouTypeformUrl: text("thankYouTypeformUrl"),               // Typeform embed URL
   thankYouPageCopy: text("thankYouPageCopy"),                    // AI-generated thank you copy
   thankYouGammaUrl: text("thankYouGammaUrl"),                     // Published Gamma thank you page URL

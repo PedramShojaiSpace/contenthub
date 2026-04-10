@@ -827,3 +827,11 @@
 - [x] Remove enrollment windows table from growthRouter
 - [x] Remove enrollment window countdown from Command Center cadence tracker
 - [x] Replace with evergreen "Lights On — Always Open" indicator in cadence tracker
+
+## v30 — Buffer Meta Post Type Fix + Carousel UI
+
+- [x] Fix Buffer push: add metadata.facebook.type and metadata.instagram.type to createPost mutation
+- [x] Pass postType through router input (syndication.push) to pushToBuffer
+- [x] Update pushToBuffer to accept channelService map and inject correct metadata per channel
+- [x] Add "Post Type" dropdown in Creation Studio meta card (post / story / reel)
+- [x] Show carousel note in meta card when postType = carousel (manual upload required)

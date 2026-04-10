@@ -167,6 +167,8 @@ export default function CreationStudio() {
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [syndicatingPlatform, setSyndicatingPlatform] = useState<string | null>(null);
   const [syndicationResults, setSyndicationResults] = useState<Record<string, { success: boolean; error?: string }>>({})
+  // Meta post type selector (post / story / reel) — required by Buffer API for facebook/instagram
+  const [metaPostType, setMetaPostType] = useState<"post" | "story" | "reel">("post");
 
   // ── YouTube Competitive Intelligence state ──────────────────────────────────
   type YTVideo = {
@@ -638,12 +640,19 @@ export default function CreationStudio() {
     }
 
     setSyndicatingPlatform(p);
+    // Build channelServiceMap for Meta channels so Buffer API gets the required type field
+    const channelServiceMap: Record<string, string> = {};
+    (bufferProfiles ?? []).forEach((pr: { id: string; service: string }) => {
+      channelServiceMap[pr.id] = pr.service;
+    });
     syndicationMutation.mutate({
       contentItemId: itemId,
       text,
       profileIds: platformFilteredIds,
       imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
       platform: p, // enforce X 280-char limit server-side
+      metaPostType: (p === "meta") ? metaPostType : undefined,
+      channelServiceMap: (p === "meta") ? channelServiceMap : undefined,
     });
   };
   // Direct push to Bufferr — saves card first if not already saved, then syndicates
@@ -726,12 +735,19 @@ export default function CreationStudio() {
       return;
     }
 
-     syndicationMutation.mutate({
+    // Build channelServiceMap for Meta channels so Buffer API gets the required type field
+    const directChannelServiceMap: Record<string, string> = {};
+    (bufferProfiles ?? []).forEach((pr: { id: string; service: string }) => {
+      directChannelServiceMap[pr.id] = pr.service;
+    });
+    syndicationMutation.mutate({
       contentItemId: itemId ?? 0,
       text,
       profileIds,
       imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
       platform: p, // enforce X 280-char limit server-side
+      metaPostType: (p === "meta") ? metaPostType : undefined,
+      channelServiceMap: (p === "meta") ? directChannelServiceMap : undefined,
     });
   };
   const handleCopy = (text: string) => {
@@ -2359,6 +2375,27 @@ export default function CreationStudio() {
                     )}
                   </div>
 
+                  {/* Meta Post Type Selector — required by Buffer API for facebook/instagram */}
+                  {(platform === "meta" || platform === "all") && (
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                        Meta Post Type
+                      </Label>
+                      <Select value={metaPostType} onValueChange={(v) => setMetaPostType(v as "post" | "story" | "reel")}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="post">Post — standard feed post</SelectItem>
+                          <SelectItem value="reel">Reel — short-form video</SelectItem>
+                          <SelectItem value="story">Story — 24-hour story</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">
+                        Facebook &amp; Instagram require a post type. For carousel posts, choose <strong>Post</strong> — Buffer will handle the carousel format when you add multiple images directly in Buffer.
+                      </p>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label className="text-muted-foreground text-xs uppercase tracking-wider">
                       Push to Buffer

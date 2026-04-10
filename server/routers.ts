@@ -1056,6 +1056,8 @@ CAPTION: [caption text]`;
           imageUrl: z.string().optional(),
           scheduledAt: z.number().optional(),
           platform: z.string().optional(), // used for platform-specific limits (e.g. X = 280 chars)
+          metaPostType: z.enum(["post", "story", "reel"]).optional(), // required for facebook/instagram
+          channelServiceMap: z.record(z.string(), z.string()).optional(), // channelId → service
         })
       )
       .mutation(async ({ input }) => {
@@ -1065,6 +1067,8 @@ CAPTION: [caption text]`;
           imageUrl: input.imageUrl,
           scheduledAt: input.scheduledAt,
           platform: input.platform,
+          metaPostType: input.metaPostType,
+          channelServiceMap: input.channelServiceMap,
         });
 
         // If successful, update the content item status to 'scheduled'

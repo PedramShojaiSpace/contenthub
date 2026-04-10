@@ -126,6 +126,8 @@ export async function pushToBuffer(params: {
   imageUrl?: string;
   scheduledAt?: number; // UTC ms timestamp (optional — if not set, addToQueue is used)
   platform?: string; // used to enforce platform-specific character limits before API call
+  metaPostType?: "post" | "story" | "reel"; // required for facebook/instagram channels
+  channelServiceMap?: Record<string, string>; // channelId → service (e.g. "facebook", "instagram")
 }): Promise<BufferUpdateResult> {
   const token = getAccessToken();
   if (!token) {
@@ -168,13 +170,23 @@ export async function pushToBuffer(params: {
 
       const dueAtFragment = dueAt ? `, dueAt: "${dueAt}"` : "";
 
+      // Build metadata fragment for Meta channels — Buffer requires type for facebook/instagram
+      const channelService = params.channelServiceMap?.[channelId]?.toLowerCase() ?? "";
+      const metaType = params.metaPostType ?? "post";
+      let metadataFragment = "";
+      if (channelService === "facebook") {
+        metadataFragment = `, metadata: { facebook: { type: ${metaType} } }`;
+      } else if (channelService === "instagram") {
+        metadataFragment = `, metadata: { instagram: { type: ${metaType}, shouldShareToFeed: true } }`;
+      }
+
       const mutation = `
         mutation CreatePost {
           createPost(input: {
             text: ${JSON.stringify(text)},
             channelId: "${channelId}",
             schedulingType: automatic,
-            mode: ${mode}${dueAtFragment}${assetsFragment}
+            mode: ${mode}${dueAtFragment}${assetsFragment}${metadataFragment}
           }) {
             ... on PostActionSuccess {
               post {

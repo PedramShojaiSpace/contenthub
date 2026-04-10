@@ -478,6 +478,21 @@ function GapDashboard({ reportId }: { reportId: number }) {
     onError: (err) => toast.error(`Save failed: ${err.message}`),
   });
 
+  const handleGoToStudio = (q: ResearchQuery) => {
+    // Fast path: skip AI brief generation, go directly to Creation Studio with gap pre-filled
+    const tags = q.topicTags ? (JSON.parse(q.topicTags) as string[]) : [];
+    const competitors = (leaderboard as Array<{ brand: string; mentionCount: number }>)
+      .slice(0, 5)
+      .map((c) => c.brand);
+    sessionStorage.setItem("gumshoe_gap_query_id", String(q.id));
+    sessionStorage.setItem("gumshoe_gap_query_text", q.query);
+    sessionStorage.setItem(
+      "gumshoe_brief",
+      `[Research Gap] Answer this LLM search query for the persona "${q.personaName ?? "Wellness Seeker"}": ${q.query}\n\nCompetitors winning this query: ${competitors.join(", ") || "none identified"}\nTopic tags: ${tags.join(", ") || "general wellness"}`
+    );
+    navigate("/studio");
+    toast.success("Gap loaded — opening Creation Studio");
+  };
   const handleCreateContent = (q: ResearchQuery) => {
     const tags = q.topicTags ? JSON.parse(q.topicTags) : [];
     const competitors = (leaderboard as Array<{ brand: string; mentionCount: number }>)
@@ -631,6 +646,14 @@ function GapDashboard({ reportId }: { reportId: number }) {
                       <div className="flex flex-col gap-1.5 shrink-0">
                         <Button
                           size="sm"
+                          onClick={() => handleGoToStudio(q)}
+                          className="bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 text-xs h-7 px-2"
+                        >
+                          <ArrowRight className="w-3 h-3 mr-1" />
+                          Studio
+                        </Button>
+                        <Button
+                          size="sm"
                           onClick={() => handleCreateContent(q)}
                           disabled={generateBrief.isPending || generateTeleprompter.isPending || generatePostImage.isPending}
                           className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs h-7 px-2"
@@ -703,7 +726,24 @@ function GapDashboard({ reportId }: { reportId: number }) {
 
 function PersonaBrowser({ reportId }: { reportId: number }) {
   const { data: queries = [] } = trpc.research.listQueries.useQuery({ reportId });
+  const { data: leaderboard = [] } = trpc.research.getCompetitorLeaderboard.useQuery({ limit: 5 }, { retry: false });
+  const [, navigate] = useLocation();
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
+
+  const handleGoToStudioFromBrowser = (q: ResearchQuery) => {
+    const tags = q.topicTags ? (JSON.parse(q.topicTags) as string[]) : [];
+    const competitors = (leaderboard as Array<{ brand: string; mentionCount: number }>)
+      .slice(0, 5)
+      .map((c) => c.brand);
+    sessionStorage.setItem("gumshoe_gap_query_id", String(q.id));
+    sessionStorage.setItem("gumshoe_gap_query_text", q.query);
+    sessionStorage.setItem(
+      "gumshoe_brief",
+      `[Research Gap] Answer this LLM search query for the persona "${q.personaName ?? "Wellness Seeker"}": ${q.query}\n\nCompetitors winning this query: ${competitors.join(", ") || "none identified"}\nTopic tags: ${tags.join(", ") || "general wellness"}`
+    );
+    navigate("/studio");
+    toast.success("Gap loaded — opening Creation Studio");
+  };
 
     const personas = Array.from(new Set((queries as ResearchQuery[]).map((q) => q.personaName).filter(Boolean))) as string[];
 
@@ -799,7 +839,14 @@ function PersonaBrowser({ reportId }: { reportId: number }) {
                     </div>
                   </div>
                   {!q.urbanMonkMentioned && (
-                    <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0 mt-1" />
+                    <Button
+                      size="sm"
+                      onClick={() => handleGoToStudioFromBrowser(q)}
+                      className="bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 text-xs h-7 px-2 shrink-0"
+                    >
+                      <ArrowRight className="w-3 h-3 mr-1" />
+                      Studio
+                    </Button>
                   )}
                 </div>
               ))}

@@ -40,7 +40,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { FlaskConical, Globe, Target } from "lucide-react";
+import { FlaskConical, Globe, Target, Swords, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
@@ -340,6 +340,7 @@ export default function CreationStudio() {
 
   // Gumshoe Research Context — top gap queries from latest report
   const { data: topGaps = [] } = trpc.research.getTopGaps.useQuery({ limit: 5 }, { retry: false });
+  const { data: competitorLeaderboard = [] } = trpc.research.getCompetitorLeaderboard.useQuery({ limit: 5 }, { retry: false });
   const [showResearchPanel, setShowResearchPanel] = useState(true);
   const [activeGapQueryId, setActiveGapQueryId] = useState<number | null>(null);
   const [activeGapQueryText, setActiveGapQueryText] = useState<string | null>(null);
@@ -955,26 +956,65 @@ export default function CreationStudio() {
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                These are queries where Urban Monk is not appearing in LLM answers. Click any to use as your content starting point.
+                Queries where Urban Monk is absent from LLM answers. Click to pre-fill your idea, or use the Studio button on the Research page to jump here directly.
               </p>
+              {/* Competitor context strip */}
+              {(competitorLeaderboard as Array<{ brand: string; mentionCount: number }>).length > 0 && (
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Swords className="w-3 h-3 text-red-400" />
+                    Winning these gaps:
+                  </span>
+                  {(competitorLeaderboard as Array<{ brand: string; mentionCount: number }>).map((c) => (
+                    <Badge key={c.brand} className="bg-red-500/10 text-red-400 border-red-500/20 text-xs">
+                      {c.brand} ({c.mentionCount})
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-2">
+              {/* Active gap highlight — shown when navigated from Research page */}
+              {activeGapQueryId && activeGapQueryText && (
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-teal-500/10 border border-teal-500/30 mb-1">
+                  <ArrowRight className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-teal-300 text-xs font-medium">Gap loaded from Research page</p>
+                    <p className="text-teal-200/70 text-xs truncate">{activeGapQueryText}</p>
+                  </div>
+                  <button
+                    onClick={() => { setActiveGapQueryId(null); setActiveGapQueryText(null); }}
+                    className="text-teal-500/50 hover:text-teal-400 text-xs shrink-0"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
               {(topGaps as Array<{ id: number; query: string; personaName: string | null; gapScore: number | null; topicTags: string | null }>).map((gap) => {
                 const tags = (() => { try { return JSON.parse(gap.topicTags ?? "[]") as string[]; } catch { return []; } })();
+                const isActive = gap.id === activeGapQueryId;
                 return (
                   <button
                     key={gap.id}
                     onClick={() => {
-                      setIdea(`Answer this LLM search query for the persona "${gap.personaName ?? "Wellness Seeker"}": ${gap.query}`);
+                      const competitors = (competitorLeaderboard as Array<{ brand: string; mentionCount: number }>)
+                        .slice(0, 5).map((c) => c.brand);
+                      setIdea(`[Research Gap] Answer this LLM search query for the persona "${gap.personaName ?? "Wellness Seeker"}": ${gap.query}\n\nCompetitors winning this query: ${competitors.join(", ") || "none identified"}\nTopic tags: ${tags.join(", ") || "general wellness"}`);
                       setActiveGapQueryId(gap.id);
                       setActiveGapQueryText(gap.query);
-                      toast.success("Gap query loaded as idea!");
+                      toast.success("Gap query loaded — competitor context included!");
                     }}
-                    className="w-full text-left p-3 rounded-lg bg-card/60 border border-border hover:border-amber-700/50 transition-colors group"
+                    className={`w-full text-left p-3 rounded-lg border transition-colors group ${
+                      isActive
+                        ? "bg-teal-500/10 border-teal-500/40"
+                        : "bg-card/60 border-border hover:border-amber-700/50"
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <p className="text-foreground/80 text-sm group-hover:text-foreground transition-colors">{gap.query}</p>
+                        <p className={`text-sm transition-colors ${
+                          isActive ? "text-teal-300" : "text-foreground/80 group-hover:text-foreground"
+                        }`}>{gap.query}</p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {gap.personaName && (
                             <Badge variant="outline" className="text-muted-foreground border-border text-xs">{gap.personaName}</Badge>
@@ -987,7 +1027,9 @@ export default function CreationStudio() {
                           ))}
                         </div>
                       </div>
-                      <Target className="w-4 h-4 text-amber-500/50 group-hover:text-amber-400 shrink-0 mt-0.5 transition-colors" />
+                      <Target className={`w-4 h-4 shrink-0 mt-0.5 transition-colors ${
+                        isActive ? "text-teal-400" : "text-amber-500/50 group-hover:text-amber-400"
+                      }`} />
                     </div>
                   </button>
                 );

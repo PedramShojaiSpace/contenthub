@@ -776,3 +776,11 @@
 - [ ] Add Gumshoe gap query text injection into generateContent when called from Research Intelligence
 - [ ] Update IntelligenceDashboard to show all 5 intelligence sources with live counts and injection status (media_assets, avatar_pain_points currently missing)
 - [ ] Fix IntelligenceDashboard to show media vault stats and avatar intelligence stats
+
+## v22 Features — Generate from Gap (Research → Creation Studio, April 9, 2026)
+
+- [ ] Add "Generate from Gap" button to each gap card on the Research page
+- [ ] Navigate to Creation Studio with gap query pre-filled as topic via URL params (?gap=...&persona=...&tags=...)
+- [ ] Add "From Research Gap" panel in Creation Studio showing top 5 unanswered gap queries
+- [ ] Allow user to pick a gap from the panel to instantly pre-fill topic + persona + platform
+- [ ] Show gap source metadata (competitor brands, topic tags) in the pre-fill UI

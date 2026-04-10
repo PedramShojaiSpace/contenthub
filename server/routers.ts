@@ -789,6 +789,30 @@ Rules:
             { role: "system", content: BLOG_PROMPT },
             { role: "user", content: userMessage },
           ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "blog_article",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string", description: "H1 headline, 50-65 chars, contains primary keyword" },
+                  slug: { type: "string", description: "URL-friendly slug, max 60 chars" },
+                  metaDescription: { type: "string", description: "150-160 char meta description" },
+                  focusKeyword: { type: "string", description: "Primary SEO keyword phrase, 2-4 words" },
+                  semanticKeywords: { type: "array", items: { type: "string" }, description: "3-5 semantic keyword variants" },
+                  hookFamily: { type: "string", description: "Which of the 12 Hook Families was used" },
+                  emotionalDriver: { type: "string", description: "Primary emotional driver" },
+                  faqSection: { type: "string", description: "Markdown FAQ section with 4-6 PAA questions" },
+                  waterfallMap: { type: "string", description: "5-item derivative content list" },
+                  article: { type: "string", description: "Full article in clean Markdown" },
+                },
+                required: ["title", "slug", "metaDescription", "focusKeyword", "semanticKeywords", "hookFamily", "emotionalDriver", "faqSection", "waterfallMap", "article"],
+                additionalProperties: false,
+              },
+            },
+          },
         });
 
         const rawContent = response.choices?.[0]?.message?.content;
@@ -807,11 +831,19 @@ Rules:
 
         if (typeof rawContent === "string") {
           try {
-            // Strip any markdown code fences if present
-            const cleaned = rawContent.replace(/^```json\n?|^```\n?|\n?```$/g, "").trim();
+            // response_format: json_schema guarantees clean JSON — but strip fences defensively
+            let cleaned = rawContent.trim();
+            // Remove any markdown code fences (```json ... ``` or ``` ... ```)
+            cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+            // If there's still non-JSON preamble, extract the first { ... } block
+            const jsonStart = cleaned.indexOf("{");
+            const jsonEnd = cleaned.lastIndexOf("}");
+            if (jsonStart > 0 && jsonEnd > jsonStart) {
+              cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+            }
             blogData = JSON.parse(cleaned);
           } catch {
-            // Fallback: treat the whole response as the article
+            // Last-resort fallback: treat the whole response as the article body
             blogData = {
               title: input.idea.slice(0, 80),
               slug: input.idea.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),

@@ -909,8 +909,35 @@ Rules:
         const competitorList = input.competitorBrands.slice(0, 5).join(", ");
         const tagList = input.topicTags.join(", ");
 
-        const systemPrompt = `You are a content strategist for The Urban Monk (Dr. Pedram Shojai). Your job is to create a content brief that will help Urban Monk appear in LLM search results for a specific query that competitors are currently winning.
+        // Inject all intelligence layers into the brief
+        let avatarCtx = "";
+        let mediaCtx = "";
+        let pressCtx = "";
+        try {
+          const { getAvatarContextBlock } = await import("./avatarRouter");
+          avatarCtx = await getAvatarContextBlock(input.query + " " + tagList);
+        } catch (err) { console.warn("[Brief] Avatar context failed:", err); }
+        try {
+          const { getMediaContextBlock } = await import("./mediaRouter");
+          mediaCtx = await getMediaContextBlock(input.query + " " + tagList, { maxAssets: 4 });
+        } catch (err) { console.warn("[Brief] Media context failed:", err); }
+        try {
+          const db = await getDb();
+          if (db) {
+            const { pressHits } = await import("../drizzle/schema");
+            const { desc } = await import("drizzle-orm");
+            const topHits = await db.select().from(pressHits).orderBy(desc(pressHits.impressions)).limit(15);
+            if (topHits.length > 0) {
+              const tierS = topHits.filter((h: any) => h.authorityTier === "S").slice(0, 5);
+              const tierA = topHits.filter((h: any) => h.authorityTier === "A").slice(0, 5);
+              const outlets = Array.from(new Set([...tierS, ...tierA].map((h: any) => h.outlet))).join(", ");
+              pressCtx = `\n\nAUTHOR CREDENTIALS: Dr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Taoist monk. Featured in: ${outlets}.`;
+            }
+          }
+        } catch (err) { console.warn("[Brief] Press context failed:", err); }
 
+        const systemPrompt = `You are a content strategist for The Urban Monk (Dr. Pedram Shojai). Your job is to create a content brief that will help Urban Monk appear in LLM search results for a specific query that competitors are currently winning.
+${pressCtx}${mediaCtx}${avatarCtx}
 Context:
 - Target persona: ${input.personaName}
 - Query they are asking LLMs: "${input.query}"
@@ -918,12 +945,13 @@ Context:
 - Brands currently winning this query: ${competitorList}
 
 Your task: Write a content brief that positions Dr. Pedram Shojai as the definitive answer to this query. The brief should:
-1. Explain WHY Urban Monk is uniquely qualified to answer this (credentials, books, experience)
+1. Explain WHY Urban Monk is uniquely qualified to answer this — reference specific books, episodes, or press hits from the context above
 2. Identify the specific angle that differentiates from the competitor brands listed
-3. Suggest a headline/title
-4. Outline 3-5 key points to cover
+3. Suggest a headline/title using the avatar pain points and headline formulas above
+4. Outline 3-5 key points to cover, each addressing a real pain point from the transcripts
 5. Recommend the best content format (article, video, social thread, etc.)
 6. Note any specific Urban Monk programs, books, or credentials to reference
+7. Include 2-3 verbatim customer phrases from the avatar intelligence to use as hooks
 
 Be specific and actionable. This brief will go directly to content creation.`;
 

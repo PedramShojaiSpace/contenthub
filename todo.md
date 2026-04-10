@@ -768,3 +768,11 @@
 ## v20 Features — Script Library Copy Button (April 10, 2026)
 
 - [x] Add "Copy Full Script" button to each script card in the Script Library (copies entire scriptBody to clipboard in one click, ready to paste into teleprompter app)
+
+## v21 Features — Intelligence Audit Fixes (April 9, 2026)
+
+- [ ] Fix generateBriefFromGap to inject avatar + press + media context (currently uses static prompt only)
+- [ ] Fix getAvatarContextBlock to pick the most relevant persona based on topic (not always persona[0])
+- [ ] Add Gumshoe gap query text injection into generateContent when called from Research Intelligence
+- [ ] Update IntelligenceDashboard to show all 5 intelligence sources with live counts and injection status (media_assets, avatar_pain_points currently missing)
+- [ ] Fix IntelligenceDashboard to show media vault stats and avatar intelligence stats

@@ -95,6 +95,9 @@ export default function IntelligenceDashboard() {
   const { data: trackedChannels = [], isLoading: loadingChannels } =
     trpc.youtube.listTrackedChannels.useQuery();
 
+  const { data: mediaStats } = trpc.media.getStats.useQuery();
+  const { data: avatarStats } = trpc.avatar.getStats.useQuery();
+
   const personas = enrichmentSummary as Array<{
     id: number;
     name: string;
@@ -113,6 +116,10 @@ export default function IntelligenceDashboard() {
 
   const pressHitCount = (pressStats as any)?.totalHits ?? 0;
   const pressReach = (pressStats as any)?.totalImpressions ?? 0;
+  const mediaAssetCount = (mediaStats as any)?.totalAssets ?? 0;
+  const mediaReach = (mediaStats as any)?.totalReach ?? 0;
+  const avatarPainPointCount = (avatarStats as any)?.totalPainPoints ?? 0;
+  const avatarPersonaCount = (avatarStats as any)?.totalPersonas ?? 0;
 
   return (
     <DashboardLayout>
@@ -143,25 +150,27 @@ export default function IntelligenceDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="border-primary/20 bg-primary/5">
             <CardContent className="p-4">
-              <div className="text-3xl font-bold text-primary">{avgScore}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Avg Intelligence Score</div>
-              <div className="text-[10px] text-primary mt-1">{scoreLabel(avgScore)} overall</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-3xl font-bold">{totalEnriched}<span className="text-lg text-muted-foreground">/{personas.length}</span></div>
-              <div className="text-xs text-muted-foreground mt-0.5">Personas Enriched</div>
-              <div className="text-[10px] text-muted-foreground mt-1">with real survey data</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-3xl font-bold">{pressHitCount}</div>
+              <div className="text-3xl font-bold text-primary">{pressHitCount}</div>
               <div className="text-xs text-muted-foreground mt-0.5">Press Hits Indexed</div>
-              <div className="text-[10px] text-muted-foreground mt-1">
+              <div className="text-[10px] text-primary mt-1">
                 {pressReach > 0 ? `${(pressReach / 1_000_000).toFixed(1)}M+ reach` : "loading..."}
               </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-3xl font-bold">{mediaAssetCount}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Media Assets</div>
+              <div className="text-[10px] text-muted-foreground mt-1">
+                {mediaReach > 0 ? `${(mediaReach / 1_000_000).toFixed(1)}M+ reach` : "books, films, podcasts"}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-3xl font-bold">{avatarPainPointCount}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Pain Points Mapped</div>
+              <div className="text-[10px] text-muted-foreground mt-1">{avatarPersonaCount} buyer personas</div>
             </CardContent>
           </Card>
           <Card>
@@ -375,47 +384,64 @@ export default function IntelligenceDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              What's Active in Every AI Generation
+              Intelligence Injection Status — What's Active in Every AI Generation
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">Every piece of content generated (social posts, blogs, scripts, landing pages) automatically draws from all active sources below. Green = actively injected. Grey = not yet connected.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               {[
                 {
-                  label: "Persona pain points from Typeform surveys",
-                  active: totalEnriched > 0,
-                  note: totalEnriched > 0 ? `${totalEnriched} personas enriched` : "Run Typeform Intelligence to activate",
-                  link: "/typeform",
-                },
-                {
-                  label: "Press authority block (NYT, Forbes, etc.)",
+                  label: "Press Authority Block — 137 hits, 892M reach",
+                  source: "Press Intelligence",
                   active: pressHitCount > 0,
-                  note: pressHitCount > 0 ? `${pressHitCount} hits · always injected` : "Seed press data to activate",
+                  note: pressHitCount > 0
+                    ? `${pressHitCount} hits (NYT, CNN, Good Housekeeping, Inc., Dr. Oz, Bulletproof Radio…) · injected into ALL generations`
+                    : "Seed press data to activate",
                   link: "/press",
                 },
                 {
-                  label: "Persona aspirations & top questions",
+                  label: "Media Authority Block — books, films, podcasts",
+                  source: "Media Vault",
+                  active: mediaAssetCount > 0,
+                  note: mediaAssetCount > 0
+                    ? `${mediaAssetCount} assets (8 books, 5 films, podcast, YouTube @urbanmonkproductions) · topic-matched per generation`
+                    : "Add media assets to activate",
+                  link: "/media-vault",
+                },
+                {
+                  label: "Avatar Intelligence — pain points from real transcripts",
+                  source: "Avatar Intelligence",
+                  active: avatarPainPointCount > 0,
+                  note: avatarPainPointCount > 0
+                    ? `${avatarPainPointCount} pain points + ${avatarPersonaCount} personas + 5 messaging frameworks + 4 objection handlers · injected into ALL generations`
+                    : "Seed avatar data to activate",
+                  link: "/avatar",
+                },
+                {
+                  label: "Typeform Persona Enrichment — survey pain points",
+                  source: "Typeform Intelligence",
                   active: totalEnriched > 0,
-                  note: totalEnriched > 0 ? "Injected into social + blog generation" : "Enrich personas to activate",
+                  note: totalEnriched > 0
+                    ? `${totalEnriched}/${personas.length} personas enriched with real survey responses · injected when persona is selected`
+                    : "Run Typeform Intelligence to activate (optional — avatar intelligence covers this)",
                   link: "/typeform",
                 },
                 {
-                  label: "YouTube competitor differentiation",
+                  label: "Gumshoe Research Gaps — competitor LLM queries",
+                  source: "Research Intelligence",
                   active: true,
-                  note: "On-demand via Inform Script button",
-                  link: "/creation-studio",
+                  note: "Gap queries drive Brief + Script + Post generation on the Research page · all three now inject press + media + avatar context",
+                  link: "/research",
                 },
                 {
-                  label: "Intelligence report (deep persona notes)",
-                  active: false,
-                  note: "Add via Personas page → Edit Persona",
-                  link: "/personas",
-                },
-                {
-                  label: "Voice-of-customer quotes from surveys",
-                  active: totalEnriched > 0,
-                  note: totalEnriched > 0 ? "Stored in persona descriptions" : "Run segmentation to capture",
-                  link: "/typeform",
+                  label: "YouTube Competitor Intelligence",
+                  source: "YouTube CI",
+                  active: (trackedChannels as any[]).length > 0,
+                  note: (trackedChannels as any[]).length > 0
+                    ? `${(trackedChannels as any[]).length} channels tracked · on-demand differentiation via Inform Script`
+                    : "Add competitor channels to activate",
+                  link: "/youtube",
                 },
               ].map((item, i) => (
                 <div

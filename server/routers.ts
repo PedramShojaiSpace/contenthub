@@ -798,9 +798,38 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           ],
         });
 
-        const articleBody = (String(articleResponse.choices?.[0]?.message?.content ?? "")).trim();
+        let articleBody = (String(articleResponse.choices?.[0]?.message?.content ?? "")).trim();
         if (!articleBody || articleBody.length < 500) {
           throw new Error("Blog generation failed — article body was empty or too short.");
+        }
+
+        // ── CONTINUATION PASS: Detect truncation and complete the article ─────────
+        // If the article is missing the FAQ section or ends mid-sentence,
+        // run a continuation call that picks up exactly where the model stopped.
+        const hasFaq = /##\s*(Frequently Asked Questions|FAQ)/i.test(articleBody);
+        const endsCleanly = /[.!?]\s*$/.test(articleBody.slice(-100));
+        const isLikelyTruncated = !hasFaq || !endsCleanly || articleBody.length < 3000;
+
+        if (isLikelyTruncated) {
+          try {
+            const continuationResponse = await invokeLLM({
+              messages: [
+                { role: "system", content: ARTICLE_BODY_PROMPT },
+                { role: "user", content: userMessage },
+                { role: "assistant", content: articleBody },
+                {
+                  role: "user",
+                  content: `The article above appears to be incomplete. Please continue writing from exactly where it left off. Complete all remaining sections: Transformation Vision, Closing + CTA, and the FAQ section (## Frequently Asked Questions with 4-6 PAA questions). Do not repeat any content already written. Start immediately from where the text ends.`,
+                },
+              ],
+            });
+            const continuation = (String(continuationResponse.choices?.[0]?.message?.content ?? "")).trim();
+            if (continuation && continuation.length > 100) {
+              articleBody = articleBody + "\n\n" + continuation;
+            }
+          } catch (err) {
+            console.warn("[Blog] Continuation pass failed — using partial article:", err);
+          }
         }
 
         // ── PASS 2: Extract metadata from the completed article ───────────────────

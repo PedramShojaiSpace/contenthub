@@ -886,3 +886,10 @@
 - [x] Replace invalid Gamma theme ID "4v2cznur3cs7d35" with valid "creme" theme in landingPagesRouter.ts
 - [x] Replace invalid Gamma theme ID "4v2cznur3cs7d35" with valid "creme" theme in webinarRouter.ts
 - [x] Update landingPages.test.ts to expect "creme" instead of the old invalid theme ID
+
+## v38 — Thank You Page Gamma Publish
+- [ ] Add publishThankYouToGamma procedure to webinarRouter (same pattern as publishToGamma)
+- [ ] Add pollThankYouGamma procedure to webinarRouter
+- [ ] Store thankYouGammaUrl and thankYouGammaGenerationId in webinar_sessions
+- [ ] Add "Publish to Gamma" button in Step 4 after thank you copy is generated
+- [ ] Add Gamma polling UI to Step 4 (same spinner + URL display as Step 3)

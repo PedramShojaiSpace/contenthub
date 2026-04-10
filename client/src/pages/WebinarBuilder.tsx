@@ -211,6 +211,13 @@ export default function WebinarBuilder() {
   const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
   const [pushedTypeformUrl, setPushedTypeformUrl] = useState("");
 
+  // Thank You Gamma state
+  const [thankYouGammaUrl, setThankYouGammaUrl] = useState("");
+  const [thankYouGammaGenerationId, setThankYouGammaGenerationId] = useState("");
+  const [thankYouGammaPolling, setThankYouGammaPolling] = useState(false);
+  const thankYouPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const thankYouPollAttemptsRef = useRef(0);
+
   // Queries
   const { data: sessions = [], refetch: refetchSessions } = trpc.webinar.list.useQuery();
   const { data: personas = [] } = trpc.personas.list.useQuery();
@@ -292,6 +299,52 @@ export default function WebinarBuilder() {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, [gammaPolling, gammaGenerationId, activeWebinarId]);
+
+  const publishThankYouToGammaMutation = trpc.webinar.publishThankYouToGamma.useMutation({
+    onSuccess: (data) => {
+      setThankYouGammaGenerationId(data.generationId);
+      setThankYouGammaPolling(true);
+      thankYouPollAttemptsRef.current = 0;
+      toast.success("Sent to Gamma — building your thank you page...");
+    },
+    onError: (err) => toast.error("Gamma publish failed: " + err.message),
+  });
+
+  // ─── Thank You Gamma polling ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!thankYouGammaPolling || !thankYouGammaGenerationId || activeWebinarId === null) return;
+    const MAX_ATTEMPTS = 40;
+    thankYouPollIntervalRef.current = setInterval(async () => {
+      thankYouPollAttemptsRef.current += 1;
+      if (thankYouPollAttemptsRef.current > MAX_ATTEMPTS) {
+        clearInterval(thankYouPollIntervalRef.current!);
+        setThankYouGammaPolling(false);
+        toast.error("Gamma generation timed out. Check your Gamma dashboard.");
+        return;
+      }
+      try {
+        const result = await utils.webinar.pollThankYouGamma.fetch({
+          id: activeWebinarId,
+          generationId: thankYouGammaGenerationId,
+        });
+        if (result.status === "completed" && result.gammaUrl) {
+          clearInterval(thankYouPollIntervalRef.current!);
+          setThankYouGammaUrl(result.gammaUrl);
+          setThankYouGammaPolling(false);
+          toast.success("🎉 Thank you page published to Gamma!");
+        } else if (result.status === "failed") {
+          clearInterval(thankYouPollIntervalRef.current!);
+          setThankYouGammaPolling(false);
+          toast.error("Gamma generation failed. Try again.");
+        }
+      } catch {
+        // Network hiccup — keep polling
+      }
+    }, 5000);
+    return () => {
+      if (thankYouPollIntervalRef.current) clearInterval(thankYouPollIntervalRef.current);
+    };
+  }, [thankYouGammaPolling, thankYouGammaGenerationId, activeWebinarId]);
 
   const generateThankYouMutation = trpc.webinar.generateThankYouCopy.useMutation({
     onSuccess: (data) => {
@@ -1084,21 +1137,103 @@ export default function WebinarBuilder() {
             </div>
 
             {thankYouCopy && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Thank You Page Copy</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => copyToClipboard(thankYouCopy, "Thank you copy copied!")}
-                  >
-                    <Copy className="h-3 w-3 mr-1.5" />
-                    Copy
-                  </Button>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Thank You Page Copy</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => copyToClipboard(thankYouCopy, "Thank you copy copied!")}
+                    >
+                      <Copy className="h-3 w-3 mr-1.5" />
+                      Copy
+                    </Button>
+                  </div>
+                  <div className="prose prose-sm max-w-none text-foreground/90 p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <Streamdown>{thankYouCopy}</Streamdown>
+                  </div>
                 </div>
-                <div className="prose prose-sm max-w-none text-foreground/90 p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <Streamdown>{thankYouCopy}</Streamdown>
+
+                {/* ─── Publish Thank You Page to Gamma ─────────────────── */}
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">Publish Thank You Page to Gamma</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Gamma will build a live, branded thank you page from your copy — including the Wistia video embed, Typeform survey link, and calendar add buttons.
+                  </p>
+
+                  {!thankYouGammaUrl ? (
+                    <Button
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      onClick={() => {
+                        if (activeWebinarId === null) return;
+                        const personaNames = personas
+                          .filter((p: any) => selectedPersonaIds.includes(p.id))
+                          .map((p: any) => p.name)
+                          .join(", ") || "high-performing professionals";
+                        publishThankYouToGammaMutation.mutate({
+                          id: activeWebinarId,
+                          thankYouPageCopy: thankYouCopy,
+                          topic,
+                          personaNames,
+                        });
+                      }}
+                      disabled={publishThankYouToGammaMutation.isPending || thankYouGammaPolling}
+                    >
+                      {publishThankYouToGammaMutation.isPending || thankYouGammaPolling ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      {thankYouGammaPolling ? "Building page…" : "Publish to Gamma"}
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-green-700 dark:text-green-400">✅ Thank you page live on Gamma</p>
+                      <a
+                        href={thankYouGammaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary underline break-all"
+                      >
+                        {thankYouGammaUrl}
+                      </a>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => copyToClipboard(thankYouGammaUrl, "Thank you page URL copied!")}
+                        >
+                          <Copy className="h-3 w-3 mr-1.5" />Copy URL
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => window.open(thankYouGammaUrl, "_blank")}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1.5" />Open Page
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-muted-foreground"
+                          onClick={() => {
+                            setThankYouGammaUrl("");
+                            setThankYouGammaGenerationId("");
+                          }}
+                        >
+                          Republish
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

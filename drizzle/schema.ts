@@ -562,6 +562,8 @@ export const webinarSessions = mysqlTable("webinar_sessions", {
   thankYouWistiaId: varchar("thankYouWistiaId", { length: 64 }), // Wistia video ID
   thankYouTypeformUrl: text("thankYouTypeformUrl"),               // Typeform embed URL
   thankYouPageCopy: text("thankYouPageCopy"),                    // AI-generated thank you copy
+  thankYouGammaUrl: text("thankYouGammaUrl"),                     // Published Gamma thank you page URL
+  thankYouGammaGenerationId: varchar("thankYouGammaGenerationId", { length: 128 }), // Gamma generation ID for polling
   // Kajabi automation export
   kajabiExport: text("kajabiExport"),        // JSON blob of Kajabi automation plan
   status: webinarStatusEnum.default("draft").notNull(),

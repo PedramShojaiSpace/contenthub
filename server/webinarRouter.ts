@@ -608,6 +608,67 @@ Return ONLY the JSON object, no markdown wrapping.`;
       return { kajabiExport: JSON.parse(kajabiExport) };
     }),
 
+  // Step 4a: Publish thank you page to Gamma
+  publishThankYouToGamma: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      thankYouPageCopy: z.string().min(1),
+      topic: z.string().min(1),
+      personaNames: z.string().default("high-performing professionals"),
+    }))
+    .mutation(async ({ input }) => {
+      const titleLine = input.thankYouPageCopy.split("\n").find((l) => l.startsWith("#"));
+      const title = titleLine ? titleLine.replace(/^#+\s*/, "").trim().slice(0, 200) : `Thank You — ${input.topic}`;
+      const additionalInstructions = `
+This is a Thank You / Confirmation page for a webinar registration for The Urban Monk (Dr. Pedram Shojai).
+Target audience: ${input.personaNames}.
+Design guidelines:
+- Warm, celebratory, welcoming tone — cream/parchment backgrounds, terracotta and sage green accents
+- Large warm confirmation headline at the top ("You're In!" style)
+- Embed video section if a Wistia ID is referenced in the copy
+- Typeform survey section if a Typeform URL is referenced
+- Calendar add links section
+- What to expect bullets
+- Clean, generous white space — not cluttered
+- The Urban Monk brand voice: warm, grateful, excited, authoritative
+`.trim();
+      const apiKey = process.env.GAMMA_API_KEY;
+      if (!apiKey) throw new Error("GAMMA_API_KEY is not configured");
+      const response = await fetch(`${GAMMA_API_BASE}/generations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-KEY": apiKey },
+        body: JSON.stringify({
+          inputText: `# ${title}\n\n${input.thankYouPageCopy}`,
+          textMode: "preserve",
+          format: "webpage",
+          numCards: 5,
+          additionalInstructions,
+          textOptions: { amount: "detailed", tone: "warm, grateful, celebratory, inspiring", audience: input.personaNames },
+          imageOptions: { source: "aiGenerated", style: "warm, earthy, wellness photography, golden light, sage greens, parchment tones" },
+          sharingOptions: { externalAccess: "view" },
+          themeId: URBAN_MONK_THEME_ID,
+        }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gamma API error ${response.status}: ${errorText}`);
+      }
+      const data = (await response.json()) as { generationId: string };
+      await updateWebinar(input.id, { thankYouGammaGenerationId: data.generationId });
+      return { generationId: data.generationId };
+    }),
+
+  // Step 4a-poll: Poll Gamma for thank you page generation status
+  pollThankYouGamma: protectedProcedure
+    .input(z.object({ id: z.number(), generationId: z.string() }))
+    .query(async ({ input }) => {
+      const result = await pollGamma(input.generationId);
+      if (result.status === "completed" && result.gammaUrl) {
+        await updateWebinar(input.id, { thankYouGammaUrl: result.gammaUrl });
+      }
+      return result;
+    }),
+
   // ─── Typeform Survey Builder ──────────────────────────────────────────────
 
   // Generate AI survey questions based on webinar topic and personas

@@ -19,6 +19,7 @@ import MediaVault from "./pages/MediaVault";
 import AvatarIntelligence from "./pages/AvatarIntelligence";
 import WebinarBuilder from "./pages/WebinarBuilder";
 import WebinarIntelligencePage from "./pages/WebinarIntelligence";
+import LLMProjects from "./pages/LLMProjects";
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function Router() {
       <Route path={"/avatar"} component={AvatarIntelligence} />
       <Route path={"/webinar"} component={WebinarBuilder} />
       <Route path={"/webinar-intelligence"} component={WebinarIntelligencePage} />
+      <Route path={"/llm-projects"} component={LLMProjects} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

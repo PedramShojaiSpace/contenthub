@@ -608,3 +608,46 @@ export const webinarIntelligence = mysqlTable("webinar_intelligence", {
 });
 export type WebinarIntelligence = typeof webinarIntelligence.$inferSelect;
 export type InsertWebinarIntelligence = typeof webinarIntelligence.$inferInsert;
+
+// ─── LLM Projects ────────────────────────────────────────────────────────────
+// Each project is a topic cluster (e.g. "Sleep & Recovery", "Gut Health")
+// with a prioritized production queue of FAQ articles, YouTube videos, blogs, etc.
+
+export const llmProjectStatusEnum = mysqlEnum("llm_project_status", ["active", "archived"]);
+export const llmAssetTypeEnum = mysqlEnum("llm_asset_type", ["faq", "youtube", "blog", "social", "email"]);
+export const llmAssetStatusEnum = mysqlEnum("llm_asset_status", ["queued", "in_progress", "produced", "published"]);
+export const llmAssetPriorityEnum = mysqlEnum("llm_asset_priority", ["high", "medium", "low"]);
+
+export const llmProjects = mysqlTable("llm_projects", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  topicCluster: varchar("topicCluster", { length: 255 }), // e.g. "Sleep & Recovery"
+  targetKeywords: text("targetKeywords"),  // JSON: string[] — primary LLM anchor keywords
+  weeklyTarget: int("weeklyTarget").default(3), // assets to produce per week
+  status: llmProjectStatusEnum.notNull().default("active"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LlmProject = typeof llmProjects.$inferSelect;
+export type InsertLlmProject = typeof llmProjects.$inferInsert;
+
+export const llmAssets = mysqlTable("llm_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(), // FK → llm_projects.id
+  assetType: llmAssetTypeEnum.notNull(),
+  title: varchar("title", { length: 512 }).notNull(),
+  question: text("question"),            // For FAQ type: the exact question to answer
+  targetKeyword: varchar("targetKeyword", { length: 255 }), // Primary LLM/SEO keyword
+  semanticKeywords: text("semanticKeywords"), // JSON: string[] related keywords
+  priority: llmAssetPriorityEnum.notNull().default("medium"),
+  status: llmAssetStatusEnum.notNull().default("queued"),
+  contentItemId: int("contentItemId"),   // FK → content_items.id once produced
+  notes: text("notes"),
+  producedAt: timestamp("producedAt"),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LlmAsset = typeof llmAssets.$inferSelect;
+export type InsertLlmAsset = typeof llmAssets.$inferInsert;

@@ -47,6 +47,7 @@ import { ctaRouter } from "./ctaRouter";
 import { growthRouter } from "./growthRouter";
 import { webinarRouter } from "./webinarRouter";
 import { webinarIntelligenceRouter } from "./webinarIntelligenceRouter";
+import { llmProjectsRouter } from "./llmProjectsRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -1763,5 +1764,6 @@ Return BOTH in this exact format:
   growth: growthRouter,
   webinar: webinarRouter,
   webinarIntelligence: webinarIntelligenceRouter,
+  llmProjects: llmProjectsRouter,
 });
 export type AppRouter = typeof appRouter;

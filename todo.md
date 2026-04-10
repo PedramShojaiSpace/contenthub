@@ -941,3 +941,28 @@
 - [x] Update blog.publish procedure: accept all new SEO fields, build Article + FAQ schemas, inject as JSON-LD in post content, set Yoast meta fields
 - [x] Update CreationStudio: capture all new SEO fields from generateBlog, pass all to publishToWP
 - [x] Add SEO & AEO Intelligence review panel to blog output UI (meta description char count, focus keyword + semantic variants, hook family, emotional driver, FAQ preview, waterfall map, schema status badges)
+
+## LLM Projects Module (v45)
+- [ ] Add llm_projects table (id, name, description, topicCluster, status: active|archived, createdAt)
+- [ ] Add llm_assets table (id, projectId, assetType: faq|youtube|blog|social|email, title, question, targetKeyword, priority: high|medium|low, status: queued|in_progress|produced|published, contentItemId FK, notes, createdAt)
+- [ ] Run db:push for new tables
+- [ ] Build llmProjectsRouter: createProject, listProjects, updateProject, archiveProject, addAsset, listAssets, updateAssetStatus, bulkAddAssets (AI-generated queue from topic)
+- [ ] AI queue generator: given a topic cluster, generate a full prioritized queue of 20-30 FAQ articles, YouTube video ideas, blog posts, and social threads
+- [ ] Build LLMProjects.tsx page: project cards grid, per-project asset queue view, weekly cadence tracker (how many assets produced this week)
+- [ ] Asset queue view: grouped by type (FAQ, YouTube, Blog, Social), sortable by priority, status filter tabs
+- [ ] Weekly cadence: show X assets produced this week vs. target (e.g., 3/week), progress bar
+- [ ] "Generate This Asset" button on each queue item: pre-fills Creation Studio with the asset title/question as the idea
+- [ ] "Mark as Produced" button: links asset to a content item, updates status
+- [ ] Add LLM Projects to sidebar navigation
+- [ ] Write vitest tests for llmProjectsRouter
+
+## LLM Projects Module (v45)
+- [x] Add llm_projects and llm_assets tables to DB schema
+- [x] Run db:push for new tables
+- [x] Build llmProjectsRouter: createProject, listProjects, getProject, deleteProject, addAsset, generateQueue (AI), listAssets, updateAssetStatus, deleteAsset, getWeeklyCadence
+- [x] AI queue generation: given a topic cluster, generate 10-40 prioritized FAQ/YouTube/blog/social assets
+- [x] Build LLMProjects.tsx page: project grid, project detail view, asset queue with filters, weekly cadence tracker
+- [x] Add "LLM Projects" to sidebar navigation (BarChart3 icon)
+- [x] Add /llm-projects route to App.tsx
+- [x] Wire "Create in Studio" button: navigates to /studio with asset type, title, keyword, question pre-filled via URL params
+- [x] CreationStudio reads LLM project URL params and pre-populates idea/platform on load

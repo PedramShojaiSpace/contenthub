@@ -351,7 +351,7 @@ export default function CreationStudio() {
   const [activeGapQueryId, setActiveGapQueryId] = useState<number | null>(null);
   const [activeGapQueryText, setActiveGapQueryText] = useState<string | null>(null);
 
-  // Pick up a brief pre-loaded from the Research Intelligence page
+  // Pick up a brief pre-loaded from the Research Intelligence page or LLM Projects
   useEffect(() => {
     const brief = sessionStorage.getItem("gumshoe_brief");
     const gapQueryId = sessionStorage.getItem("gumshoe_gap_query_id");
@@ -368,6 +368,37 @@ export default function CreationStudio() {
     if (gapQueryText) {
       setActiveGapQueryText(gapQueryText);
       sessionStorage.removeItem("gumshoe_gap_query_text");
+    }
+
+    // Pick up context launched from LLM Projects queue
+    const urlParams = new URLSearchParams(window.location.search);
+    const source = urlParams.get("source");
+    if (source === "llm_project") {
+      const assetType = urlParams.get("type") ?? "blog";
+      const title = urlParams.get("title") ?? "";
+      const keyword = urlParams.get("keyword") ?? "";
+      const question = urlParams.get("question") ?? "";
+      // Map asset type to platform
+      const platformMap: Record<string, Platform> = {
+        faq: "blog",
+        youtube: "youtube",
+        blog: "blog",
+        social: "all",
+        email: "blog",
+      };
+      const targetPlatform = (platformMap[assetType] ?? "blog") as Platform;
+      setPlatform(targetPlatform);
+      // Build a pre-filled idea from the asset context
+      const ideaParts: string[] = [];
+      if (question) ideaParts.push(`Question to answer: ${question}`);
+      if (title) ideaParts.push(`Title: ${title}`);
+      if (keyword) ideaParts.push(`Target keyword: ${keyword}`);
+      if (ideaParts.length > 0) {
+        setIdea(ideaParts.join("\n"));
+        toast.success(`LLM Project asset loaded — ${PLATFORM_LABELS[targetPlatform] ?? assetType} ready to generate!`);
+      }
+      // Clean URL without reload
+      window.history.replaceState({}, "", "/studio");
     }
   }, []);
 

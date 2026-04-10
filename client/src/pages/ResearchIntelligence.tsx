@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import {
   LineChart,
   Line,
@@ -1508,19 +1509,11 @@ export default function ResearchIntelligence() {
   const [, navigate] = useLocation();
 
   return (
+    <DashboardLayout>
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-muted-foreground hover:text-foreground mt-0.5 shrink-0"
-            onClick={() => navigate("/")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Brain className="w-6 h-6 text-amber-400" />
@@ -1633,5 +1626,6 @@ export default function ResearchIntelligence() {
         </Tabs>
       )}
     </div>
+    </DashboardLayout>
   );
 }

@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import DashboardLayout from "@/components/DashboardLayout";
 import {
   AlertCircle,
   ArrowLeft,
@@ -57,17 +58,6 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
-// ─── Sidebar nav (shared across all pages) ────────────────────────────────────
-
-const NAV_ITEMS = [
-  { label: "Command Center", path: "/", icon: <BarChart2 className="h-4 w-4" /> },
-  { label: "Creation Studio", path: "/studio", icon: <Sparkles className="h-4 w-4" /> },
-  { label: "Script Library", path: "/scripts", icon: <BookOpen className="h-4 w-4" /> },
-  { label: "Asset Library", path: "/assets", icon: <Globe className="h-4 w-4" /> },
-  { label: "Research Intelligence", path: "/research", icon: <Brain className="h-4 w-4" /> },
-  { label: "Strategy Brain", path: "/strategy", icon: <Target className="h-4 w-4" /> },
-  { label: "Landing Pages", path: "/landing-pages", icon: <Globe className="h-4 w-4" />, active: true },
-];
 
 // ─── Persona data ─────────────────────────────────────────────────────────────
 
@@ -715,37 +705,9 @@ export default function LandingPageGenerator() {
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-screen bg-[oklch(0.98_0.01_80)] text-foreground overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-[oklch(0.88_0.02_80)] bg-white flex flex-col">
-        <div className="p-4 border-b border-[oklch(0.88_0.02_80)]">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[oklch(0.65_0.12_50)] flex items-center justify-center">
-              <span className="text-white font-bold text-xs">UM</span>
-            </div>
-            <span className="font-semibold text-sm text-[oklch(0.25_0.03_60)]">UMP Content Hub</span>
-          </div>
-        </div>
-        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
-                item.active
-                  ? "bg-[oklch(0.65_0.12_50)]/10 text-[oklch(0.45_0.12_50)] font-medium"
-                  : "text-[oklch(0.45_0.03_60)] hover:bg-[oklch(0.93_0.02_80)] hover:text-[oklch(0.25_0.03_60)]"
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </aside>
-
+    <DashboardLayout>
       {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden h-screen">
         {/* Header */}
         <div className="border-b border-[oklch(0.88_0.02_80)] bg-white px-6 py-4 flex items-center justify-between shrink-0">
           <div>
@@ -753,7 +715,7 @@ export default function LandingPageGenerator() {
               <Globe className="h-5 w-5 text-[oklch(0.55_0.12_50)]" />
               Landing Page Generator
             </h1>
-            <p className="text-sm text-[oklch(0.55_0.03_60)] mt-0.5">
+            <p className="text-sm text-[oklch(0.3_0.03_60)] mt-0.5">
               Pick an avatar + offer → AI writes copy in Pedram's voice → publish to Gamma
             </p>
           </div>
@@ -789,7 +751,7 @@ export default function LandingPageGenerator() {
                   <span className="w-6 h-6 rounded-full bg-[oklch(0.65_0.12_50)] text-white text-xs flex items-center justify-center font-bold">1</span>
                   Choose Your Avatar
                 </h2>
-                <p className="text-sm text-[oklch(0.55_0.03_60)] mb-4 ml-8">
+                <p className="text-sm text-[oklch(0.3_0.03_60)] mb-4 ml-8">
                   Who is this landing page speaking to? The copy will be written specifically for their pain points and language.
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -810,7 +772,7 @@ export default function LandingPageGenerator() {
                       <div className="font-medium text-xs text-[oklch(0.25_0.03_60)] leading-tight mb-1">
                         {persona.name}
                       </div>
-                      <div className="text-[10px] text-[oklch(0.55_0.03_60)] leading-tight">
+                      <div className="text-[10px] text-[oklch(0.3_0.03_60)] leading-tight">
                         {persona.tagline}
                       </div>
                     </button>
@@ -820,10 +782,10 @@ export default function LandingPageGenerator() {
                 {/* Selected persona detail */}
                 {selectedPersona && (
                   <div className="mt-3 p-3 rounded-lg bg-white border border-[oklch(0.88_0.02_80)] ml-0">
-                    <div className="text-xs font-medium text-[oklch(0.45_0.03_60)] mb-1">Pain points the copy will address:</div>
+                    <div className="text-xs font-medium text-[oklch(0.3_0.03_60)] mb-1">Pain points the copy will address:</div>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedPersona.painPoints.map((p) => (
-                        <Badge key={p} variant="outline" className="text-[10px] border-[oklch(0.88_0.02_80)] text-[oklch(0.45_0.03_60)]">
+                        <Badge key={p} variant="outline" className="text-[10px] border-[oklch(0.88_0.02_80)] text-[oklch(0.3_0.03_60)]">
                           {p}
                         </Badge>
                       ))}
@@ -838,7 +800,7 @@ export default function LandingPageGenerator() {
                   <span className="w-6 h-6 rounded-full bg-[oklch(0.65_0.12_50)] text-white text-xs flex items-center justify-center font-bold">2</span>
                   Select the Offer
                 </h2>
-                <p className="text-sm text-[oklch(0.55_0.03_60)] mb-4 ml-8">
+                <p className="text-sm text-[oklch(0.3_0.03_60)] mb-4 ml-8">
                   What are you selling? The copy structure, CTA, and urgency will be tailored to this offer.
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -858,14 +820,14 @@ export default function LandingPageGenerator() {
                       <div className="text-[oklch(0.45_0.12_50)] mb-2">{offer.icon}</div>
                       <div className="font-semibold text-xs text-[oklch(0.25_0.03_60)] mb-0.5">{offer.label}</div>
                       <div className="text-[10px] font-medium text-[oklch(0.55_0.12_50)] mb-1">{offer.price}</div>
-                      <div className="text-[10px] text-[oklch(0.55_0.03_60)] leading-tight">{offer.description}</div>
+                      <div className="text-[10px] text-[oklch(0.3_0.03_60)] leading-tight">{offer.description}</div>
                     </button>
                   ))}
                 </div>
 
                 {selectedOffer === "custom" && (
                   <div className="mt-3 ml-0">
-                    <Label className="text-xs text-[oklch(0.45_0.03_60)]">Custom Offer Label</Label>
+                    <Label className="text-xs text-[oklch(0.3_0.03_60)]">Custom Offer Label</Label>
                     <Input
                       value={customOfferLabel}
                       onChange={(e) => setCustomOfferLabel(e.target.value)}
@@ -882,7 +844,7 @@ export default function LandingPageGenerator() {
                   <span className="w-6 h-6 rounded-full bg-[oklch(0.65_0.12_50)] text-white text-xs flex items-center justify-center font-bold">3</span>
                   Content Angle / Key Message
                 </h2>
-                <p className="text-sm text-[oklch(0.55_0.03_60)] mb-4 ml-8">
+                <p className="text-sm text-[oklch(0.3_0.03_60)] mb-4 ml-8">
                   What's the core insight or hook this page leads with? This shapes the entire narrative arc.
                 </p>
                 <div className="space-y-2">
@@ -897,14 +859,14 @@ export default function LandingPageGenerator() {
                     className="min-h-[80px] text-sm border-[oklch(0.88_0.02_80)] resize-none"
                   />
                   {selectedPersona && (
-                    <div className="text-xs text-[oklch(0.55_0.03_60)]">
+                    <div className="text-xs text-[oklch(0.3_0.03_60)]">
                       Suggested hooks for {selectedPersona.name}:
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {selectedPersona.contentHooks.map((hook: string) => (
                           <button
                             key={hook}
                             onClick={() => setContentAngle(hook)}
-                            className="px-2 py-0.5 rounded-full bg-[oklch(0.93_0.02_80)] border border-[oklch(0.88_0.02_80)] text-[10px] text-[oklch(0.45_0.03_60)] hover:bg-[oklch(0.88_0.02_80)] transition-colors"
+                            className="px-2 py-0.5 rounded-full bg-[oklch(0.93_0.02_80)] border border-[oklch(0.88_0.02_80)] text-[10px] text-[oklch(0.3_0.03_60)] hover:bg-[oklch(0.88_0.02_80)] transition-colors"
                           >
                             {hook}
                           </button>
@@ -945,7 +907,7 @@ export default function LandingPageGenerator() {
               <div className="flex items-center justify-between">
                 <button
                   onClick={() => setStep("configure")}
-                  className="flex items-center gap-1.5 text-sm text-[oklch(0.55_0.03_60)] hover:text-[oklch(0.25_0.03_60)] transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-[oklch(0.3_0.03_60)] hover:text-[oklch(0.25_0.03_60)] transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to configure
@@ -957,7 +919,7 @@ export default function LandingPageGenerator() {
                     size="sm"
                     onClick={() => setShowVariantPanel((v) => !v)}
                     disabled={generateVariantMutation.isPending}
-                    className="border-[oklch(0.88_0.02_80)] text-[oklch(0.45_0.03_60)]"
+                    className="border-[oklch(0.88_0.02_80)] text-[oklch(0.3_0.03_60)]"
                     title="Generate an A/B variant with a different persuasion angle"
                   >
                     <FlaskConical className="h-4 w-4 mr-1.5" />
@@ -1133,7 +1095,7 @@ export default function LandingPageGenerator() {
                   <Card className="border-[oklch(0.88_0.02_80)] bg-white">
                     <CardHeader className="pb-2 pt-4 px-4">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide">
+                        <Label className="text-xs font-semibold text-[oklch(0.3_0.03_60)] uppercase tracking-wide">
                           Page Title
                         </Label>
                       </div>
@@ -1145,7 +1107,7 @@ export default function LandingPageGenerator() {
                       />
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
-                      <Label className="text-xs font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide mb-2 block">
+                      <Label className="text-xs font-semibold text-[oklch(0.3_0.03_60)] uppercase tracking-wide mb-2 block">
                         Landing Page Copy (Markdown)
                       </Label>
                       <Textarea
@@ -1154,7 +1116,7 @@ export default function LandingPageGenerator() {
                         className="min-h-[600px] text-sm font-mono border-[oklch(0.88_0.02_80)] resize-none leading-relaxed"
                         placeholder="AI-generated copy will appear here..."
                       />
-                      <div className="flex justify-between items-center mt-2 text-xs text-[oklch(0.65_0.03_60)]">
+                      <div className="flex justify-between items-center mt-2 text-xs text-[oklch(0.4_0.03_60)]">
                         <span>{editableCopy.split(/\s+/).filter(Boolean).length} words</span>
                         <span>{editableCopy.length} characters</span>
                       </div>
@@ -1167,20 +1129,20 @@ export default function LandingPageGenerator() {
                   {/* Publish info */}
                   <Card className="border-[oklch(0.88_0.02_80)] bg-white">
                     <CardContent className="p-4 space-y-3">
-                      <div className="text-xs font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide">
+                      <div className="text-xs font-semibold text-[oklch(0.3_0.03_60)] uppercase tracking-wide">
                         Publish to Gamma
                       </div>
-                      <div className="text-xs text-[oklch(0.55_0.03_60)] leading-relaxed">
+                      <div className="text-xs text-[oklch(0.3_0.03_60)] leading-relaxed">
                         Clicking "Publish to Gamma" sends this copy to the Gamma API to generate a
                         fully designed landing page. This uses Gamma credits — only click when ready.
                       </div>
-                      <div className="text-xs text-[oklch(0.55_0.03_60)]">
+                      <div className="text-xs text-[oklch(0.3_0.03_60)]">
                         <span className="font-medium text-[oklch(0.35_0.03_60)]">Format:</span> Webpage (not presentation)
                       </div>
-                      <div className="text-xs text-[oklch(0.55_0.03_60)]">
+                      <div className="text-xs text-[oklch(0.3_0.03_60)]">
                         <span className="font-medium text-[oklch(0.35_0.03_60)]">Style:</span> Warm, earthy, wellness aesthetic
                       </div>
-                      <div className="text-xs text-[oklch(0.55_0.03_60)]">
+                      <div className="text-xs text-[oklch(0.3_0.03_60)]">
                         <span className="font-medium text-[oklch(0.35_0.03_60)]">Time:</span> ~30–90 seconds
                       </div>
                     </CardContent>
@@ -1189,22 +1151,22 @@ export default function LandingPageGenerator() {
                   {/* Page details */}
                   <Card className="border-[oklch(0.88_0.02_80)] bg-white">
                     <CardContent className="p-4 space-y-2">
-                      <div className="text-xs font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide mb-2">
+                      <div className="text-xs font-semibold text-[oklch(0.3_0.03_60)] uppercase tracking-wide mb-2">
                         Page Details
                       </div>
                       {selectedPersona && (
                         <div className="flex items-start gap-2">
-                          <Users className="h-3.5 w-3.5 text-[oklch(0.55_0.03_60)] mt-0.5 shrink-0" />
+                          <Users className="h-3.5 w-3.5 text-[oklch(0.3_0.03_60)] mt-0.5 shrink-0" />
                           <div>
-                            <div className="text-[10px] text-[oklch(0.65_0.03_60)]">Avatar</div>
+                            <div className="text-[10px] text-[oklch(0.4_0.03_60)]">Avatar</div>
                             <div className="text-xs font-medium text-[oklch(0.35_0.03_60)]">{selectedPersona.name}</div>
                           </div>
                         </div>
                       )}
                       <div className="flex items-start gap-2">
-                        <Target className="h-3.5 w-3.5 text-[oklch(0.55_0.03_60)] mt-0.5 shrink-0" />
+                        <Target className="h-3.5 w-3.5 text-[oklch(0.3_0.03_60)] mt-0.5 shrink-0" />
                         <div>
-                          <div className="text-[10px] text-[oklch(0.65_0.03_60)]">Offer</div>
+                          <div className="text-[10px] text-[oklch(0.4_0.03_60)]">Offer</div>
                           <div className="text-xs font-medium text-[oklch(0.35_0.03_60)]">
                             {OFFERS.find((o) => o.id === selectedOffer)?.label ?? selectedOffer}
                           </div>
@@ -1212,10 +1174,10 @@ export default function LandingPageGenerator() {
                       </div>
                       {contentAngle && (
                         <div className="flex items-start gap-2">
-                          <Sparkles className="h-3.5 w-3.5 text-[oklch(0.55_0.03_60)] mt-0.5 shrink-0" />
+                          <Sparkles className="h-3.5 w-3.5 text-[oklch(0.3_0.03_60)] mt-0.5 shrink-0" />
                           <div>
-                            <div className="text-[10px] text-[oklch(0.65_0.03_60)]">Content Angle</div>
-                            <div className="text-xs text-[oklch(0.45_0.03_60)] leading-tight">{contentAngle}</div>
+                            <div className="text-[10px] text-[oklch(0.4_0.03_60)]">Content Angle</div>
+                            <div className="text-xs text-[oklch(0.3_0.03_60)] leading-tight">{contentAngle}</div>
                           </div>
                         </div>
                       )}
@@ -1257,7 +1219,7 @@ export default function LandingPageGenerator() {
                         {showUtmPanel ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </button>
                       {!showUtmPanel && (
-                        <p className="text-[10px] text-[oklch(0.65_0.03_60)]">Track which posts drive traffic to this page.</p>
+                        <p className="text-[10px] text-[oklch(0.4_0.03_60)]">Track which posts drive traffic to this page.</p>
                       )}
                       {showUtmPanel && (
                         <div className="space-y-2 mt-2">
@@ -1267,7 +1229,7 @@ export default function LandingPageGenerator() {
                               <button
                                 key={p.label}
                                 onClick={() => applyUtmPreset(p)}
-                                className="px-2 py-0.5 rounded-full bg-[oklch(0.93_0.02_80)] border border-[oklch(0.88_0.02_80)] text-[10px] text-[oklch(0.45_0.03_60)] hover:bg-[oklch(0.88_0.02_80)] transition-colors"
+                                className="px-2 py-0.5 rounded-full bg-[oklch(0.93_0.02_80)] border border-[oklch(0.88_0.02_80)] text-[10px] text-[oklch(0.3_0.03_60)] hover:bg-[oklch(0.88_0.02_80)] transition-colors"
                               >
                                 {p.label}
                               </button>
@@ -1282,7 +1244,7 @@ export default function LandingPageGenerator() {
                               { label: "Content", value: utmContent, set: setUtmContent, placeholder: "reel" },
                             ] as const).map((field) => (
                               <div key={field.label} className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-[oklch(0.55_0.03_60)] w-14 shrink-0">{field.label}</span>
+                                <span className="text-[10px] text-[oklch(0.3_0.03_60)] w-14 shrink-0">{field.label}</span>
                                 <Input
                                   value={field.value}
                                   onChange={(e) => field.set(e.target.value)}
@@ -1295,14 +1257,14 @@ export default function LandingPageGenerator() {
                           {/* Generated URLs */}
                           {gammaUrl && (
                             <div className="mt-2 space-y-1.5">
-                              <div className="text-[10px] font-semibold text-[oklch(0.45_0.03_60)] uppercase tracking-wide">Tagged URL</div>
+                              <div className="text-[10px] font-semibold text-[oklch(0.3_0.03_60)] uppercase tracking-wide">Tagged URL</div>
                               <div className="flex items-start gap-1.5">
-                                <div className="flex-1 min-w-0 text-[10px] text-[oklch(0.45_0.03_60)] bg-[oklch(0.95_0.01_80)] rounded p-1.5 font-mono break-all leading-relaxed">
+                                <div className="flex-1 min-w-0 text-[10px] text-[oklch(0.3_0.03_60)] bg-[oklch(0.95_0.01_80)] rounded p-1.5 font-mono break-all leading-relaxed">
                                   {buildUtmUrl(gammaUrl)}
                                 </div>
                                 <button
                                   onClick={() => { navigator.clipboard.writeText(buildUtmUrl(gammaUrl!)); toast.success("UTM URL copied!"); }}
-                                  className="shrink-0 p-1 rounded hover:bg-[oklch(0.90_0.02_80)] text-[oklch(0.55_0.03_60)] transition-colors"
+                                  className="shrink-0 p-1 rounded hover:bg-[oklch(0.90_0.02_80)] text-[oklch(0.3_0.03_60)] transition-colors"
                                   title="Copy tagged URL"
                                 >
                                   <Copy className="h-3.5 w-3.5" />
@@ -1311,7 +1273,7 @@ export default function LandingPageGenerator() {
                             </div>
                           )}
                           {!gammaUrl && (
-                            <p className="text-[10px] text-[oklch(0.65_0.03_60)] italic mt-1">Publish to Gamma first to generate tagged URLs.</p>
+                            <p className="text-[10px] text-[oklch(0.4_0.03_60)] italic mt-1">Publish to Gamma first to generate tagged URLs.</p>
                           )}
                         </div>
                       )}
@@ -1345,7 +1307,7 @@ export default function LandingPageGenerator() {
                     Landing Page History ({pages?.length ?? 0})
                   </h2>
                   {(compareIds[0] !== null || compareIds[1] !== null) && (
-                    <p className="text-xs text-[oklch(0.55_0.03_60)] mt-0.5">
+                    <p className="text-xs text-[oklch(0.3_0.03_60)] mt-0.5">
                       {compareIds[0] !== null && compareIds[1] !== null
                         ? "2 pages selected — ready to compare"
                         : "1 page selected — select one more to compare"}
@@ -1386,7 +1348,7 @@ export default function LandingPageGenerator() {
               </div>
 
               {!pages || pages.length === 0 ? (
-                <div className="text-center py-16 text-[oklch(0.65_0.03_60)]">
+                <div className="text-center py-16 text-[oklch(0.4_0.03_60)]">
                   <Globe className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <div className="font-medium">No landing pages yet</div>
                   <div className="text-sm mt-1">Generate your first landing page above</div>
@@ -1418,7 +1380,7 @@ export default function LandingPageGenerator() {
                                 {page.status}
                               </Badge>
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-[oklch(0.55_0.03_60)]">
+                            <div className="flex items-center gap-3 text-xs text-[oklch(0.3_0.03_60)]">
                               {page.personaName && (
                                 <span className="flex items-center gap-1">
                                   <Users className="h-3 w-3" />
@@ -1451,7 +1413,7 @@ export default function LandingPageGenerator() {
                               className={`text-xs transition-colors ${
                                 isSelectedForCompare(page.id)
                                   ? "border-violet-400 bg-violet-50 text-violet-700 hover:bg-violet-100"
-                                  : "border-[oklch(0.88_0.02_80)] text-[oklch(0.55_0.03_60)] hover:bg-[oklch(0.95_0.01_80)]"
+                                  : "border-[oklch(0.88_0.02_80)] text-[oklch(0.3_0.03_60)] hover:bg-[oklch(0.95_0.01_80)]"
                               }`}
                               title="Select for side-by-side comparison"
                             >
@@ -1532,7 +1494,7 @@ export default function LandingPageGenerator() {
                 </Button>
                 <button
                   onClick={() => setShowCompareView(false)}
-                  className="p-1.5 rounded hover:bg-[oklch(0.93_0.02_80)] text-[oklch(0.55_0.03_60)] transition-colors"
+                  className="p-1.5 rounded hover:bg-[oklch(0.93_0.02_80)] text-[oklch(0.3_0.03_60)] transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1546,7 +1508,7 @@ export default function LandingPageGenerator() {
                   <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${idx === 0 ? "bg-[oklch(0.65_0.12_50)]" : "bg-violet-500"}`} />
                   <div className="min-w-0">
                     <div className="font-semibold text-xs text-[oklch(0.25_0.03_60)] truncate">{p.title}</div>
-                    <div className="flex items-center gap-2 text-[10px] text-[oklch(0.55_0.03_60)] mt-0.5">
+                    <div className="flex items-center gap-2 text-[10px] text-[oklch(0.3_0.03_60)] mt-0.5">
                       {p.personaName && <span>{p.personaName}</span>}
                       <span>·</span>
                       <span>{OFFERS.find((o) => o.id === p.offer)?.label ?? p.offer}</span>
@@ -1603,7 +1565,7 @@ export default function LandingPageGenerator() {
             </div>
 
             {/* Legend */}
-            <div className="bg-white border-t border-[oklch(0.88_0.02_80)] px-6 py-2 flex items-center gap-4 text-[10px] text-[oklch(0.55_0.03_60)] shrink-0">
+            <div className="bg-white border-t border-[oklch(0.88_0.02_80)] px-6 py-2 flex items-center gap-4 text-[10px] text-[oklch(0.3_0.03_60)] shrink-0">
               <span className="flex items-center gap-1.5">
                 <mark className="bg-red-100 text-red-800 rounded-sm px-1">removed</mark>
                 Text only in original
@@ -1612,13 +1574,13 @@ export default function LandingPageGenerator() {
                 <mark className="bg-green-100 text-green-800 rounded-sm px-1">added</mark>
                 Text only in variant
               </span>
-              <span className="ml-auto text-[oklch(0.65_0.03_60)]">
+              <span className="ml-auto text-[oklch(0.4_0.03_60)]">
                 Showing first 200 words of diff — scroll to see full copy
               </span>
             </div>
           </div>
         );
       })()}
-    </div>
+    </DashboardLayout>
   );
 }

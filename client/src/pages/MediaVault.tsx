@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,7 +108,7 @@ function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: s
       <div>
         <div className="text-2xl font-bold text-stone-900">{value}</div>
         <div className="text-sm font-medium text-stone-600">{label}</div>
-        {sub && <div className="text-xs text-stone-400 mt-0.5">{sub}</div>}
+        {sub && <div className="text-xs text-stone-600 mt-0.5">{sub}</div>}
       </div>
     </div>
   );
@@ -137,7 +138,7 @@ function AssetCard({ asset, onToggle }: { asset: MediaAsset; onToggle: (id: numb
           </div>
           {/* AI Injection toggle */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-stone-500">AI Inject</span>
+            <span className="text-xs text-stone-700">AI Inject</span>
             <Switch
               checked={asset.activeInjection}
               onCheckedChange={(checked) => onToggle(asset.id, checked)}
@@ -146,7 +147,7 @@ function AssetCard({ asset, onToggle }: { asset: MediaAsset; onToggle: (id: numb
         </div>
         <h3 className="font-semibold text-stone-900 text-sm leading-snug mt-2">{asset.title}</h3>
         {asset.platform && (
-          <div className="text-xs text-stone-500">{asset.platform}{asset.publishedYear ? ` · ${asset.publishedYear}` : ""}</div>
+          <div className="text-xs text-stone-700">{asset.platform}{asset.publishedYear ? ` · ${asset.publishedYear}` : ""}</div>
         )}
       </CardHeader>
       <CardContent className="px-4 pb-4">
@@ -160,8 +161,8 @@ function AssetCard({ asset, onToggle }: { asset: MediaAsset; onToggle: (id: numb
         {/* Reach */}
         {asset.reachFormatted && asset.reachFormatted !== "—" && (
           <div className="flex items-center gap-1.5 mb-3">
-            <Eye className="w-3.5 h-3.5 text-stone-400" />
-            <span className="text-xs text-stone-500">{asset.reachFormatted} estimated reach</span>
+            <Eye className="w-3.5 h-3.5 text-stone-600" />
+            <span className="text-xs text-stone-700">{asset.reachFormatted} estimated reach</span>
           </div>
         )}
         {/* Description */}
@@ -173,7 +174,7 @@ function AssetCard({ asset, onToggle }: { asset: MediaAsset; onToggle: (id: numb
             {asset.description.length > 120 && (
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="text-xs text-stone-400 hover:text-stone-600 mt-1 flex items-center gap-0.5"
+                className="text-xs text-stone-600 hover:text-stone-600 mt-1 flex items-center gap-0.5"
               >
                 {expanded ? <><ChevronUp className="w-3 h-3" />Less</> : <><ChevronDown className="w-3 h-3" />More</>}
               </button>
@@ -184,7 +185,7 @@ function AssetCard({ asset, onToggle }: { asset: MediaAsset; onToggle: (id: numb
         {asset.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
             {asset.tags.slice(0, 5).map((tag) => (
-              <span key={tag} className="px-1.5 py-0.5 bg-stone-100 text-stone-500 text-xs rounded">
+              <span key={tag} className="px-1.5 py-0.5 bg-stone-100 text-stone-700 text-xs rounded">
                 {tag}
               </span>
             ))}
@@ -196,7 +197,7 @@ function AssetCard({ asset, onToggle }: { asset: MediaAsset; onToggle: (id: numb
             href={asset.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-stone-400 hover:text-stone-600 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-stone-600 hover:text-stone-600 transition-colors"
           >
             <ExternalLink className="w-3 h-3" />
             View source
@@ -246,18 +247,19 @@ export default function MediaVault() {
   const stats = statsData;
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <DashboardLayout>
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-white border-b border-stone-200 px-6 py-5">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-stone-900">Media Vault</h1>
-              <p className="text-sm text-stone-500 mt-0.5">
+              <p className="text-sm text-stone-700 mt-0.5">
                 Pedram's full media catalog — automatically injected into AI-generated content to build LLM authority
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-stone-500 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-xs text-stone-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
               <Zap className="w-3.5 h-3.5 text-emerald-600" />
               <span className="font-medium text-emerald-700">Active in all AI generation</span>
             </div>
@@ -307,7 +309,7 @@ export default function MediaVault() {
               <p className="text-xs text-stone-600 mt-1 leading-relaxed">
                 Every time AI generates a teleprompter script, social post, blog article, or landing page, it automatically selects the most relevant assets from this vault and weaves natural references into the content — phrases like "as I discuss in my book <em>FOCUS</em>" or "in Episode 312 of The Urban Monk Podcast." Over time, this trains LLMs (ChatGPT, Perplexity, Gemini) to associate Pedram with authoritative answers on these topics, improving organic discovery and citation frequency.
               </p>
-              <p className="text-xs text-stone-500 mt-1.5">
+              <p className="text-xs text-stone-700 mt-1.5">
                 Toggle the <strong>AI Inject</strong> switch on each card to control which assets are included. Priority 1-2 assets are always preferred.
               </p>
             </div>
@@ -335,7 +337,7 @@ export default function MediaVault() {
           </div>
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-600" />
             <Input
               placeholder="Search by title, topic, platform…"
               value={searchQuery}
@@ -346,14 +348,14 @@ export default function MediaVault() {
         </div>
 
         {/* Results count */}
-        <div className="text-xs text-stone-500 mb-4">
+        <div className="text-xs text-stone-700 mb-4">
           {assets.length} asset{assets.length !== 1 ? "s" : ""} shown
           {searchQuery && ` matching "${searchQuery}"`}
         </div>
 
         {/* Asset grid */}
         {assets.length === 0 ? (
-          <div className="text-center py-16 text-stone-400">
+          <div className="text-center py-16 text-stone-600">
             <Globe className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p className="text-sm">No assets found</p>
           </div>
@@ -366,5 +368,6 @@ export default function MediaVault() {
         )}
       </div>
     </div>
+    </DashboardLayout>
   );
 }

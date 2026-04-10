@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -828,6 +829,7 @@ export default function ScriptLibrary() {
   const publishedCount = scriptsByStatus["published"]?.length ?? 0;
 
   return (
+    <DashboardLayout>
     <div className="min-h-screen bg-background text-foreground">
       {/* ── Page Header ─────────────────────────────────────────────────── */}
       <div className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-20">
@@ -1050,5 +1052,6 @@ export default function ScriptLibrary() {
         initial={editingScript}
       />
     </div>
+    </DashboardLayout>
   );
 }

@@ -860,3 +860,16 @@
 - [x] Add pushToTypeform procedure to webinarRouter (creates Typeform via API, returns live URL)
 - [x] Add Typeform Survey Builder panel to Step 4 of WebinarBuilder: AI questions → review/edit → Push to Typeform → URL returned
 - [x] Store typeformUrl in webinar_sessions after push
+
+## v34 — Navigation & Contrast Cleanup
+- [x] Wrap AvatarIntelligence in DashboardLayout (currently standalone, no nav)
+- [x] Wrap MediaVault in DashboardLayout (currently standalone, no nav)
+- [x] Wrap ScriptLibrary in DashboardLayout (currently standalone, no nav)
+- [x] Wrap ResearchIntelligence in DashboardLayout (currently standalone, only has back-to-home arrow)
+- [x] Fix LandingPageGenerator: remove duplicate custom sidebar, wrap in DashboardLayout
+- [x] Fix MediaVault contrast: text-stone-400/500 → text-stone-600/700
+- [x] Fix ScriptLibrary contrast: text-stone-400/500 → text-stone-600/700
+- [x] Fix LandingPageGenerator contrast: OKLCH text values bumped to higher contrast
+- [x] Fix AvatarIntelligence contrast: text-stone-400/500 → text-stone-600/700
+- [x] Improved --muted-foreground CSS variable from oklch(0.5) to oklch(0.42) globally
+- [x] Fixed text-gray-400/500 → text-gray-600/700 in ResearchIntelligence, WebinarBuilder, CreationStudio, Home

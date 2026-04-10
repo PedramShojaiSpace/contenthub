@@ -52,7 +52,7 @@
   --secondary-foreground: oklch(0.3 0.02 60);
 
   --muted: oklch(0.94 0.008 85);        /* Soft warm gray */
-  --muted-foreground: oklch(0.5 0.02 60);
+  --muted-foreground: oklch(0.42 0.02 60);   /* Improved contrast - was 0.5 (fails WCAG AA at small text) */
 
   --accent: oklch(0.88 0.04 120);       /* Soft sage green accent */
   --accent-foreground: oklch(0.2 0.04 120);

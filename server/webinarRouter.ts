@@ -689,23 +689,33 @@ Return ONLY the JSON array, no markdown wrapping.`;
       const apiKey = process.env.TYPEFORM_API_KEY;
       if (!apiKey) throw new Error("TYPEFORM_API_KEY is not configured");
 
+      // Typeform-supported field types — anything else falls back to long_text
+      const VALID_TF_TYPES = new Set([
+        "short_text", "long_text", "multiple_choice", "picture_choice",
+        "rating", "opinion_scale", "yes_no", "email", "phone_number",
+        "number", "date", "dropdown", "ranking", "matrix", "file_upload",
+        "statement", "website",
+      ]);
+
       // Build Typeform fields from question objects
       const fields = input.questions.map((q) => {
+        // Sanitize type — fall back to long_text for any unknown/hallucinated type
+        const safeType = VALID_TF_TYPES.has(q.type) ? q.type : "long_text";
         const field: any = {
           ref: q.ref,
           title: q.title,
-          type: q.type,
+          type: safeType,
           validations: { required: q.required },
         };
-        if (q.type === "multiple_choice" && q.choices && q.choices.length > 0) {
+        if (safeType === "multiple_choice" && q.choices && q.choices.length > 0) {
+          // Only pass known-safe properties to avoid INVALID_JSON errors
           field.properties = {
             choices: q.choices,
             allow_multiple_selection: q.properties?.allow_multiple_selection ?? false,
             allow_other_choice: q.properties?.allow_other_choice ?? true,
-            ...(q.properties ?? {}),
           };
-        } else if (q.type === "rating") {
-          field.properties = { steps: q.properties?.steps ?? 10 };
+        } else if (safeType === "rating" || safeType === "opinion_scale") {
+          field.properties = { steps: (q.properties?.steps as number) ?? 10 };
         }
         return field;
       });

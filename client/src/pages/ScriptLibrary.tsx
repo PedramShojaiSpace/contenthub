@@ -35,6 +35,8 @@ import {
   Eye,
   EyeOff,
   Archive,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";  
@@ -263,7 +265,20 @@ function ScriptCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
+
+  const handleCopyScript = async () => {
+    if (!script.scriptBody) return;
+    try {
+      await navigator.clipboard.writeText(script.scriptBody);
+      setCopied(true);
+      toast.success("Script copied to clipboard — paste directly into your teleprompter app");
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast.error("Copy failed — please select and copy the text manually");
+    }
+  };
 
   // Auto-expand and scroll into view when highlighted
   useEffect(() => {
@@ -417,6 +432,22 @@ function ScriptCard({
           >
             <ExternalLink className="w-3 h-3 mr-1" />
             View in Kanban
+          </Button>
+        )}
+        {script.scriptBody && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className={`h-6 text-xs px-2 transition-colors ${
+              copied
+                ? "text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+                : "text-teal-700 hover:text-teal-800 hover:bg-teal-50"
+            }`}
+            onClick={handleCopyScript}
+            title="Copy full script to clipboard — paste into teleprompter app"
+          >
+            {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+            {copied ? "Copied!" : "Copy"}
           </Button>
         )}
         {script.scriptBody && (

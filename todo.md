@@ -764,3 +764,7 @@
 - [x] Total pain points in DB: 38 (9 surface, 12 deep pain, 6 practitioner maze, 6 root cause, 5 objections)
 - [x] Persona selector already fully wired in Creation Studio (confirmed: state, query, mutation params in place)
 - [x] 4 buyer personas in DB: The Researcher, The Desperate Seeker, The Skeptical Executive, The Holistic Believer
+
+## v20 Features — Script Library Copy Button (April 10, 2026)
+
+- [x] Add "Copy Full Script" button to each script card in the Script Library (copies entire scriptBody to clipboard in one click, ready to paste into teleprompter app)

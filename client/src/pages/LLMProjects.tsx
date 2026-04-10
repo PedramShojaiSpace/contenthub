@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import DashboardLayout from "@/components/DashboardLayout";
 import { toast } from "sonner";
 import {
   Plus, Trash2, ChevronRight, Sparkles, FileText, Youtube,
   BookOpen, Share2, Mail, CheckCircle2, Clock, Zap, Target,
-  BarChart3, ArrowLeft, Edit2, RefreshCw
+  BarChart3, ArrowLeft, RefreshCw
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -36,17 +37,24 @@ const ASSET_LABELS: Record<AssetType, string> = {
   email: "Email",
 };
 
-const STATUS_COLORS: Record<AssetStatus, string> = {
-  queued: "bg-zinc-700 text-zinc-300",
-  in_progress: "bg-amber-900/60 text-amber-300",
-  produced: "bg-blue-900/60 text-blue-300",
-  published: "bg-emerald-900/60 text-emerald-300",
+const STATUS_BADGE: Record<AssetStatus, string> = {
+  queued: "bg-muted text-muted-foreground",
+  in_progress: "bg-amber-100 text-amber-700 border-amber-200",
+  produced: "bg-blue-100 text-blue-700 border-blue-200",
+  published: "bg-green-100 text-green-700 border-green-200",
 };
 
-const PRIORITY_COLORS: Record<Priority, string> = {
-  high: "bg-red-900/50 text-red-300 border-red-700/50",
-  medium: "bg-amber-900/50 text-amber-300 border-amber-700/50",
-  low: "bg-zinc-800 text-zinc-400 border-zinc-700",
+const PRIORITY_BADGE: Record<Priority, string> = {
+  high: "bg-red-100 text-red-700 border-red-200",
+  medium: "bg-amber-100 text-amber-700 border-amber-200",
+  low: "bg-muted text-muted-foreground border-border",
+};
+
+const STATUS_ROW_BG: Record<AssetStatus, string> = {
+  queued: "border-border bg-card hover:border-primary/30",
+  in_progress: "border-amber-200 bg-amber-50/50",
+  produced: "border-blue-200 bg-blue-50/50",
+  published: "border-green-200 bg-green-50/40",
 };
 
 // ─── Create Project Dialog ─────────────────────────────────────────────────
@@ -71,43 +79,43 @@ function CreateProjectDialog({ onCreated }: { onCreated: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-violet-600 hover:bg-violet-500 text-white gap-2">
+        <Button className="gap-2">
           <Plus className="w-4 h-4" /> New Project
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-lg">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Create LLM Visibility Project</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Project Name *</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Project Name *</label>
             <Input value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Sleep & Recovery Authority" className="bg-zinc-800 border-zinc-700" />
+              placeholder="e.g., Sleep & Recovery Authority" />
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Topic Cluster</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Topic Cluster</label>
             <Input value={topicCluster} onChange={(e) => setTopicCluster(e.target.value)}
-              placeholder="e.g., sleep optimization, circadian rhythm, insomnia" className="bg-zinc-800 border-zinc-700" />
+              placeholder="e.g., sleep optimization, circadian rhythm, insomnia" />
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Description</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Description</label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder="What LLM questions should Dr. Shojai own in this space?" rows={3}
-              className="bg-zinc-800 border-zinc-700 resize-none" />
+              className="resize-none" />
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Target Keywords (comma-separated)</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Target Keywords (comma-separated)</label>
             <Input value={keywords} onChange={(e) => setKeywords(e.target.value)}
-              placeholder="how to sleep better, sleep hygiene, deep sleep tips" className="bg-zinc-800 border-zinc-700" />
+              placeholder="how to sleep better, sleep hygiene, deep sleep tips" />
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Weekly Production Target</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Weekly Production Target</label>
             <Select value={weeklyTarget} onValueChange={setWeeklyTarget}>
-              <SelectTrigger className="bg-zinc-800 border-zinc-700">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-700">
+              <SelectContent>
                 {[1,2,3,4,5,7,10].map(n => (
                   <SelectItem key={n} value={String(n)}>{n} asset{n > 1 ? "s" : ""}/week</SelectItem>
                 ))}
@@ -118,8 +126,7 @@ function CreateProjectDialog({ onCreated }: { onCreated: () => void }) {
             name, description, topicCluster,
             targetKeywords: keywords ? keywords.split(",").map(k => k.trim()).filter(Boolean) : undefined,
             weeklyTarget: parseInt(weeklyTarget),
-          })} disabled={!name || createMutation.isPending}
-            className="w-full bg-violet-600 hover:bg-violet-500">
+          })} disabled={!name || createMutation.isPending} className="w-full">
             {createMutation.isPending ? "Creating..." : "Create Project"}
           </Button>
         </div>
@@ -151,27 +158,27 @@ function GenerateQueueDialog({ projectId, topicCluster, onGenerated }: {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="border-violet-600 text-violet-400 hover:bg-violet-900/30 gap-2">
+        <Button variant="outline" className="gap-2">
           <Sparkles className="w-4 h-4" /> AI Generate Queue
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-md">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Generate Asset Queue with AI</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <p className="text-sm text-zinc-400">
-            AI will generate a prioritized production queue for <strong className="text-white">"{topicCluster}"</strong> — covering every question Dr. Shojai should own in LLM engines.
+          <p className="text-sm text-muted-foreground">
+            AI will generate a prioritized production queue for <strong className="text-foreground">"{topicCluster}"</strong> — covering every question Dr. Shojai should own in LLM engines.
           </p>
           <div>
-            <label className="text-sm text-zinc-400 mb-2 block">Asset Types to Include</label>
+            <label className="text-sm text-muted-foreground mb-2 block">Asset Types to Include</label>
             <div className="flex flex-wrap gap-2">
               {(["faq", "youtube", "blog", "social", "email"] as AssetType[]).map(t => (
                 <button key={t} onClick={() => toggleType(t)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
                     types.includes(t)
-                      ? "bg-violet-600 border-violet-500 text-white"
-                      : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
                   }`}>
                   {ASSET_ICONS[t]} {ASSET_LABELS[t]}
                 </button>
@@ -179,12 +186,12 @@ function GenerateQueueDialog({ projectId, topicCluster, onGenerated }: {
             </div>
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Number of Assets to Generate</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Number of Assets to Generate</label>
             <Select value={count} onValueChange={setCount}>
-              <SelectTrigger className="bg-zinc-800 border-zinc-700">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-700">
+              <SelectContent>
                 {[10, 15, 20, 25, 30, 40].map(n => (
                   <SelectItem key={n} value={String(n)}>{n} assets</SelectItem>
                 ))}
@@ -193,8 +200,7 @@ function GenerateQueueDialog({ projectId, topicCluster, onGenerated }: {
           </div>
           <Button onClick={() => generateMutation.mutate({
             projectId, topicCluster, assetTypes: types, count: parseInt(count),
-          })} disabled={types.length === 0 || generateMutation.isPending}
-            className="w-full bg-violet-600 hover:bg-violet-500">
+          })} disabled={types.length === 0 || generateMutation.isPending} className="w-full">
             {generateMutation.isPending ? (
               <span className="flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" /> Generating queue...</span>
             ) : `Generate ${count} Assets`}
@@ -228,75 +234,68 @@ function AddAssetDialog({ projectId, onAdded }: { projectId: number; onAdded: ()
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="border-zinc-600 text-zinc-300 hover:bg-zinc-800 gap-2">
+        <Button variant="outline" className="gap-2">
           <Plus className="w-4 h-4" /> Add Asset
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-lg">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Add Asset to Queue</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm text-zinc-400 mb-1 block">Asset Type</label>
-              <Select value={assetType} onValueChange={(v) => setAssetType(v as AssetType)}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
-                  {(["faq", "youtube", "blog", "social", "email"] as AssetType[]).map(t => (
-                    <SelectItem key={t} value={t}>{ASSET_LABELS[t]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm text-zinc-400 mb-1 block">Priority</label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Asset Type</label>
+            <Select value={assetType} onValueChange={(v) => setAssetType(v as AssetType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["faq", "youtube", "blog", "social", "email"] as AssetType[]).map(t => (
+                  <SelectItem key={t} value={t}>{ASSET_LABELS[t]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Title / Headline *</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Title *</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Why You Can't Sleep: 7 Hidden Causes Doctors Miss"
-              className="bg-zinc-800 border-zinc-700" />
+              placeholder="e.g., Why You Wake Up at 3am (And How to Stop)" />
           </div>
-          {(assetType === "faq" || assetType === "youtube") && (
-            <div>
-              <label className="text-sm text-zinc-400 mb-1 block">Question Being Answered</label>
-              <Input value={question} onChange={(e) => setQuestion(e.target.value)}
-                placeholder="e.g., Why do I wake up at 3am every night?"
-                className="bg-zinc-800 border-zinc-700" />
-            </div>
-          )}
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Target Keyword</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Question Being Answered</label>
+            <Input value={question} onChange={(e) => setQuestion(e.target.value)}
+              placeholder="e.g., Why do I keep waking up in the middle of the night?" />
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Priority</label>
+            <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Target Keyword</label>
             <Input value={targetKeyword} onChange={(e) => setTargetKeyword(e.target.value)}
-              placeholder="e.g., why can't I sleep at night" className="bg-zinc-800 border-zinc-700" />
+              placeholder="e.g., why can't I sleep at night" />
           </div>
           <div>
-            <label className="text-sm text-zinc-400 mb-1 block">Production Notes</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Production Notes</label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
               placeholder="Angle, emphasis, CTA, tone notes..." rows={2}
-              className="bg-zinc-800 border-zinc-700 resize-none" />
+              className="resize-none" />
           </div>
           <Button onClick={() => addMutation.mutate({
             projectId, assetType, title, priority,
             question: question || undefined,
             targetKeyword: targetKeyword || undefined,
             notes: notes || undefined,
-          })} disabled={!title || addMutation.isPending}
-            className="w-full bg-violet-600 hover:bg-violet-500">
+          })} disabled={!title || addMutation.isPending} className="w-full">
             {addMutation.isPending ? "Adding..." : "Add to Queue"}
           </Button>
         </div>
@@ -335,37 +334,32 @@ function AssetRow({ asset, onStatusChange, onDelete, onLaunch }: {
   };
 
   return (
-    <div className={`group flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-      status === "published" ? "border-emerald-800/40 bg-emerald-950/20" :
-      status === "produced" ? "border-blue-800/40 bg-blue-950/20" :
-      status === "in_progress" ? "border-amber-800/40 bg-amber-950/20" :
-      "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700"
-    }`}>
+    <div className={`group flex items-start gap-3 p-3 rounded-lg border transition-colors ${STATUS_ROW_BG[status]}`}>
       {/* Type icon */}
-      <div className="mt-0.5 text-zinc-500 flex-shrink-0">{ASSET_ICONS[type]}</div>
+      <div className="mt-0.5 text-muted-foreground flex-shrink-0">{ASSET_ICONS[type]}</div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-medium leading-snug ${
-              status === "published" ? "text-zinc-400 line-through" : "text-white"
+              status === "published" ? "text-muted-foreground line-through" : "text-foreground"
             }`}>{asset.title}</p>
             {asset.question && (
-              <p className="text-xs text-zinc-500 mt-0.5 italic">"{asset.question}"</p>
+              <p className="text-xs text-muted-foreground mt-0.5 italic">"{asset.question}"</p>
             )}
             {asset.targetKeyword && (
-              <p className="text-xs text-violet-400/70 mt-0.5">🎯 {asset.targetKeyword}</p>
+              <p className="text-xs text-primary/70 mt-0.5">🎯 {asset.targetKeyword}</p>
             )}
             {asset.notes && (
-              <p className="text-xs text-zinc-600 mt-1 leading-relaxed">{asset.notes}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{asset.notes}</p>
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className={`text-xs px-2 py-0.5 rounded-full border ${PRIORITY_COLORS[priority]}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${PRIORITY_BADGE[priority]}`}>
               {priority}
             </span>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[status]}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_BADGE[status]}`}>
               {status.replace("_", " ")}
             </span>
           </div>
@@ -373,25 +367,25 @@ function AssetRow({ asset, onStatusChange, onDelete, onLaunch }: {
 
         {/* Actions */}
         <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs text-zinc-600 uppercase tracking-wide">{ASSET_LABELS[type]}</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">{ASSET_LABELS[type]}</span>
           <div className="flex-1" />
           {status !== "published" && (
             <Button size="sm" variant="ghost"
               onClick={() => onLaunch(asset)}
-              className="h-6 px-2 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-900/30">
+              className="h-6 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10">
               <Zap className="w-3 h-3 mr-1" /> Create in Studio
             </Button>
           )}
           {nextStatus[status] && (
             <Button size="sm" variant="ghost"
               onClick={() => onStatusChange(asset.id, nextStatus[status]!)}
-              className="h-6 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30">
+              className="h-6 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50">
               <CheckCircle2 className="w-3 h-3 mr-1" /> {nextStatusLabel[status]}
             </Button>
           )}
           <Button size="sm" variant="ghost"
             onClick={() => onDelete(asset.id)}
-            className="h-6 px-2 text-xs text-zinc-600 hover:text-red-400 hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity">
+            className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity">
             <Trash2 className="w-3 h-3" />
           </Button>
         </div>
@@ -425,7 +419,6 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
   });
 
   const handleLaunch = (asset: { assetType: string; title: string; question?: string | null; targetKeyword?: string | null }) => {
-    // Navigate to Creation Studio with pre-filled context
     const params = new URLSearchParams({
       source: "llm_project",
       type: asset.assetType,
@@ -450,13 +443,16 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" onClick={onBack} className="text-zinc-400 hover:text-white gap-1 px-2">
+        <Button variant="ghost" onClick={onBack} className="gap-1 px-2 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
         <div className="flex-1">
-          <h2 className="text-xl font-semibold text-white">{project.name}</h2>
+          <h2 className="text-xl font-semibold text-foreground">{project.name}</h2>
+          {project.topicCluster && (
+            <p className="text-xs text-primary/70 mt-0.5">{project.topicCluster}</p>
+          )}
           {project.description && (
-            <p className="text-sm text-zinc-400 mt-0.5">{project.description}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{project.description}</p>
           )}
         </div>
         <div className="flex gap-2">
@@ -474,36 +470,36 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-white">{queuedCount}</div>
-            <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
+            <div className="text-2xl font-bold text-foreground">{queuedCount}</div>
+            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
               <Clock className="w-3 h-3" /> In Queue
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-amber-400">{inProgressCount}</div>
-            <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
+            <div className="text-2xl font-bold text-amber-600">{inProgressCount}</div>
+            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
               <Zap className="w-3 h-3" /> In Progress
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-emerald-400">{producedCount}</div>
-            <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
+            <div className="text-2xl font-bold text-green-600">{producedCount}</div>
+            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" /> Produced
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-violet-400">
+            <div className="text-2xl font-bold text-primary">
               {cadence?.weeksToComplete ?? "—"}
             </div>
-            <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
+            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
               <Target className="w-3 h-3" /> Weeks to Complete
             </div>
           </CardContent>
@@ -512,19 +508,19 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 
       {/* Weekly cadence */}
       {cadence && (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-zinc-400">This Week's Progress</span>
-              <span className="text-sm font-medium text-white">
+              <span className="text-sm text-muted-foreground">This Week's Progress</span>
+              <span className="text-sm font-medium text-foreground">
                 {cadence.producedThisWeek} / {cadence.weeklyTarget} assets
               </span>
             </div>
             <Progress
               value={Math.min(100, (cadence.producedThisWeek / cadence.weeklyTarget) * 100)}
-              className="h-2 bg-zinc-800"
+              className="h-2"
             />
-            <p className="text-xs text-zinc-600 mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               At {cadence.weeklyTarget} assets/week, you'll complete this queue in ~{cadence.weeksToComplete} weeks
             </p>
           </CardContent>
@@ -534,8 +530,8 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
       {/* Overall progress */}
       {totalCount > 0 && (
         <div className="flex items-center gap-3">
-          <Progress value={progressPct} className="flex-1 h-1.5 bg-zinc-800" />
-          <span className="text-xs text-zinc-500 flex-shrink-0">{progressPct}% complete</span>
+          <Progress value={progressPct} className="flex-1 h-1.5" />
+          <span className="text-xs text-muted-foreground flex-shrink-0">{progressPct}% complete</span>
         </div>
       )}
 
@@ -545,19 +541,19 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-3 py-1 rounded-full text-xs border transition-colors ${
               statusFilter === s
-                ? "bg-violet-600 border-violet-500 text-white"
-                : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
             }`}>
             {s === "all" ? "All" : s.replace("_", " ")}
           </button>
         ))}
-        <div className="w-px bg-zinc-700 mx-1" />
+        <div className="w-px bg-border mx-1" />
         {(["all", "faq", "youtube", "blog", "social", "email"] as const).map(t => (
           <button key={t} onClick={() => setTypeFilter(t)}
             className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
               typeFilter === t
-                ? "bg-zinc-600 border-zinc-500 text-white"
-                : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                ? "bg-secondary text-secondary-foreground border-secondary"
+                : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
             }`}>
             {t !== "all" && ASSET_ICONS[t as AssetType]}
             {t === "all" ? "All Types" : ASSET_LABELS[t as AssetType]}
@@ -567,12 +563,12 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 
       {/* Asset list */}
       {isLoading ? (
-        <div className="text-center py-12 text-zinc-500">Loading queue...</div>
+        <div className="text-center py-12 text-muted-foreground">Loading queue...</div>
       ) : assets.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-zinc-700 rounded-xl">
-          <Sparkles className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-          <p className="text-zinc-400 font-medium">No assets in queue yet</p>
-          <p className="text-sm text-zinc-600 mt-1 mb-4">
+        <div className="text-center py-16 border border-dashed border-border rounded-xl">
+          <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-foreground font-medium">No assets in queue yet</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
             Use "AI Generate Queue" to auto-fill 20–40 prioritized assets, or add them manually.
           </p>
           <GenerateQueueDialog
@@ -614,56 +610,59 @@ function ProjectCard({ project, onOpen, onDelete }: {
     ? Math.ceil(remaining / project.weeklyTarget) : 0;
 
   return (
-    <Card className={`bg-zinc-900 border-zinc-800 hover:border-violet-700/50 transition-colors cursor-pointer group ${
-      project.status === "archived" ? "opacity-50" : ""
-    }`} onClick={() => onOpen(project.id)}>
+    <Card
+      className={`hover:border-primary/40 transition-colors cursor-pointer group ${
+        project.status === "archived" ? "opacity-50" : ""
+      }`}
+      onClick={() => onOpen(project.id)}
+    >
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white group-hover:text-violet-300 transition-colors truncate">
+            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
               {project.name}
             </h3>
             {project.topicCluster && (
-              <p className="text-xs text-violet-400/70 mt-0.5 truncate">{project.topicCluster}</p>
+              <p className="text-xs text-primary/70 mt-0.5 truncate">{project.topicCluster}</p>
             )}
             {project.description && (
-              <p className="text-sm text-zinc-500 mt-1 line-clamp-2">{project.description}</p>
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{project.description}</p>
             )}
           </div>
           <div className="flex items-center gap-1 ml-2">
             <Button size="sm" variant="ghost"
               onClick={(e) => { e.stopPropagation(); onDelete(project.id); }}
-              className="h-7 w-7 p-0 text-zinc-600 hover:text-red-400 hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity">
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity">
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
-            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-violet-400 transition-colors" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div className="text-center">
-            <div className="text-lg font-bold text-white">{project.totalAssets}</div>
-            <div className="text-xs text-zinc-600">Total</div>
+            <div className="text-lg font-bold text-foreground">{project.totalAssets}</div>
+            <div className="text-xs text-muted-foreground">Total</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-bold text-emerald-400">{project.producedAssets}</div>
-            <div className="text-xs text-zinc-600">Done</div>
+            <div className="text-lg font-bold text-green-600">{project.producedAssets}</div>
+            <div className="text-xs text-muted-foreground">Done</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-bold text-amber-400">{remaining}</div>
-            <div className="text-xs text-zinc-600">Queue</div>
+            <div className="text-lg font-bold text-amber-600">{remaining}</div>
+            <div className="text-xs text-muted-foreground">Queue</div>
           </div>
         </div>
 
         {/* Progress bar */}
         {project.totalAssets > 0 && (
           <div>
-            <Progress value={progressPct} className="h-1.5 bg-zinc-800" />
+            <Progress value={progressPct} className="h-1.5" />
             <div className="flex justify-between mt-1">
-              <span className="text-xs text-zinc-600">{progressPct}% complete</span>
+              <span className="text-xs text-muted-foreground">{progressPct}% complete</span>
               {weeksLeft > 0 && (
-                <span className="text-xs text-zinc-600">~{weeksLeft}w at {project.weeklyTarget}/wk</span>
+                <span className="text-xs text-muted-foreground">~{weeksLeft}w at {project.weeklyTarget}/wk</span>
               )}
             </div>
           </div>
@@ -690,28 +689,28 @@ export default function LLMProjects() {
 
   if (selectedProjectId !== null) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white p-6">
-        <div className="max-w-4xl mx-auto">
+      <DashboardLayout>
+        <div className="p-6 max-w-4xl mx-auto">
           <ProjectDetail
             projectId={selectedProjectId}
             onBack={() => setSelectedProjectId(null)}
           />
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <DashboardLayout>
+      <div className="p-6 max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-violet-400" />
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-primary" />
               LLM Visibility Projects
             </h1>
-            <p className="text-sm text-zinc-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Build Dr. Shojai's authority in AI engines — one topic cluster at a time.
               Each project is a production queue of FAQs, videos, blogs, and social content
               designed to make him the cited source for every question in that space.
@@ -723,40 +722,40 @@ export default function LLMProjects() {
         {/* Summary stats */}
         {projects.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="border-primary/20 bg-primary/5">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-violet-900/40 flex items-center justify-center">
-                  <Target className="w-5 h-5 text-violet-400" />
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-white">{projects.length}</div>
-                  <div className="text-xs text-zinc-500">Active Projects</div>
+                  <div className="text-xl font-bold text-foreground">{projects.length}</div>
+                  <div className="text-xs text-muted-foreground">Active Projects</div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card>
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-amber-900/40 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-amber-400" />
+                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-white">
+                  <div className="text-xl font-bold text-foreground">
                     {projects.reduce((s, p) => s + (p.totalAssets - p.producedAssets), 0)}
                   </div>
-                  <div className="text-xs text-zinc-500">Assets in Queue</div>
+                  <div className="text-xs text-muted-foreground">Assets in Queue</div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card>
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-emerald-900/40 flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-white">
+                  <div className="text-xl font-bold text-foreground">
                     {projects.reduce((s, p) => s + p.producedAssets, 0)}
                   </div>
-                  <div className="text-xs text-zinc-500">Assets Produced</div>
+                  <div className="text-xs text-muted-foreground">Assets Produced</div>
                 </div>
               </CardContent>
             </Card>
@@ -765,12 +764,12 @@ export default function LLMProjects() {
 
         {/* Project grid */}
         {isLoading ? (
-          <div className="text-center py-16 text-zinc-500">Loading projects...</div>
+          <div className="text-center py-16 text-muted-foreground">Loading projects...</div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-20 border border-dashed border-zinc-700 rounded-xl">
-            <BarChart3 className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-zinc-300 mb-2">No LLM Projects Yet</h3>
-            <p className="text-sm text-zinc-500 max-w-md mx-auto mb-6">
+          <div className="text-center py-20 border border-dashed border-border rounded-xl">
+            <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No LLM Projects Yet</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
               Create your first project to start building Dr. Shojai's authority in AI engines.
               Each project covers a topic cluster — sleep, gut health, energy, stress — with a
               full production queue of FAQs, videos, and blogs to work through over time.
@@ -790,6 +789,6 @@ export default function LLMProjects() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

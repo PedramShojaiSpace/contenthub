@@ -169,6 +169,13 @@
       "when": 1775838917072,
       "tag": "0023_wealthy_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1775848453593,
+      "tag": "0024_clear_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

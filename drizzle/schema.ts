@@ -546,7 +546,7 @@ export const webinarStatusEnum = mysqlEnum("webinarStatus", [
 
 export const webinarSessions = mysqlTable("webinar_sessions", {
   id: int("id").autoincrement().primaryKey(),
-  topic: varchar("topic", { length: 512 }).notNull(),
+  topic: text("topic").notNull(),
   cta: text("cta"),                          // e.g. "Buy the Upstream Bundle at $399"
   personaIds: text("personaIds"),            // JSON array of persona IDs e.g. "[1,3,5]"
   targetLengthMinutes: int("targetLengthMinutes").default(60),

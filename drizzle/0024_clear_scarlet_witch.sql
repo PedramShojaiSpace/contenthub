@@ -1,0 +1,1 @@
+ALTER TABLE `webinar_sessions` MODIFY COLUMN `topic` text NOT NULL;

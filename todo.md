@@ -873,3 +873,7 @@
 - [x] Fix AvatarIntelligence contrast: text-stone-400/500 → text-stone-600/700
 - [x] Improved --muted-foreground CSS variable from oklch(0.5) to oklch(0.42) globally
 - [x] Fixed text-gray-400/500 → text-gray-600/700 in ResearchIntelligence, WebinarBuilder, CreationStudio, Home
+
+## v35 — Webinar Topic Column Fix
+- [x] Change webinar_sessions.topic from varchar(512) to text (supports full paragraph descriptions)
+- [x] Run db:push migration (0024_clear_scarlet_witch.sql applied)

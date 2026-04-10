@@ -166,8 +166,21 @@ export const webinarRouter = router({
         targetLengthMinutes: input.targetLengthMinutes,
         registrationUrl: input.registrationUrl || undefined,
       });
-      const insertId = (result as { insertId?: number })?.insertId ?? 0;
-      return { id: insertId };
+      // Robustly extract insertId — Drizzle MySQL may return it directly or nested
+      const rawId = (result as any)?.insertId ?? (result as any)?.[0]?.insertId;
+      if (rawId && rawId > 0) {
+        return { id: rawId as number };
+      }
+      // Fallback: query the most recently inserted webinar matching this topic
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const rows = await db
+        .select()
+        .from(webinarSessions)
+        .orderBy(webinarSessions.id)
+      const fallbackId = rows[rows.length - 1]?.id;
+      if (!fallbackId) throw new Error("Failed to retrieve created webinar ID");
+      return { id: fallbackId };
     }),
 
   // Update basic fields

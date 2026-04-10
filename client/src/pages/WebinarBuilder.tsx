@@ -212,7 +212,7 @@ export default function WebinarBuilder() {
       markStepComplete(1);
       setStep(2);
       refetchSessions();
-      toast.success("Webinar created! Now generating your outline...");
+      toast.success("Webinar created! Click \"Generate Outline\" to build your AI outline.");
     },
     onError: (err) => toast.error("Failed to create: " + err.message),
   });
@@ -523,7 +523,10 @@ export default function WebinarBuilder() {
             variant="outline"
             size="sm"
             onClick={() => {
-              if (!activeWebinarId) return;
+              if (activeWebinarId === null) {
+                toast.error("Please complete Step 1 first to create the webinar session.");
+                return;
+              }
               generateOutlineMutation.mutate({
                 id: activeWebinarId,
                 topic,
@@ -533,7 +536,7 @@ export default function WebinarBuilder() {
                 registrationUrl,
               });
             }}
-            disabled={generateOutlineMutation.isPending}
+            disabled={generateOutlineMutation.isPending || activeWebinarId === null}
           >
             {generateOutlineMutation.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
@@ -663,7 +666,7 @@ export default function WebinarBuilder() {
             variant="outline"
             size="sm"
             onClick={() => {
-              if (!activeWebinarId) return;
+              if (activeWebinarId === null) return;
               generateLandingCopyMutation.mutate({
                 id: activeWebinarId,
                 topic,
@@ -781,7 +784,7 @@ export default function WebinarBuilder() {
                 ) : (
                   <Button
                     onClick={() => {
-                      if (!activeWebinarId) return;
+                      if (activeWebinarId === null) return;
                       publishToGammaMutation.mutate({
                         id: activeWebinarId,
                         landingPageCopy,
@@ -878,7 +881,7 @@ export default function WebinarBuilder() {
               <Button
                 size="sm"
                 onClick={() => {
-                  if (!activeWebinarId) return;
+                  if (activeWebinarId === null) return;
                   generateThankYouMutation.mutate({
                     id: activeWebinarId,
                     topic,
@@ -937,7 +940,7 @@ export default function WebinarBuilder() {
               size="sm"
               className="bg-violet-600 hover:bg-violet-700 text-white"
               onClick={() => {
-                if (!activeWebinarId) return;
+                if (activeWebinarId === null) return;
                 exportKajabiMutation.mutate({
                   id: activeWebinarId,
                   topic,

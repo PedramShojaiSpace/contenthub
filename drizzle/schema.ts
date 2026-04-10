@@ -535,3 +535,39 @@ export const appSettings = mysqlTable("app_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type AppSetting = typeof appSettings.$inferSelect;
+
+// ─── Webinar Builder ──────────────────────────────────────────────────────────
+export const webinarStatusEnum = mysqlEnum("webinarStatus", [
+  "draft",
+  "ready",
+  "live",
+  "completed",
+]);
+
+export const webinarSessions = mysqlTable("webinar_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  topic: varchar("topic", { length: 512 }).notNull(),
+  cta: text("cta"),                          // e.g. "Buy the Upstream Bundle at $399"
+  personaIds: text("personaIds"),            // JSON array of persona IDs e.g. "[1,3,5]"
+  targetLengthMinutes: int("targetLengthMinutes").default(60),
+  registrationUrl: text("registrationUrl"),  // Zoom webinar registration link
+  // Step 2: AI-generated outline
+  outline: text("outline"),                  // AI-generated markdown outline
+  hookScript: text("hookScript"),            // AI-generated opening hook
+  // Step 3: Landing page
+  landingPageCopy: text("landingPageCopy"),  // AI-generated landing page copy (markdown)
+  gammaUrl: text("gammaUrl"),                // Published Gamma landing page URL
+  gammaGenerationId: varchar("gammaGenerationId", { length: 128 }),
+  // Step 4: Thank you page
+  thankYouWistiaId: varchar("thankYouWistiaId", { length: 64 }), // Wistia video ID
+  thankYouTypeformUrl: text("thankYouTypeformUrl"),               // Typeform embed URL
+  thankYouPageCopy: text("thankYouPageCopy"),                    // AI-generated thank you copy
+  // Kajabi automation export
+  kajabiExport: text("kajabiExport"),        // JSON blob of Kajabi automation plan
+  status: webinarStatusEnum.default("draft").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WebinarSession = typeof webinarSessions.$inferSelect;
+export type InsertWebinarSession = typeof webinarSessions.$inferInsert;

@@ -155,6 +155,20 @@
       "when": 1775828310820,
       "tag": "0021_skinny_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1775838837876,
+      "tag": "0022_late_annihilus",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1775838917072,
+      "tag": "0023_wealthy_triathlon",
+      "breakpoints": true
     }
   ]
 }

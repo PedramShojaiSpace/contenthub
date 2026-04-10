@@ -841,3 +841,15 @@
 - [x] Rename selector to "Meta Format" with clearer labels
 - [x] Add note that video/reels must be uploaded manually from Descript
 - [x] Clarify carousel note: select "Post" + add multiple images in Buffer
+
+## v32 — Webinar Funnel Builder
+- [x] Add webinar_sessions table to schema (topic, cta, personaIds, targetLength, outline, registrationUrl, status, landingPageCopy, thankYouPageCopy, thankYouWistiaId, thankYouTypeformUrl, kajabiExport, gammaUrl, gammaGenerationId)
+- [x] Add webinarRouter.ts with: create, list, get, update, generateOutline, generateLandingCopy, publishToGamma, pollGamma, generateThankYouCopy, exportKajabiPlan procedures
+- [x] Build WebinarBuilder.tsx: 4-step wizard (Setup → Outline → Landing Page → Thank You + Kajabi)
+- [x] Step 1: topic, CTA, Zoom link, multi-persona selector (checkboxes), target length
+- [x] Step 2: AI outline generation with hook script + full outline
+- [x] Step 3: Landing page copy generation + Gamma publish button + polling
+- [x] Step 4: Thank you page builder (Wistia ID, Typeform URL) + Kajabi automation export panel
+- [x] Add "Create Webinar" to DashboardLayout sidebar nav with Video icon
+- [x] Register /webinar route in App.tsx
+- [x] Add vitest for webinarRouter (10 tests, all passing)

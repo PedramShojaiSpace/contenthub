@@ -45,6 +45,7 @@ import { mediaRouter } from "./mediaRouter";
 import { avatarRouter } from "./avatarRouter";
 import { ctaRouter } from "./ctaRouter";
 import { growthRouter } from "./growthRouter";
+import { webinarRouter } from "./webinarRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -1559,5 +1560,6 @@ Return BOTH in this exact format:
   avatar: avatarRouter,
   cta: ctaRouter,
   growth: growthRouter,
+  webinar: webinarRouter,
 });
 export type AppRouter = typeof appRouter;

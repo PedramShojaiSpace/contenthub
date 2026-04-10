@@ -835,3 +835,9 @@
 - [x] Update pushToBuffer to accept channelService map and inject correct metadata per channel
 - [x] Add "Post Type" dropdown in Creation Studio meta card (post / story / reel)
 - [x] Show carousel note in meta card when postType = carousel (manual upload required)
+
+## v31 — Meta Buffer Push Clarity
+- [x] Remove "Reel" option from Meta post type dropdown (video must be manual)
+- [x] Rename selector to "Meta Format" with clearer labels
+- [x] Add note that video/reels must be uploaded manually from Descript
+- [x] Clarify carousel note: select "Post" + add multiple images in Buffer

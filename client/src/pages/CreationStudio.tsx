@@ -167,8 +167,9 @@ export default function CreationStudio() {
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [syndicatingPlatform, setSyndicatingPlatform] = useState<string | null>(null);
   const [syndicationResults, setSyndicationResults] = useState<Record<string, { success: boolean; error?: string }>>({})
-  // Meta post type selector (post / story / reel) — required by Buffer API for facebook/instagram
-  const [metaPostType, setMetaPostType] = useState<"post" | "story" | "reel">("post");
+  // Meta format selector (post / story) — required by Buffer API for facebook/instagram
+  // Reels are video-only and must be uploaded manually from Descript — not supported via Buffer here
+  const [metaPostType, setMetaPostType] = useState<"post" | "story">("post");
 
   // ── YouTube Competitive Intelligence state ──────────────────────────────────
   type YTVideo = {
@@ -651,7 +652,7 @@ export default function CreationStudio() {
       profileIds: platformFilteredIds,
       imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
       platform: p, // enforce X 280-char limit server-side
-      metaPostType: (p === "meta") ? metaPostType : undefined,
+      metaPostType: (p === "meta") ? (metaPostType as "post" | "story" | "reel") : undefined,
       channelServiceMap: (p === "meta") ? channelServiceMap : undefined,
     });
   };
@@ -746,7 +747,7 @@ export default function CreationStudio() {
       profileIds,
       imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
       platform: p, // enforce X 280-char limit server-side
-      metaPostType: (p === "meta") ? metaPostType : undefined,
+      metaPostType: (p === "meta") ? (metaPostType as "post" | "story" | "reel") : undefined,
       channelServiceMap: (p === "meta") ? directChannelServiceMap : undefined,
     });
   };
@@ -2375,24 +2376,27 @@ export default function CreationStudio() {
                     )}
                   </div>
 
-                  {/* Meta Post Type Selector — required by Buffer API for facebook/instagram */}
+                  {/* Meta Format Selector — required by Buffer API for facebook/instagram */}
                   {(platform === "meta" || platform === "all") && (
                     <div className="space-y-2">
                       <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                        Meta Post Type
+                        Meta Format
                       </Label>
-                      <Select value={metaPostType} onValueChange={(v) => setMetaPostType(v as "post" | "story" | "reel")}>
+                      <Select value={metaPostType} onValueChange={(v) => setMetaPostType(v as "post" | "story")}>
                         <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder="Select format" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="post">Post — standard feed post</SelectItem>
-                          <SelectItem value="reel">Reel — short-form video</SelectItem>
-                          <SelectItem value="story">Story — 24-hour story</SelectItem>
+                          <SelectItem value="post">📸 Image Post — feed post with image &amp; copy</SelectItem>
+                          <SelectItem value="story">⏱ Story — 24-hour disappearing post</SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-[10px] text-muted-foreground">
-                        Facebook &amp; Instagram require a post type. For carousel posts, choose <strong>Post</strong> — Buffer will handle the carousel format when you add multiple images directly in Buffer.
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        Pushes your <strong>image and copy</strong> to Buffer for Facebook &amp; Instagram.
+                        For a <strong>carousel</strong>, select Image Post — then add multiple images inside Buffer before publishing.
+                      </p>
+                      <p className="text-[10px] text-amber-500/80 leading-relaxed mt-1">
+                        🎬 <strong>Reels &amp; video</strong> must be uploaded manually — export from Descript and upload directly in Meta.
                       </p>
                     </div>
                   )}

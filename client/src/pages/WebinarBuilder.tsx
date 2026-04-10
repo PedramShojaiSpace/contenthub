@@ -204,8 +204,6 @@ export default function WebinarBuilder() {
   const [typeformUrl, setTypeformUrl] = useState("");
   const [thankYouCopy, setThankYouCopy] = useState("");
   const [kajabiPlan, setKajabiPlan] = useState<any>(null);
-  const [showKajabiRaw, setShowKajabiRaw] = useState(false);
-
   // Typeform survey state
   const [surveyQuestions, setSurveyQuestions] = useState<any[]>([]);
   const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
@@ -356,7 +354,7 @@ export default function WebinarBuilder() {
 
   const exportKajabiMutation = trpc.webinar.exportKajabiPlan.useMutation({
     onSuccess: (data) => {
-      setKajabiPlan((data as any).kajabiPlan ?? data);
+      setKajabiPlan(data);
       markStepComplete(4);
       toast.success("Kajabi automation plan generated!");
     },
@@ -1276,11 +1274,18 @@ export default function WebinarBuilder() {
             </Button>
 
             {kajabiPlan && (
-              <div className="space-y-4">
-                {/* Pipeline summary */}
-                <div className="p-3 rounded-lg bg-background border border-border/50">
-                  <p className="text-xs font-semibold text-foreground mb-1">Pipeline: {kajabiPlan.pipeline_name}</p>
-                  <p className="text-xs text-muted-foreground">Trigger: {kajabiPlan.trigger}</p>
+              <div className="space-y-3">
+                {/* Summary card */}
+                <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <p className="text-xs font-semibold text-green-800">Kajabi Plan Ready</p>
+                  </div>
+                  <p className="text-xs text-green-700">
+                    {(kajabiPlan.email_sequence?.length ?? 0) + (kajabiPlan.post_webinar_sequence?.length ?? 0)} emails generated
+                    ({kajabiPlan.email_sequence?.length ?? 0} pre-webinar + {kajabiPlan.post_webinar_sequence?.length ?? 0} post-webinar)
+                    with full copy, tags, automation rules, and step-by-step VA setup instructions.
+                  </p>
                   {kajabiPlan.tags_to_apply?.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {kajabiPlan.tags_to_apply.map((tag: string) => (
@@ -1290,99 +1295,26 @@ export default function WebinarBuilder() {
                   )}
                 </div>
 
-                {/* Pre-webinar emails */}
-                {kajabiPlan.email_sequence?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-foreground">Pre-Webinar Email Sequence ({kajabiPlan.email_sequence.length} emails)</p>
-                    {kajabiPlan.email_sequence.map((email: any, idx: number) => (
-                      <div key={idx} className="p-3 rounded-lg bg-background border border-border/50 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-foreground line-clamp-1">{email.subject}</span>
-                          <Badge variant="outline" className="text-[10px] shrink-0">{email.delay}</Badge>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">{email.body_summary}</p>
-                        {email.cta_text && (
-                          <p className="text-[11px] text-primary font-medium">CTA: {email.cta_text}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Post-webinar emails */}
-                {kajabiPlan.post_webinar_sequence?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-foreground">Post-Webinar Follow-Up ({kajabiPlan.post_webinar_sequence.length} emails)</p>
-                    {kajabiPlan.post_webinar_sequence.map((email: any, idx: number) => (
-                      <div key={idx} className="p-3 rounded-lg bg-background border border-border/50 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-foreground line-clamp-1">{email.subject}</span>
-                          <Badge variant="outline" className="text-[10px] shrink-0">{email.delay}</Badge>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">{email.body_summary}</p>
-                        {email.cta_text && (
-                          <p className="text-[11px] text-primary font-medium">CTA: {email.cta_text}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Setup instructions */}
-                {kajabiPlan.setup_instructions?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-foreground">Kajabi Setup Instructions</p>
-                    <ol className="space-y-1.5 list-decimal list-inside">
-                      {kajabiPlan.setup_instructions.map((step: string, idx: number) => (
-                        <li key={idx} className="text-xs text-muted-foreground">{step}</li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-
-                {/* Raw JSON toggle */}
-                <div>
-                  <button
-                    className="text-xs text-muted-foreground underline"
-                    onClick={() => setShowKajabiRaw(!showKajabiRaw)}
-                  >
-                    {showKajabiRaw ? "Hide" : "Show"} raw JSON
-                  </button>
-                  {showKajabiRaw && (
-                    <div className="mt-2 relative">
-                      <pre className="text-[10px] font-mono bg-muted/50 rounded-lg p-3 overflow-auto max-h-60 text-muted-foreground">
-                        {JSON.stringify(kajabiPlan, null, 2)}
-                      </pre>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute top-2 right-2 h-6 text-[10px]"
-                        onClick={() => copyToClipboard(JSON.stringify(kajabiPlan, null, 2), "JSON copied!")}
-                      >
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copy JSON
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Download button */}
+                {/* Download DOCX button */}
                 <Button
-                  variant="outline"
+                  className="w-full bg-violet-600 hover:bg-violet-700 text-white"
                   size="sm"
                   onClick={() => {
-                    const blob = new Blob([JSON.stringify(kajabiPlan, null, 2)], { type: "application/json" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `kajabi-plan-${topic.slice(0, 30).replace(/\s+/g, "-").toLowerCase()}.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
+                    if (kajabiPlan?.docxUrl) {
+                      const a = document.createElement("a");
+                      a.href = kajabiPlan.docxUrl;
+                      a.download = kajabiPlan.filename ?? "Kajabi-Plan.docx";
+                      a.target = "_blank";
+                      a.click();
+                    }
                   }}
                 >
                   <Download className="h-3.5 w-3.5 mr-1.5" />
-                  Download Kajabi Plan
+                  Download Kajabi Plan (.docx)
                 </Button>
+                <p className="text-[11px] text-muted-foreground text-center">
+                  Send this Word document to your VA to set up the full Kajabi automation pipeline.
+                </p>
               </div>
             )}
           </CardContent>

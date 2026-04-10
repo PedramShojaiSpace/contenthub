@@ -9,8 +9,13 @@
  */
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import {
+  Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
+  BorderStyle, TableCell, TableRow, Table, WidthType, ShadingType,
+} from "docx";
 import { invokeLLM } from "./_core/llm";
 import { protectedProcedure, router } from "./_core/trpc";
+import { storagePut } from "./storage";
 import { getDb } from "./db";
 import { personas, webinarSessions } from "../drizzle/schema";
 
@@ -528,7 +533,7 @@ Keep the tone warm, grateful, and excited. Make them feel they made a great deci
       return { thankYouPageCopy };
     }),
 
-  // Step 4b: Generate Kajabi automation export plan
+  // Step 4b: Generate Kajabi automation export plan as DOCX
   exportKajabiPlan: protectedProcedure
     .input(z.object({
       id: z.number(),
@@ -560,6 +565,7 @@ Generate a complete Kajabi automation plan as a structured JSON object with the 
       "subject": "string",
       "preview_text": "string",
       "body_summary": "string (2-3 sentences describing the email content)",
+      "body_full": "string (full email body, 150-200 words, in Dr. Pedram Shojai's warm, direct voice)",
       "cta_text": "string",
       "cta_url": "string"
     }
@@ -571,6 +577,7 @@ Generate a complete Kajabi automation plan as a structured JSON object with the 
       "subject": "string",
       "preview_text": "string",
       "body_summary": "string",
+      "body_full": "string (full email body, 150-200 words, in Dr. Pedram Shojai's warm, direct voice)",
       "cta_text": "string",
       "cta_url": "string"
     }
@@ -590,6 +597,7 @@ Include:
 - Tags for segmentation (registered, attended, no-show, purchased)
 - Automation rules (e.g., remove from sequence if purchased)
 - Step-by-step Kajabi setup instructions
+- Full email body copy for every email in both sequences
 
 Return ONLY the JSON object, no markdown wrapping.`;
 
@@ -603,9 +611,96 @@ Return ONLY the JSON object, no markdown wrapping.`;
 
       const rawContent = response.choices?.[0]?.message?.content;
       const kajabiExport = typeof rawContent === "string" ? rawContent : "{}";
-
       await updateWebinar(input.id, { kajabiExport });
-      return { kajabiExport: JSON.parse(kajabiExport) };
+
+      // Build DOCX
+      const plan = JSON.parse(kajabiExport) as {
+        pipeline_name?: string;
+        trigger?: string;
+        tags_to_apply?: string[];
+        email_sequence?: Array<{ step: number; delay: string; subject: string; preview_text: string; body_summary: string; body_full?: string; cta_text: string; cta_url: string }>;
+        post_webinar_sequence?: Array<{ step: number; delay: string; subject: string; preview_text: string; body_summary: string; body_full?: string; cta_text: string; cta_url: string }>;
+        automation_rules?: Array<{ trigger: string; action: string }>;
+        setup_instructions?: string[];
+      };
+
+      const h1 = (text: string) => new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } });
+      const h2 = (text: string) => new Paragraph({ text, heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 150 } });
+      const h3 = (text: string) => new Paragraph({ text, heading: HeadingLevel.HEADING_3, spacing: { before: 200, after: 100 } });
+      const body = (text: string) => new Paragraph({ children: [new TextRun({ text, size: 22 })], spacing: { after: 100 } });
+      const label = (key: string, value: string) => new Paragraph({
+        children: [
+          new TextRun({ text: `${key}: `, bold: true, size: 22 }),
+          new TextRun({ text: value, size: 22 }),
+        ],
+        spacing: { after: 80 },
+      });
+      const divider = () => new Paragraph({ text: "─".repeat(60), spacing: { before: 200, after: 200 } });
+
+      const emailSection = (title: string, emails: typeof plan.email_sequence) => {
+        const items: Paragraph[] = [h2(title)];
+        (emails ?? []).forEach((e) => {
+          items.push(h3(`Email ${e.step}: ${e.subject}`));
+          items.push(label("Timing", e.delay));
+          items.push(label("Preview Text", e.preview_text));
+          items.push(label("CTA", `${e.cta_text} → ${e.cta_url}`));
+          items.push(new Paragraph({ children: [new TextRun({ text: "Email Body:", bold: true, size: 22 })], spacing: { after: 60 } }));
+          const bodyText = e.body_full || e.body_summary || "";
+          bodyText.split("\n").filter(Boolean).forEach((line) => items.push(body(line)));
+          items.push(divider());
+        });
+        return items;
+      };
+
+      const doc = new Document({
+        styles: {
+          default: {
+            document: { run: { font: "Calibri", size: 22 } },
+          },
+        },
+        sections: [{
+          properties: {},
+          children: [
+            h1(`Kajabi Automation Plan: ${plan.pipeline_name ?? input.topic}`),
+            label("Webinar Topic", input.topic),
+            label("Offer / CTA", input.cta || "The Upstream Bundle — $399"),
+            label("Registration Link", input.registrationUrl ?? "[REGISTRATION LINK]"),
+            label("Pipeline Trigger", plan.trigger ?? "Webinar Registration Form Submitted"),
+            divider(),
+
+            h2("Tags to Apply"),
+            ...(plan.tags_to_apply ?? []).map((tag) => body(`• ${tag}`)),
+            divider(),
+
+            ...emailSection("PRE-WEBINAR EMAIL SEQUENCE", plan.email_sequence),
+            ...emailSection("POST-WEBINAR EMAIL SEQUENCE", plan.post_webinar_sequence),
+
+            h2("Automation Rules"),
+            ...(plan.automation_rules ?? []).map((r) =>
+              new Paragraph({
+                children: [
+                  new TextRun({ text: `TRIGGER: `, bold: true, size: 22 }),
+                  new TextRun({ text: `${r.trigger}  →  `, size: 22 }),
+                  new TextRun({ text: `ACTION: `, bold: true, size: 22 }),
+                  new TextRun({ text: r.action, size: 22 }),
+                ],
+                spacing: { after: 100 },
+              })
+            ),
+            divider(),
+
+            h2("Step-by-Step VA Setup Instructions"),
+            ...(plan.setup_instructions ?? []).map((step, i) => body(`${i + 1}. ${step}`)),
+          ],
+        }],
+      });
+
+      const buffer = await Packer.toBuffer(doc);
+      const slug = input.topic.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+      const fileKey = `kajabi-plans/${slug}-${Date.now()}.docx`;
+      const { url } = await storagePut(fileKey, buffer, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+
+      return { docxUrl: url, filename: `Kajabi-Plan-${slug}.docx` };
     }),
 
   // Step 4a: Publish thank you page to Gamma

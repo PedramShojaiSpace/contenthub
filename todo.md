@@ -699,3 +699,12 @@
 - [x] Each card shows: title, type badge, topic tags, credibility signal, link
 - [x] "Inject into next generation" toggle per asset
 - [x] Authority stats: total assets, total reach estimate, topic coverage map
+
+## v16 Features — Full Press Import from CSVs
+
+- [x] Import all press hits from FOCUSWrapUpTracker.xlsx-MediaCoverage.csv (42 rows, FOCUS book campaign 2020-2021)
+- [x] Import all press hits from PedramShojaiPressCoverageTo-Date.xlsx-Sheet1.csv (109 rows, 2015-2018 full career)
+- [x] Deduplicate against existing 115 DB entries, add 22 net-new records
+- [x] Total press_hits now 137: 50 S-tier, 41 A-tier, 46 B-tier
+- [x] Total combined impressions: 892M+ across CNN, NYT, Good Housekeeping, Huffington Post, POPSUGAR, Inc., Dr. Oz, The Doctors, Bulletproof, Dr. Mark Hyman, and 120+ more outlets
+- [x] Fix YouTube channel URL to @urbanmonkproductions with accurate 33.3K subscribers / 604 videos

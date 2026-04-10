@@ -58,7 +58,8 @@ async function updateWebinar(id: number, data: Partial<typeof webinarSessions.$i
 // ─── Gamma API helpers (shared pattern from landingPagesRouter) ───────────────
 
 const GAMMA_API_BASE = "https://public-api.gamma.app/v1.0";
-const URBAN_MONK_THEME_ID = "4v2cznur3cs7d35";
+// 'creme' is a valid Gamma standard theme — warm cream/beige/sand tones that match Urban Monk's earthy aesthetic
+const URBAN_MONK_THEME_ID = "creme";
 
 async function startGammaWebinarPage(copyBody: string, title: string, personaNames: string): Promise<string> {
   const apiKey = process.env.GAMMA_API_KEY;

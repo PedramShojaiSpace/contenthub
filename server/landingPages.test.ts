@@ -54,7 +54,8 @@ describe("landingPagesRouter structure", () => {
     // Read the router source to confirm the theme ID constant is present
     const fs = await import("fs");
     const src = fs.readFileSync(new URL("./landingPagesRouter.ts", import.meta.url), "utf-8");
-    expect(src).toContain("4v2cznur3cs7d35");
+    // 'creme' is a valid Gamma standard theme (warm cream/beige tones matching Urban Monk aesthetic)
+    expect(src).toContain("creme");
     expect(src).toContain("URBAN_MONK_THEME_ID");
     expect(src).toContain("themeId: URBAN_MONK_THEME_ID");
   });

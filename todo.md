@@ -877,3 +877,12 @@
 ## v35 — Webinar Topic Column Fix
 - [x] Change webinar_sessions.topic from varchar(512) to text (supports full paragraph descriptions)
 - [x] Run db:push migration (0024_clear_scarlet_witch.sql applied)
+
+## v36 — Typeform Push Fix
+- [x] Add type sanitizer to pushToTypeform: maps unknown AI-generated field types to long_text
+- [x] Strip unsupported fields from Typeform payload before sending
+
+## v37 — Gamma Theme Fix (Broken Logo)
+- [x] Replace invalid Gamma theme ID "4v2cznur3cs7d35" with valid "creme" theme in landingPagesRouter.ts
+- [x] Replace invalid Gamma theme ID "4v2cznur3cs7d35" with valid "creme" theme in webinarRouter.ts
+- [x] Update landingPages.test.ts to expect "creme" instead of the old invalid theme ID

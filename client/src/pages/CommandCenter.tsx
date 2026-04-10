@@ -549,7 +549,6 @@ export default function CommandCenter() {
   // Growth cadence data
   const { data: cadenceData, refetch: refetchCadence } = trpc.growth.weeklyCadence.useQuery();
   const seedPillarsMutation = trpc.growth.seedPillars.useMutation({ onSuccess: () => refetchCadence() });
-  const seedWindowsMutation = trpc.growth.seedWindows.useMutation({ onSuccess: () => refetchCadence() });
 
   const syndicationMutation = trpc.syndication.push.useMutation({
     onSuccess: (result, variables) => {
@@ -1006,7 +1005,7 @@ export default function CommandCenter() {
                  </div>
                  {cadenceData.pillars.length === 0 && (
                    <button
-                     onClick={() => { seedPillarsMutation.mutate(); seedWindowsMutation.mutate(); }}
+                     onClick={() => { seedPillarsMutation.mutate(); }}
                      className="text-xs text-primary hover:underline"
                    >
                      Seed defaults
@@ -1030,20 +1029,17 @@ export default function CommandCenter() {
                ) : (
                  <div className="text-xs text-muted-foreground text-center py-2">No pillars seeded yet. Click "Seed defaults" to add the 4 content pillars.</div>
                )}
-               {cadenceData.nextWindow && (
-                 <div className={`flex items-center gap-3 rounded-lg px-3 py-2 text-xs ${cadenceData.nextWindow.isWindowOpen ? "bg-green-500/10 border border-green-500/30 text-green-400" : "bg-amber-500/10 border border-amber-500/30 text-amber-400"}`}>
-                   {cadenceData.nextWindow.isWindowOpen ? <Flame className="h-3.5 w-3.5 shrink-0" /> : <Clock className="h-3.5 w-3.5 shrink-0" />}
-                   <div className="flex-1">
-                     <span className="font-semibold">{cadenceData.nextWindow.name}</span>
-                     {cadenceData.nextWindow.isWindowOpen ? (
-                       <span className="ml-2 opacity-80">— ENROLLMENT OPEN NOW</span>
-                     ) : (
-                       <span className="ml-2 opacity-80">— opens in {cadenceData.nextWindow.daysUntilOpen} days{(cadenceData.nextWindow.daysUntilOpen ?? 99) <= 42 && <span className="ml-1 font-bold text-amber-300"> ▲ Start content push</span>}</span>
-                     )}
-                   </div>
-                   {cadenceData.nextWindow.targetSignups && <div className="flex items-center gap-1 shrink-0"><Zap className="h-3 w-3" /><span>Goal: {cadenceData.nextWindow.targetSignups} signups</span></div>}
+               {/* Evergreen enrollment indicator */}
+               <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs bg-green-500/10 border border-green-500/30 text-green-400">
+                 <Flame className="h-3.5 w-3.5 shrink-0" />
+                 <div className="flex-1">
+                   <span className="font-semibold">Lights On Course</span>
+                   <span className="ml-2 opacity-80">— Perpetual enrollment · Always open · $299</span>
                  </div>
-               )}
+                 <a href="https://theurbanmonk.com/lights-on" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 shrink-0 hover:text-green-300 transition-colors">
+                   <Zap className="h-3 w-3" /><span>View offer</span>
+                 </a>
+               </div>
              </div>
            )}
 

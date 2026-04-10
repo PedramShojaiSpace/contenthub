@@ -821,3 +821,9 @@
 - [x] Enrollment Window countdown in Command Center (amber warning at 42 days)
 - [x] Seed defaults button for pillars and windows
 - [x] Two enrollment windows seeded: Fall (Sep 1) and New Year (Jan 1)
+
+## v29 — Evergreen Enrollment
+
+- [x] Remove enrollment windows table from growthRouter
+- [x] Remove enrollment window countdown from Command Center cadence tracker
+- [x] Replace with evergreen "Lights On — Always Open" indicator in cadence tracker

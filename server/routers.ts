@@ -42,6 +42,7 @@ import { youtubeRouter } from "./youtubeRouter";
 import { typeformRouter } from "./typeformRouter";
 import { pressRouter } from "./pressRouter";
 import { mediaRouter } from "./mediaRouter";
+import { avatarRouter } from "./avatarRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -394,13 +395,21 @@ export const appRouter = router({
         } catch (err) {
           console.warn("[AI] Could not load media authority context:", err);
         }
+        // Load avatar intelligence context block
+        let avatarIntelligenceContext = "";
+        try {
+          const { getAvatarContextBlock } = await import("./avatarRouter");
+          avatarIntelligenceContext = await getAvatarContextBlock(input.idea);
+        } catch (err) {
+          console.warn("[AI] Could not load avatar context:", err);
+        }
         // Step 1: Generate all platform text in parallel
         const textResults = await Promise.all(
           platforms.map(async (platform) => {
             const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
             const userMessage = input.customInstructions
-              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}`
-              : `Raw idea: ${input.idea}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}`;;
+              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}`
+              : `Raw idea: ${input.idea}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}`;;
 
             const response = await invokeLLM({
               messages: [
@@ -609,6 +618,14 @@ Rules:
         } catch (err) {
           console.warn("[Blog] Could not load media authority context:", err);
         }
+        // Load avatar intelligence context block
+        let blogAvatarContext = "";
+        try {
+          const { getAvatarContextBlock } = await import("./avatarRouter");
+          blogAvatarContext = await getAvatarContextBlock(input.idea);
+        } catch (err) {
+          console.warn("[Blog] Could not load avatar context:", err);
+        }
         // Step 1: Generate the full blog article as structured JSON
         const userMessage = [
           `Raw idea: ${input.idea}`,
@@ -616,6 +633,7 @@ Rules:
           input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
           personaContext,
           blogMediaContext,
+          blogAvatarContext,
         ]
           .filter(Boolean)
           .join("");
@@ -960,10 +978,18 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         } catch (err) {
           console.warn("[Script] Could not load media authority context:", err);
         }
+        // Inject avatar intelligence context
+        let scriptAvatarContext = "";
+        try {
+          const { getAvatarContextBlock } = await import("./avatarRouter");
+          scriptAvatarContext = await getAvatarContextBlock(input.title);
+        } catch (err) {
+          console.warn("[Script] Could not load avatar context:", err);
+        }
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptMediaContext}` },
+            { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptMediaContext}${scriptAvatarContext}` },
           ],
         });
         const rawContent = response.choices?.[0]?.message?.content;
@@ -1026,10 +1052,18 @@ Return BOTH in this exact format:
         } catch (err) {
           console.warn("[Post] Could not load media authority context:", err);
         }
+        // Inject avatar intelligence context
+        let postAvatarContext = "";
+        try {
+          const { getAvatarContextBlock } = await import("./avatarRouter");
+          postAvatarContext = await getAvatarContextBlock(input.title);
+        } catch (err) {
+          console.warn("[Post] Could not load avatar context:", err);
+        }
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Generate the social post and image prompt for: "${input.title}"${postMediaContext}` },
+            { role: "user", content: `Generate the social post and image prompt for: "${input.title}"${postMediaContext}${postAvatarContext}` },
           ],
         });
 
@@ -1189,5 +1223,6 @@ Return BOTH in this exact format:
   typeform: typeformRouter,
   press: pressRouter,
   media: mediaRouter,
+  avatar: avatarRouter,
 });
 export type AppRouter = typeof appRouter;

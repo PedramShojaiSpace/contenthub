@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Brain, Film, Globe, Image, LayoutDashboard, LogOut, PanelLeft, PenSquare, FlaskConical, Rss, ClipboardList, Award, Cpu, Library } from "lucide-react";
+import { Brain, Film, Globe, Image, LayoutDashboard, LogOut, PanelLeft, PenSquare, FlaskConical, Rss, ClipboardList, Award, Cpu, Library, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -40,6 +40,7 @@ const menuItems = [
   { icon: Award, label: "Press Intelligence", path: "/press" },
   { icon: Cpu, label: "Intelligence Hub", path: "/intelligence" },
   { icon: Library, label: "Media Vault", path: "/media-vault" },
+  { icon: Users, label: "Avatar Intelligence", path: "/avatar" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

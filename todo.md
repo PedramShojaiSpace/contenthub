@@ -720,3 +720,35 @@
 - [x] Full-bleed hero image with gradient overlay displayed prominently above article preview
 - [x] Add @source streamdown directive to index.css for proper Markdown styling
 - [x] Add blog-prose CSS class with h2/h3/p/blockquote/a/ul/li styling
+
+## v18 Features — Avatar Intelligence Engine
+
+### Source Documents
+- [x] Ingest manus_avatar_pain_points.md (754 lines, avatar pain points from discovery call analysis)
+- [x] Ingest sales_team_training_document.md (797 lines, Josh Lyons sales mastery training)
+
+### Database Schema
+- [ ] Add avatar_pain_points table (stage, category, title, description, emotionalHook, contentTopics, headlineFormula)
+- [ ] Add avatar_personas table (name, profile, communicationStyle, contentNeeds, salesApproach)
+- [ ] Add avatar_messaging_frameworks table (name, structure, example, useCase)
+- [ ] Add avatar_objections table (objection, underlyingFear, responseFramework, contentExample)
+- [ ] Run db:push after schema changes
+- [ ] Seed all tables from both documents
+
+### Backend — Avatar Context Injector
+- [ ] Add avatarRouter with list, getByStage, getContextBlock procedures
+- [ ] Build getAvatarContextBlock(topic, journeyStage) — returns relevant pain points + persona + messaging framework
+- [ ] Upgrade generateContent to inject avatar intelligence (pain point + persona + emotional hook)
+- [ ] Upgrade generateTeleprompterScript to inject avatar pain points and journey stage
+- [ ] Upgrade generateBlog to inject avatar messaging framework
+- [ ] Upgrade generatePostAndImage to inject avatar emotional hooks and headline formulas
+- [ ] Upgrade landing page generation to inject avatar objections and transformation messaging
+
+### Frontend — Avatar Intelligence UI
+- [ ] New "Avatar Intel" sidebar nav item
+- [ ] Pain Point Journey Map — visual 4-stage journey (Surface → Maze → Deep Pain → Root Cause)
+- [ ] Buyer Persona cards (The Researcher, Desperate Seeker, Skeptical Executive, Holistic Believer)
+- [ ] Messaging Framework library (Validation, Differentiation, Urgency, Transformation, Authority)
+- [ ] Objection Handler — browse all objections with response frameworks
+- [ ] "Generate content for this persona" button on each persona card
+- [ ] Headline Formula generator — pick a formula, enter a topic, get 5 headline options

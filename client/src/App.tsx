@@ -16,6 +16,7 @@ import TypeformIntelligence from "./pages/TypeformIntelligence";
 import PressIntelligence from "./pages/PressIntelligence";
 import IntelligenceDashboard from "./pages/IntelligenceDashboard";
 import MediaVault from "./pages/MediaVault";
+import AvatarIntelligence from "./pages/AvatarIntelligence";
 
 function Router() {
   return (
@@ -32,6 +33,7 @@ function Router() {
       <Route path={"/press"} component={PressIntelligence} />
       <Route path={"/intelligence"} component={IntelligenceDashboard} />
       <Route path={"/media-vault"} component={MediaVault} />
+      <Route path={"/avatar"} component={AvatarIntelligence} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

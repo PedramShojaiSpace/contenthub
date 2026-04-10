@@ -427,3 +427,60 @@ export const mediaAssets = mysqlTable("media_assets", {
 
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type InsertMediaAsset = typeof mediaAssets.$inferInsert;
+
+// ─── Avatar Intelligence Tables ──────────────────────────────────────────────
+
+// Pain point journey stages and categories extracted from discovery call analysis
+export const avatarPainPoints = mysqlTable("avatar_pain_points", {
+  id: int("id").autoincrement().primaryKey(),
+  // Journey stage: surface | practitioner_maze | deep_pain | root_cause
+  stage: varchar("stage", { length: 64 }).notNull(),
+  // Category within stage
+  category: varchar("category", { length: 128 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  emotionalHook: varchar("emotionalHook", { length: 255 }),
+  contentTopics: text("contentTopics"),   // JSON array of content topic ideas
+  headlineFormula: text("headlineFormula"),
+  exampleHeadline: text("exampleHeadline"),
+  keyQuote: text("keyQuote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AvatarPainPoint = typeof avatarPainPoints.$inferSelect;
+
+// Buyer personas derived from discovery call patterns
+export const avatarPersonas = mysqlTable("avatar_personas", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  profile: text("profile"),
+  communicationStyle: text("communicationStyle"),
+  contentNeeds: text("contentNeeds"),
+  salesApproach: text("salesApproach"),
+  traits: text("traits"),   // JSON array
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AvatarPersona = typeof avatarPersonas.$inferSelect;
+
+// Proven messaging frameworks for converting this avatar
+export const avatarMessagingFrameworks = mysqlTable("avatar_messaging_frameworks", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  structure: text("structure"),
+  example: text("example"),
+  useCase: varchar("useCase", { length: 128 }),
+  emotionalJob: varchar("emotionalJob", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AvatarMessagingFramework = typeof avatarMessagingFrameworks.$inferSelect;
+
+// Common objections and proven response frameworks
+export const avatarObjections = mysqlTable("avatar_objections", {
+  id: int("id").autoincrement().primaryKey(),
+  objection: varchar("objection", { length: 255 }).notNull(),
+  underlyingFear: text("underlyingFear"),
+  responseFramework: text("responseFramework"),
+  contentExample: text("contentExample"),
+  keyInsight: text("keyInsight"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AvatarObjection = typeof avatarObjections.$inferSelect;

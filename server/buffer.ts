@@ -135,13 +135,18 @@ export async function pushToBuffer(params: {
     return { success: false, error: "No channel IDs provided" };
   }
 
-  // Enforce X/Twitter 280-character hard limit before sending to Buffer API.
-  // Buffer's API rejects posts over 280 chars for Twitter/X channels.
+  // X/Twitter character limit guard.
+  // We do NOT truncate — truncation produces incoherent, incomplete posts.
+  // The LLM is now prompted to write complete posts targeting 200-220 chars.
+  // If a post still exceeds 280 chars, we reject it with a clear error so the
+  // user can edit it manually rather than publishing broken content.
   let text = params.text;
   if (params.platform === "x" || params.platform === "twitter") {
     if (text.length > 280) {
-      const cutoff = text.lastIndexOf(" ", 277);
-      text = (cutoff > 0 ? text.slice(0, cutoff) : text.slice(0, 277)) + "...";
+      return {
+        success: false,
+        error: `X post is ${text.length} characters (limit: 280). Please edit the post to shorten it before publishing — the content has not been truncated to preserve its meaning.`,
+      };
     }
   }
 

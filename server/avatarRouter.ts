@@ -276,3 +276,105 @@ export async function getAvatarContextBlock(
     return "";
   }
 }
+
+/**
+ * Server-side helper: get a rich avatar context block for landing page generation.
+ * Unlike getAvatarContextBlock (which picks the first persona), this function:
+ * - Matches the persona by name (fuzzy match)
+ * - Injects ALL objections (not just top 2) with full response frameworks and key insights
+ * - Includes ALL 5 messaging frameworks (not just the first)
+ * - Provides richer pain point data including content example hooks
+ * Used by the Landing Page Generator to produce copy that pre-empts buyer objections.
+ */
+export async function getAvatarContextBlockForPersona(
+  topic: string,
+  personaName: string
+): Promise<string> {
+  try {
+    const db = await getDb();
+    if (!db) return "";
+
+    const [allPainPoints, allPersonas, allFrameworks, allObjections] = await Promise.all([
+      db.select().from(avatarPainPoints) as Promise<AvatarPainPoint[]>,
+      db.select().from(avatarPersonas) as Promise<AvatarPersona[]>,
+      db.select().from(avatarMessagingFrameworks) as Promise<AvatarMessagingFramework[]>,
+      db.select().from(avatarObjections) as Promise<AvatarObjection[]>,
+    ]);
+
+    const topicLower = topic.toLowerCase();
+    const keywords = topicLower.split(/\s+/).filter((w) => w.length > 3);
+
+    // Score pain points by relevance to topic
+    const scoredPainPoints = allPainPoints
+      .map((p) => {
+        let score = 0;
+        const text = `${p.title} ${p.description} ${p.category} ${p.contentTopics || ""}`.toLowerCase();
+        keywords.forEach((kw) => { if (text.includes(kw)) score += 2; });
+        return { ...p, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5); // More pain points for landing pages
+
+    // Fuzzy match persona by name
+    const personaNameLower = personaName.toLowerCase();
+    const matchedPersona =
+      allPersonas.find((p) => p.name.toLowerCase().includes(personaNameLower)) ||
+      allPersonas.find((p) => personaNameLower.includes(p.name.toLowerCase().split(" ")[0])) ||
+      allPersonas[0];
+
+    const lines: string[] = [
+      "=== AVATAR INTELLIGENCE (from real discovery call transcripts) ===",
+      "",
+      "TARGET PERSONA PROFILE:",
+      `Name: ${matchedPersona?.name || personaName}`,
+      `Profile: ${(matchedPersona?.profile || "").slice(0, 400)}`,
+      `Communication Style: ${(matchedPersona?.communicationStyle || "").slice(0, 200)}`,
+      `Sales Approach: ${(matchedPersona?.salesApproach || "").slice(0, 200)}`,
+      `Content Needs: ${(matchedPersona?.contentNeeds || "").slice(0, 200)}`,
+      "",
+      "PAIN POINTS TO ADDRESS (ranked by relevance to this content angle):",
+    ];
+
+    scoredPainPoints.forEach((pp, i) => {
+      lines.push(`${i + 1}. [${pp.stage.toUpperCase()}] ${pp.title}`);
+      lines.push(`   Description: ${(pp.description || "").slice(0, 200)}`);
+      if (pp.emotionalHook) lines.push(`   Emotional Hook: ${pp.emotionalHook}`);
+      if (pp.keyQuote) lines.push(`   Real Customer Quote: "${(pp.keyQuote || "").slice(0, 150)}"`);
+      if (pp.headlineFormula) lines.push(`   Headline Formula: ${pp.headlineFormula}`);
+      if (pp.exampleHeadline) lines.push(`   Example Headline: ${pp.exampleHeadline}`);
+      lines.push("");
+    });
+
+    lines.push("MESSAGING FRAMEWORKS (use the most relevant one as the structural backbone):");
+    allFrameworks.forEach((f) => {
+      lines.push(`\nFramework: ${f.name}`);
+      lines.push(`Structure: ${f.structure || ""}`);
+      lines.push(`Emotional Job: ${f.emotionalJob || ""}`);
+      if (f.useCase) lines.push(`Use Case: ${f.useCase}`);
+    });
+
+    lines.push("");
+    lines.push("BUYER OBJECTIONS — MUST BE PRE-EMPTED IN COPY (do not list explicitly; weave responses naturally):");
+    allObjections.forEach((o, i) => {
+      lines.push(`\nObjection ${i + 1}: "${o.objection}"`);
+      if (o.underlyingFear) lines.push(`  Underlying Fear: ${(o.underlyingFear).slice(0, 200)}`);
+      if (o.responseFramework) lines.push(`  Response Framework: ${(o.responseFramework).slice(0, 300)}`);
+      if (o.keyInsight) lines.push(`  Key Insight to Use: ${(o.keyInsight).slice(0, 200)}`);
+      if (o.contentExample) lines.push(`  Content Example: ${(o.contentExample).slice(0, 200)}`);
+    });
+
+    lines.push("");
+    lines.push("CRITICAL TONE NOTES:");
+    lines.push("- Validate their experience FIRST before offering solutions");
+    lines.push("- Don't minimize their symptoms — they've been told 'it's in your head' too many times");
+    lines.push("- Create urgency around inaction: 'What happens if this continues for another year?'");
+    lines.push("- Use transformation language: 'reclaim,' 'restore,' 'finally,' 'root cause,' not 'manage' or 'cope'");
+    lines.push("- Reference real patient journeys — specificity builds credibility");
+    lines.push("=== END AVATAR INTELLIGENCE ===");
+
+    return lines.join("\n");
+  } catch (err) {
+    console.warn("[Avatar] Persona context block failed:", err);
+    return "";
+  }
+}

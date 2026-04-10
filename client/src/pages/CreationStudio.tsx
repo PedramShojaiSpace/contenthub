@@ -1630,7 +1630,7 @@ export default function CreationStudio() {
                           <div className={`flex items-center justify-between text-xs px-1 ${
                             isOver ? "text-red-400" : isWarning ? "text-amber-400" : "text-muted-foreground"
                           }`}>
-                            <span>{isOver ? `⚠ ${charCount - 280} characters over limit — Buffer will auto-truncate` : isWarning ? `${280 - charCount} characters remaining` : `${280 - charCount} characters remaining`}</span>
+                            <span>{isOver ? `⚠ ${charCount - 280} over limit — edit to shorten before publishing` : isWarning ? `${280 - charCount} characters remaining` : `${280 - charCount} characters remaining`}</span>
                             <span className="font-mono font-bold">{charCount} / 280</span>
                           </div>
                         );

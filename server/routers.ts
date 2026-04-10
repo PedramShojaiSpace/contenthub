@@ -90,15 +90,29 @@ CONTENT PILLARS: Daily practices, mindfulness, gut health, energy, sleep, stress
 
     x: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on X (Twitter). His audience is intellectually curious professionals and wellness enthusiasts.
 VOICE: Sharp, punchy, thought-provoking. Challenges conventional wisdom. Mix of bold statements and nuanced insights.
+
+CHARACTER LIMIT RULES — READ CAREFULLY:
+- A single tweet must be a COMPLETE, SELF-CONTAINED thought. It must begin and end naturally — never cut off mid-sentence.
+- Target 200-220 characters for a single tweet. This gives buffer for hashtags and guarantees the post fits within X's 280-character limit.
+- Do NOT write 280 characters and then trim — write SHORT from the start. A punchy 180-character tweet that lands is infinitely better than a 280-character tweet that feels rushed.
+- For a THREAD: write 3-5 numbered tweets (1/, 2/, 3/ etc.), each on its own line, each a complete thought, each under 220 characters.
+- Choose single tweet OR thread based on the idea — do not default to threads for simple ideas.
+
 CRITICAL OUTPUT RULES:
 - Output ONLY the finished tweet or thread text — nothing else
 - Do NOT include any labels, headers, or structural markers (no "Tweet 1:", "Hook:", "Thread:", "---", or any similar markup)
 - Do NOT include any meta-commentary, instructions, or explanations
 - The output must be copy-paste ready to publish directly on X
-- SINGLE TWEET HARD LIMIT: 280 characters MAXIMUM — count every character including spaces, punctuation, and hashtags. If your draft exceeds 280 characters, cut it down ruthlessly until it is 280 characters or fewer. This is a hard technical limit — posts over 280 characters will be rejected by the platform.
-- For a thread: start each tweet on a new line, numbered as 1/, 2/, 3/ etc. Each individual tweet in the thread must also be 280 characters or fewer.
-- For single tweets: add #urbanmonk at the end only if the total stays under 280 characters
-CONTENT PILLARS: Counterintuitive health insights, performance hacks, mindset shifts, short wisdom nuggets, thread-worthy deep dives.`,
+- Add #urbanmonk only if it fits within the character budget without crowding the message
+
+CONTENT PILLARS: Counterintuitive health insights, performance hacks, mindset shifts, short wisdom nuggets, thread-worthy deep dives.
+
+EXAMPLE of a good single tweet (complete thought, punchy, under 220 chars):
+"Most people treat exhaustion with caffeine. That's like putting tape on a leaking pipe. The real fix is upstream — your nervous system, your sleep architecture, your qi. #urbanmonk"
+
+EXAMPLE of a bad tweet (truncated, incoherent):
+"Most people don't realize that the root cause of their chronic fatigue goes back to the adrenal system and how cortisol dysregulation affects..."
+NEVER produce output like the bad example above.`,
 
   youtube: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on YouTube. His audience is serious wellness seekers and high-performers looking for in-depth education.
 
@@ -482,20 +496,22 @@ Rules:
         }
 
         // Step 3: Assemble combined results
-        // For X/Twitter: enforce 280-char hard limit server-side.
-        // LLMs sometimes exceed the soft limit in the prompt, so we truncate
-        // at the last complete word boundary before 280 chars to guarantee
-        // Buffer and native X API calls never fail due to length.
-        function enforceXLimit(text: string): string {
-          if (text.length <= 280) return text;
-          // Find last space before char 277 to leave room for ellipsis
-          const cutoff = text.lastIndexOf(" ", 277);
-          const trimmed = cutoff > 0 ? text.slice(0, cutoff) : text.slice(0, 277);
-          return trimmed + "...";
+        // For X/Twitter: the LLM is instructed to write complete, self-contained posts
+        // targeting 200-220 characters. We do NOT truncate — truncation produces incoherent
+        // posts. Instead we log a warning if the LLM still overshoots, so we can monitor
+        // prompt quality without breaking the user's content.
+        function validateXLength(text: string): string {
+          if (text.length > 280) {
+            console.warn(
+              `[X] Generated tweet exceeds 280 chars (${text.length} chars). ` +
+              `Review prompt tuning. Text: ${text.slice(0, 100)}...`
+            );
+          }
+          return text; // Always return the full, complete text — never truncate
         }
         const results: Record<string, { text: string; imageUrl?: string; title: string }> = {};
         for (const { platform, text, title } of textResults) {
-          const finalText = platform === "x" ? enforceXLimit(text) : text;
+          const finalText = platform === "x" ? validateXLength(text) : text;
           results[platform] = { text: finalText, imageUrl: imageResults[platform], title };
         }
 
@@ -1062,7 +1078,7 @@ Platform: ${input.platform}
 
 POST CAPTION REQUIREMENTS:
 - Platform: ${input.platform}
-- ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "Punchy, under 280 characters, hook in first 5 words" : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
+- ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "COMPLETE self-contained thought, 180-220 characters target (hard max 280). Write SHORT from the start — never write long and trim. The post must begin and end naturally as a full idea. No ellipses, no cut-off sentences." : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
 - Write in Pedram's voice — no fluff, no hype
 - Include a clear call-to-action (link in bio / Urban Monk Academy / free resource)
 - Do NOT include any labels like "Caption:" — just write the post

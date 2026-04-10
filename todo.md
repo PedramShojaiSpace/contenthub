@@ -784,3 +784,21 @@
 - [ ] Add "From Research Gap" panel in Creation Studio showing top 5 unanswered gap queries
 - [ ] Allow user to pick a gap from the panel to instantly pre-fill topic + persona + platform
 - [ ] Show gap source metadata (competitor brands, topic tags) in the pre-fill UI
+
+## v23 Features — X Post Fix + Persona-Wired Landing Page Generator (April 10, 2026)
+
+### X Post Generation Fix
+- [x] Rewrite X platform system prompt: target 200-220 chars, write SHORT from start (not truncate from long)
+- [x] Add concrete good/bad examples to X prompt to prevent LLM from writing truncated posts
+- [x] Remove enforceXLimit truncation function from generateContent — replaced with validateXLength (logs warning, never mutates)
+- [x] Fix second X generation path (Research page social post generator) with same complete-thought instruction
+- [x] Fix Buffer push to reject over-limit X posts with clear error message instead of silently truncating
+- [x] Update X character counter UI: remove "Buffer will auto-truncate" message, replace with "edit to shorten before publishing"
+
+### Persona Selector → Landing Page Generator
+- [x] Add getAvatarContextBlockForPersona() to avatarRouter — persona-matched variant with ALL objections + full response frameworks
+- [x] Upgrade buildCopyPrompt() to accept avatarContextBlock parameter and inject it between offer description and structure
+- [x] Add CRITICAL INSTRUCTIONS FOR OBJECTION HANDLING section to landing page system prompt
+- [x] Inject avatar context block into generateCopy procedure (calls getAvatarContextBlockForPersona with topic + persona name)
+- [x] Update landing page structure instructions to reference Avatar Intelligence data in each section
+- [x] Add transformation language rules to landing page voice guidelines

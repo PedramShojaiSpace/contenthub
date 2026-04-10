@@ -109,10 +109,15 @@ function buildCopyPrompt(
   personaAspirations: string,
   offer: string,
   offerCustomLabel: string | null | undefined,
-  contentAngle: string
+  contentAngle: string,
+  avatarContextBlock: string = ""
 ): string {
   const offerInfo = OFFER_DETAILS[offer] ?? OFFER_DETAILS.upstream_bundle;
   const offerLabel = offer === "custom" && offerCustomLabel ? offerCustomLabel : offerInfo.label;
+
+  const avatarSection = avatarContextBlock
+    ? `\n${avatarContextBlock}\n`
+    : "";
 
   return `You are Dr. Pedram Shojai (The Urban Monk) — a Doctor of Oriental Medicine, Taoist monk, filmmaker, and New York Times bestselling author. You bridge ancient Eastern wisdom with modern Western science. Your voice is warm, authoritative, direct, and deeply personal. You speak as a trusted guide who has walked this path himself.
 
@@ -121,7 +126,7 @@ You are writing a high-converting landing page for the following:
 AVATAR (Target Persona): ${personaName}
 AVATAR PAIN POINTS: ${personaPainPoints}
 AVATAR ASPIRATIONS: ${personaAspirations}
-
+${avatarSection}
 OFFER: ${offerLabel}
 OFFER PRICE: ${offerInfo.price}
 PRIMARY CTA: ${offerInfo.cta}
@@ -130,18 +135,25 @@ OFFER URL: ${offerInfo.url || 'See website'}
 
 CONTENT ANGLE / KEY MESSAGE: ${contentAngle}
 
+CRITICAL INSTRUCTIONS FOR OBJECTION HANDLING:
+- The Avatar Intelligence block above contains real buyer objections from discovery call transcripts.
+- You MUST weave responses to these objections naturally into the copy — especially in sections 5 (The Bridge), 10 (CTA Block), and 11 (Closing Reassurance).
+- Do NOT list objections explicitly — handle them implicitly through the copy's framing, language, and reassurances.
+- Use the "Response Framework" and "Key Insight" from each objection to craft language that preempts hesitation before it arises.
+- Use the "Emotional Hook" and real customer quotes from pain points as hooks in the Opening Story and The Problem sections.
+
 LANDING PAGE STRUCTURE (write in this exact order, using Markdown):
-1. **Headline** — A bold, pattern-interrupting headline that speaks directly to the avatar's deepest pain or desire. Max 12 words.
+1. **Headline** — A bold, pattern-interrupting headline that speaks directly to the avatar's deepest pain or desire. Max 12 words. Use the Headline Formula from Avatar Intelligence if provided.
 2. **Subheadline** — One sentence that expands the headline and introduces the solution. Max 25 words.
-3. **Opening Story** (2-3 short paragraphs) — Pedram speaks directly to the avatar. Acknowledge their pain. Show you understand their world. Build empathy and credibility.
-4. **The Problem** (2-3 bullet points) — Name the root causes of their struggle. Use clinical insight + ancient wisdom framing.
-5. **The Bridge** (1-2 paragraphs) — Introduce the offer as the solution. Explain WHY this works when everything else has failed. Reference Pedram's credentials naturally.
+3. **Opening Story** (2-3 short paragraphs) — Pedram speaks directly to the avatar. Acknowledge their pain using the real customer quotes and emotional hooks from Avatar Intelligence. Show you understand their world. Build empathy and credibility.
+4. **The Problem** (2-3 bullet points) — Name the root causes of their struggle. Use clinical insight + ancient wisdom framing. Draw from the pain point descriptions in Avatar Intelligence.
+5. **The Bridge** (1-2 paragraphs) — Introduce the offer as the solution. Explain WHY this works when everything else has failed. Implicitly address the top objection (e.g., "I've tried everything") by explaining what makes this different. Reference Pedram's credentials naturally.
 6. **What You Get** (3-5 bullet points) — Specific, tangible benefits of the offer. Outcomes, not features.
-7. **Who This Is For** (3-4 bullet points) — Describe the ideal buyer. Make them feel seen and called.
-8. **Social Proof Placeholder** — Write 2 sample testimonial quotes in the voice of the avatar (clearly marked as examples for real testimonials to replace).
+7. **Who This Is For** (3-4 bullet points) — Describe the ideal buyer using the persona profile from Avatar Intelligence. Make them feel seen and called.
+8. **Social Proof Placeholder** — Write 2 sample testimonial quotes in the voice of the avatar (clearly marked as examples for real testimonials to replace). Use the messaging framework's emotional job to guide the transformation arc in each quote.
 9. **Offer Summary** — Restate the offer name, price, and what's included in 2-3 sentences.
-10. **CTA Block** — A compelling call to action paragraph (2-3 sentences) followed by the CTA button text in bold.
-11. **Closing Reassurance** — 1-2 sentences addressing the main objection or hesitation. Build trust.
+10. **CTA Block** — A compelling call to action paragraph (2-3 sentences) followed by the CTA button text in bold. Address the affordability/time objection implicitly (e.g., frame the cost against the cost of inaction).
+11. **Closing Reassurance** — 1-2 sentences addressing the main objection or hesitation. Use the response framework from Avatar Intelligence to build final trust.
 
 VOICE RULES:
 - Write as Pedram speaking directly to the reader ("you", "your")
@@ -150,6 +162,7 @@ VOICE RULES:
 - Specific and credible — reference real concepts (Taoist medicine, gut-brain axis, cortisol, qi, etc.)
 - No bullet points in the opening story or bridge sections — use flowing prose
 - The copy must feel personal, not like a sales page template
+- Use transformation language: "reclaim," "restore," "finally," "root cause" — never "manage" or "cope"
 
 OUTPUT: Return ONLY the landing page copy in clean Markdown. No meta-commentary, no labels outside the structure above, no "Here is your landing page:" preamble.`;
 }
@@ -376,14 +389,31 @@ export const landingPagesRouter = router({
         }
       }
 
-      // Build the system prompt with enriched (real survey) data
+      // Load Avatar Intelligence context block (objections, pain points, messaging framework, persona)
+      // This is the same context injected into Creation Studio, Blog, and Script generation.
+      let avatarContextBlock = "";
+      try {
+        const { getAvatarContextBlockForPersona } = await import("./avatarRouter");
+        avatarContextBlock = await getAvatarContextBlockForPersona(
+          input.contentAngle,
+          input.personaName
+        );
+        if (avatarContextBlock) {
+          console.log(`[LandingPages] Avatar context loaded for persona: ${input.personaName}`);
+        }
+      } catch (err) {
+        console.warn("[LandingPages] Could not load avatar context block:", err);
+      }
+
+      // Build the system prompt with enriched (real survey) data + avatar intelligence
       const systemPrompt = buildCopyPrompt(
         input.personaName,
         enrichedPainPoints,
         enrichedAspirations,
         input.offer,
         input.offerCustomLabel,
-        input.contentAngle
+        input.contentAngle,
+        avatarContextBlock
       );
 
       // Call LLM

@@ -802,3 +802,11 @@
 - [x] Inject avatar context block into generateCopy procedure (calls getAvatarContextBlockForPersona with topic + persona name)
 - [x] Update landing page structure instructions to reference Avatar Intelligence data in each section
 - [x] Add transformation language rules to landing page voice guidelines
+
+## v24 Features — X Two-Pass Condenser (April 10, 2026)
+
+- [x] Replace validateXLength (no-op warning) with condenseXPost() — a second LLM pass that rewrites over-limit X posts into a complete, coherent tweet under 240 chars
+- [x] Condenser prompt explicitly forbids ellipses, requires complete thought, targets 240 chars (60-char buffer below X's 280 limit)
+- [x] Condenser preserves Pedram's voice and core insight — never just truncates
+- [x] Fallback: if condense pass fails, returns original text so user can edit manually
+- [x] 87/87 tests pass

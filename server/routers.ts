@@ -496,50 +496,22 @@ Rules:
         }
 
         // Step 3: Assemble combined results
-        // For X/Twitter: if the LLM produced content over 280 chars, run a second LLM pass
-        // to condense it into a COMPLETE, coherent tweet under 280 chars.
-        // We never truncate — truncation produces incoherent, cut-off posts.
-        async function condenseXPost(text: string): Promise<string> {
-          if (text.length <= 280) return text;
-          console.warn(`[X] Tweet is ${text.length} chars — running condense pass.`);
-          try {
-            const condenseResponse = await invokeLLM({
-              messages: [
-                {
-                  role: "system",
-                  content: `You are an expert tweet editor for Dr. Pedram Shojai (The Urban Monk).
-Your ONLY job: take the draft tweet below and rewrite it as a SINGLE, COMPLETE, SELF-CONTAINED tweet that is 240 characters or fewer (including spaces, punctuation, and hashtags).
-
-RULES:
-- The tweet must be a complete thought — it must begin and end naturally, never cut off mid-sentence
-- Preserve the core insight and Pedram's voice (sharp, grounded, thought-provoking)
-- Remove any hashtags if needed to fit — the message is more important than the hashtag
-- Do NOT use ellipses (...) to end the tweet — that means it is still cut off
-- Output ONLY the final tweet text — no labels, no explanation, no preamble
-- Count every character. Your output MUST be 240 characters or fewer.`,
-                },
-                {
-                  role: "user",
-                  content: `Draft tweet (${text.length} chars — too long, condense to 240 chars max):\n\n${text}`,
-                },
-              ],
-            });
-            const condensed = condenseResponse.choices?.[0]?.message?.content;
-            if (typeof condensed === "string" && condensed.trim().length > 0) {
-              const result = condensed.trim();
-              console.log(`[X] Condensed to ${result.length} chars.`);
-              return result;
-            }
-          } catch (err) {
-            console.warn("[X] Condense pass failed:", err);
+        // For X/Twitter: the LLM is instructed to write complete, self-contained posts
+        // targeting 200-220 characters. We do NOT truncate — truncation produces incoherent
+        // posts. Instead we log a warning if the LLM still overshoots, so we can monitor
+        // prompt quality without breaking the user's content.
+        function validateXLength(text: string): string {
+          if (text.length > 280) {
+            console.warn(
+              `[X] Generated tweet exceeds 280 chars (${text.length} chars). ` +
+              `Review prompt tuning. Text: ${text.slice(0, 100)}...`
+            );
           }
-          // Fallback: if condense pass fails, return original (user can edit manually)
-          return text;
+          return text; // Always return the full, complete text — never truncate
         }
-
         const results: Record<string, { text: string; imageUrl?: string; title: string }> = {};
         for (const { platform, text, title } of textResults) {
-          const finalText = platform === "x" ? await condenseXPost(text) : text;
+          const finalText = platform === "x" ? validateXLength(text) : text;
           results[platform] = { text: finalText, imageUrl: imageResults[platform], title };
         }
 

@@ -784,15 +784,43 @@ Rules:
         ]
           .filter(Boolean)
           .join("");
-        const response = await invokeLLM({
+        // ── PASS 1: Generate the full article body as plain Markdown ────────────────
+        // Keeping the article separate from JSON avoids token-limit truncation.
+        // The article prompt asks for ONLY the Markdown body — no JSON wrapper.
+        const ARTICLE_BODY_PROMPT = `${BLOG_PROMPT}
+
+OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do NOT wrap in JSON. Do NOT include a title H1 at the top. Start directly with the opening hook paragraph. Write the complete article — all sections fully developed — ending with the FAQ section. Do not stop early.`;
+
+        const articleResponse = await invokeLLM({
           messages: [
-            { role: "system", content: BLOG_PROMPT },
+            { role: "system", content: ARTICLE_BODY_PROMPT },
             { role: "user", content: userMessage },
+          ],
+        });
+
+        const articleBody = (String(articleResponse.choices?.[0]?.message?.content ?? "")).trim();
+        if (!articleBody || articleBody.length < 500) {
+          throw new Error("Blog generation failed — article body was empty or too short.");
+        }
+
+        // ── PASS 2: Extract metadata from the completed article ───────────────────
+        // Now that we have the full article, ask the LLM to extract the SEO fields.
+        // This is a short structured call — no risk of truncation.
+        const metaResponse = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are an SEO metadata extractor. Given a completed blog article, extract the required SEO fields. Return ONLY a valid JSON object with no preamble.`,
+            },
+            {
+              role: "user",
+              content: `Extract SEO metadata from this article about: ${input.idea}\n\nARTICLE:\n${articleBody.slice(0, 3000)}`,
+            },
           ],
           response_format: {
             type: "json_schema",
             json_schema: {
-              name: "blog_article",
+              name: "blog_metadata",
               strict: true,
               schema: {
                 type: "object",
@@ -806,17 +834,52 @@ Rules:
                   emotionalDriver: { type: "string", description: "Primary emotional driver" },
                   faqSection: { type: "string", description: "Markdown FAQ section with 4-6 PAA questions" },
                   waterfallMap: { type: "string", description: "5-item derivative content list" },
-                  article: { type: "string", description: "Full article in clean Markdown" },
                 },
-                required: ["title", "slug", "metaDescription", "focusKeyword", "semanticKeywords", "hookFamily", "emotionalDriver", "faqSection", "waterfallMap", "article"],
+                required: ["title", "slug", "metaDescription", "focusKeyword", "semanticKeywords", "hookFamily", "emotionalDriver", "faqSection", "waterfallMap"],
                 additionalProperties: false,
               },
             },
           },
         });
 
-        const rawContent = response.choices?.[0]?.message?.content;
-        let blogData: {
+        const rawMeta = String(metaResponse.choices?.[0]?.message?.content ?? "{}");
+        let metaData: {
+          title: string;
+          slug: string;
+          metaDescription: string;
+          focusKeyword: string;
+          semanticKeywords?: string[];
+          hookFamily?: string;
+          emotionalDriver?: string;
+          faqSection?: string;
+          waterfallMap?: string;
+        } = {
+          title: input.idea.slice(0, 80),
+          slug: input.idea.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),
+          metaDescription: "",
+          focusKeyword: "",
+          semanticKeywords: [],
+          hookFamily: "",
+          emotionalDriver: "",
+          faqSection: "",
+          waterfallMap: "",
+        };
+        try {
+          let cleaned = rawMeta.trim();
+          cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+          const jsonStart = cleaned.indexOf("{");
+          const jsonEnd = cleaned.lastIndexOf("}");
+          if (jsonStart >= 0 && jsonEnd > jsonStart) {
+            cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+          }
+          const parsed = JSON.parse(cleaned);
+          metaData = { ...metaData, ...parsed };
+        } catch {
+          console.warn("[Blog] Metadata extraction failed — using fallback metadata.");
+        }
+
+        // Combine: full article body + extracted metadata
+        const blogData: {
           title: string;
           slug: string;
           metaDescription: string;
@@ -827,41 +890,10 @@ Rules:
           faqSection?: string;
           waterfallMap?: string;
           article: string;
-        } | null = null;
-
-        if (typeof rawContent === "string") {
-          try {
-            // response_format: json_schema guarantees clean JSON — but strip fences defensively
-            let cleaned = rawContent.trim();
-            // Remove any markdown code fences (```json ... ``` or ``` ... ```)
-            cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-            // If there's still non-JSON preamble, extract the first { ... } block
-            const jsonStart = cleaned.indexOf("{");
-            const jsonEnd = cleaned.lastIndexOf("}");
-            if (jsonStart > 0 && jsonEnd > jsonStart) {
-              cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
-            }
-            blogData = JSON.parse(cleaned);
-          } catch {
-            // Last-resort fallback: treat the whole response as the article body
-            blogData = {
-              title: input.idea.slice(0, 80),
-              slug: input.idea.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),
-              metaDescription: "",
-              focusKeyword: "",
-              semanticKeywords: [],
-              hookFamily: "",
-              emotionalDriver: "",
-              faqSection: "",
-              waterfallMap: "",
-              article: rawContent,
-            };
-          }
-        }
-
-        if (!blogData) {
-          throw new Error("Blog generation failed — no content returned.");
-        }
+        } = {
+          ...metaData,
+          article: articleBody,
+        };
 
         // Step 2: Generate the hero image in parallel (16:9 blog style)
         let heroImageUrl: string | undefined;

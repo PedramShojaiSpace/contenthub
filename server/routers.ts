@@ -18,7 +18,7 @@ import {
   upsertPlatformStrategy,
 } from "./db";
 import { getBufferProfiles, pushToBuffer } from "./buffer";
-import { uploadMediaFromUrl, createWpPost } from "./wordpress";
+import { uploadMediaFromUrl, createWpPost, buildBlogSchemas } from "./wordpress";
 import {
   countAddressedGaps,
   getCompetitorLeaderboard,
@@ -179,46 +179,104 @@ const PLATFORM_IMAGE_STYLES: Record<string, string> = {
   blog: `Wide-format editorial hero image (16:9). Warm, authoritative, and contemplative. Soft golden morning light with warm cream and sage tones. A single light source illuminating a symbolic object or anonymous human figure from the side. Think a high-end wellness magazine or an uplifting documentary thumbnail. No text overlay. Evokes wisdom, transformation, hope, and scientific depth. Timeless, warm quality.`,
 };
 
-// Blog-specific AI prompt — produces a full SEO-optimized article in clean Markdown
-const BLOG_PROMPT = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com.
+// Blog-specific AI prompt — produces a full SEO+AEO-optimized article implementing GhostLink OS pillar standards
+const BLOG_PROMPT = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
 
 AUDIENCE: Educated, health-conscious adults aged 30-55. Ambitious professionals, parents, and seekers who are serious about optimizing their biology, reducing chronic stress, and integrating ancient wisdom with modern science. They are skeptical of hype but hungry for evidence-based alternatives. They have tried conventional medicine and found it lacking. They want depth, not listicles.
 
-VOICE: Authoritative, educational, deeply knowledgeable. Pedram writes as a doctor (OMD), a Taoist monk, a filmmaker, and a father. He bridges Eastern philosophy and Western medicine without being preachy. He challenges conventional thinking with science and story. Warm but direct. He uses "we" and "you" to draw the reader in. He cites mechanisms (not just studies). He tells short stories. He is never condescending. No fluff. No filler. Every sentence earns its place.
+VOICE (GhostLink OS B6 Voice Rules — non-negotiable):
+- Sentences ≤18 words average. Break anything longer.
+- No adverbs modifying verbs. Pick a stronger verb.
+- BANNED WORDS: leverage, strategic, solutions, stakeholder, ecosystem, robust, synergy, paradigm, best-in-class, world-class, empowering, transforming, revolutionizing, unlocking, perhaps, maybe, kind of, sort of, in today's world, at the end of the day
+- Concrete nouns over abstract nouns. Every bold claim has a receipt within 2 sentences.
+- Direct address: "you" and "we" — never "one" or "users"
+- Opinions land hard. No "I think maybe."
+- Pedram writes as a doctor (OMD), a Taoist monk, a filmmaker, and a father. Warm but direct. He cites mechanisms (not just studies). He tells short stories. Never condescending. No fluff.
 
 CRITICAL OUTPUT RULES:
 - Output ONLY a valid JSON object — nothing else, no preamble, no explanation, no markdown code fences
-- The JSON must have exactly these fields:
+- The JSON must have EXACTLY these fields:
   {
-    "title": "The SEO-optimized article title (compelling, specific, 50-65 chars)",
-    "slug": "url-friendly-slug-with-hyphens-max-60-chars",
-    "metaDescription": "150-160 character meta description for SEO — include the focus keyword",
-    "focusKeyword": "primary SEO keyword phrase (2-4 words)",
+    "title": "H1 headline — must contain the primary keyword, 50-65 chars, use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
+    "slug": "url-friendly-slug-max-60-chars — must contain the primary keyword",
+    "metaDescription": "150-160 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA",
+    "focusKeyword": "primary SEO keyword phrase (2-4 words) — the exact phrase the target audience types into Google",
+    "semanticKeywords": ["3-5 semantic variant phrases that support the focus keyword — weave these naturally into H2s and body"],
+    "hookFamily": "which of the 12 Hook Families was used for the title",
+    "emotionalDriver": "which of the 7 Emotional Drivers (Clarity, Pain, Belonging, Authority, Courage, Identity, Inspiration) is primary",
+    "faqSection": "a Markdown FAQ section with 4-6 questions formatted as: ### Question\\nAnswer (2-3 sentences, direct, no fluff). Questions must be real People Also Ask (PAA) queries for this topic.",
+    "waterfallMap": "a brief 5-item list of derivative content pieces this article can generate: e.g. 1. Short-form video hook (Pain driver), 2. LinkedIn post (Authority driver), etc.",
     "article": "the full article in clean Markdown"
   }
-- The article field must be CLEAN Markdown — escape any double quotes inside the JSON string as \\" — use \\n for newlines within the JSON string
-- Do NOT include the title as an H1 in the article body (it will be rendered separately as the page H1)
-- Do NOT include any labels like 'Hook:', 'CTA:', 'Section 1:', or '---' dividers — write clean prose
+- The article field must be CLEAN Markdown — escape any double quotes inside the JSON string as \\" — use \\n for newlines
+- Do NOT include the title as an H1 in the article body (rendered separately)
+- Do NOT include any labels like 'Hook:', 'CTA:', 'Section 1:', or '---' dividers
 
-ARTICLE STRUCTURE (follow this exactly, do not add section labels):
-1. OPENING HOOK (2-3 paragraphs, 200-250 words): Start with a provocative statement, a surprising statistic, or a brief patient story. Establish the problem viscerally. Make the reader feel seen. End the hook with a bridge sentence that promises the article will deliver real answers.
-2. THE PROBLEM DEEPER (1 H2 section, 2-3 paragraphs, 200-250 words): Explain the root mechanism — the biology, the physiology, the Taoist or functional medicine lens. Use Pedram's voice to reframe the conventional narrative. Cite a mechanism or study naturally in the prose.
-3. WHAT MOST PEOPLE GET WRONG (1 H2 section, 2-3 paragraphs, 200-250 words): Challenge the mainstream approach. What does conventional medicine miss? What does the wellness industry get wrong? Be specific. Be bold.
-4. THE UPSTREAM SOLUTION (1-2 H2 sections, 3-4 paragraphs each, 300-400 words total): Lay out the real solution. Include specific, actionable practices — Qigong, breathwork, dietary shifts, supplement protocols, sleep hygiene, nervous system regulation. Reference relevant books or podcast episodes naturally.
-5. PRACTICAL PROTOCOL (1 H2 section, 2-3 paragraphs, 150-200 words): Give the reader 3-5 concrete steps they can start this week. Be specific — not "reduce stress" but "practice 5 minutes of Qigong before breakfast for 30 days."
-6. CLOSING + CTA (2 paragraphs, 150-200 words): Bring the article full circle — reference the opening hook. Close with an empowering statement about what is possible. Then write a natural, non-pushy CTA paragraph that invites the reader to go deeper through the Urban Monk Academy (https://urbanmonkacademy.com) — frame it as the logical next step, not a sales pitch.
+ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Architecture):
 
-TOTAL ARTICLE LENGTH: 1,400-1,800 words. Do not stop short. Every section must be fully developed.
+1. TL;DR BOX (place immediately after the opening, before the first H2 — critical for AI citation):
+   Format as a Markdown blockquote: > **TL;DR:** [2-3 sentences giving the direct answer to the core question. This is what AI engines will cite. Be specific, factual, and keyword-rich.]
+
+2. OPENING HOOK (2-3 paragraphs, 200-250 words BEFORE the TL;DR box):
+   Select hook from the 12 families based on emotional driver. Start with the painful truth — a provocative statement, a surprising statistic, or a brief patient story. Establish the problem viscerally. Make the reader feel seen. End with a bridge sentence that promises real answers. The first sentence must pass the 3-second scroll test: specific, tensioned, relevant.
+
+3. THE HIDDEN PROBLEM — WHY THIS IS HAPPENING (1 H2, 2-3 paragraphs, 200-250 words):
+   H2 must contain a semantic keyword and answer a PAA-style question. Diagnose the root cause — the biology, physiology, Taoist or functional medicine lens. Name the surface symptom, reveal the root cause, explain the mechanism, validate their effort. This earns the right to teach.
+
+4. WHAT MOST PEOPLE GET WRONG (1 H2, 2-3 paragraphs, 200-250 words):
+   H2 must contain a semantic keyword. Use the 3-Mistake Pattern: (1) the Tactic mistake — what they're doing that doesn't work, (2) the Mindset mistake — what false belief holds them back, (3) the System mistake — what process or structure is missing. Challenge mainstream medicine AND the wellness industry. Be specific. Be bold.
+
+5. THE FRAMEWORK — [GIVE IT A MEMORABLE NAME] (1-2 H2 sections, 3-4 paragraphs each, 300-400 words):
+   H2 must contain the focus keyword or a semantic variant. Name the framework (e.g. "The 3-Gate Protocol" or "The Upstream Reset Method"). For each step: give it a memorable name, teach the core concept, name the common mistake, give a mini-example. Include specific actionable practices — Qigong, breathwork, dietary shifts, supplement protocols, sleep hygiene, nervous system regulation. Reference Pedram's books or podcast episodes naturally as proof.
+
+6. PRACTICAL PROTOCOL (1 H2, 2-3 paragraphs, 150-200 words):
+   H2 must be a question (e.g. "How Do You Start This Week?"). Give 3-5 numbered concrete steps. Be specific — not "reduce stress" but "practice 5 minutes of Qigong before breakfast for 30 days."
+
+7. TRANSFORMATION VISION (1-2 paragraphs, 100-150 words):
+   Paint the future state using Identity and Inspiration driver language. WHEN you apply this framework... YOU STOP [painful behavior]... YOU START [empowered behavior]... YOU BECOME [identity label]. Make the contrast vivid.
+
+8. CLOSING + CTA (2 paragraphs, 150-200 words):
+   Bring the article full circle — reference the opening hook. Close with an empowering statement. Then write a natural, non-pushy CTA paragraph that invites the reader to go deeper through the Lights On course (https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 — $369/year) or the Urban Monk Academy (https://urbanmonkacademy.com). Frame as the logical next step, not a sales pitch. CTA friction level: Medium (T3 — email capture or course enrollment).
+
+9. FAQ SECTION (place at the END of the article, after the CTA):
+   Use the faqSection field content here. Format: ## Frequently Asked Questions\\n[paste the FAQ content]. This section is critical for Google featured snippets and AI engine citation.
+
+SEO + AEO INTEGRATION RULES (non-negotiable):
+- H1 (title) must contain the primary focus keyword
+- Each H2 must either contain a semantic keyword variant OR be phrased as a question (PAA format)
+- Include a clear, direct answer to the core question within the first 300 words (the TL;DR box)
+- Use sequential H2/H3 heading structure — this increases AI citation odds by 2.8x
+- Weave 3-5 semantic keyword variants naturally into headings and body (not forced)
+- Include at least 2 internal link placeholders formatted as: [INTERNAL LINK: topic of related article] — these will be replaced with real URLs before publish
+- Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH) formatted as standard Markdown links
+- The FAQ section at the bottom targets featured snippets and AI citation
+- E-E-A-T signals: weave Pedram's credentials (OMD, NYT bestselling author, Taoist monk, filmmaker) naturally into the body — not as a bio block, but as contextual authority within the teaching
+
+TOTAL ARTICLE LENGTH: 1,600-2,200 words (body only, not counting FAQ). Do not stop short. Every section must be fully developed.
 
 FORMATTING RULES:
-- Use ## for H2 section headings (compelling, specific — not generic like "The Solution")
+- Use ## for H2 section headings (compelling, specific, keyword-rich — not generic like "The Solution")
+- Use ### for H3 sub-headings within the framework steps
 - Use **bold** for key terms or critical insights (2-4 per section maximum)
-- Use > blockquote for a single powerful pull-quote per article
-- Short paragraphs (3-5 sentences max) for readability
+- Use > blockquote for the TL;DR box AND one powerful pull-quote per article
+- Short paragraphs (3-5 sentences max) for readability and dwell time
 - No bullet lists in the main body — write in flowing prose
 - No em-dashes used as bullet substitutes
+- No banned words from the Voice Rules above
 
-CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Taoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork).`;
+QUALITY GATE (self-check before outputting):
+- Does the hook pass the 3-second scroll test? Specific, tensioned, relevant?
+- Is there ONE clear Big Idea the audience hasn't heard framed this way?
+- Is there a named framework with 3-7 steps?
+- Is the primary Emotional Driver woven throughout (not bolted on)?
+- Is there proof (mechanism, study, case, process walkthrough)?
+- Does the transformation vision activate Identity or Inspiration?
+- Is the CTA friction level T3 (medium — course enrollment or email capture)?
+- Are all banned words absent?
+- Does the TL;DR box give a direct, citable answer in 2-3 sentences?
+- Does the FAQ section contain 4-6 real PAA-style questions with direct answers?
+
+CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Taoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
 
 const DEFAULT_IMAGE_STYLE = PLATFORM_IMAGE_STYLES.all;
 
@@ -738,6 +796,11 @@ Rules:
           slug: string;
           metaDescription: string;
           focusKeyword: string;
+          semanticKeywords?: string[];
+          hookFamily?: string;
+          emotionalDriver?: string;
+          faqSection?: string;
+          waterfallMap?: string;
           article: string;
         } | null = null;
 
@@ -753,6 +816,11 @@ Rules:
               slug: input.idea.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),
               metaDescription: "",
               focusKeyword: "",
+              semanticKeywords: [],
+              hookFamily: "",
+              emotionalDriver: "",
+              faqSection: "",
+              waterfallMap: "",
               article: rawContent,
             };
           }
@@ -798,6 +866,11 @@ Rules:
           heroImageUrl,
           wordCount,
           readTime,
+          semanticKeywords: blogData.semanticKeywords ?? [],
+          hookFamily: blogData.hookFamily ?? "",
+          emotionalDriver: blogData.emotionalDriver ?? "",
+          faqSection: blogData.faqSection ?? "",
+          waterfallMap: blogData.waterfallMap ?? "",
         };
       }),
     generateTeleprompterScript: protectedProcedure
@@ -1536,12 +1609,20 @@ Return BOTH in this exact format:
           slug: z.string(),
           body: z.string(),
           metaDescription: z.string().optional(),
+          focusKeyword: z.string().optional(),       // Yoast focus keyword
+          semanticKeywords: z.array(z.string()).optional(), // Semantic variants (for reference)
+          faqSection: z.string().optional(),         // Markdown FAQ section for FAQ schema
+          hookFamily: z.string().optional(),         // GhostLink OS hook family used
+          emotionalDriver: z.string().optional(),    // GhostLink OS emotional driver
+          waterfallMap: z.string().optional(),       // Derivative content plan
           heroImageUrl: z.string().optional(),
           status: z.enum(["draft", "publish", "pending", "future"]).default("draft"),
           scheduledAt: z.number().optional(), // UTC ms timestamp for scheduled posts
         })
       )
       .mutation(async ({ input }) => {
+        const wpBaseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+
         // Step 1: Upload hero image to WordPress media library (if provided)
         let featuredMediaId: number | undefined;
         let wpImageUrl: string | undefined;
@@ -1551,7 +1632,7 @@ Return BOTH in this exact format:
             const media = await uploadMediaFromUrl(
               input.heroImageUrl,
               filename,
-              input.title
+              `${input.title} — The Urban Monk` // SEO-optimized alt text
             );
             featuredMediaId = media.id;
             wpImageUrl = media.url;
@@ -1568,7 +1649,21 @@ Return BOTH in this exact format:
           wpDate = new Date(input.scheduledAt).toISOString();
         }
 
-        // Step 2: Create the WordPress post
+        // Step 2: Build Article + FAQ JSON-LD schema blocks (GhostLink OS B15 AEO)
+        const { articleSchema, faqSchema } = buildBlogSchemas({
+          title: input.title,
+          slug: input.slug,
+          metaDescription: input.metaDescription ?? "",
+          heroImageUrl: wpImageUrl ?? input.heroImageUrl,
+          faqSection: input.faqSection,
+          baseUrl: wpBaseUrl,
+          datePublished: wpDate ?? new Date().toISOString(),
+        });
+
+        // Step 3: Build SEO title for Yoast (format: Article Title | The Urban Monk)
+        const seoTitle = `${input.title} | The Urban Monk`;
+
+        // Step 4: Create the WordPress post with full SEO metadata
         const post = await createWpPost({
           title: input.title,
           slug: input.slug,
@@ -1577,6 +1672,11 @@ Return BOTH in this exact format:
           status: wpStatus,
           featuredMediaId,
           metaDescription: input.metaDescription,
+          focusKeyword: input.focusKeyword,
+          seoTitle,
+          canonicalUrl: `${wpBaseUrl}/${input.slug}/`,
+          articleSchema,
+          faqSchema: faqSchema ?? undefined,
           date: wpDate,
         });
 

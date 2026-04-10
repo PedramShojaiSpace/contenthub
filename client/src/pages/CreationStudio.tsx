@@ -762,6 +762,12 @@ export default function CreationStudio() {
     title: string;
     slug: string;
     metaDescription: string;
+    focusKeyword?: string;
+    semanticKeywords?: string[];
+    hookFamily?: string;
+    emotionalDriver?: string;
+    faqSection?: string;
+    waterfallMap?: string;
     body: string;
     imageUrl?: string;
   } | null>(null);
@@ -793,6 +799,12 @@ export default function CreationStudio() {
         title: data.title,
         slug: data.slug,
         metaDescription: data.metaDescription,
+        focusKeyword: data.focusKeyword,
+        semanticKeywords: data.semanticKeywords,
+        hookFamily: data.hookFamily,
+        emotionalDriver: data.emotionalDriver,
+        faqSection: data.faqSection,
+        waterfallMap: data.waterfallMap,
         body: data.article,
         imageUrl: data.heroImageUrl,
       });
@@ -918,6 +930,12 @@ export default function CreationStudio() {
       slug: blogContent.slug,
       body: blogContent.body,
       metaDescription: blogContent.metaDescription,
+      focusKeyword: blogContent.focusKeyword,
+      semanticKeywords: blogContent.semanticKeywords,
+      faqSection: blogContent.faqSection,
+      hookFamily: blogContent.hookFamily,
+      emotionalDriver: blogContent.emotionalDriver,
+      waterfallMap: blogContent.waterfallMap,
       heroImageUrl: blogContent.imageUrl,
       status,
     });
@@ -1926,9 +1944,77 @@ export default function CreationStudio() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Meta Description (SEO)</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed border border-border rounded-md px-3 py-2 bg-muted/30">{blogContent.metaDescription}</p>
+                {/* SEO Intelligence Panel — GhostLink OS B1/B15 */}
+                <div className="space-y-3 p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">SEO & AEO Intelligence</p>
+                  </div>
+
+                  {/* Row 1: Meta + Focus Keyword */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Meta Description</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed border border-border rounded px-2.5 py-1.5 bg-background">{blogContent.metaDescription}</p>
+                      <p className="text-[10px] text-muted-foreground">{blogContent.metaDescription?.length ?? 0} chars {(blogContent.metaDescription?.length ?? 0) >= 150 && (blogContent.metaDescription?.length ?? 0) <= 160 ? "✓" : "(target: 150–160)"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Focus Keyword (Yoast)</p>
+                      <p className="text-xs font-mono text-primary border border-border rounded px-2.5 py-1.5 bg-background">{blogContent.focusKeyword || "—"}</p>
+                      {blogContent.semanticKeywords && blogContent.semanticKeywords.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {blogContent.semanticKeywords.map((kw, i) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{kw}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 2: Hook Family + Emotional Driver */}
+                  {(blogContent.hookFamily || blogContent.emotionalDriver) && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {blogContent.hookFamily && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Hook Family</p>
+                          <p className="text-xs text-foreground border border-border rounded px-2.5 py-1.5 bg-background">{blogContent.hookFamily}</p>
+                        </div>
+                      )}
+                      {blogContent.emotionalDriver && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Emotional Driver</p>
+                          <p className="text-xs text-foreground border border-border rounded px-2.5 py-1.5 bg-background">{blogContent.emotionalDriver}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Row 3: FAQ Section preview */}
+                  {blogContent.faqSection && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">FAQ Section (Featured Snippet + AI Citation)</p>
+                      <div className="text-xs text-muted-foreground border border-border rounded px-2.5 py-1.5 bg-background max-h-24 overflow-y-auto font-mono whitespace-pre-wrap">{blogContent.faqSection.slice(0, 400)}{blogContent.faqSection.length > 400 ? "…" : ""}</div>
+                      <p className="text-[10px] text-emerald-600">✓ FAQ schema (JSON-LD) will be injected on publish</p>
+                    </div>
+                  )}
+
+                  {/* Row 4: Waterfall Map */}
+                  {blogContent.waterfallMap && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Derivative Content Map (Waterfall)</p>
+                      <div className="text-xs text-muted-foreground border border-border rounded px-2.5 py-1.5 bg-background max-h-20 overflow-y-auto whitespace-pre-wrap">{blogContent.waterfallMap.slice(0, 300)}{blogContent.waterfallMap.length > 300 ? "…" : ""}</div>
+                    </div>
+                  )}
+
+                  {/* Schema status */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">✓ Article schema (JSON-LD)</span>
+                    {blogContent.faqSection && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">✓ FAQ schema (JSON-LD)</span>}
+                    {blogContent.focusKeyword && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">✓ Yoast focus keyword</span>}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">✓ Canonical URL</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">✓ SEO title tag</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">✓ Image alt text</span>
+                  </div>
                 </div>
 
                 {/* Article Body — Preview / Edit toggle */}

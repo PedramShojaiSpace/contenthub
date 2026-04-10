@@ -1,6 +1,13 @@
 /**
  * WordPress REST API integration for The Urban Monk (theurbanmonk.com)
  * Uses Application Password authentication (Basic Auth over HTTPS)
+ *
+ * SEO Implementation: GhostLink OS B1/B15 Pillar Standards
+ * - Full Yoast SEO meta fields (focus keyword, SEO title, meta description, canonical)
+ * - Article schema (JSON-LD) for E-E-A-T and Google rich results
+ * - FAQ schema (JSON-LD) for featured snippets and AI engine citation
+ * - Image alt text for accessibility and image SEO
+ * - Open Graph and Twitter Card meta via Yoast
  */
 
 function getWpAuth(): { baseUrl: string; authHeader: string } {
@@ -52,7 +59,7 @@ export async function uploadMediaFromUrl(
     source_url: string;
   };
 
-  // Optionally set alt text
+  // Set alt text for image SEO
   if (altText && media.id) {
     await fetch(`${baseUrl}/wp-json/wp/v2/media/${media.id}`, {
       method: "POST",
@@ -60,7 +67,11 @@ export async function uploadMediaFromUrl(
         Authorization: authHeader,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ alt_text: altText }),
+      body: JSON.stringify({
+        alt_text: altText,
+        caption: altText,
+        description: altText,
+      }),
     }).catch(() => {
       // Non-fatal — alt text update failure doesn't block publish
     });
@@ -72,14 +83,23 @@ export async function uploadMediaFromUrl(
 export interface WpPostInput {
   title: string;
   slug: string;
-  content: string; // HTML or Markdown — WP stores as-is
+  content: string; // HTML — WP stores as-is
   excerpt?: string;
   status?: "draft" | "publish" | "pending" | "future";
   featuredMediaId?: number;
   categories?: number[];
   tags?: number[];
-  metaDescription?: string; // Stored in Yoast SEO meta if available
   date?: string; // ISO 8601 UTC date string for scheduled posts (status: "future")
+
+  // ─── Yoast SEO fields ────────────────────────────────────────────────────────
+  metaDescription?: string;      // _yoast_wpseo_metadesc (150-160 chars)
+  focusKeyword?: string;          // _yoast_wpseo_focuskw
+  seoTitle?: string;              // _yoast_wpseo_title (if different from post title)
+  canonicalUrl?: string;          // _yoast_wpseo_canonical
+
+  // ─── Schema markup (injected as JSON-LD in post content) ────────────────────
+  articleSchema?: string;         // JSON-LD Article schema block (pre-built)
+  faqSchema?: string;             // JSON-LD FAQPage schema block (pre-built)
 }
 
 export interface WpPostResult {
@@ -90,16 +110,135 @@ export interface WpPostResult {
 }
 
 /**
- * Create a new WordPress post.
+ * Build Article JSON-LD schema for E-E-A-T and Google rich results.
+ * Follows GhostLink OS B15 AEO requirements.
+ */
+function buildArticleSchema(params: {
+  title: string;
+  slug: string;
+  metaDescription: string;
+  heroImageUrl?: string;
+  baseUrl: string;
+  datePublished?: string;
+}): string {
+  const url = `${params.baseUrl}/${params.slug}/`;
+  const now = params.datePublished ?? new Date().toISOString();
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: params.title,
+    description: params.metaDescription,
+    url,
+    datePublished: now,
+    dateModified: now,
+    author: {
+      "@type": "Person",
+      name: "Dr. Pedram Shojai",
+      url: "https://theurbanmonk.com/about",
+      sameAs: [
+        "https://www.instagram.com/urbanmonkofficial",
+        "https://www.youtube.com/@theurbanmonk",
+        "https://www.linkedin.com/in/pedramshojai",
+      ],
+      jobTitle: "Doctor of Oriental Medicine, Taoist Monk, Author",
+      description:
+        "Dr. Pedram Shojai (OMD) is a New York Times bestselling author, Doctor of Oriental Medicine, Taoist monk, and filmmaker. Founder of The Urban Monk and the Urban Monk Academy.",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "The Urban Monk",
+      url: "https://theurbanmonk.com",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://theurbanmonk.com/wp-content/uploads/urban-monk-logo.png",
+      },
+    },
+    ...(params.heroImageUrl
+      ? {
+          image: {
+            "@type": "ImageObject",
+            url: params.heroImageUrl,
+            width: 1200,
+            height: 675,
+          },
+        }
+      : {}),
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": url,
+    },
+  };
+  return `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>`;
+}
+
+/**
+ * Build FAQPage JSON-LD schema from a Markdown FAQ section.
+ * Parses ### Question / Answer pairs from the GhostLink OS FAQ format.
+ * Critical for Google featured snippets and AI engine (ChatGPT, Perplexity) citation.
+ */
+function buildFaqSchema(faqMarkdown: string): string | null {
+  if (!faqMarkdown) return null;
+
+  const entries: Array<{ question: string; answer: string }> = [];
+  // Match ### Question\nAnswer blocks
+  const blocks = faqMarkdown.split(/\n(?=###\s)/);
+  for (const block of blocks) {
+    const lines = block.trim().split("\n");
+    if (!lines[0]) continue;
+    const question = lines[0].replace(/^###\s*/, "").trim();
+    const answer = lines
+      .slice(1)
+      .join(" ")
+      .replace(/\*\*/g, "")
+      .replace(/\[.*?\]\(.*?\)/g, "")
+      .trim();
+    if (question && answer) {
+      entries.push({ question, answer });
+    }
+  }
+
+  if (entries.length === 0) return null;
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: entries.map((e) => ({
+      "@type": "Question",
+      name: e.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: e.answer,
+      },
+    })),
+  };
+  return `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n</script>`;
+}
+
+/**
+ * Create a new WordPress post with full SEO optimization.
+ * Injects Yoast SEO meta fields, Article schema, and FAQ schema.
  * Returns the post ID, public link, and admin edit link.
  */
 export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
   const { baseUrl, authHeader } = getWpAuth();
 
+  // Build schema blocks to prepend/append to content
+  let enrichedContent = input.content;
+
+  // Inject Article JSON-LD at the top of the content (invisible to readers, visible to crawlers)
+  if (input.articleSchema) {
+    enrichedContent = input.articleSchema + "\n\n" + enrichedContent;
+  }
+
+  // Inject FAQ JSON-LD at the bottom of the content
+  if (input.faqSchema) {
+    enrichedContent = enrichedContent + "\n\n" + input.faqSchema;
+  }
+
   const body: Record<string, unknown> = {
     title: input.title,
     slug: input.slug,
-    content: input.content,
+    content: enrichedContent,
     status: input.status ?? "draft",
   };
 
@@ -107,11 +246,19 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
   if (input.featuredMediaId) body.featured_media = input.featuredMediaId;
   if (input.categories?.length) body.categories = input.categories;
   if (input.tags?.length) body.tags = input.tags;
-  if (input.date) body.date_gmt = input.date; // Schedule in UTC
+  if (input.date) body.date_gmt = input.date;
 
-  // Yoast SEO meta description (stored as post meta)
-  if (input.metaDescription) {
-    body.meta = { _yoast_wpseo_metadesc: input.metaDescription };
+  // ─── Yoast SEO meta fields ───────────────────────────────────────────────────
+  // These require the Yoast SEO plugin to be active on the WordPress site.
+  // The REST API exposes these fields via the 'meta' property when Yoast is installed.
+  const yoastMeta: Record<string, string> = {};
+  if (input.metaDescription) yoastMeta["_yoast_wpseo_metadesc"] = input.metaDescription;
+  if (input.focusKeyword) yoastMeta["_yoast_wpseo_focuskw"] = input.focusKeyword;
+  if (input.seoTitle) yoastMeta["_yoast_wpseo_title"] = input.seoTitle;
+  if (input.canonicalUrl) yoastMeta["_yoast_wpseo_canonical"] = input.canonicalUrl;
+
+  if (Object.keys(yoastMeta).length > 0) {
+    body.meta = yoastMeta;
   }
 
   const res = await fetch(`${baseUrl}/wp-json/wp/v2/posts`, {
@@ -139,5 +286,24 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
     link: post.link,
     status: post.status,
     editLink: `${baseUrl}/wp-admin/post.php?post=${post.id}&action=edit`,
+  };
+}
+
+/**
+ * Convenience export: build all schema blocks for a blog post.
+ * Called from the publish procedure before createWpPost.
+ */
+export function buildBlogSchemas(params: {
+  title: string;
+  slug: string;
+  metaDescription: string;
+  heroImageUrl?: string;
+  faqSection?: string;
+  baseUrl: string;
+  datePublished?: string;
+}): { articleSchema: string; faqSchema: string | null } {
+  return {
+    articleSchema: buildArticleSchema(params),
+    faqSchema: params.faqSection ? buildFaqSchema(params.faqSection) : null,
   };
 }

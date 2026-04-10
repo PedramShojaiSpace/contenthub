@@ -931,3 +931,13 @@
 - [x] Wire webinar intelligence into scriptsRouter generateScript LLM prompt
 - [x] Update Intelligence Hub dashboard to show Webinar Intelligence stats (sessions analyzed, total responses, top themes)
 - [x] Write vitest tests for webinarIntelligenceRouter
+
+## SEO/AEO Blog Pipeline — GhostLink OS Implementation (v44)
+- [x] Ingest and study all 11 SEO documents (B1, B2, B3, B5, B6, B7, B8, B11, B15 + others)
+- [x] Audit existing WordPress publish pipeline against GhostLink OS requirements
+- [x] Upgrade BLOG_PROMPT: H1=primary keyword, PAA-style H2s, TL;DR box, FAQ section, named framework, E-E-A-T signals, internal/outbound links, semantic keywords, hook family, emotional driver, waterfall map
+- [x] Add semanticKeywords, hookFamily, emotionalDriver, faqSection, waterfallMap to generateBlog return type
+- [x] Rewrite wordpress.ts: Yoast SEO fields (focusKeyword, seoTitle, canonicalUrl), Article JSON-LD schema builder, FAQ JSON-LD schema builder, image alt text on upload
+- [x] Update blog.publish procedure: accept all new SEO fields, build Article + FAQ schemas, inject as JSON-LD in post content, set Yoast meta fields
+- [x] Update CreationStudio: capture all new SEO fields from generateBlog, pass all to publishToWP
+- [x] Add SEO & AEO Intelligence review panel to blog output UI (meta description char count, focus keyword + semantic variants, hook family, emotional driver, FAQ preview, waterfall map, schema status badges)

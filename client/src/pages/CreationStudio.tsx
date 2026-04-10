@@ -406,6 +406,7 @@ export default function CreationStudio() {
       customInstructions: customInstructions || undefined,
       generateImages: true,
       personaId: selectedPersonaId ?? undefined,
+      gapQueryText: activeGapQueryText ?? undefined,
     });
   };
 

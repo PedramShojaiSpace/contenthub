@@ -12,8 +12,8 @@ import { z } from "zod";
 const DEFAULT_CTA_BLOCKS = [
   {
     label: "Lights On (Default)",
-    ctaText: "Ready to turn the lights on in your life? Join the Lights On course and get the exact system Dr. Pedram Shojai uses to help his patients reclaim their energy, focus, and vitality. urbanmonk.com/lights-on",
-    url: "https://urbanmonk.com/lights-on",
+    ctaText: "Ready to turn the lights on in your life? Join the Lights On course — $369/yr — and get the exact system Dr. Pedram Shojai uses to help his patients reclaim their energy, focus, and vitality. go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1",
+    url: "https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1",
     keywords: JSON.stringify(["general", "wellness", "health", "energy", "vitality", "life", "transformation"]),
     isDefault: true,
     active: true,
@@ -101,7 +101,7 @@ export async function getCtaForTopic(topic: string): Promise<{
   url: string | null;
 }> {
   const db = await getDb();
-  if (!db) return { label: "Lights On (Default)", ctaText: "Join the Urban Monk Academy at urbanmonk.com/lights-on", url: "https://urbanmonk.com/lights-on" };
+  if (!db) return { label: "Lights On (Default)", ctaText: "Join the Lights On course — $369/yr — at go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1", url: "https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1" };
   await seedCtaBlocks();
   const allBlocks = await db.select().from(ctaBlocks).where(eq(ctaBlocks.active, true));
   const topicLower = topic.toLowerCase();
@@ -131,7 +131,7 @@ export async function getCtaForTopic(topic: string): Promise<{
   return {
     label: defaultBlock?.label ?? "Lights On (Default)",
     ctaText: defaultBlock?.ctaText ?? "Join the Urban Monk Academy at urbanmonk.com/academy",
-    url: defaultBlock?.url ?? "https://urbanmonk.com/lights-on",
+    url: defaultBlock?.url ?? "https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1",
   };
 }
 

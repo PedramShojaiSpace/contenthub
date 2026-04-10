@@ -46,6 +46,7 @@ import { avatarRouter } from "./avatarRouter";
 import { ctaRouter } from "./ctaRouter";
 import { growthRouter } from "./growthRouter";
 import { webinarRouter } from "./webinarRouter";
+import { webinarIntelligenceRouter } from "./webinarIntelligenceRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -339,6 +340,7 @@ export const appRouter = router({
           customInstructions: z.string().optional(),
           generateImages: z.boolean().default(true), // auto-generate images alongside content
           personaId: z.number().optional(), // inject Typeform-enriched persona pain points
+          gapQueryText: z.string().optional(), // Research Intelligence: inject competitor gap query
         })
       )
       .mutation(async ({ input }) => {
@@ -415,6 +417,14 @@ export const appRouter = router({
         } catch (err) {
           console.warn("[Content] Could not load avatar context:", err);
         }
+        // Load webinar intelligence context block
+        let webinarIntelligenceContext = "";
+        try {
+          const { getWebinarIntelligenceContextBlock } = await import("./webinarIntelligenceRouter");
+          webinarIntelligenceContext = await getWebinarIntelligenceContextBlock(input.idea);
+        } catch (err) {
+          console.warn("[Content] Could not load webinar intelligence context:", err);
+        }
         let ctaLabel = "Lights On (Default)";
         let ctaInjection = "";
         try {
@@ -429,9 +439,10 @@ export const appRouter = router({
         const textResults = await Promise.all(
           platforms.map(async (platform) => {
             const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
+            const gapQueryLine = input.gapQueryText ? `\n\nThis content should directly address the competitor gap query: "${input.gapQueryText}" — position Pedram's unique perspective as the answer.` : "";
             const userMessage = input.customInstructions
-              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${ctaInjection}`
-              : `Raw idea: ${input.idea}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${ctaInjection}`;
+              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`
+              : `Raw idea: ${input.idea}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`;
 
             const response = await invokeLLM({
               messages: [
@@ -645,6 +656,28 @@ Rules:
             console.warn("[Blog] Could not load persona pain point context:", err);
           }
         }
+        // Load press authority context block
+        let blogPressContext = "";
+        try {
+          const db = await getDb();
+          if (db) {
+            const { pressHits } = await import("../drizzle/schema");
+            const { desc } = await import("drizzle-orm");
+            const topHits = await db.select().from(pressHits)
+              .orderBy(desc(pressHits.impressions))
+              .limit(20);
+            if (topHits.length > 0) {
+              const tierS = topHits.filter((h: any) => h.authorityTier === "S").slice(0, 5);
+              const tierA = topHits.filter((h: any) => h.authorityTier === "A").slice(0, 5);
+              const seenS = new Set<string>(); for (const h of tierS) seenS.add(h.outlet);
+              const seenA = new Set<string>(); for (const h of tierA) seenA.add(h.outlet);
+              const outlets = [...Array.from(seenS), ...Array.from(seenA)].join(", ");
+              blogPressContext = `\n\nAUTHOR CREDENTIALS (weave naturally into the article for E-E-A-T):\nDr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Taoist monk. He has been featured in: ${outlets}. His work has reached millions of readers and viewers across major national and industry publications.`;
+            }
+          }
+        } catch (err) {
+          console.warn("[Blog] Could not load press authority context:", err);
+        }
         // Load media authority context block
         let blogMediaContext = "";
         try {
@@ -670,14 +703,24 @@ Rules:
         } catch (err) {
           console.warn("[Blog] Could not load CTA:", err);
         }
+        // Load webinar intelligence context block
+        let blogWebinarContext = "";
+        try {
+          const { getWebinarIntelligenceContextBlock } = await import("./webinarIntelligenceRouter");
+          blogWebinarContext = await getWebinarIntelligenceContextBlock(input.idea);
+        } catch (err) {
+          console.warn("[Blog] Could not load webinar intelligence context:", err);
+        }
         // Step 1: Generate the full blog article as structured JSON
         const userMessage = [
           `Raw idea: ${input.idea}`,
           input.gapQueryText ? `\nThis article should directly answer the LLM search query: "${input.gapQueryText}"` : "",
           input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
           personaContext,
+          blogPressContext,
           blogMediaContext,
           blogAvatarContext,
+          blogWebinarContext,
           blogCtaInjection,
         ]
           .filter(Boolean)
@@ -788,13 +831,35 @@ SCRIPT REQUIREMENTS:
 - Include [PAUSE] markers for emphasis
 - Include [B-ROLL: description] cues for the editor
 - Structure: Hook → Problem → Pedram's unique insight → Evidence/story → Practical steps → CTA
-- CTA must mention The Urban Monk Academy ($297/year) or a relevant free resource
+- CTA must mention the Lights On Course ($369/year) at go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 or a relevant free resource
 - Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
 - Voice: conversational, like Pedram is talking directly to one person
 - Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
 - Reference relevant books or programs where appropriate
 
 Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
+        // Inject press authority context
+        let scriptPressContext = "";
+        try {
+          const db = await getDb();
+          if (db) {
+            const { pressHits } = await import("../drizzle/schema");
+            const { desc } = await import("drizzle-orm");
+            const topHits = await db.select().from(pressHits)
+              .orderBy(desc(pressHits.impressions))
+              .limit(20);
+            if (topHits.length > 0) {
+              const tierS = topHits.filter((h: any) => h.authorityTier === "S").slice(0, 5);
+              const tierA = topHits.filter((h: any) => h.authorityTier === "A").slice(0, 5);
+              const seenS = new Set<string>(); for (const h of tierS) seenS.add(h.outlet);
+              const seenA = new Set<string>(); for (const h of tierA) seenA.add(h.outlet);
+              const outlets = [...Array.from(seenS), ...Array.from(seenA)].join(", ");
+              scriptPressContext = `\n\nAUTHOR CREDENTIALS (reference naturally when establishing authority):\nDr. Pedram Shojai has been featured in: ${outlets}. New York Times bestselling author, Doctor of Oriental Medicine, Taoist monk.`;
+            }
+          }
+        } catch (err) {
+          console.warn("[Script] Could not load press authority context:", err);
+        }
         // Inject media authority context
         let scriptMediaContext = "";
         try {
@@ -819,10 +884,17 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         } catch (err) {
           console.warn("[Script] Could not load CTA:", err);
         }
+        let scriptWebinarContext = "";
+        try {
+          const { getWebinarIntelligenceContextBlock } = await import("./webinarIntelligenceRouter");
+          scriptWebinarContext = await getWebinarIntelligenceContextBlock(input.title);
+        } catch (err) {
+          console.warn("[Script] Could not load webinar intelligence context:", err);
+        }
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptMediaContext}${scriptAvatarContext}` },
+            { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptPressContext}${scriptMediaContext}${scriptAvatarContext}${scriptWebinarContext}${scriptCtaInjection}` },
           ],
         });
         const rawContent = response.choices?.[0]?.message?.content;
@@ -1281,13 +1353,35 @@ SCRIPT REQUIREMENTS:
 - Include [PAUSE] markers for emphasis
 - Include [B-ROLL: description] cues for the editor
 - Structure: Hook → Problem → Pedram's unique insight → Evidence/story → Practical steps → CTA
-- CTA must mention The Urban Monk Academy ($297/year) or a relevant free resource
+- CTA must mention the Lights On Course ($369/year) at go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 or a relevant free resource
 - Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
 - Voice: conversational, like Pedram is talking directly to one person
 - Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
 - Reference relevant books or programs where appropriate
 
 Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
+        // Inject press authority context
+        let scriptPressContext = "";
+        try {
+          const db = await getDb();
+          if (db) {
+            const { pressHits } = await import("../drizzle/schema");
+            const { desc } = await import("drizzle-orm");
+            const topHits = await db.select().from(pressHits)
+              .orderBy(desc(pressHits.impressions))
+              .limit(20);
+            if (topHits.length > 0) {
+              const tierS = topHits.filter((h: any) => h.authorityTier === "S").slice(0, 5);
+              const tierA = topHits.filter((h: any) => h.authorityTier === "A").slice(0, 5);
+              const seenS = new Set<string>(); for (const h of tierS) seenS.add(h.outlet);
+              const seenA = new Set<string>(); for (const h of tierA) seenA.add(h.outlet);
+              const outlets = [...Array.from(seenS), ...Array.from(seenA)].join(", ");
+              scriptPressContext = `\n\nAUTHOR CREDENTIALS (reference naturally when establishing authority):\nDr. Pedram Shojai has been featured in: ${outlets}. New York Times bestselling author, Doctor of Oriental Medicine, Taoist monk.`;
+            }
+          }
+        } catch (err) {
+          console.warn("[Script] Could not load press authority context:", err);
+        }
         // Inject media authority context
         let scriptMediaContext = "";
         try {
@@ -1312,10 +1406,17 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         } catch (err) {
           console.warn("[Script] Could not load CTA:", err);
         }
+        let scriptWebinarContext = "";
+        try {
+          const { getWebinarIntelligenceContextBlock } = await import("./webinarIntelligenceRouter");
+          scriptWebinarContext = await getWebinarIntelligenceContextBlock(input.title);
+        } catch (err) {
+          console.warn("[Script] Could not load webinar intelligence context:", err);
+        }
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptMediaContext}${scriptAvatarContext}` },
+            { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptPressContext}${scriptMediaContext}${scriptAvatarContext}${scriptWebinarContext}${scriptCtaInjection}` },
           ],
         });
         const rawContent = response.choices?.[0]?.message?.content;
@@ -1561,5 +1662,6 @@ Return BOTH in this exact format:
   cta: ctaRouter,
   growth: growthRouter,
   webinar: webinarRouter,
+  webinarIntelligence: webinarIntelligenceRouter,
 });
 export type AppRouter = typeof appRouter;

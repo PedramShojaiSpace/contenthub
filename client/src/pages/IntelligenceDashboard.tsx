@@ -98,6 +98,9 @@ export default function IntelligenceDashboard() {
   const { data: mediaStats } = trpc.media.getStats.useQuery();
   const { data: avatarStats } = trpc.avatar.getStats.useQuery();
 
+  // Webinar Intelligence stats — aggregate across all sessions
+  const { data: allWebinarSessions = [] } = trpc.webinar.list.useQuery();
+
   const personas = enrichmentSummary as Array<{
     id: number;
     name: string;
@@ -120,6 +123,9 @@ export default function IntelligenceDashboard() {
   const mediaReach = (mediaStats as any)?.totalReach ?? 0;
   const avatarPainPointCount = (avatarStats as any)?.totalPainPoints ?? 0;
   const avatarPersonaCount = (avatarStats as any)?.totalPersonas ?? 0;
+
+  // Webinar Intelligence derived stats
+  const webinarSessionCount = (allWebinarSessions as any[]).length;
 
   return (
     <DashboardLayout>
@@ -178,6 +184,13 @@ export default function IntelligenceDashboard() {
               <div className="text-3xl font-bold">{(trackedChannels as any[]).length}</div>
               <div className="text-xs text-muted-foreground mt-0.5">Channels Tracked</div>
               <div className="text-[10px] text-muted-foreground mt-1">competitor monitoring</div>
+            </CardContent>
+          </Card>
+          <Card className="border-violet-500/20 bg-violet-500/5">
+            <CardContent className="p-4">
+              <div className="text-3xl font-bold text-violet-400">{webinarSessionCount}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Webinar Sessions</div>
+              <div className="text-[10px] text-violet-400 mt-1">audience intelligence ready</div>
             </CardContent>
           </Card>
         </div>
@@ -441,7 +454,16 @@ export default function IntelligenceDashboard() {
                   note: (trackedChannels as any[]).length > 0
                     ? `${(trackedChannels as any[]).length} channels tracked · on-demand differentiation via Inform Script`
                     : "Add competitor channels to activate",
-                  link: "/youtube",
+                  link: "/channels",
+                },
+                {
+                  label: "Webinar Intelligence — real attendee pain points & language",
+                  source: "Webinar Intelligence",
+                  active: webinarSessionCount > 0,
+                  note: webinarSessionCount > 0
+                    ? `${webinarSessionCount} webinar session${webinarSessionCount !== 1 ? "s" : ""} · import pre-registration & post-webinar survey data to extract audience pain points, motivations, and exact language · injected into ALL generations`
+                    : "Import attendee survey data after your first webinar to activate",
+                  link: "/webinar-intelligence",
                 },
               ].map((item, i) => (
                 <div

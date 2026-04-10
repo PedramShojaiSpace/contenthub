@@ -577,3 +577,34 @@ export const webinarSessions = mysqlTable("webinar_sessions", {
 });
 export type WebinarSession = typeof webinarSessions.$inferSelect;
 export type InsertWebinarSession = typeof webinarSessions.$inferInsert;
+
+// ─── Webinar Intelligence ─────────────────────────────────────────────────────
+// Stores attendee survey responses (pre-webinar registration + post-webinar)
+// tagged to a specific webinar session. AI extracts themes, pain points,
+// motivations, and exact language to enrich all content generation.
+export const webinarIntelligenceSurveyTypeEnum = mysqlEnum("surveyType", [
+  "pre_registration",   // Registration form responses (why are you coming?)
+  "post_webinar",       // Post-event survey responses (what did you get out of it?)
+]);
+
+export const webinarIntelligence = mysqlTable("webinar_intelligence", {
+  id: int("id").autoincrement().primaryKey(),
+  webinarSessionId: int("webinarSessionId").notNull(), // FK → webinar_sessions.id
+  surveyType: webinarIntelligenceSurveyTypeEnum.notNull().default("pre_registration"),
+  // Raw import: paste Typeform JSON export or CSV text
+  rawResponses: text("rawResponses"),         // Raw JSON/CSV pasted by user
+  responseCount: int("responseCount").default(0),
+  // AI-extracted intelligence
+  extractedThemes: text("extractedThemes"),       // JSON: string[] top themes
+  extractedPainPoints: text("extractedPainPoints"), // JSON: string[] pain points
+  extractedMotivations: text("extractedMotivations"), // JSON: string[] motivations (why they showed up)
+  extractedQuestions: text("extractedQuestions"),   // JSON: string[] questions attendees asked/had
+  extractedLanguage: text("extractedLanguage"),     // JSON: string[] exact phrases/words used by attendees
+  aiSummary: text("aiSummary"),               // Narrative summary of what drove this audience
+  // Metadata
+  importedAt: timestamp("importedAt").defaultNow().notNull(),
+  extractedAt: timestamp("extractedAt"),
+  notes: text("notes"),
+});
+export type WebinarIntelligence = typeof webinarIntelligence.$inferSelect;
+export type InsertWebinarIntelligence = typeof webinarIntelligence.$inferInsert;

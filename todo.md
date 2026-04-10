@@ -910,3 +910,24 @@
 - [x] Update generateThankYouCopy procedure: accept wistiaEmbed, use [WISTIA_EMBED] placeholder, inject real HTML after AI generation
 - [x] Update generateThankYouCopy procedure: accept typeformUrl, inject as clickable markdown button [Take the Survey →](url)
 - [x] Auto-populate Typeform URL from pushedTypeformUrl (survey builder) if available
+
+## Intelligence Pipeline Fixes (v41)
+- [x] Add press authority context to generateBlog procedure (currently missing)
+- [x] Add gapQueryText injection to generateContent (social media) procedure
+- [x] Add press authority context to scriptsRouter generateScript procedure
+- [x] Add avatar intelligence context to scriptsRouter generateScript procedure
+- [x] Fix $297 price reference in scriptsRouter system prompt to $369/yr
+- [x] Fix Lights On URL in scriptsRouter to correct webinar URL
+
+## Webinar Intelligence Module (v42)
+- [x] Add webinar_intelligence table to schema (webinarSessionId, surveyType: pre|post, rawResponses JSON, extractedThemes JSON, extractedPainPoints JSON, extractedMotivations JSON, extractedLanguage JSON, aiSummary text, importedAt)
+- [x] Run db:push for new table
+- [x] Build webinarIntelligenceRouter: importResponses (paste JSON or CSV), extractIntelligence (AI analysis), getBySession, getAggregated
+- [x] AI extraction: themes, pain points, motivations, exact language/phrases, questions asked
+- [x] Build WebinarIntelligence.tsx page: session selector, import panel (paste responses), AI extraction trigger, intelligence view
+- [x] Add "Webinar Intelligence" to sidebar navigation
+- [x] Wire webinar intelligence into generateContent LLM prompt (alongside avatar/press/research)
+- [x] Wire webinar intelligence into generateBlog LLM prompt
+- [x] Wire webinar intelligence into scriptsRouter generateScript LLM prompt
+- [x] Update Intelligence Hub dashboard to show Webinar Intelligence stats (sessions analyzed, total responses, top themes)
+- [x] Write vitest tests for webinarIntelligenceRouter

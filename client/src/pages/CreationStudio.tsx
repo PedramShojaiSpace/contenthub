@@ -639,10 +639,10 @@ export default function CreationStudio() {
       text,
       profileIds: platformFilteredIds,
       imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
+      platform: p, // enforce X 280-char limit server-side
     });
   };
-
-  // Direct push to Buffer — saves card first if not already saved, then syndicates
+  // Direct push to Bufferr — saves card first if not already saved, then syndicates
   const handleSyndicateDirect = async (p: string) => {
     const text = editedText[p] || generatedContent[p]?.text;
     if (!text) {
@@ -722,14 +722,14 @@ export default function CreationStudio() {
       return;
     }
 
-    syndicationMutation.mutate({
+     syndicationMutation.mutate({
       contentItemId: itemId ?? 0,
       text,
       profileIds,
       imageUrl: generatedContent[p]?.imageUrl || generatedImageUrl || undefined,
+      platform: p, // enforce X 280-char limit server-side
     });
   };
-
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
@@ -1575,8 +1575,24 @@ export default function CreationStudio() {
                           setEditedText((prev) => ({ ...prev, [p]: e.target.value }))
                         }
                         rows={10}
-                        className="bg-background border-border resize-none text-sm text-foreground font-mono leading-relaxed"
+                        className={`bg-background border-border resize-none text-sm text-foreground font-mono leading-relaxed ${
+                          p === "x" && (editedText[p] || "").length > 280 ? "border-red-500" : ""
+                        }`}
                       />
+                      {/* X/Twitter character counter */}
+                      {p === "x" && (() => {
+                        const charCount = (editedText[p] || "").length;
+                        const isOver = charCount > 280;
+                        const isWarning = charCount > 240 && !isOver;
+                        return (
+                          <div className={`flex items-center justify-between text-xs px-1 ${
+                            isOver ? "text-red-400" : isWarning ? "text-amber-400" : "text-muted-foreground"
+                          }`}>
+                            <span>{isOver ? `⚠ ${charCount - 280} characters over limit — Buffer will auto-truncate` : isWarning ? `${280 - charCount} characters remaining` : `${280 - charCount} characters remaining`}</span>
+                            <span className="font-mono font-bold">{charCount} / 280</span>
+                          </div>
+                        );
+                      })()}
 
                       {/* Attach manual image to this card */}
                       {generatedImageUrl && savedId && (

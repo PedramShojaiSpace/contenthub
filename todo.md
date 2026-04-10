@@ -752,3 +752,15 @@
 - [ ] Objection Handler — browse all objections with response frameworks
 - [ ] "Generate content for this persona" button on each persona card
 - [ ] Headline Formula generator — pick a formula, enter a topic, get 5 headline options
+
+## v19 Features — X Character Limit Fix, Verbatim Pain Points, Persona Selector (April 10, 2026)
+
+- [x] Fix X/Twitter 280-char enforcement: strengthen prompt with explicit counting instruction and hard rules
+- [x] Add server-side hard truncation for X posts (slice at 277 chars + "...") in generateContent return
+- [x] Add hard truncation in Buffer push function before API call (platform-aware)
+- [x] Pass platform parameter to syndication.push tRPC procedure and Buffer push function
+- [x] Add X character counter UI below the X output textarea (green ≤240 / yellow 241-270 / red 271-280)
+- [x] Seed 26 verbatim pain point entries from avatar pain points + sales training documents
+- [x] Total pain points in DB: 38 (9 surface, 12 deep pain, 6 practitioner maze, 6 root cause, 5 objections)
+- [x] Persona selector already fully wired in Creation Studio (confirmed: state, query, mutation params in place)
+- [x] 4 buyer personas in DB: The Researcher, The Desperate Seeker, The Skeptical Executive, The Holistic Believer

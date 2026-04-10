@@ -125,6 +125,7 @@ export async function pushToBuffer(params: {
   profileIds: string[]; // these are channel IDs in the new API
   imageUrl?: string;
   scheduledAt?: number; // UTC ms timestamp (optional — if not set, addToQueue is used)
+  platform?: string; // used to enforce platform-specific character limits before API call
 }): Promise<BufferUpdateResult> {
   const token = getAccessToken();
   if (!token) {
@@ -132,6 +133,16 @@ export async function pushToBuffer(params: {
   }
   if (!params.profileIds.length) {
     return { success: false, error: "No channel IDs provided" };
+  }
+
+  // Enforce X/Twitter 280-character hard limit before sending to Buffer API.
+  // Buffer's API rejects posts over 280 chars for Twitter/X channels.
+  let text = params.text;
+  if (params.platform === "x" || params.platform === "twitter") {
+    if (text.length > 280) {
+      const cutoff = text.lastIndexOf(" ", 277);
+      text = (cutoff > 0 ? text.slice(0, cutoff) : text.slice(0, 277)) + "...";
+    }
   }
 
   // Push to each channel and collect results
@@ -155,7 +166,7 @@ export async function pushToBuffer(params: {
       const mutation = `
         mutation CreatePost {
           createPost(input: {
-            text: ${JSON.stringify(params.text)},
+            text: ${JSON.stringify(text)},
             channelId: "${channelId}",
             schedulingType: automatic,
             mode: ${mode}${dueAtFragment}${assetsFragment}

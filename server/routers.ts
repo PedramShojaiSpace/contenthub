@@ -88,21 +88,16 @@ POST STRUCTURE (invisible — do not label these):
 
 CONTENT PILLARS: Daily practices, mindfulness, gut health, energy, sleep, stress, the Urban Monk Academy, personal transformation stories.`,
 
-  x: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on X (Twitter). His audience is intellectually curious professionals and wellness enthusiasts.
-
+    x: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on X (Twitter). His audience is intellectually curious professionals and wellness enthusiasts.
 VOICE: Sharp, punchy, thought-provoking. Challenges conventional wisdom. Mix of bold statements and nuanced insights.
-
 CRITICAL OUTPUT RULES:
 - Output ONLY the finished tweet or thread text — nothing else
 - Do NOT include any labels, headers, or structural markers (no "Tweet 1:", "Hook:", "Thread:", "---", or any similar markup)
 - Do NOT include any meta-commentary, instructions, or explanations
 - The output must be copy-paste ready to publish directly on X
-- For a thread: start each tweet on a new line, numbered as 1/, 2/, 3/ etc.
-- For a single tweet: output only the tweet text (max 280 characters)
-
-- For threads: add #urbanmonk at the end of the final tweet
-- For single tweets: add #urbanmonk at the end if character count allows
-
+- SINGLE TWEET HARD LIMIT: 280 characters MAXIMUM — count every character including spaces, punctuation, and hashtags. If your draft exceeds 280 characters, cut it down ruthlessly until it is 280 characters or fewer. This is a hard technical limit — posts over 280 characters will be rejected by the platform.
+- For a thread: start each tweet on a new line, numbered as 1/, 2/, 3/ etc. Each individual tweet in the thread must also be 280 characters or fewer.
+- For single tweets: add #urbanmonk at the end only if the total stays under 280 characters
 CONTENT PILLARS: Counterintuitive health insights, performance hacks, mindset shifts, short wisdom nuggets, thread-worthy deep dives.`,
 
   youtube: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on YouTube. His audience is serious wellness seekers and high-performers looking for in-depth education.
@@ -487,9 +482,21 @@ Rules:
         }
 
         // Step 3: Assemble combined results
+        // For X/Twitter: enforce 280-char hard limit server-side.
+        // LLMs sometimes exceed the soft limit in the prompt, so we truncate
+        // at the last complete word boundary before 280 chars to guarantee
+        // Buffer and native X API calls never fail due to length.
+        function enforceXLimit(text: string): string {
+          if (text.length <= 280) return text;
+          // Find last space before char 277 to leave room for ellipsis
+          const cutoff = text.lastIndexOf(" ", 277);
+          const trimmed = cutoff > 0 ? text.slice(0, cutoff) : text.slice(0, 277);
+          return trimmed + "...";
+        }
         const results: Record<string, { text: string; imageUrl?: string; title: string }> = {};
         for (const { platform, text, title } of textResults) {
-          results[platform] = { text, imageUrl: imageResults[platform], title };
+          const finalText = platform === "x" ? enforceXLimit(text) : text;
+          results[platform] = { text: finalText, imageUrl: imageResults[platform], title };
         }
 
         return results;
@@ -772,6 +779,7 @@ Rules:
           profileIds: z.array(z.string()).min(1),
           imageUrl: z.string().optional(),
           scheduledAt: z.number().optional(),
+          platform: z.string().optional(), // used for platform-specific limits (e.g. X = 280 chars)
         })
       )
       .mutation(async ({ input }) => {
@@ -780,6 +788,7 @@ Rules:
           profileIds: input.profileIds,
           imageUrl: input.imageUrl,
           scheduledAt: input.scheduledAt,
+          platform: input.platform,
         });
 
         // If successful, update the content item status to 'scheduled'

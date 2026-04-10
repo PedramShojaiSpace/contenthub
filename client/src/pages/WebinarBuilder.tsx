@@ -428,8 +428,9 @@ export default function WebinarBuilder() {
     setGammaUrl(s.gammaUrl ?? "");
     setGammaGenerationId(s.gammaGenerationId ?? "");
     setThankYouCopy(s.thankYouPageCopy ?? "");
-    setWistiaId(s.thankYouWistiaId ?? "");
     setTypeformUrl(s.thankYouTypeformUrl ?? "");
+    setThankYouGammaUrl((s as any).thankYouGammaUrl ?? "");
+    setThankYouGammaGenerationId((s as any).thankYouGammaGenerationId ?? "");
     if (s.kajabiExport) {
       try { setKajabiPlan(JSON.parse(s.kajabiExport)); } catch { /* ignore */ }
     }
@@ -827,6 +828,9 @@ export default function WebinarBuilder() {
                 personaIds: selectedPersonaIds,
                 registrationUrl,
                 outline,
+                webinarDate: webinarDate || undefined,
+                webinarTime: webinarTime || undefined,
+                webinarTimezone: webinarTimezone || undefined,
               });
             }}
             disabled={generateLandingCopyMutation.isPending}
@@ -1332,6 +1336,9 @@ export default function WebinarBuilder() {
                   cta,
                   registrationUrl,
                   personaIds: selectedPersonaIds,
+                  webinarDate: webinarDate || undefined,
+                  webinarTime: webinarTime || undefined,
+                  webinarTimezone: webinarTimezone || undefined,
                 });
               }}
               disabled={exportKajabiMutation.isPending}

@@ -59,6 +59,7 @@ import {
   Flame,
   Clock,
   Zap,
+  Sparkles,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -993,6 +994,23 @@ export default function CommandCenter() {
                 </div>
               );
             })}
+          </div>
+
+          {/* ── Webinar Intelligence Quick-Link ─────────────────────────────── */}
+          <div
+            className="flex items-center gap-3 rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3 cursor-pointer hover:bg-violet-500/10 transition-colors group"
+            onClick={() => setLocation("/webinar-intelligence")}
+          >
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/30 shrink-0">
+              <Sparkles className="h-4 w-4 text-violet-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-foreground">Webinar Intelligence</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Import attendee survey responses → AI extracts pain points, motivations &amp; language</div>
+            </div>
+            <div className="text-xs text-violet-400 font-medium shrink-0 group-hover:text-violet-300 transition-colors">
+              Import responses →
+            </div>
           </div>
 
            {/* ── Weekly Cadence Tracker ─────────────────────────────────────── */}

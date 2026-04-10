@@ -388,6 +388,9 @@ Generate a complete, professional webinar outline. Structure it as follows:
         personaIds: z.array(z.number()).default([]),
         registrationUrl: z.string().optional(),
         outline: z.string().optional(),
+        webinarDate: z.string().optional(),
+        webinarTime: z.string().optional(),
+        webinarTimezone: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -416,6 +419,9 @@ PAIN POINTS: ${personaPains || "chronic fatigue, stress, gut issues, feeling stu
 WEBINAR TOPIC: ${input.topic}
 CTA / OFFER: ${input.cta || "Register Free"}
 REGISTRATION LINK: ${input.registrationUrl || "[REGISTRATION LINK]"}
+${input.webinarDate ? `WEBINAR DATE: ${input.webinarDate}` : ""}
+${input.webinarTime ? `WEBINAR TIME: ${input.webinarTime} ${input.webinarTimezone ?? "ET"}` : ""}
+${input.webinarDate && input.webinarTime ? `FULL DATE/TIME: ${input.webinarDate} at ${input.webinarTime} ${input.webinarTimezone ?? "ET"} — use this EXACT date and time in the urgency note, the FAQ, and the registration CTA section` : ""}
 ${input.outline ? `\nWEBINAR OUTLINE SUMMARY:\n${input.outline.slice(0, 800)}\n` : ""}
 ${avatarContext ? `\n=== AVATAR INTELLIGENCE ===\n${avatarContext}\n` : ""}
 ${mediaContext ? `\n=== AUTHORITY SIGNALS ===\n${mediaContext}\n` : ""}
@@ -586,6 +592,9 @@ Keep the tone warm, grateful, and excited. Make them feel they made a great deci
       cta: z.string().default(""),
       registrationUrl: z.string().optional(),
       personaIds: z.array(z.number()).default([]),
+      webinarDate: z.string().optional(),
+      webinarTime: z.string().optional(),
+      webinarTimezone: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const personaData = await loadPersonasForIds(input.personaIds);
@@ -597,6 +606,9 @@ WEBINAR TOPIC: ${input.topic}
 AUDIENCE: ${personaNames}
 OFFER / CTA: ${input.cta || "The Upstream Bundle — $399"}
 REGISTRATION LINK: ${input.registrationUrl || "[REGISTRATION LINK]"}
+${input.webinarDate ? `WEBINAR DATE: ${input.webinarDate}` : ""}
+${input.webinarTime ? `WEBINAR TIME: ${input.webinarTime} ${input.webinarTimezone ?? "ET"}` : ""}
+${input.webinarDate && input.webinarTime ? `FULL DATE/TIME: ${input.webinarDate} at ${input.webinarTime} ${input.webinarTimezone ?? "ET"} — use this EXACT date and time in all email send-timing notes (e.g. "Send 24 hours before the webinar on [date]"), subject lines, and countdown references` : ""}
 
 Generate a complete Kajabi automation plan as a structured JSON object with the following schema:
 {

@@ -38,6 +38,7 @@ import {
   Wand2,
   Youtube,
   Zap,
+  LayoutGrid,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { FlaskConical, Globe, Target, Swords, ArrowRight } from "lucide-react";
@@ -75,7 +76,7 @@ function BufferDiagnostic() {
   );
 }
 
-type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all";
+type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "reframe" | "all";
 
 // Per-platform generated output: text + auto-generated image
 type PlatformOutput = {
@@ -92,6 +93,7 @@ const PLATFORMS: { key: Platform; label: string; icon: React.ReactNode; color: s
   { key: "youtube", label: "YouTube", icon: <Youtube className="h-4 w-4" />, color: "text-red-400" },
   { key: "tiktok", label: "TikTok", icon: <Music2 className="h-4 w-4" />, color: "text-pink-400" },
   { key: "blog", label: "Blog Post", icon: <BookOpen className="h-4 w-4" />, color: "text-emerald-400" },
+  { key: "reframe", label: "Reframe Post", icon: <LayoutGrid className="h-4 w-4" />, color: "text-violet-400" },
 ];
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -101,6 +103,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   youtube: "YouTube",
   tiktok: "TikTok",
   blog: "Blog Post (theurbanmonk.com)",
+  reframe: "Reframe Post (Carousel)",
 };
 
 const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string }> = {
@@ -222,7 +225,7 @@ export default function CreationStudio() {
           {
             title: titleText,
             rawIdea: idea,
-            platform: p as Platform,
+            platform: p as any, // reframe excluded from save
             status: "drafting",
             textContent: v.text,
             gapQueryId: activeGapQueryId ?? undefined,
@@ -396,7 +399,7 @@ export default function CreationStudio() {
     }
     generateContentMutation.mutate({
       idea,
-      platform,
+      platform: platform as any,
       customInstructions: customInstructions || undefined,
       generateImages: true,
       personaId: selectedPersonaId ?? undefined,
@@ -543,7 +546,7 @@ export default function CreationStudio() {
     // Use the idea + platform style directly for regeneration
     regenerateImageMutation.mutate({
       prompt: text.slice(0, 300),
-      platform: p as Platform,
+      platform: p as any,
     });
   };
 
@@ -553,7 +556,7 @@ export default function CreationStudio() {
       toast.error("Generate content first.");
       return;
     }
-    generateImagePromptMutation.mutate({ textContent: text, platform: imageStylePlatform });
+    generateImagePromptMutation.mutate({ textContent: text, platform: imageStylePlatform as any });
   };
 
   const handleGenerateImage = () => {
@@ -563,7 +566,7 @@ export default function CreationStudio() {
     }
     generateImageMutation.mutate({
       prompt: imagePrompt,
-      platform: imageStylePlatform,
+      platform: imageStylePlatform as any,
       styleOverride: styleOverride || undefined,
     });
   };
@@ -576,7 +579,7 @@ export default function CreationStudio() {
     createContentMutation.mutate({
       title: idea.slice(0, 80) + (idea.length > 80 ? "..." : ""),
       rawIdea: idea,
-      platform: p as Platform,
+      platform: p as any,
       status: "drafting",
       textContent: text,
       gapQueryId: activeGapQueryId ?? undefined,
@@ -673,7 +676,7 @@ export default function CreationStudio() {
             {
               title: idea.slice(0, 80) + (idea.length > 80 ? "..." : ""),
               rawIdea: idea,
-              platform: p as Platform,
+              platform: p as any, // reframe excluded from save
               status: "drafting",
               textContent: text,
               gapQueryId: activeGapQueryId ?? undefined,
@@ -747,7 +750,26 @@ export default function CreationStudio() {
   const [isBlogGenerating, setIsBlogGenerating] = useState(false);
   const [blogViewMode, setBlogViewMode] = useState<"preview" | "edit">("preview");
 
-  const generateBlogMutation = trpc.ai.generateBlog.useMutation({
+
+  // --- Reframe Post state ---
+  const [reframeSlides, setReframeSlides] = useState<Array<{
+    number: number;
+    text: string;
+  }> | null>(null);
+  const [reframeCaption, setReframeCaption] = useState<string>("");
+  const [commonBelief, setCommonBelief] = useState<string>("");
+  const generateReframeMutation = trpc.ai.generateReframePost.useMutation({
+    onSuccess: (data: { slides: Array<{ number: number; text: string }>; caption: string; ctaLabel: string }) => {
+      setReframeSlides(data.slides);
+      setReframeCaption(data.caption ?? "");
+      toast.success("Reframe Post generated!");
+    },
+    onError: (err: { message: string }) => {
+      toast.error("Reframe Post generation failed: " + err.message);
+    },
+  });
+
+    const generateBlogMutation = trpc.ai.generateBlog.useMutation({
     onSuccess: (data) => {
       setBlogContent({
         title: data.title,
@@ -764,7 +786,7 @@ export default function CreationStudio() {
         {
           title: data.title,
           rawIdea: idea,
-          platform: "blog" as Platform,
+          platform: "blog" as any,
           status: "drafting",
           textContent: data.article,
           gapQueryId: activeGapQueryId ?? undefined,
@@ -832,7 +854,7 @@ export default function CreationStudio() {
     createContentMutation.mutate({
       title: blogContent.title,
       rawIdea: idea,
-      platform: "blog" as Platform,
+      platform: "blog" as any,
       status: "drafting",
       textContent: blogContent.body,
       gapQueryId: activeGapQueryId ?? undefined,
@@ -1185,20 +1207,34 @@ export default function CreationStudio() {
               </div>
             </div>
 
+            {/* Common Belief input for Reframe Post */}
+            {platform === "reframe" && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Common Belief to Reframe (optional)</Label>
+                <input
+                  type="text"
+                  value={commonBelief}
+                  onChange={(e) => setCommonBelief(e.target.value)}
+                  placeholder='e.g. "You need 8 hours of sleep every night"'
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            )}
+
             <Button
-              onClick={platform === "blog" ? handleGenerateBlog : handleGenerate}
-              disabled={(platform === "blog" ? isBlogGenerating : isGenerating) || !idea.trim()}
+              onClick={platform === "blog" ? handleGenerateBlog : platform === "reframe" ? () => generateReframeMutation.mutate({ topic: idea, commonBelief: commonBelief || undefined }) : handleGenerate}
+              disabled={(platform === "blog" ? isBlogGenerating : platform === "reframe" ? generateReframeMutation.isPending : isGenerating) || !idea.trim()}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-11"
             >
-              {(platform === "blog" ? isBlogGenerating : isGenerating) ? (
+              {(platform === "blog" ? isBlogGenerating : platform === "reframe" ? generateReframeMutation.isPending : isGenerating) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {platform === "blog" ? "Writing blog post + featured image (30–60 seconds)..." : platform === "tiktok" ? "Writing TikTok script + vertical visual (20–40 seconds)..." : "Generating content + images (20–40 seconds)..."}
+                  {platform === "blog" ? "Writing blog post + featured image (30–60 seconds)..." : platform === "reframe" ? "Generating Reframe carousel (10–20 seconds)..." : platform === "tiktok" ? "Writing TikTok script + vertical visual (20–40 seconds)..." : "Generating content + images (20–40 seconds)..."}
                 </>
               ) : (
                 <>
-                  {platform === "blog" ? <BookOpen className="h-4 w-4 mr-2" /> : platform === "tiktok" ? <Music2 className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                  {platform === "blog" ? "Generate Blog Post" : platform === "tiktok" ? "Generate TikTok Script + Visual" : "Generate Content + Images"}
+                  {platform === "blog" ? <BookOpen className="h-4 w-4 mr-2" /> : platform === "reframe" ? <LayoutGrid className="h-4 w-4 mr-2" /> : platform === "tiktok" ? <Music2 className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {platform === "blog" ? "Generate Blog Post" : platform === "reframe" ? "Generate Reframe Post" : platform === "tiktok" ? "Generate TikTok Script + Visual" : "Generate Content + Images"}
                 </>
               )}
             </Button>
@@ -1985,6 +2021,75 @@ export default function CreationStudio() {
                   <p className="text-xs text-muted-foreground">Save to Kanban first to enable WordPress publish.</p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reframe Post Output */}
+        {platform === "reframe" && reframeSlides && reframeSlides.length > 0 && (
+          <Card className="bg-card border-border overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="h-4 w-4 text-violet-400" />
+                  <CardTitle className="text-base font-semibold text-foreground">Reframe Post — {reframeSlides.length}-Slide Carousel</CardTitle>
+                  <Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-400">LePera Format</Badge>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => {
+                    const text = reframeSlides.map((s) => `SLIDE ${s.number}:\n${s.text}`).join("\n\n") + (reframeCaption ? `\n\nCAPTION:\n${reframeCaption}` : "");
+                    navigator.clipboard.writeText(text);
+                    toast.success("Copied all slides to clipboard");
+                  }}
+                >
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy All
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              {reframeSlides.map((slide, idx) => (
+                <div key={idx} className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-violet-400 bg-violet-400/10 rounded px-2 py-0.5">
+                        Slide {slide.number} / {reframeSlides.length}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        navigator.clipboard.writeText(slide.text);
+                        toast.success(`Slide ${slide.number} copied`);
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{slide.text}</p>
+                </div>
+              ))}
+              {reframeCaption && (
+                <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-400 bg-amber-400/10 rounded px-2 py-0.5">CAPTION</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => { navigator.clipboard.writeText(reframeCaption); toast.success("Caption copied"); }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{reframeCaption}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

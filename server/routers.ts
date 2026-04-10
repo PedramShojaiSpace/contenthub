@@ -43,6 +43,8 @@ import { typeformRouter } from "./typeformRouter";
 import { pressRouter } from "./pressRouter";
 import { mediaRouter } from "./mediaRouter";
 import { avatarRouter } from "./avatarRouter";
+import { ctaRouter } from "./ctaRouter";
+import { growthRouter } from "./growthRouter";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -410,15 +412,25 @@ export const appRouter = router({
           const { getAvatarContextBlock } = await import("./avatarRouter");
           avatarIntelligenceContext = await getAvatarContextBlock(input.idea);
         } catch (err) {
-          console.warn("[AI] Could not load avatar context:", err);
+          console.warn("[Content] Could not load avatar context:", err);
+        }
+        let ctaLabel = "Lights On (Default)";
+        let ctaInjection = "";
+        try {
+          const { getCtaForTopic } = await import("./ctaRouter");
+          const cta = await getCtaForTopic(input.idea);
+          ctaLabel = cta.label;
+          ctaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of your content. Do not add any other call to action.`;
+        } catch (err) {
+          console.warn("[Content] Could not load CTA:", err);
         }
         // Step 1: Generate all platform text in parallel
         const textResults = await Promise.all(
           platforms.map(async (platform) => {
             const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
             const userMessage = input.customInstructions
-              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}`
-              : `Raw idea: ${input.idea}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}`;;
+              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${ctaInjection}`
+              : `Raw idea: ${input.idea}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${ctaInjection}`;
 
             const response = await invokeLLM({
               messages: [
@@ -629,11 +641,10 @@ Rules:
               }
             }
           } catch (err) {
-            console.warn("[Blog] Could not load persona pain points:", err);
+            console.warn("[Blog] Could not load persona pain point context:", err);
           }
         }
-
-         // Load media authority context block
+        // Load media authority context block
         let blogMediaContext = "";
         try {
           const { getMediaContextBlock } = await import("./mediaRouter");
@@ -649,6 +660,15 @@ Rules:
         } catch (err) {
           console.warn("[Blog] Could not load avatar context:", err);
         }
+        // Load topical CTA
+        let blogCtaInjection = "";
+        try {
+          const { getCtaForTopic } = await import("./ctaRouter");
+          const cta = await getCtaForTopic(input.idea);
+          blogCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally in the Conclusion section of the blog post.`;
+        } catch (err) {
+          console.warn("[Blog] Could not load CTA:", err);
+        }
         // Step 1: Generate the full blog article as structured JSON
         const userMessage = [
           `Raw idea: ${input.idea}`,
@@ -657,6 +677,7 @@ Rules:
           personaContext,
           blogMediaContext,
           blogAvatarContext,
+          blogCtaInjection,
         ]
           .filter(Boolean)
           .join("");
@@ -734,6 +755,245 @@ Rules:
           wordCount,
           readTime,
         };
+      }),
+    generateTeleprompterScript: protectedProcedure
+      .input(
+        z.object({
+          title: z.string(),
+          query: z.string().optional(),
+          personaName: z.string().optional(),
+          topicTags: z.array(z.string()).optional(),
+          competitorBrands: z.array(z.string()).optional(),
+          platform: z.enum(["youtube", "meta", "linkedin", "x", "tiktok", "blog", "all"]).default("youtube"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const tagList = (input.topicTags ?? []).join(", ");
+        const competitorList = (input.competitorBrands ?? []).slice(0, 5).join(", ");
+
+        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Taoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
+
+Your task: Write a FULL teleprompter-ready script for a ${input.platform === "youtube" ? "YouTube video" : input.platform + " video"} on the topic below.
+
+Topic: "${input.title}"
+${input.query ? `Audience question this addresses: "${input.query}"` : ""}
+${input.personaName ? `Primary audience persona: ${input.personaName}` : ""}
+${tagList ? `Key topic angles: ${tagList}` : ""}
+${competitorList ? `Competitors currently winning this topic: ${competitorList} — differentiate from them` : ""}
+
+SCRIPT REQUIREMENTS:
+- Open with a compelling hook (first 15 seconds are critical for retention)
+- Use teleprompter formatting: short paragraphs, natural speech rhythm, no jargon
+- Include [PAUSE] markers for emphasis
+- Include [B-ROLL: description] cues for the editor
+- Structure: Hook → Problem → Pedram's unique insight → Evidence/story → Practical steps → CTA
+- CTA must mention The Urban Monk Academy ($297/year) or a relevant free resource
+- Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
+- Voice: conversational, like Pedram is talking directly to one person
+- Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
+- Reference relevant books or programs where appropriate
+
+Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
+        // Inject media authority context
+        let scriptMediaContext = "";
+        try {
+          const { getMediaContextBlock } = await import("./mediaRouter");
+          scriptMediaContext = await getMediaContextBlock(input.title, { maxAssets: 5, includeTypes: ["book", "podcast", "film", "youtube"] });
+        } catch (err) {
+          console.warn("[Script] Could not load media authority context:", err);
+        }
+        // Inject avatar intelligence context
+        let scriptAvatarContext = "";
+        try {
+          const { getAvatarContextBlock } = await import("./avatarRouter");
+          scriptAvatarContext = await getAvatarContextBlock(input.title);
+        } catch (err) {
+          console.warn("[Script] Could not load avatar context:", err);
+        }
+        let scriptCtaInjection = "";
+        try {
+          const { getCtaForTopic } = await import("./ctaRouter");
+          const cta = await getCtaForTopic(input.title);
+          scriptCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the script, in the closing call-to-action section.`;
+        } catch (err) {
+          console.warn("[Script] Could not load CTA:", err);
+        }
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptMediaContext}${scriptAvatarContext}` },
+          ],
+        });
+        const rawContent = response.choices?.[0]?.message?.content;
+        return {
+          script: typeof rawContent === "string" ? rawContent : "Script generation failed.",
+        };
+      }),
+    // AI: generate a social post caption + image prompt from a gap query or video topicpic
+    generatePostAndImage: protectedProcedure
+      .input(
+        z.object({
+          title: z.string(),
+          query: z.string().optional(),
+          personaName: z.string().optional(),
+          topicTags: z.array(z.string()).optional(),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "all"]).default("meta"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const tagList = (input.topicTags ?? []).join(", ");
+
+        const systemPrompt = `You are a social media content creator for Dr. Pedram Shojai (The Urban Monk). You write in his voice: grounded, wise, practical, bridges Eastern wisdom and Western science. Never preachy. Always actionable.
+
+Your task: Generate TWO things for the topic below:
+1. A platform-optimized social media post caption
+2. A detailed AI image generation prompt (DALL-E / Midjourney style) for the thumbnail/cover image
+
+Topic: "${input.title}"
+${input.query ? `Audience question: "${input.query}"` : ""}
+${input.personaName ? `Target persona: ${input.personaName}` : ""}
+${tagList ? `Key angles: ${tagList}` : ""}
+Platform: ${input.platform}
+
+POST CAPTION REQUIREMENTS:
+- Platform: ${input.platform}
+- ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "COMPLETE self-contained thought, 180-220 characters target (hard max 280). Write SHORT from the start — never write long and trim. The post must begin and end naturally as a full idea. No ellipses, no cut-off sentences." : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
+- Write in Pedram's voice — no fluff, no hype
+- Include a clear call-to-action (link in bio / Urban Monk Academy / free resource)
+- Do NOT include any labels like "Caption:" — just write the post
+
+IMAGE PROMPT REQUIREMENTS:
+- Describe a compelling, professional thumbnail/cover image
+- Do NOT include faces or people (use symbolic, nature, or conceptual imagery)
+- Style: warm, earthy, cinematic — consistent with The Urban Monk brand (deep greens, amber, earth tones)
+- Should visually represent the core insight of the topic
+- Include lighting direction, mood, and composition details
+- Format: Start with "IMAGE PROMPT:" on its own line, then the description
+
+Return BOTH in this exact format:
+[POST]
+(the post caption here)
+
+[IMAGE PROMPT]
+(the image generation prompt here)`;
+        // Inject media authority context
+        let postMediaContext = "";
+        try {
+          const { getMediaContextBlock } = await import("./mediaRouter");
+          postMediaContext = await getMediaContextBlock(input.title, { maxAssets: 3, includeTypes: ["book", "podcast", "interview"] });
+        } catch (err) {
+          console.warn("[Post] Could not load media authority context:", err);
+        }
+        // Inject avatar intelligence context
+        let postAvatarContext = "";
+        try {
+          const { getAvatarContextBlock } = await import("./avatarRouter");
+          postAvatarContext = await getAvatarContextBlock(input.title);
+        } catch (err) {
+          console.warn("[Post] Could not load avatar context:", err);
+        }
+        let postCtaInjection = "";
+        try {
+          const { getCtaForTopic } = await import("./ctaRouter");
+          const cta = await getCtaForTopic(input.title);
+          postCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the post.`;
+        } catch (err) {
+          console.warn("[Post] Could not load CTA:", err);
+        }
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Generate the social post and image prompt for: "${input.title}"${postMediaContext}${postAvatarContext}` },
+          ],
+        });
+
+        const rawContent = typeof response.choices?.[0]?.message?.content === "string"
+          ? response.choices[0].message.content
+          : "";
+
+        // Parse the two sections
+        const postMatch = rawContent.match(/\[POST\]\s*([\s\S]*?)(?=\[IMAGE PROMPT\]|$)/);
+        const imageMatch = rawContent.match(/\[IMAGE PROMPT\]\s*([\s\S]*)$/);
+
+        return {
+          post: postMatch?.[1]?.trim() ?? rawContent,
+          imagePrompt: imageMatch?.[1]?.trim() ?? "",
+        };
+      }),
+
+    // AI: generate a Reframe Post (10-slide carousel in Nicole LePera format)
+    generateReframePost: protectedProcedure
+      .input(
+        z.object({
+          topic: z.string().min(1),
+          commonBelief: z.string().optional(),
+          personaName: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Default CTA — will be replaced by topical CTA library when available
+        const reframeCtaText = "Join the Urban Monk Academy → urbanmonk.com/academy";
+
+        // Load avatar context
+        let avatarCtx = "";
+        try {
+          const { getAvatarContextBlock } = await import("./avatarRouter");
+          avatarCtx = await getAvatarContextBlock(input.topic);
+        } catch (err) {
+          console.warn("[Reframe] Could not load avatar context:", err);
+        }
+
+        const commonBelief = input.commonBelief?.trim() || `a common misconception about ${input.topic}`;
+
+        const systemPrompt = `You are Dr. Pedram Shojai (The Urban Monk), a New York Times bestselling author, doctor of Oriental medicine, and wellness expert. You create viral 10-slide Instagram/Facebook carousel posts in the Nicole LePera "Holistic Psychologist" style.
+
+REFRAME POST STRUCTURE (exactly 10 slides):
+SLIDE 1: [Hook] "Most people believe [COMMON BELIEF]." (bold, provocative)
+SLIDE 2: [Why it's wrong] "Here's why that's keeping you stuck:" (1 short sentence)
+SLIDE 3-7: [Evidence] 5 specific facts, mechanisms, or insights that contradict the belief. Each slide = 1 insight, max 2 sentences.
+SLIDE 8: [The reframe] "What's actually true:" (the correct paradigm in 1-2 sentences)
+SLIDE 9: [What to do] 3 specific action steps the reader can take today.
+SLIDE 10: [CTA] End with: "${reframeCtaText}"
+
+RULES:
+- Each slide: max 40 words
+- No hashtags, no emojis, no markdown formatting
+- Voice: authoritative but warm, like a wise doctor friend
+- Ground every claim in ancient wisdom OR modern science (Pedram bridges both)
+- After slide 10, write: CAPTION: [A 150-word Instagram caption that expands on the topic, ends with a question to drive comments, and includes the CTA]
+
+${avatarCtx}
+
+Output format:
+SLIDE 1: [text]
+SLIDE 2: [text]
+...
+SLIDE 10: [text]
+CAPTION: [caption text]`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Create a Reframe Post about: "${input.topic}"\nCommon belief to reframe: "${commonBelief}"` },
+          ],
+        });
+
+        const rawContentRaw = response.choices?.[0]?.message?.content;
+        const rawContent = typeof rawContentRaw === "string" ? rawContentRaw : "";
+        if (!rawContent) {
+          throw new Error("Reframe post generation failed.");
+        }
+
+        // Parse slides and caption
+        const slideMatches = Array.from(rawContent.matchAll(/SLIDE\s*(\d+):\s*([\s\S]*?)(?=SLIDE\s*\d+:|CAPTION:|$)/gi));
+        const slides = slideMatches.map((m) => ({
+          number: parseInt(m[1]),
+          text: m[2].trim(),
+        }));
+        const captionMatch = rawContent.match(/CAPTION:\s*([\s\S]*)$/i);
+        const caption = captionMatch?.[1]?.trim() ?? "";
+
+        return { slides, caption, ctaLabel: reframeCtaText.slice(0, 40) };
       }),
   }),
 
@@ -1039,6 +1299,14 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         } catch (err) {
           console.warn("[Script] Could not load avatar context:", err);
         }
+        let scriptCtaInjection = "";
+        try {
+          const { getCtaForTopic } = await import("./ctaRouter");
+          const cta = await getCtaForTopic(input.title);
+          scriptCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the script, in the closing call-to-action section.`;
+        } catch (err) {
+          console.warn("[Script] Could not load CTA:", err);
+        }
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
@@ -1112,6 +1380,14 @@ Return BOTH in this exact format:
           postAvatarContext = await getAvatarContextBlock(input.title);
         } catch (err) {
           console.warn("[Post] Could not load avatar context:", err);
+        }
+        let postCtaInjection = "";
+        try {
+          const { getCtaForTopic } = await import("./ctaRouter");
+          const cta = await getCtaForTopic(input.title);
+          postCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the post.`;
+        } catch (err) {
+          console.warn("[Post] Could not load CTA:", err);
         }
         const response = await invokeLLM({
           messages: [
@@ -1277,5 +1553,7 @@ Return BOTH in this exact format:
   press: pressRouter,
   media: mediaRouter,
   avatar: avatarRouter,
+  cta: ctaRouter,
+  growth: growthRouter,
 });
 export type AppRouter = typeof appRouter;

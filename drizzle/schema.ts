@@ -484,3 +484,54 @@ export const avatarObjections = mysqlTable("avatar_objections", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type AvatarObjection = typeof avatarObjections.$inferSelect;
+
+// ─── Topical CTA Library ─────────────────────────────────────────────────────
+// Each topic vertical has its own CTA block; Lights On is the default fallback
+export const ctaBlocks = mysqlTable("cta_blocks", {
+  id: int("id").autoincrement().primaryKey(),
+  label: varchar("label", { length: 128 }).notNull(),
+  topic: varchar("topic", { length: 128 }).default(""),   // e.g. sleep, gut, detox
+  ctaText: text("ctaText").notNull(),
+  url: varchar("url", { length: 512 }),
+  keywords: text("keywords"),   // comma-separated trigger keywords
+  isDefault: boolean("isDefault").default(false),
+  active: boolean("active").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CtaBlock = typeof ctaBlocks.$inferSelect;
+
+// ─── Content Pillars ─────────────────────────────────────────────────────────
+export const contentPillars = mysqlTable("content_pillars", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  dayOfWeek: int("dayOfWeek"),   // 0=Sun, 1=Mon, ..., 6=Sat
+  description: text("description"),
+  topicExamples: text("topicExamples"),   // JSON array
+  active: boolean("active").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ContentPillar = typeof contentPillars.$inferSelect;
+
+// ─── Enrollment Windows ───────────────────────────────────────────────────────
+export const enrollmentWindows = mysqlTable("enrollment_windows", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  openDate: timestamp("openDate").notNull(),
+  closeDate: timestamp("closeDate").notNull(),
+  goal: varchar("goal", { length: 64 }),   // "Audience Growth" | "Conversion"
+  targetSignups: int("targetSignups"),
+  notes: text("notes"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EnrollmentWindow = typeof enrollmentWindows.$inferSelect;
+
+// ─── App Settings ─────────────────────────────────────────────────────────────
+export const appSettings = mysqlTable("app_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 128 }).notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AppSetting = typeof appSettings.$inferSelect;

@@ -802,3 +802,22 @@
 - [x] Inject avatar context block into generateCopy procedure (calls getAvatarContextBlockForPersona with topic + persona name)
 - [x] Update landing page structure instructions to reference Avatar Intelligence data in each section
 - [x] Add transformation language rules to landing page voice guidelines
+
+## v28 Features — LePera Channel Growth Model
+
+- [x] Topical CTA library — ctaBlocks table in DB with full CRUD
+- [x] Strategy Brain CTA Library tab — view/edit/add CTAs by topic
+- [x] Lights On as default CTA for all content (fallback when no topic match)
+- [x] Topic-specific CTAs: Sleep, Gut Health, Detox, Stress/Energy, Ancient Wisdom, Mindfulness, Performance
+- [x] CTA auto-injection into generateContent (social posts)
+- [x] CTA auto-injection into generateBlog
+- [x] CTA auto-injection into generateTeleprompterScript
+- [x] CTA auto-injection into generatePostAndImage
+- [x] Reframe Post content type added to ai router (generateReframePost procedure)
+- [x] Reframe Post UI in Creation Studio — 10-slide carousel with caption
+- [x] Common Belief input for Reframe Post mode
+- [x] growthRouter — contentPillars and enrollmentWindows CRUD + seed
+- [x] Weekly Cadence Tracker in Command Center — 4 pillars with day labels
+- [x] Enrollment Window countdown in Command Center (amber warning at 42 days)
+- [x] Seed defaults button for pillars and windows
+- [x] Two enrollment windows seeded: Fall (Sep 1) and New Year (Jan 1)

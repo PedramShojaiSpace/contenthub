@@ -1,0 +1,1 @@
+ALTER TABLE `cta_blocks` ADD `topic` varchar(128) DEFAULT '';

@@ -984,3 +984,13 @@
 - [x] Write vitest tests for llmProjectsRouter (createProject, listProjects, generateQueue, getWeeklyCadence) — 11 tests, 112 total passing
 - [ ] Add generateImages toggle to Creation Studio UI (checkbox to enable/disable auto-image with content)
 - [ ] Show per-platform image generation status indicator (generating... / ready / failed) in Creation Studio
+
+## Mark as Published Flow (v53)
+- [x] Add publishedUrl column to llm_assets schema
+- [x] Run db:push for schema change
+- [x] Update updateAssetStatus mutation to accept and store publishedUrl
+- [x] Build MarkPublishedDialog: URL input, URL validation, confirm button
+- [x] Add "Mark Published" button to each asset row (shown when status is produced)
+- [x] Show live URL link on published assets in the asset queue (clickable ExternalLink icon + URL text)
+- [x] Cadence tracker auto-refreshes after marking published (invalidates listAssets, getWeeklyCadence, getAllProjectsCadence)
+- [x] All 112 tests passing

@@ -1,0 +1,1 @@
+ALTER TABLE `llm_assets` ADD `publishedUrl` varchar(1024);

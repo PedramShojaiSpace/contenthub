@@ -169,6 +169,7 @@ export const llmProjectsRouter = router({
         id: z.number().int(),
         status: z.enum(["queued", "in_progress", "produced", "published"]),
         contentItemId: z.number().int().optional(),
+        publishedUrl: z.string().url().optional(), // Live URL when marking as published
       })
     )
     .mutation(async ({ input }) => {
@@ -179,6 +180,7 @@ export const llmProjectsRouter = router({
         .set({
           status: input.status,
           ...(input.contentItemId ? { contentItemId: input.contentItemId } : {}),
+          ...(input.publishedUrl ? { publishedUrl: input.publishedUrl } : {}),
           ...(input.status === "produced" ? { producedAt: new Date() } : {}),
           ...(input.status === "published" ? { publishedAt: new Date() } : {}),
         })

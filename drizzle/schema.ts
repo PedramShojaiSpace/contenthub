@@ -644,6 +644,7 @@ export const llmAssets = mysqlTable("llm_assets", {
   status: llmAssetStatusEnum.notNull().default("queued"),
   contentItemId: int("contentItemId"),   // FK → content_items.id once produced
   notes: text("notes"),
+  publishedUrl: varchar("publishedUrl", { length: 1024 }), // Live URL once published
   producedAt: timestamp("producedAt"),
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

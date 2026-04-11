@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import DashboardLayout from "@/components/DashboardLayout";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 import {
   Plus, Trash2, ChevronRight, Sparkles, FileText, Youtube,
   BookOpen, Share2, Mail, CheckCircle2, Clock, Zap, Target,
-  BarChart3, ArrowLeft, RefreshCw
+  BarChart3, ArrowLeft, RefreshCw, ExternalLink, Globe
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -56,8 +57,92 @@ const STATUS_ROW_BG: Record<AssetStatus, string> = {
   produced: "border-blue-200 bg-blue-50/50",
   published: "border-green-200 bg-green-50/40",
 };
+// ─── Mark as Published Dialog ───────────────────────────────────────────────
+function MarkPublishedDialog({
+  assetId,
+  assetTitle,
+  onPublished,
+}: {
+  assetId: number;
+  assetTitle: string;
+  onPublished: (id: number, url: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState("");
 
-// ─── Create Project Dialog ─────────────────────────────────────────────────
+  const handleConfirm = () => {
+    // Basic URL validation
+    if (!url.trim()) {
+      setUrlError("Please enter the live URL");
+      return;
+    }
+    try {
+      new URL(url.trim());
+    } catch {
+      setUrlError("Please enter a valid URL (e.g. https://theurbanmonk.com/...)");
+      return;
+    }
+    setUrlError("");
+    onPublished(assetId, url.trim());
+    setOpen(false);
+    setUrl("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setUrl(""); setUrlError(""); } }}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost"
+          className="h-6 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50">
+          <Globe className="w-3 h-3 mr-1" /> Mark Published
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-green-600" />
+            Mark as Published
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="rounded-lg bg-muted/40 p-3 border border-border">
+            <p className="text-sm font-medium text-foreground line-clamp-2">{assetTitle}</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="published-url" className="text-sm font-medium">
+              Live URL <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="published-url"
+              placeholder="https://theurbanmonk.com/your-article"
+              value={url}
+              onChange={(e) => { setUrl(e.target.value); setUrlError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
+              className={urlError ? "border-destructive" : ""}
+            />
+            {urlError && (
+              <p className="text-xs text-destructive">{urlError}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Paste the URL where this content is live. This will be saved and shown in your asset queue.
+            </p>
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleConfirm}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-1.5" /> Confirm Published
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Create Project Dialog ─────────────────────────────────────────────────────
 function CreateProjectDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -305,13 +390,14 @@ function AddAssetDialog({ projectId, onAdded }: { projectId: number; onAdded: ()
 }
 
 // ─── Asset Row ─────────────────────────────────────────────────────────────
-function AssetRow({ asset, onStatusChange, onDelete, onLaunch }: {
+function AssetRow({ asset, onStatusChange, onPublish, onDelete, onLaunch }: {
   asset: {
     id: number; assetType: string; title: string; question?: string | null;
     targetKeyword?: string | null; priority: string; status: string; notes?: string | null;
-    semanticKeywords?: string | null;
+    semanticKeywords?: string | null; publishedUrl?: string | null;
   };
   onStatusChange: (id: number, status: AssetStatus) => void;
+  onPublish: (id: number, url: string) => void;
   onDelete: (id: number) => void;
   onLaunch: (asset: { assetType: string; title: string; question?: string | null; targetKeyword?: string | null; notes?: string | null; semanticKeywords?: string | null; id: number; priority: string; status: string }) => void;
 }) {
@@ -319,17 +405,19 @@ function AssetRow({ asset, onStatusChange, onDelete, onLaunch }: {
   const status = asset.status as AssetStatus;
   const priority = asset.priority as Priority;
 
-  const nextStatus: Record<AssetStatus, AssetStatus | null> = {
+  // For queued → in_progress → produced, use simple status change.
+  // For produced → published, use the MarkPublishedDialog (URL required).
+  const simpleNextStatus: Record<AssetStatus, AssetStatus | null> = {
     queued: "in_progress",
     in_progress: "produced",
-    produced: "published",
+    produced: null, // handled by MarkPublishedDialog
     published: null,
   };
 
-  const nextStatusLabel: Record<AssetStatus, string> = {
+  const simpleNextLabel: Record<AssetStatus, string> = {
     queued: "Start",
     in_progress: "Mark Produced",
-    produced: "Mark Published",
+    produced: "",
     published: "",
   };
 
@@ -342,16 +430,40 @@ function AssetRow({ asset, onStatusChange, onDelete, onLaunch }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium leading-snug ${
-              status === "published" ? "text-muted-foreground line-through" : "text-foreground"
-            }`}>{asset.title}</p>
+            <div className="flex items-center gap-2">
+              <p className={`text-sm font-medium leading-snug ${
+                status === "published" ? "text-green-700" : "text-foreground"
+              }`}>{asset.title}</p>
+              {status === "published" && asset.publishedUrl && (
+                <a
+                  href={asset.publishedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-shrink-0 text-green-600 hover:text-green-700"
+                  title="View live"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
             {asset.question && (
               <p className="text-xs text-muted-foreground mt-0.5 italic">"{asset.question}"</p>
             )}
             {asset.targetKeyword && (
               <p className="text-xs text-primary/70 mt-0.5">🎯 {asset.targetKeyword}</p>
             )}
-            {asset.notes && (
+            {status === "published" && asset.publishedUrl && (
+              <a
+                href={asset.publishedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-green-600 hover:text-green-700 hover:underline mt-0.5 block truncate"
+              >
+                {asset.publishedUrl}
+              </a>
+            )}
+            {asset.notes && status !== "published" && (
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{asset.notes}</p>
             )}
           </div>
@@ -376,12 +488,21 @@ function AssetRow({ asset, onStatusChange, onDelete, onLaunch }: {
               <Zap className="w-3 h-3 mr-1" /> Create in Studio
             </Button>
           )}
-          {nextStatus[status] && (
+          {/* Simple status advance (queued → in_progress → produced) */}
+          {simpleNextStatus[status] && (
             <Button size="sm" variant="ghost"
-              onClick={() => onStatusChange(asset.id, nextStatus[status]!)}
-              className="h-6 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50">
-              <CheckCircle2 className="w-3 h-3 mr-1" /> {nextStatusLabel[status]}
+              onClick={() => onStatusChange(asset.id, simpleNextStatus[status]!)}
+              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+              <CheckCircle2 className="w-3 h-3 mr-1" /> {simpleNextLabel[status]}
             </Button>
+          )}
+          {/* Mark Published dialog (produced → published, requires URL) */}
+          {status === "produced" && (
+            <MarkPublishedDialog
+              assetId={asset.id}
+              assetTitle={asset.title}
+              onPublished={onPublish}
+            />
           )}
           <Button size="sm" variant="ghost"
             onClick={() => onDelete(asset.id)}
@@ -409,9 +530,27 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
   const { data: cadence } = trpc.llmProjects.getWeeklyCadence.useQuery({ projectId });
 
   const updateStatusMutation = trpc.llmProjects.updateAssetStatus.useMutation({
-    onSuccess: () => utils.llmProjects.listAssets.invalidate(),
+    onSuccess: () => {
+      utils.llmProjects.listAssets.invalidate();
+      utils.llmProjects.getWeeklyCadence.invalidate();
+      utils.llmProjects.getAllProjectsCadence.invalidate();
+    },
     onError: (e) => toast.error(e.message),
   });
+
+  const publishMutation = trpc.llmProjects.updateAssetStatus.useMutation({
+    onSuccess: () => {
+      utils.llmProjects.listAssets.invalidate();
+      utils.llmProjects.getWeeklyCadence.invalidate();
+      utils.llmProjects.getAllProjectsCadence.invalidate();
+      toast.success("✅ Asset marked as published!");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handlePublish = (id: number, url: string) => {
+    publishMutation.mutate({ id, status: "published", publishedUrl: url });
+  };
 
   const deleteAssetMutation = trpc.llmProjects.deleteAsset.useMutation({
     onSuccess: () => utils.llmProjects.listAssets.invalidate(),
@@ -584,6 +723,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
               key={asset.id}
               asset={asset}
               onStatusChange={(id, status) => updateStatusMutation.mutate({ id, status })}
+              onPublish={handlePublish}
               onDelete={(id) => deleteAssetMutation.mutate({ id })}
               onLaunch={handleLaunch}
             />

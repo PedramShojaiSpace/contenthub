@@ -163,6 +163,11 @@ export default function CreationStudio() {
   const [attachingImage, setAttachingImage] = useState(false);
   const [attachedToIds, setAttachedToIds] = useState<number[]>([]);
 
+  // Teleprompter script state
+  const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
+  const [showTeleprompter, setShowTeleprompter] = useState(false);
+  const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
+
   // Buffer syndication state
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [syndicatingPlatform, setSyndicatingPlatform] = useState<string | null>(null);
@@ -501,6 +506,35 @@ export default function CreationStudio() {
       title: video.title,
       channelName: video.channelName,
       transcript: transcript?.text ?? "",
+    });
+  };
+
+  // ── Teleprompter Script Generation ──────────────────────────────────────────
+  const teleprompterMutation = trpc.research.generateTeleprompterScript.useMutation({
+    onSuccess: (data) => {
+      setTeleprompterScript(data.script);
+      setShowTeleprompter(true);
+      setGeneratingTeleprompter(false);
+      toast.success("Teleprompter script ready!");
+    },
+    onError: (err) => {
+      setGeneratingTeleprompter(false);
+      toast.error("Script generation failed: " + err.message);
+    },
+  });
+
+  const handleGenerateTeleprompter = () => {
+    // Extract title from the YouTube content — use the first line of the generated text
+    const youtubeText = editedText["youtube"] || generatedContent["youtube"]?.text || "";
+    // The YouTube output typically starts with the title on the first line
+    const firstLine = youtubeText.split("\n")[0].replace(/^#+\s*/, "").trim();
+    const title = firstLine || idea;
+    setGeneratingTeleprompter(true);
+    setTeleprompterScript(null);
+    setShowTeleprompter(false);
+    teleprompterMutation.mutate({
+      title,
+      platform: "youtube",
     });
   };
 
@@ -1657,6 +1691,24 @@ export default function CreationStudio() {
                               </>
                             )}
                           </Button>
+                          {/* Teleprompter button — YouTube only */}
+                          {p === "youtube" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                              onClick={handleGenerateTeleprompter}
+                              disabled={generatingTeleprompter || teleprompterMutation.isPending}
+                              title="Generate a full teleprompter script from this YouTube content"
+                            >
+                              {generatingTeleprompter ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <Wand2 className="h-3 w-3 mr-1" />
+                              )}
+                              {generatingTeleprompter ? "Generating..." : "Teleprompter Script"}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardHeader>
@@ -1797,6 +1849,93 @@ export default function CreationStudio() {
               })}
             </div>
           </div>
+        )}
+
+        {/* ── Teleprompter Script Panel ── */}
+        {(showTeleprompter || generatingTeleprompter) && (
+          <Card className="bg-card border-amber-500/20 border overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-amber-400" />
+                  <CardTitle className="text-base font-semibold text-foreground">Teleprompter Script</CardTitle>
+                  <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-400">YouTube Ready</Badge>
+                </div>
+                {teleprompterScript && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        navigator.clipboard.writeText(teleprompterScript);
+                        toast.success("Script copied to clipboard!");
+                      }}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy Script
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const blob = new Blob([teleprompterScript], { type: "text/plain" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        const titleSlug = (editedText["youtube"] || idea).split("\n")[0].slice(0, 40).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+                        a.download = `teleprompter-${titleSlug}.txt`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Download
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-amber-400 hover:text-amber-300"
+                      onClick={handleGenerateTeleprompter}
+                      disabled={generatingTeleprompter}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Regenerate
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => { setShowTeleprompter(false); setTeleprompterScript(null); }}
+                    >
+                      <ChevronUp className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {generatingTeleprompter ? (
+                <div className="flex items-center justify-center py-12 gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-amber-400" />
+                  <span className="text-sm text-muted-foreground">Writing your teleprompter script… this takes about 30 seconds.</span>
+                </div>
+              ) : teleprompterScript ? (
+                <div className="space-y-4">
+                  <div className="bg-black/20 rounded-lg p-4 border border-amber-500/10">
+                    <p className="text-xs text-amber-400/70 mb-3 font-medium uppercase tracking-wider">Script — read directly from screen</p>
+                    <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
+                      {teleprompterScript}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tip: Use a teleprompter app (PromptSmart, Teleprompter Premium, or Descript) and paste this script directly. [PAUSE] markers indicate natural breath points. [B-ROLL] cues are for your editor.
+                  </p>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
         )}
 
         {/* TikTok Script Panel */}

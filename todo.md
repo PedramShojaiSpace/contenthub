@@ -1012,3 +1012,11 @@
 - [x] Replaced urbanmonkacademy.com with theurbanmonk.com in BLOG_PROMPT CTA section
 - [x] Searched all .ts and .tsx files — no other urbanmonkacademy.com references found
 - [x] All 118 tests passing
+
+## Generate Teleprompter Script from YouTube Panel (v56)
+- [x] Added amber "Teleprompter Script" button to YouTube card header (next to Push to Buffer)
+- [x] Wired to trpc.research.generateTeleprompterScript mutation with title extracted from YouTube content
+- [x] Script renders in expandable amber-bordered panel below YouTube card with Copy, Download (.txt), Regenerate, and Dismiss buttons
+- [x] Loading state shows spinner + "Writing your teleprompter script…" message
+- [x] Tip text guides user to PromptSmart / Teleprompter Premium / Descript
+- [x] All 118 tests passing, 0 TypeScript errors

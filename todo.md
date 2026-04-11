@@ -1068,3 +1068,12 @@
 - [x] Fix: added TYPES_WITH_VALIDATIONS set; validations only added when field type is in that set
 - [x] Also added properties support for dropdown and ranking field types
 - [x] All 118 tests passing, 0 TypeScript errors
+
+## Save to Script Library + TikTok Script (v59)
+- [x] Add "Save to Script Library" button in teleprompter panel in CommandCenter Kanban modal
+- [x] Wire to scriptsRouter.create mutation (title, content, platform=youtube, type=teleprompter)
+- [x] Add TikTok 60-second script button on TikTok cards in CommandCenter Kanban modal
+- [x] Generate TikTok script: hook (0-3s) + 3 punchy points + CTA, ~60 seconds spoken
+- [x] Add "Save to Script Library" button in teleprompter panel in CreationStudio
+- [x] Add TikTok 60-second script panel in CreationStudio TikTok card with Copy, Download, Save to Library
+- [x] Run tests — 118 tests passing

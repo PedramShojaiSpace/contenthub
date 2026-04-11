@@ -63,6 +63,8 @@ import {
   Wand2,
   Copy,
   Download,
+  BookMarked,
+  Music2,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -1498,7 +1500,7 @@ export default function CommandCenter() {
       </Dialog>
 
       {/* ── Card Detail Dialog ─────────────────────────────────────────────── */}
-      <Dialog open={!!selectedItem} onOpenChange={(open) => { if (!open) { setSelectedItem(null); setTeleprompterScript(null); setGeneratingTeleprompter(false); } }}>
+      <Dialog open={!!selectedItem} onOpenChange={(open) => { if (!open) { setSelectedItem(null); setTeleprompterScript(null); setGeneratingTeleprompter(false); setTiktokScript(null); setGeneratingTiktok(false); } }}>
         {selectedItem && (
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
             <DialogHeader>
@@ -1645,6 +1647,23 @@ export default function CommandCenter() {
                         <RefreshCw className="h-3 w-3 mr-1" />
                         Redo
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-green-400 hover:text-green-300"
+                        onClick={() => {
+                          const title = selectedItem.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || selectedItem.title;
+                          handleSaveToLibrary(title, teleprompterScript, "youtube");
+                        }}
+                        disabled={saveScriptMutation.isPending}
+                      >
+                        {saveScriptMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <BookMarked className="h-3 w-3 mr-1" />
+                        )}
+                        Save to Library
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -1659,6 +1678,102 @@ export default function CommandCenter() {
                     <p className="text-[10px] text-amber-400/70 mb-2 font-medium uppercase tracking-wider">Teleprompter Script</p>
                     <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
                       {teleprompterScript}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TikTok 60-second Script — TikTok cards only */}
+            {selectedItem.platform === "tiktok" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-pink-500/40 text-pink-400 hover:bg-pink-500/10 hover:text-pink-300"
+                    onClick={() => handleGenerateTiktokScript(selectedItem)}
+                    disabled={generatingTiktok || tiktokScriptMutation.isPending}
+                  >
+                    {generatingTiktok ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <Music2 className="h-3 w-3 mr-1" />
+                    )}
+                    {generatingTiktok ? "Generating…" : "Generate 60-sec TikTok Script"}
+                  </Button>
+                  {tiktokScript && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          navigator.clipboard.writeText(tiktokScript);
+                          toast.success("Script copied!");
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          const blob = new Blob([tiktokScript], { type: "text/plain" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `tiktok-60s-${selectedItem.id}.txt`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Download
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-pink-400"
+                        onClick={() => handleGenerateTiktokScript(selectedItem)}
+                        disabled={generatingTiktok}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Redo
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-green-400 hover:text-green-300"
+                        onClick={() => {
+                          const title = selectedItem.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || selectedItem.title;
+                          handleSaveToLibrary(title, tiktokScript, "tiktok");
+                        }}
+                        disabled={saveScriptMutation.isPending}
+                      >
+                        {saveScriptMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <BookMarked className="h-3 w-3 mr-1" />
+                        )}
+                        Save to Library
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {generatingTiktok && (
+                  <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-pink-400" />
+                    Writing 60-second TikTok script… about 20 seconds.
+                  </div>
+                )}
+                {tiktokScript && !generatingTiktok && (
+                  <div className="rounded-lg border border-pink-500/20 bg-black/20 p-4 max-h-72 overflow-y-auto">
+                    <p className="text-[10px] text-pink-400/70 mb-2 font-medium uppercase tracking-wider">60-Second TikTok Script</p>
+                    <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
+                      {tiktokScript}
                     </div>
                   </div>
                 )}

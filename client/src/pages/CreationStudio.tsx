@@ -39,6 +39,7 @@ import {
   Youtube,
   Zap,
   LayoutGrid,
+  BookMarked,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { FlaskConical, Globe, Target, Swords, ArrowRight } from "lucide-react";
@@ -167,6 +168,11 @@ export default function CreationStudio() {
   const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
+
+  // TikTok 60-second script state
+  const [tiktokScript60, setTiktokScript60] = useState<string | null>(null);
+  const [generatingTiktok60, setGeneratingTiktok60] = useState(false);
+  const [tiktok60Saved, setTiktok60Saved] = useState(false);
 
   // Buffer syndication state
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
@@ -535,6 +541,72 @@ export default function CreationStudio() {
     teleprompterMutation.mutate({
       title,
       platform: "youtube",
+    });
+  };
+
+  // ── TikTok 60-second Script Generation ───────────────────────────────
+  const tiktok60Mutation = trpc.research.generateTeleprompterScript.useMutation({
+    onSuccess: (data) => {
+      setTiktokScript60(data.script);
+      setGeneratingTiktok60(false);
+      toast.success("TikTok 60-second script ready!");
+    },
+    onError: (err) => {
+      setGeneratingTiktok60(false);
+      toast.error("Script generation failed: " + err.message);
+    },
+  });
+
+  const handleGenerateTiktok60 = () => {
+    const title = (editedText["tiktok"] || generatedContent["tiktok"]?.text || "").split("\n")[0].replace(/^#+\s*/, "").trim() || idea;
+    setGeneratingTiktok60(true);
+    setTiktokScript60(null);
+    tiktok60Mutation.mutate({ title, platform: "tiktok" });
+  };
+
+  const saveTiktok60Mutation = trpc.scripts.create.useMutation({
+    onSuccess: () => {
+      setTiktok60Saved(true);
+      toast.success("TikTok script saved to Script Library!");
+      setTimeout(() => setTiktok60Saved(false), 3000);
+    },
+    onError: (err) => toast.error("Save failed: " + err.message),
+  });
+
+  const handleSaveTiktok60ToLibrary = () => {
+    if (!tiktokScript60) return;
+    const title = (editedText["tiktok"] || generatedContent["tiktok"]?.text || "").split("\n")[0].replace(/^#+\s*/, "").trim() || idea || "TikTok 60-sec Script";
+    saveTiktok60Mutation.mutate({
+      title,
+      scriptType: "reel",
+      platform: "tiktok",
+      productionStatus: "scripted",
+      scriptBody: tiktokScript60,
+    });
+  };
+
+  // ── Save Teleprompter Script to Script Library ────────────────────────────────
+  const [teleprompterSaved, setTeleprompterSaved] = useState(false);
+  const saveTeleprompterMutation = trpc.scripts.create.useMutation({
+    onSuccess: () => {
+      setTeleprompterSaved(true);
+      toast.success("Script saved to Script Library!");
+      setTimeout(() => setTeleprompterSaved(false), 3000);
+    },
+    onError: (err) => toast.error("Save failed: " + err.message),
+  });
+
+  const handleSaveTeleprompterToLibrary = () => {
+    if (!teleprompterScript) return;
+    const youtubeText = editedText["youtube"] || generatedContent["youtube"]?.text || "";
+    const firstLine = youtubeText.split("\n")[0].replace(/^#+\s*/, "").trim();
+    const title = firstLine || idea || "Teleprompter Script";
+    saveTeleprompterMutation.mutate({
+      title,
+      scriptType: "video",
+      platform: "youtube",
+      productionStatus: "scripted",
+      scriptBody: teleprompterScript,
     });
   };
 
@@ -1905,6 +1977,22 @@ export default function CreationStudio() {
                     </Button>
                     <Button
                       variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-green-400 hover:text-green-300"
+                      onClick={handleSaveTeleprompterToLibrary}
+                      disabled={saveTeleprompterMutation.isPending || teleprompterSaved}
+                    >
+                      {saveTeleprompterMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : teleprompterSaved ? (
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                      ) : (
+                        <BookMarked className="h-3 w-3 mr-1" />
+                      )}
+                      {teleprompterSaved ? "Saved!" : "Save to Library"}
+                    </Button>
+                    <Button
+                      variant="ghost"
                       size="icon"
                       className="h-7 w-7"
                       onClick={() => { setShowTeleprompter(false); setTeleprompterScript(null); }}
@@ -2035,6 +2123,94 @@ export default function CreationStudio() {
                 <p className="text-xs text-pink-400/80">
                   Script is 60–90 seconds when spoken at a natural pace. Hashtags are included at the end. Push to Buffer to schedule directly to your TikTok channel.
                 </p>
+              </div>
+
+              {/* TikTok 60-second Teleprompter Script */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="h-4 w-4 text-pink-400" />
+                    <p className="text-sm font-medium text-foreground">60-Second Teleprompter Script</p>
+                    <Badge variant="outline" className="text-[10px] border-pink-500/40 text-pink-400">Punchy Hook + 3 Points + CTA</Badge>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs border-pink-500/40 text-pink-400 hover:bg-pink-500/10"
+                      onClick={handleGenerateTiktok60}
+                      disabled={generatingTiktok60 || tiktok60Mutation.isPending}
+                    >
+                      {generatingTiktok60 ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <Wand2 className="h-3 w-3 mr-1" />
+                      )}
+                      {generatingTiktok60 ? "Generating…" : "Generate 60-sec Script"}
+                    </Button>
+                    {tiktokScript60 && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => { navigator.clipboard.writeText(tiktokScript60); toast.success("Script copied!"); }}
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            const blob = new Blob([tiktokScript60], { type: "text/plain" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            const slug = idea.slice(0, 30).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+                            a.download = `tiktok-60s-${slug}.txt`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Download
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-green-400 hover:text-green-300"
+                          onClick={handleSaveTiktok60ToLibrary}
+                          disabled={saveTiktok60Mutation.isPending || tiktok60Saved}
+                        >
+                          {saveTiktok60Mutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : tiktok60Saved ? (
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                          ) : (
+                            <BookMarked className="h-3 w-3 mr-1" />
+                          )}
+                          {tiktok60Saved ? "Saved!" : "Save to Library"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {generatingTiktok60 && (
+                  <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-pink-400" />
+                    Writing 60-second TikTok script… about 20 seconds.
+                  </div>
+                )}
+                {tiktokScript60 && !generatingTiktok60 && (
+                  <div className="rounded-lg border border-pink-500/20 bg-black/20 p-4 max-h-64 overflow-y-auto">
+                    <p className="text-[10px] text-pink-400/70 mb-2 font-medium uppercase tracking-wider">60-Second TikTok Script</p>
+                    <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
+                      {tiktokScript60}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -994,3 +994,9 @@
 - [x] Show live URL link on published assets in the asset queue (clickable ExternalLink icon + URL text)
 - [x] Cadence tracker auto-refreshes after marking published (invalidates listAssets, getWeeklyCadence, getAllProjectsCadence)
 - [x] All 112 tests passing
+
+## Blog Generation JSON Fix (v54)
+- [x] Fix generateBlog: strip ```json code fences from LLM response before JSON.parse
+- [x] Add robust JSON extraction helper (extractArticleFromJson) that handles ```json\n{}, ```, and raw {} variants
+- [x] Detection regex now catches all fence styles including newline-separated fences
+- [x] All 112 tests passing, 0 TypeScript errors

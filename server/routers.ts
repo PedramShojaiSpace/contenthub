@@ -855,35 +855,48 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           throw new Error("Blog generation failed \u2014 article body was empty or too short.");
         }
 
-        // \u2500\u2500 DEFENSIVE: If the model returned JSON despite instructions, extract the article field \u2500\u2500
-        // The model sometimes wraps the response in ```json { ... } ``` even when told not to.
-        // Detect this and extract the article body from the JSON.
-        const looksLikeJson = /^`{0,3}\s*json\s*\{/i.test(articleBody) || /^\s*\{/.test(articleBody);
-        if (looksLikeJson) {
+        // ── DEFENSIVE: If the model returned JSON despite instructions, extract the article field ──
+        // The model sometimes wraps the response in ```json\n{ ... }\n``` even when told not to.
+        // This helper strips any code fence variant and attempts to parse the JSON.
+        const extractArticleFromJson = (raw: string): string | null => {
           try {
-            // Strip code fences if present
-            const stripped = articleBody
-              .replace(/^`{1,3}\s*json\s*/i, "")
-              .replace(/\s*`{1,3}\s*$/, "")
+            // Step 1: Strip code fences — handles ```json\n, ```json , ``` variants
+            const stripped = raw
+              .replace(/^```+\s*json\s*\n?/i, "")  // opening ```json fence (with optional newline)
+              .replace(/^```+\s*\n?/i, "")          // opening ``` fence (no language tag)
+              .replace(/\n?```+\s*$/i, "")           // closing ``` fence
               .trim();
-            // Find the first { ... } block
+            // Step 2: Find the outermost JSON object
             const firstBrace = stripped.indexOf("{");
             const lastBrace = stripped.lastIndexOf("}");
-            if (firstBrace !== -1 && lastBrace !== -1) {
-              const jsonStr = stripped.slice(firstBrace, lastBrace + 1);
-              const parsed = JSON.parse(jsonStr);
-              if (parsed.article && typeof parsed.article === "string" && parsed.article.length > 200) {
-                // Successfully extracted the article field — use it directly
-                articleBody = parsed.article;
-                console.log("[Blog] Extracted article from JSON response, length:", articleBody.length);
-              }
+            if (firstBrace === -1 || lastBrace === -1) return null;
+            const jsonStr = stripped.slice(firstBrace, lastBrace + 1);
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.article && typeof parsed.article === "string" && parsed.article.length > 200) {
+              return parsed.article;
             }
-          } catch (e) {
-            console.warn("[Blog] JSON extraction attempt failed, using raw response:", e);
+            return null;
+          } catch {
+            return null;
+          }
+        };
+
+        // Detect: starts with ``` fence OR starts with { (raw JSON object)
+        const looksLikeJson =
+          /^```/i.test(articleBody) ||
+          /^\s*\{/.test(articleBody);
+
+        if (looksLikeJson) {
+          const extracted = extractArticleFromJson(articleBody);
+          if (extracted) {
+            console.log("[Blog] Extracted article from JSON response, length:", extracted.length);
+            articleBody = extracted;
+          } else {
+            console.warn("[Blog] Response looked like JSON but extraction failed — using raw response.");
           }
         }
 
-        // \u2500\u2500 CONTINUATION PASS: Detect truncation and complete the article \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        // ── CONTINUATION PASS: Detect truncation and complete the article ───────── \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
         // Only run if the article is genuinely truncated (not a JSON extraction issue).
         const hasFaq = /##\s*(Frequently Asked Questions|FAQ)/i.test(articleBody);
         const endsCleanly = /[.!?\"']\s*$/.test(articleBody.slice(-200));

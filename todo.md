@@ -1049,3 +1049,9 @@
 - [ ] Add "Generate 60s TikTok Script" button on TikTok cards in Kanban modal
 - [ ] TikTok script renders inline with Copy, Download, Save to Library buttons
 - [ ] Run tests
+
+## Blank Screen Fix v2 (v58c)
+- [x] Root cause: vendor-react and vendor-react-dom were split into separate async chunks. The manus-runtime script (injected before app) bundles its own React and initializes the Scheduler. When the app's async React chunk loaded, it tried to re-initialize the Scheduler, causing: "Cannot set properties of undefined (setting 'unstable_now')" — a silent crash.
+- [x] Fix: removed vendor-react and vendor-react-dom from manualChunks so React is bundled inline with the main entry chunk (synchronous load, no conflict)
+- [x] Verified: new index-B0cUGF9B.js has 0 data-loc, React loads correctly after manus-runtime IIFE
+- [x] All 118 tests passing

@@ -1055,3 +1055,10 @@
 - [x] Fix: removed vendor-react and vendor-react-dom from manualChunks so React is bundled inline with the main entry chunk (synchronous load, no conflict)
 - [x] Verified: new index-B0cUGF9B.js has 0 data-loc, React loads correctly after manus-runtime IIFE
 - [x] All 118 tests passing
+
+## Save to Script Library + TikTok Script (v59) — QUEUED FOR NEXT SESSION
+- [ ] Add "Save to Script Library" button in the teleprompter panel (Kanban modal + Creation Studio)
+- [ ] Wire to scriptsRouter.create mutation with title, content, platform=youtube, type=teleprompter
+- [ ] Add TikTok 60-second script button on TikTok cards in CommandCenter Kanban modal
+- [ ] Reuse generateTeleprompterScript with a "tiktok" format flag (60-sec punchy, hook + 3 points + CTA)
+- [ ] Run tests

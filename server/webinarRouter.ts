@@ -845,15 +845,15 @@ AUDIENCE: ${personaNames}
 OFFER / CTA: ${input.cta || "The Upstream Bundle — $399"}
 KNOWN PAIN POINTS: ${personaPains || "chronic fatigue, stress, gut issues, poor sleep, brain fog"}
 
-Generate a survey with exactly 8-10 questions using this framework:
+Generate a survey with exactly 7-8 questions using this framework:
 1. What brought you to this webinar? (open text)
 2-4. Pain point questions — dig into their specific health struggles (mix of open text and multiple choice)
 5. How long have you been dealing with this? (multiple choice)
 6. What have you already tried? (multiple choice with "other")
 7. What would your life look like if this was resolved? (open text — aspirational)
 8. How serious are you about solving this in the next 90 days? (rating 1-10)
-9. Would you like a free 15-minute health strategy call? (yes/no)
-10. What's the best email to send your personalized plan? (email)
+
+Do NOT include any question offering a free consultation, strategy call, or follow-up call. Do NOT ask for their email — the form already has it. End after the commitment/seriousness rating question.
 
 Return a JSON array of question objects. Each object must have:
 - "ref": unique snake_case string (e.g. "pain_main")
@@ -965,7 +965,7 @@ Return ONLY the JSON array, no markdown wrapping.`;
           },
           thankyou_screens: [{
             ref: "thank_you",
-            title: "Thank you for sharing! We'll be in touch shortly with your personalized plan.",
+            title: "Thank you for your responses. We appreciate you taking the time.",
             type: "thankyou_screen",
             properties: { show_button: false, share_icons: false },
           }],

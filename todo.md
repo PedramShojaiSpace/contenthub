@@ -1077,3 +1077,8 @@
 - [x] Add "Save to Script Library" button in teleprompter panel in CreationStudio
 - [x] Add TikTok 60-second script panel in CreationStudio TikTok card with Copy, Download, Save to Library
 - [x] Run tests — 118 tests passing
+
+## Remove Free Consultation from Typeform Survey (v60)
+- [x] Removed question 9 ("Would you like a free 15-minute health strategy call?") from the AI survey generation prompt
+- [x] Updated Typeform thank-you screen to clean "Thank you for your responses" — no CTA, no follow-up promise
+- [x] Survey now generates 7-8 questions only, ending after the commitment/seriousness rating

@@ -596,18 +596,31 @@ export default function CommandCenter() {
   };
 
   // Save to Script Library
+  const utils = trpc.useUtils();
+  const linkContentMutation = trpc.content.update.useMutation();
   const saveScriptMutation = trpc.scripts.create.useMutation({
-    onSuccess: () => toast.success("Script saved to Script Library!"),
+    onSuccess: (created, variables) => {
+      toast.success("Script saved to Script Library!");
+      // Auto-link: set linkedScriptId on the originating content item
+      if (created && variables.linkedContentItemId) {
+        linkContentMutation.mutate({
+          id: variables.linkedContentItemId,
+          linkedScriptId: created.id,
+        });
+        utils.content.list.invalidate();
+      }
+    },
     onError: (err) => toast.error("Save failed: " + err.message),
   });
 
-  const handleSaveToLibrary = (title: string, scriptBody: string, platform: "youtube" | "tiktok") => {
+  const handleSaveToLibrary = (title: string, scriptBody: string, platform: "youtube" | "tiktok", contentItemId?: number) => {
     saveScriptMutation.mutate({
       title,
       scriptType: platform === "tiktok" ? "reel" : "video",
       platform,
       productionStatus: "scripted",
       scriptBody,
+      linkedContentItemId: contentItemId,
     });
   };
 
@@ -1653,7 +1666,7 @@ export default function CommandCenter() {
                         className="h-7 px-2 text-xs text-green-400 hover:text-green-300"
                         onClick={() => {
                           const title = selectedItem.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || selectedItem.title;
-                          handleSaveToLibrary(title, teleprompterScript, "youtube");
+                          handleSaveToLibrary(title, teleprompterScript, "youtube", selectedItem.id);
                         }}
                         disabled={saveScriptMutation.isPending}
                       >
@@ -1749,7 +1762,7 @@ export default function CommandCenter() {
                         className="h-7 px-2 text-xs text-green-400 hover:text-green-300"
                         onClick={() => {
                           const title = selectedItem.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || selectedItem.title;
-                          handleSaveToLibrary(title, tiktokScript, "tiktok");
+                          handleSaveToLibrary(title, tiktokScript, "tiktok", selectedItem.id);
                         }}
                         disabled={saveScriptMutation.isPending}
                       >
@@ -1770,11 +1783,34 @@ export default function CommandCenter() {
                   </div>
                 )}
                 {tiktokScript && !generatingTiktok && (
-                  <div className="rounded-lg border border-pink-500/20 bg-black/20 p-4 max-h-72 overflow-y-auto">
-                    <p className="text-[10px] text-pink-400/70 mb-2 font-medium uppercase tracking-wider">60-Second TikTok Script</p>
-                    <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
-                      {tiktokScript}
+                  <div className="space-y-2">
+                    <div className="rounded-lg border border-pink-500/20 bg-black/20 p-4 max-h-72 overflow-y-auto">
+                      <p className="text-[10px] text-pink-400/70 mb-2 font-medium uppercase tracking-wider">60-Second TikTok Script</p>
+                      <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
+                        {tiktokScript}
+                      </div>
                     </div>
+                    {/* Word-count + spoken-time indicator */}
+                    {(() => {
+                      const words = tiktokScript.trim().split(/\s+/).filter(Boolean).length;
+                      const secs = Math.round((words / 130) * 60);
+                      const isShort = secs < 50;
+                      const isLong = secs > 70;
+                      const color = isShort ? "text-amber-400" : isLong ? "text-red-400" : "text-emerald-400";
+                      const bg = isShort ? "bg-amber-950/30 border-amber-500/30" : isLong ? "bg-red-950/30 border-red-500/30" : "bg-emerald-950/30 border-emerald-500/30";
+                      const label = isShort ? "Too short" : isLong ? "Too long" : "On target";
+                      return (
+                        <div className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${bg}`}>
+                          <span className={`text-xs font-semibold font-mono ${color}`}>{words} words</span>
+                          <span className="text-xs text-muted-foreground">→</span>
+                          <span className={`text-xs font-semibold font-mono ${color}`}>~{secs}s spoken</span>
+                          <span className="text-xs text-muted-foreground">(@ 130 wpm)</span>
+                          <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${color} ${bg}`}>{label}</span>
+                          {isShort && <span className="text-xs text-amber-400/70">Add {Math.round((50 - secs) / 60 * 130)} more words</span>}
+                          {isLong && <span className="text-xs text-red-400/70">Cut ~{Math.round((secs - 60) / 60 * 130)} words</span>}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

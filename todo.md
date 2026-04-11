@@ -1082,3 +1082,14 @@
 - [x] Removed question 9 ("Would you like a free 15-minute health strategy call?") from the AI survey generation prompt
 - [x] Updated Typeform thank-you screen to clean "Thank you for your responses" — no CTA, no follow-up promise
 - [x] Survey now generates 7-8 questions only, ending after the commitment/seriousness rating
+
+## Script Library Inline Editor + Script Linking + TikTok Word Count (v61)
+- [x] Inline title rename in Script Library (click title to edit, Enter/Esc/blur saves via scripts.update)
+- [x] Inline status dropdown in Script Library expanded card view
+- [x] Inline body edit in Script Library (Edit button opens full textarea with Save/Cancel)
+- [x] Auto-link: Save to Library in CommandCenter passes contentItemId → scripts.create → content.update sets linkedScriptId
+- [x] Auto-link: Same flow in CreationStudio for YouTube teleprompter and TikTok 60-sec scripts
+- [x] Source Script badge already exists in CommandCenter modal — now auto-populated after save
+- [x] Word-count + spoken-time indicator in CommandCenter TikTok script panel (amber=short, green=on-target, red=long)
+- [x] Word-count + spoken-time indicator in CreationStudio TikTok 60-sec panel (same logic)
+- [x] 118 tests passing, 0 TypeScript errors

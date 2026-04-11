@@ -564,11 +564,23 @@ export default function CreationStudio() {
     tiktok60Mutation.mutate({ title, platform: "tiktok" });
   };
 
+  // Shared utils for auto-linking scripts back to content items
+  const studioUtils = trpc.useUtils();
+  const studioLinkContentMutation = trpc.content.update.useMutation();
+
   const saveTiktok60Mutation = trpc.scripts.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (created, variables) => {
       setTiktok60Saved(true);
       toast.success("TikTok script saved to Script Library!");
       setTimeout(() => setTiktok60Saved(false), 3000);
+      // Auto-link: set linkedScriptId on the originating content item
+      if (created && variables.linkedContentItemId) {
+        studioLinkContentMutation.mutate({
+          id: variables.linkedContentItemId,
+          linkedScriptId: created.id,
+        });
+        studioUtils.content.list.invalidate();
+      }
     },
     onError: (err) => toast.error("Save failed: " + err.message),
   });
@@ -582,16 +594,25 @@ export default function CreationStudio() {
       platform: "tiktok",
       productionStatus: "scripted",
       scriptBody: tiktokScript60,
+      linkedContentItemId: savedItemIds["tiktok"] ?? undefined,
     });
   };
 
   // ── Save Teleprompter Script to Script Library ────────────────────────────────
   const [teleprompterSaved, setTeleprompterSaved] = useState(false);
   const saveTeleprompterMutation = trpc.scripts.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (created, variables) => {
       setTeleprompterSaved(true);
       toast.success("Script saved to Script Library!");
       setTimeout(() => setTeleprompterSaved(false), 3000);
+      // Auto-link: set linkedScriptId on the originating content item
+      if (created && variables.linkedContentItemId) {
+        studioLinkContentMutation.mutate({
+          id: variables.linkedContentItemId,
+          linkedScriptId: created.id,
+        });
+        studioUtils.content.list.invalidate();
+      }
     },
     onError: (err) => toast.error("Save failed: " + err.message),
   });
@@ -607,6 +628,7 @@ export default function CreationStudio() {
       platform: "youtube",
       productionStatus: "scripted",
       scriptBody: teleprompterScript,
+      linkedContentItemId: savedItemIds["youtube"] ?? undefined,
     });
   };
 
@@ -2204,11 +2226,34 @@ export default function CreationStudio() {
                   </div>
                 )}
                 {tiktokScript60 && !generatingTiktok60 && (
-                  <div className="rounded-lg border border-pink-500/20 bg-black/20 p-4 max-h-64 overflow-y-auto">
-                    <p className="text-[10px] text-pink-400/70 mb-2 font-medium uppercase tracking-wider">60-Second TikTok Script</p>
-                    <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
-                      {tiktokScript60}
+                  <div className="space-y-2">
+                    <div className="rounded-lg border border-pink-500/20 bg-black/20 p-4 max-h-64 overflow-y-auto">
+                      <p className="text-[10px] text-pink-400/70 mb-2 font-medium uppercase tracking-wider">60-Second TikTok Script</p>
+                      <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
+                        {tiktokScript60}
+                      </div>
                     </div>
+                    {/* Word-count + spoken-time indicator */}
+                    {(() => {
+                      const words = tiktokScript60.trim().split(/\s+/).filter(Boolean).length;
+                      const secs = Math.round((words / 130) * 60);
+                      const isShort = secs < 50;
+                      const isLong = secs > 70;
+                      const color = isShort ? "text-amber-400" : isLong ? "text-red-400" : "text-emerald-400";
+                      const bg = isShort ? "bg-amber-950/30 border-amber-500/30" : isLong ? "bg-red-950/30 border-red-500/30" : "bg-emerald-950/30 border-emerald-500/30";
+                      const label = isShort ? "Too short" : isLong ? "Too long" : "On target";
+                      return (
+                        <div className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${bg}`}>
+                          <span className={`text-xs font-semibold font-mono ${color}`}>{words} words</span>
+                          <span className="text-xs text-muted-foreground">→</span>
+                          <span className={`text-xs font-semibold font-mono ${color}`}>~{secs}s spoken</span>
+                          <span className="text-xs text-muted-foreground">(@ 130 wpm)</span>
+                          <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${color} ${bg}`}>{label}</span>
+                          {isShort && <span className="text-xs text-amber-400/70">Add {Math.round((50 - secs) / 60 * 130)} more words</span>}
+                          {isLong && <span className="text-xs text-red-400/70">Cut ~{Math.round((secs - 60) / 60 * 130)} words</span>}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

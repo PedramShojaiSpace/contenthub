@@ -353,6 +353,7 @@ export const appRouter = router({
           personaId: z.number().optional(),
           contentGoal: z.enum(["audience_growth", "llm_seo", "community_engagement"]).optional(),
           wpPostId: z.number().optional(),
+          linkedScriptId: z.number().nullable().optional(),
         })
       )
       .mutation(async ({ input }) => {

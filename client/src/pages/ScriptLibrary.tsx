@@ -264,10 +264,49 @@ function ScriptCard({
   onDelete: (id: number) => void;
   isHighlighted?: boolean;
 }) {
+  const utils = trpc.useUtils();
   const [expanded, setExpanded] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Inline editing state ────────────────────────────────────────────────
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingBody, setEditingBody] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(script.title);
+  const [draftBody, setDraftBody] = useState(script.scriptBody ?? "");
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+
+  const updateMutation = trpc.scripts.update.useMutation({
+    onSuccess: () => {
+      utils.scripts.list.invalidate();
+      toast.success("Saved");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleSaveTitle = () => {
+    const trimmed = draftTitle.trim();
+    if (!trimmed) { setDraftTitle(script.title); setEditingTitle(false); return; }
+    if (trimmed !== script.title) updateMutation.mutate({ id: script.id, title: trimmed });
+    setEditingTitle(false);
+  };
+
+  const handleSaveBody = () => {
+    if (draftBody !== (script.scriptBody ?? "")) {
+      updateMutation.mutate({ id: script.id, scriptBody: draftBody });
+    }
+    setEditingBody(false);
+  };
+
+  const handleStatusChange = (newStatus: ProductionStatus) => {
+    updateMutation.mutate({ id: script.id, productionStatus: newStatus });
+  };
+
+  // Focus title input when entering edit mode
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) titleInputRef.current.focus();
+  }, [editingTitle]);
 
   const handleCopyScript = async () => {
     if (!script.scriptBody) return;
@@ -307,12 +346,26 @@ function ScriptCard({
             #{script.priority}
           </span>
         )}
-        <button
-          className="flex-1 text-left text-sm font-semibold text-foreground leading-snug hover:text-primary transition-colors font-serif"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {script.title}
-        </button>
+        {editingTitle ? (
+          <input
+            ref={titleInputRef}
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            onBlur={handleSaveTitle}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSaveTitle(); if (e.key === "Escape") { setDraftTitle(script.title); setEditingTitle(false); } }}
+            className="flex-1 text-sm font-semibold font-serif bg-primary/5 border border-primary/30 rounded px-2 py-0.5 text-foreground outline-none focus:ring-1 focus:ring-primary/50"
+          />
+        ) : (
+          <button
+            className="flex-1 text-left text-sm font-semibold text-foreground leading-snug hover:text-primary transition-colors font-serif group/title"
+            onClick={() => setExpanded(!expanded)}
+            onDoubleClick={(e) => { e.stopPropagation(); setEditingTitle(true); }}
+            title="Double-click to rename"
+          >
+            {script.title}
+            <Pencil className="inline w-2.5 h-2.5 ml-1 text-muted-foreground/40 opacity-0 group-hover/title:opacity-100 transition-opacity" />
+          </button>
+        )}
         <button
           onClick={() => setExpanded(!expanded)}
           className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
@@ -354,6 +407,24 @@ function ScriptCard({
       {/* Expanded detail */}
       {expanded && (
         <div className="mt-2 space-y-2.5 border-t border-border pt-2.5">
+          {/* Inline status selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium shrink-0">Status:</span>
+            <Select
+              value={script.productionStatus}
+              onValueChange={(v) => handleStatusChange(v as ProductionStatus)}
+            >
+              <SelectTrigger className="h-6 text-xs bg-background border-border px-2 py-0 w-auto min-w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_COLUMNS.map((s) => (
+                  <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {script.competitorAngle && (
             <div className="flex items-start gap-1.5 bg-amber-50 rounded-lg p-2 border border-amber-100">
               <Target className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
@@ -366,20 +437,57 @@ function ScriptCard({
               <p className="text-xs text-muted-foreground leading-relaxed">{script.notes}</p>
             </div>
           )}
-          {script.scriptBody && (
-            <div>
-              {/* Toggle between raw script and preview */}
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Script Body</span>
-                <button
-                  className="inline-flex items-center gap-1 text-xs text-violet-700 hover:text-violet-900 font-medium"
-                  onClick={() => setShowPreview(!showPreview)}
-                >
-                  {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  {showPreview ? "Show Raw" : "Preview Post"}
-                </button>
+          {/* Script body — inline editable */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Script Body</span>
+              <div className="flex items-center gap-2">
+                {!editingBody && (
+                  <button
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium"
+                    onClick={() => { setEditingBody(true); setShowPreview(false); }}
+                  >
+                    <Pencil className="w-3 h-3" />
+                    Edit
+                  </button>
+                )}
+                {!editingBody && script.scriptBody && (
+                  <button
+                    className="inline-flex items-center gap-1 text-xs text-violet-700 hover:text-violet-900 font-medium"
+                    onClick={() => setShowPreview(!showPreview)}
+                  >
+                    {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    {showPreview ? "Show Raw" : "Preview"}
+                  </button>
+                )}
               </div>
-              {showPreview ? (
+            </div>
+            {editingBody ? (
+              <div className="space-y-1.5">
+                <textarea
+                  value={draftBody}
+                  onChange={(e) => setDraftBody(e.target.value)}
+                  className="w-full min-h-[200px] text-xs font-mono bg-background border border-primary/30 rounded-lg p-2.5 text-foreground outline-none focus:ring-1 focus:ring-primary/50 resize-y leading-relaxed"
+                  autoFocus
+                />
+                <div className="flex items-center gap-2 justify-end">
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted"
+                    onClick={() => { setDraftBody(script.scriptBody ?? ""); setEditingBody(false); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90 font-medium"
+                    onClick={handleSaveBody}
+                    disabled={updateMutation.isPending}
+                  >
+                    {updateMutation.isPending ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            ) : script.scriptBody ? (
+              showPreview ? (
                 <div className="bg-white border border-violet-200 rounded-lg p-3 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Post Preview</span>
@@ -399,14 +507,25 @@ function ScriptCard({
                   </p>
                 </div>
               ) : (
-                <div className="bg-secondary/60 rounded-lg p-2.5 max-h-48 overflow-y-auto border border-border">
+                <div
+                  className="bg-secondary/60 rounded-lg p-2.5 max-h-48 overflow-y-auto border border-border cursor-text hover:border-primary/30 transition-colors"
+                  onClick={() => { setEditingBody(true); setShowPreview(false); }}
+                  title="Click to edit script body"
+                >
                   <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed font-mono">
                     {script.scriptBody.substring(0, 800)}{script.scriptBody.length > 800 ? "\n…" : ""}
                   </p>
                 </div>
-              )}
-            </div>
-          )}
+              )
+            ) : (
+              <button
+                className="w-full text-xs text-muted-foreground border border-dashed border-border rounded-lg p-3 hover:border-primary/40 hover:text-primary/70 transition-colors text-left"
+                onClick={() => setEditingBody(true)}
+              >
+                + Click to add script body…
+              </button>
+            )}
+          </div>
         </div>
       )}
 

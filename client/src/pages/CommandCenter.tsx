@@ -65,6 +65,7 @@ import {
   Download,
   BookMarked,
   Music2,
+  GripVertical,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -325,7 +326,7 @@ function DraggableCard({
   });
 
   const style = transform
-    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50, opacity: isDragging ? 0.5 : 1 }
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50, opacity: isDragging ? 0.4 : 1 }
     : undefined;
 
   const isPublished = item.status === "published";
@@ -334,10 +335,8 @@ function DraggableCard({
     <Card
       ref={setNodeRef}
       style={style}
-      className={`bg-card border-border hover:border-primary/30 transition-colors cursor-grab active:cursor-grabbing group ${isDragging ? "shadow-2xl" : ""}`}
+      className={`bg-card border-border hover:border-primary/30 transition-colors group relative ${isDragging ? "shadow-2xl ring-1 ring-primary/40" : ""}`}
       onClick={onClick}
-      {...listeners}
-      {...attributes}
     >
       {/* Image thumbnail */}
       {item.imageUrl && (
@@ -353,7 +352,17 @@ function DraggableCard({
 
       <CardHeader className={`p-3 pb-2 ${item.imageUrl ? "pt-2" : ""}`}>
         <div className="flex items-start justify-between gap-1">
-          <p className="text-xs font-medium text-foreground leading-snug line-clamp-2">
+          {/* Drag handle — only this element initiates drag */}
+          <div
+            {...listeners}
+            {...attributes}
+            onClick={(e) => e.stopPropagation()}
+            className="flex-shrink-0 mt-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors"
+            title="Drag to move"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </div>
+          <p className="text-xs font-medium text-foreground leading-snug line-clamp-2 flex-1">
             {item.title}
           </p>
           <DropdownMenu>

@@ -1112,3 +1112,10 @@
 - [x] Empty columns show large "Drop here" zone (min-h-[80px]) for easy targeting
 - [x] Ghost card overlay: slight rotate + scale, platform badge, drop animation
 - [x] 118 tests passing, 0 TypeScript errors
+
+## Fix Kanban Drag-and-Drop (v64)
+- [x] Root cause: listeners spread on entire Card intercepted by onClick/DropdownMenu before dnd-kit could capture pointer
+- [x] Fix: moved {listeners} and {attributes} to a dedicated GripVertical drag handle div in the card header
+- [x] Card body click still opens modal; drag handle initiates drag without conflict
+- [x] Empty column "Drop here" zones remain large and clearly visible during drag
+- [x] 118 tests passing, 0 TypeScript errors

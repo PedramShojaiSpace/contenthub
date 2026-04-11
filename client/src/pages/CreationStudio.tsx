@@ -945,6 +945,21 @@ export default function CreationStudio() {
     },
   });
 
+  // WordPress Post Index Sync
+  const [isSyncingWpIndex, setIsSyncingWpIndex] = useState(false);
+  const { data: wpIndexStats } = trpc.blog.getPostIndexStats.useQuery(undefined, { refetchOnWindowFocus: false });
+  const syncPostIndexMutation = trpc.blog.syncPostIndex.useMutation({
+    onSuccess: (data) => {
+      setIsSyncingWpIndex(false);
+      toast.success(data.message);
+      utils.blog.getPostIndexStats.invalidate();
+    },
+    onError: (err) => {
+      setIsSyncingWpIndex(false);
+      toast.error("WP sync failed: " + err.message);
+    },
+  });
+
   const handlePublishToWP = (status: "draft" | "publish") => {
     if (!blogContent) return;
     const contentItemId = savedItemIds["blog"];
@@ -2093,6 +2108,28 @@ export default function CreationStudio() {
               </div>
 
               {/* WordPress Publish */}
+              {/* WP Post Index Sync — for internal link injection */}
+              <div className="p-3 rounded-lg border border-border bg-muted/20 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium text-foreground">Internal Link Index</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {wpIndexStats ? `${wpIndexStats.count} posts indexed${wpIndexStats.lastSynced ? ` · last synced ${new Date(wpIndexStats.lastSynced).toLocaleDateString()}` : ""}` : "Not yet synced"}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs shrink-0"
+                  disabled={isSyncingWpIndex}
+                  onClick={() => {
+                    setIsSyncingWpIndex(true);
+                    syncPostIndexMutation.mutate();
+                  }}
+                >
+                  {isSyncingWpIndex ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Syncing...</> : "Sync WP Posts"}
+                </Button>
+              </div>
+
               <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border">
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-primary" />

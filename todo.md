@@ -966,3 +966,14 @@
 - [x] Add /llm-projects route to App.tsx
 - [x] Wire "Create in Studio" button: navigates to /studio with asset type, title, keyword, question pre-filled via URL params
 - [x] CreationStudio reads LLM project URL params and pre-populates idea/platform on load
+
+## Automated Blog Link Resolution (v51)
+- [x] Add wp_post_index table to schema (id, wpPostId, title, slug, url, excerpt, categories, publishedAt, syncedAt)
+- [x] Run db:push for new table
+- [x] Build syncWordPressPosts procedure: fetch all published posts from WP REST API, upsert into wp_post_index
+- [x] Build getInternalLinkCandidates helper: query wp_post_index for posts relevant to a topic
+- [x] Inject real internal link candidates into generateBlog Pass 1 prompt
+- [x] Build resolveExternalLinks post-processor: detect [Outbound Link: ...] placeholders, search for real URLs, replace with markdown links
+- [x] Wire both into generateBlog pipeline
+- [x] Add "Sync WordPress Posts" button to Creation Studio blog output panel
+- [x] Run tests (101 passed)

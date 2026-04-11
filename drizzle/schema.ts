@@ -651,3 +651,22 @@ export const llmAssets = mysqlTable("llm_assets", {
 });
 export type LlmAsset = typeof llmAssets.$inferSelect;
 export type InsertLlmAsset = typeof llmAssets.$inferInsert;
+
+// ── WordPress Post Index ──────────────────────────────────────────────────────
+// Stores a local index of published posts from theurbanmonk.com WordPress site.
+// Synced via the WP REST API. Used to inject real internal link candidates into
+// blog generation prompts so the AI can reference actual published content.
+export const wpPostIndex = mysqlTable("wp_post_index", {
+  id: int("id").autoincrement().primaryKey(),
+  wpPostId: int("wpPostId").notNull().unique(),
+  title: varchar("title", { length: 512 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull(),
+  url: varchar("url", { length: 1024 }).notNull(),
+  excerpt: text("excerpt"),
+  categories: text("categories"),        // JSON: string[] category names
+  tags: text("tags"),                    // JSON: string[] tag names
+  publishedAt: timestamp("publishedAt"),
+  syncedAt: timestamp("syncedAt").defaultNow().notNull(),
+});
+export type WpPost = typeof wpPostIndex.$inferSelect;
+export type InsertWpPost = typeof wpPostIndex.$inferInsert;

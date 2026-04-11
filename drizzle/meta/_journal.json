@@ -211,6 +211,13 @@
       "when": 1775858923080,
       "tag": "0029_cynical_nightcrawler",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1775866389817,
+      "tag": "0030_funny_eternals",
+      "breakpoints": true
     }
   ]
 }

@@ -307,3 +307,109 @@ export function buildBlogSchemas(params: {
     faqSchema: params.faqSection ? buildFaqSchema(params.faqSection) : null,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WordPress Post Index — Sync published posts for internal link injection
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WpPostSummary {
+  wpPostId: number;
+  title: string;
+  slug: string;
+  url: string;
+  excerpt: string;
+  categories: string[];
+  tags: string[];
+  publishedAt: string;
+}
+
+/**
+ * Fetch all published posts from the WordPress REST API.
+ * Paginates through all pages to return the complete list.
+ * Returns an array of WpPostSummary objects ready for DB upsert.
+ */
+export async function fetchAllWpPosts(): Promise<WpPostSummary[]> {
+  const { baseUrl, authHeader } = getWpAuth();
+  const posts: WpPostSummary[] = [];
+  let page = 1;
+  const perPage = 100;
+
+  while (true) {
+    const url = `${baseUrl}/wp-json/wp/v2/posts?status=publish&per_page=${perPage}&page=${page}&_fields=id,title,slug,link,excerpt,categories,tags,date_gmt&_embed=false`;
+    const res = await fetch(url, {
+      headers: { Authorization: authHeader },
+    });
+
+    if (!res.ok) {
+      if (res.status === 400) break; // WP returns 400 when page exceeds total
+      throw new Error(`WP posts fetch failed (page ${page}): ${res.statusText}`);
+    }
+
+    const data = (await res.json()) as Array<{
+      id: number;
+      title: { rendered: string };
+      slug: string;
+      link: string;
+      excerpt: { rendered: string };
+      categories: number[];
+      tags: number[];
+      date_gmt: string;
+    }>;
+
+    if (!data || data.length === 0) break;
+
+    for (const p of data) {
+      // Strip HTML from excerpt
+      const rawExcerpt = p.excerpt?.rendered ?? "";
+      const cleanExcerpt = rawExcerpt.replace(/<[^>]+>/g, "").trim().slice(0, 500);
+      posts.push({
+        wpPostId: p.id,
+        title: p.title?.rendered ?? "",
+        slug: p.slug,
+        url: p.link,
+        excerpt: cleanExcerpt,
+        categories: (p.categories ?? []).map(String),
+        tags: (p.tags ?? []).map(String),
+        publishedAt: p.date_gmt,
+      });
+    }
+
+    // Check if there are more pages
+    const totalPages = parseInt(res.headers.get("X-WP-TotalPages") ?? "1", 10);
+    if (page >= totalPages) break;
+    page++;
+  }
+
+  return posts;
+}
+
+/**
+ * Find the most relevant published posts for a given topic/keyword.
+ * Used to inject real internal link candidates into the blog generation prompt.
+ * Returns up to `limit` posts whose title or excerpt contains any of the keywords.
+ */
+export function findRelevantPosts(
+  posts: WpPostSummary[],
+  topic: string,
+  limit = 8
+): WpPostSummary[] {
+  const keywords = topic
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 3);
+
+  const scored = posts.map((p) => {
+    const text = `${p.title} ${p.excerpt}`.toLowerCase();
+    const score = keywords.reduce(
+      (acc, kw) => acc + (text.includes(kw) ? 1 : 0),
+      0
+    );
+    return { post: p, score };
+  });
+
+  return scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((s) => s.post);
+}

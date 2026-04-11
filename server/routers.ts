@@ -18,7 +18,7 @@ import {
   upsertPlatformStrategy,
 } from "./db";
 import { getBufferProfiles, pushToBuffer } from "./buffer";
-import { uploadMediaFromUrl, createWpPost, buildBlogSchemas } from "./wordpress";
+import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, type WpPostSummary } from "./wordpress";
 import {
   countAddressedGaps,
   getCompetitorLeaderboard,
@@ -48,6 +48,7 @@ import { growthRouter } from "./growthRouter";
 import { webinarRouter } from "./webinarRouter";
 import { webinarIntelligenceRouter } from "./webinarIntelligenceRouter";
 import { llmProjectsRouter } from "./llmProjectsRouter";
+import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -248,8 +249,8 @@ SEO + AEO INTEGRATION RULES (non-negotiable):
 - Include a clear, direct answer to the core question within the first 300 words (the TL;DR box)
 - Use sequential H2/H3 heading structure — this increases AI citation odds by 2.8x
 - Weave 3-5 semantic keyword variants naturally into headings and body (not forced)
-- Include at least 2 internal link placeholders formatted as: [INTERNAL LINK: topic of related article] — these will be replaced with real URLs before publish
-- Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH) formatted as standard Markdown links
+- Include at least 2 internal links to related articles on theurbanmonk.com. If a REAL INTERNAL LINK LIST is provided in the user message, use those exact URLs in Markdown format: [anchor text](url). If no list is provided, use placeholders: [INTERNAL LINK: topic of related article]
+- Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH). Use real verified URLs if you know them with high confidence. For any source you are not 100% certain of, use the placeholder format: [Outbound Link: Source Name — description] — these will be resolved to real URLs automatically after generation
 - The FAQ section at the bottom targets featured snippets and AI citation
 - E-E-A-T signals: weave Pedram's credentials (OMD, NYT bestselling author, Taoist monk, filmmaker) naturally into the body — not as a bio block, but as contextual authority within the teaching
 
@@ -770,6 +771,56 @@ Rules:
         } catch (err) {
           console.warn("[Blog] Could not load webinar intelligence context:", err);
         }
+
+        // ── Load WordPress post index for real internal links ─────────────────────
+        let internalLinkBlock = "";
+        try {
+          const db = await getDb();
+          if (db) {
+            const { wpPostIndex } = await import("../drizzle/schema");
+            const allPosts = await db.select().from(wpPostIndex).limit(500);
+            if (allPosts.length > 0) {
+              const postSummaries: WpPostSummary[] = allPosts.map((p: any) => ({
+                wpPostId: p.wpPostId,
+                title: p.title,
+                slug: p.slug,
+                url: p.url,
+                excerpt: p.excerpt ?? "",
+                categories: JSON.parse(p.categories ?? "[]"),
+                tags: JSON.parse(p.tags ?? "[]"),
+                publishedAt: p.publishedAt?.toISOString() ?? "",
+              }));
+              const relevant = findRelevantPosts(postSummaries, input.idea, 8);
+              if (relevant.length > 0) {
+                internalLinkBlock = `\n\nREAL INTERNAL LINK LIST (use these exact URLs for internal links — pick the 2-3 most relevant):\n${relevant.map((p) => `- [${p.title}](${p.url}) — ${p.excerpt.slice(0, 100)}`).join("\n")}`;
+              }
+            } else {
+              // No posts indexed yet — auto-sync in background
+              fetchAllWpPosts().then(async (posts) => {
+                if (posts.length === 0) return;
+                const db2 = await getDb();
+                if (!db2) return;
+                const { wpPostIndex: wpi } = await import("../drizzle/schema");
+                for (const p of posts) {
+                  await db2.insert(wpi).values({
+                    wpPostId: p.wpPostId,
+                    title: p.title,
+                    slug: p.slug,
+                    url: p.url,
+                    excerpt: p.excerpt,
+                    categories: JSON.stringify(p.categories),
+                    tags: JSON.stringify(p.tags),
+                    publishedAt: p.publishedAt ? new Date(p.publishedAt) : null,
+                  }).onDuplicateKeyUpdate({ set: { title: p.title, url: p.url, excerpt: p.excerpt, syncedAt: new Date() } });
+                }
+                console.log(`[Blog] Auto-synced ${posts.length} WordPress posts to index.`);
+              }).catch((err) => console.warn("[Blog] WP post auto-sync failed:", err));
+            }
+          }
+        } catch (err) {
+          console.warn("[Blog] Could not load WP post index:", err);
+        }
+
         // Step 1: Generate the full blog article as structured JSON
         const userMessage = [
           `Raw idea: ${input.idea}`,
@@ -780,6 +831,7 @@ Rules:
           blogMediaContext,
           blogAvatarContext,
           blogWebinarContext,
+          internalLinkBlock,
           blogCtaInjection,
         ]
           .filter(Boolean)
@@ -859,6 +911,11 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
             console.warn("[Blog] Continuation pass failed \u2014 using partial article:", err);
           }
         }
+
+        // ── EXTERNAL LINK POST-PROCESSOR ─────────────────────────────────────────
+        // Scan the article for [Outbound Link: Source Name — description] placeholders
+        // and replace them with real verified URLs via web search.
+        articleBody = await resolveOutboundLinkPlaceholders(articleBody);
 
         // ── PASS 2: Extract metadata from the completed article ───────────────────
         // Now that we have the full article, ask the LLM to extract the SEO fields.
@@ -1818,6 +1875,57 @@ Return BOTH in this exact format:
           wpStatus,
         };
       }),
+
+    // Sync WordPress post index (for internal link injection in blog generation)
+    syncPostIndex: protectedProcedure
+      .mutation(async () => {
+        const posts = await fetchAllWpPosts();
+        if (posts.length === 0) {
+          return { synced: 0, message: "No published posts found in WordPress." };
+        }
+        const db = await getDb();
+        if (!db) throw new Error("Database unavailable");
+        const { wpPostIndex } = await import("../drizzle/schema");
+        let upserted = 0;
+        for (const p of posts) {
+          await db
+            .insert(wpPostIndex)
+            .values({
+              wpPostId: p.wpPostId,
+              title: p.title,
+              slug: p.slug,
+              url: p.url,
+              excerpt: p.excerpt,
+              categories: JSON.stringify(p.categories),
+              tags: JSON.stringify(p.tags),
+              publishedAt: p.publishedAt ? new Date(p.publishedAt) : null,
+            })
+            .onDuplicateKeyUpdate({
+              set: {
+                title: p.title,
+                url: p.url,
+                excerpt: p.excerpt,
+                syncedAt: new Date(),
+              },
+            });
+          upserted++;
+        }
+        return { synced: upserted, message: `Synced ${upserted} posts from WordPress.` };
+      }),
+
+    // Get WordPress post index stats
+    getPostIndexStats: protectedProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { count: 0, lastSynced: null };
+      const { wpPostIndex } = await import("../drizzle/schema");
+      const { desc } = await import("drizzle-orm");
+      const rows = await db.select().from(wpPostIndex).orderBy(desc(wpPostIndex.syncedAt)).limit(1);
+      const count = (await db.select().from(wpPostIndex)).length;
+      return {
+        count,
+        lastSynced: rows[0]?.syncedAt?.toISOString() ?? null,
+      };
+    }),
 
     // Batch publish all approved blog posts to WordPress as drafts
     publishBatch: protectedProcedure

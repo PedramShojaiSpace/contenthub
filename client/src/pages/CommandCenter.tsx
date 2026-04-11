@@ -564,11 +564,49 @@ export default function CommandCenter() {
   });
 
   const handleGenerateTeleprompter = (item: ContentItem) => {
-    // Extract a clean title from the item
     const title = item.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || item.rawIdea || item.title;
     setTeleprompterScript(null);
     setGeneratingTeleprompter(true);
     teleprompterMutation.mutate({ title, platform: "youtube" });
+  };
+
+  // TikTok 60-second script state
+  const [tiktokScript, setTiktokScript] = useState<string | null>(null);
+  const [generatingTiktok, setGeneratingTiktok] = useState(false);
+
+  const tiktokScriptMutation = trpc.research.generateTeleprompterScript.useMutation({
+    onSuccess: (data) => {
+      setTiktokScript(data.script);
+      setGeneratingTiktok(false);
+      toast.success("TikTok script ready!");
+    },
+    onError: (err) => {
+      setGeneratingTiktok(false);
+      toast.error("Script generation failed: " + err.message);
+    },
+  });
+
+  const handleGenerateTiktokScript = (item: ContentItem) => {
+    const title = item.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || item.rawIdea || item.title;
+    setTiktokScript(null);
+    setGeneratingTiktok(true);
+    tiktokScriptMutation.mutate({ title, platform: "tiktok" });
+  };
+
+  // Save to Script Library
+  const saveScriptMutation = trpc.scripts.create.useMutation({
+    onSuccess: () => toast.success("Script saved to Script Library!"),
+    onError: (err) => toast.error("Save failed: " + err.message),
+  });
+
+  const handleSaveToLibrary = (title: string, scriptBody: string, platform: "youtube" | "tiktok") => {
+    saveScriptMutation.mutate({
+      title,
+      scriptType: platform === "tiktok" ? "reel" : "video",
+      platform,
+      productionStatus: "scripted",
+      scriptBody,
+    });
   };
 
   // Buffer profiles (cached — fetched once)

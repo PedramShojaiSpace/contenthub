@@ -1036,3 +1036,16 @@
 - [x] Configured Vite manualChunks: 10 vendor chunks (radix, tanstack, trpc, dnd, react, lucide, charts, date-fns, utils, misc)
 - [x] Deployment confirmed successful (exit 137 OOM resolved)
 - [x] All 118 tests passing, 0 TypeScript errors
+
+## Blank Screen Fix (v58b)
+- [x] Root cause: jsxLocPlugin (@builder.io/vite-plugin-jsx-loc) was injecting data-loc attributes into production build, causing React 19 to crash silently before mounting
+- [x] Fix: made jsxLocPlugin dev-only (only runs when NODE_ENV=development)
+- [x] Verified: production build has 0 data-loc occurrences
+- [x] All 118 tests passing
+
+## Save to Script Library + TikTok Script (v59)
+- [ ] Find saveScript tRPC mutation and Script Library data model
+- [ ] Add "Save to Script Library" button in teleprompter panel (Kanban modal)
+- [ ] Add "Generate 60s TikTok Script" button on TikTok cards in Kanban modal
+- [ ] TikTok script renders inline with Copy, Download, Save to Library buttons
+- [ ] Run tests

@@ -1093,3 +1093,22 @@
 - [x] Word-count + spoken-time indicator in CommandCenter TikTok script panel (amber=short, green=on-target, red=long)
 - [x] Word-count + spoken-time indicator in CreationStudio TikTok 60-sec panel (same logic)
 - [x] 118 tests passing, 0 TypeScript errors
+
+## Script Library Search/Filter + Script Title on Kanban Badge (v62)
+- [x] Add search bar to Script Library (filter by title keyword, searches title + body + notes)
+- [x] Add status filter dropdown (All Statuses / Idea / Scripted / In Production / In Edit / Ready to Post / Published)
+- [x] Add type filter dropdown (All Types / Video / Reel / Carousel / Blog / Email)
+- [x] Show active filter count + clear-all button when filters are active
+- [x] Show result count ("N of M scripts") in filter bar
+- [x] Script title shown in Source Script badge on Kanban cards via scripts.get query
+- [x] 118 tests passing, 0 TypeScript errors
+
+## Kanban Drag-and-Drop Status Changes (v63)
+- [x] dnd-kit already installed (@dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities)
+- [x] DroppableColumn now wraps entire column (header + cards) — full column is the drop target
+- [x] Cards already draggable via useDraggable with itemId in data
+- [x] handleDragEnd already calls changeStatusMutation when dropped on col-{status}
+- [x] Column header and badge highlight (text-primary, bg-primary/10) when card is dragged over
+- [x] Empty columns show large "Drop here" zone (min-h-[80px]) for easy targeting
+- [x] Ghost card overlay: slight rotate + scale, platform badge, drop animation
+- [x] 118 tests passing, 0 TypeScript errors

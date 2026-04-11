@@ -38,6 +38,9 @@ import {
   Archive,
   Copy,
   Check,
+  Search,
+  X as XIcon,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";  
@@ -767,6 +770,9 @@ function ScriptDialog({
 export default function ScriptLibrary() {
   const utils = trpc.useUtils();
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ProductionStatus | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<ScriptType | "all">("all");
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -930,10 +936,22 @@ export default function ScriptLibrary() {
     }
   };
 
-  // Filter by platform
-  const filteredScripts = platformFilter === "all"
-    ? allScripts
-    : allScripts.filter((s) => s.platform === platformFilter);
+  // Filter by platform, search, status, and type
+  const filteredScripts = allScripts.filter((s) => {
+    if (platformFilter !== "all" && s.platform !== platformFilter) return false;
+    if (statusFilter !== "all" && s.productionStatus !== statusFilter) return false;
+    if (typeFilter !== "all" && s.scriptType !== typeFilter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const inTitle = s.title.toLowerCase().includes(q);
+      const inBody = (s.scriptBody ?? "").toLowerCase().includes(q);
+      const inNotes = (s.notes ?? "").toLowerCase().includes(q);
+      if (!inTitle && !inBody && !inNotes) return false;
+    }
+    return true;
+  });
+
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
 
   // Group by status
   const scriptsByStatus = STATUS_COLUMNS.reduce((acc, col) => {
@@ -1034,6 +1052,74 @@ export default function ScriptLibrary() {
               </button>
             );
           })}
+        </div>
+
+        {/* ── Search + Filter Bar ───────────────────────────────────────── */}
+        <div className="max-w-[1600px] mx-auto px-6 pb-3 flex items-center gap-2 flex-wrap">
+          {/* Search input */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search scripts…"
+              className="w-full h-8 pl-8 pr-8 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <XIcon className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Status filter */}
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ProductionStatus | "all")}>
+            <SelectTrigger className="h-8 w-[150px] text-xs border-border bg-background">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {STATUS_COLUMNS.map((col) => (
+                <SelectItem key={col.id} value={col.id}>{col.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Type filter */}
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as ScriptType | "all")}>
+            <SelectTrigger className="h-8 w-[130px] text-xs border-border bg-background">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="video">Video</SelectItem>
+              <SelectItem value="reel">Reel</SelectItem>
+              <SelectItem value="carousel">Carousel</SelectItem>
+              <SelectItem value="blog">Blog</SelectItem>
+              <SelectItem value="email">Email</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Active filter count + clear */}
+          {activeFilterCount > 0 && (
+            <button
+              onClick={() => { setSearchQuery(""); setStatusFilter("all"); setTypeFilter("all"); }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+            >
+              <SlidersHorizontal className="w-3 h-3" />
+              {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active
+              <XIcon className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Result count */}
+          <span className="text-xs text-muted-foreground ml-auto">
+            {filteredScripts.length} of {allScripts.length} scripts
+          </span>
         </div>
       </div>
 

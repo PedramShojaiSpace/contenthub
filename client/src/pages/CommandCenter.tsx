@@ -478,14 +478,36 @@ function DraggableCard({
 }
 
 // ─── Droppable Kanban Column ─────────────────────────────────────────────────
-function DroppableColumn({ status, children }: { status: string; children: React.ReactNode }) {
+function DroppableColumn({ status, label, count, children }: { status: string; label: string; count: number; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${status}` });
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[80px] rounded-lg transition-colors ${isOver ? "ring-1 ring-primary/50 bg-primary/5" : ""}`}
+      className={`flex flex-col min-h-[200px] rounded-xl transition-all duration-150 ${
+        isOver
+          ? "ring-2 ring-primary/60 bg-primary/5 shadow-md shadow-primary/10"
+          : ""
+      }`}
     >
-      {children}
+      {/* Column header */}
+      <div className={`flex items-center justify-between mb-3 px-1 py-1 rounded-lg transition-colors ${
+        isOver ? "bg-primary/10" : ""
+      }`}>
+        <h3 className={`text-xs font-semibold uppercase tracking-wider transition-colors ${
+          isOver ? "text-primary" : "text-muted-foreground"
+        }`}>
+          {label}
+        </h3>
+        <Badge variant="outline" className={`text-xs h-5 px-1.5 transition-colors ${
+          isOver ? "border-primary/40 text-primary" : "border-border text-muted-foreground"
+        }`}>
+          {count}
+        </Badge>
+      </div>
+      {/* Cards area */}
+      <div className="flex-1">
+        {children}
+      </div>
     </div>
   );
 }
@@ -545,6 +567,13 @@ export default function CommandCenter() {
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [isSavingContent, setIsSavingContent] = useState(false);
+
+  // Fetch linked script title when a card with linkedScriptId is opened
+  const { data: linkedScript } = trpc.scripts.get.useQuery(
+    { id: selectedItem?.linkedScriptId ?? 0 },
+    { enabled: !!(selectedItem?.linkedScriptId) }
+  );
+
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
@@ -1214,15 +1243,7 @@ export default function CommandCenter() {
                 const colItems = (platformFilter === "all" ? items : items.filter((i) => i.platform === platformFilter)).filter((i) => i.status === col.key);
                 return (
                   <div key={col.key} className="min-w-[180px]">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        {col.label}
-                      </h3>
-                      <Badge variant="outline" className="text-xs h-5 px-1.5 border-border text-muted-foreground">
-                        {colItems.length}
-                      </Badge>
-                    </div>
-                    <DroppableColumn status={col.key}>
+                    <DroppableColumn status={col.key} label={col.label} count={colItems.length}>
                       <div className="space-y-2">
                         {colItems.map((item) => (
                           <div key={item.id} className="relative">
@@ -1243,15 +1264,15 @@ export default function CommandCenter() {
                               onPublish={(itm) => setPublishDialogItem(itm)}
                               onAnalyticsUpdate={handleAnalyticsUpdate}
                               onRegenerate={handleRegenerate}
-                               onPushToBuffer={handlePushToBuffer}
-                               isPushingToBuffer={bufferPushingId === item.id}
-                               onViewScript={handleViewScript}
-                             />
+                              onPushToBuffer={handlePushToBuffer}
+                              isPushingToBuffer={bufferPushingId === item.id}
+                              onViewScript={handleViewScript}
+                            />
                           </div>
                         ))}
                         {colItems.length === 0 && (
-                          <div className="border border-dashed border-border/50 rounded-lg p-4 text-center">
-                            <p className="text-xs text-muted-foreground/50">Empty</p>
+                          <div className="border-2 border-dashed border-border/40 rounded-xl p-6 text-center min-h-[80px] flex items-center justify-center transition-colors">
+                            <p className="text-xs text-muted-foreground/40">Drop here</p>
                           </div>
                         )}
                       </div>
@@ -1484,17 +1505,18 @@ export default function CommandCenter() {
         )}
 
         {/* Drag Overlay */}
-        <DragOverlay>
+        <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
           {activeItem && (
-            <Card className="bg-card border-primary/50 shadow-2xl w-48 opacity-90">
+            <Card className="bg-card border-primary shadow-2xl w-48 opacity-95 rotate-1 scale-105">
               <CardHeader className="p-3 pb-2">
                 <p className="text-xs font-medium text-foreground line-clamp-2">{activeItem.title}</p>
               </CardHeader>
-              <CardContent className="px-3 pb-3 pt-0">
+              <CardContent className="px-3 pb-3 pt-0 flex items-center gap-1.5">
                 <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${PLATFORM_COLORS[activeItem.platform as Platform]}`}>
                   {PLATFORM_ICONS[activeItem.platform as Platform]}
                   <span className="capitalize">{activeItem.platform}</span>
                 </div>
+                <span className="text-[10px] text-muted-foreground ml-auto">↔</span>
               </CardContent>
             </Card>
           )}
@@ -1823,7 +1845,7 @@ export default function CommandCenter() {
                   <Film className="h-4 w-4 text-violet-500 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-violet-700">Source Script</p>
-                    <p className="text-xs text-violet-500 truncate">Script #{selectedItem.linkedScriptId}</p>
+                    <p className="text-xs text-violet-500 truncate">{linkedScript?.title ?? `Script #${selectedItem.linkedScriptId}`}</p>
                   </div>
                 </div>
                 <Button

@@ -977,3 +977,10 @@
 - [x] Wire both into generateBlog pipeline
 - [x] Add "Sync WordPress Posts" button to Creation Studio blog output panel
 - [x] Run tests (101 passed)
+
+## LLM Projects + Auto-Image Enhancements (v52)
+- [x] Add getAllProjectsCadence tRPC query: aggregate this-week production across all active projects
+- [x] Add cross-project weekly cadence strip to LLM Projects page header
+- [x] Write vitest tests for llmProjectsRouter (createProject, listProjects, generateQueue, getWeeklyCadence) — 11 tests, 112 total passing
+- [ ] Add generateImages toggle to Creation Studio UI (checkbox to enable/disable auto-image with content)
+- [ ] Show per-platform image generation status indicator (generating... / ready / failed) in Creation Studio

@@ -673,6 +673,61 @@ function ProjectCard({ project, onOpen, onDelete }: {
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────
+// ─── Cross-Project Cadence Strip ─────────────────────────────────────────────
+function WeeklyCadenceStrip() {
+  const { data: cadences = [] } = trpc.llmProjects.getAllProjectsCadence.useQuery();
+
+  if (cadences.length === 0) return null;
+
+  const totalThisWeek = cadences.reduce((s, c) => s + c.producedThisWeek, 0);
+  const totalTarget = cadences.reduce((s, c) => s + c.weeklyTarget, 0);
+  const onTrackCount = cadences.filter(c => c.onTrack).length;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-500" />
+          <span className="text-sm font-semibold text-foreground">This Week's Production</span>
+          <span className="text-xs text-muted-foreground">across all projects</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-foreground">{totalThisWeek} / {totalTarget}</span>
+          <span className="text-xs text-muted-foreground">assets</span>
+          {onTrackCount === cadences.length ? (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">All on track</span>
+          ) : (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">{onTrackCount}/{cadences.length} on track</span>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {cadences.map((c) => {
+          const pct = Math.min(100, Math.round((c.producedThisWeek / c.weeklyTarget) * 100));
+          return (
+            <div key={c.projectId} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-foreground truncate">{c.projectName}</span>
+                  <span className={`text-xs flex-shrink-0 ml-1 font-medium ${
+                    c.onTrack ? "text-green-600" : "text-amber-600"
+                  }`}>{c.producedThisWeek}/{c.weeklyTarget}</span>
+                </div>
+                <Progress value={pct} className="h-1.5" />
+              </div>
+              {c.onTrack ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+              ) : (
+                <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function LLMProjects() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const utils = trpc.useUtils();
@@ -718,6 +773,9 @@ export default function LLMProjects() {
           </div>
           <CreateProjectDialog onCreated={() => utils.llmProjects.listProjects.invalidate()} />
         </div>
+
+        {/* Cross-project weekly cadence */}
+        <WeeklyCadenceStrip />
 
         {/* Summary stats */}
         {projects.length > 0 && (

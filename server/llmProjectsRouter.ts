@@ -410,4 +410,88 @@ Generate a comprehensive, prioritized production queue that covers every angle o
         .limit(1);
       return project ?? null;
     }),
+
+  // ── Cross-project weekly cadence (all active projects) ─────────────────────
+  getAllProjectsCadence: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const activeProjects = await db
+      .select()
+      .from(llmProjects)
+      .where(eq(llmProjects.status, "active"))
+      .orderBy(desc(llmProjects.createdAt));
+
+    if (activeProjects.length === 0) return [];
+
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Sunday
+    weekStart.setHours(0, 0, 0, 0);
+
+    const results = await Promise.all(
+      activeProjects.map(async (project: typeof llmProjects.$inferSelect) => {
+        const db2 = await getDb();
+        if (!db2) return null;
+
+        // Assets produced this week
+        const thisWeek = await db2
+          .select({ count: sql<number>`count(*)` })
+          .from(llmAssets)
+          .where(
+            and(
+              eq(llmAssets.projectId, project.id),
+              sql`(${llmAssets.status} = 'produced' OR ${llmAssets.status} = 'published')`,
+              sql`${llmAssets.producedAt} >= ${weekStart.toISOString()}`
+            )
+          );
+
+        // Total queued
+        const db3 = await getDb();
+        if (!db3) return null;
+        const queued = await db3
+          .select({ count: sql<number>`count(*)` })
+          .from(llmAssets)
+          .where(
+            and(
+              eq(llmAssets.projectId, project.id),
+              eq(llmAssets.status, "queued")
+            )
+          );
+
+        // Total produced/published
+        const db4 = await getDb();
+        if (!db4) return null;
+        const produced = await db4
+          .select({ count: sql<number>`count(*)` })
+          .from(llmAssets)
+          .where(
+            and(
+              eq(llmAssets.projectId, project.id),
+              sql`(${llmAssets.status} = 'produced' OR ${llmAssets.status} = 'published')`
+            )
+          );
+
+        const weeklyTarget = project.weeklyTarget ?? 3;
+        const producedThisWeek = Number(thisWeek[0]?.count ?? 0);
+        const remainingInQueue = Number(queued[0]?.count ?? 0);
+        const totalProduced = Number(produced[0]?.count ?? 0);
+
+        return {
+          projectId: project.id,
+          projectName: project.name,
+          topicCluster: project.topicCluster ?? project.name,
+          weeklyTarget,
+          producedThisWeek,
+          remainingInQueue,
+          totalProduced,
+          onTrack: producedThisWeek >= weeklyTarget,
+          weeksToComplete: remainingInQueue > 0
+            ? Math.ceil(remainingInQueue / weeklyTarget)
+            : 0,
+        };
+      })
+    );
+
+    return results.filter(Boolean) as NonNullable<typeof results[number]>[];
+  }),
 });

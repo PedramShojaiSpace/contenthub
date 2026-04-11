@@ -1007,3 +1007,8 @@
 - [x] Regex extractor correctly decodes \n, \t, \\ escape sequences in article field
 - [x] Added 6 unit tests covering all JSON response variants (fenced, raw, escaped newlines, clean markdown)
 - [x] All 118 tests passing, 0 TypeScript errors
+
+## CTA Link Fix (v55)
+- [x] Replaced urbanmonkacademy.com with theurbanmonk.com in BLOG_PROMPT CTA section
+- [x] Searched all .ts and .tsx files — no other urbanmonkacademy.com references found
+- [x] All 118 tests passing

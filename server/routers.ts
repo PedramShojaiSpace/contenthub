@@ -238,7 +238,7 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
    Paint the future state using Identity and Inspiration driver language. WHEN you apply this framework... YOU STOP [painful behavior]... YOU START [empowered behavior]... YOU BECOME [identity label]. Make the contrast vivid.
 
 8. CLOSING + CTA (2 paragraphs, 150-200 words):
-   Bring the article full circle — reference the opening hook. Close with an empowering statement. Then write a natural, non-pushy CTA paragraph that invites the reader to go deeper through the Lights On course (https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 — $369/year) or the Urban Monk Academy (https://urbanmonkacademy.com). Frame as the logical next step, not a sales pitch. CTA friction level: Medium (T3 — email capture or course enrollment).
+   Bring the article full circle — reference the opening hook. Close with an empowering statement. Then write a natural, non-pushy CTA paragraph that invites the reader to go deeper through the Lights On course (https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 — $369/year) or explore more at The Urban Monk (https://theurbanmonk.com). Frame as the logical next step, not a sales pitch. CTA friction level: Medium (T3 — email capture or course enrollment).
 
 9. FAQ SECTION (place at the END of the article, after the CTA):
    Use the faqSection field content here. Format: ## Frequently Asked Questions\\n[paste the FAQ content]. This section is critical for Google featured snippets and AI engine citation.

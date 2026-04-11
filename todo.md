@@ -1029,3 +1029,10 @@
 - [x] Loading state shows spinner + message
 - [x] State resets when modal closes so it doesn’t carry over to next card
 - [x] All 118 tests passing, 0 TypeScript errors
+
+## Build OOM Fix (v58)
+- [x] Converted all 16 page imports in App.tsx to React.lazy() dynamic imports
+- [x] Added Suspense wrapper with PageLoader spinner fallback
+- [x] Configured Vite manualChunks: 10 vendor chunks (radix, tanstack, trpc, dnd, react, lucide, charts, date-fns, utils, misc)
+- [x] Deployment confirmed successful (exit 137 OOM resolved)
+- [x] All 118 tests passing, 0 TypeScript errors

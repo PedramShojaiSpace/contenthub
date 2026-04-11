@@ -167,6 +167,25 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Split large vendor libraries into separate chunks
+          if (id.includes("node_modules/@radix-ui")) return "vendor-radix";
+          if (id.includes("node_modules/@tanstack")) return "vendor-tanstack";
+          if (id.includes("node_modules/@trpc")) return "vendor-trpc";
+          if (id.includes("node_modules/@dnd-kit")) return "vendor-dnd";
+          if (id.includes("node_modules/react-dom")) return "vendor-react-dom";
+          if (id.includes("node_modules/react") && !id.includes("react-dom")) return "vendor-react";
+          if (id.includes("node_modules/lucide-react")) return "vendor-lucide";
+          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3")) return "vendor-charts";
+          if (id.includes("node_modules/date-fns")) return "vendor-date-fns";
+          if (id.includes("node_modules/superjson") || id.includes("node_modules/zod")) return "vendor-utils";
+          if (id.includes("node_modules/")) return "vendor-misc";
+        },
+      },
+    },
   },
   server: {
     host: true,

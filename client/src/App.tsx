@@ -1,48 +1,62 @@
-import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
+import { lazy, Suspense } from "react";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import CommandCenter from "./pages/CommandCenter";
-import CreationStudio from "./pages/CreationStudio";
-import AssetLibrary from "./pages/AssetLibrary";
-import StrategyBrain from "./pages/StrategyBrain";
-import ResearchIntelligence from "./pages/ResearchIntelligence";
-import ScriptLibrary from "./pages/ScriptLibrary";
-import LandingPageGenerator from "./pages/LandingPageGenerator";
-import ChannelWatchlist from "./pages/ChannelWatchlist";
-import TypeformIntelligence from "./pages/TypeformIntelligence";
-import PressIntelligence from "./pages/PressIntelligence";
-import IntelligenceDashboard from "./pages/IntelligenceDashboard";
-import MediaVault from "./pages/MediaVault";
-import AvatarIntelligence from "./pages/AvatarIntelligence";
-import WebinarBuilder from "./pages/WebinarBuilder";
-import WebinarIntelligencePage from "./pages/WebinarIntelligence";
-import LLMProjects from "./pages/LLMProjects";
+import { Toaster } from "@/components/ui/sonner";
+
+// Lazy-load all pages to enable code splitting and reduce initial bundle size
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const CreationStudio = lazy(() => import("./pages/CreationStudio"));
+const AssetLibrary = lazy(() => import("./pages/AssetLibrary"));
+const StrategyBrain = lazy(() => import("./pages/StrategyBrain"));
+const ResearchIntelligence = lazy(() => import("./pages/ResearchIntelligence"));
+const ScriptLibrary = lazy(() => import("./pages/ScriptLibrary"));
+const LandingPageGenerator = lazy(() => import("./pages/LandingPageGenerator"));
+const ChannelWatchlist = lazy(() => import("./pages/ChannelWatchlist"));
+const TypeformIntelligence = lazy(() => import("./pages/TypeformIntelligence"));
+const PressIntelligence = lazy(() => import("./pages/PressIntelligence"));
+const IntelligenceDashboard = lazy(() => import("./pages/IntelligenceDashboard"));
+const MediaVault = lazy(() => import("./pages/MediaVault"));
+const AvatarIntelligence = lazy(() => import("./pages/AvatarIntelligence"));
+const WebinarBuilder = lazy(() => import("./pages/WebinarBuilder"));
+const WebinarIntelligencePage = lazy(() => import("./pages/WebinarIntelligence"));
+const LLMProjects = lazy(() => import("./pages/LLMProjects"));
+
+// Simple full-screen loading fallback
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function Router() {
   return (
-    <Switch>
-      <Route path={"/"} component={CommandCenter} />
-      <Route path={"/studio"} component={CreationStudio} />
-      <Route path={"/assets"} component={AssetLibrary} />
-      <Route path={"/strategy"} component={StrategyBrain} />
-      <Route path={"/research"} component={ResearchIntelligence} />
-      <Route path={"/scripts"} component={ScriptLibrary} />
-      <Route path={"/landing-pages"} component={LandingPageGenerator} />
-      <Route path={"/channels"} component={ChannelWatchlist} />
-      <Route path={"/typeform"} component={TypeformIntelligence} />
-      <Route path={"/press"} component={PressIntelligence} />
-      <Route path={"/intelligence"} component={IntelligenceDashboard} />
-      <Route path={"/media-vault"} component={MediaVault} />
-      <Route path={"/avatar"} component={AvatarIntelligence} />
-      <Route path={"/webinar"} component={WebinarBuilder} />
-      <Route path={"/webinar-intelligence"} component={WebinarIntelligencePage} />
-      <Route path={"/llm-projects"} component={LLMProjects} />
-      <Route path={"/404"} component={NotFound} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
+        <Route path={"/"} component={CommandCenter} />
+        <Route path={"/studio"} component={CreationStudio} />
+        <Route path={"/assets"} component={AssetLibrary} />
+        <Route path={"/strategy"} component={StrategyBrain} />
+        <Route path={"/research"} component={ResearchIntelligence} />
+        <Route path={"/scripts"} component={ScriptLibrary} />
+        <Route path={"/landing-pages"} component={LandingPageGenerator} />
+        <Route path={"/channels"} component={ChannelWatchlist} />
+        <Route path={"/typeform"} component={TypeformIntelligence} />
+        <Route path={"/press"} component={PressIntelligence} />
+        <Route path={"/intelligence"} component={IntelligenceDashboard} />
+        <Route path={"/media-vault"} component={MediaVault} />
+        <Route path={"/avatar"} component={AvatarIntelligence} />
+        <Route path={"/webinar"} component={WebinarBuilder} />
+        <Route path={"/webinar-intelligence"} component={WebinarIntelligencePage} />
+        <Route path={"/llm-projects"} component={LLMProjects} />
+        <Route path={"/404"} component={NotFound} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 

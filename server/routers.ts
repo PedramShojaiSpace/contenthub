@@ -800,15 +800,43 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
 
         let articleBody = (String(articleResponse.choices?.[0]?.message?.content ?? "")).trim();
         if (!articleBody || articleBody.length < 500) {
-          throw new Error("Blog generation failed — article body was empty or too short.");
+          throw new Error("Blog generation failed \u2014 article body was empty or too short.");
         }
 
-        // ── CONTINUATION PASS: Detect truncation and complete the article ─────────
-        // If the article is missing the FAQ section or ends mid-sentence,
-        // run a continuation call that picks up exactly where the model stopped.
+        // \u2500\u2500 DEFENSIVE: If the model returned JSON despite instructions, extract the article field \u2500\u2500
+        // The model sometimes wraps the response in ```json { ... } ``` even when told not to.
+        // Detect this and extract the article body from the JSON.
+        const looksLikeJson = /^`{0,3}\s*json\s*\{/i.test(articleBody) || /^\s*\{/.test(articleBody);
+        if (looksLikeJson) {
+          try {
+            // Strip code fences if present
+            const stripped = articleBody
+              .replace(/^`{1,3}\s*json\s*/i, "")
+              .replace(/\s*`{1,3}\s*$/, "")
+              .trim();
+            // Find the first { ... } block
+            const firstBrace = stripped.indexOf("{");
+            const lastBrace = stripped.lastIndexOf("}");
+            if (firstBrace !== -1 && lastBrace !== -1) {
+              const jsonStr = stripped.slice(firstBrace, lastBrace + 1);
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.article && typeof parsed.article === "string" && parsed.article.length > 200) {
+                // Successfully extracted the article field — use it directly
+                articleBody = parsed.article;
+                console.log("[Blog] Extracted article from JSON response, length:", articleBody.length);
+              }
+            }
+          } catch (e) {
+            console.warn("[Blog] JSON extraction attempt failed, using raw response:", e);
+          }
+        }
+
+        // \u2500\u2500 CONTINUATION PASS: Detect truncation and complete the article \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        // Only run if the article is genuinely truncated (not a JSON extraction issue).
         const hasFaq = /##\s*(Frequently Asked Questions|FAQ)/i.test(articleBody);
-        const endsCleanly = /[.!?]\s*$/.test(articleBody.slice(-100));
-        const isLikelyTruncated = !hasFaq || !endsCleanly || articleBody.length < 3000;
+        const endsCleanly = /[.!?\"']\s*$/.test(articleBody.slice(-200));
+        // Only trigger continuation if truly truncated: no FAQ AND ends mid-sentence
+        const isLikelyTruncated = !hasFaq && !endsCleanly;
 
         if (isLikelyTruncated) {
           try {
@@ -819,7 +847,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
                 { role: "assistant", content: articleBody },
                 {
                   role: "user",
-                  content: `The article above appears to be incomplete. Please continue writing from exactly where it left off. Complete all remaining sections: Transformation Vision, Closing + CTA, and the FAQ section (## Frequently Asked Questions with 4-6 PAA questions). Do not repeat any content already written. Start immediately from where the text ends.`,
+                  content: `The article above is incomplete. Continue writing from exactly where it left off. Complete all remaining sections including the FAQ section (## Frequently Asked Questions with 4-6 PAA questions). Do NOT repeat any content already written. Start immediately from where the text ends.`,
                 },
               ],
             });
@@ -828,7 +856,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
               articleBody = articleBody + "\n\n" + continuation;
             }
           } catch (err) {
-            console.warn("[Blog] Continuation pass failed — using partial article:", err);
+            console.warn("[Blog] Continuation pass failed \u2014 using partial article:", err);
           }
         }
 

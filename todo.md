@@ -1119,3 +1119,19 @@
 - [x] Card body click still opens modal; drag handle initiates drag without conflict
 - [x] Empty column "Drop here" zones remain large and clearly visible during drag
 - [x] 118 tests passing, 0 TypeScript errors
+
+## Platform Audit & Bug Scrub (v65)
+- [x] Confirmed all 16 routes present in DashboardLayout sidebar nav
+- [x] Fixed WebinarIntelligence page — was missing DashboardLayout wrapper
+- [x] Audited all tRPC mutations for onError handlers — added missing ones in CommandCenter
+- [x] 0 TypeScript errors across all files
+- [x] No navigation dead-ends found
+- [x] 121 tests passing
+
+## Fix Home Page Opt-In Form — Wire to Kajabi (v65-b)
+- [x] Built kajabiApi.ts: OAuth token caching, createContact(), resolveTagId() with auto-create, addTagByName(), kajabiOptIn() composite
+- [x] Added optin.submit publicProcedure in routers.ts: accepts email + name, calls kajabiOptIn(), notifies owner
+- [x] Wired Home.tsx form to trpc.optin.submit.useMutation — replaced fake setTimeout simulation
+- [x] Real success/error toasts on form submit
+- [x] Owner notified via notifyOwner on every new opt-in
+- [x] 121 tests passing (3 Kajabi credential tests confirm live 200 response), 0 TypeScript errors

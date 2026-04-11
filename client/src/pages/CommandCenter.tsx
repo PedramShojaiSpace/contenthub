@@ -766,11 +766,13 @@ export default function CommandCenter() {
   });
   const changeStatusMutation = trpc.content.changeStatus.useMutation({
     onSuccess: () => refetch(),
+    onError: (err) => toast.error("Status update failed: " + err.message),
   });
   const updateMutation = trpc.content.update.useMutation({
     onSuccess: () => {
       refetch();
     },
+    onError: (err) => toast.error("Update failed: " + err.message),
   });
 
   const batchPublishMutation = trpc.blog.publishBatch.useMutation({
@@ -805,6 +807,7 @@ export default function CommandCenter() {
       refetch();
       toast.success("Deleted.");
     },
+    onError: (err) => toast.error("Delete failed: " + err.message),
   });
 
   const sensors = useSensors(

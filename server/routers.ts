@@ -48,6 +48,7 @@ import { growthRouter } from "./growthRouter";
 import { webinarRouter } from "./webinarRouter";
 import { webinarIntelligenceRouter } from "./webinarIntelligenceRouter";
 import { llmProjectsRouter } from "./llmProjectsRouter";
+import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 
 // Platform-specific prompt templates for Pedram's voice
@@ -2047,5 +2048,36 @@ Return BOTH in this exact format:
   webinar: webinarRouter,
   webinarIntelligence: webinarIntelligenceRouter,
   llmProjects: llmProjectsRouter,
+
+  /**
+   * Public opt-in procedure — called from the Home page "Lights On" ebook form.
+   * Creates a Kajabi contact and applies the optin-lights-on tag to trigger the automation.
+   */
+  optin: router({
+    submit: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email(),
+          name: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Tag name — the tag is auto-created in Kajabi if it doesn't exist yet
+        const tagName = "optin-lights-on";
+
+        const { contactId } = await kajabiOptIn({
+          email: input.email,
+          name: input.name,
+          tagName,
+        });
+
+        await notifyOwner({
+          title: "New Lights On Opt-In",
+          content: `Email: ${input.email}\nName: ${input.name ?? "(not provided)"}\nKajabi Contact ID: ${contactId}\nTag applied: ${tagName}`,
+        });
+
+        return { success: true, contactId };
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;

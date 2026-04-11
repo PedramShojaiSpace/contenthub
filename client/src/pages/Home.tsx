@@ -4,14 +4,24 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, ArrowRight, BookOpen, Brain, Zap, Moon } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export default function Home() {
-  // The userAuth hooks provides authentication state
-  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
-
   const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [name, setName] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const optinMutation = trpc.optin.submit.useMutation({
+    onSuccess: () => {
+      setSubmitted(true);
+      setEmail("");
+      setName("");
+      toast.success("Your free guide is on its way — check your inbox!");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Something went wrong. Please try again.");
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,14 +29,7 @@ export default function Home() {
       toast.error("Please enter your email address");
       return;
     }
-    
-    setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast.success("Success! Check your inbox for the download link.");
-      setEmail("");
-    }, 1500);
+    optinMutation.mutate({ email, name: name || undefined });
   };
 
   return (
@@ -82,10 +85,10 @@ export default function Home() {
                     <Button 
                       type="submit" 
                       className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold tracking-wide transition-all"
-                      disabled={isSubmitting}
+                      disabled={optinMutation.isPending}
                     >
-                      {isSubmitting ? "Sending..." : "Get Instant Access"}
-                      {!isSubmitting && <ArrowRight className="ml-2 w-4 h-4" />}
+                      {optinMutation.isPending ? "Sending..." : "Get Instant Access"}
+                      {!optinMutation.isPending && <ArrowRight className="ml-2 w-4 h-4" />}
                     </Button>
                   </form>
                   <p className="text-xs text-foreground/40 mt-4 text-center sm:text-left">

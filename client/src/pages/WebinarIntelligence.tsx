@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -366,7 +367,7 @@ export default function WebinarIntelligencePage() {
   const extractedCount = records.filter((r) => r.extractedAt).length;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <DashboardLayout>
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -510,6 +511,6 @@ export default function WebinarIntelligencePage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

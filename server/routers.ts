@@ -857,24 +857,63 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
 
         // ── DEFENSIVE: If the model returned JSON despite instructions, extract the article field ──
         // The model sometimes wraps the response in ```json\n{ ... }\n``` even when told not to.
-        // This helper strips any code fence variant and attempts to parse the JSON.
+        // JSON.parse is unreliable here because the article field contains unescaped newlines.
+        // Strategy: use a targeted regex to extract the "article" string value directly.
         const extractArticleFromJson = (raw: string): string | null => {
           try {
             // Step 1: Strip code fences — handles ```json\n, ```json , ``` variants
             const stripped = raw
-              .replace(/^```+\s*json\s*\n?/i, "")  // opening ```json fence (with optional newline)
-              .replace(/^```+\s*\n?/i, "")          // opening ``` fence (no language tag)
-              .replace(/\n?```+\s*$/i, "")           // closing ``` fence
+              .replace(/^```+\s*json\s*\n?/i, "")
+              .replace(/^```+\s*\n?/i, "")
+              .replace(/\n?```+\s*$/i, "")
               .trim();
-            // Step 2: Find the outermost JSON object
-            const firstBrace = stripped.indexOf("{");
-            const lastBrace = stripped.lastIndexOf("}");
-            if (firstBrace === -1 || lastBrace === -1) return null;
-            const jsonStr = stripped.slice(firstBrace, lastBrace + 1);
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.article && typeof parsed.article === "string" && parsed.article.length > 200) {
-              return parsed.article;
+
+            // Step 2: Try JSON.parse first (works when article field is properly escaped)
+            try {
+              const firstBrace = stripped.indexOf("{");
+              const lastBrace = stripped.lastIndexOf("}");
+              if (firstBrace !== -1 && lastBrace !== -1) {
+                const jsonStr = stripped.slice(firstBrace, lastBrace + 1);
+                const parsed = JSON.parse(jsonStr);
+                if (parsed.article && typeof parsed.article === "string" && parsed.article.length > 200) {
+                  return parsed.article;
+                }
+              }
+            } catch {
+              // JSON.parse failed — fall through to regex extraction
             }
+
+            // Step 3: Regex extraction — find "article": "..." and extract the value
+            // This handles cases where the article field contains unescaped newlines
+            // that break JSON.parse. We find the key and extract everything until
+            // the next top-level JSON key or the closing brace of the root object.
+            const articleKeyMatch = stripped.match(/"article"\s*:\s*"/);
+            if (!articleKeyMatch || articleKeyMatch.index === undefined) return null;
+
+            const valueStart = articleKeyMatch.index + articleKeyMatch[0].length;
+            // Walk forward to find the end of the string value (unescaped closing quote)
+            let i = valueStart;
+            let result = "";
+            while (i < stripped.length) {
+              const ch = stripped[i];
+              if (ch === "\\" && i + 1 < stripped.length) {
+                // Escape sequence — decode common ones
+                const next = stripped[i + 1];
+                if (next === "n") { result += "\n"; i += 2; continue; }
+                if (next === "t") { result += "\t"; i += 2; continue; }
+                if (next === "\\") { result += "\\"; i += 2; continue; }
+                if (next === '"') { result += '"'; i += 2; continue; }
+                result += next; i += 2; continue;
+              }
+              if (ch === '"') {
+                // Unescaped quote = end of string value
+                break;
+              }
+              result += ch;
+              i++;
+            }
+
+            if (result.length > 200) return result;
             return null;
           } catch {
             return null;

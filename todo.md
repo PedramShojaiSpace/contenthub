@@ -1000,3 +1000,10 @@
 - [x] Add robust JSON extraction helper (extractArticleFromJson) that handles ```json\n{}, ```, and raw {} variants
 - [x] Detection regex now catches all fence styles including newline-separated fences
 - [x] All 112 tests passing, 0 TypeScript errors
+
+## Blog UI JSON Display Fix (v54b)
+- [x] Diagnosed root cause: JSON.parse was failing silently on article fields with unescaped newlines
+- [x] Replaced JSON.parse-only extractor with 2-stage approach: JSON.parse first, then character-walk regex fallback
+- [x] Regex extractor correctly decodes \n, \t, \\ escape sequences in article field
+- [x] Added 6 unit tests covering all JSON response variants (fenced, raw, escaped newlines, clean markdown)
+- [x] All 118 tests passing, 0 TypeScript errors

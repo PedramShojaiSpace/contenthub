@@ -60,6 +60,9 @@ import {
   Clock,
   Zap,
   Sparkles,
+  Wand2,
+  Copy,
+  Download,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -543,6 +546,30 @@ export default function CommandCenter() {
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
+
+  // Teleprompter script state (for card detail modal)
+  const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
+  const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
+
+  const teleprompterMutation = trpc.research.generateTeleprompterScript.useMutation({
+    onSuccess: (data) => {
+      setTeleprompterScript(data.script);
+      setGeneratingTeleprompter(false);
+      toast.success("Teleprompter script ready!");
+    },
+    onError: (err) => {
+      setGeneratingTeleprompter(false);
+      toast.error("Script generation failed: " + err.message);
+    },
+  });
+
+  const handleGenerateTeleprompter = (item: ContentItem) => {
+    // Extract a clean title from the item
+    const title = item.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || item.rawIdea || item.title;
+    setTeleprompterScript(null);
+    setGeneratingTeleprompter(true);
+    teleprompterMutation.mutate({ title, platform: "youtube" });
+  };
 
   // Buffer profiles (cached — fetched once)
   const { data: bufferProfiles = [] } = trpc.syndication.getProfiles.useQuery();
@@ -1433,7 +1460,7 @@ export default function CommandCenter() {
       </Dialog>
 
       {/* ── Card Detail Dialog ─────────────────────────────────────────────── */}
-      <Dialog open={!!selectedItem} onOpenChange={(open) => { if (!open) setSelectedItem(null); }}>
+      <Dialog open={!!selectedItem} onOpenChange={(open) => { if (!open) { setSelectedItem(null); setTeleprompterScript(null); setGeneratingTeleprompter(false); } }}>
         {selectedItem && (
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
             <DialogHeader>
@@ -1494,7 +1521,7 @@ export default function CommandCenter() {
               />
             </div>
 
-            {/* Copy button */}
+            {/* Copy + Regenerate buttons */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -1520,6 +1547,85 @@ export default function CommandCenter() {
                 Regenerate Image
               </Button>
             </div>
+
+            {/* Teleprompter Script — YouTube only */}
+            {selectedItem.platform === "youtube" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+                    onClick={() => handleGenerateTeleprompter(selectedItem)}
+                    disabled={generatingTeleprompter || teleprompterMutation.isPending}
+                  >
+                    {generatingTeleprompter ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <Wand2 className="h-3 w-3 mr-1" />
+                    )}
+                    {generatingTeleprompter ? "Generating script…" : "Generate Teleprompter Script"}
+                  </Button>
+                  {teleprompterScript && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          navigator.clipboard.writeText(teleprompterScript);
+                          toast.success("Script copied!");
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          const blob = new Blob([teleprompterScript], { type: "text/plain" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `teleprompter-${selectedItem.id}.txt`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Download
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-amber-400"
+                        onClick={() => handleGenerateTeleprompter(selectedItem)}
+                        disabled={generatingTeleprompter}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Redo
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {generatingTeleprompter && (
+                  <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+                    Writing teleprompter script… about 30 seconds.
+                  </div>
+                )}
+                {teleprompterScript && !generatingTeleprompter && (
+                  <div className="rounded-lg border border-amber-500/20 bg-black/20 p-4 max-h-72 overflow-y-auto">
+                    <p className="text-[10px] text-amber-400/70 mb-2 font-medium uppercase tracking-wider">Teleprompter Script</p>
+                    <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
+                      {teleprompterScript}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Source Script section */}
             {selectedItem.linkedScriptId && (

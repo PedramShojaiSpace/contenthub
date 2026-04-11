@@ -1020,3 +1020,12 @@
 - [x] Loading state shows spinner + "Writing your teleprompter script…" message
 - [x] Tip text guides user to PromptSmart / Teleprompter Premium / Descript
 - [x] All 118 tests passing, 0 TypeScript errors
+
+## Teleprompter Script in Kanban Modal (v57)
+- [x] Found Card Detail Dialog in CommandCenter.tsx
+- [x] Added amber "Generate Teleprompter Script" button — only visible on YouTube cards
+- [x] Title auto-extracted from card (strips "Question to answer:...Title:" prefix)
+- [x] Script renders inline in amber-bordered panel with Copy, Download (.txt), Redo buttons
+- [x] Loading state shows spinner + message
+- [x] State resets when modal closes so it doesn’t carry over to next card
+- [x] All 118 tests passing, 0 TypeScript errors

@@ -186,7 +186,11 @@ export default defineConfig({
           // after the manus-runtime IIFE completes, avoiding the conflict.
           if (id.includes("node_modules/react-dom") || (id.includes("node_modules/react") && !id.includes("react-dom"))) return undefined;
           if (id.includes("node_modules/lucide-react")) return "vendor-lucide";
-          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3")) return "vendor-charts";
+          // recharts and d3 must NOT be split into a separate chunk.
+          // Splitting them causes a circular dependency / TDZ error:
+          // "Cannot access 'Sd' before initialization" in vendor-charts.js
+          // This is a known Rollup issue with recharts manualChunks splitting.
+          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3")) return undefined;
           if (id.includes("node_modules/date-fns")) return "vendor-date-fns";
           if (id.includes("node_modules/superjson") || id.includes("node_modules/zod")) return "vendor-utils";
           if (id.includes("node_modules/")) return "vendor-misc";

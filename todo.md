@@ -1062,3 +1062,9 @@
 - [ ] Add TikTok 60-second script button on TikTok cards in CommandCenter Kanban modal
 - [ ] Reuse generateTeleprompterScript with a "tiktok" format flag (60-sec punchy, hook + 3 points + CTA)
 - [ ] Run tests
+
+## Typeform Push Fix (v60)
+- [x] Root cause: validations object was sent on ALL field types, but Typeform only accepts it on short_text, long_text, email, phone_number, number, date, website
+- [x] Fix: added TYPES_WITH_VALIDATIONS set; validations only added when field type is in that set
+- [x] Also added properties support for dropdown and ranking field types
+- [x] All 118 tests passing, 0 TypeScript errors

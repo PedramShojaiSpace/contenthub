@@ -911,6 +911,12 @@ Return ONLY the JSON array, no markdown wrapping.`;
         "statement", "website",
       ]);
 
+      // Field types that support the 'validations' object in Typeform API
+      // All other types (multiple_choice, rating, opinion_scale, yes_no, statement, etc.) reject it with 400
+      const TYPES_WITH_VALIDATIONS = new Set([
+        "short_text", "long_text", "email", "phone_number", "number", "date", "website",
+      ]);
+
       // Build Typeform fields from question objects
       const fields = input.questions.map((q) => {
         // Sanitize type — fall back to long_text for any unknown/hallucinated type
@@ -919,8 +925,11 @@ Return ONLY the JSON array, no markdown wrapping.`;
           ref: q.ref,
           title: q.title,
           type: safeType,
-          validations: { required: q.required },
         };
+        // Only add validations for types that support it
+        if (TYPES_WITH_VALIDATIONS.has(safeType)) {
+          field.validations = { required: q.required };
+        }
         if (safeType === "multiple_choice" && q.choices && q.choices.length > 0) {
           // Only pass known-safe properties to avoid INVALID_JSON errors
           field.properties = {
@@ -930,6 +939,10 @@ Return ONLY the JSON array, no markdown wrapping.`;
           };
         } else if (safeType === "rating" || safeType === "opinion_scale") {
           field.properties = { steps: (q.properties?.steps as number) ?? 10 };
+        } else if (safeType === "dropdown" && q.choices && q.choices.length > 0) {
+          field.properties = { choices: q.choices };
+        } else if (safeType === "ranking" && q.choices && q.choices.length > 0) {
+          field.properties = { choices: q.choices };
         }
         return field;
       });

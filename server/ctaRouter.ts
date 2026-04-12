@@ -88,11 +88,35 @@ export async function seedCtaBlocks(): Promise<void> {
   const db = await getDb();
   if (!db) return;
   const existing = await db.select().from(ctaBlocks);
-  if (existing.length > 0) return;
-  for (const block of DEFAULT_CTA_BLOCKS) {
-    await db.insert(ctaBlocks).values(block);
+
+  if (existing.length === 0) {
+    // Fresh install — insert all defaults
+    for (const block of DEFAULT_CTA_BLOCKS) {
+      await db.insert(ctaBlocks).values(block);
+    }
+    console.log("[CTA] Seeded", DEFAULT_CTA_BLOCKS.length, "CTA blocks.");
+    return;
   }
-  console.log("[CTA] Seeded", DEFAULT_CTA_BLOCKS.length, "CTA blocks.");
+
+  // Update existing blocks to ensure URLs and text are always current
+  for (const block of DEFAULT_CTA_BLOCKS) {
+    const match = existing.find((e) => e.label === block.label);
+    if (match) {
+      await db
+        .update(ctaBlocks)
+        .set({
+          ctaText: block.ctaText,
+          url: block.url,
+          keywords: block.keywords,
+          isDefault: block.isDefault,
+          active: block.active,
+        })
+        .where(eq(ctaBlocks.id, match.id));
+    } else {
+      await db.insert(ctaBlocks).values(block);
+    }
+  }
+  console.log("[CTA] Refreshed", DEFAULT_CTA_BLOCKS.length, "CTA blocks.");
 }
 
 export async function getCtaForTopic(topic: string): Promise<{

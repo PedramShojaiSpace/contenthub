@@ -1151,3 +1151,20 @@
 - [x] Removed both from top-level nav; top-level is now 7 items
 - [x] Strategy group auto-expands when either sub-route is active
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Fix X/Twitter 280-Character Limit (v68)
+- [ ] Audit X prompt in routers.ts — tighten character limit instructions
+- [ ] Add hard server-side truncation guard after LLM response (trim to 280 chars at word boundary)
+- [ ] Add character count display on X output panel in Creation Studio
+- [ ] Run tests
+
+## Fix X/Twitter 280-Char Limit + Lights On URL (v68)
+- [x] Root cause: LLM was hallucinating urbanmonk.com/lights-on; DB CTA blocks had stale seed data
+- [x] Fixed seedCtaBlocks() to upsert/update existing records instead of skipping — DB now always reflects correct URL
+- [x] Added CRITICAL URL RULE to CTA injection block — LLM explicitly forbidden from substituting URLs
+- [x] Tightened X prompt: single tweet default, 240-char hard ceiling, threads only when genuinely needed
+- [x] Replaced no-op validateXLength with enforceXLimit: trims single tweets and each thread line at word boundary ≤280
+- [x] Fixed rewrite mutation X platform instruction: 240-char ceiling + explicit URL rule
+- [x] Fixed reframeCtaText: now uses correct go.theurbanmonk.com URL
+- [x] Fixed StrategyBrain.tsx placeholder URLs
+- [x] 121 tests passing, 0 TypeScript errors

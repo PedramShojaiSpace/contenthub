@@ -98,26 +98,31 @@ CONTENT PILLARS: Daily practices, mindfulness, gut health, energy, sleep, stress
     x: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on X (Twitter). His audience is intellectually curious professionals and wellness enthusiasts.
 VOICE: Sharp, punchy, thought-provoking. Challenges conventional wisdom. Mix of bold statements and nuanced insights.
 
-CHARACTER LIMIT RULES — READ CAREFULLY:
-- A single tweet must be a COMPLETE, SELF-CONTAINED thought. It must begin and end naturally — never cut off mid-sentence.
-- Target 200-220 characters for a single tweet. This gives buffer for hashtags and guarantees the post fits within X's 280-character limit.
-- Do NOT write 280 characters and then trim — write SHORT from the start. A punchy 180-character tweet that lands is infinitely better than a 280-character tweet that feels rushed.
-- For a THREAD: write 3-5 numbered tweets (1/, 2/, 3/ etc.), each on its own line, each a complete thought, each under 220 characters.
-- Choose single tweet OR thread based on the idea — do not default to threads for simple ideas.
+CHARACTER LIMIT RULES — NON-NEGOTIABLE:
+- DEFAULT: Write a SINGLE tweet. Only write a thread if the idea genuinely requires multiple steps or a list.
+- A single tweet MUST be 240 characters or fewer (hard ceiling — no exceptions).
+- Write SHORT from the start — aim for 160-200 characters. Never write long and trim.
+- The tweet must be a COMPLETE, SELF-CONTAINED thought — begins and ends naturally, no ellipses, no cut-off sentences.
+- For a THREAD (only when truly needed): write 3-5 numbered tweets (1/, 2/, 3/ etc.), each on its own line, each a COMPLETE thought, each 240 characters or fewer.
+- Count your characters before outputting. If your draft exceeds 240 characters, rewrite it shorter.
+
+URL RULE:
+- If a URL is provided in the CTA block, use EXACTLY that URL — do not shorten, alter, or substitute it.
+- Do NOT include a URL in a single tweet unless it was explicitly provided in the CTA block.
 
 CRITICAL OUTPUT RULES:
 - Output ONLY the finished tweet or thread text — nothing else
 - Do NOT include any labels, headers, or structural markers (no "Tweet 1:", "Hook:", "Thread:", "---", or any similar markup)
 - Do NOT include any meta-commentary, instructions, or explanations
 - The output must be copy-paste ready to publish directly on X
-- Add #urbanmonk only if it fits within the character budget without crowding the message
+- Add #urbanmonk only if it fits within the character budget
 
 CONTENT PILLARS: Counterintuitive health insights, performance hacks, mindset shifts, short wisdom nuggets, thread-worthy deep dives.
 
-EXAMPLE of a good single tweet (complete thought, punchy, under 220 chars):
+EXAMPLE of a good single tweet (complete thought, punchy, under 200 chars):
 "Most people treat exhaustion with caffeine. That's like putting tape on a leaking pipe. The real fix is upstream — your nervous system, your sleep architecture, your qi. #urbanmonk"
 
-EXAMPLE of a bad tweet (truncated, incoherent):
+EXAMPLE of a bad tweet (too long, truncated, incoherent):
 "Most people don't realize that the root cause of their chronic fatigue goes back to the adrenal system and how cortisol dysregulation affects..."
 NEVER produce output like the bad example above.`,
 
@@ -493,7 +498,7 @@ export const appRouter = router({
           const { getCtaForTopic } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.idea);
           ctaLabel = cta.label;
-          ctaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of your content. Do not add any other call to action.`;
+          ctaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nCRITICAL URL RULE: If this content includes a link or URL, you MUST use EXACTLY the URL provided in the CTA block above — do NOT invent, shorten, or substitute any other URL. The only permitted URL is: ${cta.url ?? "go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1"}. Include this CTA naturally at the end of your content. Do not add any other call to action.`;
         } catch (err) {
           console.warn("[Content] Could not load CTA:", err);
         }
@@ -582,22 +587,40 @@ Rules:
         }
 
         // Step 3: Assemble combined results
-        // For X/Twitter: the LLM is instructed to write complete, self-contained posts
-        // targeting 200-220 characters. We do NOT truncate — truncation produces incoherent
-        // posts. Instead we log a warning if the LLM still overshoots, so we can monitor
-        // prompt quality without breaking the user's content.
-        function validateXLength(text: string): string {
-          if (text.length > 280) {
-            console.warn(
-              `[X] Generated tweet exceeds 280 chars (${text.length} chars). ` +
-              `Review prompt tuning. Text: ${text.slice(0, 100)}...`
-            );
+        // For X/Twitter: enforce 280-char hard limit on every tweet/thread line.
+        // Single tweets are trimmed at the last word boundary ≤0 280 chars.
+        // Thread lines (starting with \d+/) are each trimmed independently.
+        function enforceXLimit(text: string): string {
+          const LIMIT = 280;
+          const lines = text.split("\n");
+          const isThread = lines.some((l) => /^\d+\//.test(l.trim()));
+
+          if (isThread) {
+            // Trim each thread tweet independently
+            return lines
+              .map((line) => {
+                if (line.length <= LIMIT) return line;
+                // Trim at last space before limit
+                const trimmed = line.slice(0, LIMIT);
+                const lastSpace = trimmed.lastIndexOf(" ");
+                const result = lastSpace > 0 ? trimmed.slice(0, lastSpace) : trimmed;
+                console.warn(`[X] Thread line trimmed from ${line.length} to ${result.length} chars.`);
+                return result;
+              })
+              .join("\n");
           }
-          return text; // Always return the full, complete text — never truncate
+
+          // Single tweet
+          if (text.length <= LIMIT) return text;
+          const trimmed = text.slice(0, LIMIT);
+          const lastSpace = trimmed.lastIndexOf(" ");
+          const result = lastSpace > 0 ? trimmed.slice(0, lastSpace) : trimmed;
+          console.warn(`[X] Tweet trimmed from ${text.length} to ${result.length} chars.`);
+          return result;
         }
         const results: Record<string, { text: string; imageUrl?: string; title: string }> = {};
         for (const { platform, text, title } of textResults) {
-          const finalText = platform === "x" ? validateXLength(text) : text;
+          const finalText = platform === "x" ? enforceXLimit(text) : text;
           results[platform] = { text: finalText, imageUrl: imageResults[platform], title };
         }
 
@@ -1236,9 +1259,9 @@ Platform: ${input.platform}
 
 POST CAPTION REQUIREMENTS:
 - Platform: ${input.platform}
-- ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "COMPLETE self-contained thought, 180-220 characters target (hard max 280). Write SHORT from the start — never write long and trim. The post must begin and end naturally as a full idea. No ellipses, no cut-off sentences." : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
+- ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "COMPLETE self-contained thought, 240 characters or fewer (hard ceiling — no exceptions). Write SHORT from the start — aim for 160-200 characters. The post must begin and end naturally as a full idea. No ellipses, no cut-off sentences. Do NOT include a URL unless one was explicitly provided." : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
 - Write in Pedram's voice — no fluff, no hype
-- Include a clear call-to-action (link in bio / Urban Monk Academy / free resource)
+- If including a URL, use ONLY go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 — never substitute or invent a different URL
 - Do NOT include any labels like "Caption:" — just write the post
 
 IMAGE PROMPT REQUIREMENTS:
@@ -1311,7 +1334,7 @@ Return BOTH in this exact format:
       )
       .mutation(async ({ input }) => {
         // Default CTA — will be replaced by topical CTA library when available
-        const reframeCtaText = "Join the Urban Monk Academy → urbanmonk.com/academy";
+        const reframeCtaText = "Ready to reclaim your energy? Join the Lights On course — go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1";
 
         // Load avatar context
         let avatarCtx = "";
@@ -1758,9 +1781,9 @@ Platform: ${input.platform}
 
 POST CAPTION REQUIREMENTS:
 - Platform: ${input.platform}
-- ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "COMPLETE self-contained thought, 180-220 characters target (hard max 280). Write SHORT from the start — never write long and trim. The post must begin and end naturally as a full idea. No ellipses, no cut-off sentences." : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
+- ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "COMPLETE self-contained thought, 240 characters or fewer (hard ceiling — no exceptions). Write SHORT from the start — aim for 160-200 characters. The post must begin and end naturally as a full idea. No ellipses, no cut-off sentences. Do NOT include a URL unless one was explicitly provided." : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
 - Write in Pedram's voice — no fluff, no hype
-- Include a clear call-to-action (link in bio / Urban Monk Academy / free resource)
+- If including a URL, use ONLY go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 — never substitute or invent a different URL
 - Do NOT include any labels like "Caption:" — just write the post
 
 IMAGE PROMPT REQUIREMENTS:

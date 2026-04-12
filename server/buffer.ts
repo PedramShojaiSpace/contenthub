@@ -248,6 +248,108 @@ export async function pushToBuffer(params: {
   return { success: false, error: errors.join("; ") };
 }
 
+/**
+ * Push a multi-image carousel post to Buffer for Meta (Instagram/Facebook) channels.
+ * Buffer's createPost supports multiple images via the assets.images array.
+ * Note: LinkedIn carousel/document posts are NOT supported by Buffer API.
+ */
+export async function pushCarouselToBuffer(params: {
+  caption: string;
+  imageUrls: string[]; // ordered list of slide image URLs
+  profileIds: string[]; // Meta channel IDs only
+  channelServiceMap?: Record<string, string>; // channelId → service
+  scheduledAt?: number; // UTC ms timestamp
+}): Promise<BufferUpdateResult> {
+  const token = getAccessToken();
+  if (!token) {
+    return { success: false, error: "BUFFER_ACCESS_TOKEN not configured" };
+  }
+  if (!params.profileIds.length) {
+    return { success: false, error: "No channel IDs provided" };
+  }
+  if (!params.imageUrls.length) {
+    return { success: false, error: "No slide images provided" };
+  }
+
+  // Buffer supports up to 10 images per carousel post
+  const images = params.imageUrls.slice(0, 10).map((url) => `{ url: ${JSON.stringify(url)} }`);
+  const assetsFragment = `, assets: { images: [${images.join(", ")}] }`;
+
+  const results: BufferUpdateResult[] = [];
+
+  for (const channelId of params.profileIds) {
+    try {
+      const mode = params.scheduledAt ? "customScheduled" : "addToQueue";
+      const dueAt = params.scheduledAt ? new Date(params.scheduledAt).toISOString() : undefined;
+      const dueAtFragment = dueAt ? `, dueAt: "${dueAt}"` : "";
+
+      const channelService = params.channelServiceMap?.[channelId]?.toLowerCase() ?? "";
+      let metadataFragment = "";
+      if (channelService === "facebook") {
+        metadataFragment = `, metadata: { facebook: { type: post } }`;
+      } else if (channelService === "instagram") {
+        // Instagram carousel requires shouldShareToFeed: true
+        metadataFragment = `, metadata: { instagram: { type: carousel, shouldShareToFeed: true } }`;
+      }
+
+      const mutation = `
+        mutation CreateCarouselPost {
+          createPost(input: {
+            text: ${JSON.stringify(params.caption)},
+            channelId: "${channelId}",
+            schedulingType: automatic,
+            mode: ${mode}${dueAtFragment}${assetsFragment}${metadataFragment}
+          }) {
+            ... on PostActionSuccess {
+              post {
+                id
+                text
+                dueAt
+              }
+            }
+            ... on MutationError {
+              message
+            }
+          }
+        }
+      `;
+
+      const result = await bufferGql<{
+        createPost:
+          | { post: { id: string; text: string; dueAt: string } }
+          | { message: string };
+      }>(mutation);
+
+      if (result.errors?.length) {
+        results.push({ success: false, error: result.errors.map((e) => e.message).join(", ") });
+        continue;
+      }
+
+      const createResult = result.data?.createPost;
+      if (!createResult) {
+        results.push({ success: false, error: "No response from Buffer API" });
+        continue;
+      }
+
+      if ("post" in createResult) {
+        results.push({ success: true, bufferId: createResult.post.id });
+      } else {
+        results.push({ success: false, error: createResult.message });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({ success: false, error: msg });
+    }
+  }
+
+  const anySuccess = results.some((r) => r.success);
+  const firstSuccess = results.find((r) => r.success);
+  const errors = results.filter((r) => !r.success).map((r) => r.error).filter(Boolean);
+
+  if (anySuccess) return { success: true, bufferId: firstSuccess?.bufferId };
+  return { success: false, error: errors.join("; ") };
+}
+
 function mapBufferService(service: string): BufferProfile["platform"] {
   const map: Record<string, BufferProfile["platform"]> = {
     linkedin: "linkedin",

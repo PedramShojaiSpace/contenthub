@@ -1100,6 +1100,59 @@ export default function CreationStudio() {
     toast.success("Carousel downloaded as Markdown!");
   };
 
+  // ── Carousel Buffer Push ─────────────────────────────────────────────────
+  const [carouselCaption, setCarouselCaption] = useState("");
+  const [isCarouselPushing, setIsCarouselPushing] = useState(false);
+  const [carouselPushResult, setCarouselPushResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [savedCarouselItemId, setSavedCarouselItemId] = useState<number | null>(null);
+
+  const pushCarouselMutation = trpc.syndication.pushCarousel.useMutation({
+    onSuccess: (data) => {
+      setIsCarouselPushing(false);
+      if (data.success) {
+        setCarouselPushResult({ success: true, message: `Carousel queued in Buffer! ID: ${data.bufferId ?? "queued"}` });
+        toast.success("Carousel pushed to Buffer!");
+      } else {
+        setCarouselPushResult({ success: false, message: data.error ?? "Unknown error" });
+        toast.error("Buffer push failed: " + (data.error ?? "Unknown error"));
+      }
+    },
+    onError: (err) => {
+      setIsCarouselPushing(false);
+      setCarouselPushResult({ success: false, message: err.message });
+      toast.error("Carousel push failed: " + err.message);
+    },
+  });
+
+  const handlePushCarouselToBuffer = () => {
+    if (!carouselSlides || carouselSlides.length === 0) return;
+    const imageUrls = carouselSlides.map((s) => s.imageUrl).filter(Boolean) as string[];
+    if (imageUrls.length === 0) {
+      toast.error("No slide images available. Please generate images first.");
+      return;
+    }
+    // Get Meta channel IDs (facebook + instagram)
+    const metaProfiles = (bufferProfiles ?? []).filter((pr: { id: string; service: string }) =>
+      ["facebook", "instagram"].includes(pr.service)
+    );
+    if (metaProfiles.length === 0) {
+      toast.error("No Meta (Facebook/Instagram) channels connected in Buffer.");
+      return;
+    }
+    const channelServiceMap: Record<string, string> = {};
+    metaProfiles.forEach((pr: { id: string; service: string }) => { channelServiceMap[pr.id] = pr.service; });
+    const caption = carouselCaption.trim() || carouselSlides[0].headline;
+    setIsCarouselPushing(true);
+    setCarouselPushResult(null);
+    pushCarouselMutation.mutate({
+      caption,
+      imageUrls: imageUrls.slice(0, 10),
+      profileIds: metaProfiles.map((pr: { id: string }) => pr.id),
+      channelServiceMap,
+      contentItemId: savedCarouselItemId ?? undefined,
+    });
+  };
+
   const handleSaveBlog = () => {
     if (!blogContent) return;
     setSavingPlatform("blog");
@@ -2846,6 +2899,58 @@ export default function CreationStudio() {
               <p className="text-xs text-muted-foreground mt-2 text-center">
                 Scroll horizontally to preview all slides · Auto-saved to Command Center
               </p>
+
+              {/* Buffer Push Panel — Meta only */}
+              {carouselPlatform === "meta" && (
+                <div className="mt-4 pt-4 border-t border-border space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Facebook className="h-4 w-4 text-blue-400" />
+                    <span className="text-sm font-medium text-foreground">Push to Buffer (Meta)</span>
+                    <Badge variant="outline" className="text-[10px] border-blue-500/40 text-blue-400">Instagram + Facebook</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Sends all {carouselSlides.filter((s) => s.imageUrl).length} slide images as a multi-image post to your connected Meta channels.
+                    {carouselSlides.filter((s) => !s.imageUrl).length > 0 && (
+                      <span className="text-amber-400 ml-1">{carouselSlides.filter((s) => !s.imageUrl).length} slides missing images — only slides with images will be included.</span>
+                    )}
+                  </p>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Caption (optional — defaults to cover slide headline)</Label>
+                    <textarea
+                      value={carouselCaption}
+                      onChange={(e) => setCarouselCaption(e.target.value)}
+                      placeholder={carouselSlides[0]?.headline ?? "Enter caption for the carousel post..."}
+                      rows={3}
+                      className="w-full text-sm bg-muted/30 border border-border rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    />
+                    <p className="text-[10px] text-muted-foreground">{carouselCaption.length} chars{carouselCaption.length > 2200 && <span className="text-red-400 ml-1">Instagram caption limit is 2,200 chars</span>}</p>
+                  </div>
+                  {carouselPushResult && (
+                    <div className={`text-xs rounded-md px-3 py-2 ${
+                      carouselPushResult.success
+                        ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                        : "bg-red-500/10 border border-red-500/30 text-red-400"
+                    }`}>
+                      {carouselPushResult.message}
+                    </div>
+                  )}
+                  <Button
+                    onClick={handlePushCarouselToBuffer}
+                    disabled={isCarouselPushing || carouselSlides.filter((s) => s.imageUrl).length === 0}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    size="sm"
+                  >
+                    {isCarouselPushing ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />Pushing to Buffer...</>
+                    ) : (
+                      <><Send className="h-3.5 w-3.5 mr-2" />Push Carousel to Buffer ({carouselSlides.filter((s) => s.imageUrl).length} images)</>
+                    )}
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    LinkedIn carousels require PDF document posts — not supported by Buffer API.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

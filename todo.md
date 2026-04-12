@@ -1194,3 +1194,12 @@
 - [x] Download .md button exports all slides as markdown
 - [x] Auto-saves to Command Center on generation
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Buffer Carousel Push + Meta Aspect Ratio Fix (v71)
+- [x] Clarified in UI: carousel Buffer push panel only shows for Meta platform; LinkedIn note explains PDF requirement
+- [x] Added `pushCarouselToBuffer()` to buffer.ts: sends up to 10 images as multi-image post via Buffer GraphQL API, handles facebook/instagram metadata fragments separately
+- [x] Added `syndication.pushCarousel` tRPC mutation: accepts caption + imageUrls[] + profileIds + channelServiceMap, updates content item status to scheduled on success
+- [x] Added carousel Buffer push panel in Creation Studio carousel output card: caption textarea with char counter, image count indicator, missing-image warning, success/error result display
+- [x] Push button auto-resolves Meta channel IDs from bufferProfiles (facebook + instagram services only)
+- [x] Caption defaults to cover slide headline if left blank
+- [x] 121 tests passing, 0 TypeScript errors

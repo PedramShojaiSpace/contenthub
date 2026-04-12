@@ -17,7 +17,7 @@ import {
   updateContentItem,
   upsertPlatformStrategy,
 } from "./db";
-import { getBufferProfiles, pushToBuffer } from "./buffer";
+import { getBufferProfiles, pushToBuffer, pushCarouselToBuffer } from "./buffer";
 import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, type WpPostSummary } from "./wordpress";
 import {
   countAddressedGaps,
@@ -1682,6 +1682,38 @@ CAPTION: [caption text]`;
       const { getBufferProfilesRaw } = await import("./buffer");
       return getBufferProfilesRaw();
     }),
+
+    // Push a multi-image carousel to Buffer (Meta/Instagram/Facebook only)
+    pushCarousel: protectedProcedure
+      .input(
+        z.object({
+          contentItemId: z.number().optional(),
+          caption: z.string().min(1),
+          imageUrls: z.array(z.string()).min(1).max(10),
+          profileIds: z.array(z.string()).min(1),
+          channelServiceMap: z.record(z.string(), z.string()).optional(),
+          scheduledAt: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const result = await pushCarouselToBuffer({
+          caption: input.caption,
+          imageUrls: input.imageUrls,
+          profileIds: input.profileIds,
+          channelServiceMap: input.channelServiceMap,
+          scheduledAt: input.scheduledAt,
+        });
+
+        // If successful and a content item ID was provided, update its status
+        if (result.success && input.contentItemId) {
+          await updateContentItem(input.contentItemId, {
+            status: "scheduled",
+            notes: `Buffer carousel ID: ${result.bufferId ?? "queued"}`,
+          });
+        }
+
+        return result;
+      }),
 
     // Push content to Buffer for selected platform profiles
     push: protectedProcedure

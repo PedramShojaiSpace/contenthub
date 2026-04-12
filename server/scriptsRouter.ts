@@ -8,7 +8,7 @@ import { eq, desc, asc } from "drizzle-orm";
 
 const scriptStatusValues = ["idea", "scripted", "in_production", "in_edit", "ready_to_post", "published"] as const;
 const scriptTypeValues = ["video", "carousel", "blog", "email", "reel"] as const;
-const platformValues = ["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"] as const;
+const platformValues = ["meta", "linkedin", "x", "youtube", "tiktok", "blog", "carousel", "all"] as const;
 const contentGoalValues = ["audience_growth", "llm_seo", "community_engagement"] as const;
 
 export const scriptsRouter = router({

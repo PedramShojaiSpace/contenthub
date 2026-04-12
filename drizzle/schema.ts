@@ -32,6 +32,7 @@ export const platformEnum = mysqlEnum("platform", [
   "youtube",
   "tiktok",
   "blog",
+  "carousel",
   "all",
 ]);
 
@@ -69,6 +70,8 @@ export const contentItems = mysqlTable("content_items", {
   contentGoal: contentGoalEnum.default("audience_growth"),
   // Script Library: link to the script this content item was auto-created from
   linkedScriptId: int("linkedScriptId"),
+  // Carousel: JSON array of slides [{headline, body, imagePrompt, imageUrl}]
+  carouselData: text("carouselData"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

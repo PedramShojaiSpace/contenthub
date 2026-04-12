@@ -740,6 +740,16 @@ export default function CommandCenter() {
     },
   });
 
+  const cleanupTitlesMutation = trpc.ai.cleanupStaleTitles.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      refetch();
+    },
+    onError: (err) => {
+      toast.error("Title cleanup failed: " + err.message);
+    },
+  });
+
   const handleRegenerate = (item: ContentItem) => {
     setRegeneratingId(item.id);
     regenerateImageMutation.mutate({
@@ -1227,6 +1237,20 @@ export default function CommandCenter() {
                   </button>
                 );
               })}
+              {/* Clean Up Titles button */}
+              {items.some((i) => i.title.startsWith("[Research Gap]") || i.title.startsWith("Question to answer") || i.title.startsWith("Answer this")) && (
+                <button
+                  onClick={() => cleanupTitlesMutation.mutate()}
+                  disabled={cleanupTitlesMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-amber-500/50 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                >
+                  {cleanupTitlesMutation.isPending ? (
+                    <><span className="h-3 w-3 border border-amber-600 border-t-transparent rounded-full animate-spin" />Cleaning titles...</>
+                  ) : (
+                    <><Wand2 className="h-3 w-3" /> Clean Up Titles</>
+                  )}
+                </button>
+              )}
               {/* Batch Publish Approved button */}
               {items.filter((i) => i.status === "approved").length > 0 && (
                 <button

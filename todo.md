@@ -1176,3 +1176,21 @@
 - [x] extractCleanIdea() extracts Title line first, then Question line, then strips prefixes — produces a clean topic string for title fallback and LLM context
 - [x] All title fallbacks, metadata extraction prompts, and user messages now use cleanIdea
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Bulk Title Cleanup + Carousel Generator (v70)
+
+### Bulk Title Cleanup
+- [x] Added `ai.cleanupStaleTitles` tRPC mutation: finds all items with [Research Gap]/Question to answer/Answer this prefix, re-runs extractCleanIdea() on rawIdea, updates title in DB
+- [x] Added "Clean Up Titles" amber button in Command Center platform filter row (only visible when stale titles exist)
+- [x] Success toast shows count of items renamed
+
+### Carousel Generator
+- [x] Added `carousel` to Platform enum in schema, routers, and all frontend types
+- [x] Added `ai.generateCarousel` tRPC mutation: idea + platform (meta/linkedin) + slideCount (4-10) + generateImages, returns slides with headline/body/imagePrompt/imageUrl
+- [x] Added carousel to PLATFORMS array and PLATFORM_LABELS in CreationStudio
+- [x] Added carousel controls panel (platform selector + slide count 4-10) in CreationStudio
+- [x] Generate button routes to handleGenerateCarousel when platform=carousel
+- [x] Carousel output: horizontal snap-scroll preview with 1:1 slide images, headline, body, per-slide copy button
+- [x] Download .md button exports all slides as markdown
+- [x] Auto-saves to Command Center on generation
+- [x] 121 tests passing, 0 TypeScript errors

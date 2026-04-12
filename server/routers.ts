@@ -1166,6 +1166,204 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           waterfallMap: blogData.waterfallMap ?? "",
         };
       }),
+
+    // ─── Carousel Generator ────────────────────────────────────────────────────
+    generateCarousel: protectedProcedure
+      .input(
+        z.object({
+          idea: z.string().min(1),
+          platform: z.enum(["meta", "linkedin"]).default("meta"),
+          slideCount: z.number().min(4).max(12).default(7),
+          customInstructions: z.string().optional(),
+          generateImages: z.boolean().default(true),
+          personaId: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Clean idea (strip LLM Projects prefixes)
+        const extractCleanIdea = (raw: string): string => {
+          const titleMatch = raw.match(/^Title:\s*(.+)$/im);
+          if (titleMatch) return titleMatch[1].trim();
+          const questionMatch = raw.match(/^Question to answer:\s*(.+)$/im);
+          if (questionMatch) return questionMatch[1].trim();
+          return raw.replace(/^\[Research Gap\]\s*/i, "").split("\n")[0].trim();
+        };
+        const cleanIdea = extractCleanIdea(input.idea);
+
+        // Load persona context
+        let personaContext = "";
+        if (input.personaId) {
+          try {
+            const db = await getDb();
+            if (db) {
+              const { personas } = await import("../drizzle/schema");
+              const { eq } = await import("drizzle-orm");
+              const found = await db.select().from(personas).where(eq(personas.id, input.personaId));
+              if (found.length > 0) {
+                const p = found[0] as any;
+                const pains: string[] = JSON.parse(p.painPoints ?? "[]");
+                if (pains.length > 0) {
+                  personaContext = `\n\nTARGET PERSONA — ${p.name}: Real pain points: ${pains.slice(0, 5).join("; ")}. Speak directly to these concerns.`;
+                }
+              }
+            }
+          } catch { /* ignore */ }
+        }
+
+        // Load CTA
+        let ctaInjection = "";
+        try {
+          const { getCtaForTopic } = await import("./ctaRouter");
+          const cta = await getCtaForTopic(cleanIdea);
+          ctaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nCRITICAL URL RULE: Use EXACTLY the URL from the CTA block — do NOT substitute any other URL.`;
+        } catch { /* ignore */ }
+
+        const platformLabel = input.platform === "meta" ? "Instagram/Facebook" : "LinkedIn";
+        const slideCountTarget = input.slideCount;
+
+        const systemPrompt = `You are a carousel content strategist for Dr. Pedram Shojai (The Urban Monk) on ${platformLabel}.
+Your task: write a ${slideCountTarget}-slide carousel post on the given topic.
+
+CARROUSEL STRUCTURE:
+- Slide 1 (Cover): Bold hook headline (5-8 words). No body text. This is the scroll-stopper.
+- Slides 2-${slideCountTarget - 1} (Content): Each slide has ONE insight, tip, or step. Short headline (4-7 words) + 2-3 sentence body (max 60 words). One idea per slide — no cramming.
+- Slide ${slideCountTarget} (CTA): Closing slide. Headline: a compelling call to action. Body: 1-2 sentences pointing to the CTA URL from the CTA block.
+
+VOICE: ${input.platform === "meta" ? "Warm, relatable, educational. Bridges science and ancient wisdom. Personal but authoritative." : "Professional, data-informed, challenges conventional thinking. Direct and confident."}
+
+OUTPUT FORMAT — Return ONLY a valid JSON array, no preamble, no explanation:
+[
+  { "slide": 1, "headline": "...", "body": "", "imagePrompt": "..." },
+  { "slide": 2, "headline": "...", "body": "...", "imagePrompt": "..." },
+  ...
+]
+
+IMAGE PROMPT RULES:
+- Each imagePrompt should be 30-50 words describing a photographic or illustrative image for that specific slide
+- Style: warm, editorial wellness photography. Soft golden light, natural textures, no text overlay
+- Cover slide: wide establishing shot or symbolic object
+- Content slides: close-up details, human moments, nature elements that reinforce the slide's insight
+- CTA slide: inviting, forward-looking, hopeful
+
+CRITICAL OUTPUT RULES:
+- Return ONLY the JSON array — no markdown fences, no explanation, no extra text
+- Every slide must have slide number, headline, body (empty string for cover), and imagePrompt
+- Headlines must be punchy and specific — no generic wellness clichés`;
+
+        const userMessage = `Topic: ${cleanIdea}${input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : ""}${personaContext}${ctaInjection}`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+        });
+
+        const rawContent = typeof response.choices?.[0]?.message?.content === "string"
+          ? response.choices[0].message.content
+          : "[]";
+
+        // Parse the JSON array of slides
+        type SlideData = { slide: number; headline: string; body: string; imagePrompt: string; imageUrl?: string };
+        let slides: SlideData[] = [];
+        try {
+          let cleaned = rawContent.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+          const jsonStart = cleaned.indexOf("[");
+          const jsonEnd = cleaned.lastIndexOf("]");
+          if (jsonStart >= 0 && jsonEnd > jsonStart) cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+          slides = JSON.parse(cleaned);
+        } catch (err) {
+          console.warn("[Carousel] Failed to parse slide JSON:", err);
+          throw new Error("Carousel generation failed — could not parse slide structure. Please try again.");
+        }
+
+        // Generate images for each slide in parallel (if requested)
+        if (input.generateImages && slides.length > 0) {
+          const imageStyle = PLATFORM_IMAGE_STYLES.meta ?? DEFAULT_IMAGE_STYLE;
+          const imageResults = await Promise.allSettled(
+            slides.map(async (slide) => {
+              if (!slide.imagePrompt) return { slide: slide.slide, url: undefined };
+              try {
+                const fullPrompt = `${slide.imagePrompt}. Visual style: ${imageStyle}`;
+                const { url } = await generateImage({ prompt: fullPrompt });
+                return { slide: slide.slide, url };
+              } catch {
+                return { slide: slide.slide, url: undefined };
+              }
+            })
+          );
+          for (const result of imageResults) {
+            if (result.status === "fulfilled" && result.value.url) {
+              const s = slides.find((sl) => sl.slide === result.value.slide);
+              if (s) s.imageUrl = result.value.url;
+            }
+          }
+        }
+
+        return {
+          slides,
+          topic: cleanIdea,
+          platform: input.platform,
+          slideCount: slides.length,
+        };
+      }),
+
+    // ─── Bulk Title Cleanup ────────────────────────────────────────────────────
+    cleanupStaleTitles: protectedProcedure
+      .mutation(async () => {
+        const db = await getDb();
+        if (!db) throw new Error("Database unavailable");
+        const { contentItems } = await import("../drizzle/schema");
+        const { like, or } = await import("drizzle-orm");
+
+        // Find all content items with stale title prefixes
+        const staleItems = await db
+          .select()
+          .from(contentItems)
+          .where(
+            or(
+              like(contentItems.title, "[Research Gap]%"),
+              like(contentItems.title, "Question to answer:%"),
+              like(contentItems.title, "Research Gap%"),
+              like(contentItems.title, "Title:%"),
+            )
+          );
+
+        if (staleItems.length === 0) return { renamed: 0, message: "No stale titles found." };
+
+        const extractCleanTitle = (raw: string): string => {
+          // Try to extract from rawIdea first (multi-line LLM Projects format)
+          const titleMatch = raw.match(/^Title:\s*(.+)$/im);
+          if (titleMatch) return titleMatch[1].trim();
+          const questionMatch = raw.match(/^Question to answer:\s*(.+)$/im);
+          if (questionMatch) return questionMatch[1].trim();
+          return raw
+            .replace(/^\[Research Gap\]\s*/i, "")
+            .replace(/^Question to answer:\s*/i, "")
+            .replace(/^Title:\s*/i, "")
+            .replace(/^Research Gap\s*/i, "")
+            .split("\n")[0]
+            .trim();
+        };
+
+        const { eq } = await import("drizzle-orm");
+        let renamed = 0;
+        for (const item of staleItems) {
+          // Use rawIdea if available (has more context), otherwise clean the title itself
+          const sourceText = (item as any).rawIdea || item.title;
+          const cleanTitle = extractCleanTitle(sourceText);
+          if (cleanTitle && cleanTitle !== item.title) {
+            await db
+              .update(contentItems)
+              .set({ title: cleanTitle.slice(0, 255) })
+              .where(eq(contentItems.id, item.id));
+            renamed++;
+          }
+        }
+
+        return { renamed, message: `Renamed ${renamed} of ${staleItems.length} stale titles.` };
+      }),
+
     generateTeleprompterScript: protectedProcedure
       .input(
         z.object({

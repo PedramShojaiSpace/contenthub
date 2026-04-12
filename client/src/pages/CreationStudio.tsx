@@ -77,7 +77,7 @@ function BufferDiagnostic() {
   );
 }
 
-type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "reframe" | "all";
+type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "reframe" | "carousel" | "all";
 
 // Per-platform generated output: text + auto-generated image
 type PlatformOutput = {
@@ -95,6 +95,7 @@ const PLATFORMS: { key: Platform; label: string; icon: React.ReactNode; color: s
   { key: "tiktok", label: "TikTok", icon: <Music2 className="h-4 w-4" />, color: "text-pink-400" },
   { key: "blog", label: "Blog Post", icon: <BookOpen className="h-4 w-4" />, color: "text-emerald-400" },
   { key: "reframe", label: "Reframe Post", icon: <LayoutGrid className="h-4 w-4" />, color: "text-violet-400" },
+  { key: "carousel", label: "Carousel", icon: <LayoutGrid className="h-4 w-4" />, color: "text-fuchsia-400" },
 ];
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -105,6 +106,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   tiktok: "TikTok",
   blog: "Blog Post (theurbanmonk.com)",
   reframe: "Reframe Post (Carousel)",
+  carousel: "Carousel Post (Meta/LinkedIn)",
 };
 
 const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string }> = {
@@ -1037,6 +1039,67 @@ export default function CreationStudio() {
     toast.success("Blog post downloaded as Markdown!");
   };
 
+  // ── Carousel state & mutation ───────────────────────────────────────────────
+  type CarouselSlide = { slide: number; headline: string; body: string; imagePrompt: string; imageUrl?: string };
+  const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[] | null>(null);
+  const [carouselPlatform, setCarouselPlatform] = useState<"meta" | "linkedin">("meta");
+  const [carouselSlideCount, setCarouselSlideCount] = useState(7);
+  const [isCarouselGenerating, setIsCarouselGenerating] = useState(false);
+
+  const generateCarouselMutation = trpc.ai.generateCarousel.useMutation({
+    onSuccess: (data) => {
+      setCarouselSlides(data.slides as CarouselSlide[]);
+      setIsCarouselGenerating(false);
+      toast.success(`Carousel generated — ${data.slideCount} slides ready!`);
+      // Auto-save to Command Center
+      autoSaveMutation.mutate({
+        title: data.topic.slice(0, 80),
+        rawIdea: idea,
+        platform: "carousel" as any,
+        status: "drafting",
+        textContent: (data.slides as CarouselSlide[]).map((s) => `Slide ${s.slide}: ${s.headline}\n${s.body}`).join("\n\n"),
+        personaId: selectedPersonaId ?? undefined,
+        contentGoal: selectedContentGoal ?? undefined,
+      });
+    },
+    onError: (err) => {
+      setIsCarouselGenerating(false);
+      toast.error("Carousel generation failed: " + err.message);
+    },
+  });
+
+  const handleGenerateCarousel = () => {
+    if (!idea.trim()) {
+      toast.error("Please enter an idea first.");
+      return;
+    }
+    setIsCarouselGenerating(true);
+    setCarouselSlides(null);
+    generateCarouselMutation.mutate({
+      idea,
+      platform: carouselPlatform,
+      slideCount: carouselSlideCount,
+      customInstructions: customInstructions || undefined,
+      generateImages: true,
+      personaId: selectedPersonaId ?? undefined,
+    });
+  };
+
+  const handleDownloadCarousel = () => {
+    if (!carouselSlides) return;
+    const md = carouselSlides
+      .map((s) => `## Slide ${s.slide}\n**${s.headline}**\n\n${s.body}\n\n*Image prompt: ${s.imagePrompt}*`)
+      .join("\n\n---\n\n");
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `carousel-${idea.slice(0, 40).replace(/[^a-z0-9]/gi, "-")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Carousel downloaded as Markdown!");
+  };
+
   const handleSaveBlog = () => {
     if (!blogContent) return;
     setSavingPlatform("blog");
@@ -1417,6 +1480,43 @@ export default function CreationStudio() {
               </div>
             </div>
 
+            {/* Carousel controls */}
+            {platform === "carousel" && (
+              <div className="space-y-3 p-3 rounded-lg bg-fuchsia-500/5 border border-fuchsia-500/20">
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="h-4 w-4 text-fuchsia-400" />
+                  <span className="text-xs font-medium text-fuchsia-400">Carousel Settings</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Platform</Label>
+                    <Select value={carouselPlatform} onValueChange={(v) => setCarouselPlatform(v as "meta" | "linkedin")}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="meta">Meta (Instagram/Facebook)</SelectItem>
+                        <SelectItem value="linkedin">LinkedIn</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Slide Count</Label>
+                    <Select value={String(carouselSlideCount)} onValueChange={(v) => setCarouselSlideCount(Number(v))}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[4, 5, 6, 7, 8, 9, 10].map((n) => (
+                          <SelectItem key={n} value={String(n)}>{n} slides</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Common Belief input for Reframe Post */}
             {platform === "reframe" && (
               <div className="space-y-1">
@@ -1432,19 +1532,41 @@ export default function CreationStudio() {
             )}
 
             <Button
-              onClick={platform === "blog" ? handleGenerateBlog : platform === "reframe" ? () => generateReframeMutation.mutate({ topic: idea, commonBelief: commonBelief || undefined }) : handleGenerate}
-              disabled={(platform === "blog" ? isBlogGenerating : platform === "reframe" ? generateReframeMutation.isPending : isGenerating) || !idea.trim()}
+              onClick={
+                platform === "blog" ? handleGenerateBlog
+                : platform === "reframe" ? () => generateReframeMutation.mutate({ topic: idea, commonBelief: commonBelief || undefined })
+                : platform === "carousel" ? handleGenerateCarousel
+                : handleGenerate
+              }
+              disabled={(
+                platform === "blog" ? isBlogGenerating
+                : platform === "reframe" ? generateReframeMutation.isPending
+                : platform === "carousel" ? isCarouselGenerating
+                : isGenerating
+              ) || !idea.trim()}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-11"
             >
-              {(platform === "blog" ? isBlogGenerating : platform === "reframe" ? generateReframeMutation.isPending : isGenerating) ? (
+              {(platform === "blog" ? isBlogGenerating : platform === "reframe" ? generateReframeMutation.isPending : platform === "carousel" ? isCarouselGenerating : isGenerating) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {platform === "blog" ? "Writing blog post + featured image (30–60 seconds)..." : platform === "reframe" ? "Generating Reframe carousel (10–20 seconds)..." : platform === "tiktok" ? "Writing TikTok script + vertical visual (20–40 seconds)..." : "Generating content + images (20–40 seconds)..."}
+                  {platform === "blog" ? "Writing blog post + featured image (30–60 seconds)..."
+                    : platform === "reframe" ? "Generating Reframe carousel (10–20 seconds)..."
+                    : platform === "carousel" ? `Generating ${carouselSlideCount}-slide carousel + images (30–60 seconds)...`
+                    : platform === "tiktok" ? "Writing TikTok script + vertical visual (20–40 seconds)..."
+                    : "Generating content + images (20–40 seconds)..."}
                 </>
               ) : (
                 <>
-                  {platform === "blog" ? <BookOpen className="h-4 w-4 mr-2" /> : platform === "reframe" ? <LayoutGrid className="h-4 w-4 mr-2" /> : platform === "tiktok" ? <Music2 className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                  {platform === "blog" ? "Generate Blog Post" : platform === "reframe" ? "Generate Reframe Post" : platform === "tiktok" ? "Generate TikTok Script + Visual" : "Generate Content + Images"}
+                  {platform === "blog" ? <BookOpen className="h-4 w-4 mr-2" />
+                    : platform === "reframe" ? <LayoutGrid className="h-4 w-4 mr-2" />
+                    : platform === "carousel" ? <LayoutGrid className="h-4 w-4 mr-2" />
+                    : platform === "tiktok" ? <Music2 className="h-4 w-4 mr-2" />
+                    : <Sparkles className="h-4 w-4 mr-2" />}
+                  {platform === "blog" ? "Generate Blog Post"
+                    : platform === "reframe" ? "Generate Reframe Post"
+                    : platform === "carousel" ? `Generate ${carouselSlideCount}-Slide Carousel`
+                    : platform === "tiktok" ? "Generate TikTok Script + Visual"
+                    : "Generate Content + Images"}
                 </>
               )}
             </Button>
@@ -2622,6 +2744,108 @@ export default function CreationStudio() {
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{reframeCaption}</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Carousel Output */}
+        {platform === "carousel" && carouselSlides && carouselSlides.length > 0 && (
+          <Card className="bg-card border-border overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="h-4 w-4 text-fuchsia-400" />
+                  <CardTitle className="text-base font-semibold text-foreground">
+                    Carousel — {carouselSlides.length} Slides
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px] border-fuchsia-500/40 text-fuchsia-400">
+                    {carouselPlatform === "meta" ? "Meta" : "LinkedIn"}
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={handleDownloadCarousel}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Download .md
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      const text = carouselSlides
+                        .map((s) => `SLIDE ${s.slide}: ${s.headline}\n${s.body}`)
+                        .join("\n\n");
+                      navigator.clipboard.writeText(text);
+                      toast.success("All slides copied to clipboard");
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy All
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {/* Horizontal scroll slide preview */}
+              <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory">
+                {carouselSlides.map((slide) => (
+                  <div
+                    key={slide.slide}
+                    className="shrink-0 w-64 snap-start rounded-xl border border-border bg-muted/20 overflow-hidden"
+                  >
+                    {/* Slide image */}
+                    {slide.imageUrl ? (
+                      <div className="relative w-full aspect-square overflow-hidden bg-muted/40">
+                        <img
+                          src={slide.imageUrl}
+                          alt={slide.headline}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-2 left-2">
+                          <span className="text-[10px] font-bold bg-black/60 text-white rounded px-1.5 py-0.5">
+                            {slide.slide} / {carouselSlides.length}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full aspect-square bg-gradient-to-br from-fuchsia-500/10 to-violet-500/10 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-fuchsia-400/40">{slide.slide}</span>
+                      </div>
+                    )}
+                    {/* Slide copy */}
+                    <div className="p-3 space-y-1.5">
+                      <p className="text-xs font-bold text-foreground leading-tight">{slide.headline}</p>
+                      {slide.body && (
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">{slide.body}</p>
+                      )}
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[10px] text-muted-foreground/60 italic truncate max-w-[160px]">
+                          {slide.imagePrompt.slice(0, 50)}...
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 shrink-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${slide.headline}\n\n${slide.body}`);
+                            toast.success(`Slide ${slide.slide} copied`);
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Scroll horizontally to preview all slides · Auto-saved to Command Center
+              </p>
             </CardContent>
           </Card>
         )}

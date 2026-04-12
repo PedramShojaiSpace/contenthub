@@ -49,7 +49,7 @@ import { useLocation } from "wouter";
 
 type ScriptType = "video" | "carousel" | "blog" | "email" | "reel";
 type ProductionStatus = "idea" | "scripted" | "in_production" | "in_edit" | "ready_to_post" | "published";
-type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all";
+type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "carousel" | "all";
 type ContentGoal = "audience_growth" | "llm_seo" | "community_engagement";
 
 interface Script {
@@ -113,6 +113,7 @@ const PLATFORM_BADGE: Record<Platform, string> = {
   youtube:  "bg-red-50 text-red-700 border border-red-200",
   tiktok:   "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200",
   blog:     "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  carousel: "bg-violet-50 text-violet-700 border border-violet-200",
   all:      "bg-muted text-muted-foreground border border-border",
 };
 

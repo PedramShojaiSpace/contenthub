@@ -1145,3 +1145,9 @@
 - [x] ChevronDown/ChevronRight chevron indicates open/closed state
 - [x] Sub-items use indented border-left styling for visual hierarchy
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Sidebar Nav — Strategy Group (v67)
+- [x] Added collapsible "Strategy" group (Compass icon) containing Strategy Brain and Channel Watchlist
+- [x] Removed both from top-level nav; top-level is now 7 items
+- [x] Strategy group auto-expands when either sub-route is active
+- [x] 121 tests passing, 0 TypeScript errors

@@ -43,6 +43,7 @@ import {
   ChevronDown,
   ChevronRight,
   Sparkles,
+  Compass,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -53,14 +54,20 @@ import { Button } from "./ui/button";
 const topNavItems = [
   { icon: LayoutDashboard, label: "Command Center", path: "/" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
-  { icon: Brain, label: "Strategy Brain", path: "/strategy" },
   { icon: Film, label: "Script Library", path: "/scripts" },
   { icon: Image, label: "Asset Library", path: "/assets" },
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
-  { icon: Rss, label: "Channel Watchlist", path: "/channels" },
   { icon: Library, label: "Media Vault", path: "/media-vault" },
   { icon: Video, label: "Create Webinar", path: "/webinar" },
 ];
+
+// Strategy sub-items (grouped under collapsible parent)
+const strategyItems = [
+  { icon: Brain, label: "Strategy Brain", path: "/strategy" },
+  { icon: Rss, label: "Channel Watchlist", path: "/channels" },
+];
+
+const strategyPaths = new Set(strategyItems.map((i) => i.path));
 
 // Intelligence sub-items (grouped under collapsible parent)
 const intelligenceItems = [
@@ -169,9 +176,18 @@ function DashboardLayoutContent({
     if (isIntelligenceActive) setIntelligenceOpen(true);
   }, [isIntelligenceActive]);
 
+  // Auto-expand Strategy group when a strategy route is active
+  const isStrategyActive = strategyPaths.has(location);
+  const [strategyOpen, setStrategyOpen] = useState(isStrategyActive);
+
+  useEffect(() => {
+    if (isStrategyActive) setStrategyOpen(true);
+  }, [isStrategyActive]);
+
   const activeLabel =
     topNavItems.find((i) => i.path === location)?.label ??
     intelligenceItems.find((i) => i.path === location)?.label ??
+    strategyItems.find((i) => i.path === location)?.label ??
     "Menu";
 
   useEffect(() => {
@@ -254,6 +270,52 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
+
+              {/* Strategy Group — collapsible */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isStrategyActive}
+                  onClick={() => {
+                    if (isCollapsed) {
+                      setLocation(strategyItems[0].path);
+                    } else {
+                      setStrategyOpen((prev) => !prev);
+                    }
+                  }}
+                  tooltip="Strategy"
+                  className={`h-10 transition-all font-normal ${isStrategyActive ? "text-primary" : ""}`}
+                >
+                  <Compass className={`h-4 w-4 ${isStrategyActive ? "text-primary" : ""}`} />
+                  <span className="flex-1">Strategy</span>
+                  {!isCollapsed && (
+                    strategyOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </SidebarMenuButton>
+
+                {strategyOpen && !isCollapsed && (
+                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+                    {strategyItems.map((sub) => {
+                      const isActive = location === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          onClick={() => setLocation(sub.path)}
+                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                            ${isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            }`}
+                        >
+                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenuItem>
 
               {/* Intelligence Group — collapsible */}
               <SidebarMenuItem>

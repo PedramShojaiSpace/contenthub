@@ -1168,3 +1168,11 @@
 - [x] Fixed reframeCtaText: now uses correct go.theurbanmonk.com URL
 - [x] Fixed StrategyBrain.tsx placeholder URLs
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Fix Blog Generation + Title Bug from LLM Projects Publish-to-All (v69)
+- [x] Root cause 1: title fallback used input.idea.slice(0,80) which produced "Research Gap..." or "Question to answer..." when launched from LLM Projects
+- [x] Root cause 2: blog generation was routing correctly to generateBlog (not generateContent) — the tiny blog was caused by the idea field containing multi-line LLM Projects context that confused the LLM
+- [x] Fixed: added extractCleanIdea() helper in both generateContent and generateBlog mutations
+- [x] extractCleanIdea() extracts Title line first, then Question line, then strips prefixes — produces a clean topic string for title fallback and LLM context
+- [x] All title fallbacks, metadata extraction prompts, and user messages now use cleanIdea
+- [x] 121 tests passing, 0 TypeScript errors

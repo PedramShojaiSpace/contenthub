@@ -411,6 +411,25 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        // Strip internal prefixes like [Research Gap] from the idea before using as title/content
+        // For multi-line LLM Projects format ("Question to answer: X\nTitle: Y\nTarget keyword: Z"),
+        // extract the Title line as the primary idea; fall back to the Question line, then the raw idea.
+        const extractCleanIdea = (raw: string): string => {
+          const titleMatch = raw.match(/^Title:\s*(.+)$/im);
+          if (titleMatch) return titleMatch[1].trim();
+          const questionMatch = raw.match(/^Question to answer:\s*(.+)$/im);
+          if (questionMatch) return questionMatch[1].trim();
+          // Strip [Research Gap] prefix and any label prefixes from a single-line idea
+          return raw
+            .replace(/^\[Research Gap\]\s*/i, "")
+            .replace(/^Question to answer:\s*/i, "")
+            .replace(/^Title:\s*/i, "")
+            .replace(/^Target keyword:\s*/i, "")
+            .split("\n")[0] // take first line if still multi-line
+            .trim();
+        };
+        const cleanIdea = extractCleanIdea(input.idea);
+
         const platforms =
           input.platform === "all"
             ? (["linkedin", "meta", "x", "youtube"] as const)
@@ -508,8 +527,8 @@ export const appRouter = router({
             const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
             const gapQueryLine = input.gapQueryText ? `\n\nThis content should directly address the competitor gap query: "${input.gapQueryText}" — position Pedram's unique perspective as the answer.` : "";
             const userMessage = input.customInstructions
-              ? `Raw idea: ${input.idea}\n\nAdditional instructions: ${input.customInstructions}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`
-              : `Raw idea: ${input.idea}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`;
+              ? `Raw idea: ${cleanIdea}\n\nAdditional instructions: ${input.customInstructions}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`
+              : `Raw idea: ${cleanIdea}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`;
 
             const response = await invokeLLM({
               messages: [
@@ -535,7 +554,7 @@ export const appRouter = router({
               ],
             });
             const rawTitle = titleResponse.choices?.[0]?.message?.content;
-            const title = typeof rawTitle === "string" ? rawTitle.trim().replace(/^["']|["']$/g, "").slice(0, 80) : input.idea.slice(0, 80);
+            const title = typeof rawTitle === "string" ? rawTitle.trim().replace(/^["']|["']$/g, "").slice(0, 80) : cleanIdea.slice(0, 80);
 
             return { platform, text, title };
           })
@@ -714,6 +733,24 @@ Rules:
         })
       )
       .mutation(async ({ input }) => {
+        // Strip internal prefixes like [Research Gap] from the idea before using as title/content
+        // For multi-line LLM Projects format ("Question to answer: X\nTitle: Y\nTarget keyword: Z"),
+        // extract the Title line as the primary idea; fall back to the Question line, then the raw idea.
+        const extractCleanIdea = (raw: string): string => {
+          const titleMatch = raw.match(/^Title:\s*(.+)$/im);
+          if (titleMatch) return titleMatch[1].trim();
+          const questionMatch = raw.match(/^Question to answer:\s*(.+)$/im);
+          if (questionMatch) return questionMatch[1].trim();
+          return raw
+            .replace(/^\[Research Gap\]\s*/i, "")
+            .replace(/^Question to answer:\s*/i, "")
+            .replace(/^Title:\s*/i, "")
+            .replace(/^Target keyword:\s*/i, "")
+            .split("\n")[0]
+            .trim();
+        };
+        const cleanIdea = extractCleanIdea(input.idea);
+
         // Load persona pain points from DB if personaId is provided
         let personaContext = "";
         if (input.personaId) {
@@ -848,7 +885,7 @@ Rules:
 
         // Step 1: Generate the full blog article as structured JSON
         const userMessage = [
-          `Raw idea: ${input.idea}`,
+          `Raw idea: ${cleanIdea}`,
           input.gapQueryText ? `\nThis article should directly answer the LLM search query: "${input.gapQueryText}"` : "",
           input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
           personaContext,
@@ -1005,7 +1042,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
             },
             {
               role: "user",
-              content: `Extract SEO metadata from this article about: ${input.idea}\n\nARTICLE:\n${articleBody.slice(0, 3000)}`,
+              content: `Extract SEO metadata from this article about: ${cleanIdea}\n\nARTICLE:\n${articleBody.slice(0, 3000)}`,
             },
           ],
           response_format: {
@@ -1045,8 +1082,8 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           faqSection?: string;
           waterfallMap?: string;
         } = {
-          title: input.idea.slice(0, 80),
-          slug: input.idea.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),
+          title: cleanIdea.slice(0, 80),
+          slug: cleanIdea.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),
           metaDescription: "",
           focusKeyword: "",
           semanticKeywords: [],

@@ -1135,3 +1135,13 @@
 - [x] Real success/error toasts on form submit
 - [x] Owner notified via notifyOwner on every new opt-in
 - [x] 121 tests passing (3 Kajabi credential tests confirm live 200 response), 0 TypeScript errors
+
+## Sidebar Nav Cleanup — Intelligence Group (v66)
+- [x] Grouped all intelligence/analysis pages under a collapsible "Intelligence" parent (Sparkles icon)
+- [x] Sub-items: Research, Typeform, Press, Intelligence Hub, Webinar Intel, Avatar, LLM Projects
+- [x] Top-level items: Command Center, Creation Studio, Strategy Brain, Script Library, Asset Library, Landing Pages, Channel Watchlist, Media Vault, Create Webinar
+- [x] Collapsible group auto-expands when any sub-route is active (useEffect on location)
+- [x] Collapsed sidebar shows Sparkles icon with "Intelligence" tooltip
+- [x] ChevronDown/ChevronRight chevron indicates open/closed state
+- [x] Sub-items use indented border-left styling for visual hierarchy
+- [x] 121 tests passing, 0 TypeScript errors

@@ -21,30 +21,59 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Brain, Film, Globe, Image, LayoutDashboard, LogOut, PanelLeft, PenSquare, FlaskConical, Rss, ClipboardList, Award, Cpu, Library, Users, Video, Zap, BarChart3 } from "lucide-react";
+import {
+  Brain,
+  Film,
+  Globe,
+  Image,
+  LayoutDashboard,
+  LogOut,
+  PanelLeft,
+  PenSquare,
+  FlaskConical,
+  Rss,
+  ClipboardList,
+  Award,
+  Cpu,
+  Library,
+  Users,
+  Video,
+  Zap,
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-const menuItems = [
+// Top-level nav items (always visible)
+const topNavItems = [
   { icon: LayoutDashboard, label: "Command Center", path: "/" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
-  { icon: FlaskConical, label: "Research Intelligence", path: "/research" },
   { icon: Brain, label: "Strategy Brain", path: "/strategy" },
   { icon: Film, label: "Script Library", path: "/scripts" },
   { icon: Image, label: "Asset Library", path: "/assets" },
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
   { icon: Rss, label: "Channel Watchlist", path: "/channels" },
-  { icon: ClipboardList, label: "Typeform Intelligence", path: "/typeform" },
-  { icon: Award, label: "Press Intelligence", path: "/press" },
-  { icon: Cpu, label: "Intelligence Hub", path: "/intelligence" },
   { icon: Library, label: "Media Vault", path: "/media-vault" },
-  { icon: Users, label: "Avatar Intelligence", path: "/avatar" },
   { icon: Video, label: "Create Webinar", path: "/webinar" },
-  { icon: Zap, label: "Webinar Intelligence", path: "/webinar-intelligence" },
+];
+
+// Intelligence sub-items (grouped under collapsible parent)
+const intelligenceItems = [
+  { icon: FlaskConical, label: "Research", path: "/research" },
+  { icon: ClipboardList, label: "Typeform", path: "/typeform" },
+  { icon: Award, label: "Press", path: "/press" },
+  { icon: Cpu, label: "Intelligence Hub", path: "/intelligence" },
+  { icon: Zap, label: "Webinar Intel", path: "/webinar-intelligence" },
+  { icon: Users, label: "Avatar", path: "/avatar" },
   { icon: BarChart3, label: "LLM Projects", path: "/llm-projects" },
 ];
+
+const intelligencePaths = new Set(intelligenceItems.map((i) => i.path));
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 260;
@@ -129,8 +158,21 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find((item) => item.path === location);
   const isMobile = useIsMobile();
+
+  // Auto-expand Intelligence group when an intelligence route is active
+  const isIntelligenceActive = intelligencePaths.has(location);
+  const [intelligenceOpen, setIntelligenceOpen] = useState(isIntelligenceActive);
+
+  // Keep group open when navigating to an intelligence sub-route
+  useEffect(() => {
+    if (isIntelligenceActive) setIntelligenceOpen(true);
+  }, [isIntelligenceActive]);
+
+  const activeLabel =
+    topNavItems.find((i) => i.path === location)?.label ??
+    intelligenceItems.find((i) => i.path === location)?.label ??
+    "Menu";
 
   useEffect(() => {
     if (isCollapsed) {
@@ -195,7 +237,8 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0 pt-2">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map((item) => {
+              {/* Top-level nav items */}
+              {topNavItems.map((item) => {
                 const isActive = location === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>
@@ -211,6 +254,55 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
+
+              {/* Intelligence Group — collapsible */}
+              <SidebarMenuItem>
+                {/* Group header button */}
+                <SidebarMenuButton
+                  isActive={isIntelligenceActive}
+                  onClick={() => {
+                    if (isCollapsed) {
+                      // When sidebar is icon-only, clicking navigates to first sub-item
+                      setLocation(intelligenceItems[0].path);
+                    } else {
+                      setIntelligenceOpen((prev) => !prev);
+                    }
+                  }}
+                  tooltip="Intelligence"
+                  className={`h-10 transition-all font-normal ${isIntelligenceActive ? "text-primary" : ""}`}
+                >
+                  <Sparkles className={`h-4 w-4 ${isIntelligenceActive ? "text-primary" : ""}`} />
+                  <span className="flex-1">Intelligence</span>
+                  {!isCollapsed && (
+                    intelligenceOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </SidebarMenuButton>
+
+                {/* Sub-items — only shown when expanded and sidebar is open */}
+                {intelligenceOpen && !isCollapsed && (
+                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+                    {intelligenceItems.map((sub) => {
+                      const isActive = location === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          onClick={() => setLocation(sub.path)}
+                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                            ${isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            }`}
+                        >
+                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarContent>
 
@@ -261,7 +353,7 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <span className="tracking-tight text-foreground font-medium">
-                {activeMenuItem?.label ?? "Menu"}
+                {activeLabel}
               </span>
             </div>
           </div>

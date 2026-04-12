@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { generateImage } from "./_core/imageGeneration";
@@ -1710,6 +1711,58 @@ CAPTION: [caption text]`;
             status: "scheduled",
             notes: `Buffer carousel ID: ${result.bufferId ?? "queued"}`,
           });
+        }
+
+        return result;
+      }),
+
+    // Upload a base64 PNG data URL to S3 and return the CDN URL
+    uploadCarouselImage: protectedProcedure
+      .input(z.object({ dataUrl: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const { storagePut } = await import("./storage");
+        // Strip the data URL prefix
+        const matches = input.dataUrl.match(/^data:([a-zA-Z0-9+/]+\/[a-zA-Z0-9+/]+);base64,(.+)$/);
+        if (!matches) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid data URL" });
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, "base64");
+        const suffix = Math.random().toString(36).slice(2, 8);
+        const key = `carousel-slides/${Date.now()}-${suffix}.png`;
+        const { url } = await storagePut(key, buffer, mimeType);
+        return { url };
+      }),
+
+    // Direct Meta Content Publishing API — carousel
+    publishCarouselToMeta: protectedProcedure
+      .input(
+        z.object({
+          contentItemId: z.number().optional(),
+          caption: z.string().min(1),
+          imageUrls: z.array(z.string().url()).min(2).max(10),
+          instagram: z.boolean().default(true),
+          facebook: z.boolean().default(true),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { publishCarouselToMeta } = await import("./metaPublisher");
+        const result = await publishCarouselToMeta(
+          input.imageUrls,
+          input.caption,
+          { instagram: input.instagram, facebook: input.facebook }
+        );
+
+        // Update content item status
+        if (input.contentItemId) {
+          const igOk = result.instagram?.success;
+          const fbOk = result.facebook?.success;
+          if (igOk || fbOk) {
+            const notes = [
+              igOk ? `IG post: ${result.instagram!.postId}` : `IG failed: ${result.instagram?.error}`,
+              fbOk ? `FB post: ${result.facebook!.postId}` : `FB failed: ${result.facebook?.error}`,
+            ].filter(Boolean).join(" | ");
+            await updateContentItem(input.contentItemId, { status: "published", notes });
+          }
         }
 
         return result;

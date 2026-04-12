@@ -41,7 +41,8 @@ import {
   LayoutGrid,
   BookMarked,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { slidesToDataUrls, type CarouselSlideData, type SlideType } from "@/components/CarouselSlideRenderer";
 import { FlaskConical, Globe, Target, Swords, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
@@ -1040,24 +1041,43 @@ export default function CreationStudio() {
   };
 
   // ── Carousel state & mutation ───────────────────────────────────────────────
-  type CarouselSlide = { slide: number; headline: string; body: string; imagePrompt: string; imageUrl?: string };
+  // CarouselSlide extends CarouselSlideData from the renderer
+  type CarouselSlide = CarouselSlideData;
   const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[] | null>(null);
+  const [carouselRenderedUrls, setCarouselRenderedUrls] = useState<string[]>([]);
+  const [carouselIsRendering, setCarouselIsRendering] = useState(false);
   const [carouselPlatform, setCarouselPlatform] = useState<"meta" | "linkedin">("meta");
   const [carouselSlideCount, setCarouselSlideCount] = useState(7);
   const [isCarouselGenerating, setIsCarouselGenerating] = useState(false);
 
   const generateCarouselMutation = trpc.ai.generateCarousel.useMutation({
-    onSuccess: (data) => {
-      setCarouselSlides(data.slides as CarouselSlide[]);
+    onSuccess: async (data) => {
+      // Assign slide types: first = cover, last = cta, rest = content
+      const typedSlides: CarouselSlide[] = (data.slides as any[]).map((s, i, arr) => ({
+        ...s,
+        type: (i === 0 ? "cover" : i === arr.length - 1 ? "cta" : "content") as SlideType,
+        bullets: undefined,
+      }));
+      setCarouselSlides(typedSlides);
       setIsCarouselGenerating(false);
       toast.success(`Carousel generated — ${data.slideCount} slides ready!`);
+      // Render slides to canvas
+      setCarouselIsRendering(true);
+      try {
+        const urls = await slidesToDataUrls(typedSlides);
+        setCarouselRenderedUrls(urls);
+      } catch (err) {
+        console.warn("[Carousel] Render failed:", err);
+      } finally {
+        setCarouselIsRendering(false);
+      }
       // Auto-save to Command Center
       autoSaveMutation.mutate({
         title: data.topic.slice(0, 80),
         rawIdea: idea,
         platform: "carousel" as any,
         status: "drafting",
-        textContent: (data.slides as CarouselSlide[]).map((s) => `Slide ${s.slide}: ${s.headline}\n${s.body}`).join("\n\n"),
+        textContent: typedSlides.map((s) => `Slide ${s.slide}: ${s.headline}\n${s.body}`).join("\n\n"),
         personaId: selectedPersonaId ?? undefined,
         contentGoal: selectedContentGoal ?? undefined,
       });
@@ -1088,7 +1108,7 @@ export default function CreationStudio() {
   const handleDownloadCarousel = () => {
     if (!carouselSlides) return;
     const md = carouselSlides
-      .map((s) => `## Slide ${s.slide}\n**${s.headline}**\n\n${s.body}\n\n*Image prompt: ${s.imagePrompt}*`)
+      .map((s) => `## Slide ${s.slide}\n**${s.headline}**\n\n${s.body}`)
       .join("\n\n---\n\n");
     const blob = new Blob([md], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
@@ -1100,9 +1120,97 @@ export default function CreationStudio() {
     toast.success("Carousel downloaded as Markdown!");
   };
 
-  // ── Carousel Buffer Push ─────────────────────────────────────────────────
+  const handleDownloadCarouselZip = async () => {
+    if (!carouselSlides || carouselRenderedUrls.length === 0) return;
+    try {
+      // Dynamically import JSZip
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      const slug = idea.slice(0, 40).replace(/[^a-z0-9]/gi, "-").toLowerCase();
+      // Add each rendered PNG
+      for (let i = 0; i < carouselRenderedUrls.length; i++) {
+        const dataUrl = carouselRenderedUrls[i];
+        const base64 = dataUrl.split(",")[1];
+        const slide = carouselSlides[i];
+        const filename = `slide-${String(i + 1).padStart(2, "0")}-${slide.headline.slice(0, 30).replace(/[^a-z0-9]/gi, "-").toLowerCase()}.png`;
+        zip.file(filename, base64, { base64: true });
+      }
+      // Add copy doc
+      const copyDoc = carouselSlides
+        .map((s) => `## Slide ${s.slide}: ${s.headline}\n\n${s.body}`)
+        .join("\n\n---\n\n");
+      zip.file("copy.md", copyDoc);
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `carousel-${slug}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${carouselRenderedUrls.length} slides + copy doc as ZIP!`);
+    } catch (err) {
+      console.error("ZIP download failed:", err);
+      toast.error("ZIP download failed — try again.");
+    }
+  };
+
+  // ── Carousel Meta Publish ─────────────────────────────────────────────────
   const [carouselCaption, setCarouselCaption] = useState("");
   const [isCarouselPushing, setIsCarouselPushing] = useState(false);
+  const [isCarouselPublishing, setIsCarouselPublishing] = useState(false);
+  const [carouselMetaTargets, setCarouselMetaTargets] = useState({ instagram: true, facebook: true });
+  const [carouselMetaResult, setCarouselMetaResult] = useState<null | { instagram?: { success: boolean; postId: string; error?: string }; facebook?: { success: boolean; postId: string; error?: string } }>(null);
+
+  const publishCarouselToMetaMutation = trpc.syndication.publishCarouselToMeta.useMutation({
+    onSuccess: (data) => {
+      setCarouselMetaResult(data);
+      setIsCarouselPublishing(false);
+      const igOk = data.instagram?.success;
+      const fbOk = data.facebook?.success;
+      if (igOk || fbOk) {
+        toast.success(`Carousel published to Meta! ${igOk ? "Instagram ✓" : ""} ${fbOk ? "Facebook ✓" : ""}`.trim());
+      } else {
+        toast.error("Meta publish failed — check the error details below.");
+      }
+    },
+    onError: (err) => {
+      setIsCarouselPublishing(false);
+      toast.error("Meta publish error: " + err.message);
+    },
+  });
+
+  const uploadCarouselImageMutation = trpc.syndication.uploadCarouselImage.useMutation();
+
+  const handlePublishCarouselToMeta = async () => {
+    if (carouselRenderedUrls.length < 2) {
+      toast.error("Need at least 2 rendered slides to publish a carousel.");
+      return;
+    }
+    if (!carouselMetaTargets.instagram && !carouselMetaTargets.facebook) {
+      toast.error("Select at least one target (Instagram or Facebook).");
+      return;
+    }
+    setIsCarouselPublishing(true);
+    setCarouselMetaResult(null);
+    // Upload rendered PNGs to S3 first, then pass CDN URLs to Meta
+    try {
+      const uploadedUrls: string[] = [];
+      for (const dataUrl of carouselRenderedUrls) {
+        const result = await uploadCarouselImageMutation.mutateAsync({ dataUrl });
+        uploadedUrls.push(result.url);
+      }
+      const caption = carouselCaption.trim() || (carouselSlides?.[0]?.headline ?? "Check this out!");
+      publishCarouselToMetaMutation.mutate({
+        caption,
+        imageUrls: uploadedUrls,
+        instagram: carouselMetaTargets.instagram,
+        facebook: carouselMetaTargets.facebook,
+      });
+    } catch (err: any) {
+      setIsCarouselPublishing(false);
+      toast.error("Upload failed: " + err.message);
+    }
+  };
   const [carouselPushResult, setCarouselPushResult] = useState<{ success: boolean; message: string } | null>(null);
   const [savedCarouselItemId, setSavedCarouselItemId] = useState<number | null>(null);
 
@@ -2820,10 +2928,11 @@ export default function CreationStudio() {
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-xs"
-                    onClick={handleDownloadCarousel}
+                    onClick={handleDownloadCarouselZip}
+                    disabled={carouselRenderedUrls.length === 0}
                   >
                     <Download className="h-3 w-3 mr-1" />
-                    Download .md
+                    Download ZIP
                   </Button>
                   <Button
                     variant="ghost"
@@ -2844,110 +2953,140 @@ export default function CreationStudio() {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              {/* Horizontal scroll slide preview */}
-              <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory">
-                {carouselSlides.map((slide) => (
-                  <div
-                    key={slide.slide}
-                    className="shrink-0 w-64 snap-start rounded-xl border border-border bg-muted/20 overflow-hidden"
-                  >
-                    {/* Slide image */}
-                    {slide.imageUrl ? (
-                      <div className="relative w-full aspect-square overflow-hidden bg-muted/40">
-                        <img
-                          src={slide.imageUrl}
-                          alt={slide.headline}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-2 left-2">
-                          <span className="text-[10px] font-bold bg-black/60 text-white rounded px-1.5 py-0.5">
-                            {slide.slide} / {carouselSlides.length}
-                          </span>
-                        </div>
+              {/* Canvas-rendered slide preview */}
+              {carouselIsRendering && (
+                <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm">Rendering slides...</span>
+                </div>
+              )}
+              {!carouselIsRendering && (
+                <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory">
+                  {carouselSlides.map((slide, idx) => (
+                    <div
+                      key={slide.slide}
+                      className="shrink-0 w-56 snap-start rounded-xl border border-border bg-muted/20 overflow-hidden"
+                    >
+                      {/* Canvas-rendered slide image */}
+                      <div className="relative w-full aspect-square overflow-hidden bg-[#0f1117]">
+                        {carouselRenderedUrls[idx] ? (
+                          <img
+                            src={carouselRenderedUrls[idx]}
+                            alt={slide.headline}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-2xl font-bold text-amber-400/40">{slide.slide}</span>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="w-full aspect-square bg-gradient-to-br from-fuchsia-500/10 to-violet-500/10 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-fuchsia-400/40">{slide.slide}</span>
-                      </div>
-                    )}
-                    {/* Slide copy */}
-                    <div className="p-3 space-y-1.5">
-                      <p className="text-xs font-bold text-foreground leading-tight">{slide.headline}</p>
-                      {slide.body && (
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">{slide.body}</p>
-                      )}
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] text-muted-foreground/60 italic truncate max-w-[160px]">
-                          {slide.imagePrompt.slice(0, 50)}...
-                        </span>
+                      {/* Slide copy below */}
+                      <div className="p-3 space-y-1.5">
+                        <p className="text-xs font-bold text-foreground leading-tight">{slide.headline}</p>
+                        {slide.body && (
+                          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3">{slide.body}</p>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-5 w-5 p-0 shrink-0"
+                          className="h-5 w-full px-2 text-[10px] text-muted-foreground justify-start"
                           onClick={() => {
                             navigator.clipboard.writeText(`${slide.headline}\n\n${slide.body}`);
                             toast.success(`Slide ${slide.slide} copied`);
                           }}
                         >
-                          <Copy className="h-3 w-3" />
+                          <Copy className="h-3 w-3 mr-1" /> Copy text
                         </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mt-2 text-center">
-                Scroll horizontally to preview all slides · Auto-saved to Command Center
+                Branded slide templates · 1080×1080 · Auto-saved to Command Center
               </p>
 
-              {/* Buffer Push Panel — Meta only */}
-              {carouselPlatform === "meta" && (
+              {/* Direct Meta Publish Panel */}
+              {carouselPlatform === "meta" && carouselRenderedUrls.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-border space-y-3">
                   <div className="flex items-center gap-2">
                     <Facebook className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm font-medium text-foreground">Push to Buffer (Meta)</span>
-                    <Badge variant="outline" className="text-[10px] border-blue-500/40 text-blue-400">Instagram + Facebook</Badge>
+                    <span className="text-sm font-medium text-foreground">Publish to Meta</span>
+                    <Badge variant="outline" className="text-[10px] border-blue-500/40 text-blue-400">Direct API</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Sends all {carouselSlides.filter((s) => s.imageUrl).length} slide images as a multi-image post to your connected Meta channels.
-                    {carouselSlides.filter((s) => !s.imageUrl).length > 0 && (
-                      <span className="text-amber-400 ml-1">{carouselSlides.filter((s) => !s.imageUrl).length} slides missing images — only slides with images will be included.</span>
-                    )}
+                    Posts carousel directly to Instagram and/or Facebook via Meta Content Publishing API.
+                    Images are uploaded from CDN URLs — no Buffer required.
                   </p>
+                  {/* Target toggles */}
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={carouselMetaTargets.instagram}
+                        onChange={(e) => setCarouselMetaTargets((t) => ({ ...t, instagram: e.target.checked }))}
+                        className="rounded border-border"
+                      />
+                      <span className="text-xs text-foreground">Instagram</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={carouselMetaTargets.facebook}
+                        onChange={(e) => setCarouselMetaTargets((t) => ({ ...t, facebook: e.target.checked }))}
+                        className="rounded border-border"
+                      />
+                      <span className="text-xs text-foreground">Facebook Page</span>
+                    </label>
+                  </div>
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Caption (optional — defaults to cover slide headline)</Label>
+                    <Label className="text-xs text-muted-foreground">Caption</Label>
                     <textarea
                       value={carouselCaption}
                       onChange={(e) => setCarouselCaption(e.target.value)}
-                      placeholder={carouselSlides[0]?.headline ?? "Enter caption for the carousel post..."}
+                      placeholder={carouselSlides[0]?.headline ?? "Enter caption..."}
                       rows={3}
                       className="w-full text-sm bg-muted/30 border border-border rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
                     />
-                    <p className="text-[10px] text-muted-foreground">{carouselCaption.length} chars{carouselCaption.length > 2200 && <span className="text-red-400 ml-1">Instagram caption limit is 2,200 chars</span>}</p>
+                    <p className="text-[10px] text-muted-foreground">{carouselCaption.length} chars{carouselCaption.length > 2200 && <span className="text-red-400 ml-1"> — Instagram limit is 2,200</span>}</p>
                   </div>
-                  {carouselPushResult && (
-                    <div className={`text-xs rounded-md px-3 py-2 ${
-                      carouselPushResult.success
-                        ? "bg-green-500/10 border border-green-500/30 text-green-400"
-                        : "bg-red-500/10 border border-red-500/30 text-red-400"
-                    }`}>
-                      {carouselPushResult.message}
+                  {carouselMetaResult && (
+                    <div className="space-y-1.5">
+                      {carouselMetaResult.instagram && (
+                        <div className={`text-xs rounded-md px-3 py-2 ${
+                          carouselMetaResult.instagram.success
+                            ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                            : "bg-red-500/10 border border-red-500/30 text-red-400"
+                        }`}>
+                          Instagram: {carouselMetaResult.instagram.success ? `✓ Published (${carouselMetaResult.instagram.postId})` : `✗ ${carouselMetaResult.instagram.error}`}
+                        </div>
+                      )}
+                      {carouselMetaResult.facebook && (
+                        <div className={`text-xs rounded-md px-3 py-2 ${
+                          carouselMetaResult.facebook.success
+                            ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                            : "bg-red-500/10 border border-red-500/30 text-red-400"
+                        }`}>
+                          Facebook: {carouselMetaResult.facebook.success ? `✓ Published (${carouselMetaResult.facebook.postId})` : `✗ ${carouselMetaResult.facebook.error}`}
+                        </div>
+                      )}
                     </div>
                   )}
                   <Button
-                    onClick={handlePushCarouselToBuffer}
-                    disabled={isCarouselPushing || carouselSlides.filter((s) => s.imageUrl).length === 0}
+                    onClick={handlePublishCarouselToMeta}
+                    disabled={isCarouselPublishing || carouselRenderedUrls.length < 2 || (!carouselMetaTargets.instagram && !carouselMetaTargets.facebook)}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                     size="sm"
                   >
-                    {isCarouselPushing ? (
-                      <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />Pushing to Buffer...</>
+                    {isCarouselPublishing ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />Publishing to Meta...</>
                     ) : (
-                      <><Send className="h-3.5 w-3.5 mr-2" />Push Carousel to Buffer ({carouselSlides.filter((s) => s.imageUrl).length} images)</>
+                      <><Send className="h-3.5 w-3.5 mr-2" />Publish {carouselRenderedUrls.length}-Slide Carousel to Meta</>
                     )}
                   </Button>
                   <p className="text-[10px] text-muted-foreground text-center">
-                    LinkedIn carousels require PDF document posts — not supported by Buffer API.
+                    Requires META_PAGE_ACCESS_TOKEN, META_IG_ACCOUNT_ID, and META_FB_PAGE_ID in project secrets.
                   </p>
                 </div>
               )}

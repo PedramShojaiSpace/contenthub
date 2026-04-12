@@ -1203,3 +1203,23 @@
 - [x] Push button auto-resolves Meta channel IDs from bufferProfiles (facebook + instagram services only)
 - [x] Caption defaults to cover slide headline if left blank
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Carousel Redesign + Meta Direct Publish (v72)
+
+### Carousel Template Redesign
+- [x] Removed per-slide AI image generation from generateCarousel mutation
+- [x] Built CarouselSlideRenderer.tsx: HTML Canvas renderer, 1080×1080, slidesToDataUrls() exports all slides as PNG data URLs
+- [x] 3 slide templates: Cover (large headline + gold accent bar + slide counter), Content (headline + body text), CTA (bold CTA + URL)
+- [x] Urban Monk brand palette: charcoal #0f1117 bg, gold #c9a84c accent, Playfair Display serif + Inter sans
+- [x] Export as ZIP: jszip bundles all rendered PNGs + copy.md, downloads as carousel-{slug}.zip
+- [x] Carousel preview shows canvas-rendered images (not AI images)
+- [x] Auto-renders slides after generation with loading spinner
+
+### Meta Content Publishing API
+- [x] Built server/metaPublisher.ts: publishInstagramCarousel() (3-step: child containers → carousel container → publish) + publishFacebookCarousel() (multi-photo page post)
+- [x] Added syndication.uploadCarouselImage mutation: base64 PNG → S3 → CDN URL (required for Meta API)
+- [x] Added syndication.publishCarouselToMeta mutation: uploads all slides to S3, then calls Meta API for IG + FB
+- [x] Replaced Buffer push panel with direct Meta publish panel: IG + FB checkboxes, caption field, per-platform result display
+- [x] Added TRPCError import to routers.ts
+- [x] 121 tests passing, 0 TypeScript errors
+- [ ] Request META_PAGE_ACCESS_TOKEN, META_IG_ACCOUNT_ID, META_FB_PAGE_ID secrets from user (pending)

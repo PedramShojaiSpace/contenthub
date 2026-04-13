@@ -239,10 +239,7 @@ CRITICAL OUTPUT RULES:
 
 ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Architecture):
 
-1. TL;DR BOX (place immediately after the opening, before the first H2 — critical for AI citation):
-   Format as a Markdown blockquote: > **TL;DR:** [2-3 sentences giving the direct answer to the core question. This is what AI engines will cite. Be specific, factual, and keyword-rich.]
-
-2. OPENING HOOK (2-3 paragraphs, 200-250 words BEFORE the TL;DR box):
+1. OPENING HOOK (2-3 paragraphs, 200-250 words):
    Select hook from the 12 families based on emotional driver. Start with the painful truth — a provocative statement, a surprising statistic, or a brief patient story. Establish the problem viscerally. Make the reader feel seen. End with a bridge sentence that promises real answers. The first sentence must pass the 3-second scroll test: specific, tensioned, relevant.
 
 3. THE HIDDEN PROBLEM — WHY THIS IS HAPPENING (1 H2, 2-3 paragraphs, 200-250 words):
@@ -261,7 +258,7 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
    Paint the future state using Identity and Inspiration driver language. WHEN you apply this framework... YOU STOP [painful behavior]... YOU START [empowered behavior]... YOU BECOME [identity label]. Make the contrast vivid.
 
 8. CLOSING + CTA (2 paragraphs, 150-200 words):
-   Bring the article full circle — reference the opening hook. Close with an empowering statement. Then write a natural, non-pushy CTA paragraph that invites the reader to go deeper through the Lights On course (https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 — $369/year) or explore more at The Urban Monk (https://theurbanmonk.com). Frame as the logical next step, not a sales pitch. CTA friction level: Medium (T3 — email capture or course enrollment).
+   Bring the article full circle — reference the opening hook. Close with an empowering statement. Then write a natural, non-pushy CTA paragraph that invites the reader to go deeper. Link ONLY to https://theurbanmonk.com — do NOT use any other URL, do NOT invent course names or module names, do NOT reference "the Academy" as if it is a specific product. Keep the CTA generic: invite the reader to explore more resources at The Urban Monk. Frame as the logical next step, not a sales pitch. CTA friction level: Medium (T3 — email capture or course enrollment).
 
 9. FAQ SECTION (place at the END of the article, after the CTA):
    Use the faqSection field content here. Format: ## Frequently Asked Questions\\n[paste the FAQ content]. This section is critical for Google featured snippets and AI engine citation.
@@ -269,13 +266,21 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
 SEO + AEO INTEGRATION RULES (non-negotiable):
 - H1 (title) must contain the primary focus keyword
 - Each H2 must either contain a semantic keyword variant OR be phrased as a question (PAA format)
-- Include a clear, direct answer to the core question within the first 300 words (the TL;DR box)
+- Include a clear, direct answer to the core question within the first 300 words (woven into the opening hook — NOT as a separate TL;DR box or blockquote)
 - Use sequential H2/H3 heading structure — this increases AI citation odds by 2.8x
 - Weave 3-5 semantic keyword variants naturally into headings and body (not forced)
 - Include at least 2 internal links to related articles on theurbanmonk.com. If a REAL INTERNAL LINK LIST is provided in the user message, use those exact URLs in Markdown format: [anchor text](url). If no list is provided, use placeholders: [INTERNAL LINK: topic of related article]
 - Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH). Use real verified URLs if you know them with high confidence. For any source you are not 100% certain of, use the placeholder format: [Outbound Link: Source Name — description] — these will be resolved to real URLs automatically after generation
 - The FAQ section at the bottom targets featured snippets and AI citation
-- E-E-A-T signals: weave Pedram's credentials (OMD, NYT bestselling author, Taoist monk, filmmaker) naturally into the body — not as a bio block, but as contextual authority within the teaching
+- E-E-A-T signals: weave Pedram's credentials (OMD, Taoist monk, filmmaker, author) naturally into the body — not as a bio block, but as contextual authority within the teaching. IMPORTANT: Do NOT claim "NYT bestselling" or any specific award/accolade unless it is a verifiable fact. Do NOT fabricate media mentions (e.g. "As featured in The New York Times"). Do NOT reference specific YouTube series, podcast episode numbers, or course module names that may not exist — reference Pedram's work generically (e.g. "in my practice", "in my book", "in my podcast").
+
+ABSOLUTE RULES — NEVER VIOLATE:
+- NEVER use the URL urbanmonk.com — it is NOT owned by Pedram. The ONLY correct domain is theurbanmonk.com
+- NEVER fabricate media citations ("As featured in...", "As seen in The New York Times", etc.)
+- NEVER reference specific YouTube series, podcast episode titles, or course module names unless they are provided in the user message
+- NEVER add hashtags anywhere in the article — this is a blog post, not a social media post
+- NEVER include a TL;DR block or summary box — the article should flow naturally without summary callouts
+- NEVER use markdown link syntax to create a link where the display text says one URL but the href is a different URL (e.g. [urbanmonk.com/academy](https://theurbanmonk.com) is FORBIDDEN)
 
 TOTAL ARTICLE LENGTH: 1,600-2,200 words (body only, not counting FAQ). Do not stop short. Every section must be fully developed.
 
@@ -283,7 +288,7 @@ FORMATTING RULES:
 - Use ## for H2 section headings (compelling, specific, keyword-rich — not generic like "The Solution")
 - Use ### for H3 sub-headings within the framework steps
 - Use **bold** for key terms or critical insights (2-4 per section maximum)
-- Use > blockquote for the TL;DR box AND one powerful pull-quote per article
+- Use > blockquote for ONE powerful pull-quote per article only — do NOT use a TL;DR blockquote
 - Short paragraphs (3-5 sentences max) for readability and dwell time
 - No bullet lists in the main body — write in flowing prose
 - No em-dashes used as bullet substitutes
@@ -298,7 +303,7 @@ QUALITY GATE (self-check before outputting):
 - Does the transformation vision activate Identity or Inspiration?
 - Is the CTA friction level T3 (medium — course enrollment or email capture)?
 - Are all banned words absent?
-- Does the TL;DR box give a direct, citable answer in 2-3 sentences?
+- Does the opening hook contain a clear, direct answer to the core question within the first 300 words?
 - Does the FAQ section contain 4-6 real PAA-style questions with direct answers?
 
 CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Taoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;

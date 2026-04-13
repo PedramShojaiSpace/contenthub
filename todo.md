@@ -1278,3 +1278,9 @@
 ## Brand Logo Variants — Sidebar + Kanban (v81)
 - [x] Swap sidebar header logo to Fire (red-orange) variant
 - [x] Add element-logo badges to Kanban cards (Water=LinkedIn, Fire=Meta, Wood=YouTube, Earth=TikTok, Yin=Blog)
+
+## Blog Content Cleanup — Wrong URLs, TL;DR, Hashtags (v82)
+- [x] Fix blog AI prompt: remove TL;DR blockquote instruction, no hashtags, no internal markup labels
+- [x] Fix ctaRouter.ts: replace all urbanmonk.com/academy URLs with theurbanmonk.com
+- [x] Fix ctaRouter.ts: rewrite CTA text to be generic (no specific module names that don't exist yet)
+- [x] Run DB cleanup: strip TL;DR blocks and fix wrong URLs in all existing blog post textContent

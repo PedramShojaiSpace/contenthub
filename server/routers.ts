@@ -2276,7 +2276,10 @@ Return BOTH in this exact format:
         let wpImageUrl: string | undefined;
         if (input.heroImageUrl) {
           try {
-            const filename = `${input.slug}-hero.jpg`;
+            console.log("[WP] Uploading hero image:", input.heroImageUrl);
+            // Derive file extension from URL or default to jpg
+            const ext = input.heroImageUrl.toLowerCase().endsWith(".png") ? "png" : "jpg";
+            const filename = `${input.slug}-hero.${ext}`;
             const media = await uploadMediaFromUrl(
               input.heroImageUrl,
               filename,
@@ -2284,8 +2287,12 @@ Return BOTH in this exact format:
             );
             featuredMediaId = media.id;
             wpImageUrl = media.url;
+            console.log("[WP] Hero image uploaded successfully. Media ID:", featuredMediaId, "URL:", wpImageUrl);
           } catch (err) {
-            console.warn("[WP] Hero image upload failed:", err);
+            // Log the full error but don't block the publish — post goes up without image
+            console.error("[WP] Hero image upload failed:", err);
+            wpImageUrl = undefined;
+            featuredMediaId = undefined;
           }
         }
 
@@ -2342,6 +2349,7 @@ Return BOTH in this exact format:
           editUrl: post.editLink,
           wpImageUrl,
           wpStatus,
+          imageUploaded: !!featuredMediaId,
         };
       }),
 

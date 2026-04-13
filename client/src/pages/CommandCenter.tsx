@@ -823,9 +823,13 @@ export default function CommandCenter() {
         status: "draft",
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           setWpPublishingId(null);
-          toast.success("Sent to WordPress as draft!");
+          if (data.imageUploaded === false && item.imageUrl) {
+            toast.warning("Post sent to WordPress, but the hero image failed to upload. You can add it manually in WP.");
+          } else {
+            toast.success("Sent to WordPress as draft — with hero image!");
+          }
           refetch();
         },
         onError: (err) => {

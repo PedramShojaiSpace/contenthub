@@ -1287,3 +1287,6 @@
 
 ## Blog Kanban — WordPress Publish Button (v83)
 - [x] Add "Publish to WP" button directly on blog Kanban cards (bypasses Buffer)
+
+## WordPress Publish — Hero Image Fix (v84)
+- [x] Fix hero image not uploading to WordPress when using "Publish to WP" button on Kanban card

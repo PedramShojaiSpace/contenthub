@@ -1239,3 +1239,10 @@
 - [x] Fixed: extractCleanTitle now parses the LLM query from rawIdea (extracts the actual search question, strips filler words, caps at 12 words)
 - [x] Fixed: button visibility now detects all stale patterns including /^Answer this LLM/i
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Title Case Fix for Clean Up Titles + All Generated Titles (v75)
+- [x] Added toTitleCase() helper using AP/Chicago style: capitalizes all major words, keeps articles/prepositions/conjunctions lowercase unless first or last word
+- [x] Applied toTitleCase() in cleanupStaleTitles mutation — all renamed cards now get proper headline casing
+- [x] Applied toTitleCase() in generateContent title path — all new social post card titles will be properly cased
+- [x] Blog titles come from LLM metadata extraction which already produces proper case; fallback also uses cleanIdea which is now title-cased
+- [x] 121 tests passing, 0 TypeScript errors

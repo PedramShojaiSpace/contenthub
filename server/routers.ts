@@ -555,7 +555,13 @@ export const appRouter = router({
               ],
             });
             const rawTitle = titleResponse.choices?.[0]?.message?.content;
-            const title = typeof rawTitle === "string" ? rawTitle.trim().replace(/^["']|["']$/g, "").slice(0, 80) : cleanIdea.slice(0, 80);
+            // Apply AP/Chicago title case to LLM-generated title and fallback
+            const toTitleCase = (s: string) => {
+              const LC = new Set(["a","an","the","and","but","or","nor","for","so","yet","as","at","by","in","of","on","to","up","via","vs","vs."]);
+              return s.toLowerCase().split(" ").map((w,i,arr) => (!w || (i>0 && i<arr.length-1 && LC.has(w))) ? w : w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
+            };
+            const rawTitleStr = typeof rawTitle === "string" ? rawTitle.trim().replace(/^["']|["']$/g, "").slice(0, 80) : cleanIdea.slice(0, 80);
+            const title = toTitleCase(rawTitleStr);
 
             return { platform, text, title };
           })
@@ -1334,6 +1340,32 @@ CRITICAL OUTPUT RULES:
 
         if (staleItems.length === 0) return { renamed: 0, message: "No stale titles found." };
 
+        // AP/Chicago-style title case: capitalize all words except articles, short prepositions,
+        // and coordinating conjunctions — unless they are the first or last word.
+        const toTitleCase = (str: string): string => {
+          const LOWERCASE_WORDS = new Set([
+            "a", "an", "the",
+            "and", "but", "or", "nor", "for", "so", "yet",
+            "as", "at", "by", "in", "of", "on", "to", "up",
+            "via", "vs", "vs.",
+          ]);
+          return str
+            .toLowerCase()
+            .split(" ")
+            .map((word, i, arr) => {
+              if (!word) return word;
+              // Always capitalize first and last word
+              if (i === 0 || i === arr.length - 1) {
+                return word.charAt(0).toUpperCase() + word.slice(1);
+              }
+              // Keep lowercase words lowercase
+              if (LOWERCASE_WORDS.has(word)) return word;
+              // Capitalize everything else
+              return word.charAt(0).toUpperCase() + word.slice(1);
+            })
+            .join(" ");
+        };
+
         const extractCleanTitle = (titleField: string, rawIdea: string | null): string => {
           const raw = rawIdea || titleField;
           // Try to extract from rawIdea first (multi-line LLM Projects format)
@@ -1368,11 +1400,12 @@ CRITICAL OUTPUT RULES:
         const { eq } = await import("drizzle-orm");
         let renamed = 0;
         for (const item of staleItems) {
-          const cleanTitle = extractCleanTitle(item.title, (item as any).rawIdea ?? null);
+          const rawClean = extractCleanTitle(item.title, (item as any).rawIdea ?? null);
+          const cleanTitle = toTitleCase(rawClean).slice(0, 255);
           if (cleanTitle && cleanTitle !== item.title) {
             await db
               .update(contentItems)
-              .set({ title: cleanTitle.slice(0, 255) })
+              .set({ title: cleanTitle })
               .where(eq(contentItems.id, item.id));
             renamed++;
           }

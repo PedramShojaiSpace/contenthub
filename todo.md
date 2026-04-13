@@ -1284,3 +1284,6 @@
 - [x] Fix ctaRouter.ts: replace all urbanmonk.com/academy URLs with theurbanmonk.com
 - [x] Fix ctaRouter.ts: rewrite CTA text to be generic (no specific module names that don't exist yet)
 - [x] Run DB cleanup: strip TL;DR blocks and fix wrong URLs in all existing blog post textContent
+
+## Blog Kanban — WordPress Publish Button (v83)
+- [x] Add "Publish to WP" button directly on blog Kanban cards (bypasses Buffer)

@@ -323,6 +323,8 @@ function DraggableCard({
   onRegenerate,
   onPushToBuffer,
   isPushingToBuffer,
+  onPublishToWP,
+  isPublishingToWP,
   onViewScript,
 }: {
   item: ContentItem;
@@ -334,6 +336,8 @@ function DraggableCard({
   onRegenerate: (item: ContentItem) => void;
   onPushToBuffer: (item: ContentItem) => void;
   isPushingToBuffer: boolean;
+  onPublishToWP: (item: ContentItem) => void;
+  isPublishingToWP: boolean;
   onViewScript?: (scriptId: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -476,6 +480,28 @@ function DraggableCard({
         {/* Action buttons — visible on hover */}
         {!isPublished && (
           <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity space-y-1">
+            {/* Publish to WordPress — blog posts only */}
+            {item.platform === "blog" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full h-6 text-[10px] border-blue-600/40 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-600 gap-1"
+                disabled={isPublishingToWP}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPublishToWP(item);
+                }}
+              >
+                {isPublishingToWP ? (
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                ) : (
+                  <ExternalLink className="h-2.5 w-2.5" />
+                )}
+                {isPublishingToWP ? "Publishing…" : "Publish to WP"}
+              </Button>
+            )}
+            {/* Push to Buffer — non-blog platforms */}
+            {item.platform !== "blog" && (
             <Button
               size="sm"
               variant="outline"
@@ -493,6 +519,7 @@ function DraggableCard({
               )}
               {isPushingToBuffer ? "Pushing…" : "Push to Buffer"}
             </Button>
+            )}
             {item.linkedScriptId && onViewScript && (
               <Button
                 size="sm"
@@ -614,6 +641,7 @@ export default function CommandCenter() {
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
+  const [wpPublishingId, setWpPublishingId] = useState<number | null>(null);
 
   // Teleprompter script state (for card detail modal)
   const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
@@ -778,6 +806,36 @@ export default function CommandCenter() {
     },
   });
 
+  const handlePublishToWP = (item: ContentItem) => {
+    if (!item.textContent) {
+      toast.error("This post has no content yet. Generate the blog post first.");
+      return;
+    }
+    setWpPublishingId(item.id);
+    const slug = item.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80);
+    wpPublishMutation.mutate(
+      {
+        contentItemId: item.id,
+        title: item.title,
+        slug,
+        body: item.textContent,
+        heroImageUrl: item.imageUrl ?? undefined,
+        status: "draft",
+      },
+      {
+        onSuccess: () => {
+          setWpPublishingId(null);
+          toast.success("Sent to WordPress as draft!");
+          refetch();
+        },
+        onError: (err) => {
+          setWpPublishingId(null);
+          toast.error("WordPress publish failed: " + err.message);
+        },
+      }
+    );
+  };
+
   const handleRegenerate = (item: ContentItem) => {
     setRegeneratingId(item.id);
     regenerateImageMutation.mutate({
@@ -828,6 +886,8 @@ export default function CommandCenter() {
       toast.error("Batch publish failed: " + err.message);
     },
   });
+
+  const wpPublishMutation = trpc.blog.publish.useMutation({});
 
   const wpScheduleMutation = trpc.blog.publish.useMutation({
     onSuccess: (data) => {
@@ -1330,6 +1390,8 @@ export default function CommandCenter() {
                               onRegenerate={handleRegenerate}
                               onPushToBuffer={handlePushToBuffer}
                               isPushingToBuffer={bufferPushingId === item.id}
+                              onPublishToWP={handlePublishToWP}
+                              isPublishingToWP={wpPublishingId === item.id}
                               onViewScript={handleViewScript}
                             />
                           </div>

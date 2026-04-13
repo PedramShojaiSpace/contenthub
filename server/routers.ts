@@ -1341,27 +1341,29 @@ CRITICAL OUTPUT RULES:
         if (staleItems.length === 0) return { renamed: 0, message: "No stale titles found." };
 
         // AP/Chicago-style title case: capitalize all words except articles, short prepositions,
-        // and coordinating conjunctions — unless they are the first or last word.
+        // and coordinating conjunctions — unless they are the first or last word, or follow a colon.
         const toTitleCase = (str: string): string => {
+          // Skip markdown headers or very long strings (likely body content, not titles)
+          if (str.startsWith("##") || str.length > 120) return str;
           const LOWERCASE_WORDS = new Set([
             "a", "an", "the",
             "and", "but", "or", "nor", "for", "so", "yet",
-            "as", "at", "by", "in", "of", "on", "to", "up",
+            "as", "at", "by", "in", "of", "on", "to",
             "via", "vs", "vs.",
           ]);
-          return str
-            .toLowerCase()
-            .split(" ")
-            .map((word, i, arr) => {
+          const words = str.split(" ");
+          let afterColon = false;
+          return words
+            .map((word, i) => {
               if (!word) return word;
-              // Always capitalize first and last word
-              if (i === 0 || i === arr.length - 1) {
-                return word.charAt(0).toUpperCase() + word.slice(1);
-              }
-              // Keep lowercase words lowercase
-              if (LOWERCASE_WORDS.has(word)) return word;
-              // Capitalize everything else
-              return word.charAt(0).toUpperCase() + word.slice(1);
+              const core = word.replace(/^[^a-zA-Z0-9']+|[^a-zA-Z0-9']+$/g, "");
+              const lower = core.toLowerCase();
+              const isFirst = i === 0;
+              const isLast = i === words.length - 1;
+              const shouldCap = isFirst || isLast || afterColon || !LOWERCASE_WORDS.has(lower);
+              afterColon = word.endsWith(":") || word.endsWith("—");
+              if (!shouldCap) return word.toLowerCase();
+              return word.replace(/([a-zA-Z])/, (m) => m.toUpperCase());
             })
             .join(" ");
         };

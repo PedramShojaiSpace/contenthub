@@ -1246,3 +1246,11 @@
 - [x] Applied toTitleCase() in generateContent title path — all new social post card titles will be properly cased
 - [x] Blog titles come from LLM metadata extraction which already produces proper case; fallback also uses cleanIdea which is now title-cased
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Fix Title Case (Manual DB Run) + Media Vault Empty (v76)
+- [x] Ran improved title case fix script directly against DB — 58 titles updated in first pass, 12 more refined in second pass (after-colon capitalization, contractions like "it's", quoted words like "Stress")
+- [x] Updated toTitleCase() in server: removed 'up' from lowercase list, added after-colon capitalization, skip markdown headers/long strings
+- [x] Diagnosed Media Vault empty: seedMediaAssets.mjs existed but was never run against production DB
+- [x] Ran seed script — 28 Pedram Shojai media assets now in DB (8 books, 4 podcasts, 3 films, 8 YouTube, 5 interviews)
+- [x] Also added auto-seed to server startup so media assets are always present
+- [x] 121 tests passing, 0 TypeScript errors

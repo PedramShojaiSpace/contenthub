@@ -111,9 +111,11 @@ export default function DashboardLayout({
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <span className="text-primary font-serif font-bold text-2xl">UM</span>
-            </div>
+            <img
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/urban-monk-logo-yin_728403ed.webp"
+              alt="The Urban Monk"
+              className="w-20 h-20 object-contain"
+            />
             <h1 className="text-2xl font-serif font-semibold tracking-tight text-center text-foreground">
               UMP Content Hub
             </h1>
@@ -240,13 +242,11 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {/* Urban Monk logo mark — SVG inline */}
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-                    <circle cx="14" cy="14" r="12.5" stroke="#ed5939" strokeWidth="1.8"/>
-                    <circle cx="14" cy="6.5" r="1.2" fill="#ed5939"/>
-                    <path d="M8.5 13.5 Q11.25 10.5 14 13.5 Q16.75 10.5 19.5 13.5" stroke="#ed5939" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
-                    <path d="M14 17.5 C12.2 17.5 10.5 16.5 10.5 17.5 C10.5 18.5 12.2 19.5 14 19.5 C15.8 19.5 17.5 18.5 17.5 17.5 C17.5 16.5 15.8 17.5 14 17.5 Z" stroke="#ed5939" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-                  </svg>
+                  <img
+                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/urban-monk-logo-yin_728403ed.webp"
+                    alt="The Urban Monk"
+                    className="w-7 h-7 shrink-0 object-contain"
+                  />
                   <span className="font-semibold tracking-tight truncate text-foreground text-sm">
                     UMP Content Hub
                   </span>

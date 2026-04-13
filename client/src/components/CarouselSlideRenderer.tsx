@@ -113,58 +113,114 @@ function wrapText(
 }
 
 // ── Urban Monk Logo Mark ──────────────────────────────────────────────────────
-// Draws the circular logo mark: circle + mountain waves + infinity symbol
-function drawLogoMark(
+// Real logo image: circle + hollow ring (sun) + double mountain chevron + infinity knot
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/urban-monk-logo-yin_728403ed.webp";
+
+// Cache the loaded logo image so it is only fetched once per session
+let _logoImg: HTMLImageElement | null = null;
+let _logoLoadPromise: Promise<HTMLImageElement> | null = null;
+
+function getLogoImage(): Promise<HTMLImageElement> {
+  if (_logoImg) return Promise.resolve(_logoImg);
+  if (_logoLoadPromise) return _logoLoadPromise;
+  _logoLoadPromise = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => { _logoImg = img; resolve(img); };
+    img.onerror = reject;
+    img.src = LOGO_URL;
+  });
+  return _logoLoadPromise;
+}
+
+/**
+ * Draw the real Urban Monk logo mark onto the canvas.
+ * The logo is black-on-white; on colored backgrounds we tint it white using
+ * a compositing trick: draw white rect clipped to the image shape.
+ * cx/cy = center, size = diameter of the logo square.
+ */
+async function drawLogoMark(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
-  radius: number,
+  size: number,
   color: string
 ) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.fillStyle = "transparent";
-  ctx.lineWidth = radius * 0.08;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
+  try {
+    const img = await getLogoImage();
+    const half = size / 2;
+    const x = cx - half;
+    const y = cy - half;
 
-  // Outer circle
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.stroke();
+    ctx.save();
 
-  // Sun dot (top)
-  const dotR = radius * 0.09;
-  ctx.beginPath();
-  ctx.arc(cx, cy - radius * 0.42, dotR, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
+    if (color === "#ffffff" || color === BRAND.yang) {
+      // On colored backgrounds: draw logo in white using destination-out trick
+      // 1. Draw a white-filled square
+      // 2. Use the logo as a mask via destination-in
+      const offscreen = document.createElement("canvas");
+      offscreen.width = size;
+      offscreen.height = size;
+      const oc = offscreen.getContext("2d")!;
+      // Fill white
+      oc.fillStyle = "#ffffff";
+      oc.fillRect(0, 0, size, size);
+      // Multiply by logo alpha (black pixels become transparent, white stays)
+      oc.globalCompositeOperation = "destination-in";
+      oc.drawImage(img, 0, 0, size, size);
+      // Now invert: white logo on transparent
+      // Actually the logo is black on white, so we need to invert the mask
+      // Use a second pass: draw white square, then cut out where logo is dark
+      const offscreen2 = document.createElement("canvas");
+      offscreen2.width = size;
+      offscreen2.height = size;
+      const oc2 = offscreen2.getContext("2d")!;
+      oc2.drawImage(img, 0, 0, size, size);
+      // Invert: make black pixels white and white pixels transparent
+      oc2.globalCompositeOperation = "difference";
+      oc2.fillStyle = "#ffffff";
+      oc2.fillRect(0, 0, size, size);
+      // Mask out the white background (keep only the formerly-black strokes)
+      oc2.globalCompositeOperation = "destination-in";
+      // Use the original logo as alpha mask (black=opaque, white=transparent)
+      // We need to invert the alpha: draw black rect with destination-out
+      const maskCanvas = document.createElement("canvas");
+      maskCanvas.width = size;
+      maskCanvas.height = size;
+      const mc = maskCanvas.getContext("2d")!;
+      mc.drawImage(img, 0, 0, size, size);
+      // invert luminance to alpha: black stroke → opaque, white bg → transparent
+      const imageData = mc.getImageData(0, 0, size, size);
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const lum = (imageData.data[i] + imageData.data[i+1] + imageData.data[i+2]) / 3;
+        imageData.data[i] = 255;
+        imageData.data[i+1] = 255;
+        imageData.data[i+2] = 255;
+        imageData.data[i+3] = 255 - lum; // dark pixels → opaque
+      }
+      mc.putImageData(imageData, 0, 0);
+      oc2.drawImage(maskCanvas, 0, 0);
 
-  // Mountain waves (middle) — two arcs
-  const waveY = cy - radius * 0.1;
-  const waveW = radius * 0.55;
-  ctx.beginPath();
-  ctx.moveTo(cx - waveW, waveY + radius * 0.12);
-  ctx.quadraticCurveTo(cx - waveW * 0.5, waveY - radius * 0.18, cx, waveY + radius * 0.12);
-  ctx.quadraticCurveTo(cx + waveW * 0.5, waveY - radius * 0.18, cx + waveW, waveY + radius * 0.12);
-  ctx.strokeStyle = color;
-  ctx.stroke();
+      ctx.globalAlpha = 0.92;
+      ctx.drawImage(offscreen2, x, y);
+    } else {
+      // On cream/light backgrounds: draw logo directly (it's black on white/transparent)
+      // Apply color tint by drawing with globalCompositeOperation
+      ctx.globalAlpha = 0.88;
+      ctx.drawImage(img, x, y, size, size);
+    }
 
-  // Infinity symbol (bottom)
-  const infY = cy + radius * 0.35;
-  const infW = radius * 0.45;
-  const infH = radius * 0.22;
-  ctx.beginPath();
-  // Left lobe
-  ctx.moveTo(cx, infY);
-  ctx.bezierCurveTo(cx - infW * 0.3, infY - infH, cx - infW, infY - infH, cx - infW, infY);
-  ctx.bezierCurveTo(cx - infW, infY + infH, cx - infW * 0.3, infY + infH, cx, infY);
-  // Right lobe
-  ctx.bezierCurveTo(cx + infW * 0.3, infY - infH, cx + infW, infY - infH, cx + infW, infY);
-  ctx.bezierCurveTo(cx + infW, infY + infH, cx + infW * 0.3, infY + infH, cx, infY);
-  ctx.stroke();
-
-  ctx.restore();
+    ctx.restore();
+  } catch {
+    // Fallback: simple circle if image fails to load
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = size * 0.06;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size / 2 - size * 0.04, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 // ── Life Garden decorative elements ──────────────────────────────────────────
@@ -268,7 +324,7 @@ function drawSketchCircle(
 }
 
 // ── Cover slide ───────────────────────────────────────────────────────────────
-function renderCover(
+async function renderCover(
   ctx: CanvasRenderingContext2D,
   slide: CarouselSlideData,
   total: number,
@@ -318,12 +374,12 @@ function renderCover(
 
   wrapText(ctx, slide.headline, 56, startY, headlineMaxWidth, lineH, 5, "left");
 
-  // Logo mark — bottom-right, white
-  drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 52, BRAND.yang);
+  // Logo mark — bottom-right, white (110px)
+  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, BRAND.yang);
 }
 
 // ── Content slide ─────────────────────────────────────────────────────────────
-function renderContent(
+async function renderContent(
   ctx: CanvasRenderingContext2D,
   slide: CarouselSlideData,
   total: number,
@@ -383,12 +439,12 @@ function renderContent(
     wrapText(ctx, slide.body, 72, bodyY, SLIDE_SIZE - 128, 58, 6);
   }
 
-  // Logo mark — bottom-right, accent color
-  drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 52, accentColor);
+  // Logo mark — bottom-right, accent color (110px)
+  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, accentColor);
 }
 
 // ── CTA slide ─────────────────────────────────────────────────────────────────
-function renderCta(ctx: CanvasRenderingContext2D, slide: CarouselSlideData, total: number) {
+async function renderCta(ctx: CanvasRenderingContext2D, slide: CarouselSlideData, total: number) {
   // Cream background
   ctx.fillStyle = BRAND.metal;
   ctx.fillRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
@@ -441,8 +497,8 @@ function renderCta(ctx: CanvasRenderingContext2D, slide: CarouselSlideData, tota
   ctx.fillStyle = "rgba(22,21,19,0.5)";
   ctx.fillText("Join the Urban Monk Academy", SLIDE_SIZE / 2, btnY + 120);
 
-  // Logo mark — bottom-right, Fire color
-  drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 52, BRAND.fire);
+  // Logo mark — bottom-right, Fire color (110px)
+  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, BRAND.fire);
 }
 
 // ── Main render function ──────────────────────────────────────────────────────
@@ -462,11 +518,11 @@ export async function renderSlideToCanvas(
   const idx = colorIndex !== undefined ? colorIndex : slide.slide - 1;
 
   if (slide.type === "cover") {
-    renderCover(ctx, slide, total, idx);
+    await renderCover(ctx, slide, total, idx);
   } else if (slide.type === "cta") {
-    renderCta(ctx, slide, total);
+    await renderCta(ctx, slide, total);
   } else {
-    renderContent(ctx, slide, total, idx);
+    await renderContent(ctx, slide, total, idx);
   }
 }
 

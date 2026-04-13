@@ -1274,3 +1274,7 @@
 - [x] Updated fonts: DM Sans (body) + Nunito (headings) — closest free Google Font equivalents to Raisonne Pro / Sofia Pro
 - [x] Sidebar updated: cream (#f7f4ef) background, Urban Monk SVG logo mark in header
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Brand Logo Variants — Sidebar + Kanban (v81)
+- [x] Swap sidebar header logo to Fire (red-orange) variant
+- [x] Add element-logo badges to Kanban cards (Water=LinkedIn, Fire=Meta, Wood=YouTube, Earth=TikTok, Yin=Blog)

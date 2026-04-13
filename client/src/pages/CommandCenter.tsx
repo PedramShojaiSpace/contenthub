@@ -107,20 +107,36 @@ const STATUSES: { key: Status; label: string; color: string }[] = [
   { key: "published", label: "Published", color: "bg-primary/10 border-primary/20" },
 ];
 
-const PLATFORM_ICONS: Record<Platform, React.ReactNode> = {
+const PLATFORM_ICONS: Record<string, React.ReactNode> = {
   meta: <Facebook className="h-3 w-3" />,
   linkedin: <Linkedin className="h-3 w-3" />,
   x: <Twitter className="h-3 w-3" />,
   youtube: <Youtube className="h-3 w-3" />,
+  tiktok: <Music2 className="h-3 w-3" />,
+  blog: <BookMarked className="h-3 w-3" />,
   all: <span className="text-[10px] font-bold">ALL</span>,
 };
 
-const PLATFORM_COLORS: Record<Platform, string> = {
+const PLATFORM_COLORS: Record<string, string> = {
   meta: "bg-blue-500/20 text-blue-300 border-blue-500/30",
   linkedin: "bg-sky-500/20 text-sky-300 border-sky-500/30",
   x: "bg-slate-500/20 text-slate-300 border-slate-500/30",
   youtube: "bg-red-500/20 text-red-300 border-red-500/30",
+  tiktok: "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  blog: "bg-stone-500/20 text-stone-300 border-stone-500/30",
   all: "bg-primary/20 text-primary border-primary/30",
+};
+
+// Element logo variant per platform (brand identity: each platform maps to a Wu Xing element)
+const CDN_BASE = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ";
+const PLATFORM_ELEMENT_LOGO: Record<string, string> = {
+  linkedin: `${CDN_BASE}/The_Urban_Monk-Icon-Water_86df5580.png`,  // Water — depth, reflection, knowledge
+  meta:     `${CDN_BASE}/The_Urban_Monk-Icon-Fire_0b452e9b.png`,   // Fire — energy, visibility, reach
+  youtube:  `${CDN_BASE}/The_Urban_Monk-Icon-Wood_0a2e7212.png`,   // Wood — growth, storytelling
+  tiktok:   `${CDN_BASE}/The_Urban_Monk-Icon-Earth_04456ace.png`,  // Earth — grounded, community
+  x:        `${CDN_BASE}/The_Urban_Monk-Icon-Metal_47202c2f.png`,  // Metal — precision, clarity
+  blog:     `${CDN_BASE}/The_Urban_Monk-Icon-Yin_90acff39.png`,    // Yin — depth, long-form
+  all:      `${CDN_BASE}/The_Urban_Monk-Icon-Yang_b22ccc65.png`,   // Yang — all-encompassing
 };
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -426,10 +442,22 @@ function DraggableCard({
 
       <CardContent className="px-3 pb-3 pt-0">
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Element logo badge — maps each platform to its Wu Xing element */}
+          {PLATFORM_ELEMENT_LOGO[item.platform] && (
+            <img
+              src={PLATFORM_ELEMENT_LOGO[item.platform]}
+              alt={item.platform}
+              title={`${item.platform} — ${{
+                linkedin: "Water", meta: "Fire", youtube: "Wood",
+                tiktok: "Earth", x: "Metal", blog: "Yin", all: "Yang",
+              }[item.platform] ?? ""}`}
+              className="w-5 h-5 object-contain opacity-80 shrink-0"
+            />
+          )}
           <div
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${PLATFORM_COLORS[item.platform as Platform]}`}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${PLATFORM_COLORS[item.platform]}`}
           >
-            {PLATFORM_ICONS[item.platform as Platform]}
+            {PLATFORM_ICONS[item.platform]}
             <span className="capitalize">{item.platform}</span>
           </div>
 

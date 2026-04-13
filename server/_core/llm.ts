@@ -321,12 +321,46 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     body: JSON.stringify(payload),
   });
 
+  // Read the raw body first so we can inspect it before parsing
+  const rawBody = await response.text();
+
   if (!response.ok) {
-    const errorText = await response.text();
+    // Detect rate limit responses specifically
+    if (
+      response.status === 429 ||
+      rawBody.toLowerCase().includes("rate") ||
+      rawBody.toLowerCase().includes("exceeded") ||
+      rawBody.toLowerCase().includes("quota")
+    ) {
+      throw new Error("RATE_LIMIT: AI generation limit reached. Please wait a moment and try again.");
+    }
     throw new Error(
-      `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
+      `LLM invoke failed: ${response.status} ${response.statusText} – ${rawBody}`
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  // Even on HTTP 200, the API sometimes returns a plain-text error (e.g. "Rate exceeded.")
+  // Detect this before attempting JSON.parse to avoid cryptic parse errors
+  const trimmed = rawBody.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    const lower = trimmed.toLowerCase();
+    if (
+      lower.includes("rate") ||
+      lower.includes("exceeded") ||
+      lower.includes("quota") ||
+      lower.includes("limit")
+    ) {
+      // Use a distinctive prefix so callers can detect this specifically
+      throw new Error(`RATE_LIMIT: AI generation limit reached. Please wait 30–60 seconds and try again. (raw: ${trimmed.slice(0, 80)})`);
+    }
+    throw new Error(`LLM returned non-JSON response: ${trimmed.slice(0, 200)}`);
+  }
+
+  let parsed: InvokeResult;
+  try {
+    parsed = JSON.parse(trimmed) as InvokeResult;
+  } catch {
+    throw new Error(`LLM response JSON parse failed: ${trimmed.slice(0, 200)}`);
+  }
+  return parsed;
 }

@@ -3,7 +3,23 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { generateImage } from "./_core/imageGeneration";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, type InvokeParams } from "./_core/llm";
+
+// Wrapper that converts RATE_LIMIT errors from invokeLLM into user-friendly TRPCErrors
+async function safeLLM(params: InvokeParams) {
+  try {
+    return await invokeLLM(params);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.startsWith("RATE_LIMIT:")) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "AI generation limit reached. Please wait 30–60 seconds and try again.",
+      });
+    }
+    throw err;
+  }
+}
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
@@ -531,7 +547,7 @@ export const appRouter = router({
               ? `Raw idea: ${cleanIdea}\n\nAdditional instructions: ${input.customInstructions}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`
               : `Raw idea: ${cleanIdea}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`;
 
-            const response = await invokeLLM({
+            const response = await safeLLM({
               messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userMessage },
@@ -542,7 +558,7 @@ export const appRouter = router({
             const text = typeof rawContent === "string" ? rawContent : "Content generation failed.";
 
             // Generate a clean, short title for this content item (used as Kanban card title)
-            const titleResponse = await invokeLLM({
+            const titleResponse = await safeLLM({
               messages: [
                 {
                   role: "system",
@@ -576,7 +592,7 @@ export const appRouter = router({
                 const platformStyle = PLATFORM_IMAGE_STYLES[platform] ?? DEFAULT_IMAGE_STYLE;
 
                 // First generate a tailored image prompt from the content
-                const promptResponse = await invokeLLM({
+                const promptResponse = await safeLLM({
                   messages: [
                     {
                       role: "system",
@@ -667,7 +683,7 @@ Rules:
       )
       .mutation(async ({ input }) => {
         const platformStyle = PLATFORM_IMAGE_STYLES[input.platform] ?? DEFAULT_IMAGE_STYLE;
-        const response = await invokeLLM({
+        const response = await safeLLM({
             messages: [
               {
                 role: "system",
@@ -912,7 +928,7 @@ Rules:
 
 OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do NOT wrap in JSON. Do NOT include a title H1 at the top. Start directly with the opening hook paragraph. Write the complete article — all sections fully developed — ending with the FAQ section. Do not stop early.`;
 
-        const articleResponse = await invokeLLM({
+        const articleResponse = await safeLLM({
           messages: [
             { role: "system", content: ARTICLE_BODY_PROMPT },
             { role: "user", content: userMessage },
@@ -1013,7 +1029,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
 
         if (isLikelyTruncated) {
           try {
-            const continuationResponse = await invokeLLM({
+            const continuationResponse = await safeLLM({
               messages: [
                 { role: "system", content: ARTICLE_BODY_PROMPT },
                 { role: "user", content: userMessage },
@@ -1041,7 +1057,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
         // ── PASS 2: Extract metadata from the completed article ───────────────────
         // Now that we have the full article, ask the LLM to extract the SEO fields.
         // This is a short structured call — no risk of truncation.
-        const metaResponse = await invokeLLM({
+        const metaResponse = await safeLLM({
           messages: [
             {
               role: "system",
@@ -1135,7 +1151,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
         if (input.generateImage) {
           try {
             const blogStyle = PLATFORM_IMAGE_STYLES.blog ?? DEFAULT_IMAGE_STYLE;
-            const promptResponse = await invokeLLM({
+            const promptResponse = await safeLLM({
               messages: [
                 {
                   role: "system",
@@ -1259,7 +1275,7 @@ CRITICAL OUTPUT RULES:
 
         const userMessage = `Topic: ${cleanIdea}${input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : ""}${personaContext}${ctaInjection}`;
 
-        const response = await invokeLLM({
+        const response = await safeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userMessage },
@@ -1507,7 +1523,7 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         } catch (err) {
           console.warn("[Script] Could not load webinar intelligence context:", err);
         }
-        const response = await invokeLLM({
+        const response = await safeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptPressContext}${scriptMediaContext}${scriptAvatarContext}${scriptWebinarContext}${scriptCtaInjection}` },
@@ -1589,7 +1605,7 @@ Return BOTH in this exact format:
         } catch (err) {
           console.warn("[Post] Could not load CTA:", err);
         }
-        const response = await invokeLLM({
+        const response = await safeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Generate the social post and image prompt for: "${input.title}"${postMediaContext}${postAvatarContext}` },
@@ -1660,7 +1676,7 @@ SLIDE 2: [text]
 SLIDE 10: [text]
 CAPTION: [caption text]`;
 
-        const response = await invokeLLM({
+        const response = await safeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Create a Reframe Post about: "${input.topic}"\nCommon belief to reframe: "${commonBelief}"` },
@@ -2008,7 +2024,7 @@ Your task: Write a content brief that positions Dr. Pedram Shojai as the definit
 
 Be specific and actionable. This brief will go directly to content creation.`;
 
-        const response = await invokeLLM({
+        const response = await safeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Create a content brief to win this LLM search gap.` },
@@ -2113,7 +2129,7 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         } catch (err) {
           console.warn("[Script] Could not load webinar intelligence context:", err);
         }
-        const response = await invokeLLM({
+        const response = await safeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Write the full teleprompter script for: "${input.title}"${scriptPressContext}${scriptMediaContext}${scriptAvatarContext}${scriptWebinarContext}${scriptCtaInjection}` },
@@ -2195,7 +2211,7 @@ Return BOTH in this exact format:
         } catch (err) {
           console.warn("[Post] Could not load CTA:", err);
         }
-        const response = await invokeLLM({
+        const response = await safeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: `Generate the social post and image prompt for: "${input.title}"${postMediaContext}${postAvatarContext}` },

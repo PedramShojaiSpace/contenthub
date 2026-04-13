@@ -1254,3 +1254,11 @@
 - [x] Ran seed script — 28 Pedram Shojai media assets now in DB (8 books, 4 podcasts, 3 films, 8 YouTube, 5 interviews)
 - [x] Also added auto-seed to server startup so media assets are always present
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Graceful LLM Rate Limit Error Handling (v77)
+- [x] Root cause: API returns HTTP 200 with plain-text "Rate exceeded." body; invokeLLM was calling response.json() which crashed with "Unexpected token 'R'"
+- [x] Fixed invokeLLM in _core/llm.ts: reads raw body first, detects non-JSON rate-limit responses before parsing, throws RATE_LIMIT: prefixed error
+- [x] Added safeLLM() wrapper in routers.ts: catches RATE_LIMIT: errors and re-throws as TRPCError(TOO_MANY_REQUESTS) with user-friendly message
+- [x] Replaced all 15 invokeLLM() calls in routers.ts with safeLLM() — all AI mutations now show clean toast instead of JSON crash
+- [x] Other router files (personasRouter, landingPagesRouter, youtubeRouter, etc.) also protected via the source-level fix in llm.ts
+- [x] 121 tests passing, 0 TypeScript errors

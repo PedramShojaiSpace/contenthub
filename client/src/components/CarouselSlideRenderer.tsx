@@ -3,10 +3,18 @@
  * Renders branded Urban Monk carousel slides on an HTML Canvas.
  * Each slide is 1080×1080 (1:1 square) for Meta.
  *
+ * Design system: The Urban Monk Visual Identity Guidelines (May 2020)
+ *   - Taoist five-element color palette
+ *   - Flat solid color backgrounds (NO gradients)
+ *   - White text on colored backgrounds
+ *   - Dark (#161513) text on cream backgrounds
+ *   - Urban Monk logo mark (circle + infinity/wave) bottom-right
+ *   - "Life Garden" abstract decorative elements as watermarks
+ *
  * Template types:
- *   cover   — large hook headline, no body, slide number badge
- *   content — headline + body text (bullets or paragraph)
- *   cta     — headline + body + URL
+ *   cover   — large hook headline, solid brand color bg, white text
+ *   content — headline + body/bullets, cream bg, dark text
+ *   cta     — call to action, cream bg, Fire accent
  */
 
 export type SlideType = "cover" | "content" | "cta";
@@ -21,18 +29,25 @@ export interface CarouselSlideData {
   imageUrl?: string; // legacy — ignored in template mode
 }
 
-// ── Brand tokens ─────────────────────────────────────────────────────────────
+// ── Brand tokens (Urban Monk Visual Identity Guidelines) ──────────────────────
 const BRAND = {
-  bg: "#0f1117",          // deep charcoal
-  bgAlt: "#161b27",       // slightly lighter for content slides
-  accent: "#c9a84c",      // Urban Monk gold
-  accentLight: "#e8c96a", // lighter gold for highlights
-  text: "#f0ece4",        // warm off-white
-  textMuted: "#9a9080",   // muted warm grey
-  border: "#2a2520",      // subtle border
-  coverBg: "#0a0d14",     // darkest for cover
-  ctaBg: "#1a1208",       // warm dark for CTA
+  // Taoist element colors
+  fire:    "#ed5939",  // Fire — primary brand red-orange
+  wood:    "#3d7e51",  // Wood — forest green
+  water:   "#5870aa",  // Water — muted blue
+  earth:   "#f6a032",  // Earth — warm amber
+  metal:   "#f7f4ef",  // Metal — warm cream (primary bg)
+  yin:     "#161513",  // Yin — near-black (primary text)
+  yang:    "#ffffff",  // Yang — pure white
+
+  // Tints
+  yinLight: "rgba(22,21,19,0.12)",   // subtle dark tint for watermarks
+  fireLight: "rgba(237,89,57,0.08)", // faint fire for decorative elements
+  woodLight: "rgba(61,126,81,0.08)", // faint wood for decorative elements
 };
+
+// Cover slide backgrounds rotate through brand colors
+const COVER_COLORS = [BRAND.fire, BRAND.wood, BRAND.water, BRAND.earth];
 
 const SLIDE_SIZE = 1080;
 
@@ -41,13 +56,17 @@ let fontsLoaded = false;
 async function ensureFonts() {
   if (fontsLoaded) return;
   try {
-    await document.fonts.load("bold 72px Georgia");
-    await document.fonts.load("normal 36px Georgia");
-    await document.fonts.load("bold 42px system-ui");
-    await document.fonts.load("normal 32px system-ui");
+    // Load Google Fonts equivalents for Raisonne Pro / Sofia Pro
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Nunito:wght@400;600;700;800&display=swap";
+    if (!document.querySelector('link[href*="DM+Sans"]')) {
+      document.head.appendChild(link);
+    }
+    await document.fonts.ready;
     fontsLoaded = true;
   } catch {
-    fontsLoaded = true; // proceed anyway
+    fontsLoaded = true;
   }
 }
 
@@ -59,19 +78,24 @@ function wrapText(
   y: number,
   maxWidth: number,
   lineHeight: number,
-  maxLines = 8
+  maxLines = 8,
+  align: CanvasTextAlign = "left"
 ): number {
   const words = text.split(" ");
   let line = "";
   let currentY = y;
   let lineCount = 0;
 
+  const drawX = align === "center" ? x + maxWidth / 2 : x;
+  const savedAlign = ctx.textAlign;
+  ctx.textAlign = align;
+
   for (const word of words) {
     const testLine = line ? `${line} ${word}` : word;
     const metrics = ctx.measureText(testLine);
     if (metrics.width > maxWidth && line) {
       if (lineCount >= maxLines) break;
-      ctx.fillText(line, x, currentY);
+      ctx.fillText(line, drawX, currentY);
       line = word;
       currentY += lineHeight;
       lineCount++;
@@ -80,215 +104,353 @@ function wrapText(
     }
   }
   if (line && lineCount < maxLines) {
-    ctx.fillText(line, x, currentY);
+    ctx.fillText(line, drawX, currentY);
     currentY += lineHeight;
   }
+
+  ctx.textAlign = savedAlign;
   return currentY;
 }
 
-// ── Decorative elements ───────────────────────────────────────────────────────
-function drawAccentLine(ctx: CanvasRenderingContext2D, x: number, y: number, width: number) {
+// ── Urban Monk Logo Mark ──────────────────────────────────────────────────────
+// Draws the circular logo mark: circle + mountain waves + infinity symbol
+function drawLogoMark(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  color: string
+) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = "transparent";
+  ctx.lineWidth = radius * 0.08;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Outer circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Sun dot (top)
+  const dotR = radius * 0.09;
+  ctx.beginPath();
+  ctx.arc(cx, cy - radius * 0.42, dotR, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // Mountain waves (middle) — two arcs
+  const waveY = cy - radius * 0.1;
+  const waveW = radius * 0.55;
+  ctx.beginPath();
+  ctx.moveTo(cx - waveW, waveY + radius * 0.12);
+  ctx.quadraticCurveTo(cx - waveW * 0.5, waveY - radius * 0.18, cx, waveY + radius * 0.12);
+  ctx.quadraticCurveTo(cx + waveW * 0.5, waveY - radius * 0.18, cx + waveW, waveY + radius * 0.12);
+  ctx.strokeStyle = color;
+  ctx.stroke();
+
+  // Infinity symbol (bottom)
+  const infY = cy + radius * 0.35;
+  const infW = radius * 0.45;
+  const infH = radius * 0.22;
+  ctx.beginPath();
+  // Left lobe
+  ctx.moveTo(cx, infY);
+  ctx.bezierCurveTo(cx - infW * 0.3, infY - infH, cx - infW, infY - infH, cx - infW, infY);
+  ctx.bezierCurveTo(cx - infW, infY + infH, cx - infW * 0.3, infY + infH, cx, infY);
+  // Right lobe
+  ctx.bezierCurveTo(cx + infW * 0.3, infY - infH, cx + infW, infY - infH, cx + infW, infY);
+  ctx.bezierCurveTo(cx + infW, infY + infH, cx + infW * 0.3, infY + infH, cx, infY);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ── Life Garden decorative elements ──────────────────────────────────────────
+
+// Scattered dot cluster (like "Seeds" or "Water" pattern)
+function drawDotCluster(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  opacity: number,
+  dotR = 8,
+  cols = 4,
+  rows = 5,
+  spacing = 28
+) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.fillStyle = color;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const offsetX = (r % 2) * (spacing / 2);
+      ctx.beginPath();
+      ctx.arc(x + c * spacing + offsetX, y + r * spacing, dotR * (0.7 + Math.random() * 0.3), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+// Zigzag / mountain line (like "Mountains" element)
+function drawZigzag(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  amplitude: number,
+  segments: number,
+  color: string,
+  opacity: number,
+  lineWidth = 4
+) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.beginPath();
   ctx.moveTo(x, y);
+  const segW = width / segments;
+  for (let i = 0; i < segments; i++) {
+    const px = x + i * segW + segW / 2;
+    const py = i % 2 === 0 ? y - amplitude : y + amplitude;
+    ctx.lineTo(px, py);
+  }
   ctx.lineTo(x + width, y);
-  ctx.strokeStyle = BRAND.accent;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Organic oval rings (like "Crops" element)
+function drawOvalRings(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  count: number,
+  color: string,
+  opacity: number
+) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  for (let i = 0; i < count; i++) {
+    ctx.beginPath();
+    ctx.ellipse(x + i * 72, y, 28, 36, -0.2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Sketch circle (like "Moon" element)
+function drawSketchCircle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  color: string,
+  opacity: number
+) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.strokeStyle = color;
   ctx.lineWidth = 3;
-  ctx.stroke();
-}
-
-function drawSlideNumber(ctx: CanvasRenderingContext2D, num: number, total: number) {
-  // Bottom-right corner badge
-  const text = `${num} / ${total}`;
-  ctx.font = "500 26px system-ui, -apple-system, sans-serif";
-  ctx.fillStyle = BRAND.textMuted;
-  ctx.textAlign = "right";
-  ctx.fillText(text, SLIDE_SIZE - 48, SLIDE_SIZE - 44);
-}
-
-function drawBrandMark(ctx: CanvasRenderingContext2D) {
-  // Bottom-left: "THE URBAN MONK" wordmark
-  ctx.font = "600 22px system-ui, -apple-system, sans-serif";
-  ctx.fillStyle = BRAND.accent;
-  ctx.textAlign = "left";
-  ctx.letterSpacing = "3px";
-  ctx.fillText("THE URBAN MONK", 56, SLIDE_SIZE - 44);
-  ctx.letterSpacing = "0px";
-}
-
-function drawCornerAccent(ctx: CanvasRenderingContext2D) {
-  // Top-left corner bracket
   ctx.beginPath();
-  ctx.moveTo(40, 80);
-  ctx.lineTo(40, 40);
-  ctx.lineTo(80, 40);
-  ctx.strokeStyle = BRAND.accent;
-  ctx.lineWidth = 2.5;
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.restore();
 }
 
 // ── Cover slide ───────────────────────────────────────────────────────────────
-function renderCover(ctx: CanvasRenderingContext2D, slide: CarouselSlideData, total: number) {
-  // Background gradient
-  const grad = ctx.createLinearGradient(0, 0, SLIDE_SIZE, SLIDE_SIZE);
-  grad.addColorStop(0, BRAND.coverBg);
-  grad.addColorStop(1, "#1a1208");
-  ctx.fillStyle = grad;
+function renderCover(
+  ctx: CanvasRenderingContext2D,
+  slide: CarouselSlideData,
+  total: number,
+  colorIndex: number
+) {
+  const bgColor = COVER_COLORS[colorIndex % COVER_COLORS.length];
+
+  // Solid brand color background (NO gradient — brand spec)
+  ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
 
-  // Subtle diagonal texture lines
-  ctx.strokeStyle = "rgba(201,168,76,0.04)";
-  ctx.lineWidth = 1;
-  for (let i = -SLIDE_SIZE; i < SLIDE_SIZE * 2; i += 60) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i + SLIDE_SIZE, SLIDE_SIZE);
-    ctx.stroke();
-  }
+  // Watermark: faint Life Garden elements (same hue, lighter tone)
+  const watermarkColor = BRAND.yang; // white at low opacity
 
-  drawCornerAccent(ctx);
+  // Dot cluster — top-right area
+  drawDotCluster(ctx, SLIDE_SIZE - 260, 60, watermarkColor, 0.12, 9, 4, 5, 36);
 
-  // "SWIPE →" hint top-right
-  ctx.font = "500 22px system-ui, -apple-system, sans-serif";
-  ctx.fillStyle = BRAND.textMuted;
+  // Oval rings — bottom-left
+  drawOvalRings(ctx, 60, SLIDE_SIZE - 120, 4, watermarkColor, 0.1);
+
+  // Sketch circle — mid-right
+  drawSketchCircle(ctx, SLIDE_SIZE - 120, SLIDE_SIZE / 2, 90, watermarkColor, 0.08);
+
+  // Swipe hint — top right
+  ctx.font = "500 24px 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
   ctx.textAlign = "right";
-  ctx.fillText("SWIPE →", SLIDE_SIZE - 48, 64);
+  ctx.fillText("swipe →", SLIDE_SIZE - 56, 72);
 
-  // Accent line
-  drawAccentLine(ctx, 56, 380, 120);
-
-  // Headline — large serif
-  ctx.font = "bold 78px Georgia, 'Times New Roman', serif";
-  ctx.fillStyle = BRAND.text;
+  // Slide number — top left
+  ctx.font = "400 22px 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.textAlign = "left";
-  const headlineY = wrapText(ctx, slide.headline, 56, 440, SLIDE_SIZE - 112, 96, 4);
+  ctx.fillText(`${slide.slide} of ${total}`, 56, 72);
 
-  // Gold accent dot
-  ctx.beginPath();
-  ctx.arc(56 + 8, headlineY + 32, 5, 0, Math.PI * 2);
-  ctx.fillStyle = BRAND.accent;
-  ctx.fill();
+  // Headline — large, centered, white, sentence case
+  ctx.font = "700 80px 'Nunito', 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = BRAND.yang;
+  ctx.textAlign = "left";
 
-  drawBrandMark(ctx);
-  drawSlideNumber(ctx, slide.slide, total);
+  // Vertically center the headline block
+  const headlineMaxWidth = SLIDE_SIZE - 112;
+  const lineH = 96;
+  const approxLines = Math.ceil((slide.headline.length * 40) / headlineMaxWidth) + 1;
+  const blockH = approxLines * lineH;
+  const startY = (SLIDE_SIZE - blockH) / 2 + lineH;
+
+  wrapText(ctx, slide.headline, 56, startY, headlineMaxWidth, lineH, 5, "left");
+
+  // Logo mark — bottom-right, white
+  drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 52, BRAND.yang);
 }
 
 // ── Content slide ─────────────────────────────────────────────────────────────
-function renderContent(ctx: CanvasRenderingContext2D, slide: CarouselSlideData, total: number) {
-  // Background
-  ctx.fillStyle = BRAND.bgAlt;
+function renderContent(
+  ctx: CanvasRenderingContext2D,
+  slide: CarouselSlideData,
+  total: number,
+  colorIndex: number
+) {
+  // Cream background
+  ctx.fillStyle = BRAND.metal;
   ctx.fillRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
 
-  // Subtle top gradient
-  const topGrad = ctx.createLinearGradient(0, 0, 0, 300);
-  topGrad.addColorStop(0, "rgba(201,168,76,0.06)");
-  topGrad.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = topGrad;
-  ctx.fillRect(0, 0, SLIDE_SIZE, 300);
+  // Pick an accent color for this slide (cycles through brand colors)
+  const accentColor = COVER_COLORS[colorIndex % COVER_COLORS.length];
 
-  drawCornerAccent(ctx);
+  // Watermark: faint Life Garden elements in accent color
+  drawDotCluster(ctx, SLIDE_SIZE - 220, SLIDE_SIZE - 280, accentColor, 0.1, 10, 3, 4, 38);
+  drawZigzag(ctx, 40, SLIDE_SIZE - 160, 300, 22, 8, accentColor, 0.12, 5);
 
-  // Slide number badge top-right
-  const badgeText = `${slide.slide}`;
-  ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
-  ctx.fillStyle = BRAND.accent;
-  ctx.textAlign = "right";
-  ctx.fillText(badgeText, SLIDE_SIZE - 48, 72);
-
-  // Accent line
-  drawAccentLine(ctx, 56, 160, 80);
-
-  // Headline
-  ctx.font = "bold 58px Georgia, 'Times New Roman', serif";
-  ctx.fillStyle = BRAND.text;
+  // Slide number — top left
+  ctx.font = "400 22px 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(22,21,19,0.4)";
   ctx.textAlign = "left";
-  const afterHeadline = wrapText(ctx, slide.headline, 56, 210, SLIDE_SIZE - 112, 74, 3);
+  ctx.fillText(`${slide.slide} of ${total}`, 56, 72);
+
+  // Accent color bar — left edge
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(0, 0, 12, SLIDE_SIZE);
+
+  // Headline — dark, large
+  ctx.font = "700 64px 'Nunito', 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = BRAND.yin;
+  ctx.textAlign = "left";
+  const afterHeadline = wrapText(ctx, slide.headline, 72, 160, SLIDE_SIZE - 128, 78, 3);
+
+  // Divider line in accent color
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(72, afterHeadline + 16, 80, 4);
 
   // Body text
+  const bodyY = afterHeadline + 56;
   if (slide.bullets && slide.bullets.length > 0) {
-    // Bullet list
-    let bulletY = afterHeadline + 48;
-    ctx.font = "normal 36px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = BRAND.textMuted;
+    let bulletY = bodyY;
+    ctx.font = "400 38px 'DM Sans', system-ui, sans-serif";
+    ctx.fillStyle = BRAND.yin;
     for (const bullet of slide.bullets.slice(0, 5)) {
-      // Bullet dot
+      // Bullet dot in accent color
+      ctx.fillStyle = accentColor;
       ctx.beginPath();
-      ctx.arc(56 + 8, bulletY - 10, 5, 0, Math.PI * 2);
-      ctx.fillStyle = BRAND.accent;
+      ctx.arc(72 + 10, bulletY - 12, 7, 0, Math.PI * 2);
       ctx.fill();
       // Bullet text
-      ctx.fillStyle = BRAND.textMuted;
-      wrapText(ctx, bullet, 56 + 28, bulletY, SLIDE_SIZE - 140, 44, 2);
-      bulletY += 72;
+      ctx.fillStyle = BRAND.yin;
+      const nextY = wrapText(ctx, bullet, 72 + 32, bulletY, SLIDE_SIZE - 160, 48, 2);
+      bulletY = nextY + 20;
     }
   } else if (slide.body) {
-    ctx.font = "normal 38px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = BRAND.textMuted;
-    wrapText(ctx, slide.body, 56, afterHeadline + 48, SLIDE_SIZE - 112, 56, 6);
+    ctx.font = "400 40px 'DM Sans', system-ui, sans-serif";
+    ctx.fillStyle = BRAND.yin;
+    wrapText(ctx, slide.body, 72, bodyY, SLIDE_SIZE - 128, 58, 6);
   }
 
-  drawBrandMark(ctx);
-  drawSlideNumber(ctx, slide.slide, total);
+  // Logo mark — bottom-right, accent color
+  drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 52, accentColor);
 }
 
 // ── CTA slide ─────────────────────────────────────────────────────────────────
 function renderCta(ctx: CanvasRenderingContext2D, slide: CarouselSlideData, total: number) {
-  // Warm dark background
-  const grad = ctx.createLinearGradient(0, 0, 0, SLIDE_SIZE);
-  grad.addColorStop(0, BRAND.ctaBg);
-  grad.addColorStop(1, "#0f1117");
-  ctx.fillStyle = grad;
+  // Cream background
+  ctx.fillStyle = BRAND.metal;
   ctx.fillRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
 
-  // Gold border frame
-  ctx.strokeStyle = BRAND.accent;
-  ctx.lineWidth = 3;
-  ctx.strokeRect(32, 32, SLIDE_SIZE - 64, SLIDE_SIZE - 64);
+  // Fire accent — top color block (top 1/3)
+  ctx.fillStyle = BRAND.fire;
+  ctx.fillRect(0, 0, SLIDE_SIZE, 340);
 
-  // Inner glow
-  const innerGrad = ctx.createRadialGradient(SLIDE_SIZE / 2, SLIDE_SIZE / 2, 100, SLIDE_SIZE / 2, SLIDE_SIZE / 2, 600);
-  innerGrad.addColorStop(0, "rgba(201,168,76,0.08)");
-  innerGrad.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = innerGrad;
-  ctx.fillRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
+  // Watermark on fire block: oval rings
+  drawOvalRings(ctx, 60, 280, 5, BRAND.yang, 0.12);
+  drawDotCluster(ctx, SLIDE_SIZE - 240, 40, BRAND.yang, 0.1, 9, 4, 3, 34);
 
-  // "READY?" label
-  ctx.font = "600 24px system-ui, -apple-system, sans-serif";
-  ctx.fillStyle = BRAND.accent;
-  ctx.textAlign = "center";
-  ctx.fillText("READY?", SLIDE_SIZE / 2, 200);
+  // Slide number
+  ctx.font = "400 22px 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.textAlign = "left";
+  ctx.fillText(`${slide.slide} of ${total}`, 56, 56);
 
-  // Headline
-  ctx.font = "bold 64px Georgia, 'Times New Roman', serif";
-  ctx.fillStyle = BRAND.text;
-  const afterHeadline = wrapText(ctx, slide.headline, 80, 280, SLIDE_SIZE - 160, 80, 3);
+  // Headline — white on fire block
+  ctx.font = "700 68px 'Nunito', 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = BRAND.yang;
+  ctx.textAlign = "left";
+  wrapText(ctx, slide.headline, 56, 120, SLIDE_SIZE - 112, 82, 3);
 
-  // Body
+  // Body — dark on cream
   if (slide.body) {
-    ctx.font = "normal 36px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = BRAND.textMuted;
+    ctx.font = "400 38px 'DM Sans', system-ui, sans-serif";
+    ctx.fillStyle = BRAND.yin;
     ctx.textAlign = "center";
-    wrapText(ctx, slide.body, 80, afterHeadline + 40, SLIDE_SIZE - 160, 50, 3);
+    wrapText(ctx, slide.body, 56, 400, SLIDE_SIZE - 112, 54, 4, "center");
   }
 
-  // URL pill
-  const urlY = SLIDE_SIZE - 200;
-  ctx.fillStyle = BRAND.accent;
+  // CTA button pill — Fire color
+  const btnY = SLIDE_SIZE - 260;
+  const btnW = 680;
+  const btnH = 88;
+  const btnX = (SLIDE_SIZE - btnW) / 2;
+  ctx.fillStyle = BRAND.fire;
   ctx.beginPath();
-  ctx.roundRect(SLIDE_SIZE / 2 - 280, urlY, 560, 72, 36);
+  ctx.roundRect(btnX, btnY, btnW, btnH, 44);
   ctx.fill();
-  ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
-  ctx.fillStyle = BRAND.bg;
-  ctx.textAlign = "center";
-  ctx.fillText("go.theurbanmonk.com", SLIDE_SIZE / 2, urlY + 46);
 
-  drawBrandMark(ctx);
+  ctx.font = "700 30px 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = BRAND.yang;
+  ctx.textAlign = "center";
+  ctx.fillText("go.theurbanmonk.com", SLIDE_SIZE / 2, btnY + 56);
+
+  // "Free access" sub-label
+  ctx.font = "400 26px 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(22,21,19,0.5)";
+  ctx.fillText("Join the Urban Monk Academy", SLIDE_SIZE / 2, btnY + 120);
+
+  // Logo mark — bottom-right, Fire color
+  drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 52, BRAND.fire);
 }
 
 // ── Main render function ──────────────────────────────────────────────────────
 export async function renderSlideToCanvas(
   canvas: HTMLCanvasElement,
   slide: CarouselSlideData,
-  total: number
+  total: number,
+  colorIndex?: number
 ) {
   await ensureFonts();
   canvas.width = SLIDE_SIZE;
@@ -296,19 +458,22 @@ export async function renderSlideToCanvas(
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
 
+  // colorIndex cycles through brand palette per slide
+  const idx = colorIndex !== undefined ? colorIndex : slide.slide - 1;
+
   if (slide.type === "cover") {
-    renderCover(ctx, slide, total);
+    renderCover(ctx, slide, total, idx);
   } else if (slide.type === "cta") {
     renderCta(ctx, slide, total);
   } else {
-    renderContent(ctx, slide, total);
+    renderContent(ctx, slide, total, idx);
   }
 }
 
 // ── Export slide as PNG blob ──────────────────────────────────────────────────
-export async function slideToBlob(slide: CarouselSlideData, total: number): Promise<Blob> {
+export async function slideToBlob(slide: CarouselSlideData, total: number, colorIndex?: number): Promise<Blob> {
   const canvas = document.createElement("canvas");
-  await renderSlideToCanvas(canvas, slide, total);
+  await renderSlideToCanvas(canvas, slide, total, colorIndex);
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
@@ -320,9 +485,9 @@ export async function slideToBlob(slide: CarouselSlideData, total: number): Prom
 // ── Export all slides as data URLs (for preview) ──────────────────────────────
 export async function slidesToDataUrls(slides: CarouselSlideData[]): Promise<string[]> {
   const results: string[] = [];
-  for (const slide of slides) {
+  for (let i = 0; i < slides.length; i++) {
     const canvas = document.createElement("canvas");
-    await renderSlideToCanvas(canvas, slide, slides.length);
+    await renderSlideToCanvas(canvas, slides[i], slides.length, i);
     results.push(canvas.toDataURL("image/png"));
   }
   return results;

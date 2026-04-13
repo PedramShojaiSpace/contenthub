@@ -1262,3 +1262,15 @@
 - [x] Replaced all 15 invokeLLM() calls in routers.ts with safeLLM() — all AI mutations now show clean toast instead of JSON crash
 - [x] Other router files (personasRouter, landingPagesRouter, youtubeRouter, etc.) also protected via the source-level fix in llm.ts
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Brand Identity Applied (v78)
+- [x] Extracted all brand tokens from The Urban Monk Visual Identity Guidelines PDF (May 2020)
+- [x] Saved brand token reference to brand-tokens.md
+- [x] Carousel renderer completely rewritten: cream/solid brand color backgrounds, white text on color, dark text on cream, NO gradients (brand spec), Urban Monk SVG logo mark in bottom-right, Life Garden decorative elements (dot clusters, zigzag lines, oval rings, sketch circles) as watermarks
+- [x] Cover slides rotate through Fire (#ed5939), Wood (#3d7e51), Water (#5870aa), Earth (#f6a032)
+- [x] Content slides use cream (#f7f4ef) background with colored left-edge accent bar
+- [x] CTA slide uses Fire top block + cream bottom + Fire CTA button pill
+- [x] Updated global CSS: primary = Fire (#ed5939), accent = Wood (#3d7e51), background = Metal cream (#f7f4ef), foreground = Yin (#161513)
+- [x] Updated fonts: DM Sans (body) + Nunito (headings) — closest free Google Font equivalents to Raisonne Pro / Sofia Pro
+- [x] Sidebar updated: cream (#f7f4ef) background, Urban Monk SVG logo mark in header
+- [x] 121 tests passing, 0 TypeScript errors

@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter", sans-serif;
-  --font-serif: "Playfair Display", serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "Nunito", "DM Sans", sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -34,37 +34,55 @@
 }
 
 :root {
-  /* Light, warm, inspirational theme — The Urban Monk */
-  --background: oklch(0.98 0.008 85);   /* Warm off-white / parchment */
-  --foreground: oklch(0.2 0.02 60);     /* Deep warm charcoal */
+  /* The Urban Monk — Official Brand Palette (Visual Identity Guidelines May 2020) */
+  /* Metal (cream) background, Yin (near-black) text, Fire (red-orange) primary */
 
-  --card: oklch(1.0 0 0);               /* Pure white cards */
-  --card-foreground: oklch(0.2 0.02 60);
+  /* Metal — warm cream background (#f7f4ef) */
+  --background: oklch(0.968 0.009 88);
+  /* Yin — near-black text (#161513) */
+  --foreground: oklch(0.165 0.01 60);
 
-  --popover: oklch(1.0 0 0);
-  --popover-foreground: oklch(0.2 0.02 60);
+  /* Cards: slightly lighter cream */
+  --card: oklch(0.99 0.004 88);
+  --card-foreground: oklch(0.165 0.01 60);
 
-  /* Warm terracotta / sunrise gold primary */
-  --primary: oklch(0.58 0.14 42);       /* Terracotta / warm amber */
-  --primary-foreground: oklch(0.99 0 0); /* White text on primary */
+  --popover: oklch(0.99 0.004 88);
+  --popover-foreground: oklch(0.165 0.01 60);
 
-  --secondary: oklch(0.93 0.012 85);    /* Warm light cream */
-  --secondary-foreground: oklch(0.3 0.02 60);
+  /* Fire — primary brand red-orange (#ed5939) */
+  --primary: oklch(0.60 0.185 32);
+  --primary-foreground: oklch(1.0 0 0);
 
-  --muted: oklch(0.94 0.008 85);        /* Soft warm gray */
-  --muted-foreground: oklch(0.42 0.02 60);   /* Improved contrast - was 0.5 (fails WCAG AA at small text) */
+  /* Metal tint — secondary */
+  --secondary: oklch(0.94 0.008 88);
+  --secondary-foreground: oklch(0.165 0.01 60);
 
-  --accent: oklch(0.88 0.04 120);       /* Soft sage green accent */
-  --accent-foreground: oklch(0.2 0.04 120);
+  /* Muted — Yin 20% tint */
+  --muted: oklch(0.93 0.006 88);
+  --muted-foreground: oklch(0.42 0.01 60);
 
-  --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.99 0 0);
+  /* Wood — forest green accent (#3d7e51) */
+  --accent: oklch(0.49 0.09 148);
+  --accent-foreground: oklch(1.0 0 0);
 
-  --border: oklch(0.88 0.01 85);        /* Soft warm border */
-  --input: oklch(0.92 0.008 85);
-  --ring: oklch(0.58 0.14 42);          /* Terracotta ring */
+  --destructive: oklch(0.60 0.185 32);
+  --destructive-foreground: oklch(1.0 0 0);
 
-  --radius: 0.625rem;
+  /* Borders: warm subtle */
+  --border: oklch(0.88 0.008 88);
+  --input: oklch(0.92 0.006 88);
+  --ring: oklch(0.60 0.185 32);
+
+  --radius: 0.5rem;
+
+  /* Brand color custom properties for direct use */
+  --brand-fire: #ed5939;
+  --brand-wood: #3d7e51;
+  --brand-water: #5870aa;
+  --brand-earth: #f6a032;
+  --brand-metal: #f7f4ef;
+  --brand-yin: #161513;
+  --brand-yang: #ffffff;
 }
 
 .dark {

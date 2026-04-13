@@ -228,22 +228,26 @@ function DashboardLayoutContent({
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar collapsible="icon" className="border-r border-border/50">
-          <SidebarHeader className="h-16 justify-center border-b border-border/50">
+        <Sidebar collapsible="icon" className="border-r border-border/50 bg-[#f7f4ef]">
+          <SidebarHeader className="h-16 justify-center border-b border-border/30 bg-[#f7f4ef]">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                className="h-8 w-8 flex items-center justify-center hover:bg-primary/10 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
                 aria-label="Toggle navigation"
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-                    <span className="text-primary font-serif font-bold text-xs">UM</span>
-                  </div>
-                  <span className="font-serif font-semibold tracking-tight truncate text-foreground text-sm">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Urban Monk logo mark — SVG inline */}
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+                    <circle cx="14" cy="14" r="12.5" stroke="#ed5939" strokeWidth="1.8"/>
+                    <circle cx="14" cy="6.5" r="1.2" fill="#ed5939"/>
+                    <path d="M8.5 13.5 Q11.25 10.5 14 13.5 Q16.75 10.5 19.5 13.5" stroke="#ed5939" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+                    <path d="M14 17.5 C12.2 17.5 10.5 16.5 10.5 17.5 C10.5 18.5 12.2 19.5 14 19.5 C15.8 19.5 17.5 18.5 17.5 17.5 C17.5 16.5 15.8 17.5 14 17.5 Z" stroke="#ed5939" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                  </svg>
+                  <span className="font-semibold tracking-tight truncate text-foreground text-sm">
                     UMP Content Hub
                   </span>
                 </div>
@@ -251,7 +255,7 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0 pt-2">
+          <SidebarContent className="gap-0 pt-2 bg-[#f7f4ef]">
             <SidebarMenu className="px-2 py-1">
               {/* Top-level nav items */}
               {topNavItems.map((item) => {
@@ -368,7 +372,7 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3 border-t border-border/50">
+          <SidebarFooter className="p-3 border-t border-border/30 bg-[#f7f4ef]">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">

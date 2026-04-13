@@ -112,109 +112,99 @@ function wrapText(
   return currentY;
 }
 
-// ── Urban Monk Logo Mark ──────────────────────────────────────────────────────
-// Real logo image: circle + hollow ring (sun) + double mountain chevron + infinity knot
-const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/urban-monk-logo-yin_728403ed.webp";
+// ── Urban Monk Logo Variants ───────────────────────────────────────────────────
+// All 7 official color variants from the brand identity package.
+// Each logo file is pre-colored — no pixel manipulation needed.
+//
+// Usage rules (from brand spec):
+//   Colored bg (Fire/Wood/Water/Earth) → Yang (white) logo
+//   Cream/Metal bg                     → Yin (black) or element-colored logo
+//   Dark bg                            → Yang (white) logo
 
-// Cache the loaded logo image so it is only fetched once per session
-let _logoImg: HTMLImageElement | null = null;
-let _logoLoadPromise: Promise<HTMLImageElement> | null = null;
+const CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ";
 
-function getLogoImage(): Promise<HTMLImageElement> {
-  if (_logoImg) return Promise.resolve(_logoImg);
-  if (_logoLoadPromise) return _logoLoadPromise;
-  _logoLoadPromise = new Promise((resolve, reject) => {
+export const LOGO_URLS = {
+  yin:   `${CDN}/The_Urban_Monk-Icon-Yin_90acff39.png`,   // black
+  yang:  `${CDN}/The_Urban_Monk-Icon-Yang_b22ccc65.png`,  // white
+  fire:  `${CDN}/The_Urban_Monk-Icon-Fire_0b452e9b.png`,  // red-orange #ed5939
+  wood:  `${CDN}/The_Urban_Monk-Icon-Wood_0a2e7212.png`,  // forest green #3d7e51
+  water: `${CDN}/The_Urban_Monk-Icon-Water_86df5580.png`, // muted blue #5870aa
+  earth: `${CDN}/The_Urban_Monk-Icon-Earth_04456ace.png`, // warm amber #f6a032
+  metal: `${CDN}/The_Urban_Monk-Icon-Metal_47202c2f.png`, // cream (use on dark bg)
+} as const;
+
+export type LogoVariant = keyof typeof LOGO_URLS;
+
+// Image cache — one entry per variant
+const _logoCache: Partial<Record<LogoVariant, HTMLImageElement>> = {};
+const _logoPromises: Partial<Record<LogoVariant, Promise<HTMLImageElement>>> = {};
+
+function getLogoImage(variant: LogoVariant): Promise<HTMLImageElement> {
+  if (_logoCache[variant]) return Promise.resolve(_logoCache[variant]!);
+  if (_logoPromises[variant]) return _logoPromises[variant]!;
+  _logoPromises[variant] = new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => { _logoImg = img; resolve(img); };
+    img.onload = () => { _logoCache[variant] = img; resolve(img); };
     img.onerror = reject;
-    img.src = LOGO_URL;
+    img.src = LOGO_URLS[variant];
   });
-  return _logoLoadPromise;
+  return _logoPromises[variant]!;
 }
 
 /**
- * Draw the real Urban Monk logo mark onto the canvas.
- * The logo is black-on-white; on colored backgrounds we tint it white using
- * a compositing trick: draw white rect clipped to the image shape.
- * cx/cy = center, size = diameter of the logo square.
+ * Map a brand background color to the correct logo variant.
+ * - Colored backgrounds (Fire/Wood/Water/Earth) → Yang (white)
+ * - Cream (Metal) background → Yin (black)
+ * - Explicit element override → matching element logo
+ */
+export function logoVariantForBg(bgColor: string): LogoVariant {
+  switch (bgColor) {
+    case BRAND.fire:  return "yang";  // white on red-orange
+    case BRAND.wood:  return "yang";  // white on green
+    case BRAND.water: return "yang";  // white on blue
+    case BRAND.earth: return "yang";  // white on amber
+    case BRAND.metal: return "yin";   // black on cream
+    default:          return "yin";
+  }
+}
+
+/**
+ * Map a brand background color to the element-colored logo variant.
+ * Used on cream/content slides where the logo echoes the accent color.
+ */
+export function logoVariantForAccent(accentColor: string): LogoVariant {
+  switch (accentColor) {
+    case BRAND.fire:  return "fire";
+    case BRAND.wood:  return "wood";
+    case BRAND.water: return "water";
+    case BRAND.earth: return "earth";
+    default:          return "yin";
+  }
+}
+
+/**
+ * Draw the Urban Monk logo onto the canvas using the correct pre-colored variant.
+ * cx/cy = center point, size = width & height in canvas pixels.
  */
 async function drawLogoMark(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   size: number,
-  color: string
+  variant: LogoVariant
 ) {
   try {
-    const img = await getLogoImage();
+    const img = await getLogoImage(variant);
     const half = size / 2;
-    const x = cx - half;
-    const y = cy - half;
-
     ctx.save();
-
-    if (color === "#ffffff" || color === BRAND.yang) {
-      // On colored backgrounds: draw logo in white using destination-out trick
-      // 1. Draw a white-filled square
-      // 2. Use the logo as a mask via destination-in
-      const offscreen = document.createElement("canvas");
-      offscreen.width = size;
-      offscreen.height = size;
-      const oc = offscreen.getContext("2d")!;
-      // Fill white
-      oc.fillStyle = "#ffffff";
-      oc.fillRect(0, 0, size, size);
-      // Multiply by logo alpha (black pixels become transparent, white stays)
-      oc.globalCompositeOperation = "destination-in";
-      oc.drawImage(img, 0, 0, size, size);
-      // Now invert: white logo on transparent
-      // Actually the logo is black on white, so we need to invert the mask
-      // Use a second pass: draw white square, then cut out where logo is dark
-      const offscreen2 = document.createElement("canvas");
-      offscreen2.width = size;
-      offscreen2.height = size;
-      const oc2 = offscreen2.getContext("2d")!;
-      oc2.drawImage(img, 0, 0, size, size);
-      // Invert: make black pixels white and white pixels transparent
-      oc2.globalCompositeOperation = "difference";
-      oc2.fillStyle = "#ffffff";
-      oc2.fillRect(0, 0, size, size);
-      // Mask out the white background (keep only the formerly-black strokes)
-      oc2.globalCompositeOperation = "destination-in";
-      // Use the original logo as alpha mask (black=opaque, white=transparent)
-      // We need to invert the alpha: draw black rect with destination-out
-      const maskCanvas = document.createElement("canvas");
-      maskCanvas.width = size;
-      maskCanvas.height = size;
-      const mc = maskCanvas.getContext("2d")!;
-      mc.drawImage(img, 0, 0, size, size);
-      // invert luminance to alpha: black stroke → opaque, white bg → transparent
-      const imageData = mc.getImageData(0, 0, size, size);
-      for (let i = 0; i < imageData.data.length; i += 4) {
-        const lum = (imageData.data[i] + imageData.data[i+1] + imageData.data[i+2]) / 3;
-        imageData.data[i] = 255;
-        imageData.data[i+1] = 255;
-        imageData.data[i+2] = 255;
-        imageData.data[i+3] = 255 - lum; // dark pixels → opaque
-      }
-      mc.putImageData(imageData, 0, 0);
-      oc2.drawImage(maskCanvas, 0, 0);
-
-      ctx.globalAlpha = 0.92;
-      ctx.drawImage(offscreen2, x, y);
-    } else {
-      // On cream/light backgrounds: draw logo directly (it's black on white/transparent)
-      // Apply color tint by drawing with globalCompositeOperation
-      ctx.globalAlpha = 0.88;
-      ctx.drawImage(img, x, y, size, size);
-    }
-
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(img, cx - half, cy - half, size, size);
     ctx.restore();
   } catch {
-    // Fallback: simple circle if image fails to load
+    // Fallback: simple circle outline
     ctx.save();
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = variant === "yang" ? "#ffffff" : "#161513";
     ctx.lineWidth = size * 0.06;
     ctx.beginPath();
     ctx.arc(cx, cy, size / 2 - size * 0.04, 0, Math.PI * 2);
@@ -374,8 +364,8 @@ async function renderCover(
 
   wrapText(ctx, slide.headline, 56, startY, headlineMaxWidth, lineH, 5, "left");
 
-  // Logo mark — bottom-right, white (110px)
-  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, BRAND.yang);
+  // Logo mark — bottom-right: Yang (white) on colored bg
+  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, logoVariantForBg(bgColor));
 }
 
 // ── Content slide ─────────────────────────────────────────────────────────────
@@ -439,8 +429,8 @@ async function renderContent(
     wrapText(ctx, slide.body, 72, bodyY, SLIDE_SIZE - 128, 58, 6);
   }
 
-  // Logo mark — bottom-right, accent color (110px)
-  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, accentColor);
+  // Logo mark — bottom-right: element-colored logo on cream bg
+  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, logoVariantForAccent(accentColor));
 }
 
 // ── CTA slide ─────────────────────────────────────────────────────────────────
@@ -497,8 +487,8 @@ async function renderCta(ctx: CanvasRenderingContext2D, slide: CarouselSlideData
   ctx.fillStyle = "rgba(22,21,19,0.5)";
   ctx.fillText("Join the Urban Monk Academy", SLIDE_SIZE / 2, btnY + 120);
 
-  // Logo mark — bottom-right, Fire color (110px)
-  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, BRAND.fire);
+  // Logo mark — bottom-right: Fire-colored logo on CTA cream section
+  await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, "fire");
 }
 
 // ── Main render function ──────────────────────────────────────────────────────

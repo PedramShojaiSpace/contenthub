@@ -1238,7 +1238,7 @@ export default function CommandCenter() {
                 );
               })}
               {/* Clean Up Titles button */}
-              {items.some((i) => i.title.startsWith("[Research Gap]") || i.title.startsWith("Question to answer") || i.title.startsWith("Answer this")) && (
+              {items.some((i) => i.title.startsWith("[Research Gap]") || i.title.startsWith("Question to answer") || i.title.startsWith("Answer this") || i.title.startsWith("Research Gap") || /^Answer this LLM/i.test(i.title)) && (
                 <button
                   onClick={() => cleanupTitlesMutation.mutate()}
                   disabled={cleanupTitlesMutation.isPending}

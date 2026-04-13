@@ -1230,3 +1230,12 @@
 - [x] Kept: canvas slide renderer (CarouselSlideRenderer.tsx), ZIP export, slide preview, per-slide copy buttons
 - [x] Added clean "Ready to post on Meta" info box with step-by-step manual posting instructions
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Fix "Clean Up Titles" Button (v74)
+- [x] Root cause 1: mutation's LIKE filter didn't include "Answer this LLM%" — titles were saved as "Answer this LLM search query for the persona..." not "[Research Gap]..."
+- [x] Root cause 2: button visibility check also missed "Answer this LLM" pattern
+- [x] Root cause 3: extractCleanTitle() only took 1 arg but was updated to take 2 (titleField + rawIdea)
+- [x] Fixed: added "Answer this LLM%" and "Answer this%search query%" to LIKE filters
+- [x] Fixed: extractCleanTitle now parses the LLM query from rawIdea (extracts the actual search question, strips filler words, caps at 12 words)
+- [x] Fixed: button visibility now detects all stale patterns including /^Answer this LLM/i
+- [x] 121 tests passing, 0 TypeScript errors

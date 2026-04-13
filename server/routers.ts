@@ -1327,22 +1327,40 @@ CRITICAL OUTPUT RULES:
               like(contentItems.title, "Question to answer:%"),
               like(contentItems.title, "Research Gap%"),
               like(contentItems.title, "Title:%"),
+              like(contentItems.title, "Answer this LLM%"),
+              like(contentItems.title, "Answer this%search query%"),
             )
           );
 
         if (staleItems.length === 0) return { renamed: 0, message: "No stale titles found." };
 
-        const extractCleanTitle = (raw: string): string => {
+        const extractCleanTitle = (titleField: string, rawIdea: string | null): string => {
+          const raw = rawIdea || titleField;
           // Try to extract from rawIdea first (multi-line LLM Projects format)
           const titleMatch = raw.match(/^Title:\s*(.+)$/im);
           if (titleMatch) return titleMatch[1].trim();
           const questionMatch = raw.match(/^Question to answer:\s*(.+)$/im);
           if (questionMatch) return questionMatch[1].trim();
-          return raw
+          // Extract the LLM search query itself — it's the actual topic
+          // Pattern: "Answer this LLM search query for the persona "X": <ACTUAL QUERY>"
+          const llmQueryMatch = raw.match(/LLM search query[^:]*:\s*(.+?)(?:\n|$)/i);
+          if (llmQueryMatch) {
+            // The query IS the topic — clean it up as a title
+            return llmQueryMatch[1]
+              .replace(/^(I need|I want|What are|What is|How do|How can|Why does|Why do|Can you|Tell me|Explain)\s+/i, "")
+              .replace(/\?$/, "")
+              .trim()
+              .split(" ")
+              .slice(0, 12)
+              .join(" ");
+          }
+          // Fallback: strip known prefixes from the title itself
+          return titleField
             .replace(/^\[Research Gap\]\s*/i, "")
             .replace(/^Question to answer:\s*/i, "")
             .replace(/^Title:\s*/i, "")
             .replace(/^Research Gap\s*/i, "")
+            .replace(/^Answer this LLM search query[^:]*:\s*/i, "")
             .split("\n")[0]
             .trim();
         };
@@ -1350,9 +1368,7 @@ CRITICAL OUTPUT RULES:
         const { eq } = await import("drizzle-orm");
         let renamed = 0;
         for (const item of staleItems) {
-          // Use rawIdea if available (has more context), otherwise clean the title itself
-          const sourceText = (item as any).rawIdea || item.title;
-          const cleanTitle = extractCleanTitle(sourceText);
+          const cleanTitle = extractCleanTitle(item.title, (item as any).rawIdea ?? null);
           if (cleanTitle && cleanTitle !== item.title) {
             await db
               .update(contentItems)

@@ -1290,3 +1290,7 @@
 
 ## WordPress Publish — Hero Image Fix (v84)
 - [x] Fix hero image not uploading to WordPress when using "Publish to WP" button on Kanban card
+
+## WordPress UX Improvements (v85)
+- [x] Add "View Draft in WP" link on Kanban card after successful publish (opens editUrl in new tab)
+- [x] Add "Publish to WP" button inside card detail modal for blog posts

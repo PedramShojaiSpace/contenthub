@@ -2340,6 +2340,7 @@ Return BOTH in this exact format:
         await updateContentItem(input.contentItemId, {
           status: newStatus,
           publishUrl: post.link,
+          wpPostId: post.id,  // Save WP post ID so the edit URL can be constructed on the frontend
         });
 
         return {

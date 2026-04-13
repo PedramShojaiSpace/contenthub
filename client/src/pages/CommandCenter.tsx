@@ -96,6 +96,7 @@ type ContentItem = {
   analyticsComments: number | null;
   analyticsShares: number | null;
   linkedScriptId: number | null;
+  wpPostId: number | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -471,6 +472,20 @@ function DraggableCard({
             </span>
           )}
         </div>
+
+        {/* View Draft in WP link — blog posts with a WP post ID */}
+        {item.platform === "blog" && item.wpPostId && (
+          <a
+            href={`https://theurbanmonk.com/wp-admin/post.php?post=${item.wpPostId}&action=edit`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700 hover:underline mt-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="h-2.5 w-2.5" />
+            View Draft in WordPress
+          </a>
+        )}
 
         {/* Analytics panel for published items */}
         {isPublished && (
@@ -1990,6 +2005,42 @@ export default function CommandCenter() {
                   <ExternalLink className="h-3 w-3 mr-1" />
                   View Script
                 </Button>
+              </div>
+            )}
+
+            {/* Publish to WordPress — blog posts only */}
+            {selectedItem.platform === "blog" && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7 border-blue-600/40 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-600 gap-1"
+                  disabled={wpPublishingId === selectedItem.id}
+                  onClick={() => {
+                    handlePublishToWP(selectedItem);
+                    setSelectedItem(null);
+                  }}
+                >
+                  {wpPublishingId === selectedItem.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-3 w-3" />
+                  )}
+                  {wpPublishingId === selectedItem.id ? "Publishing…" : "Publish to WordPress"}
+                </Button>
+
+                {/* View Draft link — shown once the post has been sent to WP */}
+                {selectedItem.wpPostId && (
+                  <a
+                    href={`https://theurbanmonk.com/wp-admin/post.php?post=${selectedItem.wpPostId}&action=edit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline h-7"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    View Draft in WordPress
+                  </a>
+                )}
               </div>
             )}
 

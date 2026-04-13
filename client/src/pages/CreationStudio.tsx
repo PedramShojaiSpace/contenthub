@@ -1154,112 +1154,12 @@ export default function CreationStudio() {
     }
   };
 
-  // ── Carousel Meta Publish ─────────────────────────────────────────────────
-  const [carouselCaption, setCarouselCaption] = useState("");
-  const [isCarouselPushing, setIsCarouselPushing] = useState(false);
-  const [isCarouselPublishing, setIsCarouselPublishing] = useState(false);
-  const [carouselMetaTargets, setCarouselMetaTargets] = useState({ instagram: true, facebook: true });
-  const [carouselMetaResult, setCarouselMetaResult] = useState<null | { instagram?: { success: boolean; postId: string; error?: string }; facebook?: { success: boolean; postId: string; error?: string } }>(null);
-
-  const publishCarouselToMetaMutation = trpc.syndication.publishCarouselToMeta.useMutation({
-    onSuccess: (data) => {
-      setCarouselMetaResult(data);
-      setIsCarouselPublishing(false);
-      const igOk = data.instagram?.success;
-      const fbOk = data.facebook?.success;
-      if (igOk || fbOk) {
-        toast.success(`Carousel published to Meta! ${igOk ? "Instagram ✓" : ""} ${fbOk ? "Facebook ✓" : ""}`.trim());
-      } else {
-        toast.error("Meta publish failed — check the error details below.");
-      }
-    },
-    onError: (err) => {
-      setIsCarouselPublishing(false);
-      toast.error("Meta publish error: " + err.message);
-    },
-  });
-
-  const uploadCarouselImageMutation = trpc.syndication.uploadCarouselImage.useMutation();
-
-  const handlePublishCarouselToMeta = async () => {
-    if (carouselRenderedUrls.length < 2) {
-      toast.error("Need at least 2 rendered slides to publish a carousel.");
-      return;
-    }
-    if (!carouselMetaTargets.instagram && !carouselMetaTargets.facebook) {
-      toast.error("Select at least one target (Instagram or Facebook).");
-      return;
-    }
-    setIsCarouselPublishing(true);
-    setCarouselMetaResult(null);
-    // Upload rendered PNGs to S3 first, then pass CDN URLs to Meta
-    try {
-      const uploadedUrls: string[] = [];
-      for (const dataUrl of carouselRenderedUrls) {
-        const result = await uploadCarouselImageMutation.mutateAsync({ dataUrl });
-        uploadedUrls.push(result.url);
-      }
-      const caption = carouselCaption.trim() || (carouselSlides?.[0]?.headline ?? "Check this out!");
-      publishCarouselToMetaMutation.mutate({
-        caption,
-        imageUrls: uploadedUrls,
-        instagram: carouselMetaTargets.instagram,
-        facebook: carouselMetaTargets.facebook,
-      });
-    } catch (err: any) {
-      setIsCarouselPublishing(false);
-      toast.error("Upload failed: " + err.message);
-    }
-  };
-  const [carouselPushResult, setCarouselPushResult] = useState<{ success: boolean; message: string } | null>(null);
+  // ── Carousel Export ─────────────────────────────────────────────────
   const [savedCarouselItemId, setSavedCarouselItemId] = useState<number | null>(null);
+  const [carouselPushResult, setCarouselPushResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isCarouselPushing, setIsCarouselPushing] = useState(false);
 
-  const pushCarouselMutation = trpc.syndication.pushCarousel.useMutation({
-    onSuccess: (data) => {
-      setIsCarouselPushing(false);
-      if (data.success) {
-        setCarouselPushResult({ success: true, message: `Carousel queued in Buffer! ID: ${data.bufferId ?? "queued"}` });
-        toast.success("Carousel pushed to Buffer!");
-      } else {
-        setCarouselPushResult({ success: false, message: data.error ?? "Unknown error" });
-        toast.error("Buffer push failed: " + (data.error ?? "Unknown error"));
-      }
-    },
-    onError: (err) => {
-      setIsCarouselPushing(false);
-      setCarouselPushResult({ success: false, message: err.message });
-      toast.error("Carousel push failed: " + err.message);
-    },
-  });
 
-  const handlePushCarouselToBuffer = () => {
-    if (!carouselSlides || carouselSlides.length === 0) return;
-    const imageUrls = carouselSlides.map((s) => s.imageUrl).filter(Boolean) as string[];
-    if (imageUrls.length === 0) {
-      toast.error("No slide images available. Please generate images first.");
-      return;
-    }
-    // Get Meta channel IDs (facebook + instagram)
-    const metaProfiles = (bufferProfiles ?? []).filter((pr: { id: string; service: string }) =>
-      ["facebook", "instagram"].includes(pr.service)
-    );
-    if (metaProfiles.length === 0) {
-      toast.error("No Meta (Facebook/Instagram) channels connected in Buffer.");
-      return;
-    }
-    const channelServiceMap: Record<string, string> = {};
-    metaProfiles.forEach((pr: { id: string; service: string }) => { channelServiceMap[pr.id] = pr.service; });
-    const caption = carouselCaption.trim() || carouselSlides[0].headline;
-    setIsCarouselPushing(true);
-    setCarouselPushResult(null);
-    pushCarouselMutation.mutate({
-      caption,
-      imageUrls: imageUrls.slice(0, 10),
-      profileIds: metaProfiles.map((pr: { id: string }) => pr.id),
-      channelServiceMap,
-      contentItemId: savedCarouselItemId ?? undefined,
-    });
-  };
 
   const handleSaveBlog = () => {
     if (!blogContent) return;
@@ -3007,87 +2907,19 @@ export default function CreationStudio() {
                 Branded slide templates · 1080×1080 · Auto-saved to Command Center
               </p>
 
-              {/* Direct Meta Publish Panel */}
-              {carouselPlatform === "meta" && carouselRenderedUrls.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-border space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Facebook className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm font-medium text-foreground">Publish to Meta</span>
-                    <Badge variant="outline" className="text-[10px] border-blue-500/40 text-blue-400">Direct API</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Posts carousel directly to Instagram and/or Facebook via Meta Content Publishing API.
-                    Images are uploaded from CDN URLs — no Buffer required.
-                  </p>
-                  {/* Target toggles */}
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={carouselMetaTargets.instagram}
-                        onChange={(e) => setCarouselMetaTargets((t) => ({ ...t, instagram: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="text-xs text-foreground">Instagram</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={carouselMetaTargets.facebook}
-                        onChange={(e) => setCarouselMetaTargets((t) => ({ ...t, facebook: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="text-xs text-foreground">Facebook Page</span>
-                    </label>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Caption</Label>
-                    <textarea
-                      value={carouselCaption}
-                      onChange={(e) => setCarouselCaption(e.target.value)}
-                      placeholder={carouselSlides[0]?.headline ?? "Enter caption..."}
-                      rows={3}
-                      className="w-full text-sm bg-muted/30 border border-border rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
-                    />
-                    <p className="text-[10px] text-muted-foreground">{carouselCaption.length} chars{carouselCaption.length > 2200 && <span className="text-red-400 ml-1"> — Instagram limit is 2,200</span>}</p>
-                  </div>
-                  {carouselMetaResult && (
-                    <div className="space-y-1.5">
-                      {carouselMetaResult.instagram && (
-                        <div className={`text-xs rounded-md px-3 py-2 ${
-                          carouselMetaResult.instagram.success
-                            ? "bg-green-500/10 border border-green-500/30 text-green-400"
-                            : "bg-red-500/10 border border-red-500/30 text-red-400"
-                        }`}>
-                          Instagram: {carouselMetaResult.instagram.success ? `✓ Published (${carouselMetaResult.instagram.postId})` : `✗ ${carouselMetaResult.instagram.error}`}
-                        </div>
-                      )}
-                      {carouselMetaResult.facebook && (
-                        <div className={`text-xs rounded-md px-3 py-2 ${
-                          carouselMetaResult.facebook.success
-                            ? "bg-green-500/10 border border-green-500/30 text-green-400"
-                            : "bg-red-500/10 border border-red-500/30 text-red-400"
-                        }`}>
-                          Facebook: {carouselMetaResult.facebook.success ? `✓ Published (${carouselMetaResult.facebook.postId})` : `✗ ${carouselMetaResult.facebook.error}`}
-                        </div>
-                      )}
+              {/* Export for Meta instructions */}
+              {carouselRenderedUrls.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/8 border border-blue-500/20">
+                    <Download className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-blue-300">Ready to post on Meta</p>
+                      <p className="text-xs text-muted-foreground">
+                        Download the ZIP above — it contains all {carouselRenderedUrls.length} slides as 1080×1080 PNG files.
+                        In Meta Business Suite or Instagram, create a new post, select all images, and post as a carousel.
+                      </p>
                     </div>
-                  )}
-                  <Button
-                    onClick={handlePublishCarouselToMeta}
-                    disabled={isCarouselPublishing || carouselRenderedUrls.length < 2 || (!carouselMetaTargets.instagram && !carouselMetaTargets.facebook)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                    size="sm"
-                  >
-                    {isCarouselPublishing ? (
-                      <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />Publishing to Meta...</>
-                    ) : (
-                      <><Send className="h-3.5 w-3.5 mr-2" />Publish {carouselRenderedUrls.length}-Slide Carousel to Meta</>
-                    )}
-                  </Button>
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    Requires META_PAGE_ACCESS_TOKEN, META_IG_ACCOUNT_ID, and META_FB_PAGE_ID in project secrets.
-                  </p>
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -1223,3 +1223,10 @@
 - [x] Added TRPCError import to routers.ts
 - [x] 121 tests passing, 0 TypeScript errors
 - [ ] Request META_PAGE_ACCESS_TOKEN, META_IG_ACCOUNT_ID, META_FB_PAGE_ID secrets from user (pending)
+
+## Carousel Simplification — Export Only (v73)
+- [x] Removed Meta API publish panel from carousel output in Creation Studio
+- [x] Removed pushCarouselMutation, handlePushCarouselToBuffer, and all Meta API state variables
+- [x] Kept: canvas slide renderer (CarouselSlideRenderer.tsx), ZIP export, slide preview, per-slide copy buttons
+- [x] Added clean "Ready to post on Meta" info box with step-by-step manual posting instructions
+- [x] 121 tests passing, 0 TypeScript errors

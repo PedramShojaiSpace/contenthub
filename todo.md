@@ -1302,3 +1302,14 @@
 - [x] Fixed rawResponses column from TEXT to MEDIUMTEXT (16MB) to handle large datasets
 - [x] Verified DB migration applied successfully (migration 0033)
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Webinar Intelligence — Rewrite Webinar from Intelligence (v87)
+- [x] Add rewriteOutlineFromIntelligence tRPC procedure to webinarIntelligenceRouter
+- [x] Procedure takes intelligenceRecordId + webinarSessionId, feeds extracted pain points/motivations/language into the outline prompt
+- [x] AI produces a revised outline showing exactly what changed and why (diff-style commentary)
+- [x] Save revised outline to webinarSessions.outline (with intelligence-informed flag)
+- [x] Add "Rewrite Webinar from This Intelligence" button on extracted IntelligenceCard
+- [x] Show revised outline panel below the card with copy button and link to Webinar Builder
+- [x] Revised outline auto-saved to webinar session on generation
+- [x] Added vitest test for rewriteOutlineFromIntelligence procedure
+- [x] 121 tests passing, 0 TypeScript errors

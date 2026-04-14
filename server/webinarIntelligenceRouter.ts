@@ -344,6 +344,167 @@ Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, q
       await db.delete(webinarIntelligence).where(eq(webinarIntelligence.id, input.id));
       return { success: true };
     }),
+
+  // ─── Rewrite Webinar Outline from Intelligence ────────────────────────────
+  // Takes extracted survey intelligence and rewrites the webinar outline to
+  // better match what the actual audience needs. Returns both the revised
+  // outline and a "what changed and why" commentary block.
+  rewriteOutlineFromIntelligence: protectedProcedure
+    .input(
+      z.object({
+        intelligenceId: z.number(),
+        webinarSessionId: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      // Load the intelligence record
+      const [intel] = await db
+        .select()
+        .from(webinarIntelligence)
+        .where(eq(webinarIntelligence.id, input.intelligenceId));
+      if (!intel) throw new Error("Intelligence record not found");
+      if (!intel.extractedAt) throw new Error("Run AI extraction first before rewriting the outline");
+
+      // Load the webinar session
+      const [session] = await db
+        .select()
+        .from(webinarSessions)
+        .where(eq(webinarSessions.id, input.webinarSessionId));
+      if (!session) throw new Error("Webinar session not found");
+
+      // Parse extracted intelligence
+      const parseArr = (json: string | null): string[] => {
+        if (!json) return [];
+        try { return JSON.parse(json); } catch { return []; }
+      };
+      const themes = parseArr(intel.extractedThemes);
+      const painPoints = parseArr(intel.extractedPainPoints);
+      const motivations = parseArr(intel.extractedMotivations);
+      const questions = parseArr(intel.extractedQuestions);
+      const language = parseArr(intel.extractedLanguage);
+      const summary = intel.aiSummary ?? "";
+
+      const existingOutline = session.outline ?? "(No existing outline — generate from scratch)";
+      const surveyTypeLabel = intel.surveyType === "pre_registration"
+        ? "pre-webinar registration form"
+        : "post-webinar survey";
+
+      const systemPrompt = `You are Dr. Pedram Shojai's expert webinar strategist. You have just analyzed real ${surveyTypeLabel} responses from ${intel.responseCount ?? "multiple"} attendees of his webinar on "${session.topic}". Your job is to rewrite the webinar outline to directly address what this specific audience actually needs — using their own language, their real pain points, and their stated motivations.
+
+You write in Pedram's voice: warm, authoritative, direct, grounded in ancient wisdom and modern science.
+
+=== REAL AUDIENCE INTELLIGENCE (from ${intel.responseCount ?? "actual"} survey respondents) ===
+
+AUDIENCE SUMMARY:
+${summary}
+
+TOP THEMES THEY CARE ABOUT:
+${themes.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+
+REAL PAIN POINTS (use these verbatim in the hook and problem section):
+${painPoints.map((p, i) => `${i + 1}. ${p}`).join("\n")}
+
+WHY THEY SHOWED UP (use these for hooks and CTAs):
+${motivations.map((m, i) => `${i + 1}. ${m}`).join("\n")}
+
+QUESTIONS THEY WANTED ANSWERED (address these explicitly in the outline):
+${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
+
+EXACT LANGUAGE THEY USE (mirror these phrases in the copy — this is gold):
+${language.map((l) => `"${l}"`).join(", ")}
+
+=== EXISTING WEBINAR OUTLINE ===
+${existingOutline.slice(0, 3000)}
+
+=== YOUR TASK ===
+Rewrite the webinar outline so it speaks directly to THIS audience. For each major section, show:
+1. What you changed and why (1–2 sentences referencing the specific intelligence that drove the change)
+2. The revised content for that section
+
+Format your response as:
+
+## 🎯 Intelligence-Informed Webinar Outline
+**Webinar:** ${session.topic}
+**Based on:** ${intel.responseCount ?? 0} real audience responses
+
+---
+
+## 📊 What Changed & Why
+(A brief 3–5 sentence executive summary of the key shifts you made and what audience data drove them)
+
+---
+
+## 🪝 Opening Hook (0–5 min) — REVISED
+**Change:** [What changed from original and why]
+[Revised hook content]
+
+## 📖 Hook Script — REVISED
+[Write the actual word-for-word opening hook script in Pedram's voice, using the audience's exact language]
+
+## 📋 Webinar Outline — REVISED
+
+### Section 1: The Problem (5–15 min) — REVISED
+**Change:** [What changed and why]
+[Revised content]
+
+### Section 2: The Root Cause Reveal (15–30 min) — REVISED
+**Change:** [What changed and why]
+[Revised content]
+
+### Section 3: The Solution Framework (30–45 min) — REVISED
+**Change:** [What changed and why]
+[Revised content]
+
+### Section 4: The Offer (45–55 min) — REVISED
+**Change:** [What changed and why]
+[Revised content]
+
+### Section 5: Q&A + Close (55–${session.targetLengthMinutes ?? 60} min) — REVISED
+**Change:** [What changed and why]
+[Revised content — include the top questions from the survey]
+
+## 💡 Key Teaching Points — REVISED
+(5–7 bullet points using the audience's actual language)
+
+## 🚨 New Urgency Angles (from survey data)
+(2–3 urgency angles that directly reference what the audience told you they need)
+
+## 🗣️ Exact Phrases to Use
+(Pull 8–10 exact phrases from the survey language and show where in the webinar to use each one)`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: `Rewrite the webinar outline for "${session.topic}" based on the real audience intelligence from ${intel.responseCount ?? 0} survey respondents.`,
+          },
+        ],
+      });
+
+      const rawContent = response.choices?.[0]?.message?.content;
+      const revisedOutline = typeof rawContent === "string" ? rawContent : "";
+      if (!revisedOutline) throw new Error("Rewrite failed — no content returned");
+
+      // Save the revised outline back to the webinar session
+      await db
+        .update(webinarSessions)
+        .set({
+          outline: revisedOutline,
+          notes: `[Intelligence-informed rewrite — based on ${intel.responseCount ?? 0} survey responses from Typeform ${new Date().toLocaleDateString()}]\n\n${session.notes ?? ""}`.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(webinarSessions.id, input.webinarSessionId));
+
+      return {
+        revisedOutline,
+        responseCount: intel.responseCount ?? 0,
+        webinarSessionId: input.webinarSessionId,
+      };
+    }),
 });
 
 // ─── Context Block for Content Generation ────────────────────────────────────

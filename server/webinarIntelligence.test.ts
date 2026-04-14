@@ -12,6 +12,8 @@ describe("webinarIntelligenceRouter structure", () => {
     expect(router._def?.procedures?.extractIntelligence).toBeDefined();
     expect(router._def?.procedures?.listBySession).toBeDefined();
     expect(router._def?.procedures?.get).toBeDefined();
+    // Return path: rewrite webinar outline from intelligence
+    expect(router._def?.procedures?.rewriteOutlineFromIntelligence).toBeDefined();
   });
 
   it("exports getWebinarIntelligenceContextBlock helper function", async () => {

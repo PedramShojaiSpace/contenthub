@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Streamdown } from "streamdown";
 import {
   Brain,
   Upload,
@@ -18,12 +19,15 @@ import {
   Target,
   Lightbulb,
   HelpCircle,
-  Languages,
   FileText,
   AlertCircle,
   CheckCircle2,
   RefreshCw,
   Zap,
+  ArrowRight,
+  BookOpen,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -64,19 +68,96 @@ function SurveyTypeBadge({ type }: { type: SurveyType }) {
   );
 }
 
+// ─── Revised Outline Panel ────────────────────────────────────────────────────
+function RevisedOutlinePanel({
+  outline,
+  responseCount,
+  webinarSessionId,
+  onClose,
+}: {
+  outline: string;
+  responseCount: number;
+  webinarSessionId: number;
+  onClose: () => void;
+}) {
+  const handleCopy = () => {
+    navigator.clipboard.writeText(outline);
+    toast.success("Revised outline copied to clipboard");
+  };
+
+  return (
+    <Card className="border-primary/30 bg-primary/5">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-primary" />
+              Intelligence-Informed Webinar Outline
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Rewritten based on {responseCount} real audience responses — saved to your webinar session.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1"
+              onClick={handleCopy}
+            >
+              <Copy className="w-3 h-3" /> Copy
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-muted-foreground"
+              onClick={onClose}
+            >
+              ✕ Close
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="bg-background/60 rounded-lg border border-border/40 p-4 max-h-[600px] overflow-y-auto prose prose-sm prose-invert max-w-none">
+          <Streamdown>{outline}</Streamdown>
+        </div>
+        <div className="mt-3 flex items-center gap-2 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <p className="text-xs text-emerald-300">
+            <span className="font-semibold">Saved to your webinar session.</span>{" "}
+            Open the Webinar Builder to view the full outline, edit it, and generate a new landing page from it.
+          </p>
+          <a
+            href="/webinar"
+            className="ml-auto shrink-0 flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            Open Webinar Builder <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Intelligence Card ────────────────────────────────────────────────────────
 function IntelligenceCard({
   record,
+  webinarSessionId,
   onExtract,
   onDelete,
   extracting,
 }: {
   record: IntelligenceRecord;
+  webinarSessionId: number;
   onExtract: (id: number) => void;
   onDelete: (id: number) => void;
   extracting: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [revisedOutline, setRevisedOutline] = useState<string | null>(null);
+  const [responseCount, setResponseCount] = useState(0);
+
   const themes = parseJsonArray(record.extractedThemes);
   const painPoints = parseJsonArray(record.extractedPainPoints);
   const motivations = parseJsonArray(record.extractedMotivations);
@@ -84,165 +165,220 @@ function IntelligenceCard({
   const language = parseJsonArray(record.extractedLanguage);
   const hasExtracted = !!record.extractedAt;
 
+  const rewriteMutation = trpc.webinarIntelligence.rewriteOutlineFromIntelligence.useMutation({
+    onSuccess: (data) => {
+      setRevisedOutline(data.revisedOutline);
+      setResponseCount(data.responseCount);
+      toast.success(
+        `Webinar outline rewritten from ${data.responseCount} real audience responses — saved to session`
+      );
+    },
+    onError: (err) => toast.error(`Rewrite failed: ${err.message}`),
+  });
+
   return (
-    <Card className="bg-card/60 border-border/50">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <SurveyTypeBadge type={record.surveyType} />
-            <span className="text-sm text-muted-foreground">
-              {record.responseCount ?? 0} responses
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Imported {new Date(record.importedAt).toLocaleDateString()}
-            </span>
-            {hasExtracted && (
-              <span className="flex items-center gap-1 text-xs text-emerald-400">
-                <CheckCircle2 className="w-3 h-3" /> AI Extracted
+    <div className="space-y-3">
+      <Card className="bg-card/60 border-border/50">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <SurveyTypeBadge type={record.surveyType} />
+              <span className="text-sm text-muted-foreground">
+                {record.responseCount ?? 0} responses
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {!hasExtracted && (
+              <span className="text-xs text-muted-foreground">
+                Imported {new Date(record.importedAt).toLocaleDateString()}
+              </span>
+              {hasExtracted && (
+                <span className="flex items-center gap-1 text-xs text-emerald-400">
+                  <CheckCircle2 className="w-3 h-3" /> AI Extracted
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {!hasExtracted && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                  onClick={() => onExtract(record.id)}
+                  disabled={extracting}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  {extracting ? "Extracting…" : "Extract Intelligence"}
+                </Button>
+              )}
               <Button
                 size="sm"
-                variant="outline"
-                className="h-7 text-xs gap-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
-                onClick={() => onExtract(record.id)}
-                disabled={extracting}
+                variant="ghost"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                onClick={() => onDelete(record.id)}
               >
-                <Sparkles className="w-3 h-3" />
-                {extracting ? "Extracting…" : "Extract Intelligence"}
+                <Trash2 className="w-3 h-3" />
               </Button>
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-              onClick={() => onDelete(record.id)}
-            >
-              <Trash2 className="w-3 h-3" />
-            </Button>
+            </div>
           </div>
-        </div>
-        {record.notes && (
-          <p className="text-xs text-muted-foreground mt-1">{record.notes}</p>
+          {record.notes && (
+            <p className="text-xs text-muted-foreground mt-1">{record.notes}</p>
+          )}
+        </CardHeader>
+
+        {hasExtracted && (
+          <CardContent className="pt-0 space-y-4">
+            {/* AI Summary */}
+            {record.aiSummary && (
+              <div className="bg-muted/30 rounded-lg p-3 border border-border/30">
+                <p className="text-sm text-foreground/80 leading-relaxed">{record.aiSummary}</p>
+              </div>
+            )}
+
+            {/* Themes */}
+            {themes.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Target className="w-3.5 h-3.5 text-violet-400" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Top Themes</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {themes.map((t, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs bg-violet-500/10 text-violet-300 border-violet-500/20">
+                      {t}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Expand toggle */}
+            <button
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {expanded ? "Show less" : "Show pain points, motivations, questions & language"}
+            </button>
+
+            {expanded && (
+              <div className="space-y-4 pt-1">
+                {/* Pain Points */}
+                {painPoints.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pain Points</span>
+                    </div>
+                    <ul className="space-y-1">
+                      {painPoints.map((p, i) => (
+                        <li key={i} className="text-sm text-foreground/80 flex gap-2">
+                          <span className="text-red-400 shrink-0">•</span>{p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Motivations */}
+                {motivations.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Why They Showed Up</span>
+                    </div>
+                    <ul className="space-y-1">
+                      {motivations.map((m, i) => (
+                        <li key={i} className="text-sm text-foreground/80 flex gap-2">
+                          <span className="text-amber-400 shrink-0">•</span>{m}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Questions */}
+                {questions.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <HelpCircle className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Audience Questions</span>
+                    </div>
+                    <ul className="space-y-1">
+                      {questions.map((q, i) => (
+                        <li key={i} className="text-sm text-foreground/80 flex gap-2">
+                          <span className="text-blue-400 shrink-0">•</span>{q}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Exact Language */}
+                {language.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <MessageSquareQuote className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exact Audience Language</span>
+                      <span className="text-xs text-muted-foreground">(mirror in copy)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {language.map((l, i) => (
+                        <span
+                          key={i}
+                          className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono"
+                        >
+                          "{l}"
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ─── Rewrite Webinar CTA ─────────────────────────────────────── */}
+            <div className="pt-2 border-t border-border/30">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <ArrowRight className="w-4 h-4 text-primary" />
+                    Rewrite Webinar from This Intelligence
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Feed these {record.responseCount ?? 0} real responses back into the webinar outline — see exactly what to change before you go live.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="gap-2 shrink-0 bg-primary hover:bg-primary/90"
+                  onClick={() =>
+                    rewriteMutation.mutate({
+                      intelligenceId: record.id,
+                      webinarSessionId,
+                    })
+                  }
+                  disabled={rewriteMutation.isPending}
+                >
+                  {rewriteMutation.isPending ? (
+                    <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Rewriting…</>
+                  ) : (
+                    <><BookOpen className="w-3.5 h-3.5" /> Rewrite Outline</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
         )}
-      </CardHeader>
+      </Card>
 
-      {hasExtracted && (
-        <CardContent className="pt-0 space-y-4">
-          {/* AI Summary */}
-          {record.aiSummary && (
-            <div className="bg-muted/30 rounded-lg p-3 border border-border/30">
-              <p className="text-sm text-foreground/80 leading-relaxed">{record.aiSummary}</p>
-            </div>
-          )}
-
-          {/* Themes */}
-          {themes.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Target className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Top Themes</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {themes.map((t, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs bg-violet-500/10 text-violet-300 border-violet-500/20">
-                    {t}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Expand toggle */}
-          <button
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            {expanded ? "Show less" : "Show pain points, motivations, questions & language"}
-          </button>
-
-          {expanded && (
-            <div className="space-y-4 pt-1">
-              {/* Pain Points */}
-              {painPoints.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pain Points</span>
-                  </div>
-                  <ul className="space-y-1">
-                    {painPoints.map((p, i) => (
-                      <li key={i} className="text-sm text-foreground/80 flex gap-2">
-                        <span className="text-red-400 shrink-0">•</span>{p}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Motivations */}
-              {motivations.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Why They Showed Up</span>
-                  </div>
-                  <ul className="space-y-1">
-                    {motivations.map((m, i) => (
-                      <li key={i} className="text-sm text-foreground/80 flex gap-2">
-                        <span className="text-amber-400 shrink-0">•</span>{m}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Questions */}
-              {questions.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <HelpCircle className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Audience Questions</span>
-                  </div>
-                  <ul className="space-y-1">
-                    {questions.map((q, i) => (
-                      <li key={i} className="text-sm text-foreground/80 flex gap-2">
-                        <span className="text-blue-400 shrink-0">•</span>{q}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Exact Language */}
-              {language.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <MessageSquareQuote className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exact Audience Language</span>
-                    <span className="text-xs text-muted-foreground">(mirror in copy)</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {language.map((l, i) => (
-                      <span
-                        key={i}
-                        className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono"
-                      >
-                        "{l}"
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
+      {/* Revised outline panel — appears below the card when ready */}
+      {revisedOutline && (
+        <RevisedOutlinePanel
+          outline={revisedOutline}
+          responseCount={responseCount}
+          webinarSessionId={webinarSessionId}
+          onClose={() => setRevisedOutline(null)}
+        />
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -262,20 +398,18 @@ function ImportForm({
   const importMutation = trpc.webinarIntelligence.importResponses.useMutation({
     onSuccess: () => {
       utils.webinarIntelligence.listBySession.invalidate({ webinarSessionId });
-      setRawResponses("");
-      setNotes("");
-      toast.success("Survey responses imported — click 'Extract Intelligence' to run AI analysis");
+      toast.success("Responses imported — click \"Extract Intelligence\" to run AI analysis");
       onSuccess();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error(`Import failed: ${err.message}`),
   });
 
   return (
-    <Card className="bg-card/40 border-dashed border-border/60">
+    <Card className="bg-card/60 border-border/50">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
-          <Upload className="w-4 h-4 text-primary" />
-          Import Survey Responses
+          <Upload className="w-4 h-4 text-muted-foreground" />
+          Paste Survey Responses Manually
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -296,7 +430,7 @@ function ImportForm({
             <label className="text-xs text-muted-foreground mb-1 block">Notes (optional)</label>
             <input
               className="w-full h-8 text-sm px-3 rounded-md border border-input bg-background"
-              placeholder="e.g. April 17 webinar"
+              placeholder="e.g. April 2026 cohort"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -443,7 +577,7 @@ export default function WebinarIntelligencePage() {
   );
 
   const extractMutation = trpc.webinarIntelligence.extractIntelligence.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       utils.webinarIntelligence.listBySession.invalidate({ webinarSessionId: selectedSessionId! });
       toast.success("Intelligence extracted successfully");
     },
@@ -457,8 +591,6 @@ export default function WebinarIntelligencePage() {
     },
     onError: (err) => toast.error(err.message),
   });
-
-  const selectedSession = sessions.find((s: { id: number }) => s.id === selectedSessionId);
 
   // Aggregate stats
   const totalResponses = records.reduce((sum, r) => sum + (r.responseCount ?? 0), 0);
@@ -475,7 +607,7 @@ export default function WebinarIntelligencePage() {
               Webinar Intelligence
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Import attendee survey data to understand what drives your audience — automatically enriches all content generation.
+              Import attendee survey data to understand what drives your audience — then rewrite your webinar outline before going live.
             </p>
           </div>
         </div>
@@ -630,6 +762,7 @@ export default function WebinarIntelligencePage() {
                   <IntelligenceCard
                     key={record.id}
                     record={record as IntelligenceRecord}
+                    webinarSessionId={selectedSessionId}
                     onExtract={(id) => extractMutation.mutate({ id })}
                     onDelete={(id) => deleteMutation.mutate({ id })}
                     extracting={extractMutation.isPending && extractMutation.variables?.id === record.id}

@@ -232,6 +232,13 @@
       "when": 1776004477754,
       "tag": "0032_flowery_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1776176844343,
+      "tag": "0033_brown_masque",
+      "breakpoints": true
     }
   ]
 }

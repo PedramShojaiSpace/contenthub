@@ -1,0 +1,1 @@
+ALTER TABLE `webinar_intelligence` MODIFY COLUMN `rawResponses` mediumtext;

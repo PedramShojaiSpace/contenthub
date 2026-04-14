@@ -1294,3 +1294,11 @@
 ## WordPress UX Improvements (v85)
 - [x] Add "View Draft in WP" link on Kanban card after successful publish (opens editUrl in new tab)
 - [x] Add "Publish to WP" button inside card detail modal for blog posts
+
+## Webinar Intelligence — Typeform Import (v86)
+- [x] Fetch Typeform responses from form gKuZd1tj via API
+- [x] Fix Webinar Intelligence section to correctly connect to the right form ID
+- [x] Import 49 responses into platform and surface audience insights
+- [x] Fixed rawResponses column from TEXT to MEDIUMTEXT (16MB) to handle large datasets
+- [x] Verified DB migration applied successfully (migration 0033)
+- [x] 121 tests passing, 0 TypeScript errors

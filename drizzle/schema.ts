@@ -1,4 +1,4 @@
-import { bigint, boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, int, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -595,7 +595,7 @@ export const webinarIntelligence = mysqlTable("webinar_intelligence", {
   webinarSessionId: int("webinarSessionId").notNull(), // FK → webinar_sessions.id
   surveyType: webinarIntelligenceSurveyTypeEnum.notNull().default("pre_registration"),
   // Raw import: paste Typeform JSON export or CSV text
-  rawResponses: text("rawResponses"),         // Raw JSON/CSV pasted by user
+  rawResponses: mediumtext("rawResponses"),    // Raw survey responses (MEDIUMTEXT for large datasets)
   responseCount: int("responseCount").default(0),
   // AI-extracted intelligence
   extractedThemes: text("extractedThemes"),       // JSON: string[] top themes

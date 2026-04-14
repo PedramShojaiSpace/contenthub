@@ -188,6 +188,153 @@ Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, q
       return updated ?? null;
     }),
 
+  // Import responses directly from Typeform API
+  importFromTypeform: protectedProcedure
+    .input(
+      z.object({
+        webinarSessionId: z.number(),
+        typeformId: z.string().min(1, "Typeform form ID is required"),
+        surveyType: z.enum(["pre_registration", "post_webinar"]),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      const apiKey = process.env.TYPEFORM_API_KEY;
+      if (!apiKey) throw new Error("TYPEFORM_API_KEY not configured");
+
+      // Fetch form structure to get field labels
+      const formRes = await fetch(`https://api.typeform.com/forms/${input.typeformId}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!formRes.ok) throw new Error(`Typeform API error: ${formRes.status} ${formRes.statusText}`);
+      const form = await formRes.json() as {
+        title: string;
+        fields?: Array<{ id: string; title: string; type: string }>;
+      };
+
+      // Build a field ID → label map
+      const fieldMap: Record<string, string> = {};
+      for (const f of form.fields ?? []) {
+        fieldMap[f.id] = f.title;
+      }
+
+      // Fetch all responses (paginate up to 1000)
+      let allItems: Array<{
+        submitted_at: string;
+        answers?: Array<{
+          type: string;
+          field: { id: string };
+          text?: string;
+          choice?: { label: string };
+          choices?: { labels: string[] };
+          number?: number;
+          boolean?: boolean;
+          email?: string;
+        }>;
+      }> = [];
+      let pageToken: string | null = null;
+      do {
+        const url = `https://api.typeform.com/forms/${input.typeformId}/responses?page_size=200${
+          pageToken ? `&before=${pageToken}` : ""
+        }`;
+        const respRes = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+        if (!respRes.ok) throw new Error(`Typeform responses error: ${respRes.status}`);
+        const page = await respRes.json() as {
+          items: typeof allItems;
+          page_count: number;
+          total_items: number;
+        };
+        allItems = allItems.concat(page.items ?? []);
+        // If we got a full page, there may be more — use last item's token
+        pageToken = page.items?.length === 200 ? page.items[page.items.length - 1].submitted_at : null;
+      } while (pageToken && allItems.length < 1000);
+
+      const responseCount = allItems.length;
+
+      // Format responses as readable text for AI extraction
+      const lines: string[] = [
+        `=== ${form.title} ===`,
+        `Total responses: ${responseCount}`,
+        `Fetched: ${new Date().toISOString()}`,
+        "",
+      ];
+
+      allItems.forEach((item, idx) => {
+        lines.push(`--- Response ${idx + 1} (${new Date(item.submitted_at).toLocaleDateString()}) ---`);
+        for (const answer of item.answers ?? []) {
+          const label = fieldMap[answer.field.id] ?? answer.field.id;
+          let value = "";
+          if (answer.type === "text" || answer.type === "short_text" || answer.type === "long_text") {
+            value = answer.text ?? "";
+          } else if (answer.type === "choice") {
+            value = answer.choice?.label ?? "";
+          } else if (answer.type === "choices") {
+            value = (answer.choices?.labels ?? []).join(", ");
+          } else if (answer.type === "number" || answer.type === "rating") {
+            value = String(answer.number ?? "");
+          } else if (answer.type === "boolean" || answer.type === "yes_no") {
+            value = answer.boolean ? "Yes" : "No";
+          } else if (answer.type === "email") {
+            value = answer.email ?? "";
+          }
+          if (value.trim()) {
+            lines.push(`Q: ${label.substring(0, 100)}`);
+            lines.push(`A: ${value}`);
+            lines.push("");
+          }
+        }
+      });
+
+      const rawResponses = lines.join("\n");
+
+      const [result] = await db.insert(webinarIntelligence).values({
+        webinarSessionId: input.webinarSessionId,
+        surveyType: input.surveyType,
+        rawResponses,
+        responseCount,
+        notes: input.notes ?? `Imported from Typeform: ${input.typeformId} — ${responseCount} responses`,
+      });
+      const insertId = (result as { insertId: number }).insertId;
+      const [created] = await db
+        .select()
+        .from(webinarIntelligence)
+        .where(eq(webinarIntelligence.id, insertId));
+      return created ?? null;
+    }),
+
+  // Ensure a webinar session exists (upsert by topic)
+  ensureSession: protectedProcedure
+    .input(z.object({
+      topic: z.string(),
+      webinarDate: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      // Check if a session with this topic already exists
+      const existing = await db
+        .select()
+        .from(webinarSessions)
+        .where(eq(webinarSessions.topic, input.topic));
+      if (existing.length > 0) return existing[0];
+      // Create it
+      const [result] = await db.insert(webinarSessions).values({
+        topic: input.topic,
+        webinarDate: input.webinarDate ?? null,
+        status: "draft",
+        targetLengthMinutes: 60,
+      });
+      const insertId = (result as { insertId: number }).insertId;
+      const [created] = await db
+        .select()
+        .from(webinarSessions)
+        .where(eq(webinarSessions.id, insertId));
+      return created ?? null;
+    }),
+
   // Delete a record
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))

@@ -22,6 +22,8 @@ import {
   FileText,
   AlertCircle,
   CheckCircle2,
+  RefreshCw,
+  Zap,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -329,11 +331,107 @@ function ImportForm({
   );
 }
 
+// ─── Typeform Quick Import ────────────────────────────────────────────────────
+function TypeformQuickImport({
+  webinarSessionId,
+  onSuccess,
+}: {
+  webinarSessionId: number;
+  onSuccess: () => void;
+}) {
+  const [typeformId, setTypeformId] = useState("gKuZd1tj");
+  const [surveyType, setSurveyType] = useState<SurveyType>("post_webinar");
+  const utils = trpc.useUtils();
+
+  const importMutation = trpc.webinarIntelligence.importFromTypeform.useMutation({
+    onSuccess: (data) => {
+      utils.webinarIntelligence.listBySession.invalidate({ webinarSessionId });
+      toast.success(
+        `Imported ${data?.responseCount ?? 0} responses from Typeform — click "Extract Intelligence" to run AI analysis`
+      );
+      onSuccess();
+    },
+    onError: (err) => toast.error(`Typeform import failed: ${err.message}`),
+  });
+
+  return (
+    <Card className="bg-primary/5 border-primary/20">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Zap className="w-4 h-4 text-primary" />
+          Import Directly from Typeform
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Typeform Form ID</label>
+            <input
+              className="w-full h-8 text-sm px-3 rounded-md border border-input bg-background font-mono"
+              placeholder="e.g. gKuZd1tj"
+              value={typeformId}
+              onChange={(e) => setTypeformId(e.target.value.trim())}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Survey Type</label>
+            <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pre_registration">Pre-Registration Form</SelectItem>
+                <SelectItem value="post_webinar">Post-Webinar Survey</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          className="w-full gap-2"
+          onClick={() =>
+            importMutation.mutate({
+              webinarSessionId,
+              typeformId,
+              surveyType,
+              notes: `Typeform ${typeformId} — auto-imported ${new Date().toLocaleDateString()}`,
+            })
+          }
+          disabled={importMutation.isPending || !typeformId}
+        >
+          {importMutation.isPending ? (
+            <><RefreshCw className="w-4 h-4 animate-spin" /> Fetching responses…</>
+          ) : (
+            <><Zap className="w-4 h-4" /> Fetch & Import {typeformId ? `(${typeformId})` : ""}</>
+          )}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Pulls all responses directly from Typeform API — no copy/paste needed.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WebinarIntelligencePage() {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [showImportForm, setShowImportForm] = useState(false);
+  const [showTypeformImport, setShowTypeformImport] = useState(false);
   const utils = trpc.useUtils();
+
+  // Auto-create the Upstream Health session if no sessions exist
+  const ensureSessionMutation = trpc.webinarIntelligence.ensureSession.useMutation({
+    onSuccess: (session) => {
+      utils.webinar.list.invalidate();
+      if (session) {
+        setSelectedSessionId(session.id);
+        setShowTypeformImport(true);
+        toast.success(`Session "${session.topic}" ready — now import your Typeform responses`);
+      }
+    },
+    onError: (err) => toast.error(`Could not create session: ${err.message}`),
+  });
 
   // Load all webinar sessions for the selector
   const { data: sessions = [], isLoading: sessionsLoading } = trpc.webinar.list.useQuery();
@@ -389,9 +487,30 @@ export default function WebinarIntelligencePage() {
             {sessionsLoading ? (
               <div className="h-9 bg-muted/30 rounded animate-pulse" />
             ) : sessions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No webinar sessions found. Create one in the Webinar Builder first.
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  No webinar sessions found.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() =>
+                    ensureSessionMutation.mutate({
+                      topic: "Upstream Health: How to Find and Fix Your Root Cause",
+                      webinarDate: "2026-04-17",
+                    })
+                  }
+                  disabled={ensureSessionMutation.isPending}
+                >
+                  {ensureSessionMutation.isPending ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  Create "Upstream Health" Session & Import
+                </Button>
+              </div>
             ) : (
               <Select
                 value={selectedSessionId?.toString() ?? ""}
@@ -435,18 +554,43 @@ export default function WebinarIntelligencePage() {
                   {extractedCount} extracted
                 </span>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-2"
-                onClick={() => setShowImportForm(!showImportForm)}
-              >
-                <Upload className="w-4 h-4" />
-                {showImportForm ? "Cancel" : "Import Responses"}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="gap-2"
+                  onClick={() => {
+                    setShowTypeformImport(!showTypeformImport);
+                    setShowImportForm(false);
+                  }}
+                >
+                  <Zap className="w-4 h-4" />
+                  {showTypeformImport ? "Cancel" : "Import from Typeform"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => {
+                    setShowImportForm(!showImportForm);
+                    setShowTypeformImport(false);
+                  }}
+                >
+                  <Upload className="w-4 h-4" />
+                  {showImportForm ? "Cancel" : "Paste Manually"}
+                </Button>
+              </div>
             </div>
 
-            {/* Import Form */}
+            {/* Typeform Quick Import */}
+            {showTypeformImport && (
+              <TypeformQuickImport
+                webinarSessionId={selectedSessionId}
+                onSuccess={() => setShowTypeformImport(false)}
+              />
+            )}
+
+            {/* Manual Import Form */}
             {showImportForm && (
               <ImportForm
                 webinarSessionId={selectedSessionId}

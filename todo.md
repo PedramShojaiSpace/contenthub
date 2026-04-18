@@ -1332,3 +1332,12 @@
 - [x] Auto-saves SEO fields to DB on Save button or Enter key press
 - [x] Show focusKeyword as a small amber badge on blog Kanban cards when set
 - [x] 133 tests passing, 0 TypeScript errors
+
+## Bug: Stuck Publishing to WordPress (v90)
+- [x] Diagnosed root cause: WordPress site was returning 503 (maintenance mode) — no timeout was set so the fetch hung indefinitely
+- [x] Added wpFetch() helper in both wordpress.ts and wpContentUtils.ts with AbortController timeouts
+- [x] Maintenance mode detection: 503 with autoupdater/maintenance body now throws a clear human-readable error
+- [x] Timeout detection: AbortError now throws "WordPress did not respond within 20 seconds" instead of hanging
+- [x] Image upload: 30s timeout; tag resolution: 8s per keyword; post creation: 20s
+- [x] All errors propagate to the UI as toast messages via tRPC error handling
+- [x] 133 tests passing, 0 TypeScript errors

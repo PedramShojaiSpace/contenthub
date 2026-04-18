@@ -20,6 +20,36 @@
 
 import { marked } from "marked";
 
+/**
+ * Fetch wrapper with a hard timeout for WordPress API calls.
+ * Prevents indefinite hangs when WP is in maintenance mode or slow.
+ */
+async function wpFetch(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = 10_000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    if (res.status === 503) {
+      const body = await res.text();
+      if (body.includes("autoupdater") || body.includes("maintenance") || body.includes("Site is offline")) {
+        throw new Error("WordPress is currently in maintenance mode. Please try again in a few minutes.");
+      }
+    }
+    return res;
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("WordPress tag API timed out. The site may be in maintenance mode.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─── WordPress Category IDs (theurbanmonk.com) ────────────────────────────────
 export const WP_CATEGORY_HEALTH_AND_WELLNESS = 19;   // "Health and Wellness" (slug: wellness)
 export const WP_CATEGORY_HEALTH_WELLNESS = 941;       // "Health & Wellness" (slug: health-wellness)
@@ -170,10 +200,11 @@ export async function resolveOrCreateWpTags(
       .slice(0, 80);
 
     try {
-      // Search for existing tag
-      const searchRes = await fetch(
+      // Search for existing tag (8s timeout)
+      const searchRes = await wpFetch(
         `${baseUrl}/wp-json/wp/v2/tags?search=${encodeURIComponent(keyword)}&per_page=5`,
-        { headers: { Authorization: authHeader } }
+        { headers: { Authorization: authHeader } },
+        8_000
       );
       if (searchRes.ok) {
         const existing = (await searchRes.json()) as Array<{ id: number; name: string; slug: string }>;
@@ -188,15 +219,15 @@ export async function resolveOrCreateWpTags(
         }
       }
 
-      // Create new tag
-      const createRes = await fetch(`${baseUrl}/wp-json/wp/v2/tags`, {
+      // Create new tag (8s timeout)
+      const createRes = await wpFetch(`${baseUrl}/wp-json/wp/v2/tags`, {
         method: "POST",
         headers: {
           Authorization: authHeader,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ name: keyword, slug }),
-      });
+      }, 8_000);
       if (createRes.ok) {
         const newTag = (await createRes.json()) as { id: number };
         tagIds.push(newTag.id);

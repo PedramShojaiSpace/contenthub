@@ -20,6 +20,42 @@ function getWpAuth(): { baseUrl: string; authHeader: string } {
 }
 
 /**
+ * Fetch wrapper with a hard timeout and maintenance-mode detection.
+ * Throws a descriptive error instead of hanging indefinitely.
+ */
+async function wpFetch(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = 20_000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    // Detect WordPress maintenance mode (503 with autoupdater meta tag)
+    if (res.status === 503) {
+      const body = await res.text();
+      if (body.includes("autoupdater") || body.includes("maintenance") || body.includes("Site is offline")) {
+        throw new Error(
+          "WordPress is currently in maintenance mode. Please wait a few minutes and try publishing again."
+        );
+      }
+      throw new Error(`WordPress returned 503: ${body.substring(0, 200)}`);
+    }
+    return res;
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(
+        "WordPress did not respond within 20 seconds. The site may be in maintenance mode or experiencing high load. Please try again."
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Upload an image from a URL to the WordPress media library.
  * Returns the WordPress media attachment ID and the hosted URL.
  */
@@ -30,16 +66,16 @@ export async function uploadMediaFromUrl(
 ): Promise<{ id: number; url: string }> {
   const { baseUrl, authHeader } = getWpAuth();
 
-  // Fetch the image bytes
-  const imgRes = await fetch(imageUrl);
+  // Fetch the image bytes (30s timeout for large images)
+  const imgRes = await wpFetch(imageUrl, {}, 30_000);
   if (!imgRes.ok) {
     throw new Error(`Failed to fetch image from URL: ${imgRes.statusText}`);
   }
   const imgBuffer = await imgRes.arrayBuffer();
   const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
 
-  // Upload to WordPress media endpoint
-  const uploadRes = await fetch(`${baseUrl}/wp-json/wp/v2/media`, {
+  // Upload to WordPress media endpoint (30s timeout for large uploads)
+  const uploadRes = await wpFetch(`${baseUrl}/wp-json/wp/v2/media`, {
     method: "POST",
     headers: {
       Authorization: authHeader,
@@ -47,7 +83,7 @@ export async function uploadMediaFromUrl(
       "Content-Type": contentType,
     },
     body: imgBuffer,
-  });
+  }, 30_000);
 
   if (!uploadRes.ok) {
     const errText = await uploadRes.text();
@@ -61,7 +97,7 @@ export async function uploadMediaFromUrl(
 
   // Set alt text for image SEO
   if (altText && media.id) {
-    await fetch(`${baseUrl}/wp-json/wp/v2/media/${media.id}`, {
+    await wpFetch(`${baseUrl}/wp-json/wp/v2/media/${media.id}`, {
       method: "POST",
       headers: {
         Authorization: authHeader,
@@ -72,7 +108,7 @@ export async function uploadMediaFromUrl(
         caption: altText,
         description: altText,
       }),
-    }).catch(() => {
+    }, 10_000).catch(() => {
       // Non-fatal — alt text update failure doesn't block publish
     });
   }
@@ -261,7 +297,7 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
     body.meta = yoastMeta;
   }
 
-  const res = await fetch(`${baseUrl}/wp-json/wp/v2/posts`, {
+  const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts`, {
     method: "POST",
     headers: {
       Authorization: authHeader,
@@ -336,7 +372,7 @@ export async function fetchAllWpPosts(): Promise<WpPostSummary[]> {
 
   while (true) {
     const url = `${baseUrl}/wp-json/wp/v2/posts?status=publish&per_page=${perPage}&page=${page}&_fields=id,title,slug,link,excerpt,categories,tags,date_gmt&_embed=false`;
-    const res = await fetch(url, {
+    const res = await wpFetch(url, {
       headers: { Authorization: authHeader },
     });
 

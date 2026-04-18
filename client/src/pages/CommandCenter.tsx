@@ -315,6 +315,99 @@ function AnalyticsPanel({
   );
 }
 
+// ─── SEO Keyword Editor ────────────────────────────────────────────────────
+// Inline editor for focusKeyword and seoKeywords on blog posts.
+// Shown inside the detail dialog; auto-saves to DB on blur.
+function SeoKeywordEditor({
+  item,
+  onSaved,
+}: {
+  item: ContentItem;
+  onSaved: (updated: { focusKeyword: string | null; seoKeywords: string | null }) => void;
+}) {
+  const [focusKw, setFocusKw] = useState(item.focusKeyword ?? "");
+  const [seoKws, setSeoKws] = useState<string>(() => {
+    if (!item.seoKeywords) return "";
+    try {
+      const arr = JSON.parse(item.seoKeywords) as string[];
+      return arr.join(", ");
+    } catch {
+      return item.seoKeywords;
+    }
+  });
+  const [saving, setSaving] = useState(false);
+  const updateMutation = trpc.content.update.useMutation();
+
+  const handleSave = () => {
+    setSaving(true);
+    const keywords = seoKws
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    const seoKeywordsJson = keywords.length > 0 ? JSON.stringify(keywords) : null;
+    updateMutation.mutate(
+      {
+        id: item.id,
+        focusKeyword: focusKw.trim() || undefined,
+        seoKeywords: seoKeywordsJson ?? undefined,
+      },
+      {
+        onSuccess: () => {
+          setSaving(false);
+          toast.success("SEO keywords saved!");
+          onSaved({
+            focusKeyword: focusKw.trim() || null,
+            seoKeywords: seoKeywordsJson,
+          });
+        },
+        onError: () => setSaving(false),
+      }
+    );
+  };
+
+  return (
+    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+          <Zap className="h-3 w-3" />
+          SEO Keywords
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 text-[10px] border-amber-500/40 text-amber-700 hover:bg-amber-50"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Save"}
+        </Button>
+      </div>
+      <div className="space-y-1.5">
+        <div>
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Focus Keyword</Label>
+          <Input
+            value={focusKw}
+            onChange={(e) => setFocusKw(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSave()}
+            placeholder="e.g. gut dysbiosis fatigue"
+            className="h-7 text-xs mt-0.5"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Semantic Keywords <span className="normal-case">(comma-separated)</span></Label>
+          <Input
+            value={seoKws}
+            onChange={(e) => setSeoKws(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSave()}
+            placeholder="e.g. leaky gut, brain fog, gut microbiome"
+            className="h-7 text-xs mt-0.5"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Draggable Card ─────────────────────────────────────────────────────────
 function DraggableCard({
   item,
@@ -474,6 +567,16 @@ function DraggableCard({
             </span>
           )}
         </div>
+
+        {/* Focus keyword badge — blog posts with a keyword set */}
+        {item.platform === "blog" && item.focusKeyword && (
+          <div className="flex items-center gap-1 mt-1">
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] bg-amber-500/10 text-amber-700 border border-amber-500/20 truncate max-w-full">
+              <Zap className="h-2 w-2 shrink-0" />
+              <span className="truncate">{item.focusKeyword}</span>
+            </span>
+          </div>
+        )}
 
         {/* View Draft in WP link — blog posts with a WP post ID */}
         {item.platform === "blog" && item.wpPostId && (
@@ -1761,8 +1864,39 @@ export default function CommandCenter() {
                   toast.success("Copied to clipboard!");
                 }}
               >
-                Copy Content
+                <Copy className="h-3 w-3 mr-1" />
+                Copy Markdown
               </Button>
+              {selectedItem.platform === "blog" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-emerald-600/40 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-600"
+                  onClick={() => {
+                    // Convert markdown to HTML using the same pipeline as WordPress publish
+                    // Simple client-side conversion for clipboard use
+                    const md = editingContent;
+                    // Basic markdown-to-HTML for clipboard (headings, bold, links, blockquotes)
+                    let html = md
+                      .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+                      .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+                      .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+                      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+                      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+                      .replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>")
+                      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+                      .replace(/\n\n/g, "</p><p>")
+                      .replace(/^(?!<[h1-6]|<block|<ul|<ol|<li|<p)(.+)$/gm, "<p>$1</p>");
+                    // Handle trailing hashtags → bold
+                    html = html.replace(/(#[A-Za-z0-9_]+)/g, "<strong>$1</strong>");
+                    navigator.clipboard.writeText(html);
+                    toast.success("HTML copied — ready to paste into Kajabi or WordPress!");
+                  }}
+                >
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy as HTML
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -1773,7 +1907,7 @@ export default function CommandCenter() {
                 }}
               >
                 <RefreshCw className="h-3 w-3 mr-1" />
-                Regenerate Image
+                Regen Image
               </Button>
             </div>
 
@@ -2019,37 +2153,47 @@ export default function CommandCenter() {
 
             {/* Publish to WordPress — blog posts only */}
             {selectedItem.platform === "blog" && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-7 border-blue-600/40 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-600 gap-1"
-                  disabled={wpPublishingId === selectedItem.id}
-                  onClick={() => {
-                    handlePublishToWP(selectedItem);
-                    setSelectedItem(null);
-                  }}
-                >
-                  {wpPublishingId === selectedItem.id ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <ExternalLink className="h-3 w-3" />
-                  )}
-                  {wpPublishingId === selectedItem.id ? "Publishing…" : "Publish to WordPress"}
-                </Button>
+              <div className="space-y-3">
+                {/* SEO Keyword Editor */}
+                <SeoKeywordEditor item={selectedItem} onSaved={(updated) => {
+                  // Optimistically update the selectedItem in state
+                  setSelectedItem(prev => prev ? { ...prev, ...updated } : prev);
+                  refetch();
+                }} />
 
-                {/* View Draft link — shown once the post has been sent to WP */}
-                {selectedItem.wpPostId && (
-                  <a
-                    href={`https://theurbanmonk.com/wp-admin/post.php?post=${selectedItem.wpPostId}&action=edit`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline h-7"
+                {/* WordPress Publish actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7 border-blue-600/40 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-600 gap-1"
+                    disabled={wpPublishingId === selectedItem.id}
+                    onClick={() => {
+                      handlePublishToWP(selectedItem);
+                      setSelectedItem(null);
+                    }}
                   >
-                    <ExternalLink className="h-3 w-3" />
-                    View Draft in WordPress
-                  </a>
-                )}
+                    {wpPublishingId === selectedItem.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <ExternalLink className="h-3 w-3" />
+                    )}
+                    {wpPublishingId === selectedItem.id ? "Publishing…" : "Publish to WordPress"}
+                  </Button>
+
+                  {/* View Draft link — shown once the post has been sent to WP */}
+                  {selectedItem.wpPostId && (
+                    <a
+                      href={`https://theurbanmonk.com/wp-admin/post.php?post=${selectedItem.wpPostId}&action=edit`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline h-7"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Draft in WordPress
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 

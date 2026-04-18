@@ -1324,3 +1324,11 @@
 - [x] Persist SEO fields when saving blog from CreationStudio to Command Center
 - [x] CommandCenter publish now reads focusKeyword/seoKeywords from DB and pushes to WP
 - [x] 12 new vitest tests for markdownToWpHtml + hashtag-to-bold (133 total, all passing)
+
+## Copy HTML Button + Inline SEO Editor (v89)
+- [x] Add "Copy as HTML" button to blog detail dialog (converts markdown to HTML client-side, copies to clipboard with toast)
+- [x] Renamed existing button to "Copy Markdown" for clarity
+- [x] Add SeoKeywordEditor component inside blog detail dialog — shows Focus Keyword + Semantic Keywords (comma-separated) fields
+- [x] Auto-saves SEO fields to DB on Save button or Enter key press
+- [x] Show focusKeyword as a small amber badge on blog Kanban cards when set
+- [x] 133 tests passing, 0 TypeScript errors

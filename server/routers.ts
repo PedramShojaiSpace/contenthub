@@ -36,6 +36,7 @@ import {
 } from "./db";
 import { getBufferProfiles, pushToBuffer, pushCarouselToBuffer } from "./buffer";
 import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, type WpPostSummary } from "./wordpress";
+import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
 import {
   countAddressedGaps,
   getCompetitorLeaderboard,
@@ -345,6 +346,8 @@ export const appRouter = router({
           gapQueryId: z.number().optional(), // Research Intelligence: link to source Gumshoe gap query
           personaId: z.number().optional(), // Target audience persona
           contentGoal: z.enum(["audience_growth", "llm_seo", "community_engagement"]).optional(),
+          focusKeyword: z.string().optional(),         // Yoast SEO focus keyword
+          seoKeywords: z.string().optional(),          // JSON array of semantic keyword strings
         })
       )
       .mutation(async ({ input }) => {
@@ -382,6 +385,8 @@ export const appRouter = router({
           contentGoal: z.enum(["audience_growth", "llm_seo", "community_engagement"]).optional(),
           wpPostId: z.number().optional(),
           linkedScriptId: z.number().nullable().optional(),
+          focusKeyword: z.string().optional(),         // Yoast SEO focus keyword
+          seoKeywords: z.string().optional(),          // JSON array of semantic keyword strings
         })
       )
       .mutation(async ({ input }) => {
@@ -2304,7 +2309,12 @@ Return BOTH in this exact format:
           wpDate = new Date(input.scheduledAt).toISOString();
         }
 
-        // Step 2: Build Article + FAQ JSON-LD schema blocks (GhostLink OS B15 AEO)
+        // Step 2: Convert Markdown → WordPress HTML
+        // - Extracts trailing #hashtags and converts them to <strong> bold text
+        // - Converts all Markdown formatting (##, **, >, etc.) to HTML
+        const wpHtmlBody = markdownToWpHtml(input.body);
+
+        // Step 3: Build Article + FAQ JSON-LD schema blocks (GhostLink OS B15 AEO)
         const { articleSchema, faqSchema } = buildBlogSchemas({
           title: input.title,
           slug: input.slug,
@@ -2315,17 +2325,41 @@ Return BOTH in this exact format:
           datePublished: wpDate ?? new Date().toISOString(),
         });
 
-        // Step 3: Build SEO title for Yoast (format: Article Title | The Urban Monk)
+        // Step 4: Build SEO title for Yoast (format: Article Title | The Urban Monk)
         const seoTitle = `${input.title} | The Urban Monk`;
 
-        // Step 4: Create the WordPress post with full SEO metadata
+        // Step 5: Resolve SEO keywords as WordPress tags (create if they don't exist)
+        const { authHeader: wpAuthHeader } = (() => {
+          const username = process.env.WORDPRESS_USERNAME ?? "";
+          const appPassword = process.env.WORDPRESS_APP_PASSWORD ?? "";
+          return { authHeader: "Basic " + Buffer.from(`${username}:${appPassword}`).toString("base64") };
+        })();
+
+        const allKeywords = [
+          ...(input.focusKeyword ? [input.focusKeyword] : []),
+          ...(input.semanticKeywords ?? []),
+        ].filter(Boolean);
+
+        let wpTagIds: number[] = [];
+        if (allKeywords.length > 0) {
+          try {
+            wpTagIds = await resolveOrCreateWpTags(allKeywords, wpAuthHeader, wpBaseUrl);
+            console.log(`[WP] Resolved ${wpTagIds.length} tags from ${allKeywords.length} keywords`);
+          } catch (err) {
+            console.error("[WP] Tag resolution failed (non-fatal):", err);
+          }
+        }
+
+        // Step 6: Create the WordPress post with full SEO metadata
         const post = await createWpPost({
           title: input.title,
           slug: input.slug,
-          content: input.body,
+          content: wpHtmlBody,
           excerpt: input.metaDescription,
           status: wpStatus,
           featuredMediaId,
+          categories: DEFAULT_WP_CATEGORIES,
+          tags: wpTagIds.length > 0 ? wpTagIds : undefined,
           metaDescription: input.metaDescription,
           focusKeyword: input.focusKeyword,
           seoTitle,
@@ -2440,9 +2474,10 @@ Return BOTH in this exact format:
             const post = await createWpPost({
               title: item.title,
               slug,
-              content: item.textContent,
+              content: markdownToWpHtml(item.textContent ?? ""),
               status: "draft",
               featuredMediaId,
+              categories: DEFAULT_WP_CATEGORIES,
             });
 
             await updateContentItem(id, { status: "scheduled", publishUrl: post.link });

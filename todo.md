@@ -1313,3 +1313,14 @@
 - [x] Revised outline auto-saved to webinar session on generation
 - [x] Added vitest test for rewriteOutlineFromIntelligence procedure
 - [x] 121 tests passing, 0 TypeScript errors
+
+## Blog Publishing Pipeline Fixes (v88)
+- [x] Add markdownToWpHtml conversion in the blog.publish procedure (server-side, before createWpPost)
+- [x] Convert #hashtag tokens to <strong> bold text in the HTML output
+- [x] Auto-set WP categories: Health and Wellness (ID 19) + Health & Wellness (ID 941) on every publish
+- [x] Auto-resolve/create WP tags from focusKeyword + semanticKeywords on publish
+- [x] Fix batch publish (publishBatch) to also convert markdown to HTML + auto-set categories
+- [x] Add focusKeyword and seoKeywords columns to contentItems schema (migration 0034)
+- [x] Persist SEO fields when saving blog from CreationStudio to Command Center
+- [x] CommandCenter publish now reads focusKeyword/seoKeywords from DB and pushes to WP
+- [x] 12 new vitest tests for markdownToWpHtml + hashtag-to-bold (133 total, all passing)

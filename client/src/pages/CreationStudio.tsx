@@ -1171,6 +1171,10 @@ export default function CreationStudio() {
       status: "drafting",
       textContent: blogContent.body,
       gapQueryId: activeGapQueryId ?? undefined,
+      focusKeyword: blogContent.focusKeyword ?? undefined,
+      seoKeywords: blogContent.semanticKeywords?.length
+        ? JSON.stringify(blogContent.semanticKeywords)
+        : undefined,
     });
   };
 

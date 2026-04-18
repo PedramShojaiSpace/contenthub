@@ -97,6 +97,8 @@ type ContentItem = {
   analyticsShares: number | null;
   linkedScriptId: number | null;
   wpPostId: number | null;
+  focusKeyword: string | null;
+  seoKeywords: string | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -828,6 +830,11 @@ export default function CommandCenter() {
     }
     setWpPublishingId(item.id);
     const slug = item.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80);
+    // Parse seoKeywords from JSON string if present
+    let semanticKeywords: string[] | undefined;
+    try {
+      if (item.seoKeywords) semanticKeywords = JSON.parse(item.seoKeywords);
+    } catch { /* ignore */ }
     wpPublishMutation.mutate(
       {
         contentItemId: item.id,
@@ -836,6 +843,8 @@ export default function CommandCenter() {
         body: item.textContent,
         heroImageUrl: item.imageUrl ?? undefined,
         status: "draft",
+        focusKeyword: item.focusKeyword ?? undefined,
+        semanticKeywords: semanticKeywords,
       },
       {
         onSuccess: (data) => {

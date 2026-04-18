@@ -72,6 +72,9 @@ export const contentItems = mysqlTable("content_items", {
   linkedScriptId: int("linkedScriptId"),
   // Carousel: JSON array of slides [{headline, body, imagePrompt, imageUrl}]
   carouselData: text("carouselData"),
+  // SEO fields — persisted so CommandCenter publish can auto-push them to WordPress
+  focusKeyword: varchar("focusKeyword", { length: 255 }),
+  seoKeywords: text("seoKeywords"),  // JSON array of semantic keyword strings
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

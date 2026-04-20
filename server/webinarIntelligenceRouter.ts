@@ -4,7 +4,9 @@ import { getDb } from "./db";
 import {
   webinarIntelligence,
   webinarSessions,
+  avatarProfiles,
   WebinarIntelligence,
+  AvatarProfile,
 } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
@@ -343,6 +345,238 @@ Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, q
       if (!db) throw new Error("Database unavailable");
       await db.delete(webinarIntelligence).where(eq(webinarIntelligence.id, input.id));
       return { success: true };
+    }),
+
+  // ─── Avatar Intelligence Repository ───────────────────────────────────────
+
+  // List all avatar profiles
+  listAvatarProfiles: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(avatarProfiles)
+        .orderBy(desc(avatarProfiles.lastUpdatedAt));
+    }),
+
+  // Get a single avatar profile by slug
+  getAvatarProfile: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const [row] = await db
+        .select()
+        .from(avatarProfiles)
+        .where(eq(avatarProfiles.productSlug, input.slug));
+      return row ?? null;
+    }),
+
+  // Create a new avatar profile for a product
+  createAvatarProfile: protectedProcedure
+    .input(
+      z.object({
+        productName: z.string().min(2),
+        productSlug: z.string().min(2),
+        productDescription: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const [result] = await db.insert(avatarProfiles).values({
+        productName: input.productName,
+        productSlug: input.productSlug,
+        productDescription: input.productDescription ?? null,
+      });
+      const insertId = (result as { insertId: number }).insertId;
+      const [created] = await db
+        .select()
+        .from(avatarProfiles)
+        .where(eq(avatarProfiles.id, insertId));
+      return created ?? null;
+    }),
+
+  // Aggregate extracted intelligence into an avatar profile
+  // This is the core "compound intelligence" operation:
+  // - Takes one intelligence record (already extracted)
+  // - Merges its insights with the existing avatar profile via LLM synthesis
+  // - Produces a richer, more accurate cumulative audience profile
+  aggregateToAvatarProfile: protectedProcedure
+    .input(
+      z.object({
+        intelligenceId: z.number(),
+        avatarProfileId: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      // Load the intelligence record
+      const [intel] = await db
+        .select()
+        .from(webinarIntelligence)
+        .where(eq(webinarIntelligence.id, input.intelligenceId));
+      if (!intel) throw new Error("Intelligence record not found");
+      if (!intel.extractedAt) throw new Error("Run AI extraction first before aggregating");
+
+      // Load the webinar session for context
+      const [session] = await db
+        .select()
+        .from(webinarSessions)
+        .where(eq(webinarSessions.id, intel.webinarSessionId));
+
+      // Load the existing avatar profile
+      const [profile] = await db
+        .select()
+        .from(avatarProfiles)
+        .where(eq(avatarProfiles.id, input.avatarProfileId));
+      if (!profile) throw new Error("Avatar profile not found");
+
+      const parseArr = (json: string | null): string[] => {
+        if (!json) return [];
+        try { return JSON.parse(json); } catch { return []; }
+      };
+
+      // New intelligence from this webinar
+      const newPainPoints = parseArr(intel.extractedPainPoints);
+      const newMotivations = parseArr(intel.extractedMotivations);
+      const newLanguage = parseArr(intel.extractedLanguage);
+      const newObjections: string[] = []; // extracted from questions
+      const newThemes = parseArr(intel.extractedThemes);
+      const newQuestions = parseArr(intel.extractedQuestions);
+
+      // Existing cumulative intelligence
+      const existingPainPoints = parseArr(profile.cumulativePainPoints);
+      const existingMotivations = parseArr(profile.cumulativeMotivations);
+      const existingLanguage = parseArr(profile.cumulativeLanguage);
+      const existingObjections = parseArr(profile.cumulativeObjections);
+      const existingThemes = parseArr(profile.cumulativeThemes);
+
+      const webinarLabel = session?.topic ?? `Webinar #${(profile.webinarCount ?? 0) + 1}`;
+      const newRespondents = intel.responseCount ?? 0;
+      const totalRespondents = (profile.totalRespondents ?? 0) + newRespondents;
+      const webinarCount = (profile.webinarCount ?? 0) + 1;
+
+      // Build the LLM synthesis prompt
+      const systemPrompt = `You are a market research analyst and audience intelligence specialist for Dr. Pedram Shojai's Urban Monk brand. Your job is to synthesize audience intelligence from multiple webinars into a single, ever-improving avatar profile for the "${profile.productName}" product.
+
+You are merging NEW intelligence from a recent webinar ("${webinarLabel}", ${newRespondents} respondents) with the EXISTING cumulative profile (${profile.webinarCount ?? 0} previous webinars, ${profile.totalRespondents ?? 0} total respondents).
+
+Your output must be a JSON object with these exact fields:
+- cumulativePainPoints: string[] — top 10 most important, deduplicated, merged pain points (most common/severe first)
+- cumulativeMotivations: string[] — top 8 merged motivations (why they show up)
+- cumulativeLanguage: string[] — top 15 exact phrases/words the audience uses (most distinctive first)
+- cumulativeObjections: string[] — top 6 objections/hesitations/barriers
+- cumulativeThemes: string[] — top 8 recurring themes across all webinars
+- demographicPatterns: string — 2-3 sentences describing who this audience is (age, profession, life stage, health situation)
+- avatarNarrative: string — A vivid 3-4 sentence avatar description in second person ("You are...") that captures who this person is, what they're struggling with, and why they're seeking help
+- webinarBriefContext: string — A pre-built context block (300-400 words) that can be injected into any webinar creation prompt to instantly brief the AI on this audience. Include their top pain points, exact language, motivations, and what they need to hear.
+
+Merge intelligently — don't just concatenate. Identify patterns that appear across multiple webinars (those are gold), surface new insights from the latest webinar, and retire insights that no longer appear relevant.`;
+
+      const userMessage = `EXISTING CUMULATIVE PROFILE (${profile.webinarCount ?? 0} webinars, ${profile.totalRespondents ?? 0} respondents):
+
+Pain Points: ${existingPainPoints.join(" | ") || "(none yet — this is the first webinar)"}
+Motivations: ${existingMotivations.join(" | ") || "(none yet)"}
+Language: ${existingLanguage.join(" | ") || "(none yet)"}
+Objections: ${existingObjections.join(" | ") || "(none yet)"}
+Themes: ${existingThemes.join(" | ") || "(none yet)"}
+Narrative: ${profile.avatarNarrative ?? "(none yet)"}
+
+---
+
+NEW INTELLIGENCE FROM "${webinarLabel}" (${newRespondents} respondents):
+
+Pain Points: ${newPainPoints.join(" | ") || "(none extracted)"}
+Motivations: ${newMotivations.join(" | ") || "(none extracted)"}
+Language: ${newLanguage.join(" | ") || "(none extracted)"}
+Themes: ${newThemes.join(" | ") || "(none extracted)"}
+Questions they asked: ${newQuestions.join(" | ") || "(none extracted)"}
+AI Summary: ${intel.aiSummary ?? "(no summary)"}
+
+---
+
+Synthesize these into an updated cumulative avatar profile. Return ONLY valid JSON.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "avatar_profile_synthesis",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                cumulativePainPoints: { type: "array", items: { type: "string" } },
+                cumulativeMotivations: { type: "array", items: { type: "string" } },
+                cumulativeLanguage: { type: "array", items: { type: "string" } },
+                cumulativeObjections: { type: "array", items: { type: "string" } },
+                cumulativeThemes: { type: "array", items: { type: "string" } },
+                demographicPatterns: { type: "string" },
+                avatarNarrative: { type: "string" },
+                webinarBriefContext: { type: "string" },
+              },
+              required: [
+                "cumulativePainPoints", "cumulativeMotivations", "cumulativeLanguage",
+                "cumulativeObjections", "cumulativeThemes", "demographicPatterns",
+                "avatarNarrative", "webinarBriefContext",
+              ],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const rawContent = response.choices?.[0]?.message?.content;
+      const synthesized = typeof rawContent === "string" ? JSON.parse(rawContent) : rawContent;
+
+      // Update the avatar profile with synthesized intelligence
+      await db
+        .update(avatarProfiles)
+        .set({
+          cumulativePainPoints: JSON.stringify(synthesized.cumulativePainPoints),
+          cumulativeMotivations: JSON.stringify(synthesized.cumulativeMotivations),
+          cumulativeLanguage: JSON.stringify(synthesized.cumulativeLanguage),
+          cumulativeObjections: JSON.stringify(synthesized.cumulativeObjections),
+          cumulativeThemes: JSON.stringify(synthesized.cumulativeThemes),
+          demographicPatterns: synthesized.demographicPatterns,
+          avatarNarrative: synthesized.avatarNarrative,
+          webinarBriefContext: synthesized.webinarBriefContext,
+          totalRespondents,
+          webinarCount,
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(avatarProfiles.id, input.avatarProfileId));
+
+      // Mark the intelligence record as aggregated
+      await db
+        .update(webinarIntelligence)
+        .set({
+          avatarProfileId: input.avatarProfileId,
+          aggregatedAt: new Date(),
+        })
+        .where(eq(webinarIntelligence.id, input.intelligenceId));
+
+      // Return the updated profile
+      const [updated] = await db
+        .select()
+        .from(avatarProfiles)
+        .where(eq(avatarProfiles.id, input.avatarProfileId));
+
+      return {
+        profile: updated,
+        webinarLabel,
+        newRespondents,
+        totalRespondents,
+        webinarCount,
+      };
     }),
 
   // ─── Rewrite Webinar Outline from Intelligence ────────────────────────────

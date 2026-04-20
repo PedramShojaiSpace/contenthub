@@ -23,6 +23,7 @@ const AvatarIntelligence = lazy(() => import("./pages/AvatarIntelligence"));
 const WebinarBuilder = lazy(() => import("./pages/WebinarBuilder"));
 const WebinarIntelligencePage = lazy(() => import("./pages/WebinarIntelligence"));
 const LLMProjects = lazy(() => import("./pages/LLMProjects"));
+const AvatarRepository = lazy(() => import("./pages/AvatarRepository"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -52,6 +53,7 @@ function Router() {
         <Route path={"/avatar"} component={AvatarIntelligence} />
         <Route path={"/webinar"} component={WebinarBuilder} />
         <Route path={"/webinar-intelligence"} component={WebinarIntelligencePage} />
+        <Route path={"/avatar-repository"} component={AvatarRepository} />
         <Route path={"/llm-projects"} component={LLMProjects} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />

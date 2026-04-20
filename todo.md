@@ -1348,3 +1348,15 @@
 - [x] If WP publish fails, status rolls back to previous state with an error toast
 - [x] Works from both Command Center Kanban card and detail dialog
 - [x] 133 tests passing, 0 TypeScript errors
+
+## Avatar Intelligence Repository (v92)
+- [x] Added avatarProfiles table: productName, productSlug, cumulativePainPoints, cumulativeMotivations, cumulativeLanguage, cumulativeObjections, cumulativeThemes, demographicPatterns, avatarNarrative, webinarBriefContext, totalRespondents, webinarCount, lastUpdatedAt
+- [x] Added webinarIntelligence.avatarProfileId FK + aggregatedAt column
+- [x] Pushed DB migration 0035
+- [x] Added aggregateToAvatarProfile tRPC procedure: LLM synthesis merges new intel with existing cumulative profile (structured JSON response)
+- [x] Added listAvatarProfiles, getAvatarProfile, createAvatarProfile tRPC procedures
+- [x] Added "Add Intelligence" button on each AvatarProfileCard (opens session/record selector)
+- [x] Built Avatar Repository page (/avatar-repository): profile cards with narrative, demographics, themes, pain points, motivations, language, objections, webinar brief context (copy button)
+- [x] "Add Intelligence" flow: select webinar session → pick extracted record → AI merges into profile
+- [x] Added "Avatar Repository" nav item in Intelligence section of sidebar
+- [x] 133 tests passing, 0 TypeScript errors

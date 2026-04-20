@@ -607,9 +607,12 @@ export const webinarIntelligence = mysqlTable("webinar_intelligence", {
   extractedQuestions: text("extractedQuestions"),   // JSON: string[] questions attendees asked/had
   extractedLanguage: text("extractedLanguage"),     // JSON: string[] exact phrases/words used by attendees
   aiSummary: text("aiSummary"),               // Narrative summary of what drove this audience
+  // Link to avatar profile (set when intelligence is aggregated into a product profile)
+  avatarProfileId: int("avatarProfileId"), // FK → avatar_profiles.id (nullable until aggregated)
   // Metadata
   importedAt: timestamp("importedAt").defaultNow().notNull(),
   extractedAt: timestamp("extractedAt"),
+  aggregatedAt: timestamp("aggregatedAt"), // When this record was merged into the avatar profile
   notes: text("notes"),
 });
 export type WebinarIntelligence = typeof webinarIntelligence.$inferSelect;
@@ -658,6 +661,33 @@ export const llmAssets = mysqlTable("llm_assets", {
 });
 export type LlmAsset = typeof llmAssets.$inferSelect;
 export type InsertLlmAsset = typeof llmAssets.$inferInsert;
+
+// ─── Avatar Intelligence Repository ─────────────────────────────────────────
+// Persistent per-product audience profile that accumulates intelligence across
+// every webinar run for that product. Each time a webinar's extracted intelligence
+// is aggregated here, the AI synthesizes a richer, more accurate avatar profile.
+export const avatarProfiles = mysqlTable("avatar_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  productName: varchar("productName", { length: 255 }).notNull(), // e.g. "Upstream Course"
+  productSlug: varchar("productSlug", { length: 128 }).notNull().unique(), // e.g. "upstream-course"
+  productDescription: text("productDescription"), // Brief description of what the product is
+  // Cumulative synthesized intelligence (AI-merged across all webinars)
+  cumulativePainPoints: text("cumulativePainPoints"),   // JSON: string[] — merged pain points
+  cumulativeMotivations: text("cumulativeMotivations"), // JSON: string[] — merged motivations
+  cumulativeLanguage: text("cumulativeLanguage"),       // JSON: string[] — exact phrases used
+  cumulativeObjections: text("cumulativeObjections"),   // JSON: string[] — objections/hesitations
+  cumulativeThemes: text("cumulativeThemes"),           // JSON: string[] — recurring themes
+  demographicPatterns: text("demographicPatterns"),     // JSON: free-form demographic observations
+  avatarNarrative: text("avatarNarrative"),             // AI-written avatar description paragraph
+  webinarBriefContext: text("webinarBriefContext"),     // Pre-built context block for next webinar prompt
+  // Stats
+  totalRespondents: int("totalRespondents").default(0),
+  webinarCount: int("webinarCount").default(0),
+  lastUpdatedAt: timestamp("lastUpdatedAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AvatarProfile = typeof avatarProfiles.$inferSelect;
+export type InsertAvatarProfile = typeof avatarProfiles.$inferInsert;
 
 // ── WordPress Post Index ──────────────────────────────────────────────────────
 // Stores a local index of published posts from theurbanmonk.com WordPress site.

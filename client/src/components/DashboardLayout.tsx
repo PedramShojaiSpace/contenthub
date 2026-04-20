@@ -76,6 +76,7 @@ const intelligenceItems = [
   { icon: Award, label: "Press", path: "/press" },
   { icon: Cpu, label: "Intelligence Hub", path: "/intelligence" },
   { icon: Zap, label: "Webinar Intel", path: "/webinar-intelligence" },
+  { icon: Sparkles, label: "Avatar Repository", path: "/avatar-repository" },
   { icon: Users, label: "Avatar", path: "/avatar" },
   { icon: BarChart3, label: "LLM Projects", path: "/llm-projects" },
 ];

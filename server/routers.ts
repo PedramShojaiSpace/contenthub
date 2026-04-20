@@ -2370,7 +2370,9 @@ Return BOTH in this exact format:
         });
 
         // Step 3: Update the content item status in the database
-        const newStatus = wpStatus === "publish" ? "published" : wpStatus === "future" ? "scheduled" : "drafting";
+        // Always mark as "published" once sent to WP — even if sent as a draft.
+        // This prevents confusion about what has already been pushed to WordPress.
+        const newStatus = wpStatus === "future" ? "scheduled" : "published";
         await updateContentItem(input.contentItemId, {
           status: newStatus,
           publishUrl: post.link,

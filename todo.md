@@ -1341,3 +1341,10 @@
 - [x] Image upload: 30s timeout; tag resolution: 8s per keyword; post creation: 20s
 - [x] All errors propagate to the UI as toast messages via tRPC error handling
 - [x] 133 tests passing, 0 TypeScript errors
+
+## Auto-Move to Published on WP Push (v91)
+- [x] When "Push to WordPress" is clicked, card moves to Published column immediately (optimistic update)
+- [x] tRPC blog.publish procedure always sets contentItem status = 'published' in DB (even for WP drafts)
+- [x] If WP publish fails, status rolls back to previous state with an error toast
+- [x] Works from both Command Center Kanban card and detail dialog
+- [x] 133 tests passing, 0 TypeScript errors

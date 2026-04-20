@@ -932,12 +932,17 @@ export default function CommandCenter() {
       return;
     }
     setWpPublishingId(item.id);
+    const previousStatus = item.status as "idea" | "drafting" | "review" | "approved" | "scheduled" | "published";
     const slug = item.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80);
     // Parse seoKeywords from JSON string if present
     let semanticKeywords: string[] | undefined;
     try {
       if (item.seoKeywords) semanticKeywords = JSON.parse(item.seoKeywords);
     } catch { /* ignore */ }
+
+    // Optimistically move the card to Published immediately
+    changeStatusMutation.mutate({ id: item.id, status: "published" });
+
     wpPublishMutation.mutate(
       {
         contentItemId: item.id,
@@ -953,14 +958,16 @@ export default function CommandCenter() {
         onSuccess: (data) => {
           setWpPublishingId(null);
           if (data.imageUploaded === false && item.imageUrl) {
-            toast.warning("Post sent to WordPress, but the hero image failed to upload. You can add it manually in WP.");
+            toast.warning("Moved to Published! Hero image failed to upload — add it manually in WP.");
           } else {
-            toast.success("Sent to WordPress as draft — with hero image!");
+            toast.success("Moved to Published and sent to WordPress!");
           }
           refetch();
         },
         onError: (err) => {
           setWpPublishingId(null);
+          // Roll back the optimistic status update on failure
+          changeStatusMutation.mutate({ id: item.id, status: previousStatus });
           toast.error("WordPress publish failed: " + err.message);
         },
       }

@@ -44,6 +44,7 @@ import {
   ChevronRight,
   Sparkles,
   Compass,
+  Settings,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -79,6 +80,7 @@ const intelligenceItems = [
   { icon: Sparkles, label: "Avatar Repository", path: "/avatar-repository" },
   { icon: Users, label: "Avatar", path: "/avatar" },
   { icon: BarChart3, label: "LLM Projects", path: "/llm-projects" },
+  { icon: Settings, label: "WordPress Setup", path: "/wordpress-setup" },
 ];
 
 const intelligencePaths = new Set(intelligenceItems.map((i) => i.path));

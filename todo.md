@@ -1380,3 +1380,13 @@
 - [x] Added functions.php snippet as collapsible copyable block at bottom of SEO panel
 - [x] Fixed TS2345 error in generateYoastFields (String() cast on LLM response content)
 - [x] 132/133 tests pass (1 Kajabi network timeout — not a code issue)
+
+## Yoast SEO Batch Workflows + WP Setup (v95)
+- [x] Added blog.generateYoastForDrafts tRPC procedure: iterates all Drafting blog posts, calls LLM for each, saves to DB
+- [x] Added blog.backfillYoastInWordPress tRPC procedure: iterates all Published posts with wpPostId, calls updateWpPostYoast for each
+- [x] Added "Generate Yoast for X Drafts" button (purple) in Command Center Blog filter header
+- [x] Added "Backfill Yoast in WP" button (green) in Command Center Blog filter header
+- [x] Both buttons only appear when Blog filter is active and there are eligible posts
+- [x] Added WordPress Setup page at /wordpress-setup with: WP connection test, step-by-step instructions, copyable functions.php snippet, batch action descriptions
+- [x] Added "WordPress Setup" nav item in Intelligence section of sidebar
+- [x] 133 tests passing, 0 TypeScript errors

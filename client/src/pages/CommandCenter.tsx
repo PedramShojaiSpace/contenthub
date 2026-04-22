@@ -935,6 +935,8 @@ export default function CommandCenter() {
 
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
+  const [isBatchGeneratingYoast, setIsBatchGeneratingYoast] = useState(false);
+  const [isBatchBackfillingYoast, setIsBatchBackfillingYoast] = useState(false);
   const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
   const [wpPublishingId, setWpPublishingId] = useState<number | null>(null);
 
@@ -1184,6 +1186,38 @@ export default function CommandCenter() {
       refetch();
     },
     onError: (err) => toast.error("Update failed: " + err.message),
+  });
+
+  const batchGenerateYoastMutation = trpc.blog.generateYoastForDrafts.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      setIsBatchGeneratingYoast(false);
+      if (data.failed === 0) {
+        toast.success(`Yoast SEO fields generated for ${data.succeeded} blog post${data.succeeded !== 1 ? 's' : ''}!`);
+      } else {
+        toast.warning(`${data.succeeded} generated, ${data.failed} failed.`);
+      }
+    },
+    onError: (err) => {
+      setIsBatchGeneratingYoast(false);
+      toast.error('Batch Yoast generation failed: ' + err.message);
+    },
+  });
+
+  const batchBackfillYoastMutation = trpc.blog.backfillYoastInWordPress.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      setIsBatchBackfillingYoast(false);
+      if (data.failed === 0) {
+        toast.success(`Yoast fields updated in WordPress for ${data.succeeded} post${data.succeeded !== 1 ? 's' : ''}!`);
+      } else {
+        toast.warning(`${data.succeeded} updated, ${data.failed} failed. Check WordPress for details.`);
+      }
+    },
+    onError: (err) => {
+      setIsBatchBackfillingYoast(false);
+      toast.error('Batch WP Yoast backfill failed: ' + err.message);
+    },
   });
 
   const batchPublishMutation = trpc.blog.publishBatch.useMutation({
@@ -1651,6 +1685,40 @@ export default function CommandCenter() {
                     <><span className="h-3 w-3 border border-amber-600 border-t-transparent rounded-full animate-spin" />Cleaning titles...</>
                   ) : (
                     <><Wand2 className="h-3 w-3" /> Clean Up Titles</>
+                  )}
+                </button>
+              )}
+              {/* Batch Generate Yoast for Drafts — shown when Blog filter is active and there are drafts */}
+              {platformFilter === "blog" && items.filter((i) => i.platform === "blog" && i.status === "drafting").length > 0 && (
+                <button
+                  onClick={() => {
+                    setIsBatchGeneratingYoast(true);
+                    batchGenerateYoastMutation.mutate();
+                  }}
+                  disabled={isBatchGeneratingYoast}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-purple-600/50 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors disabled:opacity-50"
+                >
+                  {isBatchGeneratingYoast ? (
+                    <><span className="h-3 w-3 border border-purple-600 border-t-transparent rounded-full animate-spin" />Generating SEO...</>
+                  ) : (
+                    <><Sparkles className="h-3 w-3" /> Generate Yoast for {items.filter((i) => i.platform === "blog" && i.status === "drafting").length} Drafts</>
+                  )}
+                </button>
+              )}
+              {/* Batch Backfill Yoast in WP — shown when Blog filter is active and there are published posts */}
+              {platformFilter === "blog" && items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId).length > 0 && (
+                <button
+                  onClick={() => {
+                    setIsBatchBackfillingYoast(true);
+                    batchBackfillYoastMutation.mutate();
+                  }}
+                  disabled={isBatchBackfillingYoast}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-green-600/50 bg-green-50 text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50"
+                >
+                  {isBatchBackfillingYoast ? (
+                    <><span className="h-3 w-3 border border-green-600 border-t-transparent rounded-full animate-spin" />Updating WP...</>
+                  ) : (
+                    <><RefreshCw className="h-3 w-3" /> Backfill Yoast in WP ({items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId).length})</>
                   )}
                 </button>
               )}

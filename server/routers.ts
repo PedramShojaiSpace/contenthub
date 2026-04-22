@@ -2550,6 +2550,144 @@ Rules:
         return { success: true, wpPostId: input.wpPostId };
       }),
 
+    // Batch generate Yoast SEO fields for all Drafting blog posts
+    generateYoastForDrafts: protectedProcedure
+      .mutation(async () => {
+        const db = await getDb();
+        const { contentItems } = await import('../drizzle/schema');
+        const { eq, and, isNotNull } = await import('drizzle-orm');
+
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        // Get all blog posts in Drafting status that have body content
+        const drafts = await db
+          .select()
+          .from(contentItems)
+          .where(
+            and(
+              eq(contentItems.platform, 'blog'),
+              eq(contentItems.status, 'drafting'),
+              isNotNull(contentItems.textContent)
+            )
+          );
+
+        const results: Array<{ id: number; title: string; success: boolean; error?: string }> = [];
+
+        for (const item of drafts) {
+          try {
+            const response = await safeLLM({
+              messages: [
+                {
+                  role: 'system',
+                  content: `You are an expert SEO specialist for The Urban Monk (Dr. Pedram Shojai). 
+Generate optimized Yoast SEO fields for a blog post. Return ONLY valid JSON with these exact keys:
+- seoTitle: string (max 60 chars, format: "[Topic] | The Urban Monk", include primary keyword)
+- metaDescription: string (120-155 chars, compelling summary with primary keyword, ends with a benefit or call to action)
+- focusKeyphrase: string (2-4 word phrase, the single most important keyword for this post)
+- semanticKeywords: string[] (5-8 related keywords/phrases that support the focus keyphrase)
+
+Rules:
+- seoTitle MUST be under 60 characters
+- metaDescription MUST be between 120-155 characters
+- focusKeyphrase should be what someone would type into Google to find this article
+- Write in Dr. Pedram Shojai's voice: authoritative, integrative medicine, practical wisdom`,
+                },
+                {
+                  role: 'user',
+                  content: `Blog post title: ${item.title}\n\nBlog post content (first 2000 chars):\n${(item.textContent ?? '').substring(0, 2000)}`,
+                },
+              ],
+              response_format: {
+                type: 'json_schema',
+                json_schema: {
+                  name: 'yoast_seo_fields',
+                  strict: true,
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      seoTitle: { type: 'string', description: 'SEO title max 60 chars' },
+                      metaDescription: { type: 'string', description: 'Meta description 120-155 chars' },
+                      focusKeyphrase: { type: 'string', description: 'Primary focus keyword phrase' },
+                      semanticKeywords: { type: 'array', items: { type: 'string' }, description: 'Related keywords' },
+                    },
+                    required: ['seoTitle', 'metaDescription', 'focusKeyphrase', 'semanticKeywords'],
+                    additionalProperties: false,
+                  },
+                },
+              },
+            });
+
+            const raw = String(response.choices?.[0]?.message?.content ?? '{}');
+            const fields = JSON.parse(raw) as {
+              seoTitle: string;
+              metaDescription: string;
+              focusKeyphrase: string;
+              semanticKeywords: string[];
+            };
+
+            await updateContentItem(item.id, {
+              yoastSeoTitle: fields.seoTitle,
+              yoastMetaDescription: fields.metaDescription,
+              focusKeyword: fields.focusKeyphrase,
+              seoKeywords: JSON.stringify(fields.semanticKeywords),
+            });
+
+            results.push({ id: item.id, title: item.title, success: true });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            results.push({ id: item.id, title: item.title, success: false, error: msg });
+          }
+        }
+
+        const succeeded = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
+        return { results, succeeded, failed, total: drafts.length };
+      }),
+
+    // Batch backfill Yoast SEO fields on all Published WordPress posts
+    backfillYoastInWordPress: protectedProcedure
+      .mutation(async () => {
+        const db = await getDb();
+        const { contentItems } = await import('../drizzle/schema');
+        const { eq, and, isNotNull } = await import('drizzle-orm');
+
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        // Get all published blog posts that have a wpPostId
+        const published = await db
+          .select()
+          .from(contentItems)
+          .where(
+            and(
+              eq(contentItems.platform, 'blog'),
+              eq(contentItems.status, 'published'),
+              isNotNull(contentItems.wpPostId)
+            )
+          );
+
+        const results: Array<{ id: number; title: string; wpPostId: number; success: boolean; error?: string }> = [];
+
+        for (const item of published) {
+          if (!item.wpPostId) continue;
+          try {
+            await updateWpPostYoast({
+              wpPostId: item.wpPostId,
+              seoTitle: item.yoastSeoTitle ?? undefined,
+              metaDescription: item.yoastMetaDescription ?? undefined,
+              focusKeyword: item.focusKeyword ?? undefined,
+            });
+            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, success: true });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, success: false, error: msg });
+          }
+        }
+
+        const succeeded = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
+        return { results, succeeded, failed, total: published.length };
+      }),
+
     // Batch publish all approved blog posts to WordPress as drafts
     publishBatch: protectedProcedure
       .input(z.object({ contentItemIds: z.array(z.number()) }))

@@ -1370,3 +1370,13 @@
 - [x] handlePublishToWP passes yoastSeoTitle and yoastMetaDescription from DB to WP
 - [x] Created docs/wordpress-yoast-rest-api-snippet.php — paste once into functions.php for full Yoast field exposure
 - [x] 133 tests passing, 0 TypeScript errors
+
+## Yoast SEO Enhancements (v94)
+- [x] Added blog.generateYoastFields tRPC procedure: LLM generates seoTitle (≤60 chars), metaDescription (120-155 chars), focusKeyphrase, semanticKeywords from blog body; auto-saves to DB
+- [x] Added "AI Generate" button (purple, Sparkles icon) in SeoKeywordEditor — auto-fills all four Yoast fields from blog content
+- [x] Added updateWpPostYoast function in wordpress.ts: updates existing WP post's Yoast fields without republishing
+- [x] Added blog.updateYoast tRPC procedure: pushes Yoast fields to existing WP post by wpPostId; persists to DB
+- [x] Added "Update in WP" button (green, RefreshCw icon) in SeoKeywordEditor — only shown when wpPostId exists
+- [x] Added functions.php snippet as collapsible copyable block at bottom of SEO panel
+- [x] Fixed TS2345 error in generateYoastFields (String() cast on LLM response content)
+- [x] 132/133 tests pass (1 Kajabi network timeout — not a code issue)

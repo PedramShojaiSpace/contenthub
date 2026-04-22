@@ -35,7 +35,7 @@ import {
   upsertPlatformStrategy,
 } from "./db";
 import { getBufferProfiles, pushToBuffer, pushCarouselToBuffer } from "./buffer";
-import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, type WpPostSummary } from "./wordpress";
+import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, updateWpPostYoast, type WpPostSummary } from "./wordpress";
 import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
 import {
   countAddressedGaps,
@@ -2448,6 +2448,107 @@ Return BOTH in this exact format:
         lastSynced: rows[0]?.syncedAt?.toISOString() ?? null,
       };
     }),
+
+    // Generate Yoast SEO fields using AI from blog body content
+    generateYoastFields: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        title: z.string(),
+        body: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const response = await safeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are an expert SEO specialist for The Urban Monk (Dr. Pedram Shojai). 
+Generate optimized Yoast SEO fields for a blog post. Return ONLY valid JSON with these exact keys:
+- seoTitle: string (max 60 chars, format: "[Topic] | The Urban Monk", include primary keyword)
+- metaDescription: string (120-155 chars, compelling summary with primary keyword, ends with a benefit or call to action)
+- focusKeyphrase: string (2-4 word phrase, the single most important keyword for this post)
+- semanticKeywords: string[] (5-8 related keywords/phrases that support the focus keyphrase)
+
+Rules:
+- seoTitle MUST be under 60 characters
+- metaDescription MUST be between 120-155 characters
+- focusKeyphrase should be what someone would type into Google to find this article
+- Write in Dr. Pedram Shojai's voice: authoritative, integrative medicine, practical wisdom`,
+            },
+            {
+              role: "user",
+              content: `Blog post title: ${input.title}\n\nBlog post content (first 2000 chars):\n${input.body.substring(0, 2000)}`,
+            },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "yoast_seo_fields",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  seoTitle: { type: "string", description: "SEO title max 60 chars" },
+                  metaDescription: { type: "string", description: "Meta description 120-155 chars" },
+                  focusKeyphrase: { type: "string", description: "Primary focus keyword phrase" },
+                  semanticKeywords: { type: "array", items: { type: "string" }, description: "Related keywords" },
+                },
+                required: ["seoTitle", "metaDescription", "focusKeyphrase", "semanticKeywords"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const raw = String(response.choices?.[0]?.message?.content ?? "{}");
+        const fields = JSON.parse(raw) as {
+          seoTitle: string;
+          metaDescription: string;
+          focusKeyphrase: string;
+          semanticKeywords: string[];
+        };
+
+        // Persist to DB immediately
+        await updateContentItem(input.contentItemId, {
+          yoastSeoTitle: fields.seoTitle,
+          yoastMetaDescription: fields.metaDescription,
+          focusKeyword: fields.focusKeyphrase,
+          seoKeywords: JSON.stringify(fields.semanticKeywords),
+        });
+
+        return fields;
+      }),
+
+    // Update Yoast SEO fields on an already-published WordPress post
+    updateYoast: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        wpPostId: z.number(),
+        seoTitle: z.string().optional(),
+        metaDescription: z.string().optional(),
+        focusKeyword: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const wpBaseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+        const canonicalUrl = input.focusKeyword
+          ? undefined
+          : undefined; // canonical stays as-is for updates
+
+        await updateWpPostYoast({
+          wpPostId: input.wpPostId,
+          seoTitle: input.seoTitle,
+          metaDescription: input.metaDescription,
+          focusKeyword: input.focusKeyword,
+        });
+
+        // Persist the updated fields to DB
+        await updateContentItem(input.contentItemId, {
+          yoastSeoTitle: input.seoTitle,
+          yoastMetaDescription: input.metaDescription,
+          focusKeyword: input.focusKeyword,
+        });
+
+        return { success: true, wpPostId: input.wpPostId };
+      }),
 
     // Batch publish all approved blog posts to WordPress as drafts
     publishBatch: protectedProcedure

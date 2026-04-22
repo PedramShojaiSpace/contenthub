@@ -453,6 +453,46 @@ export async function fetchAllWpPosts(): Promise<WpPostSummary[]> {
 }
 
 /**
+ * Update Yoast SEO fields on an existing WordPress post without changing its content.
+ * Used to backfill SEO metadata on already-published posts.
+ */
+export async function updateWpPostYoast(params: {
+  wpPostId: number;
+  seoTitle?: string;
+  metaDescription?: string;
+  focusKeyword?: string;
+  canonicalUrl?: string;
+}): Promise<{ success: boolean; postId: number }> {
+  const { baseUrl, authHeader } = getWpAuth();
+
+  const yoastMeta: Record<string, string> = {};
+  if (params.seoTitle) yoastMeta["yoast_wpseo_title"] = params.seoTitle;
+  if (params.metaDescription) yoastMeta["yoast_wpseo_metadesc"] = params.metaDescription;
+  if (params.focusKeyword) yoastMeta["yoast_wpseo_focuskw"] = params.focusKeyword;
+  if (params.canonicalUrl) yoastMeta["yoast_wpseo_canonical"] = params.canonicalUrl;
+
+  if (Object.keys(yoastMeta).length === 0) {
+    return { success: true, postId: params.wpPostId };
+  }
+
+  const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts/${params.wpPostId}`, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ yoast_meta: yoastMeta }),
+  }, 20_000);
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`WordPress Yoast update failed: ${errText.substring(0, 300)}`);
+  }
+
+  return { success: true, postId: params.wpPostId };
+}
+
+/**
  * Find the most relevant published posts for a given topic/keyword.
  * Used to inject real internal link candidates into the blog generation prompt.
  * Returns up to `limit` posts whose title or excerpt contains any of the keywords.

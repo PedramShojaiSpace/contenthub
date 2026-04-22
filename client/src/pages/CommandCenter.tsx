@@ -320,6 +320,28 @@ function AnalyticsPanel({
 // ─── SEO Keyword Editor ────────────────────────────────────────────────────
 // Inline editor for focusKeyword and seoKeywords on blog posts.
 // Shown inside the detail dialog; auto-saves to DB on blur.
+const FUNCTIONS_PHP_SNIPPET = `// Allow Yoast SEO meta fields to be written via the WordPress REST API.
+// Paste this into your theme's functions.php file (once).
+add_action( 'rest_api_init', function() {
+  $yoast_fields = [
+    '_yoast_wpseo_title',
+    '_yoast_wpseo_metadesc',
+    '_yoast_wpseo_focuskw',
+    '_yoast_wpseo_canonical',
+    '_yoast_wpseo_opengraph-title',
+    '_yoast_wpseo_opengraph-description',
+    '_yoast_wpseo_twitter-title',
+    '_yoast_wpseo_twitter-description',
+  ];
+  foreach ( $yoast_fields as $field ) {
+    register_rest_field( 'post', $field, [
+      'get_callback'    => fn($obj) => get_post_meta($obj['id'], $field, true),
+      'update_callback' => fn($val, $obj) => update_post_meta($obj->ID, $field, sanitize_text_field($val)),
+      'schema'          => [ 'type' => 'string' ],
+    ]);
+  }
+});`;
+
 function SeoKeywordEditor({
   item,
   onSaved,
@@ -340,7 +362,12 @@ function SeoKeywordEditor({
   const [seoTitle, setSeoTitle] = useState(item.yoastSeoTitle ?? `${item.title} | The Urban Monk`);
   const [metaDesc, setMetaDesc] = useState(item.yoastMetaDescription ?? "");
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [updatingWP, setUpdatingWP] = useState(false);
+  const [showSnippet, setShowSnippet] = useState(false);
   const updateMutation = trpc.content.update.useMutation();
+  const generateMutation = trpc.blog.generateYoastFields.useMutation();
+  const updateYoastMutation = trpc.blog.updateYoast.useMutation();
 
   const handleSave = () => {
     setSaving(true);
@@ -375,26 +402,110 @@ function SeoKeywordEditor({
     );
   };
 
+  const handleGenerate = () => {
+    if (!item.textContent) {
+      toast.error("No blog content to generate SEO fields from.");
+      return;
+    }
+    setGenerating(true);
+    generateMutation.mutate(
+      { contentItemId: item.id, title: item.title, body: item.textContent },
+      {
+        onSuccess: (fields) => {
+          setSeoTitle(fields.seoTitle);
+          setMetaDesc(fields.metaDescription);
+          setFocusKw(fields.focusKeyphrase);
+          setSeoKws(fields.semanticKeywords.join(", "));
+          setGenerating(false);
+          toast.success("Yoast SEO fields generated and saved!");
+          onSaved({
+            focusKeyword: fields.focusKeyphrase,
+            seoKeywords: JSON.stringify(fields.semanticKeywords),
+            yoastSeoTitle: fields.seoTitle,
+            yoastMetaDescription: fields.metaDescription,
+          });
+        },
+        onError: (err) => {
+          setGenerating(false);
+          toast.error(`Generation failed: ${err.message}`);
+        },
+      }
+    );
+  };
+
+  const handleUpdateInWP = () => {
+    if (!item.wpPostId) {
+      toast.error("No WordPress post ID found. Publish the post first.");
+      return;
+    }
+    setUpdatingWP(true);
+    updateYoastMutation.mutate(
+      {
+        contentItemId: item.id,
+        wpPostId: item.wpPostId,
+        seoTitle: seoTitle.trim() || undefined,
+        metaDescription: metaDesc.trim() || undefined,
+        focusKeyword: focusKw.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setUpdatingWP(false);
+          toast.success("Yoast SEO fields updated in WordPress!");
+        },
+        onError: (err) => {
+          setUpdatingWP(false);
+          toast.error(`WordPress update failed: ${err.message}`);
+        },
+      }
+    );
+  };
+
   const charCount = metaDesc.length;
   const metaDescStatus = charCount === 0 ? "empty" : charCount < 120 ? "short" : charCount <= 160 ? "good" : "long";
   const metaDescColor = metaDescStatus === "good" ? "text-green-600" : metaDescStatus === "short" ? "text-amber-600" : metaDescStatus === "long" ? "text-red-500" : "text-muted-foreground";
 
   return (
     <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
           <Zap className="h-3 w-3" />
           Yoast SEO Fields
         </p>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-6 text-[10px] border-amber-500/40 text-amber-700 hover:bg-amber-50"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Save to Yoast"}
-        </Button>
+        <div className="flex items-center gap-1 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 text-[10px] border-purple-500/40 text-purple-700 hover:bg-purple-50"
+            onClick={handleGenerate}
+            disabled={generating || !item.textContent}
+            title="AI generates SEO title, meta description, focus keyphrase, and semantic keywords from the blog content"
+          >
+            {generating ? <Loader2 className="h-2.5 w-2.5 animate-spin mr-1" /> : <Sparkles className="h-2.5 w-2.5 mr-1" />}
+            {generating ? "Generating..." : "AI Generate"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 text-[10px] border-amber-500/40 text-amber-700 hover:bg-amber-50"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Save"}
+          </Button>
+          {item.wpPostId && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[10px] border-green-500/40 text-green-700 hover:bg-green-50"
+              onClick={handleUpdateInWP}
+              disabled={updatingWP}
+              title="Push current SEO fields to the existing WordPress post without republishing"
+            >
+              {updatingWP ? <Loader2 className="h-2.5 w-2.5 animate-spin mr-1" /> : <RefreshCw className="h-2.5 w-2.5 mr-1" />}
+              {updatingWP ? "Updating..." : "Update in WP"}
+            </Button>
+          )}
+        </div>
       </div>
       <div className="space-y-1.5">
         <div>
@@ -439,6 +550,34 @@ function SeoKeywordEditor({
             className="h-7 text-xs mt-0.5"
           />
         </div>
+      </div>
+
+      {/* functions.php snippet toggle */}
+      <div className="border-t border-amber-500/20 pt-2">
+        <button
+          type="button"
+          className="text-[10px] text-amber-600 hover:text-amber-800 underline underline-offset-2 flex items-center gap-1"
+          onClick={() => setShowSnippet((v) => !v)}
+        >
+          <Zap className="h-2.5 w-2.5" />
+          {showSnippet ? "Hide" : "Show"} functions.php snippet (paste once to unlock all Yoast fields)
+        </button>
+        {showSnippet && (
+          <div className="mt-1.5 relative">
+            <pre className="text-[9px] font-mono bg-background/80 border border-border rounded p-2 overflow-x-auto whitespace-pre-wrap text-muted-foreground leading-relaxed">{FUNCTIONS_PHP_SNIPPET}</pre>
+            <Button
+              size="sm"
+              variant="outline"
+              className="absolute top-1.5 right-1.5 h-5 text-[9px] px-1.5"
+              onClick={() => {
+                navigator.clipboard.writeText(FUNCTIONS_PHP_SNIPPET);
+                toast.success("Snippet copied! Paste into WordPress functions.php");
+              }}
+            >
+              <Copy className="h-2.5 w-2.5 mr-0.5" /> Copy
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

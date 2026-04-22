@@ -21,21 +21,20 @@ import { landingPages } from "../drizzle/schema";
 
 const OFFER_DETAILS: Record<string, { label: string; price: string; cta: string; url: string; description: string }> = {
   upstream_bundle: {
-    label: "The Upstream Bundle",
-    price: "Bundle",
+    label: "The Upstream Course + KBMO FIT22",
+    price: "$399",
     url: "https://upstream.theurbanmonk.com/",
-    // previously: https://upstream.theurbanmonk.com
-    cta: "Get the Upstream Diagnostic Bundle",
+    cta: "Get the Upstream Course + KBMO FIT22 Bundle",
     description:
-      "A comprehensive diagnostic bundle from Dr. Pedram Shojai — the tests and tools to identify your upstream root cause and stop treating symptoms downstream.",
+      "The Upstream Course + KBMO FIT22 food sensitivity test from Dr. Pedram Shojai — the complete diagnostic path to find and fix your upstream root cause, with all bonuses included. $399.",
   },
   upstream_course: {
     label: "The Upstream Course",
-    price: "$399",
+    price: "$299",
     url: "https://upstream.theurbanmonk.com/",
-    cta: "Start the Upstream Course",
+    cta: "Start the Upstream Course — $299",
     description:
-      "A 10-part docu-series with Dr. Pedram Shojai — the DIY path to finding and fixing your upstream health root cause, with all bonuses included.",
+      "A 10-part docu-series with Dr. Pedram Shojai — the DIY path to finding and fixing your upstream health root cause, with all bonuses included. $299.",
   },
   explorer_tier: {
     label: "The Explorer Tier",

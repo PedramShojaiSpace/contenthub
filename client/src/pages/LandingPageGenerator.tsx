@@ -280,20 +280,20 @@ const PERSONAS: {
 const OFFERS = [
   {
     id: "upstream_bundle",
-    label: "The Upstream Bundle",
-    price: "Bundle",
+    label: "Upstream Course + KBMO FIT22",
+    price: "$399",
     url: "https://upstream.theurbanmonk.com/",
     icon: <FlaskConical className="h-5 w-5" />,
-    description: "Diagnostic bundle — tests + tools to find your upstream root cause",
+    description: "Upstream Course + KBMO FIT22 food sensitivity test — the complete diagnostic path to root cause health",
     color: "border-amber-300 bg-amber-50 hover:bg-amber-100",
   },
   {
     id: "upstream_course",
     label: "The Upstream Course",
-    price: "$399",
+    price: "$299",
     url: "https://upstream.theurbanmonk.com/",
     icon: <BookOpen className="h-5 w-5" />,
-    description: "10-part docu-series + bonuses — the DIY path to upstream health",
+    description: "10-part docu-series + bonuses — the DIY path to upstream health. $299.",
     color: "border-green-300 bg-green-50 hover:bg-green-100",
   },
   {

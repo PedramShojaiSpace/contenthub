@@ -1401,3 +1401,8 @@
 - [x] Updated landingPagesRouter.ts OFFER_DETAILS
 - [x] Removed stale $369/yr price references from AI prompts
 - [x] 133 tests passing, 0 TypeScript errors
+
+## Upstream Pricing + Yoast Batch (v97)
+- [x] Update Upstream course price to $299 in all AI prompts
+- [x] Add Upstream + KBMO FIT22 bundle price ($399) to AI prompts and offer definitions
+- [x] Run batch Yoast generation for all 36 Drafting blog posts (3 remaining drafts processed; others already had Yoast fields)

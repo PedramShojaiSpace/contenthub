@@ -23,7 +23,8 @@ const OFFER_DETAILS: Record<string, { label: string; price: string; cta: string;
   upstream_bundle: {
     label: "The Upstream Bundle",
     price: "Bundle",
-    url: "https://go.theurbanmonk.com/upstream-diagnostic-bundle",
+    url: "https://upstream.theurbanmonk.com/",
+    // previously: https://upstream.theurbanmonk.com
     cta: "Get the Upstream Diagnostic Bundle",
     description:
       "A comprehensive diagnostic bundle from Dr. Pedram Shojai — the tests and tools to identify your upstream root cause and stop treating symptoms downstream.",
@@ -31,7 +32,7 @@ const OFFER_DETAILS: Record<string, { label: string; price: string; cta: string;
   upstream_course: {
     label: "The Upstream Course",
     price: "$399",
-    url: "https://go.theurbanmonk.com/upstream",
+    url: "https://upstream.theurbanmonk.com/",
     cta: "Start the Upstream Course",
     description:
       "A 10-part docu-series with Dr. Pedram Shojai — the DIY path to finding and fixing your upstream health root cause, with all bonuses included.",
@@ -47,7 +48,7 @@ const OFFER_DETAILS: Record<string, { label: string; price: string; cta: string;
   lights_on_webinar: {
     label: "Lights On Webinar",
     price: "Free",
-    url: "https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1",
+    url: "https://lightson.theurbanmonk.com/",
     cta: "Reserve Your Free Seat",
     description:
       "A free live webinar with Dr. Pedram Shojai — 'Something Has Been Stolen From You' — discover what's draining your energy and vitality and how to get it back.",

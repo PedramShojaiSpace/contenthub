@@ -546,7 +546,7 @@ export const appRouter = router({
           const { getCtaForTopic } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.idea);
           ctaLabel = cta.label;
-          ctaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nCRITICAL URL RULE: If this content includes a link or URL, you MUST use EXACTLY the URL provided in the CTA block above — do NOT invent, shorten, or substitute any other URL. The only permitted URL is: ${cta.url ?? "go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1"}. Include this CTA naturally at the end of your content. Do not add any other call to action.`;
+          ctaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nCRITICAL URL RULE: If this content includes a link or URL, you MUST use EXACTLY the URL provided in the CTA block above — do NOT invent, shorten, or substitute any other URL. The only permitted URL is: ${cta.url ?? "lightson.theurbanmonk.com"}. Include this CTA naturally at the end of your content. Do not add any other call to action.`;
         } catch (err) {
           console.warn("[Content] Could not load CTA:", err);
         }
@@ -1475,7 +1475,7 @@ SCRIPT REQUIREMENTS:
 - Include [PAUSE] markers for emphasis
 - Include [B-ROLL: description] cues for the editor
 - Structure: Hook → Problem → Pedram's unique insight → Evidence/story → Practical steps → CTA
-- CTA must mention the Lights On Course ($369/year) at go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 or a relevant free resource
+- CTA must mention the Lights On Course () at lightson.theurbanmonk.com or a relevant free resource
 - Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
 - Voice: conversational, like Pedram is talking directly to one person
 - Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
@@ -1576,7 +1576,7 @@ POST CAPTION REQUIREMENTS:
 - Platform: ${input.platform}
 - ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "COMPLETE self-contained thought, 240 characters or fewer (hard ceiling — no exceptions). Write SHORT from the start — aim for 160-200 characters. The post must begin and end naturally as a full idea. No ellipses, no cut-off sentences. Do NOT include a URL unless one was explicitly provided." : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
 - Write in Pedram's voice — no fluff, no hype
-- If including a URL, use ONLY go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 — never substitute or invent a different URL
+- If including a URL, use ONLY lightson.theurbanmonk.com — never substitute or invent a different URL
 - Do NOT include any labels like "Caption:" — just write the post
 
 IMAGE PROMPT REQUIREMENTS:
@@ -1649,7 +1649,7 @@ Return BOTH in this exact format:
       )
       .mutation(async ({ input }) => {
         // Default CTA — will be replaced by topical CTA library when available
-        const reframeCtaText = "Ready to reclaim your energy? Join the Lights On course — go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1";
+        const reframeCtaText = "Ready to reclaim your energy? Join the Lights On course — lightson.theurbanmonk.com";
 
         // Load avatar context
         let avatarCtx = "";
@@ -2081,7 +2081,7 @@ SCRIPT REQUIREMENTS:
 - Include [PAUSE] markers for emphasis
 - Include [B-ROLL: description] cues for the editor
 - Structure: Hook → Problem → Pedram's unique insight → Evidence/story → Practical steps → CTA
-- CTA must mention the Lights On Course ($369/year) at go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 or a relevant free resource
+- CTA must mention the Lights On Course () at lightson.theurbanmonk.com or a relevant free resource
 - Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
 - Voice: conversational, like Pedram is talking directly to one person
 - Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
@@ -2182,7 +2182,7 @@ POST CAPTION REQUIREMENTS:
 - Platform: ${input.platform}
 - ${input.platform === "linkedin" ? "Professional tone, 150-300 words, end with a thought-provoking question" : input.platform === "x" ? "COMPLETE self-contained thought, 240 characters or fewer (hard ceiling — no exceptions). Write SHORT from the start — aim for 160-200 characters. The post must begin and end naturally as a full idea. No ellipses, no cut-off sentences. Do NOT include a URL unless one was explicitly provided." : input.platform === "tiktok" ? "Casual, energetic, 100-150 words, use relevant hashtags" : "Conversational, 100-200 words, 3-5 relevant hashtags, strong CTA"}
 - Write in Pedram's voice — no fluff, no hype
-- If including a URL, use ONLY go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 — never substitute or invent a different URL
+- If including a URL, use ONLY lightson.theurbanmonk.com — never substitute or invent a different URL
 - Do NOT include any labels like "Caption:" — just write the post
 
 IMAGE PROMPT REQUIREMENTS:

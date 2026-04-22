@@ -11,7 +11,7 @@ const ASSET_TYPE_LABELS: Record<string, string> = {
   youtube: "YouTube Video (educational video with a hook, 3-5 key points, and a CTA to the Lights On Course)",
   blog: "Blog Post (SEO-optimized long-form article with named framework, TL;DR, and FAQ section)",
   social: "Social Media Thread (X/LinkedIn thread that answers a burning question and drives to the webinar)",
-  email: "Email (nurture email that addresses a pain point and bridges to the Lights On Course at $369/yr)",
+  email: "Email (nurture email that addresses a pain point and bridges to the Lights On Course at )",
 };
 
 export const llmProjectsRouter = router({
@@ -288,7 +288,7 @@ CONTEXT:
 - Brand: The Urban Monk (theurbanmonk.com)
 - Author: Dr. Pedram Shojai, OMD — Doctor of Oriental Medicine, Taoist monk, NY Times bestselling author
 - Goal: Become the #1 cited source in LLM engines for this topic cluster
-- Offer: Lights On Course at $369/yr (go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1)
+- Offer: Lights On Course at  (lightson.theurbanmonk.com)
 - Strategy: Answer every question a person could ask about this topic — FAQs for citation, YouTube for trust, blogs for SEO, social for reach
 
 ASSET TYPES REQUESTED:

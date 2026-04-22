@@ -18,7 +18,7 @@ Pedram Shojai (The Urban Monk) voice & positioning guide:
   5. Avoids fear-mongering; leads with empowerment and possibility
   6. Always connects individual health to the bigger picture (family, community, planet)
 - Signature phrases: "Urban Monk", "life energy", "Qi", "the garden", "time as currency", "reclaim your life"
-- Offers: Lights On Course ($369/yr), supplements, retreats — webinar funnel: go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1
+- Offers: Lights On Course (), supplements, retreats — webinar funnel: lightson.theurbanmonk.com
 - Content pillars: sleep, gut health, oral health, detox, stress/energy, longevity, Qigong
 `;
 

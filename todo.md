@@ -1390,3 +1390,14 @@
 - [x] Added WordPress Setup page at /wordpress-setup with: WP connection test, step-by-step instructions, copyable functions.php snippet, batch action descriptions
 - [x] Added "WordPress Setup" nav item in Intelligence section of sidebar
 - [x] 133 tests passing, 0 TypeScript errors
+
+## Course URL Updates (v96)
+- [x] Updated Lights On URL to https://lightson.theurbanmonk.com/ in all files
+- [x] Updated Upstream URL to https://upstream.theurbanmonk.com/ in all files
+- [x] Updated AI prompts: routers.ts, youtubeRouter.ts, llmProjectsRouter.ts, scriptsRouter.ts, ctaRouter.ts
+- [x] Updated Command Center offer banner URL
+- [x] Updated StrategyBrain.tsx placeholder text
+- [x] Updated LandingPageGenerator.tsx OFFERS array
+- [x] Updated landingPagesRouter.ts OFFER_DETAILS
+- [x] Removed stale $369/yr price references from AI prompts
+- [x] 133 tests passing, 0 TypeScript errors

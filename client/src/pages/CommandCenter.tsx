@@ -1620,9 +1620,9 @@ export default function CommandCenter() {
                  <Flame className="h-3.5 w-3.5 shrink-0" />
                  <div className="flex-1">
                    <span className="font-semibold">Lights On Course</span>
-                   <span className="ml-2 opacity-80">— Perpetual enrollment · Always open · $369/yr</span>
+                   <span className="ml-2 opacity-80">— Perpetual enrollment · Always open</span>
                  </div>
-                 <a href="https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 shrink-0 hover:text-green-300 transition-colors">
+                 <a href="https://lightson.theurbanmonk.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 shrink-0 hover:text-green-300 transition-colors">
                    <Zap className="h-3 w-3" /><span>View offer</span>
                  </a>
                </div>

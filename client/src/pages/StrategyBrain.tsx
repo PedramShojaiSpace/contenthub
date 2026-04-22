@@ -346,7 +346,7 @@ function CtaLibraryTab() {
                 value={editing.ctaText ?? ""}
                 onChange={(e) => setEditing({ ...editing, ctaText: e.target.value })}
                 rows={4}
-                placeholder="e.g. Ready to reclaim your energy? Join the Lights On course at go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1 and get the exact protocols Dr. Pedram Shojai uses with his patients."
+                placeholder="e.g. Ready to reclaim your energy? Join the Lights On course at lightson.theurbanmonk.com and get the exact protocols Dr. Pedram Shojai uses with his patients."
                 className="bg-background border-border resize-none text-sm"
               />
             </div>
@@ -356,7 +356,7 @@ function CtaLibraryTab() {
               <Input
                 value={editing.url ?? ""}
                 onChange={(e) => setEditing({ ...editing, url: e.target.value })}
-                placeholder="https://go.theurbanmonk.com/something-has-been-stolen-from-you-lo-webinar-1"
+                placeholder="https://lightson.theurbanmonk.com"
                 className="bg-background border-border text-sm"
               />
             </div>

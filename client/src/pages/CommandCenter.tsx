@@ -99,6 +99,8 @@ type ContentItem = {
   wpPostId: number | null;
   focusKeyword: string | null;
   seoKeywords: string | null;
+  yoastSeoTitle: string | null;
+  yoastMetaDescription: string | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -323,7 +325,7 @@ function SeoKeywordEditor({
   onSaved,
 }: {
   item: ContentItem;
-  onSaved: (updated: { focusKeyword: string | null; seoKeywords: string | null }) => void;
+  onSaved: (updated: { focusKeyword: string | null; seoKeywords: string | null; yoastSeoTitle: string | null; yoastMetaDescription: string | null }) => void;
 }) {
   const [focusKw, setFocusKw] = useState(item.focusKeyword ?? "");
   const [seoKws, setSeoKws] = useState<string>(() => {
@@ -335,6 +337,8 @@ function SeoKeywordEditor({
       return item.seoKeywords;
     }
   });
+  const [seoTitle, setSeoTitle] = useState(item.yoastSeoTitle ?? `${item.title} | The Urban Monk`);
+  const [metaDesc, setMetaDesc] = useState(item.yoastMetaDescription ?? "");
   const [saving, setSaving] = useState(false);
   const updateMutation = trpc.content.update.useMutation();
 
@@ -345,19 +349,25 @@ function SeoKeywordEditor({
       .map((k) => k.trim())
       .filter(Boolean);
     const seoKeywordsJson = keywords.length > 0 ? JSON.stringify(keywords) : null;
+    const yoastSeoTitleVal = seoTitle.trim() || null;
+    const yoastMetaDescVal = metaDesc.trim() || null;
     updateMutation.mutate(
       {
         id: item.id,
         focusKeyword: focusKw.trim() || undefined,
         seoKeywords: seoKeywordsJson ?? undefined,
+        yoastSeoTitle: yoastSeoTitleVal ?? undefined,
+        yoastMetaDescription: yoastMetaDescVal ?? undefined,
       },
       {
         onSuccess: () => {
           setSaving(false);
-          toast.success("SEO keywords saved!");
+          toast.success("Yoast SEO fields saved!");
           onSaved({
             focusKeyword: focusKw.trim() || null,
             seoKeywords: seoKeywordsJson,
+            yoastSeoTitle: yoastSeoTitleVal,
+            yoastMetaDescription: yoastMetaDescVal,
           });
         },
         onError: () => setSaving(false),
@@ -365,12 +375,16 @@ function SeoKeywordEditor({
     );
   };
 
+  const charCount = metaDesc.length;
+  const metaDescStatus = charCount === 0 ? "empty" : charCount < 120 ? "short" : charCount <= 160 ? "good" : "long";
+  const metaDescColor = metaDescStatus === "good" ? "text-green-600" : metaDescStatus === "short" ? "text-amber-600" : metaDescStatus === "long" ? "text-red-500" : "text-muted-foreground";
+
   return (
     <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
           <Zap className="h-3 w-3" />
-          SEO Keywords
+          Yoast SEO Fields
         </p>
         <Button
           size="sm"
@@ -379,12 +393,34 @@ function SeoKeywordEditor({
           onClick={handleSave}
           disabled={saving}
         >
-          {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Save"}
+          {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Save to Yoast"}
         </Button>
       </div>
       <div className="space-y-1.5">
         <div>
-          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Focus Keyword</Label>
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">SEO Title <span className="normal-case text-muted-foreground">(shown in Google SERPs)</span></Label>
+          <Input
+            value={seoTitle}
+            onChange={(e) => setSeoTitle(e.target.value)}
+            placeholder={`${item.title} | The Urban Monk`}
+            className="h-7 text-xs mt-0.5"
+          />
+        </div>
+        <div>
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Meta Description <span className="normal-case">(150-160 chars ideal)</span></Label>
+            <span className={`text-[10px] font-mono ${metaDescColor}`}>{charCount}/160</span>
+          </div>
+          <Textarea
+            value={metaDesc}
+            onChange={(e) => setMetaDesc(e.target.value)}
+            placeholder="Compelling 150-160 character summary for Google search results..."
+            className="text-xs mt-0.5 min-h-[56px] resize-none"
+            rows={2}
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Focus Keyphrase</Label>
           <Input
             value={focusKw}
             onChange={(e) => setFocusKw(e.target.value)}
@@ -394,7 +430,7 @@ function SeoKeywordEditor({
           />
         </div>
         <div>
-          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Semantic Keywords <span className="normal-case">(comma-separated)</span></Label>
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Semantic Keywords <span className="normal-case">(comma-separated, become WP tags)</span></Label>
           <Input
             value={seoKws}
             onChange={(e) => setSeoKws(e.target.value)}
@@ -953,6 +989,8 @@ export default function CommandCenter() {
         status: "draft",
         focusKeyword: item.focusKeyword ?? undefined,
         semanticKeywords: semanticKeywords,
+        yoastSeoTitle: item.yoastSeoTitle ?? undefined,
+        yoastMetaDescription: item.yoastMetaDescription ?? undefined,
       },
       {
         onSuccess: (data) => {
@@ -2163,7 +2201,7 @@ export default function CommandCenter() {
               <div className="space-y-3">
                 {/* SEO Keyword Editor */}
                 <SeoKeywordEditor item={selectedItem} onSaved={(updated) => {
-                  // Optimistically update the selectedItem in state
+                  // Optimistically update the selectedItem in state with all Yoast fields
                   setSelectedItem(prev => prev ? { ...prev, ...updated } : prev);
                   refetch();
                 }} />

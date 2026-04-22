@@ -387,6 +387,8 @@ export const appRouter = router({
           linkedScriptId: z.number().nullable().optional(),
           focusKeyword: z.string().optional(),         // Yoast SEO focus keyword
           seoKeywords: z.string().optional(),          // JSON array of semantic keyword strings
+          yoastSeoTitle: z.string().optional(),        // Yoast SEO title (shown in SERPs)
+          yoastMetaDescription: z.string().optional(), // Yoast meta description (150-160 chars)
         })
       )
       .mutation(async ({ input }) => {
@@ -2271,6 +2273,8 @@ Return BOTH in this exact format:
           heroImageUrl: z.string().optional(),
           status: z.enum(["draft", "publish", "pending", "future"]).default("draft"),
           scheduledAt: z.number().optional(), // UTC ms timestamp for scheduled posts
+          yoastSeoTitle: z.string().optional(),      // Override for Yoast SEO title
+          yoastMetaDescription: z.string().optional(), // Override for Yoast meta description
         })
       )
       .mutation(async ({ input }) => {
@@ -2326,7 +2330,9 @@ Return BOTH in this exact format:
         });
 
         // Step 4: Build SEO title for Yoast (format: Article Title | The Urban Monk)
-        const seoTitle = `${input.title} | The Urban Monk`;
+        // Use explicit override if provided (from SeoKeywordEditor), otherwise auto-generate
+        const seoTitle = input.yoastSeoTitle ?? `${input.title} | The Urban Monk`;
+        const metaDesc = input.yoastMetaDescription ?? input.metaDescription;
 
         // Step 5: Resolve SEO keywords as WordPress tags (create if they don't exist)
         const { authHeader: wpAuthHeader } = (() => {
@@ -2355,12 +2361,12 @@ Return BOTH in this exact format:
           title: input.title,
           slug: input.slug,
           content: wpHtmlBody,
-          excerpt: input.metaDescription,
+          excerpt: metaDesc,
           status: wpStatus,
           featuredMediaId,
           categories: DEFAULT_WP_CATEGORIES,
           tags: wpTagIds.length > 0 ? wpTagIds : undefined,
-          metaDescription: input.metaDescription,
+          metaDescription: metaDesc,
           focusKeyword: input.focusKeyword,
           seoTitle,
           canonicalUrl: `${wpBaseUrl}/${input.slug}/`,
@@ -2369,7 +2375,7 @@ Return BOTH in this exact format:
           date: wpDate,
         });
 
-        // Step 3: Update the content item status in the database
+        // Step 7: Update the content item status + persist Yoast SEO fields to DB
         // Always mark as "published" once sent to WP — even if sent as a draft.
         // This prevents confusion about what has already been pushed to WordPress.
         const newStatus = wpStatus === "future" ? "scheduled" : "published";
@@ -2377,6 +2383,8 @@ Return BOTH in this exact format:
           status: newStatus,
           publishUrl: post.link,
           wpPostId: post.id,  // Save WP post ID so the edit URL can be constructed on the frontend
+          yoastSeoTitle: seoTitle,
+          yoastMetaDescription: metaDesc,
         });
 
         return {

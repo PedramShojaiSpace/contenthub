@@ -285,16 +285,24 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
   if (input.date) body.date_gmt = input.date;
 
   // ─── Yoast SEO meta fields ───────────────────────────────────────────────────
-  // These require the Yoast SEO plugin to be active on the WordPress site.
-  // The REST API exposes these fields via the 'meta' property when Yoast is installed.
+  // Yoast SEO (free) does NOT expose its protected meta keys (_yoast_wpseo_*) via the
+  // standard WP REST API 'meta' field. The only working approach is the 'yoast_meta'
+  // top-level field that Yoast registers on the post endpoint.
+  // Sub-keys use the format WITHOUT the leading underscore: yoast_wpseo_*
+  //
+  // Confirmed working via live API testing:
+  //   yoast_wpseo_title      → sets the Yoast SEO title
+  //   yoast_wpseo_metadesc   → sets the Yoast meta description
+  //   yoast_wpseo_focuskw    → sets the Yoast focus keyphrase
+  //   yoast_wpseo_canonical  → sets the canonical URL
   const yoastMeta: Record<string, string> = {};
-  if (input.metaDescription) yoastMeta["_yoast_wpseo_metadesc"] = input.metaDescription;
-  if (input.focusKeyword) yoastMeta["_yoast_wpseo_focuskw"] = input.focusKeyword;
-  if (input.seoTitle) yoastMeta["_yoast_wpseo_title"] = input.seoTitle;
-  if (input.canonicalUrl) yoastMeta["_yoast_wpseo_canonical"] = input.canonicalUrl;
+  if (input.seoTitle) yoastMeta["yoast_wpseo_title"] = input.seoTitle;
+  if (input.metaDescription) yoastMeta["yoast_wpseo_metadesc"] = input.metaDescription;
+  if (input.focusKeyword) yoastMeta["yoast_wpseo_focuskw"] = input.focusKeyword;
+  if (input.canonicalUrl) yoastMeta["yoast_wpseo_canonical"] = input.canonicalUrl;
 
   if (Object.keys(yoastMeta).length > 0) {
-    body.meta = yoastMeta;
+    body.yoast_meta = yoastMeta;
   }
 
   const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts`, {
@@ -316,6 +324,31 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
     link: string;
     status: string;
   };
+
+  // ─── Second-pass Yoast update ────────────────────────────────────────────────
+  // Some Yoast fields (metadesc, focuskw) may not be written on the initial POST
+  // if the Yoast plugin hasn't fully registered its REST fields yet for a new post.
+  // A follow-up PATCH on the created post ID ensures all fields are persisted.
+  if (Object.keys(yoastMeta).length > 0) {
+    try {
+      const updateRes = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts/${post.id}`, {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ yoast_meta: yoastMeta }),
+      }, 15_000);
+      if (!updateRes.ok) {
+        const errText = await updateRes.text();
+        console.warn(`[WP] Yoast second-pass update failed (non-fatal): ${errText.substring(0, 200)}`);
+      } else {
+        console.log(`[WP] Yoast SEO fields updated for post ${post.id}`);
+      }
+    } catch (err) {
+      console.warn("[WP] Yoast second-pass update failed (non-fatal):", err);
+    }
+  }
 
   return {
     id: post.id,

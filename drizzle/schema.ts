@@ -75,6 +75,8 @@ export const contentItems = mysqlTable("content_items", {
   // SEO fields — persisted so CommandCenter publish can auto-push them to WordPress
   focusKeyword: varchar("focusKeyword", { length: 255 }),
   seoKeywords: text("seoKeywords"),  // JSON array of semantic keyword strings
+  yoastSeoTitle: varchar("yoastSeoTitle", { length: 255 }),  // Yoast SEO title (shown in SERPs)
+  yoastMetaDescription: text("yoastMetaDescription"),  // Yoast meta description (150-160 chars)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

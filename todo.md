@@ -1360,3 +1360,13 @@
 - [x] "Add Intelligence" flow: select webinar session → pick extracted record → AI merges into profile
 - [x] Added "Avatar Repository" nav item in Intelligence section of sidebar
 - [x] 133 tests passing, 0 TypeScript errors
+
+## Yoast SEO Auto-Population on WordPress Publish (v93)
+- [x] Audited Yoast REST API: free version blocks protected meta keys via standard 'meta' field; yoast_meta top-level field works for title
+- [x] Added yoastSeoTitle and yoastMetaDescription columns to contentItems schema (migration 0036)
+- [x] Fixed createWpPost to use yoast_meta top-level field + second-pass update for metadesc/focuskw
+- [x] blog.publish procedure now uses yoastSeoTitle/yoastMetaDescription overrides from DB; persists them back after publish
+- [x] SeoKeywordEditor expanded: SEO Title, Meta Description (with 0/160 char counter + color indicator), Focus Keyphrase, Semantic Keywords
+- [x] handlePublishToWP passes yoastSeoTitle and yoastMetaDescription from DB to WP
+- [x] Created docs/wordpress-yoast-rest-api-snippet.php — paste once into functions.php for full Yoast field exposure
+- [x] 133 tests passing, 0 TypeScript errors

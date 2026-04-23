@@ -1,4 +1,3 @@
-import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { Facebook, Linkedin, Loader2, Megaphone, Plus, Save, Trash2, Twitter, Youtube } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import DashboardLayout from "@/components/DashboardLayout";
 
 type Platform = "meta" | "linkedin" | "x" | "youtube";
 
@@ -106,39 +106,36 @@ function PlatformStrategyTab({ platform }: { platform: Platform }) {
     <div className="space-y-6 pt-4">
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-foreground">Voice Guidelines</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Define the audience, tone, and messaging pillars for this platform. These guidelines
-            are injected into every AI generation request.
+          <CardTitle className="text-sm font-medium text-foreground">Voice & Audience Guidelines</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            These guidelines are injected into every AI generation for this platform.
           </p>
         </CardHeader>
         <CardContent>
           <Textarea
             value={voiceGuidelines}
             onChange={(e) => setVoiceGuidelines(e.target.value)}
-            rows={16}
-            className="bg-background border-border resize-none text-sm text-foreground font-mono leading-relaxed"
+            rows={14}
+            className="bg-background border-border resize-none text-sm font-mono"
+            placeholder="Define your voice, audience, tone, and messaging pillars..."
           />
         </CardContent>
       </Card>
 
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-foreground">
-            Custom Prompt Override (Optional)
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Advanced: override the default system prompt for this platform. Leave blank to use the
-            built-in optimized prompt.
+          <CardTitle className="text-sm font-medium text-foreground">Custom Prompt Template (optional)</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Override the default generation prompt for this platform. Use <code className="bg-muted px-1 rounded text-xs">{"{{topic}}"}</code>, <code className="bg-muted px-1 rounded text-xs">{"{{voice}}"}</code>, <code className="bg-muted px-1 rounded text-xs">{"{{cta}}"}</code> as placeholders.
           </p>
         </CardHeader>
         <CardContent>
           <Textarea
-            placeholder="Leave blank to use the built-in platform prompt..."
             value={promptTemplate}
             onChange={(e) => setPromptTemplate(e.target.value)}
             rows={6}
-            className="bg-background border-border resize-none text-sm text-foreground font-mono leading-relaxed placeholder:text-muted-foreground/50"
+            className="bg-background border-border resize-none text-sm font-mono"
+            placeholder="Leave blank to use the default prompt template..."
           />
         </CardContent>
       </Card>
@@ -169,7 +166,12 @@ interface CtaBlock {
   isDefault: boolean | null;
 }
 
-function CtaLibraryTab() {
+interface CtaLibraryTabProps {
+  editing: Partial<CtaBlock> | null;
+  setEditing: (val: Partial<CtaBlock> | null) => void;
+}
+
+function CtaLibraryTab({ editing, setEditing }: CtaLibraryTabProps) {
   const utils = trpc.useUtils();
   const { data: ctaBlocks, isLoading } = trpc.cta.list.useQuery();
   const upsertMutation = trpc.cta.upsert.useMutation({
@@ -187,8 +189,6 @@ function CtaLibraryTab() {
     },
     onError: () => toast.error("Failed to delete CTA"),
   });
-
-  const [editing, setEditing] = useState<Partial<CtaBlock> | null>(null);
 
   const handleEdit = (block: CtaBlock) => {
     // keywords is stored as JSON array string in DB — convert to comma-separated for the form
@@ -283,18 +283,20 @@ function CtaLibraryTab() {
               </div>
               <div className="flex gap-1.5 shrink-0">
                 <Button
+                  type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleEdit(block as CtaBlock)}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(block as CtaBlock); }}
                   className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
                 >
                   Edit
                 </Button>
                 {!block.isDefault && (
                   <Button
+                    type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => deleteMutation.mutate({ id: block.id })}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteMutation.mutate({ id: block.id }); }}
                     disabled={deleteMutation.isPending}
                     className="h-7 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
                   >
@@ -389,6 +391,7 @@ function CtaLibraryTab() {
 
             <div className="flex gap-2 pt-2">
               <Button
+                type="button"
                 onClick={handleSave}
                 disabled={upsertMutation.isPending}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
@@ -401,6 +404,7 @@ function CtaLibraryTab() {
                 Save CTA
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 onClick={() => setEditing(null)}
                 className="text-muted-foreground hover:text-foreground"
@@ -416,6 +420,9 @@ function CtaLibraryTab() {
 }
 
 export default function StrategyBrain() {
+  // Lift editing state to parent so it survives Radix TabsContent remounts
+  const [ctaEditing, setCtaEditing] = useState<Partial<CtaBlock> | null>(null);
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -455,10 +462,150 @@ export default function StrategyBrain() {
           ))}
 
           <TabsContent value="cta">
-            <CtaLibraryTab />
+            <CtaLibraryTab editing={ctaEditing} setEditing={setCtaEditing} />
           </TabsContent>
         </Tabs>
+
+        {/* Edit form rendered OUTSIDE tabs so it survives tab remounts */}
+        {ctaEditing && (
+          <CtaEditForm editing={ctaEditing} setEditing={setCtaEditing} />
+        )}
       </div>
     </DashboardLayout>
+  );
+}
+
+interface CtaEditFormProps {
+  editing: Partial<CtaBlock>;
+  setEditing: (val: Partial<CtaBlock> | null) => void;
+}
+
+function CtaEditForm({ editing, setEditing }: CtaEditFormProps) {
+  const utils = trpc.useUtils();
+  const upsertMutation = trpc.cta.upsert.useMutation({
+    onSuccess: () => {
+      utils.cta.list.invalidate();
+      toast.success("CTA saved");
+      setEditing(null);
+    },
+    onError: () => toast.error("Failed to save CTA"),
+  });
+
+  const handleSave = () => {
+    if (!editing?.label || !editing?.ctaText) {
+      toast.error("Label and CTA text are required");
+      return;
+    }
+    upsertMutation.mutate({
+      id: editing.id,
+      label: editing.label,
+      topic: editing.topic ?? "",
+      keywords: (editing.keywords ?? "").split(",").map((k) => k.trim()).filter(Boolean),
+      ctaText: editing.ctaText,
+      url: editing.url ?? "",
+      isDefault: editing.isDefault ?? false,
+    });
+  };
+
+  return (
+    <Card className="bg-card border-primary/30 border">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium text-foreground">
+          {editing.id ? `Edit CTA Block — ${editing.label}` : "New CTA Block"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Label *</Label>
+            <Input
+              value={editing.label ?? ""}
+              onChange={(e) => setEditing({ ...editing, label: e.target.value })}
+              placeholder="e.g. Lights On Course"
+              className="bg-background border-border text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Topic Category</Label>
+            <Input
+              value={editing.topic ?? ""}
+              onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
+              placeholder="e.g. sleep, gut, detox"
+              className="bg-background border-border text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">
+            Keywords (comma-separated — triggers this CTA when content matches)
+          </Label>
+          <Input
+            value={editing.keywords ?? ""}
+            onChange={(e) => setEditing({ ...editing, keywords: e.target.value })}
+            placeholder="e.g. sleep, insomnia, circadian, rest, melatonin"
+            className="bg-background border-border text-sm"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">CTA Text * (what gets injected into content)</Label>
+          <Textarea
+            value={editing.ctaText ?? ""}
+            onChange={(e) => setEditing({ ...editing, ctaText: e.target.value })}
+            rows={4}
+            placeholder="e.g. Ready to reclaim your energy? Join the Lights On course at lightson.theurbanmonk.com and get the exact protocols Dr. Pedram Shojai uses with his patients."
+            className="bg-background border-border resize-none text-sm"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">URL</Label>
+          <Input
+            value={editing.url ?? ""}
+            onChange={(e) => setEditing({ ...editing, url: e.target.value })}
+            placeholder="https://lightson.theurbanmonk.com"
+            className="bg-background border-border text-sm"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="isDefaultEdit"
+            checked={editing.isDefault ?? false}
+            onChange={(e) => setEditing({ ...editing, isDefault: e.target.checked })}
+            className="rounded border-border"
+          />
+          <Label htmlFor="isDefaultEdit" className="text-xs text-muted-foreground cursor-pointer">
+            Set as default CTA (used when no topic keywords match)
+          </Label>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={upsertMutation.isPending}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+          >
+            {upsertMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save CTA
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setEditing(null)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Cancel
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

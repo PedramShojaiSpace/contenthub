@@ -191,7 +191,15 @@ function CtaLibraryTab() {
   const [editing, setEditing] = useState<Partial<CtaBlock> | null>(null);
 
   const handleEdit = (block: CtaBlock) => {
-    setEditing({ ...block });
+    // keywords is stored as JSON array string in DB — convert to comma-separated for the form
+    let keywordsDisplay = block.keywords ?? "";
+    try {
+      const parsed = JSON.parse(keywordsDisplay);
+      if (Array.isArray(parsed)) keywordsDisplay = parsed.join(", ");
+    } catch {
+      // already plain text, use as-is
+    }
+    setEditing({ ...block, keywords: keywordsDisplay });
   };
 
   const handleNew = () => {
@@ -261,7 +269,12 @@ function CtaLibraryTab() {
                 <p className="text-xs text-muted-foreground line-clamp-2">{block.ctaText}</p>
                 {block.keywords && (
                   <p className="text-xs text-muted-foreground/60 mt-1">
-                    Keywords: {block.keywords}
+                    Keywords: {(() => {
+                      try {
+                        const parsed = JSON.parse(block.keywords);
+                        return Array.isArray(parsed) ? parsed.join(", ") : block.keywords;
+                      } catch { return block.keywords; }
+                    })()}
                   </p>
                 )}
                 {block.url && (

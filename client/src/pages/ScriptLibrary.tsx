@@ -204,7 +204,7 @@ async function exportScriptAsDocx(script: Script) {
     }));
 
   const doc = new Document({
-    creator: "Urban Monk Content Hub",
+    creator: "The Urban Monk Content Hub",
     title: script.title,
     description: `Teleprompter script for ${script.platform} — ${script.scriptType}`,
     sections: [{

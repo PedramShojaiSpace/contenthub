@@ -1411,3 +1411,10 @@
 - [x] Fix "Edit in WordPress" link — use wp-login redirect URL so unauthenticated users get sent to login first, then redirected to the post editor
 - [x] Add "View Post" link (public URL) alongside the edit link for published posts
 - [x] Update label from "View Draft in WordPress" to "Edit in WordPress" for published posts
+
+## App Rename to "The Urban Monk Content Hub" (v99)
+- [x] Update browser tab title in client/index.html
+- [x] Update login screen heading in DashboardLayout.tsx
+- [x] Update login screen subtext in DashboardLayout.tsx
+- [x] Update sidebar header name in DashboardLayout.tsx
+- [x] Update ScriptLibrary creator field

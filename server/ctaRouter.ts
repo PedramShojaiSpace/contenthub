@@ -9,6 +9,59 @@ import { eq } from "drizzle-orm";
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 
+/**
+ * Maps a content platform to its UTM source and medium values.
+ * Used to auto-append UTM params to CTA URLs injected into AI prompts.
+ */
+const PLATFORM_UTM: Record<string, { source: string; medium: string }> = {
+  blog: { source: "blog", medium: "organic-content" },
+  youtube: { source: "youtube", medium: "video" },
+  meta: { source: "meta", medium: "organic-social" },
+  instagram: { source: "instagram", medium: "organic-social" },
+  linkedin: { source: "linkedin", medium: "organic-social" },
+  x: { source: "twitter-x", medium: "organic-social" },
+  tiktok: { source: "tiktok", medium: "organic-social" },
+  podcast: { source: "podcast", medium: "audio" },
+  all: { source: "content-hub", medium: "organic-content" },
+};
+
+/**
+ * Appends UTM parameters to a CTA URL based on the content platform and campaign.
+ * Campaign is derived from the CTA block label (slugified).
+ */
+export function appendUtmToCtaUrl(
+  url: string | null,
+  platform: string,
+  campaignOverride?: string
+): string {
+  if (!url) return "";
+  const utm = PLATFORM_UTM[platform] ?? { source: platform, medium: "organic-content" };
+  const campaign = campaignOverride ?? "ic-free-screening";
+  try {
+    const u = new URL(url);
+    u.searchParams.set("utm_source", utm.source);
+    u.searchParams.set("utm_medium", utm.medium);
+    u.searchParams.set("utm_campaign", campaign);
+    return u.toString();
+  } catch {
+    // Fallback for malformed URLs
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=${campaign}`;
+  }
+}
+
+/** Slugify a CTA label into a campaign slug, e.g. "Lights On (Default)" → "lights-on" */
+export function ctaLabelToCampaign(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/\s*\(.*?\)/g, "")  // remove parenthetical
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .substring(0, 64);
+}
+
 const DEFAULT_CTA_BLOCKS = [
   {
     label: "Lights On (Default)",

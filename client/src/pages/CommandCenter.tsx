@@ -66,6 +66,7 @@ import {
   BookMarked,
   Music2,
   GripVertical,
+  Link2,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -778,6 +779,29 @@ function DraggableCard({
                 View Post
               </a>
             )}
+            {/* Copy UTM link — auto-generates blog→organic-content→[slug] UTM */}
+            {item.status === "published" && (() => {
+              const slug = item.title
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, "")
+                .replace(/\s+/g, "-")
+                .substring(0, 80);
+              const base = item.publishUrl || `https://www.theurbanmonk.com/${slug}`;
+              const utmUrl = `${base.replace(/\/$/, "")}?utm_source=blog&utm_medium=organic-content&utm_campaign=ic-free-screening&utm_content=${slug}`;
+              return (
+                <button
+                  className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700 hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(utmUrl);
+                    toast.success("UTM link copied!");
+                  }}
+                >
+                  <Link2 className="h-2.5 w-2.5" />
+                  Copy UTM
+                </button>
+              );
+            })()}
           </div>
         )}
 

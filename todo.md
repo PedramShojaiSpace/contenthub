@@ -1436,3 +1436,8 @@
 - [x] Add UTM Builder nav entry in DashboardLayout sidebar (under Strategy section)
 - [x] Register /utm route in App.tsx
 - [x] Add Upstream Health and KBMO Bundle to campaigns and destinations
+
+## UTM Enhancements (v107)
+- [x] Copy UTM button on published blog Kanban cards — auto-generate blog→organic-content→[post-slug] UTM link
+- [x] UTM auto-inject into AI CTA blocks — append UTM params to CTA URLs based on platform and campaign
+- [x] CSV export button in UTM Builder history — download all saved links as a spreadsheet

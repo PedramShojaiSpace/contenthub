@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Trash2, Link2, Zap } from "lucide-react";
+import { Copy, Check, Trash2, Link2, Zap, Download } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── UTM TAXONOMY ─────────────────────────────────────────────────────────────
@@ -469,12 +469,45 @@ export default function UTMGenerator() {
         {history.length > 0 && (
           <Card className="bg-card border-border">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-foreground">
-                Saved History
-                <Badge variant="outline" className="ml-2 text-xs">
-                  {history.length}
-                </Badge>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-foreground">
+                  Saved History
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {history.length}
+                  </Badge>
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => {
+                    const headers = ["Label", "URL", "Source", "Medium", "Campaign", "Content", "Term", "Destination", "Created At"];
+                    const rows = history.map((h) => [
+                      `"${(h.label ?? "").replace(/"/g, '""')}"`,
+                      `"${(h.url ?? "").replace(/"/g, '""')}"`,
+                      `"${(h.source ?? "").replace(/"/g, '""')}"`,
+                      `"${(h.medium ?? "").replace(/"/g, '""')}"`,
+                      `"${(h.campaign ?? "").replace(/"/g, '""')}"`,
+                      `"${(h.content ?? "").replace(/"/g, '""')}"`,
+                      `"${(h.term ?? "").replace(/"/g, '""')}"`,
+                      `"${(h.destination ?? "").replace(/"/g, '""')}"`,
+                      `"${new Date(h.createdAt).toLocaleString()}"`,
+                    ]);
+                    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+                    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `utm-links-${new Date().toISOString().slice(0, 10)}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success("CSV downloaded");
+                  }}
+                >
+                  <Download className="h-3 w-3" />
+                  Export CSV
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">

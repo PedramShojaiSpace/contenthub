@@ -1441,3 +1441,6 @@
 - [x] Copy UTM button on published blog Kanban cards — auto-generate blog→organic-content→[post-slug] UTM link
 - [x] UTM auto-inject into AI CTA blocks — append UTM params to CTA URLs based on platform and campaign
 - [x] CSV export button in UTM Builder history — download all saved links as a spreadsheet
+
+## Copy UTM Auto-Save to History (v108)
+- [x] Wire Copy UTM button on blog cards to auto-save the generated UTM link to the UTM Builder history database

@@ -612,11 +612,11 @@ function DraggableCard({
   isPublishingToWP: boolean;
   onViewScript?: (scriptId: number) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${item.id}`,
     data: { itemId: item.id, type: "card" },
   });
-
+  const saveUtmMutation = trpc.utm.save.useMutation();
   const style = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50, opacity: isDragging ? 0.4 : 1 }
     : undefined;
@@ -794,7 +794,18 @@ function DraggableCard({
                   onClick={(e) => {
                     e.stopPropagation();
                     navigator.clipboard.writeText(utmUrl);
-                    toast.success("UTM link copied!");
+                    // Auto-save to UTM Builder history
+                    saveUtmMutation.mutate({
+                      url: utmUrl,
+                      label: item.title,
+                      source: "blog",
+                      medium: "organic-content",
+                      campaign: "ic-free-screening",
+                      content: slug,
+                      term: undefined,
+                      destination: base,
+                    });
+                    toast.success("UTM link copied & saved to history!");
                   }}
                 >
                   <Link2 className="h-2.5 w-2.5" />

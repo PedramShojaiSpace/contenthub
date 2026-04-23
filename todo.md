@@ -1423,3 +1423,8 @@
 - [x] Convert Urban Monk logo to favicon.ico, apple-touch-icon.png, favicon-32x32.png, favicon-16x16.png
 - [x] Update index.html with correct favicon link tags
 - [ ] Update VITE_APP_TITLE in Management UI → Settings → General (must be done manually — built-in secret)
+
+## Strategy Brain URL Edit Fix (v102)
+- [x] Fix seedCtaBlocks() — stop overwriting existing records on every load so in-app URL edits persist
+- [x] Verify Edit button opens form with correct existing values (logic unchanged, was working)
+- [x] Verify Save persists URL changes and they survive page reload (overwrite loop removed)

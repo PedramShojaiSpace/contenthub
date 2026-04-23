@@ -120,7 +120,7 @@ export default function DashboardLayout({
               className="w-20 h-20 object-contain"
             />
             <h1 className="text-2xl font-serif font-semibold tracking-tight text-center text-foreground">
-              The Urban Monk Content Hub
+              Content Hub
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
               Dr. Pedram Shojai's AI-powered content command center. Sign in to access your dashboard.
@@ -251,7 +251,7 @@ function DashboardLayoutContent({
                     className="w-7 h-7 shrink-0 object-contain"
                   />
                   <span className="font-semibold tracking-tight truncate text-foreground text-sm">
-                    The Urban Monk Content Hub
+                    Content Hub
                   </span>
                 </div>
               ) : null}

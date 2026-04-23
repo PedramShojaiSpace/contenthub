@@ -1406,3 +1406,8 @@
 - [x] Update Upstream course price to $299 in all AI prompts
 - [x] Add Upstream + KBMO FIT22 bundle price ($399) to AI prompts and offer definitions
 - [x] Run batch Yoast generation for all 36 Drafting blog posts (3 remaining drafts processed; others already had Yoast fields)
+
+## WordPress Edit Link Fix (v98)
+- [x] Fix "Edit in WordPress" link — use wp-login redirect URL so unauthenticated users get sent to login first, then redirected to the post editor
+- [x] Add "View Post" link (public URL) alongside the edit link for published posts
+- [x] Update label from "View Draft in WordPress" to "Edit in WordPress" for published posts

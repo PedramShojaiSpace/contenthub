@@ -753,18 +753,32 @@ function DraggableCard({
           </div>
         )}
 
-        {/* View Draft in WP link — blog posts with a WP post ID */}
+        {/* WordPress links — blog posts with a WP post ID */}
         {item.platform === "blog" && item.wpPostId && (
-          <a
-            href={`https://theurbanmonk.com/wp-admin/post.php?post=${item.wpPostId}&action=edit`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700 hover:underline mt-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink className="h-2.5 w-2.5" />
-            View Draft in WordPress
-          </a>
+          <div className="flex flex-col gap-0.5 mt-1">
+            <a
+              href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${item.wpPostId}&action=edit`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="h-2.5 w-2.5" />
+              {item.status === "published" ? "Edit in WordPress" : "Edit Draft in WordPress"}
+            </a>
+            {item.publishUrl && (
+              <a
+                href={item.publishUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="h-2.5 w-2.5" />
+                View Post
+              </a>
+            )}
+          </div>
         )}
 
         {/* Analytics panel for published items */}
@@ -2433,16 +2447,27 @@ export default function CommandCenter() {
                     {wpPublishingId === selectedItem.id ? "Publishing…" : "Publish to WordPress"}
                   </Button>
 
-                  {/* View Draft link — shown once the post has been sent to WP */}
+                  {/* WordPress links — shown once the post has been sent to WP */}
                   {selectedItem.wpPostId && (
                     <a
-                      href={`https://theurbanmonk.com/wp-admin/post.php?post=${selectedItem.wpPostId}&action=edit`}
+                      href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${selectedItem.wpPostId}&action=edit`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline h-7"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      View Draft in WordPress
+                      {selectedItem.status === "published" ? "Edit in WordPress" : "Edit Draft in WordPress"}
+                    </a>
+                  )}
+                  {selectedItem.wpPostId && selectedItem.publishUrl && (
+                    <a
+                      href={selectedItem.publishUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline h-7"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View Post
                     </a>
                   )}
                 </div>

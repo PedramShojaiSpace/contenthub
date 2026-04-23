@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { Facebook, Linkedin, Loader2, Megaphone, Plus, Save, Trash2, Twitter, Youtube } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -314,107 +314,7 @@ function CtaLibraryTab({ editing, setEditing }: CtaLibraryTabProps) {
         </CardContent>
       </Card>
 
-      {editing && (
-        <Card className="bg-card border-primary/30 border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-foreground">
-              {editing.id ? "Edit CTA Block" : "New CTA Block"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Label *</Label>
-                <Input
-                  value={editing.label ?? ""}
-                  onChange={(e) => setEditing({ ...editing, label: e.target.value })}
-                  placeholder="e.g. Lights On Course"
-                  className="bg-background border-border text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Topic Category</Label>
-                <Input
-                  value={editing.topic ?? ""}
-                  onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
-                  placeholder="e.g. sleep, gut, detox"
-                  className="bg-background border-border text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Keywords (comma-separated — triggers this CTA when content matches)
-              </Label>
-              <Input
-                value={editing.keywords ?? ""}
-                onChange={(e) => setEditing({ ...editing, keywords: e.target.value })}
-                placeholder="e.g. sleep, insomnia, circadian, rest, melatonin"
-                className="bg-background border-border text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">CTA Text * (what gets injected into content)</Label>
-              <Textarea
-                value={editing.ctaText ?? ""}
-                onChange={(e) => setEditing({ ...editing, ctaText: e.target.value })}
-                rows={4}
-                placeholder="e.g. Ready to reclaim your energy? Join the Lights On course at lightson.theurbanmonk.com and get the exact protocols Dr. Pedram Shojai uses with his patients."
-                className="bg-background border-border resize-none text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">URL</Label>
-              <Input
-                value={editing.url ?? ""}
-                onChange={(e) => setEditing({ ...editing, url: e.target.value })}
-                placeholder="https://lightson.theurbanmonk.com"
-                className="bg-background border-border text-sm"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isDefault"
-                checked={editing.isDefault ?? false}
-                onChange={(e) => setEditing({ ...editing, isDefault: e.target.checked })}
-                className="rounded border-border"
-              />
-              <Label htmlFor="isDefault" className="text-xs text-muted-foreground cursor-pointer">
-                Set as default CTA (used when no topic keywords match)
-              </Label>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={upsertMutation.isPending}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-              >
-                {upsertMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Save CTA
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setEditing(null)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Edit form is rendered by the parent StrategyBrain component outside the tabs tree */}
     </div>
   );
 }
@@ -422,6 +322,16 @@ function CtaLibraryTab({ editing, setEditing }: CtaLibraryTabProps) {
 export default function StrategyBrain() {
   // Lift editing state to parent so it survives Radix TabsContent remounts
   const [ctaEditing, setCtaEditing] = useState<Partial<CtaBlock> | null>(null);
+  const editFormRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to edit form when it opens
+  useEffect(() => {
+    if (ctaEditing && editFormRef.current) {
+      setTimeout(() => {
+        editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  }, [ctaEditing]);
 
   return (
     <DashboardLayout>
@@ -468,7 +378,9 @@ export default function StrategyBrain() {
 
         {/* Edit form rendered OUTSIDE tabs so it survives tab remounts */}
         {ctaEditing && (
-          <CtaEditForm editing={ctaEditing} setEditing={setCtaEditing} />
+          <div ref={editFormRef}>
+            <CtaEditForm editing={ctaEditing} setEditing={setCtaEditing} />
+          </div>
         )}
       </div>
     </DashboardLayout>

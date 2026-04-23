@@ -1428,3 +1428,11 @@
 - [x] Fix seedCtaBlocks() — stop overwriting existing records on every load so in-app URL edits persist
 - [x] Verify Edit button opens form with correct existing values (logic unchanged, was working)
 - [x] Verify Save persists URL changes and they survive page reload (overwrite loop removed)
+
+## UTM Generator Integration (v106)
+- [x] Add utmLinks table to drizzle schema (id, url, label, source, medium, campaign, content, term, destination, createdAt)
+- [x] Add utmRouter with list, save, delete procedures
+- [x] Create UTMGenerator.tsx page with full component, Content Hub styling, and DB-backed history
+- [x] Add UTM Builder nav entry in DashboardLayout sidebar (under Strategy section)
+- [x] Register /utm route in App.tsx
+- [x] Add Upstream Health and KBMO Bundle to campaigns and destinations

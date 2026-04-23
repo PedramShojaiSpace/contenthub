@@ -709,3 +709,21 @@ export const wpPostIndex = mysqlTable("wp_post_index", {
 });
 export type WpPost = typeof wpPostIndex.$inferSelect;
 export type InsertWpPost = typeof wpPostIndex.$inferInsert;
+
+// ── UTM Links ─────────────────────────────────────────────────────────────────
+// Persistent history of UTM-tagged links generated in the UTM Builder.
+// Stored in DB so history survives page reloads and is accessible from any device.
+export const utmLinks = mysqlTable("utm_links", {
+  id: int("id").autoincrement().primaryKey(),
+  url: text("url").notNull(),
+  label: varchar("label", { length: 255 }).notNull(),
+  source: varchar("source", { length: 64 }).notNull(),
+  medium: varchar("medium", { length: 64 }).notNull(),
+  campaign: varchar("campaign", { length: 128 }).notNull(),
+  content: varchar("content", { length: 128 }),
+  term: varchar("term", { length: 128 }),
+  destination: text("destination"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type UtmLink = typeof utmLinks.$inferSelect;
+export type InsertUtmLink = typeof utmLinks.$inferInsert;

@@ -27,6 +27,7 @@ import {
   Globe,
   Image,
   LayoutDashboard,
+  Link2,
   LogOut,
   PanelLeft,
   PenSquare,
@@ -66,6 +67,7 @@ const topNavItems = [
 const strategyItems = [
   { icon: Brain, label: "Strategy Brain", path: "/strategy" },
   { icon: Rss, label: "Channel Watchlist", path: "/channels" },
+  { icon: Link2, label: "UTM Builder", path: "/utm" },
 ];
 
 const strategyPaths = new Set(strategyItems.map((i) => i.path));

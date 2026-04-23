@@ -25,6 +25,7 @@ const WebinarIntelligencePage = lazy(() => import("./pages/WebinarIntelligence")
 const LLMProjects = lazy(() => import("./pages/LLMProjects"));
 const AvatarRepository = lazy(() => import("./pages/AvatarRepository"));
 const WordPressSetup = lazy(() => import("./pages/WordPressSetup"));
+const UTMGenerator = lazy(() => import("./pages/UTMGenerator"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -57,6 +58,7 @@ function Router() {
         <Route path={"/avatar-repository"} component={AvatarRepository} />
         <Route path={"/llm-projects"} component={LLMProjects} />
         <Route path={"/wordpress-setup"} component={WordPressSetup} />
+        <Route path={"/utm"} component={UTMGenerator} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

@@ -1418,3 +1418,8 @@
 - [x] Update login screen subtext in DashboardLayout.tsx
 - [x] Update sidebar header name in DashboardLayout.tsx
 - [x] Update ScriptLibrary creator field
+
+## Favicon + App Title Update (v100)
+- [x] Convert Urban Monk logo to favicon.ico, apple-touch-icon.png, favicon-32x32.png, favicon-16x16.png
+- [x] Update index.html with correct favicon link tags
+- [ ] Update VITE_APP_TITLE in Management UI → Settings → General (must be done manually — built-in secret)

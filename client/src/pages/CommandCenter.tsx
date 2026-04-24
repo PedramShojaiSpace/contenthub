@@ -20,6 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
 import {
   DndContext,
@@ -772,32 +778,41 @@ function DraggableCard({
           const utmUrl = `${item.publishUrl.replace(/\/$/, "")}?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=${campaign}&utm_content=${content}`;
           return (
             <div className="mt-1">
-              <button
-                className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700 hover:underline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(utmUrl);
-                  saveUtmMutation.mutate({
-                    url: utmUrl,
-                    label: item.title,
-                    source: utm.source,
-                    medium: utm.medium,
-                    campaign,
-                    content,
-                    term: undefined,
-                    destination: item.publishUrl ?? "",
-                  });
-                  toast(
-                    <span>
-                      UTM link copied & saved!{" "}
-                      <a href="/utm" className="underline font-medium" onClick={(ev) => ev.stopPropagation()}>View history →</a>
-                    </span>
-                  );
-                }}
-              >
-                <Link2 className="h-2.5 w-2.5" />
-                Copy UTM
-              </button>
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700 hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(utmUrl);
+                        saveUtmMutation.mutate({
+                          url: utmUrl,
+                          label: item.title,
+                          source: utm.source,
+                          medium: utm.medium,
+                          campaign,
+                          content,
+                          term: undefined,
+                          destination: item.publishUrl ?? "",
+                        });
+                        toast(
+                          <span>
+                            UTM link copied & saved!{" "}
+                            <a href="/utm" className="underline font-medium" onClick={(ev) => ev.stopPropagation()}>View history →</a>
+                          </span>
+                        );
+                      }}
+                    >
+                      <Link2 className="h-2.5 w-2.5" />
+                      Copy UTM
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs break-all text-[10px] font-mono">
+                    {utmUrl}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           );
         })()}
@@ -858,33 +873,42 @@ function DraggableCard({
                 : "ic-free-screening";
               const utmUrl = `${base.replace(/\/$/, "")}?utm_source=blog&utm_medium=organic-content&utm_campaign=${campaign}&utm_content=${slug}`;
               return (
-                <button
-                  className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700 hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(utmUrl);
-                    // Auto-save to UTM Builder history
-                    saveUtmMutation.mutate({
-                      url: utmUrl,
-                      label: item.title,
-                      source: "blog",
-                      medium: "organic-content",
-                      campaign,
-                      content: slug,
-                      term: undefined,
-                      destination: base,
-                    });
-                    toast(
-                      <span>
-                        UTM link copied & saved!{" "}
-                        <a href="/utm" className="underline font-medium" onClick={(ev) => ev.stopPropagation()}>View history →</a>
-                      </span>
-                    );
-                  }}
-                >
-                  <Link2 className="h-2.5 w-2.5" />
-                  Copy UTM
-                </button>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(utmUrl);
+                          // Auto-save to UTM Builder history
+                          saveUtmMutation.mutate({
+                            url: utmUrl,
+                            label: item.title,
+                            source: "blog",
+                            medium: "organic-content",
+                            campaign,
+                            content: slug,
+                            term: undefined,
+                            destination: base,
+                          });
+                          toast(
+                            <span>
+                              UTM link copied & saved!{" "}
+                              <a href="/utm" className="underline font-medium" onClick={(ev) => ev.stopPropagation()}>View history →</a>
+                            </span>
+                          );
+                        }}
+                      >
+                        <Link2 className="h-2.5 w-2.5" />
+                        Copy UTM
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs break-all text-[10px] font-mono">
+                      {utmUrl}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               );
             })()}
           </div>

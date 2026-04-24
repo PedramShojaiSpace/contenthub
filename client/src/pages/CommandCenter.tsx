@@ -744,6 +744,64 @@ function DraggableCard({
           )}
         </div>
 
+        {/* Copy UTM — social posts published via Buffer */}
+        {item.platform !== "blog" && item.status === "published" && item.publishUrl && (() => {
+          const platformMap: Record<string, { source: string; medium: string }> = {
+            meta: { source: "facebook", medium: "social" },
+            linkedin: { source: "linkedin", medium: "social" },
+            youtube: { source: "youtube", medium: "social" },
+            tiktok: { source: "tiktok", medium: "social" },
+            x: { source: "twitter", medium: "social" },
+          };
+          const utm = platformMap[item.platform] ?? { source: item.platform, medium: "social" };
+          const campaign = (item as any).ctaBlockLabel
+            ? (item as any).ctaBlockLabel
+                .toLowerCase()
+                .replace(/\s*\(.*?\)/g, "")
+                .trim()
+                .replace(/[^a-z0-9\s-]/g, "")
+                .replace(/\s+/g, "-")
+                .replace(/-+/g, "-")
+                .substring(0, 64)
+            : "ic-free-screening";
+          const content = item.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .substring(0, 60);
+          const utmUrl = `${item.publishUrl.replace(/\/$/, "")}?utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=${campaign}&utm_content=${content}`;
+          return (
+            <div className="mt-1">
+              <button
+                className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(utmUrl);
+                  saveUtmMutation.mutate({
+                    url: utmUrl,
+                    label: item.title,
+                    source: utm.source,
+                    medium: utm.medium,
+                    campaign,
+                    content,
+                    term: undefined,
+                    destination: item.publishUrl ?? "",
+                  });
+                  toast(
+                    <span>
+                      UTM link copied & saved!{" "}
+                      <a href="/utm" className="underline font-medium" onClick={(ev) => ev.stopPropagation()}>View history →</a>
+                    </span>
+                  );
+                }}
+              >
+                <Link2 className="h-2.5 w-2.5" />
+                Copy UTM
+              </button>
+            </div>
+          );
+        })()}
+
         {/* Focus keyword badge — blog posts with a keyword set */}
         {item.platform === "blog" && item.focusKeyword && (
           <div className="flex items-center gap-1 mt-1">
@@ -779,7 +837,7 @@ function DraggableCard({
                 View Post
               </a>
             )}
-            {/* Copy UTM link — auto-generates blog→organic-content→[slug] UTM */}
+            {/* Copy UTM link — auto-generates blog→organic-content→[cta-campaign] UTM */}
             {item.status === "published" && (() => {
               const slug = item.title
                 .toLowerCase()
@@ -787,7 +845,18 @@ function DraggableCard({
                 .replace(/\s+/g, "-")
                 .substring(0, 80);
               const base = item.publishUrl || `https://www.theurbanmonk.com/${slug}`;
-              const utmUrl = `${base.replace(/\/$/, "")}?utm_source=blog&utm_medium=organic-content&utm_campaign=ic-free-screening&utm_content=${slug}`;
+              // Derive campaign from stored ctaBlockLabel, or fall back to ic-free-screening
+              const campaign = (item as any).ctaBlockLabel
+                ? (item as any).ctaBlockLabel
+                    .toLowerCase()
+                    .replace(/\s*\(.*?\)/g, "")
+                    .trim()
+                    .replace(/[^a-z0-9\s-]/g, "")
+                    .replace(/\s+/g, "-")
+                    .replace(/-+/g, "-")
+                    .substring(0, 64)
+                : "ic-free-screening";
+              const utmUrl = `${base.replace(/\/$/, "")}?utm_source=blog&utm_medium=organic-content&utm_campaign=${campaign}&utm_content=${slug}`;
               return (
                 <button
                   className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700 hover:underline"
@@ -800,12 +869,17 @@ function DraggableCard({
                       label: item.title,
                       source: "blog",
                       medium: "organic-content",
-                      campaign: "ic-free-screening",
+                      campaign,
                       content: slug,
                       term: undefined,
                       destination: base,
                     });
-                    toast.success("UTM link copied & saved to history!");
+                    toast(
+                      <span>
+                        UTM link copied & saved!{" "}
+                        <a href="/utm" className="underline font-medium" onClick={(ev) => ev.stopPropagation()}>View history →</a>
+                      </span>
+                    );
                   }}
                 >
                   <Link2 className="h-2.5 w-2.5" />

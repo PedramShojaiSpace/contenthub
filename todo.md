@@ -1444,3 +1444,8 @@
 
 ## Copy UTM Auto-Save to History (v108)
 - [x] Wire Copy UTM button on blog cards to auto-save the generated UTM link to the UTM Builder history database
+
+## UTM UX Enhancements (v109)
+- [x] Auto-detect UTM campaign slug from post's CTA block label on blog cards (e.g. "Upstream Course" → "upstream-course")
+- [x] Add Copy UTM button to social post cards (LinkedIn, Meta, YouTube, X) with auto-save to history
+- [x] Add "View history →" link in Copy UTM toast that navigates to Strategy → UTM Builder

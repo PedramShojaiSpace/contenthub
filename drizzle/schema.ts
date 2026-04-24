@@ -70,6 +70,8 @@ export const contentItems = mysqlTable("content_items", {
   contentGoal: contentGoalEnum.default("audience_growth"),
   // Script Library: link to the script this content item was auto-created from
   linkedScriptId: int("linkedScriptId"),
+  // CTA tracking: which CTA block label was used when this content was generated
+  ctaBlockLabel: varchar("ctaBlockLabel", { length: 128 }),
   // Carousel: JSON array of slides [{headline, body, imagePrompt, imageUrl}]
   carouselData: text("carouselData"),
   // SEO fields — persisted so CommandCenter publish can auto-push them to WordPress

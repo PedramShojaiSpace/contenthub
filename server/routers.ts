@@ -349,6 +349,7 @@ export const appRouter = router({
           contentGoal: z.enum(["audience_growth", "llm_seo", "community_engagement"]).optional(),
           focusKeyword: z.string().optional(),         // Yoast SEO focus keyword
           seoKeywords: z.string().optional(),          // JSON array of semantic keyword strings
+          ctaBlockLabel: z.string().optional(),        // CTA block label used during generation
         })
       )
       .mutation(async ({ input }) => {
@@ -862,9 +863,11 @@ Rules:
         }
         // Load topical CTA
         let blogCtaInjection = "";
+        let blogCtaLabel = "Lights On (Default)";
         try {
           const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.idea);
+          blogCtaLabel = cta.label;
           const utmUrl = appendUtmToCtaUrl(cta.url, "blog", ctaLabelToCampaign(cta.label));
           const urlForPrompt = utmUrl || cta.url || "lightson.theurbanmonk.com";
           blogCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally in the Conclusion section of the blog post. Use EXACTLY this URL: ${urlForPrompt}`;
@@ -1210,6 +1213,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           emotionalDriver: blogData.emotionalDriver ?? "",
           faqSection: blogData.faqSection ?? "",
           waterfallMap: blogData.waterfallMap ?? "",
+          ctaLabel: blogCtaLabel,
         };
       }),
 

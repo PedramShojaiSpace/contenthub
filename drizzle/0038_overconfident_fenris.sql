@@ -1,0 +1,1 @@
+ALTER TABLE `content_items` ADD `ctaBlockLabel` varchar(128);

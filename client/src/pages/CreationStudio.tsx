@@ -984,6 +984,7 @@ export default function CreationStudio() {
           gapQueryId: activeGapQueryId ?? undefined,
           personaId: selectedPersonaId ?? undefined,
           contentGoal: selectedContentGoal ?? undefined,
+          ctaBlockLabel: data.ctaLabel ?? undefined,
         },
         {
           onSuccess: (saved) => {

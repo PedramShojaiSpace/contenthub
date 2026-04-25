@@ -1941,9 +1941,25 @@ CAPTION: [caption text]`;
           platform: z.string().optional(), // used for platform-specific limits (e.g. X = 280 chars)
           metaPostType: z.enum(["post", "story", "reel"]).optional(), // required for facebook/instagram
           channelServiceMap: z.record(z.string(), z.string()).optional(), // channelId → service
+          ctaUrl: z.string().optional(), // UTM-tracked CTA URL — sent as Instagram first comment
         })
       )
       .mutation(async ({ input }) => {
+        // For Instagram posts: resolve the UTM-tracked CTA URL to send as first comment.
+        // If the caller already provides a ctaUrl, use it; otherwise auto-resolve from CTA blocks.
+        let resolvedCtaUrl = input.ctaUrl;
+        if (!resolvedCtaUrl && input.platform === "meta") {
+          try {
+            const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
+            const cta = await getCtaForTopic(input.text.slice(0, 200));
+            if (cta.url) {
+              resolvedCtaUrl = appendUtmToCtaUrl(cta.url, "instagram", ctaLabelToCampaign(cta.label)) || cta.url;
+            }
+          } catch {
+            // Non-fatal: proceed without first comment if CTA lookup fails
+          }
+        }
+
         const result = await pushToBuffer({
           text: input.text,
           profileIds: input.profileIds,
@@ -1952,6 +1968,7 @@ CAPTION: [caption text]`;
           platform: input.platform,
           metaPostType: input.metaPostType,
           channelServiceMap: input.channelServiceMap,
+          ctaUrl: resolvedCtaUrl,
         });
 
         // If successful, update the content item status to 'scheduled'

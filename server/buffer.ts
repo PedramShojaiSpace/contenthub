@@ -128,6 +128,7 @@ export async function pushToBuffer(params: {
   platform?: string; // used to enforce platform-specific character limits before API call
   metaPostType?: "post" | "story" | "reel"; // required for facebook/instagram channels
   channelServiceMap?: Record<string, string>; // channelId → service (e.g. "facebook", "instagram")
+  ctaUrl?: string; // UTM-tracked CTA URL — sent as Instagram first comment, not in caption
 }): Promise<BufferUpdateResult> {
   const token = getAccessToken();
   if (!token) {
@@ -156,6 +157,16 @@ export async function pushToBuffer(params: {
   const results: BufferUpdateResult[] = [];
 
   for (const channelId of params.profileIds) {
+    // Determine if this channel is Instagram
+    const channelService = params.channelServiceMap?.[channelId]?.toLowerCase() ?? "";
+    const isInstagram = channelService === "instagram";
+
+    // For Instagram: scrub all URLs from caption and replace with "link in bio"
+    // Instagram does not support clickable links in captions — users must use link in bio
+    let channelText = text;
+    if (isInstagram) {
+      channelText = channelText.replace(/https?:\/\/[^\s)\]>"']+/g, "link in bio");
+    }
     try {
       const mode = params.scheduledAt ? "customScheduled" : "addToQueue";
       const dueAt = params.scheduledAt
@@ -171,19 +182,22 @@ export async function pushToBuffer(params: {
       const dueAtFragment = dueAt ? `, dueAt: "${dueAt}"` : "";
 
       // Build metadata fragment for Meta channels — Buffer requires type for facebook/instagram
-      const channelService = params.channelServiceMap?.[channelId]?.toLowerCase() ?? "";
       const metaType = params.metaPostType ?? "post";
       let metadataFragment = "";
       if (channelService === "facebook") {
         metadataFragment = `, metadata: { facebook: { type: ${metaType} } }`;
       } else if (channelService === "instagram") {
-        metadataFragment = `, metadata: { instagram: { type: ${metaType}, shouldShareToFeed: true } }`;
+        // Include firstComment with UTM URL if available — Instagram links must go in first comment
+        const firstCommentFragment = params.ctaUrl
+          ? `, firstComment: ${JSON.stringify(params.ctaUrl)}`
+          : "";
+        metadataFragment = `, metadata: { instagram: { type: ${metaType}, shouldShareToFeed: true${firstCommentFragment} } }`;
       }
 
       const mutation = `
         mutation CreatePost {
           createPost(input: {
-            text: ${JSON.stringify(text)},
+            text: ${JSON.stringify(channelText)},
             channelId: "${channelId}",
             schedulingType: automatic,
             mode: ${mode}${dueAtFragment}${assetsFragment}${metadataFragment}

@@ -1559,3 +1559,13 @@
 - [x] Clear error when card is successfully pushed or manually dismissed
 - [x] 149 tests passing, 0 TypeScript errors
 - [x] Run tests and save checkpoint v121
+
+## v122: Instagram Link-in-Bio + UTM First Comment (2026-04-25)
+- [x] Audit buffer.ts: Buffer GraphQL API has native firstComment field on InstagramPostMetadata
+- [x] Add ctaUrl param to pushToBuffer function in buffer.ts
+- [x] For Instagram channels: scrub all URLs from caption and replace with "link in bio"
+- [x] For Instagram channels: pass UTM-tracked CTA URL as firstComment in metadata.instagram block
+- [x] Auto-resolve CTA URL server-side in syndication.push using getCtaForTopic + appendUtmToCtaUrl
+- [x] Facebook channels are unaffected (URLs stay in caption, no firstComment)
+- [x] 149 tests passing, 0 TypeScript errors
+- [x] Run tests and save checkpoint v122

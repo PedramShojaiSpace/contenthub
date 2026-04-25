@@ -1494,3 +1494,14 @@
 - [x] Build Verified Links management UI in Strategy section
 - [x] Add verifiedLinks CRUD tRPC procedures (list, create, update, delete, toggle active)
 - [x] Write tests for URL scrubber logic
+
+## Ingest Meta + YouTube + Script Generator Integration (v116)
+- [x] Add META_VOICE and YOUTUBE_VOICE prompts to ingestGenerateRouter.ts
+- [x] Expand generateFromReport to generate 6 formats: LinkedIn, X, Meta, YouTube, Blog, Email
+- [x] Update saveAll to save all 6 platforms
+- [x] Update saveGenerated platform enum to include meta and youtube
+- [x] Update GeneratedContent interface in IngestInbox.tsx to include meta and youtube fields
+- [x] Add Meta and YouTube tabs to IngestInbox GeneratePanel (6-tab layout)
+- [x] Add "Generate Script" button on YouTube tab in IngestInbox that opens Script Generator pre-filled
+- [x] Wire YouTube ingest card in Command Center to Script Generator via existing linkedScriptId flow
+- [x] Add tests for 6-platform generate flow

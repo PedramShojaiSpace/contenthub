@@ -2,9 +2,10 @@
  * ingestGenerateRouter.ts
  *
  * Provides tRPC procedures for the Ingest Inbox:
- *  - ingest.list          → list all ingested research reports
- *  - ingest.generateFromReport → generate LinkedIn, X, Blog, Email Newsletter from a report
- *  - ingest.saveGenerated → save one or more generated pieces to the Command Center
+ *  - ingest.list              → list all ingested research reports
+ *  - ingest.generateFromReport → generate LinkedIn, X, Meta, YouTube, Blog, Email from a report
+ *  - ingest.saveGenerated     → save one generated piece to the Command Center
+ *  - ingest.saveAll           → save all 6 generated pieces in one call
  */
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
@@ -14,7 +15,7 @@ import { desc, eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } from "./ctaRouter";
 
-// ── Voice prompts for each channel ────────────────────────────────────────────
+// ── Voice prompts ─────────────────────────────────────────────────────────────
 
 const LINKEDIN_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on LinkedIn. His audience is high-achieving corporate executives, entrepreneurs, and professionals aged 35-55.
 VOICE: Professional, authoritative, data-informed, challenges hustle culture, bridges ancient wisdom with modern science. Direct, confident, slightly provocative. No fluff.
@@ -48,6 +49,41 @@ POST STRUCTURE (invisible — do not label these):
 - No ellipses, no cut-off sentences
 - Add #urbanmonk at the very end if character budget allows
 CONTENT PILLARS: Gut health, sleep, stress physiology, upstream medicine, ancient practices, the one thing most doctors don't tell you.`;
+
+const META_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on Facebook and Instagram. His audience is health-conscious adults aged 35-60 who are interested in wellness, longevity, and natural living.
+VOICE: Warm, relatable, community-oriented. Pedram speaks as a trusted guide — approachable but authoritative. Storytelling-forward. Invites conversation and reflection.
+CRITICAL OUTPUT RULES:
+- Output ONLY the finished post text — nothing else
+- Do NOT include any labels, headers, or structural markers (no "Hook:", "Caption:", "CTA:", "---", or any similar markup)
+- Do NOT include any meta-commentary, instructions, or explanations
+- The output must be copy-paste ready to publish on Facebook or Instagram
+- Start with the first word of the post itself
+POST STRUCTURE (invisible — do not label these):
+- Opening: a relatable question, surprising fact, or personal observation (1-2 sentences) — hook the scroll
+- 2-4 short paragraphs: the insight, why it matters, what to do
+- Closing: an engaging question to invite comments, or a warm call to action
+- 100-200 words total for Facebook; 80-150 words for Instagram
+- Add 5-8 relevant hashtags at the very end on their own line — always include #urbanmonk and #theurbanmonk
+- Use line breaks between paragraphs for mobile readability
+CONTENT PILLARS: Gut health, sleep, stress relief, natural remedies, mindfulness, longevity, family wellness, ancient wisdom for modern life.`;
+
+const YOUTUBE_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a YouTube video description and hook script. His audience is health-conscious adults who want to understand the root causes of their health issues.
+VOICE: Educational, engaging, documentary-style. Pedram is the knowledgeable guide who makes complex science accessible. Builds curiosity and trust. Cinematic and purposeful.
+CRITICAL OUTPUT RULES:
+- Output ONLY the finished YouTube description — nothing else
+- Do NOT include any labels, headers, or structural markers (no "Title:", "Description:", "Hook:", "---", or any similar markup)
+- Do NOT include any meta-commentary, instructions, or explanations
+- The output must be copy-paste ready to paste into YouTube's description field
+- Start with the first sentence of the description
+STRUCTURE (invisible — do not label these):
+- First 2-3 sentences: the hook — a compelling statement of what viewers will learn and why it matters (this appears in search results)
+- 1 paragraph: expand on the key insight and what makes this video different
+- 1 paragraph: what viewers will take away / key topics covered (no bullet points — flowing prose)
+- CTA paragraph: invite them to subscribe, check out the Academy, or take the next step
+- 5-8 relevant hashtags at the very end
+- 150-250 words total
+CONTENT PILLARS: Gut health, sleep science, stress physiology, ancient practices, functional medicine, longevity, the Urban Monk Academy.
+IMPORTANT: Also include a 2-3 sentence SPOKEN HOOK at the very top (before the description) that Pedram can say directly to camera to open the video. Label it clearly as "SPOKEN HOOK:" on its own line, then a blank line, then the description. This is the only exception to the no-labels rule.`;
 
 const EMAIL_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a weekly email newsletter to his subscriber list of health-conscious professionals and wellness seekers.
 VOICE: Warm, personal, educational. Pedram writes like a trusted friend who happens to be a doctor. Conversational but substantive. Mix of personal insight, clinical wisdom, and actionable takeaways.
@@ -90,8 +126,8 @@ export const ingestGenerateRouter = router({
   }),
 
   /**
-   * Generate LinkedIn, X, Blog, and Email Newsletter content from an ingested report.
-   * Auto-applies CTA block (matched by topic/tags), UTM params, and hashtags.
+   * Generate LinkedIn, X, Meta, YouTube, Blog, and Email Newsletter content
+   * from an ingested report. Auto-applies CTA block, UTM params, and hashtags.
    */
   generateFromReport: protectedProcedure
     .input(
@@ -121,6 +157,8 @@ export const ingestGenerateRouter = router({
 
       const linkedinCtaUrl = appendUtmToCtaUrl(cta.url, "linkedin", campaign);
       const xCtaUrl = appendUtmToCtaUrl(cta.url, "x", campaign);
+      const metaCtaUrl = appendUtmToCtaUrl(cta.url, "meta", campaign);
+      const youtubeCtaUrl = appendUtmToCtaUrl(cta.url, "youtube", campaign);
       const blogCtaUrl = appendUtmToCtaUrl(cta.url, "blog", campaign);
       const emailCtaUrl = appendUtmToCtaUrl(cta.url, "all", campaign);
 
@@ -140,8 +178,8 @@ ${report.narrativeHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slic
 ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructions}` : ""}
 `.trim();
 
-      // 4. Generate all 4 content types in parallel
-      const [linkedinResult, xResult, blogResult, emailResult] = await Promise.all([
+      // 4. Generate all 6 content types in parallel
+      const [linkedinResult, xResult, metaResult, youtubeResult, blogResult, emailResult] = await Promise.all([
         // LinkedIn
         invokeLLM({
           messages: [
@@ -159,6 +197,26 @@ ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructi
             {
               role: "user",
               content: `Write an X post based on this research:\n\n${researchContext}\n\nIf character budget allows, end with: ${xCtaUrl || cta.ctaText}`,
+            },
+          ],
+        }),
+        // Meta (Facebook / Instagram)
+        invokeLLM({
+          messages: [
+            { role: "system", content: META_VOICE },
+            {
+              role: "user",
+              content: `Write a Facebook/Instagram post based on this research:\n\n${researchContext}\n\nEnd the post with this CTA (warm, conversational):\n${ctaLine(metaCtaUrl)}`,
+            },
+          ],
+        }),
+        // YouTube description + spoken hook
+        invokeLLM({
+          messages: [
+            { role: "system", content: YOUTUBE_VOICE },
+            {
+              role: "user",
+              content: `Write a YouTube video description and spoken hook based on this research:\n\n${researchContext}\n\nInclude this CTA in the description:\n${cta.ctaText} ${youtubeCtaUrl}`,
             },
           ],
         }),
@@ -209,13 +267,15 @@ HASHTAGS: None — this is a blog post.`,
         campaign,
         linkedin: extractText(linkedinResult),
         x: extractText(xResult),
+        meta: extractText(metaResult),
+        youtube: extractText(youtubeResult),
         blog: extractText(blogResult),
         email: extractText(emailResult),
       };
     }),
 
   /**
-   * Save all 4 generated pieces to the Command Center in one call.
+   * Save all 6 generated pieces to the Command Center in one call.
    * Used by the "Generate All & Save All" button in IngestInbox.
    */
   saveAll: protectedProcedure
@@ -226,6 +286,8 @@ HASHTAGS: None — this is a blog post.`,
         ctaLabel: z.string().optional(),
         linkedin: z.string(),
         x: z.string(),
+        meta: z.string(),
+        youtube: z.string(),
         blog: z.string(),
         email: z.string(),
       })
@@ -234,9 +296,15 @@ HASHTAGS: None — this is a blog post.`,
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
 
-      const platforms: Array<{ platform: "linkedin" | "x" | "blog" | "all"; key: "linkedin" | "x" | "blog" | "email"; label: string }> = [
+      const platforms: Array<{
+        platform: "linkedin" | "x" | "meta" | "youtube" | "blog" | "all";
+        key: "linkedin" | "x" | "meta" | "youtube" | "blog" | "email";
+        label: string;
+      }> = [
         { platform: "linkedin", key: "linkedin", label: "LinkedIn" },
         { platform: "x", key: "x", label: "X / Twitter" },
+        { platform: "meta", key: "meta", label: "Meta (Facebook/Instagram)" },
+        { platform: "youtube", key: "youtube", label: "YouTube" },
         { platform: "blog", key: "blog", label: "Blog Post" },
         { platform: "all", key: "email", label: "Email Newsletter" },
       ];
@@ -268,7 +336,7 @@ HASHTAGS: None — this is a blog post.`,
     .input(
       z.object({
         reportId: z.number(),
-        platform: z.enum(["linkedin", "x", "blog", "all"]),
+        platform: z.enum(["linkedin", "x", "meta", "youtube", "blog", "all"]),
         title: z.string(),
         textContent: z.string(),
         ctaBlockLabel: z.string().optional(),

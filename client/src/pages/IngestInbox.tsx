@@ -24,6 +24,9 @@ import {
   Calendar,
   Hash,
   ExternalLink,
+  Facebook,
+  Youtube,
+  Clapperboard,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -51,6 +54,8 @@ interface GeneratedContent {
   campaign: string;
   linkedin: string;
   x: string;
+  meta: string;
+  youtube: string;
   blog: string;
   email: string;
 }
@@ -107,11 +112,14 @@ function GeneratePanel({ report }: { report: IngestReport }) {
   const [customInstructions, setCustomInstructions] = useState("");
   const [generated, setGenerated] = useState<GeneratedContent | null>(null);
   const [savedTabs, setSavedTabs] = useState<Set<string>>(new Set());
+  const [generatingScript, setGeneratingScript] = useState(false);
+
+  const utils = trpc.useUtils();
 
   const generateMutation = trpc.ingest.generateFromReport.useMutation({
     onSuccess: (data) => {
       setGenerated(data);
-      toast.success("Content generated for all 4 channels!");
+      toast.success("Content generated for all 6 channels!");
     },
     onError: (err) => {
       toast.error(`Generation failed: ${err.message}`);
@@ -124,7 +132,7 @@ function GeneratePanel({ report }: { report: IngestReport }) {
       toast.success("Saved to Command Center!", {
         action: {
           label: "View →",
-          onClick: () => navigate("/command-center"),
+          onClick: () => navigate("/"),
         },
       });
     },
@@ -133,21 +141,62 @@ function GeneratePanel({ report }: { report: IngestReport }) {
 
   const saveAllMutation = trpc.ingest.saveAll.useMutation({
     onSuccess: (data) => {
-      setSavedTabs(new Set(["linkedin", "x", "blog", "all"]));
+      setSavedTabs(new Set(["linkedin", "x", "meta", "youtube", "blog", "all"]));
       toast.success(`${data.saved} pieces saved to Command Center!`, {
         action: {
           label: "View →",
-          onClick: () => navigate("/command-center"),
+          onClick: () => navigate("/"),
         },
       });
     },
     onError: (err) => toast.error(`Save all failed: ${err.message}`),
   });
 
+  // Generate a teleprompter script from the YouTube description and navigate to Script Library
+  const generateScriptMutation = trpc.research.generateTeleprompterScript.useMutation({
+    onSuccess: async (data) => {
+      // Save the YouTube card first if not already saved, then navigate to Script Library
+      if (!savedTabs.has("youtube") && generated) {
+        await saveMutation.mutateAsync({
+          reportId: report.id,
+          platform: "youtube",
+          title: `${generated.reportTitle} — YouTube`,
+          textContent: generated.youtube,
+          ctaBlockLabel: generated.ctaLabel,
+        });
+      }
+      setGeneratingScript(false);
+      // Navigate to Script Library — the script was auto-saved there
+      navigate("/scripts");
+      toast.success("Script generated and saved to Script Library!", {
+        action: { label: "View Scripts →", onClick: () => navigate("/scripts") },
+      });
+    },
+    onError: (err) => {
+      setGeneratingScript(false);
+      toast.error(`Script generation failed: ${err.message}`);
+    },
+  });
+
+  const handleGenerateScript = () => {
+    if (!generated) return;
+    setGeneratingScript(true);
+    // Extract the spoken hook from the YouTube description if present
+    const youtubeText = generated.youtube;
+    const spokenHookMatch = youtubeText.match(/SPOKEN HOOK:\s*\n+([\s\S]+?)(?:\n\n|$)/i);
+    const spokenHook = spokenHookMatch ? spokenHookMatch[1].trim() : "";
+    // Use the full topic + spoken hook as the script title/prompt
+    const scriptTitle = spokenHook
+      ? `${generated.reportTitle} — ${spokenHook.slice(0, 120)}`
+      : generated.reportTitle;
+    generateScriptMutation.mutate({ title: scriptTitle, platform: "youtube" });
+  };
+
   const platformConfig = [
     {
       key: "linkedin" as const,
       label: "LinkedIn",
+      shortLabel: "LinkedIn",
       icon: <Linkedin className="w-4 h-4" />,
       platform: "linkedin" as const,
       color: "text-blue-600",
@@ -155,13 +204,31 @@ function GeneratePanel({ report }: { report: IngestReport }) {
     {
       key: "x" as const,
       label: "X / Twitter",
+      shortLabel: "X",
       icon: <Twitter className="w-4 h-4" />,
       platform: "x" as const,
       color: "text-sky-500",
     },
     {
+      key: "meta" as const,
+      label: "Meta (FB/IG)",
+      shortLabel: "Meta",
+      icon: <Facebook className="w-4 h-4" />,
+      platform: "meta" as const,
+      color: "text-indigo-600",
+    },
+    {
+      key: "youtube" as const,
+      label: "YouTube",
+      shortLabel: "YouTube",
+      icon: <Youtube className="w-4 h-4" />,
+      platform: "youtube" as const,
+      color: "text-red-600",
+    },
+    {
       key: "blog" as const,
       label: "Blog Post",
+      shortLabel: "Blog",
       icon: <FileText className="w-4 h-4" />,
       platform: "blog" as const,
       color: "text-emerald-600",
@@ -169,11 +236,15 @@ function GeneratePanel({ report }: { report: IngestReport }) {
     {
       key: "email" as const,
       label: "Email Newsletter",
+      shortLabel: "Email",
       icon: <Mail className="w-4 h-4" />,
       platform: "all" as const,
       color: "text-amber-600",
     },
   ];
+
+  const totalPlatforms = platformConfig.length;
+  const allSaved = savedTabs.size >= totalPlatforms;
 
   return (
     <div className="space-y-4 pt-2">
@@ -205,12 +276,12 @@ function GeneratePanel({ report }: { report: IngestReport }) {
         {generateMutation.isPending ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Generating all 4 channels…
+            Generating all 6 channels…
           </>
         ) : (
           <>
             <Sparkles className="w-4 h-4" />
-            Generate LinkedIn + X + Blog + Email
+            Generate LinkedIn + X + Meta + YouTube + Blog + Email
           </>
         )}
       </Button>
@@ -226,7 +297,7 @@ function GeneratePanel({ report }: { report: IngestReport }) {
             Campaign: <span className="font-medium text-foreground">{generated.campaign}</span>
           </div>
 
-          {/* Save All to Hub — one-click save all 4 platforms */}
+          {/* Save All to Hub — one-click save all 6 platforms */}
           <Button
             onClick={() =>
               saveAllMutation.mutate({
@@ -235,40 +306,42 @@ function GeneratePanel({ report }: { report: IngestReport }) {
                 ctaLabel: generated.ctaLabel,
                 linkedin: generated.linkedin,
                 x: generated.x,
+                meta: generated.meta,
+                youtube: generated.youtube,
                 blog: generated.blog,
                 email: generated.email,
               })
             }
-            disabled={saveAllMutation.isPending || savedTabs.size === 4}
+            disabled={saveAllMutation.isPending || allSaved}
             variant="outline"
             className="w-full gap-2 border-cyan-600/40 text-cyan-600 hover:bg-cyan-600/10"
           >
             {saveAllMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Saving all 4 channels…
+                Saving all 6 channels…
               </>
-            ) : savedTabs.size === 4 ? (
+            ) : allSaved ? (
               <>
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                All 4 saved to Command Center
+                All 6 saved to Command Center
               </>
             ) : (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                Save All 4 to Command Center
+                Save All 6 to Command Center
               </>
             )}
           </Button>
 
           <Tabs defaultValue="linkedin">
-            <TabsList className="w-full grid grid-cols-4">
+            <TabsList className="w-full grid grid-cols-6">
               {platformConfig.map((p) => (
-                <TabsTrigger key={p.key} value={p.key} className="gap-1.5 text-xs">
+                <TabsTrigger key={p.key} value={p.key} className="gap-1 text-xs px-1">
                   {p.icon}
-                  <span className="hidden sm:inline">{p.label}</span>
+                  <span className="hidden lg:inline">{p.shortLabel}</span>
                   {savedTabs.has(p.platform) && (
-                    <CheckCircle2 className="w-3 h-3 text-green-500" />
+                    <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
                   )}
                 </TabsTrigger>
               ))}
@@ -276,12 +349,12 @@ function GeneratePanel({ report }: { report: IngestReport }) {
 
             {platformConfig.map((p) => (
               <TabsContent key={p.key} value={p.key} className="mt-3 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className={`text-sm font-medium flex items-center gap-1.5 ${p.color}`}>
                     {p.icon}
                     {p.label}
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <CopyButton text={generated[p.key]} />
                     <Button
                       size="sm"
@@ -307,8 +380,54 @@ function GeneratePanel({ report }: { report: IngestReport }) {
                         "Save to Hub"
                       )}
                     </Button>
+
+                    {/* YouTube-only: Generate Script button */}
+                    {p.key === "youtube" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={generatingScript || generateScriptMutation.isPending}
+                        onClick={handleGenerateScript}
+                        className="gap-1.5 border-red-500/40 text-red-600 hover:bg-red-500/10"
+                      >
+                        {generatingScript || generateScriptMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Generating script…
+                          </>
+                        ) : (
+                          <>
+                            <Clapperboard className="w-3.5 h-3.5" />
+                            Generate Script
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
+
+                {/* YouTube-specific guidance */}
+                {p.key === "youtube" && (
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground flex items-center gap-1.5">
+                      <Clapperboard className="w-3.5 h-3.5 text-red-500" />
+                      YouTube Production Workflow
+                    </p>
+                    <p>
+                      1. <strong>Copy</strong> the spoken hook (first paragraph) — say it directly to camera to open your video.
+                    </p>
+                    <p>
+                      2. Click <strong>Generate Script</strong> to create a full teleprompter script in the Script Library.
+                    </p>
+                    <p>
+                      3. Record your video using the script, then bring the recording back to the <strong>Media Vault</strong>.
+                    </p>
+                    <p>
+                      4. <strong>Save to Hub</strong> to add the YouTube description to your Command Center Kanban.
+                    </p>
+                  </div>
+                )}
+
                 <div className="bg-muted/40 rounded-lg p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto border">
                   {generated[p.key]}
                 </div>
@@ -366,7 +485,7 @@ function ReportCard({ report }: { report: IngestReport }) {
             className="shrink-0 gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Generate
+            {showGenerate ? "Close" : "Generate"}
           </Button>
         </div>
 
@@ -428,8 +547,9 @@ export default function IngestInbox() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             Research reports pushed from external apps (e.g. Upstream Gut Health). Click{" "}
-            <strong>Generate</strong> on any report to produce LinkedIn, X, Blog, and Email content
-            — with UTMs, hashtags, and CTA blocks auto-applied.
+            <strong>Generate</strong> on any report to produce LinkedIn, X, Meta, YouTube, Blog, and Email content
+            — with UTMs, hashtags, and CTA blocks auto-applied. YouTube cards include a one-click{" "}
+            <strong>Generate Script</strong> flow to create a teleprompter script.
           </p>
         </div>
         <Badge variant="outline" className="text-sm shrink-0">

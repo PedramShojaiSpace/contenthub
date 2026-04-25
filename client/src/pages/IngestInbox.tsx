@@ -131,6 +131,19 @@ function GeneratePanel({ report }: { report: IngestReport }) {
     onError: (err) => toast.error(`Save failed: ${err.message}`),
   });
 
+  const saveAllMutation = trpc.ingest.saveAll.useMutation({
+    onSuccess: (data) => {
+      setSavedTabs(new Set(["linkedin", "x", "blog", "all"]));
+      toast.success(`${data.saved} pieces saved to Command Center!`, {
+        action: {
+          label: "View →",
+          onClick: () => navigate("/command-center"),
+        },
+      });
+    },
+    onError: (err) => toast.error(`Save all failed: ${err.message}`),
+  });
+
   const platformConfig = [
     {
       key: "linkedin" as const,
@@ -212,6 +225,41 @@ function GeneratePanel({ report }: { report: IngestReport }) {
             <Hash className="w-3.5 h-3.5" />
             Campaign: <span className="font-medium text-foreground">{generated.campaign}</span>
           </div>
+
+          {/* Save All to Hub — one-click save all 4 platforms */}
+          <Button
+            onClick={() =>
+              saveAllMutation.mutate({
+                reportId: report.id,
+                reportTitle: generated.reportTitle,
+                ctaLabel: generated.ctaLabel,
+                linkedin: generated.linkedin,
+                x: generated.x,
+                blog: generated.blog,
+                email: generated.email,
+              })
+            }
+            disabled={saveAllMutation.isPending || savedTabs.size === 4}
+            variant="outline"
+            className="w-full gap-2 border-cyan-600/40 text-cyan-600 hover:bg-cyan-600/10"
+          >
+            {saveAllMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving all 4 channels…
+              </>
+            ) : savedTabs.size === 4 ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                All 4 saved to Command Center
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                Save All 4 to Command Center
+              </>
+            )}
+          </Button>
 
           <Tabs defaultValue="linkedin">
             <TabsList className="w-full grid grid-cols-4">

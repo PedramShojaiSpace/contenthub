@@ -73,6 +73,7 @@ import {
   Music2,
   GripVertical,
   Link2,
+  Inbox,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -742,6 +743,13 @@ function DraggableCard({
             {PLATFORM_ICONS[item.platform]}
             <span className="capitalize">{item.platform}</span>
           </div>
+
+          {(item as any).ingestReportId && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border border-cyan-500/30 bg-cyan-500/10 text-cyan-600">
+              <Inbox className="h-2.5 w-2.5" />
+              Ingest
+            </span>
+          )}
 
           {isPublished && item.publishedAt && (
             <span className="text-[10px] text-muted-foreground">

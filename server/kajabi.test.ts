@@ -22,6 +22,7 @@ describe("Kajabi credentials", () => {
         client_id: clientId,
         client_secret: clientSecret,
       }),
+      signal: AbortSignal.timeout(12000),
     });
 
     // 200 = valid credentials, 401 = invalid credentials
@@ -33,5 +34,5 @@ describe("Kajabi credentials", () => {
     if (response.status === 200) {
       expect(body.access_token).toBeTruthy();
     }
-  });
+  }, 15000);
 });

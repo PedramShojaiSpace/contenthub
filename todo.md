@@ -1470,4 +1470,8 @@
 - [x] "Save to Command Center" button per generated piece — creates ContentItem with correct platform and status=idea
 - [x] Add "Ingest Inbox" to sidebar nav under Intelligence section
 - [x] Register /ingest route in App.tsx
-- [ ] Show ingest badge on Command Center cards that originated from ingest (deferred to v113)
+- [x] Show ingest badge on Command Center cards that originated from ingest (deferred to v113)
+
+## Ingest Badge + Generate All (v113)
+- [x] Add "Ingest" badge to Command Center DraggableCard for items with ingestReportId set
+- [x] Add "Generate All & Save All" one-click button to IngestInbox report cards

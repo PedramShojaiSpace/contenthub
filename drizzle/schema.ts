@@ -72,6 +72,8 @@ export const contentItems = mysqlTable("content_items", {
   linkedScriptId: int("linkedScriptId"),
   // CTA tracking: which CTA block label was used when this content was generated
   ctaBlockLabel: varchar("ctaBlockLabel", { length: 128 }),
+  // Ingest pipeline: link to the ingest report this content was generated from
+  ingestReportId: int("ingestReportId"),
   // Carousel: JSON array of slides [{headline, body, imagePrompt, imageUrl}]
   carouselData: text("carouselData"),
   // SEO fields — persisted so CommandCenter publish can auto-push them to WordPress

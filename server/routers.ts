@@ -351,6 +351,7 @@ export const appRouter = router({
           focusKeyword: z.string().optional(),         // Yoast SEO focus keyword
           seoKeywords: z.string().optional(),          // JSON array of semantic keyword strings
           ctaBlockLabel: z.string().optional(),        // CTA block label used during generation
+          ingestReportId: z.number().optional(),          // Ingest pipeline: source report ID
         })
       )
       .mutation(async ({ input }) => {

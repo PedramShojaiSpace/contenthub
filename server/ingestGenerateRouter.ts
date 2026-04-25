@@ -215,6 +215,53 @@ HASHTAGS: None — this is a blog post.`,
     }),
 
   /**
+   * Save all 4 generated pieces to the Command Center in one call.
+   * Used by the "Generate All & Save All" button in IngestInbox.
+   */
+  saveAll: protectedProcedure
+    .input(
+      z.object({
+        reportId: z.number(),
+        reportTitle: z.string(),
+        ctaLabel: z.string().optional(),
+        linkedin: z.string(),
+        x: z.string(),
+        blog: z.string(),
+        email: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      const platforms: Array<{ platform: "linkedin" | "x" | "blog" | "all"; key: "linkedin" | "x" | "blog" | "email"; label: string }> = [
+        { platform: "linkedin", key: "linkedin", label: "LinkedIn" },
+        { platform: "x", key: "x", label: "X / Twitter" },
+        { platform: "blog", key: "blog", label: "Blog Post" },
+        { platform: "all", key: "email", label: "Email Newsletter" },
+      ];
+
+      const insertedIds: number[] = [];
+      for (const p of platforms) {
+        const textContent = input[p.key];
+        if (!textContent) continue;
+        const [result] = await db.insert(contentItems).values({
+          title: `${input.reportTitle} — ${p.label}`,
+          rawIdea: `[From Ingest Report #${input.reportId}]`,
+          platform: p.platform,
+          status: "idea",
+          textContent,
+          ctaBlockLabel: input.ctaLabel ?? null,
+          ingestReportId: input.reportId,
+          notes: `Generated from ingested research report #${input.reportId}`,
+        });
+        insertedIds.push((result as any).insertId as number);
+      }
+
+      return { saved: insertedIds.length };
+    }),
+
+  /**
    * Save one generated piece to the Command Center as a ContentItem.
    */
   saveGenerated: protectedProcedure
@@ -238,6 +285,7 @@ HASHTAGS: None — this is a blog post.`,
         status: "idea",
         textContent: input.textContent,
         ctaBlockLabel: input.ctaBlockLabel ?? null,
+        ingestReportId: input.reportId,
         notes: `Generated from ingested research report #${input.reportId}`,
       });
 

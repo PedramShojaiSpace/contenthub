@@ -1,4 +1,4 @@
-import { bigint, boolean, int, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, int, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -729,3 +729,26 @@ export const utmLinks = mysqlTable("utm_links", {
 });
 export type UtmLink = typeof utmLinks.$inferSelect;
 export type InsertUtmLink = typeof utmLinks.$inferInsert;
+
+// ── Ingest Reports ────────────────────────────────────────────────────────────
+// Research reports pushed from external apps (e.g. Upstream Gut Health
+// Curriculum at learn.theurbanmonk.com) via POST /api/ingest/research-report.
+// Each report is also materialised as a ContentItem in the Command Center.
+export const ingestReports = mysqlTable("ingest_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  source: varchar("source", { length: 128 }).notNull(),          // e.g. "upstream-gut-health"
+  topic: varchar("topic", { length: 255 }).notNull(),
+  title: varchar("title", { length: 512 }).notNull(),
+  narrativeHtml: longtext("narrativeHtml").notNull(),
+  wordCount: int("wordCount").default(0),
+  citationCount: int("citationCount").default(0),
+  format: varchar("format", { length: 64 }).notNull(),           // blog | social | email | summary | raw_report
+  generatedContent: longtext("generatedContent"),
+  pubmedCitations: text("pubmedCitations"),                      // JSON: PubmedCitation[]
+  tags: text("tags"),                                            // JSON: string[]
+  contentItemId: int("contentItemId"),                           // FK → contentItems.id (set after item created)
+  pushedAt: timestamp("pushedAt").defaultNow().notNull(),
+  originalCreatedAt: timestamp("originalCreatedAt"),             // createdAt from the payload
+});
+export type IngestReport = typeof ingestReports.$inferSelect;
+export type InsertIngestReport = typeof ingestReports.$inferInsert;

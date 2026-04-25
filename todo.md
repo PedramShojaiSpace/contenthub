@@ -1453,3 +1453,11 @@
 ## UTM Tooltip Preview (v110)
 - [x] Add hover tooltip to Copy UTM button on blog cards showing full UTM URL before copying
 - [x] Add hover tooltip to Copy UTM button on social post cards showing full UTM URL before copying
+
+## Research Report Ingest Endpoint (v111)
+- [x] Add INGEST_SECRET environment variable via webdev_request_secrets
+- [x] Add ingestReports table to drizzle schema (separate from Gumshoe researchReports table)
+- [x] Create server/ingestRouter.ts with POST /api/ingest/research-report handler (secret validation, payload parsing, DB save, content item creation)
+- [x] Register ingest route on Express server (outside tRPC, before tRPC middleware)
+- [x] Add vitest tests for the ingest endpoint (3 tests passing)
+- [x] Live test: 401 on bad secret, 200 on valid payload, test record cleaned up

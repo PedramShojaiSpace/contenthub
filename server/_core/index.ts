@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startWeeklyDigestCron } from "../digest";
+import { handleIngestResearchReport } from "../ingestRouter";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -36,6 +37,9 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // Ingest endpoint — accepts research reports from external apps
+  // POST /api/ingest/research-report (authenticated via INGEST_SECRET header)
+  app.post("/api/ingest/research-report", handleIngestResearchReport);
   // tRPC API
   app.use(
     "/api/trpc",

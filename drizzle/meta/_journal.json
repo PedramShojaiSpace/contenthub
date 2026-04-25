@@ -274,6 +274,13 @@
       "when": 1777033369234,
       "tag": "0038_overconfident_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1777131460372,
+      "tag": "0039_cheerful_princess_powerful",
+      "breakpoints": true
     }
   ]
 }

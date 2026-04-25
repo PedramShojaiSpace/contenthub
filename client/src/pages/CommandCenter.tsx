@@ -74,6 +74,8 @@ import {
   GripVertical,
   Link2,
   Inbox,
+  X,
+  AlertCircle,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -608,6 +610,8 @@ function DraggableCard({
   onPublishToWP,
   isPublishingToWP,
   onViewScript,
+  bufferError,
+  onClearBufferError,
 }: {
   item: ContentItem;
   onStatusChange: (id: number, status: Status) => void;
@@ -616,17 +620,20 @@ function DraggableCard({
   onPublish: (item: ContentItem) => void;
   onAnalyticsUpdate: (id: number, analytics: { analyticsViews?: number; analyticsLikes?: number; analyticsComments?: number; analyticsShares?: number }) => void;
   onRegenerate: (item: ContentItem) => void;
-  onPushToBuffer: (item: ContentItem) => void;
+  onPushToBuffer: (item: ContentItem, metaPostType?: "post" | "story" | "reel") => void;
   isPushingToBuffer: boolean;
   onPublishToWP: (item: ContentItem) => void;
   isPublishingToWP: boolean;
   onViewScript?: (scriptId: number) => void;
+  bufferError?: string;
+  onClearBufferError?: () => void;
 }) {
    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${item.id}`,
     data: { itemId: item.id, type: "card" },
   });
   const saveUtmMutation = trpc.utm.save.useMutation();
+  const [metaPostType, setMetaPostType] = useState<"post" | "story" | "reel">("post");
   const style = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50, opacity: isDragging ? 0.4 : 1 }
     : undefined;
@@ -955,23 +962,38 @@ function DraggableCard({
             )}
             {/* Push to Buffer — non-blog platforms */}
             {item.platform !== "blog" && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full h-6 text-[10px] border-amber-600/40 text-amber-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-600 gap-1"
-              disabled={isPushingToBuffer}
-              onClick={(e) => {
-                e.stopPropagation();
-                onPushToBuffer(item);
-              }}
-            >
-              {isPushingToBuffer ? (
-                <Loader2 className="h-2.5 w-2.5 animate-spin" />
-              ) : (
-                <Send className="h-2.5 w-2.5" />
-              )}
-              {isPushingToBuffer ? "Pushing…" : "Push to Buffer"}
-            </Button>
+              <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
+                {/* Meta post type selector */}
+                {item.platform === "meta" && (
+                  <Select
+                    value={metaPostType}
+                    onValueChange={(v) => setMetaPostType(v as "post" | "story" | "reel")}
+                  >
+                    <SelectTrigger className="h-6 text-[10px] border-amber-600/30 text-amber-700 bg-amber-50/50 focus:ring-0 px-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="post" className="text-[11px]">Feed Post</SelectItem>
+                      <SelectItem value="reel" className="text-[11px]">Reel</SelectItem>
+                      <SelectItem value="story" className="text-[11px]">Story</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-6 text-[10px] border-amber-600/40 text-amber-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-600 gap-1"
+                  disabled={isPushingToBuffer}
+                  onClick={() => onPushToBuffer(item, item.platform === "meta" ? metaPostType : undefined)}
+                >
+                  {isPushingToBuffer ? (
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                  ) : (
+                    <Send className="h-2.5 w-2.5" />
+                  )}
+                  {isPushingToBuffer ? "Pushing…" : "Push to Buffer"}
+                </Button>
+              </div>
             )}
             {item.linkedScriptId && onViewScript && (
               <Button
@@ -987,6 +1009,23 @@ function DraggableCard({
                 View Script
               </Button>
             )}
+          </div>
+        )}
+
+        {/* Persistent Buffer push error panel */}
+        {bufferError && (
+          <div
+            className="mx-3 mb-3 rounded-md bg-red-50 border border-red-200 p-2 flex items-start gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 shrink-0" />
+            <p className="text-[10px] text-red-700 flex-1 leading-tight break-words">{bufferError}</p>
+            <button
+              className="text-red-400 hover:text-red-600 shrink-0"
+              onClick={onClearBufferError}
+            >
+              <X className="h-3 w-3" />
+            </button>
           </div>
         )}
       </CardContent>
@@ -1096,6 +1135,7 @@ export default function CommandCenter() {
   const [isBatchGeneratingYoast, setIsBatchGeneratingYoast] = useState(false);
   const [isBatchBackfillingYoast, setIsBatchBackfillingYoast] = useState(false);
   const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
+  const [bufferErrors, setBufferErrors] = useState<Record<number, string>>({});
   const [wpPublishingId, setWpPublishingId] = useState<number | null>(null);
 
   // Teleprompter script state (for card detail modal)
@@ -1184,15 +1224,20 @@ export default function CommandCenter() {
     onSuccess: (result, variables) => {
       setBufferPushingId(null);
       if (result.success) {
+        // Clear any previous error for this card on success
+        setBufferErrors((prev) => { const next = { ...prev }; delete next[variables.contentItemId]; return next; });
         refetch();
         toast.success("Pushed to Buffer queue!");
       } else {
-        toast.error("Buffer push failed: " + (result.error ?? "Unknown error"));
+        const errMsg = result.error ?? "Unknown error";
+        setBufferErrors((prev) => ({ ...prev, [variables.contentItemId]: errMsg }));
+        toast.error("Buffer push failed — see card for details.");
       }
     },
-    onError: (err) => {
+    onError: (err, variables) => {
       setBufferPushingId(null);
-      toast.error("Buffer error: " + err.message);
+      setBufferErrors((prev) => ({ ...prev, [variables.contentItemId]: err.message }));
+      toast.error("Buffer error — see card for details.");
     },
   });
 
@@ -1205,7 +1250,7 @@ export default function CommandCenter() {
     tiktok: ["tiktok"],
   };
 
-  const handlePushToBuffer = (item: ContentItem) => {
+  const handlePushToBuffer = (item: ContentItem, metaPostType?: "post" | "story" | "reel") => {
     const services = PLATFORM_SERVICE_MAP[item.platform] ?? [];
     const matchedProfiles = bufferProfiles.filter((p) =>
       services.includes(p.service.toLowerCase())
@@ -1234,7 +1279,7 @@ export default function CommandCenter() {
       imageUrl: item.imageUrl ?? undefined,
       platform: item.platform,
       // Meta channels require a post type — default to "post" (standard feed post)
-      metaPostType: item.platform === "meta" ? "post" : undefined,
+      metaPostType: item.platform === "meta" ? (metaPostType ?? "post") : undefined,
       channelServiceMap: item.platform === "meta" ? channelServiceMap : undefined,
     });
   };
@@ -1947,6 +1992,8 @@ export default function CommandCenter() {
                               onPublishToWP={handlePublishToWP}
                               isPublishingToWP={wpPublishingId === item.id}
                               onViewScript={handleViewScript}
+                              bufferError={bufferErrors[(item as ContentItem).id]}
+                              onClearBufferError={() => setBufferErrors((prev) => { const next = { ...prev }; delete next[(item as ContentItem).id]; return next; })}
                             />
                           </div>
                         ))}

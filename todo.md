@@ -1549,3 +1549,13 @@
 - [x] Fix covers all push paths (Kanban card button + detail modal button)
 - [x] 149 tests passing, 0 TypeScript errors
 - [x] Run tests and save checkpoint v120
+
+## v121: Meta Post Type Selector + Persistent Buffer Error Panel (2026-04-25)
+- [x] Add metaPostType state per card (Post/Reel/Story) to DraggableCard component
+- [x] Show Post/Reel/Story dropdown on Meta platform cards only
+- [x] Pass selected metaPostType through onPushToBuffer callback to handlePushToBuffer
+- [x] Add bufferErrors Record<number, string> state in parent CommandCenter
+- [x] Show persistent error panel on card when Buffer push fails (dismissible red panel)
+- [x] Clear error when card is successfully pushed or manually dismissed
+- [x] 149 tests passing, 0 TypeScript errors
+- [x] Run tests and save checkpoint v121

@@ -1540,3 +1540,12 @@
 - [x] Migrate DB: ALTER TABLE to add "email", UPDATE "all"→"email", remove "all" from enum
 - [x] 149 tests passing, 0 TypeScript errors
 - [x] Run tests and save checkpoint v119
+
+## v120: Fix Buffer Meta Post Type (2026-04-25)
+- [x] Audit buffer.ts pushToBuffer function to see what payload is sent for Meta platform
+- [x] Root cause: handlePushToBuffer in CommandCenter.tsx was not passing channelServiceMap or metaPostType
+- [x] Fix: build channelServiceMap from matched profiles and pass metaPostType="post" for Meta platform
+- [x] buffer.ts already builds correct metadata fragment when channelServiceMap is provided
+- [x] Fix covers all push paths (Kanban card button + detail modal button)
+- [x] 149 tests passing, 0 TypeScript errors
+- [x] Run tests and save checkpoint v120

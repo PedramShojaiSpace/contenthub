@@ -1218,12 +1218,24 @@ export default function CommandCenter() {
       toast.error("This item has no text content to push.");
       return;
     }
+
+    // Build channelServiceMap so Buffer API receives the required metadata for Meta channels.
+    // Without this, Facebook/Instagram posts are rejected because Buffer requires a post type.
+    const channelServiceMap: Record<string, string> = {};
+    for (const pr of matchedProfiles) {
+      channelServiceMap[pr.id] = pr.service;
+    }
+
     setBufferPushingId(item.id);
     syndicationMutation.mutate({
       contentItemId: item.id,
       text: item.textContent ?? item.title,
       profileIds: matchedProfiles.map((p) => p.id),
       imageUrl: item.imageUrl ?? undefined,
+      platform: item.platform,
+      // Meta channels require a post type — default to "post" (standard feed post)
+      metaPostType: item.platform === "meta" ? "post" : undefined,
+      channelServiceMap: item.platform === "meta" ? channelServiceMap : undefined,
     });
   };
 

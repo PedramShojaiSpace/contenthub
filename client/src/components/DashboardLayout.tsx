@@ -47,6 +47,7 @@ import {
   Compass,
   Settings,
   Inbox,
+  ShieldCheck,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -85,6 +86,7 @@ const intelligenceItems = [
   { icon: BarChart3, label: "LLM Projects", path: "/llm-projects" },
   { icon: Settings, label: "WordPress Setup", path: "/wordpress-setup" },
   { icon: Inbox, label: "Ingest Inbox", path: "/ingest" },
+  { icon: ShieldCheck, label: "Verified Links", path: "/verified-links" },
 ];
 
 const intelligencePaths = new Set(intelligenceItems.map((i) => i.path));

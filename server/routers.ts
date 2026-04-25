@@ -70,6 +70,7 @@ import { utmRouter } from "./utmRouter";
 import { ingestGenerateRouter } from "./ingestGenerateRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
+import { scrubHallucinatedUrls } from "./urlScrubber";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -272,13 +273,14 @@ SEO + AEO INTEGRATION RULES (non-negotiable):
 - Include a clear, direct answer to the core question within the first 300 words (woven into the opening hook — NOT as a separate TL;DR box or blockquote)
 - Use sequential H2/H3 heading structure — this increases AI citation odds by 2.8x
 - Weave 3-5 semantic keyword variants naturally into headings and body (not forced)
-- Include at least 2 internal links to related articles on theurbanmonk.com. If a REAL INTERNAL LINK LIST is provided in the user message, use those exact URLs in Markdown format: [anchor text](url). If no list is provided, use placeholders: [INTERNAL LINK: topic of related article]
+- Include at least 2 internal links to related articles on theurbanmonk.com. A VERIFIED INTERNAL LINK LIST will be provided in the user message — you MUST use ONLY URLs from that list. Use Markdown format: [anchor text](url). If you need a link to a topic not in the list, use the placeholder format: [INTERNAL LINK: topic of related article] — NEVER invent or guess a theurbanmonk.com URL that is not explicitly in the provided list
 - Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH). Use real verified URLs if you know them with high confidence. For any source you are not 100% certain of, use the placeholder format: [Outbound Link: Source Name — description] — these will be resolved to real URLs automatically after generation
 - The FAQ section at the bottom targets featured snippets and AI citation
 - E-E-A-T signals: weave Pedram's credentials (OMD, Taoist monk, filmmaker, author) naturally into the body — not as a bio block, but as contextual authority within the teaching. IMPORTANT: Do NOT claim "NYT bestselling" or any specific award/accolade unless it is a verifiable fact. Do NOT fabricate media mentions (e.g. "As featured in The New York Times"). Do NOT reference specific YouTube series, podcast episode numbers, or course module names that may not exist — reference Pedram's work generically (e.g. "in my practice", "in my book", "in my podcast").
 
 ABSOLUTE RULES — NEVER VIOLATE:
 - NEVER use the URL urbanmonk.com — it is NOT owned by Pedram. The ONLY correct domain is theurbanmonk.com
+- NEVER invent, guess, or construct a theurbanmonk.com URL (e.g. theurbanmonk.com/some-article or theurbanmonk.com/course-name). You may ONLY use URLs that are explicitly listed in the VERIFIED INTERNAL LINK LIST provided in the user message. Any URL not in that list MUST use the placeholder format: [INTERNAL LINK: topic]
 - NEVER fabricate media citations ("As featured in...", "As seen in The New York Times", etc.)
 - NEVER reference specific YouTube series, podcast episode titles, or course module names unless they are provided in the user message
 - NEVER add hashtags anywhere in the article — this is a blog post, not a social media post
@@ -885,29 +887,26 @@ Rules:
           console.warn("[Blog] Could not load webinar intelligence context:", err);
         }
 
-        // ── Load WordPress post index for real internal links ─────────────────────
+        // ── Load verified internal links + WordPress post index ──────────────────
+        // These are the ONLY URLs the AI is allowed to use as internal links.
+        // Any theurbanmonk.com URL not in this list must use [INTERNAL LINK: topic] placeholder.
         let internalLinkBlock = "";
         try {
           const db = await getDb();
           if (db) {
-            const { wpPostIndex } = await import("../drizzle/schema");
+            const { wpPostIndex, verifiedLinks } = await import("../drizzle/schema");
+
+            // 1. Load manually curated verified links (always included, filtered by active)
+            const { eq: eqOp } = await import("drizzle-orm");
+            const allVerified = await db.select().from(verifiedLinks).where(eqOp(verifiedLinks.active, true));
+            const verifiedEntries = allVerified.map((v: any) => {
+              const tags: string[] = JSON.parse(v.topicTags ?? "[]");
+              return { url: v.url, title: v.title, description: v.description ?? "", tags };
+            });
+
+            // 2. Load WordPress post index (synced from theurbanmonk.com)
             const allPosts = await db.select().from(wpPostIndex).limit(500);
-            if (allPosts.length > 0) {
-              const postSummaries: WpPostSummary[] = allPosts.map((p: any) => ({
-                wpPostId: p.wpPostId,
-                title: p.title,
-                slug: p.slug,
-                url: p.url,
-                excerpt: p.excerpt ?? "",
-                categories: JSON.parse(p.categories ?? "[]"),
-                tags: JSON.parse(p.tags ?? "[]"),
-                publishedAt: p.publishedAt?.toISOString() ?? "",
-              }));
-              const relevant = findRelevantPosts(postSummaries, input.idea, 8);
-              if (relevant.length > 0) {
-                internalLinkBlock = `\n\nREAL INTERNAL LINK LIST (use these exact URLs for internal links — pick the 2-3 most relevant):\n${relevant.map((p) => `- [${p.title}](${p.url}) — ${p.excerpt.slice(0, 100)}`).join("\n")}`;
-              }
-            } else {
+            if (allPosts.length === 0) {
               // No posts indexed yet — auto-sync in background
               fetchAllWpPosts().then(async (posts) => {
                 if (posts.length === 0) return;
@@ -929,9 +928,50 @@ Rules:
                 console.log(`[Blog] Auto-synced ${posts.length} WordPress posts to index.`);
               }).catch((err) => console.warn("[Blog] WP post auto-sync failed:", err));
             }
+
+            // 3. Find relevant WP posts for this topic
+            let relevantWpLinks: string[] = [];
+            if (allPosts.length > 0) {
+              const postSummaries: WpPostSummary[] = allPosts.map((p: any) => ({
+                wpPostId: p.wpPostId,
+                title: p.title,
+                slug: p.slug,
+                url: p.url,
+                excerpt: p.excerpt ?? "",
+                categories: JSON.parse(p.categories ?? "[]"),
+                tags: JSON.parse(p.tags ?? "[]"),
+                publishedAt: p.publishedAt?.toISOString() ?? "",
+              }));
+              const relevant = findRelevantPosts(postSummaries, input.idea, 6);
+              relevantWpLinks = relevant.map((p) => `- [${p.title}](${p.url}) — ${p.excerpt.slice(0, 100)}`);
+            }
+
+            // 4. Find relevant verified links for this topic (simple keyword match)
+            const ideaLower = input.idea.toLowerCase();
+            const relevantVerified = verifiedEntries
+              .filter((v) => v.tags.some((t) => ideaLower.includes(t.toLowerCase()) || t.toLowerCase().split(" ").some((w) => ideaLower.includes(w))))
+              .slice(0, 5)
+              .map((v) => `- [${v.title}](${v.url})${v.description ? " — " + v.description.slice(0, 100) : ""}`);
+
+            // Always include the Lights On course and main site as fallback verified links
+            const alwaysInclude = verifiedEntries
+              .filter((v) => v.url === "https://lightson.theurbanmonk.com" || v.url === "https://theurbanmonk.com")
+              .map((v) => `- [${v.title}](${v.url}) — ${v.description?.slice(0, 100) ?? ""}`);
+
+            // 5. Build the combined link block
+            const allLinkLines = Array.from(
+              new Set([...relevantVerified, ...relevantWpLinks, ...alwaysInclude])
+            ).slice(0, 12);
+
+            if (allLinkLines.length > 0) {
+              internalLinkBlock = `\n\nVERIFIED INTERNAL LINK LIST — CRITICAL: You may ONLY use URLs from this list as internal links. Do NOT invent, guess, or construct any theurbanmonk.com URL not shown here. For any topic not covered by a URL in this list, use the placeholder format: [INTERNAL LINK: topic].\n${allLinkLines.join("\n")}`;
+            } else {
+              // No links available — instruct AI to use placeholders only
+              internalLinkBlock = `\n\nVERIFIED INTERNAL LINK LIST — CRITICAL: No pre-verified internal links are available for this topic. Do NOT invent any theurbanmonk.com URLs. Use ONLY the placeholder format for all internal links: [INTERNAL LINK: topic of related article].`;
+            }
           }
         } catch (err) {
-          console.warn("[Blog] Could not load WP post index:", err);
+          console.warn("[Blog] Could not load internal link index:", err);
         }
 
         // Step 1: Generate the full blog article as structured JSON
@@ -1081,6 +1121,30 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
         // Scan the article for [Outbound Link: Source Name — description] placeholders
         // and replace them with real verified URLs via web search.
         articleBody = await resolveOutboundLinkPlaceholders(articleBody);
+
+        // ── INTERNAL URL SCRUBBER ──────────────────────────────────────────────────────────────────────────
+        // Strip any hallucinated theurbanmonk.com URLs not in the verified list.
+        try {
+          const db2 = await getDb();
+          if (db2) {
+            const { verifiedLinks: vlTable } = await import("../drizzle/schema");
+            const { eq: eqOp2 } = await import("drizzle-orm");
+            const activeLinks = await db2.select({ url: vlTable.url }).from(vlTable).where(eqOp2(vlTable.active, true));
+            const { wpPostIndex: wpiTable } = await import("../drizzle/schema");
+            const wpPosts = await db2.select({ url: wpiTable.url }).from(wpiTable).limit(500);
+            const allowedUrls = [
+              ...activeLinks.map((l: any) => l.url as string),
+              ...wpPosts.map((p: any) => p.url as string),
+            ];
+            const scrubResult = scrubHallucinatedUrls(articleBody, allowedUrls);
+            articleBody = scrubResult.body;
+            if (scrubResult.removed.length > 0) {
+              console.warn(`[URLScrubber] Removed ${scrubResult.removed.length} hallucinated URL(s):`, scrubResult.removed);
+            }
+          }
+        } catch (scrubErr) {
+          console.warn("[URLScrubber] Could not run URL scrubber:", scrubErr);
+        }
 
         // ── PASS 2: Extract metadata from the completed article ───────────────────
         // Now that we have the full article, ask the LLM to extract the SEO fields.
@@ -2785,6 +2849,86 @@ Rules:
   llmProjects: llmProjectsRouter,
   utm: utmRouter,
   ingest: ingestGenerateRouter,
+
+  // ── Verified Internal Links ──────────────────────────────────────────────────────────────────────────
+  // Curated whitelist of real URLs the AI may use as internal links in blog posts.
+  verifiedLinks: router({
+    list: protectedProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const { verifiedLinks } = await import("../drizzle/schema");
+      const { asc } = await import("drizzle-orm");
+      return db.select().from(verifiedLinks).orderBy(asc(verifiedLinks.createdAt));
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        url: z.string().url(),
+        title: z.string().min(1).max(512),
+        description: z.string().optional(),
+        topicTags: z.array(z.string()).optional(),
+        active: z.boolean().optional().default(true),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { verifiedLinks } = await import("../drizzle/schema");
+        await db.insert(verifiedLinks).values({
+          url: input.url,
+          title: input.title,
+          description: input.description ?? null,
+          topicTags: JSON.stringify(input.topicTags ?? []),
+          active: input.active ?? true,
+        });
+        return { success: true };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        url: z.string().url().optional(),
+        title: z.string().min(1).max(512).optional(),
+        description: z.string().optional(),
+        topicTags: z.array(z.string()).optional(),
+        active: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { verifiedLinks } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const updates: Record<string, unknown> = {};
+        if (input.url !== undefined) updates.url = input.url;
+        if (input.title !== undefined) updates.title = input.title;
+        if (input.description !== undefined) updates.description = input.description;
+        if (input.topicTags !== undefined) updates.topicTags = JSON.stringify(input.topicTags);
+        if (input.active !== undefined) updates.active = input.active;
+        await db.update(verifiedLinks).set(updates).where(eq(verifiedLinks.id, input.id));
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { verifiedLinks } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await db.delete(verifiedLinks).where(eq(verifiedLinks.id, input.id));
+        return { success: true };
+      }),
+
+    toggleActive: protectedProcedure
+      .input(z.object({ id: z.number(), active: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { verifiedLinks } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await db.update(verifiedLinks).set({ active: input.active }).where(eq(verifiedLinks.id, input.id));
+        return { success: true };
+      }),
+  }),
 
   /**
    * Public opt-in procedure — called from the Home page "Lights On" ebook form.

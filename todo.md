@@ -1484,3 +1484,13 @@
 - [x] Fix image generation for ingest-origin content to use topic-relevant prompts instead of generic ones
 - [x] Add topic-aware image prompt generation to ingestGenerateRouter saveAll and saveGenerated
 - [x] Update ingest.test.ts to cover multi-platform parsing logic
+
+## Verified Internal Links + URL Hallucination Fix (v115)
+- [x] Add verifiedLinks table to schema (url, title, description, topic tags, active flag)
+- [x] Seed table with known real URLs (lightson.theurbanmonk.com, theurbanmonk.com, etc.)
+- [x] Inject verified links into blog generation prompt alongside WP post index
+- [x] Strengthen blog prompt: NEVER invent a theurbanmonk.com URL not in the provided list
+- [x] Add post-generation URL scrubber: flag/strip any theurbanmonk.com URLs not in verified list
+- [x] Build Verified Links management UI in Strategy section
+- [x] Add verifiedLinks CRUD tRPC procedures (list, create, update, delete, toggle active)
+- [x] Write tests for URL scrubber logic

@@ -27,6 +27,7 @@ const AvatarRepository = lazy(() => import("./pages/AvatarRepository"));
 const WordPressSetup = lazy(() => import("./pages/WordPressSetup"));
 const UTMGenerator = lazy(() => import("./pages/UTMGenerator"));
 const IngestInbox = lazy(() => import("./pages/IngestInbox"));
+const VerifiedLinks = lazy(() => import("./pages/VerifiedLinks"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -61,6 +62,7 @@ function Router() {
         <Route path={"/wordpress-setup"} component={WordPressSetup} />
         <Route path={"/utm"} component={UTMGenerator} />
         <Route path={"/ingest"} component={IngestInbox} />
+        <Route path={"/verified-links"} component={VerifiedLinks} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

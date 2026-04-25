@@ -754,3 +754,23 @@ export const ingestReports = mysqlTable("ingest_reports", {
 });
 export type IngestReport = typeof ingestReports.$inferSelect;
 export type InsertIngestReport = typeof ingestReports.$inferInsert;
+
+// ── Verified Internal Links ───────────────────────────────────────────────────
+// A curated whitelist of real, verified URLs that the AI is allowed to use as
+// internal links in blog posts. The AI is strictly forbidden from inventing any
+// theurbanmonk.com URL that is not in this list.
+//
+// Populated manually via the Strategy > Verified Links UI, and auto-seeded with
+// known landing pages and key articles.
+export const verifiedLinks = mysqlTable("verified_links", {
+  id: int("id").autoincrement().primaryKey(),
+  url: varchar("url", { length: 1024 }).notNull().unique(),
+  title: varchar("title", { length: 512 }).notNull(),
+  description: text("description"),                 // 1-2 sentence description for prompt context
+  topicTags: text("topicTags"),                     // JSON: string[] — topic keywords for relevance matching
+  active: boolean("active").default(true).notNull(), // inactive links are excluded from prompts
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type VerifiedLink = typeof verifiedLinks.$inferSelect;
+export type InsertVerifiedLink = typeof verifiedLinks.$inferInsert;

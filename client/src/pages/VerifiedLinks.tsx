@@ -158,10 +158,10 @@ export default function VerifiedLinks() {
             Verified Internal Links
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Only URLs in this list are allowed in generated blog posts. The AI
-            is strictly forbidden from inventing or guessing any
-            theurbanmonk.com URL not shown here. Hallucinated URLs are
-            automatically scrubbed after generation.
+            Only URLs you add here are allowed in generated blog posts. The AI is
+            strictly forbidden from inventing or guessing any theurbanmonk.com URL
+            not explicitly listed. Hallucinated URLs are automatically scrubbed
+            after generation and replaced with safe placeholders.
           </p>
         </div>
         <Button onClick={openCreate} className="shrink-0">
@@ -173,15 +173,10 @@ export default function VerifiedLinks() {
       {/* Info banner */}
       <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
         <Info className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" />
-        <div>
-          <strong>How this works:</strong> Before generating a blog post, the
-          system injects the active links from this list (filtered by topic
-          tags) into the AI prompt as the only allowed internal URLs. After
-          generation, a scrubber scans the article and replaces any
-          theurbanmonk.com link <em>not</em> in this list with a{" "}
-          <code className="bg-black/30 px-1 rounded">[INTERNAL LINK: topic]</code>{" "}
-          placeholder. Topic tags help the AI pick the most relevant links for
-          each article — use keywords like <em>sleep, gut health, meditation</em>.
+        <div className="space-y-1">
+          <p><strong>How this works:</strong> Before generating a blog post, the system injects only the active links from this list into the AI prompt. After generation, a scrubber replaces any theurbanmonk.com link <em>not</em> in this list with a <code className="bg-black/30 px-1 rounded">[INTERNAL LINK: topic]</code> placeholder.</p>
+          <p><strong>Topic tags</strong> help the AI pick the most relevant links for each article. Use keywords like <em>sleep, gut health, meditation, qigong</em>.</p>
+          <p><strong>Only add URLs you have confirmed are real and live.</strong> Do not add guessed or assumed URLs — this list exists specifically to prevent hallucination.</p>
         </div>
       </div>
 

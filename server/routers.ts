@@ -953,14 +953,9 @@ Rules:
               .slice(0, 5)
               .map((v) => `- [${v.title}](${v.url})${v.description ? " — " + v.description.slice(0, 100) : ""}`);
 
-            // Always include the Lights On course and main site as fallback verified links
-            const alwaysInclude = verifiedEntries
-              .filter((v) => v.url === "https://lightson.theurbanmonk.com" || v.url === "https://theurbanmonk.com")
-              .map((v) => `- [${v.title}](${v.url}) — ${v.description?.slice(0, 100) ?? ""}`);
-
-            // 5. Build the combined link block
+            // 5. Build the combined link block — only use what is in the verified list
             const allLinkLines = Array.from(
-              new Set([...relevantVerified, ...relevantWpLinks, ...alwaysInclude])
+              new Set([...relevantVerified, ...relevantWpLinks])
             ).slice(0, 12);
 
             if (allLinkLines.length > 0) {

@@ -1518,3 +1518,12 @@
 - [x] Add FB/IG toggle to Meta tab in IngestInbox GeneratePanel
 - [x] Update saveAll and saveGenerated to handle facebook and instagram as separate platforms
 - [x] Run tests and save checkpoint v117
+
+## v118: URL Audit + Topic-Based CTA Routing
+- [x] Audit and purge all 13 hallucinated URLs from verified_links table
+- [x] Remove hardcoded alwaysInclude filter in blog prompt that assumed specific URLs existed
+- [x] Seed verified_links with only confirmed real URLs (lightson, upstream, theurbanmonk.com)
+- [x] Add topic-based CTA URL routing: meditation/qigong/consciousness → lightson, gut/oral → upstream, everything else → theurbanmonk.com
+- [x] Replace all hardcoded "lightson.theurbanmonk.com" fallbacks in routers.ts with topic-aware routing function
+- [x] Update Verified Links page empty-state with clear instructions (no pre-populated data)
+- [x] Run tests and save checkpoint v118

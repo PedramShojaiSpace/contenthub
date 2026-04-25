@@ -1311,7 +1311,8 @@ export default function CommandCenter() {
   const handleRegenerate = (item: ContentItem) => {
     setRegeneratingId(item.id);
     regenerateImageMutation.mutate({
-      prompt: item.title,
+      // Prefer the stored imagePrompt (topic-aware) over the generic title
+      prompt: (item as any).imagePrompt || item.title,
       contentItemId: item.id,
       platform: (item.platform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all") ?? "all",
     });

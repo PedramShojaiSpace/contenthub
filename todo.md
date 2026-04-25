@@ -1475,3 +1475,12 @@
 ## Ingest Badge + Generate All (v113)
 - [x] Add "Ingest" badge to Command Center DraggableCard for items with ingestReportId set
 - [x] Add "Generate All & Save All" one-click button to IngestInbox report cards
+
+## Ingest Multi-Platform Parsing + Image Fix (v114)
+- [x] Parse ingest "social" content packs into separate X and Instagram/Meta ContentItems per post (not one blob)
+- [x] Support new ingest format: generatedContent as markdown with ## POST N sections + TWITTER/X and INSTAGRAM versions
+- [x] Create one ContentItem per platform per post number (e.g. 5 posts × 2 platforms = 10 ContentItems)
+- [x] Use post type (Hook/Stat, Myth-Busting, Practical Tip, Quote/Insight, CTA) as part of the ContentItem title
+- [x] Fix image generation for ingest-origin content to use topic-relevant prompts instead of generic ones
+- [x] Add topic-aware image prompt generation to ingestGenerateRouter saveAll and saveGenerated
+- [x] Update ingest.test.ts to cover multi-platform parsing logic

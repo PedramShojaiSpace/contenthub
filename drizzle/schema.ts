@@ -33,7 +33,7 @@ export const platformEnum = mysqlEnum("platform", [
   "tiktok",
   "blog",
   "carousel",
-  "all",
+  "email",
 ]);
 
 export const contentGoalEnum = mysqlEnum("contentGoal", [
@@ -46,7 +46,7 @@ export const contentItems = mysqlTable("content_items", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   rawIdea: text("rawIdea"),
-  platform: platformEnum.notNull().default("all"),
+  platform: platformEnum.notNull().default("linkedin"),
   status: contentStatusEnum.notNull().default("idea"),
   textContent: text("textContent"),
   imageUrl: text("imageUrl"),
@@ -104,7 +104,7 @@ export type InsertPlatformStrategy = typeof platformStrategies.$inferInsert;
 export const generatedImages = mysqlTable("generated_images", {
   id: int("id").autoincrement().primaryKey(),
   contentItemId: int("contentItemId"),
-  platform: platformEnum.default("all"),
+  platform: platformEnum.default("linkedin"),
   imageUrl: text("imageUrl").notNull(),
   imageKey: text("imageKey"),
   prompt: text("prompt"),
@@ -262,7 +262,7 @@ export const scripts = mysqlTable("scripts", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   scriptType: scriptTypeEnum.notNull().default("video"),
-  platform: platformEnum.default("all"),
+  platform: platformEnum.default("youtube"),
   personaId: int("personaId"),
   contentGoal: contentGoalEnum.default("audience_growth"),
   productionStatus: scriptStatusEnum.notNull().default("idea"),

@@ -49,7 +49,7 @@ import { useLocation } from "wouter";
 
 type ScriptType = "video" | "carousel" | "blog" | "email" | "reel";
 type ProductionStatus = "idea" | "scripted" | "in_production" | "in_edit" | "ready_to_post" | "published";
-type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "carousel" | "all";
+type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "carousel" | "email";
 type ContentGoal = "audience_growth" | "llm_seo" | "community_engagement";
 
 interface Script {
@@ -114,7 +114,7 @@ const PLATFORM_BADGE: Record<Platform, string> = {
   tiktok:   "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200",
   blog:     "bg-emerald-50 text-emerald-700 border border-emerald-200",
   carousel: "bg-violet-50 text-violet-700 border border-violet-200",
-  all:      "bg-muted text-muted-foreground border border-border",
+  email:    "bg-amber-50 text-amber-700 border border-amber-200",
 };
 
 const GOAL_BADGE: Record<ContentGoal, string> = {
@@ -384,7 +384,7 @@ function ScriptCard({
           {TYPE_ICONS[script.scriptType]}
           {script.scriptType}
         </span>
-        {script.platform && script.platform !== "all" && (
+        {script.platform && (
           <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${PLATFORM_BADGE[script.platform]}`}>
             {script.platform}
           </span>
@@ -794,7 +794,7 @@ export default function ScriptLibrary() {
         setHighlightedScriptId(id);
         // Auto-switch to the correct platform tab
         const targetScript = allScripts.find((s) => s.id === id);
-        if (targetScript?.platform && targetScript.platform !== "all") {
+        if (targetScript?.platform) {
           setPlatformFilter(targetScript.platform as Platform);
         }
         // Clear highlight after 5 seconds

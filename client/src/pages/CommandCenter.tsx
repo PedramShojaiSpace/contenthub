@@ -85,7 +85,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
-type Platform = "meta" | "linkedin" | "x" | "youtube" | "all";
+type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel";
 type Status = "idea" | "drafting" | "review" | "approved" | "scheduled" | "published";
 
 type ContentItem = {
@@ -127,7 +127,8 @@ const PLATFORM_ICONS: Record<string, React.ReactNode> = {
   youtube: <Youtube className="h-3 w-3" />,
   tiktok: <Music2 className="h-3 w-3" />,
   blog: <BookMarked className="h-3 w-3" />,
-  all: <span className="text-[10px] font-bold">ALL</span>,
+  email: <Send className="h-3 w-3" />,
+  carousel: <Film className="h-3 w-3" />,
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -137,7 +138,8 @@ const PLATFORM_COLORS: Record<string, string> = {
   youtube: "bg-red-500/20 text-red-300 border-red-500/30",
   tiktok: "bg-pink-500/20 text-pink-300 border-pink-500/30",
   blog: "bg-stone-500/20 text-stone-300 border-stone-500/30",
-  all: "bg-primary/20 text-primary border-primary/30",
+  email: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  carousel: "bg-violet-500/20 text-violet-300 border-violet-500/30",
 };
 
 // Element logo variant per platform (brand identity: each platform maps to a Wu Xing element)
@@ -149,7 +151,8 @@ const PLATFORM_ELEMENT_LOGO: Record<string, string> = {
   tiktok:   `${CDN_BASE}/The_Urban_Monk-Icon-Earth_04456ace.png`,  // Earth — grounded, community
   x:        `${CDN_BASE}/The_Urban_Monk-Icon-Metal_47202c2f.png`,  // Metal — precision, clarity
   blog:     `${CDN_BASE}/The_Urban_Monk-Icon-Yin_90acff39.png`,    // Yin — depth, long-form
-  all:      `${CDN_BASE}/The_Urban_Monk-Icon-Yang_b22ccc65.png`,   // Yang — all-encompassing
+  email:    `${CDN_BASE}/The_Urban_Monk-Icon-Yang_b22ccc65.png`,   // Yang — newsletter, outreach
+  carousel: `${CDN_BASE}/The_Urban_Monk-Icon-Earth_04456ace.png`,  // Earth — grounded, multi-frame
 };
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1070,7 +1073,7 @@ export default function CommandCenter() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newIdea, setNewIdea] = useState("");
-  const [newPlatform, setNewPlatform] = useState<Platform>("all");
+  const [newPlatform, setNewPlatform] = useState<Platform>("linkedin");
   const [viewMode, setViewMode] = useState<"kanban" | "calendar" | "personas">("kanban");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1314,7 +1317,7 @@ export default function CommandCenter() {
       // Prefer the stored imagePrompt (topic-aware) over the generic title
       prompt: (item as any).imagePrompt || item.title,
       contentItemId: item.id,
-      platform: (item.platform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all") ?? "all",
+      platform: (item.platform as Platform) ?? "linkedin",
     });
   };
 
@@ -1329,7 +1332,7 @@ export default function CommandCenter() {
       setIsCreateOpen(false);
       setNewTitle("");
       setNewIdea("");
-      setNewPlatform("all");
+      setNewPlatform("linkedin");
       toast.success("Content item created!");
     },
   });

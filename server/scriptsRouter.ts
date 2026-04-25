@@ -8,7 +8,7 @@ import { eq, desc, asc } from "drizzle-orm";
 
 const scriptStatusValues = ["idea", "scripted", "in_production", "in_edit", "ready_to_post", "published"] as const;
 const scriptTypeValues = ["video", "carousel", "blog", "email", "reel"] as const;
-const platformValues = ["meta", "linkedin", "x", "youtube", "tiktok", "blog", "carousel", "all"] as const;
+const platformValues = ["meta", "linkedin", "x", "youtube", "tiktok", "blog", "carousel", "email"] as const;
 const contentGoalValues = ["audience_growth", "llm_seo", "community_engagement"] as const;
 
 export const scriptsRouter = router({
@@ -71,7 +71,7 @@ export const scriptsRouter = router({
       const [result] = await db.insert(scripts).values({
         title: input.title,
         scriptType: input.scriptType,
-        platform: input.platform ?? "all",
+        platform: input.platform ?? "youtube",
         personaId: input.personaId,
         contentGoal: input.contentGoal ?? "audience_growth",
         productionStatus: input.productionStatus,
@@ -160,7 +160,7 @@ export const scriptsRouter = router({
         // Insert the content item
         const [insertResult] = await db.insert(contentItems).values({
           title: contentTitle,
-          platform: (script.platform ?? "all") as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "all",
+          platform: (script.platform ?? "youtube") as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
           status: contentStatus,
           textContent: script.scriptBody ?? script.notes ?? "",
           personaId: script.personaId ?? undefined,

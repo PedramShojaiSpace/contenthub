@@ -1527,3 +1527,16 @@
 - [x] Replace all hardcoded "lightson.theurbanmonk.com" fallbacks in routers.ts with topic-aware routing function
 - [x] Update Verified Links page empty-state with clear instructions (no pre-populated data)
 - [x] Run tests and save checkpoint v118
+
+## v119: Remove "all" and "ingest" platform values from Kanban
+- [x] Audit all places "all" and "ingest" are assigned as ContentItem platform values
+- [x] Remove "all" from platformEnum in drizzle/schema.ts; add "email"
+- [x] Fix ingestRouter.ts: email→"email", summary/raw_report→"blog", fallback→"blog"
+- [x] Fix ingestGenerateRouter.ts: saveAll platforms array and saveGenerated enum
+- [x] Fix scriptsRouter.ts: remove "all" from platformValues, default to "youtube"
+- [x] Fix CommandCenter.tsx: Platform type, PLATFORM_ICONS, PLATFORM_COLORS, PLATFORM_ELEMENT_LOGO
+- [x] Fix ScriptLibrary.tsx: Platform type, PLATFORM_BADGE, "all" comparisons
+- [x] Fix IngestInbox.tsx: email tab platform "all"→"email", savedTabs set
+- [x] Migrate DB: ALTER TABLE to add "email", UPDATE "all"→"email", remove "all" from enum
+- [x] 149 tests passing, 0 TypeScript errors
+- [x] Run tests and save checkpoint v119

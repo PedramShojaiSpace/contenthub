@@ -341,7 +341,7 @@ export const appRouter = router({
         z.object({
           title: z.string().min(1),
           rawIdea: z.string().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]).default("all"),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel"]).default("linkedin"),
           status: z
             .enum(["idea", "drafting", "review", "approved", "scheduled", "published"])
             .default("idea"),
@@ -371,7 +371,7 @@ export const appRouter = router({
           id: z.number(),
           title: z.string().optional(),
           rawIdea: z.string().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]).optional(),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel"]).optional(),
           status: z
             .enum(["idea", "drafting", "review", "approved", "scheduled", "published"])
             .optional(),
@@ -438,7 +438,7 @@ export const appRouter = router({
       .input(
         z.object({
           idea: z.string().min(1),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel", "all"]),
           customInstructions: z.string().optional(),
           generateImages: z.boolean().default(true), // auto-generate images alongside content
           personaId: z.number().optional(), // inject Typeform-enriched persona pain points
@@ -704,7 +704,7 @@ Rules:
       .input(
         z.object({
           textContent: z.string(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel"]),
         })
       )
       .mutation(async ({ input }) => {
@@ -742,12 +742,12 @@ Rules:
         z.object({
           prompt: z.string(),
           contentItemId: z.number().optional(),
-          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "all"]).optional(),
+          platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel"]).optional(),
           styleOverride: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const platformStyle = PLATFORM_IMAGE_STYLES[input.platform ?? "all"] ?? DEFAULT_IMAGE_STYLE;
+        const platformStyle = PLATFORM_IMAGE_STYLES[input.platform ?? "linkedin"] ?? DEFAULT_IMAGE_STYLE;
         const styleToUse = input.styleOverride || platformStyle;
         const fullPrompt = `${input.prompt}. Visual style: ${styleToUse}`;
         const { url } = await generateImage({ prompt: fullPrompt });
@@ -761,7 +761,7 @@ Rules:
         if (drizzleDb && url) {
           await drizzleDb.insert(genImagesTable).values({
             contentItemId: input.contentItemId ?? undefined,
-            platform: input.platform ?? "all",
+            platform: input.platform ?? "linkedin",
             imageUrl: url,
             prompt: input.prompt,
           });

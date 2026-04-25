@@ -327,7 +327,7 @@ HASHTAGS: None — this is a blog post.`,
       if (!db) throw new Error("Database unavailable");
 
       const platforms: Array<{
-        platform: "linkedin" | "x" | "meta" | "youtube" | "blog" | "all";
+        platform: "linkedin" | "x" | "meta" | "youtube" | "blog" | "email";
         key: "linkedin" | "x" | "meta" | "youtube" | "blog" | "email";
         label: string;
       }> = [
@@ -336,7 +336,7 @@ HASHTAGS: None — this is a blog post.`,
         { platform: "meta", key: "meta", label: "Meta (Facebook/Instagram)" },
         { platform: "youtube", key: "youtube", label: "YouTube" },
         { platform: "blog", key: "blog", label: "Blog Post" },
-        { platform: "all", key: "email", label: "Email Newsletter" },
+        { platform: "email", key: "email", label: "Email Newsletter" },
       ];
 
       const insertedIds: number[] = [];
@@ -366,7 +366,7 @@ HASHTAGS: None — this is a blog post.`,
     .input(
       z.object({
         reportId: z.number(),
-        platform: z.enum(["linkedin", "x", "meta", "youtube", "blog", "all"]),
+        platform: z.enum(["linkedin", "x", "meta", "youtube", "blog", "email", "carousel"]),
         title: z.string(),
         textContent: z.string(),
         ctaBlockLabel: z.string().optional(),

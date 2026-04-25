@@ -144,7 +144,7 @@ function GeneratePanel({ report }: { report: IngestReport }) {
 
   const saveAllMutation = trpc.ingest.saveAll.useMutation({
     onSuccess: (data) => {
-      setSavedTabs(new Set(["linkedin", "x", "meta", "youtube", "blog", "all"]));
+      setSavedTabs(new Set(["linkedin", "x", "meta", "youtube", "blog", "email"]));
       toast.success(`${data.saved} pieces saved to Command Center!`, {
         action: {
           label: "View →",
@@ -263,7 +263,7 @@ function GeneratePanel({ report }: { report: IngestReport }) {
       label: "Email Newsletter",
       shortLabel: "Email",
       icon: <Mail className="w-4 h-4" />,
-      platform: "all" as const,
+      platform: "email" as const,
       color: "text-amber-600",
     },
   ];

@@ -1,0 +1,3 @@
+ALTER TABLE `content_items` MODIFY COLUMN `platform` enum('meta','linkedin','x','youtube','tiktok','blog','carousel','email') NOT NULL DEFAULT 'linkedin';--> statement-breakpoint
+ALTER TABLE `generated_images` MODIFY COLUMN `platform` enum('meta','linkedin','x','youtube','tiktok','blog','carousel','email') NOT NULL DEFAULT 'linkedin';--> statement-breakpoint
+ALTER TABLE `scripts` MODIFY COLUMN `platform` enum('meta','linkedin','x','youtube','tiktok','blog','carousel','email') NOT NULL DEFAULT 'youtube';

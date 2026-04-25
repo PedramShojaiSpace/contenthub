@@ -14,7 +14,7 @@
  *   - INSTAGRAM VERSION  → platform "meta"
  *   - LINKEDIN VERSION   → platform "linkedin"
  *   - FACEBOOK VERSION   → platform "meta"
- *   - EMAIL VERSION      → platform "all"
+ *   - EMAIL VERSION      → platform "email"
  * Each parsed piece becomes its own ContentItem in the Kanban.
  */
 
@@ -53,7 +53,7 @@ interface IngestPayload {
 // ── Parsed content piece ──────────────────────────────────────────────────────
 
 interface ParsedPiece {
-  platform: "x" | "meta" | "linkedin" | "youtube" | "tiktok" | "blog" | "all";
+  platform: "x" | "meta" | "linkedin" | "youtube" | "tiktok" | "blog" | "email";
   postType: string;       // e.g. "Hook/Stat Post", "Myth-Busting Post"
   postNumber: number;
   textContent: string;
@@ -81,8 +81,8 @@ function headerToPlatform(header: string): ParsedPiece["platform"] {
   if (h.includes("FACEBOOK")) return "meta";
   if (h.includes("TIKTOK")) return "tiktok";
   if (h.includes("YOUTUBE")) return "youtube";
-  if (h.includes("EMAIL")) return "all";
-  return "all";
+  if (h.includes("EMAIL")) return "email";
+  return "email";  // fallback: treat unknown as email newsletter
 }
 
 /**
@@ -252,14 +252,14 @@ export async function handleIngestResearchReport(req: Request, res: Response) {
       }
     } else {
       // ── Single-format content: create one ContentItem ──
-      const formatToPlatform: Record<string, "blog" | "meta" | "linkedin" | "x" | "youtube" | "all"> = {
+      const formatToPlatform: Record<string, "blog" | "meta" | "linkedin" | "x" | "youtube" | "email"> = {
         blog: "blog",
         social: "meta",
-        email: "all",
-        summary: "all",
-        raw_report: "all",
+        email: "email",
+        summary: "blog",
+        raw_report: "blog",
       };
-      const platform = formatToPlatform[body.format] ?? "all";
+      const platform = formatToPlatform[body.format] ?? "blog";
       const [r] = await db.insert(contentItems).values({
         title: body.title,
         rawIdea: `[Ingest: ${body.source}] ${body.topic}`,

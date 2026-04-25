@@ -1505,3 +1505,16 @@
 - [x] Add "Generate Script" button on YouTube tab in IngestInbox that opens Script Generator pre-filled
 - [x] Wire YouTube ingest card in Command Center to Script Generator via existing linkedScriptId flow
 - [x] Add tests for 6-platform generate flow
+
+## v117: YouTube Script Link + Ingest Processed Badge + Meta FB/IG Split
+- [x] Add linkedScriptId column to contentItems schema (nullable int, FK to scripts table)
+- [x] Run db:push to migrate schema
+- [x] Update ingestGenerateRouter.ts generateScript flow to store linkedScriptId on YouTube ContentItem
+- [x] Add "View Script" button to DraggableCard in CommandCenter.tsx for youtube platform cards with linkedScriptId
+- [x] Add ingest.countByReport query to return ContentItem count per ingestReportId
+- [x] Show processed badge on ReportCard in IngestInbox when count > 0 (e.g. "6 cards created")
+- [x] Add FACEBOOK_VOICE and INSTAGRAM_VOICE prompts to ingestGenerateRouter.ts
+- [x] Expand generateFromReport to generate facebook and instagram as separate fields
+- [x] Add FB/IG toggle to Meta tab in IngestInbox GeneratePanel
+- [x] Update saveAll and saveGenerated to handle facebook and instagram as separate platforms
+- [x] Run tests and save checkpoint v117

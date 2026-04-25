@@ -54,7 +54,9 @@ interface GeneratedContent {
   campaign: string;
   linkedin: string;
   x: string;
-  meta: string;
+  facebook: string;
+  instagram: string;
+  meta: string; // backward compat — same as facebook
   youtube: string;
   blog: string;
   email: string;
@@ -113,6 +115,7 @@ function GeneratePanel({ report }: { report: IngestReport }) {
   const [generated, setGenerated] = useState<GeneratedContent | null>(null);
   const [savedTabs, setSavedTabs] = useState<Set<string>>(new Set());
   const [generatingScript, setGeneratingScript] = useState(false);
+  const [metaVariant, setMetaVariant] = useState<"facebook" | "instagram">("facebook");
 
   const utils = trpc.useUtils();
 
@@ -152,24 +155,28 @@ function GeneratePanel({ report }: { report: IngestReport }) {
     onError: (err) => toast.error(`Save all failed: ${err.message}`),
   });
 
-  // Generate a teleprompter script from the YouTube description and navigate to Script Library
-  const generateScriptMutation = trpc.research.generateTeleprompterScript.useMutation({
-    onSuccess: async (data) => {
-      // Save the YouTube card first if not already saved, then navigate to Script Library
-      if (!savedTabs.has("youtube") && generated) {
-        await saveMutation.mutateAsync({
-          reportId: report.id,
-          platform: "youtube",
-          title: `${generated.reportTitle} — YouTube`,
-          textContent: generated.youtube,
-          ctaBlockLabel: generated.ctaLabel,
-        });
+  // Track the saved YouTube ContentItem ID so we can link the script to it
+  const [savedYoutubeItemId, setSavedYoutubeItemId] = useState<number | null>(null);
+  const [generatedScriptId, setGeneratedScriptId] = useState<number | null>(null);
+
+  // Override saveMutation to capture the YouTube ContentItem ID
+  const saveYoutubeMutation = trpc.ingest.saveGenerated.useMutation({
+    onSuccess: (data, vars) => {
+      if (vars.platform === "youtube") {
+        setSavedYoutubeItemId(data.contentItemId);
+        setSavedTabs((prev) => { const next = new Set(prev); next.add("youtube"); return next; });
       }
+    },
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
+  });
+
+  // Generate + save script via the new generateAndSaveScript procedure
+  const generateAndSaveScriptMutation = trpc.ingest.generateAndSaveScript.useMutation({
+    onSuccess: (data) => {
       setGeneratingScript(false);
-      // Navigate to Script Library — the script was auto-saved there
-      navigate("/scripts");
+      setGeneratedScriptId(data.scriptId);
       toast.success("Script generated and saved to Script Library!", {
-        action: { label: "View Scripts →", onClick: () => navigate("/scripts") },
+        action: { label: "View Script →", onClick: () => navigate(`/script-library?scriptId=${data.scriptId}`) },
       });
     },
     onError: (err) => {
@@ -178,18 +185,36 @@ function GeneratePanel({ report }: { report: IngestReport }) {
     },
   });
 
-  const handleGenerateScript = () => {
+  const handleGenerateScript = async () => {
     if (!generated) return;
     setGeneratingScript(true);
-    // Extract the spoken hook from the YouTube description if present
-    const youtubeText = generated.youtube;
-    const spokenHookMatch = youtubeText.match(/SPOKEN HOOK:\s*\n+([\s\S]+?)(?:\n\n|$)/i);
-    const spokenHook = spokenHookMatch ? spokenHookMatch[1].trim() : "";
-    // Use the full topic + spoken hook as the script title/prompt
-    const scriptTitle = spokenHook
-      ? `${generated.reportTitle} — ${spokenHook.slice(0, 120)}`
-      : generated.reportTitle;
-    generateScriptMutation.mutate({ title: scriptTitle, platform: "youtube" });
+
+    // 1. Save the YouTube card first if not already saved, to get a ContentItem ID
+    let contentItemId = savedYoutubeItemId;
+    if (!contentItemId) {
+      try {
+        const saved = await saveYoutubeMutation.mutateAsync({
+          reportId: report.id,
+          platform: "youtube",
+          title: `${generated.reportTitle} — YouTube`,
+          textContent: generated.youtube,
+          ctaBlockLabel: generated.ctaLabel,
+        });
+        contentItemId = saved.contentItemId;
+      } catch (err) {
+        setGeneratingScript(false);
+        toast.error("Could not save YouTube card before generating script.");
+        return;
+      }
+    }
+
+    // 2. Generate script and link it to the ContentItem
+    generateAndSaveScriptMutation.mutate({
+      contentItemId,
+      reportTitle: generated.reportTitle,
+      youtubeDescription: generated.youtube,
+      topic: generated.topic,
+    });
   };
 
   const platformConfig = [
@@ -355,20 +380,30 @@ function GeneratePanel({ report }: { report: IngestReport }) {
                     {p.label}
                   </span>
                   <div className="flex gap-2 flex-wrap">
-                    <CopyButton text={generated[p.key]} />
+                    <CopyButton text={
+                      p.key === "meta"
+                        ? (metaVariant === "facebook" ? generated.facebook : generated.instagram)
+                        : generated[p.key]
+                    } />
                     <Button
                       size="sm"
                       variant={savedTabs.has(p.platform) ? "outline" : "default"}
                       disabled={saveMutation.isPending || savedTabs.has(p.platform)}
-                      onClick={() =>
+                      onClick={() => {
+                        const textContent = p.key === "meta"
+                          ? (metaVariant === "facebook" ? generated.facebook : generated.instagram)
+                          : generated[p.key];
+                        const label = p.key === "meta"
+                          ? `${generated.reportTitle} — ${metaVariant === "facebook" ? "Facebook" : "Instagram"}`
+                          : `${generated.reportTitle} — ${p.label}`;
                         saveMutation.mutate({
                           reportId: report.id,
                           platform: p.platform,
-                          title: `${generated.reportTitle} — ${p.label}`,
-                          textContent: generated[p.key],
+                          title: label,
+                          textContent,
                           ctaBlockLabel: generated.ctaLabel,
-                        })
-                      }
+                        });
+                      }}
                       className="gap-1.5"
                     >
                       {savedTabs.has(p.platform) ? (
@@ -381,27 +416,40 @@ function GeneratePanel({ report }: { report: IngestReport }) {
                       )}
                     </Button>
 
-                    {/* YouTube-only: Generate Script button */}
+                    {/* YouTube-only: Generate Script + View Script buttons */}
                     {p.key === "youtube" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={generatingScript || generateScriptMutation.isPending}
-                        onClick={handleGenerateScript}
-                        className="gap-1.5 border-red-500/40 text-red-600 hover:bg-red-500/10"
-                      >
-                        {generatingScript || generateScriptMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            Generating script…
-                          </>
-                        ) : (
-                          <>
-                            <Clapperboard className="w-3.5 h-3.5" />
-                            Generate Script
-                          </>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={generatingScript || generateAndSaveScriptMutation.isPending}
+                          onClick={handleGenerateScript}
+                          className="gap-1.5 border-red-500/40 text-red-600 hover:bg-red-500/10"
+                        >
+                          {generatingScript || generateAndSaveScriptMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Generating script…
+                            </>
+                          ) : (
+                            <>
+                              <Clapperboard className="w-3.5 h-3.5" />
+                              Generate Script
+                            </>
+                          )}
+                        </Button>
+                        {generatedScriptId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate(`/script-library?scriptId=${generatedScriptId}`)}
+                            className="gap-1.5 border-violet-500/40 text-violet-600 hover:bg-violet-500/10"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            View Script
+                          </Button>
                         )}
-                      </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -428,8 +476,36 @@ function GeneratePanel({ report }: { report: IngestReport }) {
                   </div>
                 )}
 
+                {/* Meta tab: Facebook / Instagram toggle */}
+                {p.key === "meta" && (
+                  <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-0.5 w-fit">
+                    <button
+                      onClick={() => setMetaVariant("facebook")}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                        metaVariant === "facebook"
+                          ? "bg-background shadow text-blue-700 dark:text-blue-400"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Facebook
+                    </button>
+                    <button
+                      onClick={() => setMetaVariant("instagram")}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                        metaVariant === "instagram"
+                          ? "bg-background shadow text-pink-600 dark:text-pink-400"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Instagram
+                    </button>
+                  </div>
+                )}
+
                 <div className="bg-muted/40 rounded-lg p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto border">
-                  {generated[p.key]}
+                  {p.key === "meta"
+                    ? (metaVariant === "facebook" ? generated.facebook : generated.instagram)
+                    : generated[p.key]}
                 </div>
               </TabsContent>
             ))}
@@ -442,7 +518,7 @@ function GeneratePanel({ report }: { report: IngestReport }) {
 
 // ── ReportCard ────────────────────────────────────────────────────────────────
 
-function ReportCard({ report }: { report: IngestReport }) {
+function ReportCard({ report, cardCount = 0 }: { report: IngestReport; cardCount?: number }) {
   const [expanded, setExpanded] = useState(false);
   const [showGenerate, setShowGenerate] = useState(false);
 
@@ -458,6 +534,12 @@ function ReportCard({ report }: { report: IngestReport }) {
               <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
                 {sourceLabel(report.source)}
               </Badge>
+              {cardCount > 0 && (
+                <Badge className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-300/40 gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {cardCount} card{cardCount !== 1 ? "s" : ""} created
+                </Badge>
+              )}
               <Badge variant="outline" className="text-xs">
                 {report.format}
               </Badge>
@@ -535,6 +617,13 @@ function ReportCard({ report }: { report: IngestReport }) {
 
 export default function IngestInbox() {
   const { data: reports, isLoading } = trpc.ingest.list.useQuery();
+  const { data: countData } = trpc.ingest.countByReport.useQuery();
+
+  // Build a map of reportId → card count
+  const cardCountMap = new Map<number, number>();
+  for (const row of countData ?? []) {
+    cardCountMap.set(row.reportId, row.count);
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
@@ -584,7 +673,7 @@ export default function IngestInbox() {
       ) : (
         <div className="space-y-4">
           {reports.map((report) => (
-            <ReportCard key={report.id} report={report as IngestReport} />
+            <ReportCard key={report.id} report={report as IngestReport} cardCount={cardCountMap.get(report.id) ?? 0} />
           ))}
         </div>
       )}

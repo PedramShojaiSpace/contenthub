@@ -10,8 +10,8 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { ingestReports, contentItems } from "../drizzle/schema";
-import { desc, eq } from "drizzle-orm";
+import { ingestReports, contentItems, scripts } from "../drizzle/schema";
+import { sql, desc, eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } from "./ctaRouter";
 
@@ -50,22 +50,39 @@ POST STRUCTURE (invisible — do not label these):
 - Add #urbanmonk at the very end if character budget allows
 CONTENT PILLARS: Gut health, sleep, stress physiology, upstream medicine, ancient practices, the one thing most doctors don't tell you.`;
 
-const META_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on Facebook and Instagram. His audience is health-conscious adults aged 35-60 who are interested in wellness, longevity, and natural living.
-VOICE: Warm, relatable, community-oriented. Pedram speaks as a trusted guide — approachable but authoritative. Storytelling-forward. Invites conversation and reflection.
+const FACEBOOK_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a Facebook post. His audience is health-conscious adults aged 35-60 who value wellness, longevity, and natural living.
+VOICE: Warm, conversational, community-oriented. Pedram speaks as a trusted friend who happens to be a doctor. Storytelling-forward. Invites discussion and reflection. Facebook allows longer, more personal posts — use that space.
 CRITICAL OUTPUT RULES:
 - Output ONLY the finished post text — nothing else
 - Do NOT include any labels, headers, or structural markers (no "Hook:", "Caption:", "CTA:", "---", or any similar markup)
 - Do NOT include any meta-commentary, instructions, or explanations
-- The output must be copy-paste ready to publish on Facebook or Instagram
+- The output must be copy-paste ready to publish on Facebook
 - Start with the first word of the post itself
 POST STRUCTURE (invisible — do not label these):
-- Opening: a relatable question, surprising fact, or personal observation (1-2 sentences) — hook the scroll
-- 2-4 short paragraphs: the insight, why it matters, what to do
-- Closing: an engaging question to invite comments, or a warm call to action
-- 100-200 words total for Facebook; 80-150 words for Instagram
-- Add 5-8 relevant hashtags at the very end on their own line — always include #urbanmonk and #theurbanmonk
+- Opening: a personal story, relatable question, or surprising fact (2-3 sentences) — hook the scroll
+- 3-5 short paragraphs: the insight, why it matters, a practical takeaway, and a personal reflection
+- Closing: an engaging question to invite comments (e.g. "Has this happened to you? Tell me below.")
+- 150-250 words total — Facebook rewards longer, more personal content
+- Add 3-5 relevant hashtags at the very end on their own line — always include #urbanmonk
 - Use line breaks between paragraphs for mobile readability
 CONTENT PILLARS: Gut health, sleep, stress relief, natural remedies, mindfulness, longevity, family wellness, ancient wisdom for modern life.`;
+
+const INSTAGRAM_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing an Instagram caption. His audience is health-conscious adults aged 28-50 who follow wellness, biohacking, and mindfulness content.
+VOICE: Punchy, visual, aspirational. Pedram is the wise guide who makes you feel empowered. Short, impactful sentences. Every word earns its place. Instagram is visual-first — the caption supports the image.
+CRITICAL OUTPUT RULES:
+- Output ONLY the finished caption text — nothing else
+- Do NOT include any labels, headers, or structural markers (no "Hook:", "Caption:", "CTA:", "---", or any similar markup)
+- Do NOT include any meta-commentary, instructions, or explanations
+- The output must be copy-paste ready to publish on Instagram
+- Start with the first word of the caption itself
+CAPTION STRUCTURE (invisible — do not label these):
+- Opening line: a bold, scroll-stopping statement or question (1 sentence max) — this is what shows before "more"
+- 2-3 short punchy paragraphs: the key insight, why it matters, one actionable step
+- Closing: a brief, warm CTA ("Save this.", "Share with someone who needs it.", or a question)
+- 80-130 words total — Instagram rewards concise, punchy captions
+- Add 8-12 relevant hashtags at the very end on their own line — always include #urbanmonk #theurbanmonk #wellness
+- Use single line breaks between paragraphs for mobile readability
+CONTENT PILLARS: Gut health, sleep optimization, stress physiology, mindfulness, longevity, ancient practices, functional medicine.`;
 
 const YOUTUBE_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a YouTube video description and hook script. His audience is health-conscious adults who want to understand the root causes of their health issues.
 VOICE: Educational, engaging, documentary-style. Pedram is the knowledgeable guide who makes complex science accessible. Builds curiosity and trust. Cinematic and purposeful.
@@ -178,8 +195,8 @@ ${report.narrativeHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slic
 ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructions}` : ""}
 `.trim();
 
-      // 4. Generate all 6 content types in parallel
-      const [linkedinResult, xResult, metaResult, youtubeResult, blogResult, emailResult] = await Promise.all([
+      // 4. Generate all 7 content types in parallel (Facebook + Instagram separately)
+      const [linkedinResult, xResult, facebookResult, instagramResult, youtubeResult, blogResult, emailResult] = await Promise.all([
         // LinkedIn
         invokeLLM({
           messages: [
@@ -200,13 +217,23 @@ ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructi
             },
           ],
         }),
-        // Meta (Facebook / Instagram)
+        // Facebook
         invokeLLM({
           messages: [
-            { role: "system", content: META_VOICE },
+            { role: "system", content: FACEBOOK_VOICE },
             {
               role: "user",
-              content: `Write a Facebook/Instagram post based on this research:\n\n${researchContext}\n\nEnd the post with this CTA (warm, conversational):\n${ctaLine(metaCtaUrl)}`,
+              content: `Write a Facebook post based on this research:\n\n${researchContext}\n\nEnd the post with this CTA (warm, conversational):\n${ctaLine(metaCtaUrl)}`,
+            },
+          ],
+        }),
+        // Instagram
+        invokeLLM({
+          messages: [
+            { role: "system", content: INSTAGRAM_VOICE },
+            {
+              role: "user",
+              content: `Write an Instagram caption based on this research:\n\n${researchContext}\n\nEnd with a brief CTA:\n${ctaLine(metaCtaUrl)}`,
             },
           ],
         }),
@@ -267,7 +294,10 @@ HASHTAGS: None — this is a blog post.`,
         campaign,
         linkedin: extractText(linkedinResult),
         x: extractText(xResult),
-        meta: extractText(metaResult),
+        facebook: extractText(facebookResult),
+        instagram: extractText(instagramResult),
+        // Keep meta as Facebook for backward compat (saveGenerated uses meta platform)
+        meta: extractText(facebookResult),
         youtube: extractText(youtubeResult),
         blog: extractText(blogResult),
         email: extractText(emailResult),
@@ -359,4 +389,96 @@ HASHTAGS: None — this is a blog post.`,
 
       return { contentItemId: (result as any).insertId as number };
     }),
+
+  /**
+   * Generate a full teleprompter script from a YouTube ContentItem and save it
+   * to the Script Library. Updates the ContentItem's linkedScriptId.
+   * Returns the new script ID so the UI can deep-link to it.
+   */
+  generateAndSaveScript: protectedProcedure
+    .input(
+      z.object({
+        contentItemId: z.number(),
+        reportTitle: z.string(),
+        youtubeDescription: z.string(),
+        topic: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      // Extract the spoken hook if present (first 2-3 sentences after SPOKEN HOOK:)
+      const hookMatch = input.youtubeDescription.match(/SPOKEN HOOK:\s*\n+([\s\S]+?)(?:\n\n|$)/i);
+      const spokenHook = hookMatch ? hookMatch[1].trim() : "";
+
+      // Build the script generation prompt
+      const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Taoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
+
+Your task: Write a FULL teleprompter-ready YouTube video script on the topic below.
+
+Topic: "${input.reportTitle}"
+${spokenHook ? `Opening hook (use this verbatim to open the video): "${spokenHook}"` : ""}
+
+SCRIPT REQUIREMENTS:
+- Open with the provided hook if given, or craft a compelling 15-second hook
+- Use teleprompter formatting: short paragraphs, natural speech rhythm, no jargon
+- Include [PAUSE] markers for emphasis
+- Include [B-ROLL: description] cues for the editor
+- Structure: Hook → Problem → Pedram's unique insight → Evidence/story → Practical steps → CTA
+- CTA must mention the Lights On Course at lightson.theurbanmonk.com
+- Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
+- Voice: conversational, like Pedram is talking directly to one person
+- Reference the YouTube description context below for key points to cover
+
+Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Write the full teleprompter script for: "${input.reportTitle}"\n\nYouTube description context:\n${input.youtubeDescription.slice(0, 2000)}` },
+        ],
+      });
+
+      const rawContent = response?.choices?.[0]?.message?.content;
+      const scriptBody: string = typeof rawContent === "string" ? rawContent : "Script generation failed.";
+
+      // Save to scripts table
+      const [scriptResult] = await db.insert(scripts).values({
+        title: `${input.reportTitle} — YouTube Script`,
+        scriptType: "video",
+        platform: "youtube",
+        productionStatus: "idea",
+        scriptBody,
+        notes: `Auto-generated from Ingest Inbox YouTube card (ContentItem #${input.contentItemId})`,
+        linkedContentItemId: input.contentItemId,
+      });
+      const scriptId = (scriptResult as any).insertId as number;
+
+      // Update the ContentItem's linkedScriptId
+      await db
+        .update(contentItems)
+        .set({ linkedScriptId: scriptId })
+        .where(eq(contentItems.id, input.contentItemId));
+
+      return { scriptId };
+    }),
+
+  /**
+   * Count ContentItems per ingestReportId so the Inbox can show a "N cards created" badge.
+   */
+  countByReport: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db
+      .select({
+        ingestReportId: contentItems.ingestReportId,
+        count: sql<number>`count(*)`.as("count"),
+      })
+      .from(contentItems)
+      .groupBy(contentItems.ingestReportId);
+    return rows
+      .filter((r) => r.ingestReportId !== null)
+      .map((r) => ({ reportId: r.ingestReportId as number, count: Number(r.count) }));
+  }),
 });

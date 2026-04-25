@@ -67,6 +67,7 @@ import { webinarRouter } from "./webinarRouter";
 import { webinarIntelligenceRouter } from "./webinarIntelligenceRouter";
 import { llmProjectsRouter } from "./llmProjectsRouter";
 import { utmRouter } from "./utmRouter";
+import { ingestGenerateRouter } from "./ingestGenerateRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 
@@ -2782,6 +2783,7 @@ Rules:
   webinarIntelligence: webinarIntelligenceRouter,
   llmProjects: llmProjectsRouter,
   utm: utmRouter,
+  ingest: ingestGenerateRouter,
 
   /**
    * Public opt-in procedure — called from the Home page "Lights On" ebook form.

@@ -1461,3 +1461,13 @@
 - [x] Register ingest route on Express server (outside tRPC, before tRPC middleware)
 - [x] Add vitest tests for the ingest endpoint (3 tests passing)
 - [x] Live test: 401 on bad secret, 200 on valid payload, test record cleaned up
+
+## Ingest Inbox + Generate Pipeline (v112)
+- [x] Build IngestInbox.tsx page — list of all ingested reports with source, title, format, tags, pushed date
+- [x] Add "Generate Content" panel per report — shows 4 tabs: LinkedIn, X/Twitter, Blog, Email Newsletter
+- [x] Build ingest.generateFromReport tRPC procedure — generates all 4 content types from the report's narrativeHtml + topic + tags
+- [x] Auto-apply CTA block (matched by topic/tags), UTM params (platform-specific), and hashtags to each generated piece
+- [x] "Save to Command Center" button per generated piece — creates ContentItem with correct platform and status=idea
+- [x] Add "Ingest Inbox" to sidebar nav under Intelligence section
+- [x] Register /ingest route in App.tsx
+- [ ] Show ingest badge on Command Center cards that originated from ingest (deferred to v113)

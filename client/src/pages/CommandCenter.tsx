@@ -76,6 +76,7 @@ import {
   Inbox,
   X,
   AlertCircle,
+  BookOpen,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -1141,6 +1142,23 @@ export default function CommandCenter() {
   // Teleprompter script state (for card detail modal)
   const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
   const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
+
+  // Reader version state (blog posts only)
+  const [readerVersion, setReaderVersion] = useState<string | null>(null);
+  const [showReaderVersion, setShowReaderVersion] = useState(false);
+  const [generatingReaderVersion, setGeneratingReaderVersion] = useState(false);
+  const readerVersionMutation = trpc.blog.createReaderVersion.useMutation({
+    onSuccess: (data) => {
+      setReaderVersion(data.rewrittenText);
+      setShowReaderVersion(true);
+      setGeneratingReaderVersion(false);
+      toast.success("Reader-friendly version ready!");
+    },
+    onError: (err) => {
+      setGeneratingReaderVersion(false);
+      toast.error("Rewrite failed: " + err.message);
+    },
+  });
 
   const teleprompterMutation = trpc.research.generateTeleprompterScript.useMutation({
     onSuccess: (data) => {
@@ -2380,6 +2398,89 @@ export default function CommandCenter() {
                 Regen Image
               </Button>
             </div>
+
+            {/* Create Version for Average Reader — blog posts only */}
+            {selectedItem.platform === "blog" && (
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-violet-500/40 text-violet-400 hover:bg-violet-500/10 hover:text-violet-300 hover:border-violet-500/60"
+                  disabled={generatingReaderVersion || !editingContent}
+                  onClick={() => {
+                    setReaderVersion(null);
+                    setShowReaderVersion(false);
+                    setGeneratingReaderVersion(true);
+                    readerVersionMutation.mutate({
+                      contentItemId: selectedItem.id,
+                      articleText: editingContent,
+                    });
+                  }}
+                >
+                  {generatingReaderVersion ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <BookOpen className="h-3 w-3 mr-1" />
+                  )}
+                  {generatingReaderVersion ? "Rewriting for readers…" : "Create Version for Average Reader"}
+                </Button>
+
+                {showReaderVersion && readerVersion && (
+                  <div className="rounded-lg border border-violet-500/30 bg-violet-950/20 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-violet-300 flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" />
+                        Reader-Friendly Version
+                      </span>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-violet-400 hover:text-violet-300"
+                          onClick={() => {
+                            navigator.clipboard.writeText(readerVersion);
+                            toast.success("Reader version copied!");
+                          }}
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-amber-400 hover:text-amber-300"
+                          onClick={() => {
+                            if (confirm("Replace the current article with the reader-friendly version? The original will be overwritten.")) {
+                              setEditingContent(readerVersion);
+                              setShowReaderVersion(false);
+                              setReaderVersion(null);
+                              toast.success("Article replaced with reader-friendly version. Remember to Save!");
+                            }
+                          }}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Replace Original
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowReaderVersion(false)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <Textarea
+                      value={readerVersion}
+                      onChange={(e) => setReaderVersion(e.target.value)}
+                      rows={14}
+                      className="bg-background border-violet-500/20 resize-none text-sm font-mono leading-relaxed text-foreground"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Teleprompter Script — YouTube only */}
             {selectedItem.platform === "youtube" && (

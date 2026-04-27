@@ -1569,3 +1569,12 @@
 - [x] Facebook channels are unaffected (URLs stay in caption, no firstComment)
 - [x] 149 tests passing, 0 TypeScript errors
 - [x] Run tests and save checkpoint v122
+
+## v123: Create Version for Average Reader
+
+- [x] Add `blog.createReaderVersion` tRPC procedure in server/routers.ts — rewrites blog text in accessible, engaging voice, preserves all citations
+- [x] Add state variables for reader version content and loading in CommandCenter detail modal
+- [x] Add "Create Version for Average Reader" button (blog-only) below the Copy buttons in detail modal
+- [x] Show reader version in a collapsible panel below the button with Copy + Replace options
+- [x] Write vitest test for the new procedure
+- [x] TypeScript check and checkpoint v123

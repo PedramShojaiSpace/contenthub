@@ -2791,6 +2791,40 @@ Rules:
         return { results, succeeded, failed, total: published.length };
       }),
 
+    // Rewrite a blog post in an accessible, engaging voice for a general audience
+    createReaderVersion: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        articleText: z.string().min(50),
+      }))
+      .mutation(async ({ input }) => {
+        const READER_VERSION_SYSTEM = `You are a gifted health and wellness writer who specialises in making complex science feel warm, accessible, and genuinely useful for busy, curious adults who are NOT scientists or doctors.
+
+Your job is to rewrite the article below in a friendlier, more engaging voice — the kind of piece someone would actually want to read on a Sunday morning with their coffee.
+
+STRICT RULES:
+1. PRESERVE every citation exactly as written — [1], [2], [^1], (Smith et al., 2021), etc. Do NOT remove, renumber, or paraphrase any citation marker.
+2. PRESERVE the References / Sources section at the end, word-for-word.
+3. PRESERVE all factual claims, statistics, and study findings — just explain them in plain English.
+4. PRESERVE all URLs that appear in the text — do not add, change, or remove any links.
+5. Keep the same overall structure (intro, sections, conclusion, CTA) but make headings feel like a conversation starter, not a textbook chapter title.
+6. Write at a 7th–8th grade reading level. Use short sentences, active voice, relatable analogies, and occasional rhetorical questions to pull the reader forward.
+7. Pedram's voice: warm, wise, slightly irreverent, grounded in both ancient wisdom and modern science. He speaks to you like a knowledgeable friend, not a lecturer.
+8. Do NOT add new claims, new URLs, or new citations that weren't in the original.
+9. Return ONLY the rewritten article in clean Markdown — no preamble, no commentary, no "Here is the rewritten version:" intro.`;
+
+        const response = await safeLLM({
+          messages: [
+            { role: 'system', content: READER_VERSION_SYSTEM },
+            { role: 'user', content: input.articleText },
+          ],
+        });
+        const rawContent = response.choices?.[0]?.message?.content;
+        const rewrittenText = typeof rawContent === 'string' ? rawContent : Array.isArray(rawContent) ? rawContent.map((p: { type: string; text?: string }) => p.type === 'text' ? (p.text ?? '') : '').join('') : '';
+        if (!rewrittenText) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'LLM returned empty response' });
+        return { rewrittenText };
+      }),
+
     // Batch publish all approved blog posts to WordPress as drafts
     publishBatch: protectedProcedure
       .input(z.object({ contentItemIds: z.array(z.number()) }))

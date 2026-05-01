@@ -76,6 +76,7 @@ import {
   Inbox,
   X,
   AlertCircle,
+  AlertTriangle,
   BookOpen,
 } from "lucide-react";  
 import { useState } from "react";
@@ -1512,6 +1513,18 @@ export default function CommandCenter() {
     },
   });
 
+  const bulkFixMutation = trpc.blog.bulkFixCampaigns.useMutation({
+    onSuccess: (data) => {
+      if (data.fixed === 0) {
+        toast.info(`All ${data.total} blog posts have valid campaign slugs.`);
+      } else {
+        toast.success(`Fixed ${data.fixed} of ${data.total} blog posts with mismatched campaign slugs.`);
+        refetch();
+      }
+    },
+    onError: (err) => toast.error("Bulk fix failed: " + err.message),
+  });
+
   const fixCampaignSlugMutation = trpc.blog.fixCampaignSlug.useMutation({
     onSuccess: (data) => {
       if (data.updated) {
@@ -1785,6 +1798,25 @@ export default function CommandCenter() {
                   Personas
                 </Button>
               </div>
+              {/* Bulk Fix All Mismatched Campaigns — only shown when blog filter is active */}
+              {(platformFilter === "blog" || platformFilter === "all") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 hidden md:flex"
+                  disabled={bulkFixMutation.isPending}
+                  onClick={() => {
+                    bulkFixMutation.mutate({ dryRun: false });
+                  }}
+                  title="Validate all blog posts and fix mismatched utm_campaign slugs"
+                >
+                  {bulkFixMutation.isPending ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Fixing…</>
+                  ) : (
+                    <><AlertTriangle className="h-3 w-3 mr-1" /> Fix All Campaigns</>
+                  )}
+                </Button>
+              )}
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">

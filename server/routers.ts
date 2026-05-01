@@ -3066,6 +3066,48 @@ STRICT RULES:
         await updateContentItem(input.contentItemId, { textContent: updated });
         return { updated: true, newSlug: input.newCampaignSlug };
       }),
+
+    // Bulk validate all published blog posts and fix mismatched utm_campaign slugs
+    bulkFixCampaigns: protectedProcedure
+      .input(z.object({
+        dryRun: z.boolean().optional().default(false),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { contentItems } = await import("../drizzle/schema");
+        const { eq, and, isNotNull } = await import("drizzle-orm");
+        const { validateCampaignSlug, ctaLabelToCampaign } = await import("./ctaRouter");
+        // Fetch all published blog posts with text content
+        const posts = await db.select().from(contentItems).where(
+          and(
+            eq(contentItems.platform, "blog"),
+            isNotNull(contentItems.textContent)
+          )
+        );
+        let fixed = 0;
+        let skipped = 0;
+        const results: Array<{ id: number; title: string; oldSlug: string; newSlug: string }> = [];
+        for (const post of posts) {
+          if (!post.textContent) { skipped++; continue; }
+          const matches = post.textContent.match(/utm_campaign=([^&"'\s]+)/g);
+          if (!matches) { skipped++; continue; }
+          const currentSlug = matches[0].replace("utm_campaign=", "");
+          if (validateCampaignSlug(currentSlug)) { skipped++; continue; }
+          // Derive the correct slug from the post title/ctaBlockLabel
+          const correctSlug = ctaLabelToCampaign(post.ctaBlockLabel ?? post.title ?? "");
+          if (!input.dryRun) {
+            const updated = post.textContent.replace(
+              /utm_campaign=([^&"'\s]+)/g,
+              `utm_campaign=${correctSlug}`
+            );
+            await updateContentItem(post.id, { textContent: updated });
+          }
+          results.push({ id: post.id, title: post.title, oldSlug: currentSlug, newSlug: correctSlug });
+          fixed++;
+        }
+        return { fixed, skipped, total: posts.length, results, dryRun: input.dryRun ?? false };
+      }),
   }),
 
   personas: personasRouter,

@@ -1646,3 +1646,11 @@
 - [x] Show "Already saved" toast when utm.save returns duplicate:true
 - [x] Write vitest tests for font registration path and dedup toast logic
 - [x] TypeScript check and checkpoint v129
+
+## v130: Banner Preview + Bulk Campaign Fix + Font Scaling Tests
+
+- [x] Add CTA banner thumbnail preview to Creation Studio blog output panel (shown after blog generation, links to full-size banner)
+- [x] Add `blog.bulkFixCampaigns` tRPC mutation — validates all published posts and fixes mismatched utm_campaign slugs in batch
+- [x] Add "Fix All Mismatched Campaigns" button to Command Center header (blog filter active) with progress toast
+- [x] Add vitest font size auto-scaling tests for bannerComposite.ts (short/medium/long headline tiers)
+- [x] TypeScript check and checkpoint v130

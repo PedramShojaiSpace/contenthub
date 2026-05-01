@@ -934,6 +934,7 @@ export default function CreationStudio() {
     waterfallMap?: string;
     body: string;
     imageUrl?: string;
+    ctaBannerUrl?: string;
   } | null>(null);
   const [isBlogGenerating, setIsBlogGenerating] = useState(false);
   const [blogViewMode, setBlogViewMode] = useState<"preview" | "edit">("preview");
@@ -971,6 +972,7 @@ export default function CreationStudio() {
         waterfallMap: data.waterfallMap,
         body: data.article,
         imageUrl: data.heroImageUrl,
+        ctaBannerUrl: (data as any).ctaBannerUrl ?? undefined,
       });
       setIsBlogGenerating(false);
       toast.success("Blog post generated — auto-saving to archive...");
@@ -2575,6 +2577,31 @@ export default function CreationStudio() {
                       Hero Image — theurbanmonk.com
                     </span>
                   </div>
+                </div>
+              )}
+
+              {/* CTA Banner Preview — shown after generation */}
+              {blogContent.ctaBannerUrl && (
+                <div className="mx-4 mt-3 rounded-lg overflow-hidden border border-amber-500/30 bg-amber-500/5">
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-amber-500/20">
+                    <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                      <span>🎯</span> CTA Banner — Composited with Montserrat
+                    </span>
+                    <button
+                      className="text-[10px] text-amber-400/70 hover:text-amber-400 underline underline-offset-2"
+                      onClick={() => window.open(blogContent.ctaBannerUrl, "_blank")}
+                    >
+                      View full size ↗
+                    </button>
+                  </div>
+                  <a href={blogContent.ctaBannerUrl} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={blogContent.ctaBannerUrl}
+                      alt="CTA Banner"
+                      className="w-full object-cover hover:opacity-90 transition-opacity"
+                      style={{ maxHeight: 200 }}
+                    />
+                  </a>
                 </div>
               )}
 

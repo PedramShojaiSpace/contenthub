@@ -2871,6 +2871,68 @@ STRICT RULES:
         return { rewrittenText };
       }),
 
+    // Regenerate CTA banner for an existing blog content item
+    regenerateBanner: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        ctaLabel: z.string().optional(),   // CTA block label (e.g. "Lights On Course")
+        ctaText: z.string().optional(),    // CTA descriptive text
+        ctaUrl: z.string().optional(),     // CTA destination URL
+        articleTopic: z.string().optional(), // Brief topic hint for the image prompt
+      }))
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: 'NOT_FOUND', message: 'Content item not found' });
+
+        // Resolve CTA details — fall back to stored ctaBlockLabel or defaults
+        const ctaLabel = input.ctaLabel ?? item.ctaBlockLabel ?? 'Urban Monk Academy';
+        const ctaText = input.ctaText ?? 'Transform your health and wellbeing with Dr. Pedram Shojai';
+        const ctaUrl = input.ctaUrl ?? 'https://lightson.theurbanmonk.com/';
+        const articleTopic = input.articleTopic ?? item.title ?? 'wellness and ancient wisdom';
+
+        // Step 1: Generate a visual prompt via LLM
+        const ctaBannerPromptResponse = await safeLLM({
+          messages: [
+            {
+              role: 'system',
+              content: `You are a visual director for The Urban Monk brand. Write a concise image generation prompt (max 60 words) for a wide-format (16:9) call-to-action banner image. The banner must feel premium, warm, and wellness-focused. It should evoke transformation, health, and ancient wisdom meeting modern science. NO text in the image. NO faces. Cinematic lighting, rich earth tones, deep greens, warm amber. Return ONLY the prompt.`,
+            },
+            {
+              role: 'user',
+              content: `CTA label: ${ctaLabel}\nCTA text: ${ctaText}\nArticle topic: ${articleTopic}`,
+            },
+          ],
+        });
+        const rawBannerPrompt = ctaBannerPromptResponse.choices?.[0]?.message?.content;
+        const bannerImagePrompt = typeof rawBannerPrompt === 'string' ? rawBannerPrompt.trim() : `Serene wellness scene with warm amber light, ancient wisdom meets modern health, cinematic, no text, no faces`;
+
+        // Step 2: Generate the banner image
+        const { url: newBannerUrl } = await generateImage({ prompt: bannerImagePrompt });
+
+        // Step 3: Replace the old um-cta-banner block in textContent (if any) with the new one
+        let updatedTextContent = item.textContent ?? '';
+        const ctaBannerBlock = `\n\n<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;">\n  <a href="${ctaUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">\n    <img src="${newBannerUrl}" alt="${ctaLabel}" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" />\n    <div style="margin-top:0.75rem;font-size:1rem;font-weight:600;color:#7c5c2e;letter-spacing:0.02em;">${ctaText.slice(0, 120)}${ctaText.length > 120 ? '\u2026' : ''}</div>\n  </a>\n</div>`;
+
+        // Remove existing banner block if present
+        updatedTextContent = updatedTextContent.replace(/<div class="um-cta-banner"[\s\S]*?<\/div>\s*<\/div>/g, '');
+
+        // Re-inject before FAQ or at end
+        const faqMatch = updatedTextContent.match(/\n##\s*(Frequently Asked Questions|FAQ)/i);
+        if (faqMatch && faqMatch.index !== undefined) {
+          updatedTextContent = updatedTextContent.slice(0, faqMatch.index) + ctaBannerBlock + updatedTextContent.slice(faqMatch.index);
+        } else {
+          updatedTextContent = updatedTextContent + ctaBannerBlock;
+        }
+
+        // Step 4: Persist the new banner URL and updated textContent
+        await updateContentItem(input.contentItemId, {
+          ctaBannerUrl: newBannerUrl,
+          textContent: updatedTextContent,
+        });
+
+        return { ctaBannerUrl: newBannerUrl, imagePrompt: bannerImagePrompt };
+      }),
+
     // Batch publish all approved blog posts to WordPress as drafts
     publishBatch: protectedProcedure
       .input(z.object({ contentItemIds: z.array(z.number()) }))

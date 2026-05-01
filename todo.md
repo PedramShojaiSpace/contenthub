@@ -1590,3 +1590,12 @@
 - [x] Update blog detail modal in CommandCenter to preview CTA banner image with hyperlink
 - [x] Write vitest tests for Key Takeaways injection and CTA banner embed logic
 - [x] TypeScript check and checkpoint v124
+
+## v125: Blog Publishing Enhancements (Regen Banner + KT Editor + WP Banner Sync)
+
+- [x] Add `blog.regenerateBanner` tRPC procedure — generates a new CTA banner image for an existing content item and saves ctaBannerUrl
+- [x] Add "Regenerate Banner" button in Command Center blog detail panel (amber section, only when ctaBannerUrl exists or ctaBlockLabel exists)
+- [x] Add Key Takeaways inline editor in blog detail modal — parse ## Key Takeaways from textContent, allow editing, save back to textContent
+- [x] Add WordPress banner sync on publish — fetch ctaBannerUrl, upload to WP media library via REST API, set _cta_banner_url custom field on the post
+- [x] Write vitest tests for regenerateBanner procedure and WP banner sync logic
+- [x] TypeScript check and checkpoint v125

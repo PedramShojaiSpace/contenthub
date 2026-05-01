@@ -133,9 +133,12 @@ export interface WpPostInput {
   seoTitle?: string;              // _yoast_wpseo_title (if different from post title)
   canonicalUrl?: string;          // _yoast_wpseo_canonical
 
-  // ─── Schema markup (injected as JSON-LD in post content) ────────────────────
+  // ─── Schema markup (injected as JSON-LD in post content) ────────────────────────────────────
   articleSchema?: string;         // JSON-LD Article schema block (pre-built)
   faqSchema?: string;             // JSON-LD FAQPage schema block (pre-built)
+
+  // ─── CTA Banner ──────────────────────────────────────────────────────────────────────────────
+  ctaBannerUrl?: string;          // URL of the AI-generated CTA banner image
 }
 
 export interface WpPostResult {
@@ -347,6 +350,45 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
       }
     } catch (err) {
       console.warn("[WP] Yoast second-pass update failed (non-fatal):", err);
+    }
+  }
+
+  // ─── CTA Banner: upload to WP media library + set custom field ──────────────────────────────
+  // If a ctaBannerUrl is provided, upload the image to WP media and store the
+  // resulting WP media URL in the post's _cta_banner_url custom meta field.
+  // This lets the theme render the banner natively without relying on an external CDN URL.
+  if (input.ctaBannerUrl) {
+    try {
+      const bannerExt = input.ctaBannerUrl.toLowerCase().endsWith(".png") ? "png" : "jpg";
+      const bannerFilename = `${input.slug}-cta-banner.${bannerExt}`;
+      const bannerMedia = await uploadMediaFromUrl(
+        input.ctaBannerUrl,
+        bannerFilename,
+        `${input.title} — CTA Banner`
+      );
+      // Set _cta_banner_url custom field via WP REST API meta
+      try {
+        const metaRes = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts/${post.id}`, {
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            meta: { _cta_banner_url: bannerMedia.url },
+          }),
+        }, 15_000);
+        if (metaRes.ok) {
+          console.log(`[WP] CTA banner uploaded and meta set for post ${post.id}: ${bannerMedia.url}`);
+        } else {
+          const errText = await metaRes.text();
+          console.warn(`[WP] CTA banner meta update failed (non-fatal): ${errText.substring(0, 200)}`);
+        }
+      } catch (metaErr) {
+        console.warn("[WP] CTA banner meta update failed (non-fatal):", metaErr);
+      }
+    } catch (bannerErr) {
+      console.warn("[WP] CTA banner upload failed (non-fatal):", bannerErr);
     }
   }
 

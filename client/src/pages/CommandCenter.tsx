@@ -1161,6 +1161,22 @@ export default function CommandCenter() {
     },
   });
 
+  // Regenerate CTA Banner state (blog posts only)
+  const [isRegeneratingBanner, setIsRegeneratingBanner] = useState(false);
+  const regenerateBannerMutation = trpc.blog.regenerateBanner.useMutation({
+    onSuccess: (data) => {
+      setIsRegeneratingBanner(false);
+      // Update selectedItem with new banner URL
+      setSelectedItem(prev => prev ? { ...prev, ctaBannerUrl: data.ctaBannerUrl ?? null } : prev);
+      refetch();
+      toast.success("New CTA banner generated!");
+    },
+    onError: (err) => {
+      setIsRegeneratingBanner(false);
+      toast.error("Banner regeneration failed: " + err.message);
+    },
+  });
+
   const teleprompterMutation = trpc.research.generateTeleprompterScript.useMutation({
     onSuccess: (data) => {
       setTeleprompterScript(data.script);
@@ -2342,6 +2358,47 @@ export default function CommandCenter() {
               />
             </div>
 
+            {/* Key Takeaways inline editor — blog posts only */}
+            {selectedItem.platform === "blog" && (() => {
+              // Parse the ## Key Takeaways section from editingContent
+              const ktMatch = editingContent.match(/##\s*Key Takeaways\s*\n([\s\S]*?)(?=\n##\s|$)/);
+              const ktText = ktMatch ? ktMatch[1].trim() : "";
+              return (
+                <div className="rounded-lg border border-teal-600/30 bg-teal-950/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] text-teal-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Key Takeaways
+                    </p>
+                    {ktText ? (
+                      <span className="text-[10px] text-teal-400/50">Edit below — saves with article</span>
+                    ) : (
+                      <span className="text-[10px] text-teal-400/50 italic">Not found in article</span>
+                    )}
+                  </div>
+                  {ktText ? (
+                    <Textarea
+                      value={ktText}
+                      rows={5}
+                      className="bg-background border-teal-600/30 resize-none text-xs font-mono leading-relaxed focus:border-teal-500/60"
+                      placeholder="Bullet points (one per line, starting with - or •)"
+                      onChange={(e) => {
+                        const newKt = e.target.value;
+                        // Replace the Key Takeaways block in editingContent
+                        const updated = editingContent.replace(
+                          /##\s*Key Takeaways\s*\n[\s\S]*?(?=\n##\s|$)/,
+                          `## Key Takeaways\n${newKt}\n\n`
+                        );
+                        setEditingContent(updated);
+                      }}
+                    />
+                  ) : (
+                    <p className="text-[10px] text-teal-300/40 italic">Generate a blog post to see Key Takeaways here.</p>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Copy + Regenerate buttons */}
             <div className="flex gap-2">
               <Button
@@ -2733,28 +2790,53 @@ export default function CommandCenter() {
                   refetch();
                 }} />
 
-                {/* CTA Banner Preview — shown when a banner was auto-generated */}
-                {selectedItem.ctaBannerUrl && (
-                  <div className="rounded-lg border border-amber-600/30 bg-amber-950/20 p-3 space-y-2">
+                {/* CTA Banner Panel — shown for all blog posts */}
+                <div className="rounded-lg border border-amber-600/30 bg-amber-950/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
                     <p className="text-[10px] text-amber-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
                       <Zap className="h-3 w-3" />
                       CTA Banner
                     </p>
-                    <a
-                      href={selectedItem.ctaBannerUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] border-amber-600/40 text-amber-400 hover:bg-amber-950/40 hover:text-amber-300 gap-1"
+                      disabled={isRegeneratingBanner}
+                      onClick={() => {
+                        setIsRegeneratingBanner(true);
+                        regenerateBannerMutation.mutate({
+                          contentItemId: selectedItem.id,
+                          articleTopic: selectedItem.title,
+                        });
+                      }}
                     >
-                      <img
-                        src={selectedItem.ctaBannerUrl}
-                        alt="CTA Banner"
-                        className="w-full rounded-md border border-amber-600/20 hover:opacity-90 transition-opacity"
-                      />
-                    </a>
-                    <p className="text-[10px] text-amber-300/60">This banner is embedded in the article body, linked to the CTA URL. Click to preview full image.</p>
+                      {isRegeneratingBanner ? (
+                        <><Loader2 className="h-3 w-3 animate-spin" /> Generating…</>
+                      ) : (
+                        <><RefreshCw className="h-3 w-3" /> {selectedItem.ctaBannerUrl ? "Regenerate" : "Generate"} Banner</>
+                      )}
+                    </Button>
                   </div>
-                )}
+                  {selectedItem.ctaBannerUrl ? (
+                    <>
+                      <a
+                        href={selectedItem.ctaBannerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <img
+                          src={selectedItem.ctaBannerUrl}
+                          alt="CTA Banner"
+                          className="w-full rounded-md border border-amber-600/20 hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                      <p className="text-[10px] text-amber-300/60">Embedded in article body, linked to CTA URL. Click to preview full image.</p>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-amber-300/50 italic">No banner yet. Click “Generate Banner” to create one for this post.</p>
+                  )}
+                </div>
 
                 {/* WordPress Publish actions */}
                 <div className="flex items-center gap-2 flex-wrap">

@@ -236,29 +236,27 @@ export const newsfeedRouter = router({
           "No LinkedIn channel found in Buffer. Please connect your LinkedIn account in Buffer."
         );
       }
-
-      // ── LinkedIn push ──────────────────────────────────────────────────────
-      // Always include the article URL as a link asset (Doovo-style curation).
+      // ── LinkedIn push ────────────────────────────────────────────────────────
+      // LinkedIn link preview requires metadata.linkedin.linkAttachment (NOT assets.link).
+      // We must also pass channelServiceMap so pushToBuffer knows the channel is LinkedIn
+      // and builds the correct metadata fragment.
       const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
-      // IMPORTANT: Do NOT pass imageUrl separately — Buffer treats a standalone image
-      // as a media attachment that overrides the link preview card. Instead, pass the
-      // article image only as thumbnailUrl inside linkAsset so Buffer renders a rich
-      // link preview card (Doovo-style curation) with the image embedded in the card.
+      // Build channelServiceMap: channelId → raw service string ("linkedin")
+      // This is required for pushToBuffer to populate metadata.linkedin.linkAttachment
+      const linkedInServiceMap: Record<string, string> = {};
+      for (const p of linkedInProfiles) {
+        linkedInServiceMap[p.id] = p.service; // p.service is "linkedin" from Buffer API
+      }
       const linkedInResult = await pushToBuffer({
         text: article.commentary,
         profileIds: linkedInChannelIds,
         platform: "linkedin",
-        // imageUrl intentionally omitted — image is carried by linkAsset.thumbnailUrl
+        channelServiceMap: linkedInServiceMap, // REQUIRED: enables metadata.linkedin.linkAttachment
         linkAsset: {
           url: article.url,
-          title: article.title ?? undefined,
-          description: article.description
-            ? article.description.slice(0, 300)
-            : undefined,
-          thumbnailUrl: article.imageUrl ?? undefined,
+          // title/description/thumbnailUrl fetched automatically by Buffer from OG tags
         },
       });
-
       if (!linkedInResult.success) {
         throw new Error(linkedInResult.error ?? "LinkedIn Buffer push failed");
       }

@@ -179,27 +179,22 @@ export async function pushToBuffer(params: {
         ? new Date(params.scheduledAt).toISOString()
         : undefined;
 
-      // Build assets object — supports image and/or link attachment
-      // Buffer GraphQL API AssetsInput: { images: [...], link: { url, title, description, thumbnailUrl } }
-      // For LinkedIn newsfeed posts: always include link asset to generate the link preview card
+      // Build assets object — supports image attachment
+      // NOTE: For LinkedIn link previews, the URL must go in metadata.linkedin.linkAttachment,
+      // NOT in assets.link. Using assets.link for LinkedIn does not generate the link preview card.
       let assetsInner = "";
       if (params.imageUrl) {
         assetsInner += `images: [{ url: ${JSON.stringify(params.imageUrl)} }]`;
-      }
-      if (params.linkAsset && !isInstagram) {
-        // Build link asset fields — url is required, others are optional
-        const la = params.linkAsset;
-        const titleFrag = la.title ? `, title: ${JSON.stringify(la.title)}` : "";
-        const descFrag = la.description ? `, description: ${JSON.stringify(la.description)}` : "";
-        const thumbFrag = la.thumbnailUrl ? `, thumbnailUrl: ${JSON.stringify(la.thumbnailUrl)}` : "";
-        const linkFrag = `link: { url: ${JSON.stringify(la.url)}${titleFrag}${descFrag}${thumbFrag} }`;
-        assetsInner += (assetsInner ? ", " : "") + linkFrag;
       }
       const assetsFragment = assetsInner ? `, assets: { ${assetsInner} }` : "";
 
       const dueAtFragment = dueAt ? `, dueAt: "${dueAt}"` : "";
 
-      // Build metadata fragment for Meta channels — Buffer requires type for facebook/instagram
+      // Build metadata fragment
+      // - Facebook/Instagram: requires type field
+      // - LinkedIn: link preview MUST go in metadata.linkedin.linkAttachment (NOT assets.link)
+      //   Buffer's assets.link does not generate a LinkedIn link preview card.
+      //   Only metadata.linkedin.linkAttachment triggers the LinkedIn link preview.
       const metaType = params.metaPostType ?? "post";
       let metadataFragment = "";
       if (channelService === "facebook") {
@@ -210,6 +205,11 @@ export async function pushToBuffer(params: {
           ? `, firstComment: ${JSON.stringify(params.ctaUrl)}`
           : "";
         metadataFragment = `, metadata: { instagram: { type: ${metaType}, shouldShareToFeed: true${firstCommentFragment} } }`;
+      } else if (channelService === "linkedin" && params.linkAsset) {
+        // LinkedIn link preview: must use metadata.linkedin.linkAttachment with url field
+        // LinkAttachmentInput only accepts { url: String! } — title/description/thumbnail
+        // are fetched automatically by Buffer from the URL's Open Graph tags.
+        metadataFragment = `, metadata: { linkedin: { linkAttachment: { url: ${JSON.stringify(params.linkAsset.url)} } } }`;
       }
 
       const mutation = `

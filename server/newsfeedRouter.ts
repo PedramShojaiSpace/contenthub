@@ -2,11 +2,13 @@
  * newsfeedRouter.ts — tRPC router for the LinkedIn Newsfeed (Doovo replacement).
  *
  * Procedures:
- *   newsfeed.getArticles        — list articles (with optional topic/status filter)
- *   newsfeed.refreshFeed        — fetch new articles from Google News + PubMed
- *   newsfeed.approveArticle     — approve → creates a LinkedIn ContentItem in Kanban
- *   newsfeed.dismissArticle     — mark as dismissed
- *   newsfeed.regenerateCommentary — re-run LLM commentary for an article
+ *   newsfeed.getArticles           — list articles (with optional topic/status filter)
+ *   newsfeed.refreshFeed           — fetch new articles from Google News + PubMed
+ *   newsfeed.approveArticle        — approve → creates a LinkedIn ContentItem in Kanban
+ *   newsfeed.dismissArticle        — mark as dismissed
+ *   newsfeed.regenerateCommentary  — re-run LLM commentary for an article
+ *   newsfeed.pushToBuffer          — push LinkedIn post (+ optional X version) to Buffer
+ *   newsfeed.getXVersion           — generate/return cached X/Twitter version
  */
 
 import { z } from "zod";
@@ -15,8 +17,7 @@ import { getDb } from "./db";
 import { newsfeedArticles, contentItems } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { fetchAllTopics, fetchGoogleNewsRSS, fetchPubMedArticles, TOPIC_CLUSTERS } from "./newsfeed";
-// fetchGoogleNewsRSS and fetchPubMedArticles are used in the refreshFeed procedure
-import { generateCommentary } from "./newsfeedCommentary";
+import { generateCommentary, generateXVersion } from "./newsfeedCommentary";
 import { getBufferProfiles, pushToBuffer } from "./buffer";
 
 export const newsfeedRouter = router({
@@ -57,7 +58,6 @@ export const newsfeedRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      // Fetch raw articles
       let rawArticles;
       if (input.topic) {
         const [news, pubmed] = await Promise.all([
@@ -73,7 +73,6 @@ export const newsfeedRouter = router({
         return { inserted: 0, skipped: 0, errors: 0 };
       }
 
-      // Get existing URLs to avoid duplicates
       const database = await getDb();
       if (!database) throw new Error("Database not available");
 
@@ -87,7 +86,6 @@ export const newsfeedRouter = router({
       let inserted = 0;
       let errors = 0;
 
-      // Generate commentary for each new article (in parallel, max 5 at a time)
       const BATCH = 5;
       for (let i = 0; i < newArticles.length; i += BATCH) {
         const batch = newArticles.slice(i, i + BATCH);
@@ -119,7 +117,6 @@ export const newsfeedRouter = router({
     }),
 
   // ── Approve article ────────────────────────────────────────────────────────
-  // Creates a LinkedIn ContentItem in the Command Center Kanban (status: approved)
   approveArticle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
@@ -135,7 +132,6 @@ export const newsfeedRouter = router({
       if (!article) throw new Error("Article not found");
       if (!article.commentary) throw new Error("Article has no commentary yet");
 
-      // Create a LinkedIn ContentItem in the Kanban
       const [inserted] = await database.insert(contentItems).values({
         title: article.title.slice(0, 255),
         platform: "linkedin",
@@ -147,14 +143,9 @@ export const newsfeedRouter = router({
 
       const contentItemId = (inserted as any).insertId as number;
 
-      // Update newsfeed article status
       await database
         .update(newsfeedArticles)
-        .set({
-          status: "approved",
-          contentItemId,
-          approvedAt: new Date(),
-        })
+        .set({ status: "approved", contentItemId, approvedAt: new Date() })
         .where(eq(newsfeedArticles.id, input.id));
 
       return { contentItemId };
@@ -199,19 +190,26 @@ export const newsfeedRouter = router({
         fetchedAt: article.fetchedAt,
       });
 
+      // Also regenerate the X version so it stays in sync
+      const xVersion = await generateXVersion(commentary, article.url);
+
       await database
         .update(newsfeedArticles)
-        .set({ commentary })
+        .set({ commentary, xVersion })
         .where(eq(newsfeedArticles.id, input.id));
 
-      return { commentary };
+      return { commentary, xVersion };
     }),
 
   // ── Push to Buffer ─────────────────────────────────────────────────────────
-  // Sends the article's AI-generated commentary to the LinkedIn Buffer queue.
-  // Automatically selects the first LinkedIn channel found in Buffer.
+  // Sends the LinkedIn commentary to Buffer with the article URL as a link
+  // preview card attachment. When includeX is true, also pushes a condensed
+  // ≤280-char version to all connected X/Twitter channels simultaneously.
   pushToBuffer: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({
+      id: z.number(),
+      includeX: z.boolean().default(false),
+    }))
     .mutation(async ({ input }) => {
       const database = await getDb();
       if (!database) throw new Error("Database not available");
@@ -225,22 +223,24 @@ export const newsfeedRouter = router({
       if (!article) throw new Error("Article not found");
       if (!article.commentary) throw new Error("Article has no commentary to push");
 
-      // Discover Buffer LinkedIn channels
       const profiles = await getBufferProfiles();
       const linkedInProfiles = profiles.filter((p) => p.platform === "linkedin");
+      const xProfiles = profiles.filter(
+        (p) => p.platform === "x"
+      );
 
       if (linkedInProfiles.length === 0) {
-        throw new Error("No LinkedIn channel found in Buffer. Please connect your LinkedIn account in Buffer.");
+        throw new Error(
+          "No LinkedIn channel found in Buffer. Please connect your LinkedIn account in Buffer."
+        );
       }
 
-      // Push to all connected LinkedIn channels.
-      // Always include the article URL as a link asset so LinkedIn generates
-      // a link preview card — this is the core Doovo-style curation pattern:
-      // Pedram adds commentary AND links back to the original source.
-      const channelIds = linkedInProfiles.map((p) => p.id);
-      const result = await pushToBuffer({
+      // ── LinkedIn push ──────────────────────────────────────────────────────
+      // Always include the article URL as a link asset (Doovo-style curation).
+      const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
+      const linkedInResult = await pushToBuffer({
         text: article.commentary,
-        profileIds: channelIds,
+        profileIds: linkedInChannelIds,
         platform: "linkedin",
         imageUrl: article.imageUrl ?? undefined,
         linkAsset: {
@@ -253,17 +253,90 @@ export const newsfeedRouter = router({
         },
       });
 
-      if (!result.success) {
-        throw new Error(result.error ?? "Buffer push failed");
+      if (!linkedInResult.success) {
+        throw new Error(linkedInResult.error ?? "LinkedIn Buffer push failed");
       }
 
-      // Record the push timestamp
       await database
         .update(newsfeedArticles)
         .set({ bufferSentAt: new Date() })
         .where(eq(newsfeedArticles.id, input.id));
 
-      return { success: true, bufferId: result.bufferId, channelCount: channelIds.length };
+      // ── Optional X/Twitter push ────────────────────────────────────────────
+      let xPushed = false;
+      let xError: string | undefined;
+
+      if (input.includeX) {
+        if (xProfiles.length === 0) {
+          xError =
+            "No X/Twitter channel found in Buffer. Connect your X account in Buffer to enable this.";
+        } else {
+          // Generate or reuse cached X version
+          let xText = article.xVersion;
+          if (!xText) {
+            xText = await generateXVersion(article.commentary, article.url);
+            await database
+              .update(newsfeedArticles)
+              .set({ xVersion: xText })
+              .where(eq(newsfeedArticles.id, input.id));
+          }
+
+          const xChannelIds = xProfiles.map((p) => p.id);
+          const xResult = await pushToBuffer({
+            text: xText,
+            profileIds: xChannelIds,
+            platform: "x",
+            // URL is embedded in xText — no separate link asset needed for X
+          });
+
+          if (xResult.success) {
+            xPushed = true;
+            await database
+              .update(newsfeedArticles)
+              .set({ xSentAt: new Date() })
+              .where(eq(newsfeedArticles.id, input.id));
+          } else {
+            xError = xResult.error ?? "X/Twitter Buffer push failed";
+          }
+        }
+      }
+
+      return {
+        success: true,
+        bufferId: linkedInResult.bufferId,
+        linkedInChannelCount: linkedInChannelIds.length,
+        xPushed,
+        xError,
+      };
+    }),
+
+  // ── Generate / return cached X version ────────────────────────────────────
+  // Called when the user opens the detail dialog and wants to preview the
+  // X version before pushing. Generates and caches if not already present.
+  getXVersion: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const database = await getDb();
+      if (!database) throw new Error("Database not available");
+
+      const [article] = await database
+        .select()
+        .from(newsfeedArticles)
+        .where(eq(newsfeedArticles.id, input.id))
+        .limit(1);
+
+      if (!article) throw new Error("Article not found");
+      if (!article.commentary) throw new Error("Article has no commentary yet");
+
+      if (article.xVersion) return { xVersion: article.xVersion };
+
+      const xVersion = await generateXVersion(article.commentary, article.url);
+      await database
+        .update(newsfeedArticles)
+        .set({ xVersion })
+        .where(eq(newsfeedArticles.id, input.id));
+
+      return { xVersion };
     }),
 
   // ── Get topic list ─────────────────────────────────────────────────────────

@@ -1,15 +1,11 @@
 /**
  * LinkedInNewsfeed.tsx — Doovo replacement.
  *
- * Discovers articles from Google News RSS + PubMed, generates Pedram-voice
- * LinkedIn commentary, and lets the team approve posts directly into the
- * Command Center LinkedIn Kanban column.
- *
- * Layout: 3-column card grid (pending) + sidebar tabs for approved/dismissed.
- *
- * v132 additions:
- *   - "Push to Buffer" button on approved article cards
- *   - bufferSentAt timestamp tracked per article
+ * v134 additions:
+ *   - X/Twitter toggle on Buffer push (checkbox in detail dialog + approved card)
+ *   - X version preview textarea (auto-generated, editable)
+ *   - Dual-push: LinkedIn (with link preview card) + X (≤280 chars) in one click
+ *   - xSentAt badge on cards when X version has been pushed
  */
 
 import { useState } from "react";
@@ -43,6 +39,7 @@ import {
   Newspaper,
   Loader2,
   Send,
+  Twitter,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,12 +73,14 @@ interface Article {
   imageUrl: string | null;
   description: string | null;
   commentary: string | null;
+  xVersion: string | null;
   topic: string | null;
   status: "pending" | "approved" | "dismissed";
   fetchedAt: Date;
   approvedAt: Date | null;
   contentItemId: number | null;
   bufferSentAt: Date | null;
+  xSentAt: Date | null;
 }
 
 // ─── Pending article card ──────────────────────────────────────────────────────
@@ -109,7 +108,6 @@ function ArticleCard({
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col h-full">
-      {/* Card header */}
       <div className="p-4 pb-2 flex-1">
         <div className="flex items-start justify-between gap-2 mb-2">
           <Badge variant="outline" className={`text-xs font-medium shrink-0 ${topicColor}`}>
@@ -119,16 +117,12 @@ function ArticleCard({
             {article.source ?? "Unknown"}
           </Badge>
         </div>
-
-        {/* Title */}
         <h3
           className="font-semibold text-slate-900 text-sm leading-snug mb-2 cursor-pointer hover:text-blue-700 line-clamp-3"
           onClick={() => onOpenDetail(article)}
         >
           {article.title}
         </h3>
-
-        {/* Commentary preview */}
         {commentaryPreview ? (
           <p
             className="text-xs text-slate-600 leading-relaxed cursor-pointer"
@@ -140,8 +134,6 @@ function ArticleCard({
           <p className="text-xs text-slate-400 italic">No commentary yet</p>
         )}
       </div>
-
-      {/* Card footer */}
       <div className="p-3 pt-2 border-t border-slate-100 flex items-center gap-1.5">
         <a
           href={article.url}
@@ -168,7 +160,6 @@ function ArticleCard({
           variant="ghost"
           className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 h-7 px-2"
           onClick={() => onDismiss(article.id)}
-          title="Dismiss"
         >
           <X size={12} className="mr-1" />
           Skip
@@ -177,7 +168,6 @@ function ArticleCard({
           size="sm"
           className="text-xs h-7 px-3 bg-blue-600 hover:bg-blue-700 text-white"
           onClick={() => onApprove(article.id)}
-          title="Approve → LinkedIn Kanban"
         >
           <ThumbsUp size={12} className="mr-1" />
           Approve
@@ -187,7 +177,7 @@ function ArticleCard({
   );
 }
 
-// ─── Approved article card (with Buffer push button) ──────────────────────────
+// ─── Approved article card ─────────────────────────────────────────────────────
 
 function ApprovedArticleCard({
   article,
@@ -196,15 +186,15 @@ function ApprovedArticleCard({
   isPushing,
 }: {
   article: Article;
-  onPushToBuffer: (id: number) => void;
+  onPushToBuffer: (id: number, includeX: boolean) => void;
   onOpenDetail: (article: Article) => void;
   isPushing: boolean;
 }) {
+  const [includeX, setIncludeX] = useState(false);
   const topicKey = article.topic ?? "";
 
   return (
     <div className="bg-white border border-emerald-200 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col">
-      {/* Clickable content area */}
       <div
         className="p-4 pb-2 flex-1 cursor-pointer"
         onClick={() => onOpenDetail(article)}
@@ -218,7 +208,12 @@ function ApprovedArticleCard({
           </Badge>
           {article.bufferSentAt && (
             <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50 shrink-0">
-              ✓ In Buffer
+              ✓ LinkedIn
+            </Badge>
+          )}
+          {article.xSentAt && (
+            <Badge variant="outline" className="text-xs text-slate-700 border-slate-300 bg-slate-50 shrink-0">
+              ✓ X
             </Badge>
           )}
         </div>
@@ -234,41 +229,76 @@ function ApprovedArticleCard({
       </div>
 
       {/* Buffer push footer */}
-      <div className="p-3 pt-2 border-t border-slate-100 flex items-center gap-2">
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-slate-400 hover:text-slate-600 p-1 rounded"
-          title="Open article"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ExternalLink size={13} />
-        </a>
-        <div className="flex-1" />
+      <div className="p-3 pt-2 border-t border-slate-100">
         {article.bufferSentAt ? (
-          <span className="text-xs text-blue-600 flex items-center gap-1">
-            <Check size={12} />
-            Sent to Buffer
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-blue-600 flex items-center gap-1">
+              <Check size={12} />
+              Sent to Buffer
+              {article.xSentAt && (
+                <span className="ml-1 text-slate-500">+ X</span>
+              )}
+            </span>
+            <a
+              href={article.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-slate-600 p-1 rounded"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink size={13} />
+            </a>
+          </div>
         ) : (
-          <Button
-            size="sm"
-            className="text-xs h-7 px-3 bg-[#2C4BFF] hover:bg-[#1a35e0] text-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              onPushToBuffer(article.id);
-            }}
-            disabled={isPushing}
-            title="Push to LinkedIn Buffer queue"
-          >
-            {isPushing ? (
-              <Loader2 size={12} className="mr-1 animate-spin" />
-            ) : (
-              <Send size={12} className="mr-1" />
-            )}
-            {isPushing ? "Pushing…" : "Push to Buffer"}
-          </Button>
+          <div className="space-y-2">
+            {/* X toggle */}
+            <label
+              className="flex items-center gap-2 cursor-pointer select-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                type="checkbox"
+                checked={includeX}
+                onChange={(e) => setIncludeX(e.target.checked)}
+                className="w-3.5 h-3.5 rounded accent-slate-800"
+              />
+              <span className="text-xs text-slate-600 flex items-center gap-1">
+                <Twitter size={11} className="text-slate-700" />
+                Also share to X/Twitter
+              </span>
+            </label>
+            <div className="flex items-center gap-2">
+              <a
+                href={article.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink size={13} />
+              </a>
+              <Button
+                size="sm"
+                className="flex-1 text-xs h-7 bg-[#2C4BFF] hover:bg-[#1a35e0] text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPushToBuffer(article.id, includeX);
+                }}
+                disabled={isPushing}
+              >
+                {isPushing ? (
+                  <Loader2 size={12} className="mr-1 animate-spin" />
+                ) : (
+                  <Send size={12} className="mr-1" />
+                )}
+                {isPushing
+                  ? "Pushing…"
+                  : includeX
+                  ? "Push to LinkedIn + X"
+                  : "Push to Buffer"}
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -285,6 +315,7 @@ function ArticleDetailDialog({
   onDismiss,
   onRegenerate,
   onCommentaryChange,
+  onXVersionChange,
   onPushToBuffer,
   isPushing,
 }: {
@@ -295,10 +326,21 @@ function ArticleDetailDialog({
   onDismiss: (id: number) => void;
   onRegenerate: (id: number) => void;
   onCommentaryChange: (id: number, text: string) => void;
-  onPushToBuffer: (id: number) => void;
+  onXVersionChange: (id: number, text: string) => void;
+  onPushToBuffer: (id: number, includeX: boolean) => void;
   isPushing: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [includeX, setIncludeX] = useState(false);
+  const [showXPreview, setShowXPreview] = useState(false);
+
+  const getXVersion = trpc.newsfeed.getXVersion.useMutation({
+    onSuccess: (data, variables) => {
+      onXVersionChange(variables.id, data.xVersion);
+      setShowXPreview(true);
+    },
+    onError: (err) => toast.error(`X version generation failed: ${err.message}`),
+  });
 
   if (!article) return null;
 
@@ -307,6 +349,22 @@ function ArticleDetailDialog({
       navigator.clipboard.writeText(article.commentary);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const charCount = (article.xVersion ?? "").length;
+  const charColor =
+    charCount > 280 ? "text-red-600" : charCount > 250 ? "text-amber-600" : "text-slate-400";
+
+  const handleXToggle = (checked: boolean) => {
+    setIncludeX(checked);
+    if (checked && !article.xVersion) {
+      // Auto-generate X version when toggle is turned on
+      getXVersion.mutate({ id: article.id });
+    } else if (checked) {
+      setShowXPreview(true);
+    } else {
+      setShowXPreview(false);
     }
   };
 
@@ -320,7 +378,7 @@ function ArticleDetailDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Meta */}
+          {/* Meta badges */}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className={`text-xs ${TOPIC_COLORS[article.topic ?? ""] ?? ""}`}>
               {TOPIC_LABELS[article.topic ?? ""] ?? article.topic}
@@ -330,7 +388,12 @@ function ArticleDetailDialog({
             </Badge>
             {article.bufferSentAt && (
               <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">
-                ✓ Pushed to Buffer {new Date(article.bufferSentAt).toLocaleDateString()}
+                ✓ LinkedIn Buffer {new Date(article.bufferSentAt).toLocaleDateString()}
+              </Badge>
+            )}
+            {article.xSentAt && (
+              <Badge variant="outline" className="text-xs text-slate-700 border-slate-300 bg-slate-50">
+                ✓ X {new Date(article.xSentAt).toLocaleDateString()}
               </Badge>
             )}
             <a
@@ -350,7 +413,7 @@ function ArticleDetailDialog({
             </div>
           )}
 
-          {/* Link preview card — shows what the LinkedIn post will link back to */}
+          {/* Link preview card */}
           <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
             <div className="flex items-stretch">
               {article.imageUrl && (
@@ -358,7 +421,7 @@ function ArticleDetailDialog({
                   src={article.imageUrl}
                   alt=""
                   className="w-24 h-24 object-cover shrink-0"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               )}
               <div className="p-3 flex-1 min-w-0">
@@ -379,7 +442,7 @@ function ArticleDetailDialog({
                   rel="noopener noreferrer"
                   className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1.5"
                 >
-                  {new URL(article.url).hostname.replace('www.', '')}
+                  {(() => { try { return new URL(article.url).hostname.replace("www.", ""); } catch { return article.url; } })()}
                   <ExternalLink size={10} />
                 </a>
               </div>
@@ -387,12 +450,12 @@ function ArticleDetailDialog({
             <div className="px-3 py-1.5 bg-blue-50 border-t border-blue-100">
               <p className="text-xs text-blue-700 flex items-center gap-1.5">
                 <ExternalLink size={10} />
-                This article URL will be attached as a link preview when pushed to LinkedIn Buffer
+                Article URL will be attached as a LinkedIn link preview card when pushed to Buffer
               </p>
             </div>
           </div>
 
-          {/* Commentary editor */}
+          {/* LinkedIn commentary editor */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
@@ -422,10 +485,81 @@ function ArticleDetailDialog({
             <Textarea
               value={article.commentary ?? ""}
               onChange={(e) => onCommentaryChange(article.id, e.target.value)}
-              className="text-sm min-h-[280px] font-mono leading-relaxed resize-none"
+              className="text-sm min-h-[220px] font-mono leading-relaxed resize-none"
               placeholder="Commentary will appear here after generation…"
             />
           </div>
+
+          {/* X/Twitter section — shown when status is approved (ready to push) or pending */}
+          {(article.status === "approved" || article.status === "pending") && !article.bufferSentAt && (
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              {/* X toggle header */}
+              <div className="px-3 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={includeX}
+                    onChange={(e) => handleXToggle(e.target.checked)}
+                    className="w-4 h-4 rounded accent-slate-800"
+                  />
+                  <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                    <Twitter size={14} className="text-slate-700" />
+                    Also share to X/Twitter
+                  </span>
+                </label>
+                {includeX && article.xVersion && (
+                  <span className={`text-xs font-mono ${charColor}`}>
+                    {charCount}/280
+                  </span>
+                )}
+              </div>
+
+              {/* X version preview — shown when toggle is on */}
+              {includeX && (
+                <div className="p-3">
+                  {getXVersion.isPending ? (
+                    <div className="flex items-center gap-2 text-xs text-slate-500 py-4 justify-center">
+                      <Loader2 size={14} className="animate-spin" />
+                      Generating X version…
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs text-slate-500 mb-1.5">
+                        Condensed ≤280-char version for X/Twitter (auto-generated, editable):
+                      </p>
+                      <Textarea
+                        value={article.xVersion ?? ""}
+                        onChange={(e) => onXVersionChange(article.id, e.target.value)}
+                        className={`text-sm min-h-[100px] font-mono leading-relaxed resize-none ${
+                          charCount > 280 ? "border-red-400 focus:ring-red-400" : ""
+                        }`}
+                        placeholder="X version will appear here…"
+                      />
+                      {charCount > 280 && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Over 280 characters — please shorten before pushing to X.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!includeX && (
+                <div className="px-3 py-2 text-xs text-slate-400">
+                  Enable to simultaneously push a condensed version to X/Twitter alongside LinkedIn.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Already pushed to X */}
+          {article.xSentAt && (
+            <div className="flex items-center gap-2 text-sm text-slate-700 bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <Twitter size={14} />
+              Pushed to X on {new Date(article.xSentAt).toLocaleString()}
+            </div>
+          )}
 
           {/* Actions */}
           {article.status === "pending" && (
@@ -447,6 +581,7 @@ function ArticleDetailDialog({
               </Button>
             </div>
           )}
+
           {article.status === "approved" && (
             <div className="space-y-2 pt-1">
               <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 rounded-lg p-3">
@@ -456,7 +591,6 @@ function ArticleDetailDialog({
                   <span className="text-xs text-emerald-600">(Card #{article.contentItemId})</span>
                 )}
               </div>
-              {/* Buffer push action */}
               {article.bufferSentAt ? (
                 <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 rounded-lg p-3">
                   <Check size={14} />
@@ -464,16 +598,29 @@ function ArticleDetailDialog({
                 </div>
               ) : (
                 <Button
-                  className="w-full bg-[#2C4BFF] hover:bg-[#1a35e0] text-white"
-                  onClick={() => onPushToBuffer(article.id)}
-                  disabled={isPushing}
+                  className={`w-full text-white ${
+                    includeX
+                      ? "bg-slate-800 hover:bg-slate-900"
+                      : "bg-[#2C4BFF] hover:bg-[#1a35e0]"
+                  }`}
+                  onClick={() => onPushToBuffer(article.id, includeX)}
+                  disabled={isPushing || (includeX && charCount > 280)}
                 >
                   {isPushing ? (
                     <Loader2 size={14} className="mr-1.5 animate-spin" />
+                  ) : includeX ? (
+                    <>
+                      <Send size={14} className="mr-1.5" />
+                      <Twitter size={14} className="mr-1.5" />
+                    </>
                   ) : (
                     <Send size={14} className="mr-1.5" />
                   )}
-                  {isPushing ? "Pushing to Buffer…" : "Push to LinkedIn Buffer Queue"}
+                  {isPushing
+                    ? "Pushing to Buffer…"
+                    : includeX
+                    ? "Push to LinkedIn + X"
+                    : "Push to LinkedIn Buffer Queue"}
                 </Button>
               )}
             </div>
@@ -491,19 +638,17 @@ export default function LinkedInNewsfeed() {
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "dismissed">("pending");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [localCommentary, setLocalCommentary] = useState<Record<number, string>>({});
+  const [localXVersion, setLocalXVersion] = useState<Record<number, string>>({});
   const [pushingId, setPushingId] = useState<number | null>(null);
 
-  // Fetch articles
   const { data: articles = [], refetch: refetchArticles, isLoading } = trpc.newsfeed.getArticles.useQuery({
     topic: topicFilter === "all" ? undefined : topicFilter,
     status: activeTab,
     limit: 100,
   });
 
-  // Fetch topic list
   const { data: topics = [] } = trpc.newsfeed.getTopics.useQuery();
 
-  // Mutations
   const refreshMutation = trpc.newsfeed.refreshFeed.useMutation({
     onSuccess: (data) => {
       toast.success(`Feed refreshed — ${data.inserted} new articles added`);
@@ -521,9 +666,7 @@ export default function LinkedInNewsfeed() {
   });
 
   const dismissMutation = trpc.newsfeed.dismissArticle.useMutation({
-    onSuccess: () => {
-      refetchArticles();
-    },
+    onSuccess: () => refetchArticles(),
     onError: (err) => toast.error(`Dismiss failed: ${err.message}`),
   });
 
@@ -531,22 +674,37 @@ export default function LinkedInNewsfeed() {
     onSuccess: (data, variables) => {
       toast.success("Commentary regenerated");
       setLocalCommentary((prev) => ({ ...prev, [variables.id]: data.commentary }));
+      if (data.xVersion) {
+        setLocalXVersion((prev) => ({ ...prev, [variables.id]: data.xVersion! }));
+      }
       refetchArticles();
     },
     onError: (err) => toast.error(`Regeneration failed: ${err.message}`),
   });
 
   const bufferMutation = trpc.newsfeed.pushToBuffer.useMutation({
-    onMutate: (variables) => {
-      setPushingId(variables.id);
-    },
-    onSuccess: (_data, variables) => {
-      toast.success("Commentary queued in LinkedIn Buffer!");
+    onMutate: (variables) => setPushingId(variables.id),
+    onSuccess: (data, variables) => {
+      if (data.xPushed) {
+        toast.success("Pushed to LinkedIn + X!");
+      } else if (data.xError) {
+        toast.success("Pushed to LinkedIn Buffer!");
+        toast.warning(`X push skipped: ${data.xError}`);
+      } else {
+        toast.success("Commentary queued in LinkedIn Buffer!");
+      }
       setPushingId(null);
       refetchArticles();
-      // Update selectedArticle if open
       if (selectedArticle?.id === variables.id) {
-        setSelectedArticle((prev) => prev ? { ...prev, bufferSentAt: new Date() } : prev);
+        setSelectedArticle((prev) =>
+          prev
+            ? {
+                ...prev,
+                bufferSentAt: new Date(),
+                xSentAt: data.xPushed ? new Date() : prev.xSentAt,
+              }
+            : prev
+        );
       }
     },
     onError: (err) => {
@@ -555,30 +713,39 @@ export default function LinkedInNewsfeed() {
     },
   });
 
-  // Merge local commentary edits with server data
   const mergedArticles: Article[] = articles.map((a) => ({
     ...a,
     commentary: localCommentary[a.id] ?? a.commentary,
+    xVersion: localXVersion[a.id] ?? a.xVersion,
   }));
 
   const pendingCount = mergedArticles.filter((a) => a.status === "pending").length;
   const approvedCount = mergedArticles.filter((a) => a.status === "approved").length;
 
-  // Update selectedArticle when local commentary changes
   const handleCommentaryChange = (id: number, text: string) => {
     setLocalCommentary((prev) => ({ ...prev, [id]: text }));
     if (selectedArticle?.id === id) {
-      setSelectedArticle((prev) => prev ? { ...prev, commentary: text } : prev);
+      setSelectedArticle((prev) => (prev ? { ...prev, commentary: text } : prev));
+    }
+  };
+
+  const handleXVersionChange = (id: number, text: string) => {
+    setLocalXVersion((prev) => ({ ...prev, [id]: text }));
+    if (selectedArticle?.id === id) {
+      setSelectedArticle((prev) => (prev ? { ...prev, xVersion: text } : prev));
     }
   };
 
   const handleOpenDetail = (article: Article) => {
-    const merged = { ...article, commentary: localCommentary[article.id] ?? article.commentary };
-    setSelectedArticle(merged);
+    setSelectedArticle({
+      ...article,
+      commentary: localCommentary[article.id] ?? article.commentary,
+      xVersion: localXVersion[article.id] ?? article.xVersion,
+    });
   };
 
-  const handlePushToBuffer = (id: number) => {
-    bufferMutation.mutate({ id });
+  const handlePushToBuffer = (id: number, includeX: boolean) => {
+    bufferMutation.mutate({ id, includeX });
   };
 
   return (
@@ -593,13 +760,12 @@ export default function LinkedInNewsfeed() {
             <div>
               <h1 className="text-lg font-bold text-slate-900">LinkedIn Newsfeed</h1>
               <p className="text-xs text-slate-500">
-                Google News + PubMed → Pedram's voice → LinkedIn Kanban → Buffer
+                Google News + PubMed → Pedram's voice → LinkedIn + X → Buffer
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Topic filter */}
             <Select value={topicFilter} onValueChange={setTopicFilter}>
               <SelectTrigger className="w-48 h-8 text-xs">
                 <SelectValue placeholder="All topics" />
@@ -614,7 +780,6 @@ export default function LinkedInNewsfeed() {
               </SelectContent>
             </Select>
 
-            {/* Refresh button */}
             <Button
               size="sm"
               className="h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs"
@@ -704,7 +869,7 @@ export default function LinkedInNewsfeed() {
               )}
             </TabsContent>
 
-            {/* Approved tab — with Buffer push buttons */}
+            {/* Approved tab */}
             <TabsContent value="approved" className="mt-4">
               {isLoading ? (
                 <div className="flex items-center justify-center py-20">
@@ -720,12 +885,12 @@ export default function LinkedInNewsfeed() {
                 </div>
               ) : (
                 <>
-                  {/* Buffer push summary bar */}
                   <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-blue-700">
                     <Send size={14} className="shrink-0" />
                     <span>
                       <strong>{mergedArticles.filter((a) => a.bufferSentAt).length}</strong> of{" "}
-                      <strong>{mergedArticles.length}</strong> approved articles pushed to LinkedIn Buffer.
+                      <strong>{mergedArticles.length}</strong> pushed to LinkedIn Buffer.
+                      {" "}<strong>{mergedArticles.filter((a) => a.xSentAt).length}</strong> also pushed to X.
                       {mergedArticles.filter((a) => !a.bufferSentAt).length > 0 && (
                         <> <strong>{mergedArticles.filter((a) => !a.bufferSentAt).length}</strong> ready to push.</>
                       )}
@@ -783,6 +948,7 @@ export default function LinkedInNewsfeed() {
         onDismiss={(id) => dismissMutation.mutate({ id })}
         onRegenerate={(id) => regenMutation.mutate({ id })}
         onCommentaryChange={handleCommentaryChange}
+        onXVersionChange={handleXVersionChange}
         onPushToBuffer={handlePushToBuffer}
         isPushing={pushingId === (selectedArticle?.id ?? -1)}
       />

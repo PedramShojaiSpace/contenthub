@@ -100,3 +100,61 @@ Remember: I am SHARING this article, not just writing about the topic. The URL m
 
   return text;
 }
+
+// ─── X/Twitter Version Generator ─────────────────────────────────────────────
+//
+// Condenses the LinkedIn commentary into a ≤280-char X/Twitter post.
+// The X version must:
+//   - Fit within 280 characters (including the article URL)
+//   - Preserve the sharpest single insight from the LinkedIn post
+//   - End with the article URL (counts toward the 280 char limit)
+//   - Sound like Pedram — direct, no fluff, no hashtags in body
+//
+// Note: Twitter counts URLs as 23 chars regardless of actual length (t.co wrapping).
+// We target ≤257 chars of text + the URL to stay safely under 280.
+
+const X_VERSION_SYSTEM = `You are Dr. Pedram Shojai, OMD. You write punchy, high-signal X/Twitter posts.
+
+Rules:
+- Maximum 257 characters of text (NOT counting the URL — it will be appended separately)
+- Extract the single sharpest insight from the LinkedIn post
+- Direct, confident, no filler words
+- No hashtags
+- No emojis
+- Do NOT include the URL in your response — it will be appended automatically
+- End with a period or natural sentence ending`;
+
+export async function generateXVersion(
+  linkedInCommentary: string,
+  articleUrl: string
+): Promise<string> {
+  // URL will be appended as a link attachment in Buffer, but we include it in
+  // the text as a fallback so the post always has the source reference.
+  // Twitter wraps URLs to 23 chars (t.co), so we budget 257 chars for text.
+  const userPrompt = `Here is a LinkedIn post I wrote. Condense it into a single punchy X/Twitter post of ≤257 characters that captures the sharpest insight.
+
+LINKEDIN POST:
+${linkedInCommentary}
+
+Write ONLY the tweet text (no URL, no hashtags). Maximum 257 characters.`;
+
+  const response = await invokeLLM({
+    messages: [
+      { role: "system", content: X_VERSION_SYSTEM },
+      { role: "user", content: userPrompt },
+    ],
+  });
+
+  const content = response.choices?.[0]?.message?.content;
+  if (!content) throw new Error("LLM returned empty X version");
+  let tweet = typeof content === "string" ? content.trim() : JSON.stringify(content);
+
+  // Hard truncate at 257 chars if LLM went over (safety net)
+  if (tweet.length > 257) {
+    // Truncate at last word boundary
+    tweet = tweet.slice(0, 254).replace(/\s+\S*$/, "") + "…";
+  }
+
+  // Append the article URL so the post always links back to the source
+  return `${tweet}\n\n${articleUrl}`;
+}

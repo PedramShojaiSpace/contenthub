@@ -1689,3 +1689,15 @@
 - [x] Update the detail dialog to show the article link in the commentary preview section
 - [x] Write vitest tests for the updated commentary prompt and link attachment logic
 - [x] TypeScript check and checkpoint v133
+
+## v134: X/Twitter Toggle on Newsfeed Buffer Push
+
+- [ ] Add `generateXVersion()` helper in `newsfeedCommentary.ts` — LLM condenses LinkedIn commentary to ≤280 chars for X, preserving the key insight and article URL
+- [ ] Add `xVersion` column to `newsfeed_articles` schema (text, nullable) and run db:push
+- [ ] Update `newsfeed.pushToBuffer` procedure to accept `includeX: boolean` — when true, also pushes a condensed version to all connected X channels
+- [ ] Update `newsfeed.approveArticle` to pre-generate the X version alongside commentary
+- [ ] Update `newsfeed.regenerateCommentary` to also regenerate the X version
+- [ ] Add X toggle checkbox and X preview textarea in the ArticleDetailDialog
+- [ ] Show X toggle on the ApprovedArticleCard Buffer push button area
+- [ ] Write vitest tests for generateXVersion and the dual-push procedure
+- [x] TypeScript check and checkpoint v134

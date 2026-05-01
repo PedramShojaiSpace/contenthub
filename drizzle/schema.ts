@@ -776,3 +776,26 @@ export const verifiedLinks = mysqlTable("verified_links", {
 });
 export type VerifiedLink = typeof verifiedLinks.$inferSelect;
 export type InsertVerifiedLink = typeof verifiedLinks.$inferInsert;
+
+// ── LinkedIn Newsfeed (Doovo Replacement) ─────────────────────────────────────
+// Stores articles discovered from Google News RSS and PubMed for Pedram's
+// LinkedIn commentary workflow. Status: pending → approved | dismissed.
+// Approved articles are pushed into content_items as LinkedIn posts.
+export const newsfeedArticles = mysqlTable("newsfeed_articles", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 512 }).notNull(),
+  source: varchar("source", { length: 255 }),        // e.g. "PubMed", "The Guardian"
+  url: varchar("url", { length: 1024 }).notNull().unique(),
+  imageUrl: text("imageUrl"),                         // Article thumbnail (if available)
+  description: text("description"),                   // Article excerpt / abstract
+  commentary: text("commentary"),                     // AI-generated Pedram-voice LinkedIn post
+  topic: varchar("topic", { length: 128 }),           // e.g. "longevity", "gut_health"
+  // Status workflow: pending → approved | dismissed
+  status: mysqlEnum("newsfeedStatus", ["pending", "approved", "dismissed"]).notNull().default("pending"),
+  // FK → content_items.id — set when article is approved and a LinkedIn card is created
+  contentItemId: int("contentItemId"),
+  fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
+  approvedAt: timestamp("approvedAt"),
+});
+export type NewsfeedArticle = typeof newsfeedArticles.$inferSelect;
+export type InsertNewsfeedArticle = typeof newsfeedArticles.$inferInsert;

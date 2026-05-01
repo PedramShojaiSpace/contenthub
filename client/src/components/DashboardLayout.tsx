@@ -48,6 +48,7 @@ import {
   Settings,
   Inbox,
   ShieldCheck,
+  Newspaper,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -58,6 +59,7 @@ import { Button } from "./ui/button";
 const topNavItems = [
   { icon: LayoutDashboard, label: "Command Center", path: "/" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
+  { icon: Newspaper, label: "LinkedIn Newsfeed", path: "/newsfeed" },
   { icon: Film, label: "Script Library", path: "/scripts" },
   { icon: Image, label: "Asset Library", path: "/assets" },
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },

@@ -1654,3 +1654,17 @@
 - [x] Add "Fix All Mismatched Campaigns" button to Command Center header (blog filter active) with progress toast
 - [x] Add vitest font size auto-scaling tests for bannerComposite.ts (short/medium/long headline tiers)
 - [x] TypeScript check and checkpoint v130
+
+## v131: LinkedIn Newsfeed (Doovo Replacement)
+
+- [x] Add `newsfeed_articles` table to drizzle schema (id, title, source, url, imageUrl, description, commentary, topic, status, fetchedAt, approvedAt)
+- [x] Add `server/newsfeed.ts` — fetchGoogleNewsRSS() and fetchPubMedArticles() helpers
+- [x] Add `server/newsfeedCommentary.ts` — generateCommentary() using invokeLLM with Pedram voice system prompt
+- [x] Add `newsfeed` tRPC router with: getArticles, refreshFeed, approveArticle, dismissArticle, regenerateCommentary
+- [x] Register newsfeed router in server/routers.ts
+- [x] Build `client/src/pages/LinkedInNewsfeed.tsx` — 3-column card grid matching Doovo layout
+- [x] Add Newsfeed route and sidebar nav entry in App.tsx
+- [x] Add daily scheduled refresh endpoint `/api/scheduled/newsfeed-refresh`
+- [x] Wire approve → creates LinkedIn ContentItem in Command Center Kanban
+- [x] Write vitest tests for RSS parser, PubMed fetcher, and commentary prompt
+- [x] TypeScript check and checkpoint v131

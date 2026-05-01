@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startWeeklyDigestCron } from "../digest";
 import { handleIngestResearchReport } from "../ingestRouter";
+import { handleNewsfeedRefresh } from "../newsfeedScheduled";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +41,8 @@ async function startServer() {
   // Ingest endpoint — accepts research reports from external apps
   // POST /api/ingest/research-report (authenticated via INGEST_SECRET header)
   app.post("/api/ingest/research-report", handleIngestResearchReport);
+  // Daily newsfeed refresh — called by Manus scheduled task at 7 AM
+  app.post("/api/scheduled/newsfeed-refresh", handleNewsfeedRefresh);
   // tRPC API
   app.use(
     "/api/trpc",

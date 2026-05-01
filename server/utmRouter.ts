@@ -51,4 +51,19 @@ export const utmRouter = router({
       await db.delete(utmLinks).where(eq(utmLinks.id, input.id));
       return { success: true };
     }),
+
+  // Look up the base CTA URL for a given ctaBlockLabel (for building full UTM URLs in the UI)
+  getCtaUrlForLabel: publicProcedure
+    .input(z.object({ label: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { url: null };
+      const { ctaBlocks } = await import("../drizzle/schema");
+      const { like } = await import("drizzle-orm");
+      const results = await db.select({ url: ctaBlocks.url })
+        .from(ctaBlocks)
+        .where(like(ctaBlocks.label, `%${input.label}%`))
+        .limit(1);
+      return { url: results[0]?.url ?? null };
+    }),
 });

@@ -147,6 +147,7 @@ export default function CreationStudio() {
   const [customInstructions, setCustomInstructions] = useState("");
   const [selectedPersonaId, setSelectedPersonaId] = useState<number | null>(null);
   const [selectedContentGoal, setSelectedContentGoal] = useState<"audience_growth" | "llm_seo" | "community_engagement" | null>(null);
+  const [utmContentOverride, setUtmContentOverride] = useState<string>(""); // "" = use platform default
 
   // New unified state: each platform key maps to { text, imageUrl }
   const [generatedContent, setGeneratedContent] = useState<Record<string, PlatformOutput>>({});
@@ -452,6 +453,7 @@ export default function CreationStudio() {
       generateImages: true,
       personaId: selectedPersonaId ?? undefined,
       gapQueryText: activeGapQueryText ?? undefined,
+      utmContentOverride: utmContentOverride || undefined,
     });
   };
 
@@ -1021,6 +1023,7 @@ export default function CreationStudio() {
       gapQueryId: activeGapQueryId ?? undefined,
       gapQueryText: activeGapQueryText ?? undefined,
       personaId: selectedPersonaId ?? undefined,
+      utmContentOverride: utmContentOverride || undefined,
     });
   };
 
@@ -1597,6 +1600,59 @@ export default function CreationStudio() {
                   placeholder='e.g. "You need 8 hours of sleep every night"'
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
+              </div>
+            )}
+
+            {/* UTM Content Placement Override */}
+            {platform !== "reframe" && platform !== "carousel" && (
+              <div className="flex items-center gap-3 rounded-lg border border-emerald-600/20 bg-emerald-950/10 px-3 py-2">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">UTM Placement</span>
+                </div>
+                <Select value={utmContentOverride || "__default__"} onValueChange={(v) => setUtmContentOverride(v === "__default__" ? "" : v)}>
+                  <SelectTrigger className="h-7 text-xs bg-background border-emerald-600/30 text-foreground flex-1 min-w-0">
+                    <SelectValue placeholder="Platform default" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default__">Platform default ({{
+                      blog: "inline-cta",
+                      youtube: "video-description",
+                      meta: "video-ad",
+                      instagram: "reel",
+                      facebook: "post",
+                      linkedin: "post",
+                      x: "tweet",
+                      tiktok: "video",
+                      podcast: "episode-description",
+                      email: "sequence-email",
+                      newsletter: "weekly-digest",
+                      all: "post",
+                      script: "video-script",
+                    }[platform] ?? "content"})</SelectItem>
+                    <SelectItem value="bio-link">bio-link</SelectItem>
+                    <SelectItem value="story">story</SelectItem>
+                    <SelectItem value="reel">reel</SelectItem>
+                    <SelectItem value="post">post</SelectItem>
+                    <SelectItem value="video-description">video-description</SelectItem>
+                    <SelectItem value="inline-cta">inline-cta</SelectItem>
+                    <SelectItem value="sidebar-cta">sidebar-cta</SelectItem>
+                    <SelectItem value="email-footer">email-footer</SelectItem>
+                    <SelectItem value="episode-description">episode-description</SelectItem>
+                    <SelectItem value="tweet">tweet</SelectItem>
+                    <SelectItem value="video-ad">video-ad</SelectItem>
+                    <SelectItem value="carousel-slide">carousel-slide</SelectItem>
+                  </SelectContent>
+                </Select>
+                {utmContentOverride && (
+                  <button
+                    type="button"
+                    onClick={() => setUtmContentOverride("")}
+                    className="text-[10px] text-emerald-400/60 hover:text-emerald-400 shrink-0"
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
             )}
 

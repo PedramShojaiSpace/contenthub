@@ -1611,3 +1611,17 @@
 - [x] Wire UTM Generator quick presets to auto-populate from the CTA block's campaign slug
 - [x] Write vitest tests for appendUtmToCtaUrl with utm_content, and the getForPlatform procedure
 - [x] TypeScript check and checkpoint v126
+
+## v127: UTM Override + CTA Infographic Banner + Campaign Validation
+
+- [x] Add utm_content override dropdown to Creation Studio form (platform-specific presets from CONTENT_PRESETS taxonomy)
+- [x] Wire utmContentOverride through all generation procedures (generateContent, generateBlog, generateScript, generateEmail)
+- [x] Add Copy Full UTM URL button to Command Center UTM panel — builds complete URL, saves to UTM Builder history
+- [x] Remove old per-card Copy UTM button from Kanban card (replaced by detail modal panel button)
+- [x] Add KNOWN_CAMPAIGNS list to ctaRouter.ts (synced from UTMGenerator CAMPAIGNS)
+- [x] Add server-side campaign slug validation in ctaLabelToCampaign — warn if slug not in KNOWN_CAMPAIGNS
+- [x] Surface campaign validation warning in Command Center blog detail modal
+- [x] Replace CTA banner AI photo generation with branded SVG/canvas infographic (headline, benefit subtext, CTA button, Urban Monk brand colors, no faces)
+- [x] Update generateCtaBanner and blog.regenerateBanner to produce infographic-style output
+- [x] Write vitest tests for campaign validation and utm_content override wiring
+- [x] TypeScript check and checkpoint v127

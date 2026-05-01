@@ -1177,6 +1177,18 @@ export default function CommandCenter() {
     },
   });
 
+  // UTM: save full UTM URL to UTM Builder history
+  const saveUtmLinkMutation = trpc.utm.save.useMutation({
+    onSuccess: () => toast.success("UTM link saved to UTM Builder history!"),
+    onError: (err) => toast.error("Failed to save UTM link: " + err.message),
+  });
+
+  // UTM: look up base CTA URL from ctaBlockLabel for the selected item
+  const { data: ctaUrlData } = trpc.utm.getCtaUrlForLabel.useQuery(
+    { label: (selectedItem as any)?.ctaBlockLabel ?? "" },
+    { enabled: !!(selectedItem as any)?.ctaBlockLabel }
+  );
+
   const teleprompterMutation = trpc.research.generateTeleprompterScript.useMutation({
     onSuccess: (data) => {
       setTeleprompterScript(data.script);
@@ -1487,7 +1499,13 @@ export default function CommandCenter() {
     },
   });
 
-  const wpPublishMutation = trpc.blog.publish.useMutation({});
+  const wpPublishMutation = trpc.blog.publish.useMutation({
+    onSuccess: (data) => {
+      if (data.campaignValidationWarning) {
+        toast.warning(`GA4 Campaign Warning: ${data.campaignValidationWarning}`, { duration: 8000 });
+      }
+    },
+  });
 
   const wpScheduleMutation = trpc.blog.publish.useMutation({
     onSuccess: (data) => {
@@ -2857,12 +2875,47 @@ export default function CommandCenter() {
                         .toLowerCase().replace(/\s*\(.*?\)/g, "").trim()
                         .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").substring(0, 64)
                     : "ic-free-screening";
+                  // Build full UTM URL from base CTA URL + UTM params
+                  const baseUrl = ctaUrlData?.url ?? "https://lightson.theurbanmonk.com/";
+                  const fullUtmUrl = (() => {
+                    try {
+                      const u = new URL(baseUrl);
+                      u.searchParams.set("utm_source", utm.source);
+                      u.searchParams.set("utm_medium", utm.medium);
+                      u.searchParams.set("utm_campaign", campaign);
+                      u.searchParams.set("utm_content", utm.content);
+                      return u.toString();
+                    } catch { return baseUrl; }
+                  })();
                   return (
                     <div className="rounded-lg border border-emerald-600/30 bg-emerald-950/20 p-3 space-y-2">
-                      <p className="text-[10px] text-emerald-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
-                        <Link2 className="h-3 w-3" />
-                        UTM Auto-Injection
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] text-emerald-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
+                          <Link2 className="h-3 w-3" />
+                          UTM Auto-Injection
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px] border-emerald-600/40 text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 gap-1"
+                          onClick={() => {
+                            navigator.clipboard.writeText(fullUtmUrl);
+                            toast.success("Full UTM URL copied!");
+                            // Auto-save to UTM Builder history
+                            saveUtmLinkMutation.mutate({
+                              url: fullUtmUrl,
+                              label: `${selectedItem.title.slice(0, 50)} (${selectedItem.platform})`,
+                              source: utm.source,
+                              medium: utm.medium,
+                              campaign,
+                              content: utm.content,
+                              destination: baseUrl,
+                            });
+                          }}
+                        >
+                          <Copy className="h-3 w-3" /> Copy UTM URL
+                        </Button>
+                      </div>
                       <p className="text-[10px] text-emerald-300/60">These UTM parameters are automatically appended to every CTA link in this post.</p>
                       <div className="flex flex-wrap gap-1.5">
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
@@ -2878,6 +2931,7 @@ export default function CommandCenter() {
                           <span className="text-emerald-500/70">content=</span>{utm.content}
                         </span>
                       </div>
+                      <p className="text-[10px] font-mono text-emerald-300/40 break-all">{fullUtmUrl}</p>
                     </div>
                   );
                 })()}

@@ -59,6 +59,33 @@ export function appendUtmToCtaUrl(
   }
 }
 
+/** Canonical campaign slugs from UTMGenerator.tsx — used for GA4 campaign mapping validation */
+export const KNOWN_CAMPAIGN_SLUGS = new Set([
+  "ic-free-screening",
+  "ic-path-a",
+  "ic-path-b",
+  "upstream-webinar",
+  "upstream-course",
+  "upstream-bundle",
+  "lights-on",
+  "gut-quiz",
+  "dysbiosis-dominant",
+  "inflammatory-cascade",
+  "sensitivity-spectrum",
+  "barrier-breakdown",
+  "brand-awareness",
+  "retargeting",
+]);
+
+/**
+ * Validate that a campaign slug matches a known GA4 campaign.
+ * Returns null if valid, or a warning message if the slug is unrecognized.
+ */
+export function validateCampaignSlug(slug: string): string | null {
+  if (KNOWN_CAMPAIGN_SLUGS.has(slug)) return null;
+  return `Campaign slug "${slug}" is not in the canonical GA4 campaign list. Check UTM Generator for valid slugs.`;
+}
+
 /** Slugify a CTA label into a campaign slug, e.g. "Lights On (Default)" → "lights-on" */
 export function ctaLabelToCampaign(label: string): string {
   return label

@@ -447,6 +447,7 @@ export const appRouter = router({
           generateImages: z.boolean().default(true), // auto-generate images alongside content
           personaId: z.number().optional(), // inject Typeform-enriched persona pain points
           gapQueryText: z.string().optional(), // Research Intelligence: inject competitor gap query
+          utmContentOverride: z.string().optional(), // override utm_content placement type (e.g. "bio-link", "story", "reel")
         })
       )
       .mutation(async ({ input }) => {
@@ -569,7 +570,8 @@ export const appRouter = router({
             let ctaInjection = "";
             if (ctaBlockData) {
               const { appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
-              const utmUrl = appendUtmToCtaUrl(ctaBlockData.url, platform, ctaLabelToCampaign(ctaBlockData.label), PLATFORM_UTM[platform]?.content);
+              const utmContent = input.utmContentOverride || PLATFORM_UTM[platform]?.content;
+              const utmUrl = appendUtmToCtaUrl(ctaBlockData.url, platform, ctaLabelToCampaign(ctaBlockData.label), utmContent);
               const urlForPrompt = utmUrl || ctaBlockData.url || "lightson.theurbanmonk.com";
               ctaInjection = `\n\n[CTA BLOCK — ${ctaBlockData.label}]\n${ctaBlockData.ctaText}\n[END CTA BLOCK]\nCRITICAL URL RULE: If this content includes a link or URL, you MUST use EXACTLY this URL: ${urlForPrompt}. Do NOT invent, shorten, or substitute any other URL. Include this CTA naturally at the end of your content. Do not add any other call to action.`;
             }
@@ -783,6 +785,7 @@ Rules:
           gapQueryId: z.number().optional(),
           gapQueryText: z.string().optional(),
           personaId: z.number().optional(), // inject Typeform-enriched persona pain points
+          utmContentOverride: z.string().optional(), // override utm_content placement type (e.g. "bio-link", "story", "inline-cta")
         })
       )
       .mutation(async ({ input }) => {
@@ -879,7 +882,8 @@ Rules:
           const cta = await getCtaForTopic(input.idea);
           blogCtaLabel = cta.label;
           blogCtaText = cta.ctaText;
-          const utmUrl = appendUtmToCtaUrl(cta.url, "blog", ctaLabelToCampaign(cta.label), PLATFORM_UTM["blog"]?.content);
+          const blogUtmContent = input.utmContentOverride || PLATFORM_UTM["blog"]?.content;
+          const utmUrl = appendUtmToCtaUrl(cta.url, "blog", ctaLabelToCampaign(cta.label), blogUtmContent);
           blogCtaUrl = utmUrl || cta.url || "https://lightson.theurbanmonk.com/";
           const urlForPrompt = blogCtaUrl;
           blogCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally in the Conclusion section of the blog post. Use EXACTLY this URL: ${urlForPrompt}`;
@@ -1278,16 +1282,16 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
             messages: [
               {
                 role: "system",
-                content: `You are a visual director for The Urban Monk brand. Write a concise image generation prompt (max 60 words) for a wide-format (16:9) call-to-action banner image. The banner must feel premium, warm, and wellness-focused. It should evoke transformation, health, and ancient wisdom meeting modern science. NO text in the image. NO faces. Cinematic lighting, rich earth tones, deep greens, warm amber. Return ONLY the prompt.`,
+                content: `You are a graphic designer for The Urban Monk brand. Write a concise image generation prompt (max 80 words) for a wide-format (16:9) CTA infographic banner. The banner must look like a polished marketing graphic — NOT a photo. It should include: a bold headline area at the top in warm cream/ivory text, a central visual metaphor (e.g. glowing lantern, lotus, ancient compass, DNA helix merging with nature), a prominent CTA button shape in deep amber/gold at the bottom with space for text, and a rich dark background (deep forest green, midnight navy, or warm charcoal). Brand aesthetic: premium wellness, ancient wisdom meets modern science, clean typography, no human faces. Return ONLY the prompt.`,
               },
               {
                 role: "user",
-                content: `CTA label: ${blogCtaLabel}\nCTA text: ${blogCtaText}\nArticle topic: ${cleanIdea}`,
+                content: `CTA label: ${blogCtaLabel}\nCTA headline: ${blogCtaText.split(".")[0]}\nArticle topic: ${cleanIdea}`,
               },
             ],
           });
           const rawBannerPrompt = ctaBannerPromptResponse.choices?.[0]?.message?.content;
-          const bannerImagePrompt = typeof rawBannerPrompt === "string" ? rawBannerPrompt.trim() : `Serene wellness scene with warm amber light, ancient wisdom meets modern health, cinematic, no text, no faces`;
+          const bannerImagePrompt = typeof rawBannerPrompt === "string" ? rawBannerPrompt.trim() : `Premium wellness infographic banner: bold cream headline area at top, glowing golden lotus central motif, deep forest green background, amber CTA button shape at bottom, ancient wisdom meets modern science aesthetic, no faces, clean graphic design style`;
           const { url: bannerUrl } = await generateImage({ prompt: bannerImagePrompt });
           ctaBannerUrl = bannerUrl;
           // Inject the CTA banner as a clickable HTML block at the end of the article body,
@@ -2429,6 +2433,23 @@ Return BOTH in this exact format:
       .mutation(async ({ input }) => {
         const wpBaseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
 
+        // Step 0: GA4 campaign slug validation — warn if campaign slug is not in the canonical list
+        let campaignValidationWarning: string | null = null;
+        try {
+          const { validateCampaignSlug, ctaLabelToCampaign } = await import("./ctaRouter");
+          // Extract campaign slug from the body (look for utm_campaign= in any URL)
+          const campaignMatch = input.body.match(/utm_campaign=([^&"'\s]+)/);
+          if (campaignMatch) {
+            const slug = decodeURIComponent(campaignMatch[1]);
+            campaignValidationWarning = validateCampaignSlug(slug);
+            if (campaignValidationWarning) {
+              console.warn(`[WP Publish] GA4 campaign validation: ${campaignValidationWarning}`);
+            }
+          }
+        } catch (err) {
+          console.warn("[WP Publish] Campaign validation check failed (non-fatal):", err);
+        }
+
         // Step 1: Upload hero image to WordPress media library (if provided)
         let featuredMediaId: number | undefined;
         let wpImageUrl: string | undefined;
@@ -2544,6 +2565,7 @@ Return BOTH in this exact format:
           wpImageUrl,
           wpStatus,
           imageUploaded: !!featuredMediaId,
+          campaignValidationWarning: campaignValidationWarning ?? null,
         };
       }),
 
@@ -2895,16 +2917,16 @@ STRICT RULES:
           messages: [
             {
               role: 'system',
-              content: `You are a visual director for The Urban Monk brand. Write a concise image generation prompt (max 60 words) for a wide-format (16:9) call-to-action banner image. The banner must feel premium, warm, and wellness-focused. It should evoke transformation, health, and ancient wisdom meeting modern science. NO text in the image. NO faces. Cinematic lighting, rich earth tones, deep greens, warm amber. Return ONLY the prompt.`,
+              content: `You are a graphic designer for The Urban Monk brand. Write a concise image generation prompt (max 80 words) for a wide-format (16:9) CTA infographic banner. The banner must look like a polished marketing graphic — NOT a photo. It should include: a bold headline area at the top in warm cream/ivory text, a central visual metaphor (e.g. glowing lantern, lotus, ancient compass, DNA helix merging with nature), a prominent CTA button shape in deep amber/gold at the bottom with space for text, and a rich dark background (deep forest green, midnight navy, or warm charcoal). Brand aesthetic: premium wellness, ancient wisdom meets modern science, clean typography, no human faces. Return ONLY the prompt.`,
             },
             {
               role: 'user',
-              content: `CTA label: ${ctaLabel}\nCTA text: ${ctaText}\nArticle topic: ${articleTopic}`,
+              content: `CTA label: ${ctaLabel}\nCTA headline: ${ctaText.split('.')[0]}\nArticle topic: ${articleTopic}`,
             },
           ],
         });
         const rawBannerPrompt = ctaBannerPromptResponse.choices?.[0]?.message?.content;
-        const bannerImagePrompt = typeof rawBannerPrompt === 'string' ? rawBannerPrompt.trim() : `Serene wellness scene with warm amber light, ancient wisdom meets modern health, cinematic, no text, no faces`;
+        const bannerImagePrompt = typeof rawBannerPrompt === 'string' ? rawBannerPrompt.trim() : `Premium wellness infographic banner: bold cream headline area at top, glowing golden lotus central motif, deep forest green background, amber CTA button shape at bottom, ancient wisdom meets modern science aesthetic, no faces, clean graphic design style`;
 
         // Step 2: Generate the banner image
         const { url: newBannerUrl } = await generateImage({ prompt: bannerImagePrompt });

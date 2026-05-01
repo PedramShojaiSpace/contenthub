@@ -1668,3 +1668,14 @@
 - [x] Wire approve → creates LinkedIn ContentItem in Command Center Kanban
 - [x] Write vitest tests for RSS parser, PubMed fetcher, and commentary prompt
 - [x] TypeScript check and checkpoint v131
+
+## v132: Newsfeed Auto-Refresh + Buffer Push
+
+- [x] Add `newsfeed.pushToBuffer` tRPC procedure — sends approved article's commentary to Buffer LinkedIn profile
+- [x] Add "Push to Buffer" button on approved article cards in LinkedInNewsfeed.tsx
+- [x] Show Buffer push status (pending / success / error) per article card
+- [x] Store `bufferSentAt` timestamp on newsfeed_articles schema
+- [x] Run db:push after schema change
+- [x] Set up daily 7 AM Manus scheduled task to POST to /api/scheduled/newsfeed-refresh
+- [x] Write vitest tests for Buffer push procedure
+- [x] TypeScript check and checkpoint v132

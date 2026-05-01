@@ -796,6 +796,7 @@ export const newsfeedArticles = mysqlTable("newsfeed_articles", {
   contentItemId: int("contentItemId"),
   fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
   approvedAt: timestamp("approvedAt"),
+  bufferSentAt: timestamp("bufferSentAt"),       // Set when commentary is pushed to Buffer
 });
 export type NewsfeedArticle = typeof newsfeedArticles.$inferSelect;
 export type InsertNewsfeedArticle = typeof newsfeedArticles.$inferInsert;

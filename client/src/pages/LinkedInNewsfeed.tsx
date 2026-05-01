@@ -6,6 +6,10 @@
  * Command Center LinkedIn Kanban column.
  *
  * Layout: 3-column card grid (pending) + sidebar tabs for approved/dismissed.
+ *
+ * v132 additions:
+ *   - "Push to Buffer" button on approved article cards
+ *   - bufferSentAt timestamp tracked per article
  */
 
 import { useState } from "react";
@@ -38,6 +42,7 @@ import {
   Check,
   Newspaper,
   Loader2,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,7 +66,7 @@ const TOPIC_LABELS: Record<string, string> = {
   cardiometabolic: "Cardiometabolic",
 };
 
-// ─── Article card ──────────────────────────────────────────────────────────────
+// ─── Article type ──────────────────────────────────────────────────────────────
 
 interface Article {
   id: number;
@@ -76,7 +81,10 @@ interface Article {
   fetchedAt: Date;
   approvedAt: Date | null;
   contentItemId: number | null;
+  bufferSentAt: Date | null;
 }
+
+// ─── Pending article card ──────────────────────────────────────────────────────
 
 function ArticleCard({
   article,
@@ -179,6 +187,94 @@ function ArticleCard({
   );
 }
 
+// ─── Approved article card (with Buffer push button) ──────────────────────────
+
+function ApprovedArticleCard({
+  article,
+  onPushToBuffer,
+  onOpenDetail,
+  isPushing,
+}: {
+  article: Article;
+  onPushToBuffer: (id: number) => void;
+  onOpenDetail: (article: Article) => void;
+  isPushing: boolean;
+}) {
+  const topicKey = article.topic ?? "";
+
+  return (
+    <div className="bg-white border border-emerald-200 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col">
+      {/* Clickable content area */}
+      <div
+        className="p-4 pb-2 flex-1 cursor-pointer"
+        onClick={() => onOpenDetail(article)}
+      >
+        <div className="flex items-start gap-2 mb-2 flex-wrap">
+          <Badge variant="outline" className={`text-xs shrink-0 ${TOPIC_COLORS[topicKey] ?? ""}`}>
+            {TOPIC_LABELS[topicKey] ?? topicKey}
+          </Badge>
+          <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200 bg-emerald-50 shrink-0">
+            ✓ Approved
+          </Badge>
+          {article.bufferSentAt && (
+            <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50 shrink-0">
+              ✓ In Buffer
+            </Badge>
+          )}
+        </div>
+        <h3 className="font-semibold text-slate-900 text-sm leading-snug mb-1 line-clamp-2">
+          {article.title}
+        </h3>
+        <p className="text-xs text-slate-500 mb-1">{article.source}</p>
+        {article.commentary && (
+          <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+            {article.commentary.slice(0, 160)}…
+          </p>
+        )}
+      </div>
+
+      {/* Buffer push footer */}
+      <div className="p-3 pt-2 border-t border-slate-100 flex items-center gap-2">
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-slate-400 hover:text-slate-600 p-1 rounded"
+          title="Open article"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink size={13} />
+        </a>
+        <div className="flex-1" />
+        {article.bufferSentAt ? (
+          <span className="text-xs text-blue-600 flex items-center gap-1">
+            <Check size={12} />
+            Sent to Buffer
+          </span>
+        ) : (
+          <Button
+            size="sm"
+            className="text-xs h-7 px-3 bg-[#2C4BFF] hover:bg-[#1a35e0] text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPushToBuffer(article.id);
+            }}
+            disabled={isPushing}
+            title="Push to LinkedIn Buffer queue"
+          >
+            {isPushing ? (
+              <Loader2 size={12} className="mr-1 animate-spin" />
+            ) : (
+              <Send size={12} className="mr-1" />
+            )}
+            {isPushing ? "Pushing…" : "Push to Buffer"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Detail dialog ─────────────────────────────────────────────────────────────
 
 function ArticleDetailDialog({
@@ -189,6 +285,8 @@ function ArticleDetailDialog({
   onDismiss,
   onRegenerate,
   onCommentaryChange,
+  onPushToBuffer,
+  isPushing,
 }: {
   article: Article | null;
   open: boolean;
@@ -197,6 +295,8 @@ function ArticleDetailDialog({
   onDismiss: (id: number) => void;
   onRegenerate: (id: number) => void;
   onCommentaryChange: (id: number, text: string) => void;
+  onPushToBuffer: (id: number) => void;
+  isPushing: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -228,6 +328,11 @@ function ArticleDetailDialog({
             <Badge variant="outline" className="text-xs text-slate-500">
               {article.source}
             </Badge>
+            {article.bufferSentAt && (
+              <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">
+                ✓ Pushed to Buffer {new Date(article.bufferSentAt).toLocaleDateString()}
+              </Badge>
+            )}
             <a
               href={article.url}
               target="_blank"
@@ -301,11 +406,33 @@ function ArticleDetailDialog({
             </div>
           )}
           {article.status === "approved" && (
-            <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 rounded-lg p-3">
-              <Check size={14} />
-              Approved — moved to LinkedIn Kanban in Command Center
-              {article.contentItemId && (
-                <span className="text-xs text-emerald-600">(Card #{article.contentItemId})</span>
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 rounded-lg p-3">
+                <Check size={14} />
+                Approved — moved to LinkedIn Kanban in Command Center
+                {article.contentItemId && (
+                  <span className="text-xs text-emerald-600">(Card #{article.contentItemId})</span>
+                )}
+              </div>
+              {/* Buffer push action */}
+              {article.bufferSentAt ? (
+                <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 rounded-lg p-3">
+                  <Check size={14} />
+                  Pushed to LinkedIn Buffer on {new Date(article.bufferSentAt).toLocaleString()}
+                </div>
+              ) : (
+                <Button
+                  className="w-full bg-[#2C4BFF] hover:bg-[#1a35e0] text-white"
+                  onClick={() => onPushToBuffer(article.id)}
+                  disabled={isPushing}
+                >
+                  {isPushing ? (
+                    <Loader2 size={14} className="mr-1.5 animate-spin" />
+                  ) : (
+                    <Send size={14} className="mr-1.5" />
+                  )}
+                  {isPushing ? "Pushing to Buffer…" : "Push to LinkedIn Buffer Queue"}
+                </Button>
               )}
             </div>
           )}
@@ -322,6 +449,7 @@ export default function LinkedInNewsfeed() {
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "dismissed">("pending");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [localCommentary, setLocalCommentary] = useState<Record<number, string>>({});
+  const [pushingId, setPushingId] = useState<number | null>(null);
 
   // Fetch articles
   const { data: articles = [], refetch: refetchArticles, isLoading } = trpc.newsfeed.getArticles.useQuery({
@@ -366,6 +494,25 @@ export default function LinkedInNewsfeed() {
     onError: (err) => toast.error(`Regeneration failed: ${err.message}`),
   });
 
+  const bufferMutation = trpc.newsfeed.pushToBuffer.useMutation({
+    onMutate: (variables) => {
+      setPushingId(variables.id);
+    },
+    onSuccess: (_data, variables) => {
+      toast.success("Commentary queued in LinkedIn Buffer!");
+      setPushingId(null);
+      refetchArticles();
+      // Update selectedArticle if open
+      if (selectedArticle?.id === variables.id) {
+        setSelectedArticle((prev) => prev ? { ...prev, bufferSentAt: new Date() } : prev);
+      }
+    },
+    onError: (err) => {
+      toast.error(`Buffer push failed: ${err.message}`);
+      setPushingId(null);
+    },
+  });
+
   // Merge local commentary edits with server data
   const mergedArticles: Article[] = articles.map((a) => ({
     ...a,
@@ -388,6 +535,10 @@ export default function LinkedInNewsfeed() {
     setSelectedArticle(merged);
   };
 
+  const handlePushToBuffer = (id: number) => {
+    bufferMutation.mutate({ id });
+  };
+
   return (
     <DashboardLayout>
       <div className="flex flex-col h-full bg-slate-50">
@@ -400,7 +551,7 @@ export default function LinkedInNewsfeed() {
             <div>
               <h1 className="text-lg font-bold text-slate-900">LinkedIn Newsfeed</h1>
               <p className="text-xs text-slate-500">
-                Google News + PubMed → Pedram's voice → LinkedIn Kanban
+                Google News + PubMed → Pedram's voice → LinkedIn Kanban → Buffer
               </p>
             </div>
           </div>
@@ -511,7 +662,7 @@ export default function LinkedInNewsfeed() {
               )}
             </TabsContent>
 
-            {/* Approved tab */}
+            {/* Approved tab — with Buffer push buttons */}
             <TabsContent value="approved" className="mt-4">
               {isLoading ? (
                 <div className="flex items-center justify-center py-20">
@@ -526,28 +677,30 @@ export default function LinkedInNewsfeed() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-8">
-                  {mergedArticles.map((article) => (
-                    <div
-                      key={article.id}
-                      className="bg-white border border-emerald-200 rounded-xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => handleOpenDetail(article)}
-                    >
-                      <div className="flex items-start gap-2 mb-2">
-                        <Badge variant="outline" className={`text-xs shrink-0 ${TOPIC_COLORS[article.topic ?? ""] ?? ""}`}>
-                          {TOPIC_LABELS[article.topic ?? ""] ?? article.topic}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200 bg-emerald-50 shrink-0">
-                          ✓ Approved
-                        </Badge>
-                      </div>
-                      <h3 className="font-semibold text-slate-900 text-sm leading-snug mb-1 line-clamp-2">
-                        {article.title}
-                      </h3>
-                      <p className="text-xs text-slate-500">{article.source}</p>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  {/* Buffer push summary bar */}
+                  <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs text-blue-700">
+                    <Send size={14} className="shrink-0" />
+                    <span>
+                      <strong>{mergedArticles.filter((a) => a.bufferSentAt).length}</strong> of{" "}
+                      <strong>{mergedArticles.length}</strong> approved articles pushed to LinkedIn Buffer.
+                      {mergedArticles.filter((a) => !a.bufferSentAt).length > 0 && (
+                        <> <strong>{mergedArticles.filter((a) => !a.bufferSentAt).length}</strong> ready to push.</>
+                      )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-8">
+                    {mergedArticles.map((article) => (
+                      <ApprovedArticleCard
+                        key={article.id}
+                        article={article}
+                        onPushToBuffer={handlePushToBuffer}
+                        onOpenDetail={handleOpenDetail}
+                        isPushing={pushingId === article.id}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
 
@@ -588,6 +741,8 @@ export default function LinkedInNewsfeed() {
         onDismiss={(id) => dismissMutation.mutate({ id })}
         onRegenerate={(id) => regenMutation.mutate({ id })}
         onCommentaryChange={handleCommentaryChange}
+        onPushToBuffer={handlePushToBuffer}
+        isPushing={pushingId === (selectedArticle?.id ?? -1)}
       />
     </DashboardLayout>
   );

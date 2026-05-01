@@ -17,6 +17,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { fetchAllTopics, fetchGoogleNewsRSS, fetchPubMedArticles, TOPIC_CLUSTERS } from "./newsfeed";
 // fetchGoogleNewsRSS and fetchPubMedArticles are used in the refreshFeed procedure
 import { generateCommentary } from "./newsfeedCommentary";
+import { getBufferProfiles, pushToBuffer } from "./buffer";
 
 export const newsfeedRouter = router({
   // ── List articles ──────────────────────────────────────────────────────────
@@ -204,6 +205,54 @@ export const newsfeedRouter = router({
         .where(eq(newsfeedArticles.id, input.id));
 
       return { commentary };
+    }),
+
+  // ── Push to Buffer ─────────────────────────────────────────────────────────
+  // Sends the article's AI-generated commentary to the LinkedIn Buffer queue.
+  // Automatically selects the first LinkedIn channel found in Buffer.
+  pushToBuffer: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const database = await getDb();
+      if (!database) throw new Error("Database not available");
+
+      const [article] = await database
+        .select()
+        .from(newsfeedArticles)
+        .where(eq(newsfeedArticles.id, input.id))
+        .limit(1);
+
+      if (!article) throw new Error("Article not found");
+      if (!article.commentary) throw new Error("Article has no commentary to push");
+
+      // Discover Buffer LinkedIn channels
+      const profiles = await getBufferProfiles();
+      const linkedInProfiles = profiles.filter((p) => p.platform === "linkedin");
+
+      if (linkedInProfiles.length === 0) {
+        throw new Error("No LinkedIn channel found in Buffer. Please connect your LinkedIn account in Buffer.");
+      }
+
+      // Push to all connected LinkedIn channels
+      const channelIds = linkedInProfiles.map((p) => p.id);
+      const result = await pushToBuffer({
+        text: article.commentary,
+        profileIds: channelIds,
+        platform: "linkedin",
+        imageUrl: article.imageUrl ?? undefined,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error ?? "Buffer push failed");
+      }
+
+      // Record the push timestamp
+      await database
+        .update(newsfeedArticles)
+        .set({ bufferSentAt: new Date() })
+        .where(eq(newsfeedArticles.id, input.id));
+
+      return { success: true, bufferId: result.bufferId, channelCount: channelIds.length };
     }),
 
   // ── Get topic list ─────────────────────────────────────────────────────────

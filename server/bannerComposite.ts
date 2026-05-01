@@ -10,13 +10,23 @@
  *   - Centre: the original AI image (scaled to fill)
  */
 
-import { createCanvas, loadImage } from "canvas";
+import { createCanvas, loadImage, registerFont } from "canvas";
 import type { CanvasRenderingContext2D as NodeCanvasRenderingContext2D, Image as NodeCanvasImage } from "canvas";
 import { storagePut } from "./storage";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // ─── Font setup ───────────────────────────────────────────────────────────────
-// We use the system sans-serif stack; node-canvas falls back gracefully.
-// If you want a custom font, call registerFont() here with the .ttf path.
+// Register Montserrat (Urban Monk brand font) from the bundled .ttf files.
+// registerFont must be called before any canvas is created.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FONTS_DIR = path.join(__dirname, "fonts");
+try {
+  registerFont(path.join(FONTS_DIR, "Montserrat-Bold.ttf"), { family: "Montserrat", weight: "bold" });
+  registerFont(path.join(FONTS_DIR, "Montserrat-Regular.ttf"), { family: "Montserrat", weight: "normal" });
+} catch {
+  // Fonts may already be registered or path differs in production — safe to ignore
+}
 
 const CANVAS_W = 1200;
 const CANVAS_H = 675;
@@ -112,7 +122,7 @@ export async function compositeCtaBanner(
 
   // ── 5. Headline text ────────────────────────────────────────────────────────
   const headlineFontSize = headline.length > 60 ? 42 : headline.length > 40 ? 48 : 54;
-  ctx.font = `bold ${headlineFontSize}px "DejaVu Sans", Arial, sans-serif`;
+  ctx.font = `bold ${headlineFontSize}px "Montserrat", "DejaVu Sans", Arial, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
 
@@ -146,7 +156,7 @@ export async function compositeCtaBanner(
     : ctaButtonLabel;
 
   const btnFontSize = 28;
-  ctx.font = `bold ${btnFontSize}px "DejaVu Sans", Arial, sans-serif`;
+  ctx.font = `bold ${btnFontSize}px "Montserrat", "DejaVu Sans", Arial, sans-serif`;
   const btnTextWidth = ctx.measureText(btnLabel).width;
   const btnPaddingX = 48;
   const btnPaddingY = 16;
@@ -186,7 +196,7 @@ export async function compositeCtaBanner(
   ctx.fillText(btnLabel, CANVAS_W / 2, btnY + btnH / 2);
 
   // ── 7. Urban Monk brand watermark ───────────────────────────────────────────
-  ctx.font = `500 18px "DejaVu Sans", Arial, sans-serif`;
+  ctx.font = `normal 18px "Montserrat", "DejaVu Sans", Arial, sans-serif`;
   ctx.fillStyle = "rgba(245,240,232,0.55)";
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";

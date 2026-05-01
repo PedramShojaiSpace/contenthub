@@ -1637,3 +1637,12 @@
 - [x] Wire compositeCtaBanner into blog.regenerateBanner procedure
 - [x] Write vitest tests for UTM dedup logic and banner composite helper
 - [x] TypeScript check and checkpoint v128
+
+## v129: Font Upgrade + Re-Publish + UTM Dedup Toast
+
+- [x] Download Montserrat-Bold.ttf and Montserrat-Regular.ttf to server/fonts/
+- [x] Register fonts in bannerComposite.ts via registerFont() and use them for headline + button label
+- [x] Add Re-Publish to WordPress button in Fix Campaign panel (calls wpPublishMutation after fixCampaignSlugMutation succeeds)
+- [x] Show "Already saved" toast when utm.save returns duplicate:true
+- [x] Write vitest tests for font registration path and dedup toast logic
+- [x] TypeScript check and checkpoint v129

@@ -1145,6 +1145,7 @@ export default function CommandCenter() {
   const [showCampaignFix, setShowCampaignFix] = useState(false);
   const [selectedFixSlug, setSelectedFixSlug] = useState<string>("ic-free-screening");
   const [campaignFixItemId, setCampaignFixItemId] = useState<number | null>(null);
+  const [fixApplied, setFixApplied] = useState(false);
 
   // Teleprompter script state (for card detail modal)
   const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
@@ -1185,7 +1186,13 @@ export default function CommandCenter() {
 
   // UTM: save full UTM URL to UTM Builder history
   const saveUtmLinkMutation = trpc.utm.save.useMutation({
-    onSuccess: () => toast.success("UTM link saved to UTM Builder history!"),
+    onSuccess: (data) => {
+      if ((data as any)?.duplicate) {
+        toast.info("Already saved — this UTM URL is already in your history.", { duration: 3000 });
+      } else {
+        toast.success("UTM link saved to UTM Builder history!");
+      }
+    },
     onError: (err) => toast.error("Failed to save UTM link: " + err.message),
   });
 
@@ -1508,9 +1515,8 @@ export default function CommandCenter() {
   const fixCampaignSlugMutation = trpc.blog.fixCampaignSlug.useMutation({
     onSuccess: (data) => {
       if (data.updated) {
-        toast.success(`Campaign slug updated to "${data.newSlug}"! Re-publish to apply.`);
-        setShowCampaignFix(false);
-        setCampaignWarning(null);
+        toast.success(`Campaign slug fixed to "${data.newSlug}" — click Re-Publish to apply.`);
+        setFixApplied(true);
         refetch();
       } else {
         toast.info(data.message ?? "No changes made.");
@@ -3081,6 +3087,7 @@ export default function CommandCenter() {
                     disabled={fixCampaignSlugMutation.isPending}
                     onClick={() => {
                       if (campaignFixItemId) {
+                        setFixApplied(false);
                         fixCampaignSlugMutation.mutate({ contentItemId: campaignFixItemId, newCampaignSlug: selectedFixSlug });
                       }
                     }}
@@ -3088,6 +3095,23 @@ export default function CommandCenter() {
                     {fixCampaignSlugMutation.isPending ? "Fixing…" : "Apply Fix"}
                   </Button>
                 </div>
+                {fixApplied && campaignFixItemId === selectedItem.id && (
+                  <div className="pt-1">
+                    <Button
+                      size="sm"
+                      className="w-full h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                      disabled={wpPublishMutation.isPending}
+                      onClick={() => {
+                        handlePublishToWP(selectedItem);
+                        setFixApplied(false);
+                        setShowCampaignFix(false);
+                        setCampaignWarning(null);
+                      }}
+                    >
+                      {wpPublishMutation.isPending ? "Re-publishing…" : "↺ Re-Publish to WordPress"}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 

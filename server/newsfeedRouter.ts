@@ -233,13 +233,24 @@ export const newsfeedRouter = router({
         throw new Error("No LinkedIn channel found in Buffer. Please connect your LinkedIn account in Buffer.");
       }
 
-      // Push to all connected LinkedIn channels
+      // Push to all connected LinkedIn channels.
+      // Always include the article URL as a link asset so LinkedIn generates
+      // a link preview card — this is the core Doovo-style curation pattern:
+      // Pedram adds commentary AND links back to the original source.
       const channelIds = linkedInProfiles.map((p) => p.id);
       const result = await pushToBuffer({
         text: article.commentary,
         profileIds: channelIds,
         platform: "linkedin",
         imageUrl: article.imageUrl ?? undefined,
+        linkAsset: {
+          url: article.url,
+          title: article.title ?? undefined,
+          description: article.description
+            ? article.description.slice(0, 300)
+            : undefined,
+          thumbnailUrl: article.imageUrl ?? undefined,
+        },
       });
 
       if (!result.success) {

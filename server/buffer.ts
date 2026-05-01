@@ -129,6 +129,12 @@ export async function pushToBuffer(params: {
   metaPostType?: "post" | "story" | "reel"; // required for facebook/instagram channels
   channelServiceMap?: Record<string, string>; // channelId → service (e.g. "facebook", "instagram")
   ctaUrl?: string; // UTM-tracked CTA URL — sent as Instagram first comment, not in caption
+  linkAsset?: {
+    url: string;
+    title?: string;
+    description?: string;
+    thumbnailUrl?: string;
+  }; // Link attachment for LinkedIn link preview card (Buffer AssetsInput.link)
 }): Promise<BufferUpdateResult> {
   const token = getAccessToken();
   if (!token) {
@@ -173,11 +179,23 @@ export async function pushToBuffer(params: {
         ? new Date(params.scheduledAt).toISOString()
         : undefined;
 
-      // Build assets object if image is provided
-      // Buffer GraphQL API expects: assets: { images: [{ url: "..." }] }
-      const assetsFragment = params.imageUrl
-        ? `, assets: { images: [{ url: ${JSON.stringify(params.imageUrl)} }] }`
-        : "";
+      // Build assets object — supports image and/or link attachment
+      // Buffer GraphQL API AssetsInput: { images: [...], link: { url, title, description, thumbnailUrl } }
+      // For LinkedIn newsfeed posts: always include link asset to generate the link preview card
+      let assetsInner = "";
+      if (params.imageUrl) {
+        assetsInner += `images: [{ url: ${JSON.stringify(params.imageUrl)} }]`;
+      }
+      if (params.linkAsset && !isInstagram) {
+        // Build link asset fields — url is required, others are optional
+        const la = params.linkAsset;
+        const titleFrag = la.title ? `, title: ${JSON.stringify(la.title)}` : "";
+        const descFrag = la.description ? `, description: ${JSON.stringify(la.description)}` : "";
+        const thumbFrag = la.thumbnailUrl ? `, thumbnailUrl: ${JSON.stringify(la.thumbnailUrl)}` : "";
+        const linkFrag = `link: { url: ${JSON.stringify(la.url)}${titleFrag}${descFrag}${thumbFrag} }`;
+        assetsInner += (assetsInner ? ", " : "") + linkFrag;
+      }
+      const assetsFragment = assetsInner ? `, assets: { ${assetsInner} }` : "";
 
       const dueAtFragment = dueAt ? `, dueAt: "${dueAt}"` : "";
 

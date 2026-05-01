@@ -1679,3 +1679,13 @@
 - [x] Set up daily 7 AM Manus scheduled task to POST to /api/scheduled/newsfeed-refresh
 - [x] Write vitest tests for Buffer push procedure
 - [x] TypeScript check and checkpoint v132
+
+## v133: Article Link Always Embedded in Buffer Push
+
+- [x] Update `generateCommentary()` system prompt to always reference the source article naturally (e.g. "I came across this piece from [Source]..." or "Worth reading from [Source]:") and end with the article URL so the post invites click-through
+- [x] Update `newsfeed.pushToBuffer` procedure to always pass `articleUrl` as the Buffer `linkUrl` attachment parameter
+- [x] Update `pushToBuffer()` in buffer.ts to accept and pass `linkUrl` for LinkedIn posts
+- [x] Update the approved article card UI to show the source article URL as a visible "via [Source]" link
+- [x] Update the detail dialog to show the article link in the commentary preview section
+- [x] Write vitest tests for the updated commentary prompt and link attachment logic
+- [x] TypeScript check and checkpoint v133

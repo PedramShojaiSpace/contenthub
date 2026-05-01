@@ -350,6 +350,48 @@ function ArticleDetailDialog({
             </div>
           )}
 
+          {/* Link preview card — shows what the LinkedIn post will link back to */}
+          <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+            <div className="flex items-stretch">
+              {article.imageUrl && (
+                <img
+                  src={article.imageUrl}
+                  alt=""
+                  className="w-24 h-24 object-cover shrink-0"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
+              <div className="p-3 flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
+                  {article.source ?? "Article"}
+                </p>
+                <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 mb-1">
+                  {article.title}
+                </p>
+                {article.description && (
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    {article.description.slice(0, 180)}
+                  </p>
+                )}
+                <a
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1.5"
+                >
+                  {new URL(article.url).hostname.replace('www.', '')}
+                  <ExternalLink size={10} />
+                </a>
+              </div>
+            </div>
+            <div className="px-3 py-1.5 bg-blue-50 border-t border-blue-100">
+              <p className="text-xs text-blue-700 flex items-center gap-1.5">
+                <ExternalLink size={10} />
+                This article URL will be attached as a link preview when pushed to LinkedIn Buffer
+              </p>
+            </div>
+          </div>
+
           {/* Commentary editor */}
           <div>
             <div className="flex items-center justify-between mb-1.5">

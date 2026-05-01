@@ -4,6 +4,11 @@
  * Generates a 200-350 word LinkedIn thought-leadership post for each article.
  * NOT a summary — a perspective piece that connects the research finding to
  * practical wisdom and ends with a CTA toward the Urban Monk Academy.
+ *
+ * v133: Commentary always references the source article and includes the URL
+ * so the LinkedIn post functions as a curated share, not a standalone opinion.
+ * Pedram is positioned as a purveyor of important information — someone who
+ * finds the signal in the noise and adds expert context.
  */
 
 import { invokeLLM } from "./_core/llm";
@@ -29,14 +34,15 @@ Your audience on LinkedIn:
 
 Writing rules:
 - 200-350 words total
-- Open with a hook that challenges conventional wisdom or highlights a surprising finding
+- You are SHARING an article and adding your expert commentary — you are a curator and thought leader, not just an opinion writer
+- Open naturally by referencing the article or its source (e.g. "I came across this piece in [Source]...", "This research from [Source] stopped me in my tracks...", "Worth your attention — [Source] just published something important about...")
 - Do NOT summarize the article — share your PERSPECTIVE and what this means for real people
 - Connect the research to a broader pattern you've observed in your clinical work or personal practice
 - Include one concrete, actionable insight they can apply today
 - End with a soft CTA that invites them into the Urban Monk Academy community
-- No hashtags in the body — add 3-5 relevant hashtags at the very end on a new line
+- ALWAYS end the post with the article URL on its own line, preceded by "Read more:" — this is the link back to the original article
+- No hashtags in the body — add 3-5 relevant hashtags at the very end on a new line (after the URL)
 - No emojis
-- No "In this article..." or "A new study shows..." openers
 - Write as if you're speaking to a smart friend over coffee`;
 
 // ─── Topic-Specific CTA Endings ───────────────────────────────────────────────
@@ -57,7 +63,7 @@ export async function generateCommentary(article: RawArticle): Promise<string> {
   const topicLabel = cluster?.label ?? article.topic;
   const ctaEnding = TOPIC_CTAS[article.topic] ?? TOPIC_CTAS.integrative_medicine;
 
-  const userPrompt = `Here is an article I want to respond to on LinkedIn:
+  const userPrompt = `Here is an article I want to share and respond to on LinkedIn:
 
 TITLE: ${article.title}
 SOURCE: ${article.source}
@@ -65,15 +71,16 @@ URL: ${article.url}
 TOPIC CLUSTER: ${topicLabel}
 EXCERPT: ${article.description || "(no excerpt available)"}
 
-Write a LinkedIn post in my voice (Dr. Pedram Shojai) responding to this article. 
+Write a LinkedIn post in my voice (Dr. Pedram Shojai) that:
+1. Opens by naturally referencing this article and its source — I am sharing this piece with my audience as a curator
+2. Adds my expert perspective and connects it to broader patterns from clinical work or personal practice
+3. Includes one concrete actionable insight
+4. Ends with this CTA (you can rephrase slightly to fit the flow): "${ctaEnding}"
+5. Then on its own line: "Read more: ${article.url}"
+6. Then on a new line: 3-5 relevant hashtags
 
-Remember:
-- This is NOT a summary — share your perspective and what this means for real people
-- Connect to a broader pattern from your clinical work or personal practice
-- Include one concrete actionable insight
-- End with this CTA (you can rephrase it slightly to fit the flow): "${ctaEnding}"
-- 200-350 words
-- Add 3-5 relevant hashtags at the very end on their own line`;
+Remember: I am SHARING this article, not just writing about the topic. The URL must appear at the end so readers can click through to the original piece.
+200-350 words (not counting the URL line and hashtags).`;
 
   const response = await invokeLLM({
     messages: [
@@ -84,5 +91,12 @@ Remember:
 
   const content = response.choices?.[0]?.message?.content;
   if (!content) throw new Error("LLM returned empty commentary");
-  return typeof content === "string" ? content.trim() : JSON.stringify(content);
+  const text = typeof content === "string" ? content.trim() : JSON.stringify(content);
+
+  // Safety net: if the LLM forgot to include the URL, append it
+  if (!text.includes(article.url)) {
+    return `${text}\n\nRead more: ${article.url}`;
+  }
+
+  return text;
 }

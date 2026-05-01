@@ -246,6 +246,10 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
 1. OPENING HOOK (2-3 paragraphs, 200-250 words):
    Select hook from the 12 families based on emotional driver. Start with the painful truth — a provocative statement, a surprising statistic, or a brief patient story. Establish the problem viscerally. Make the reader feel seen. End with a bridge sentence that promises real answers. The first sentence must pass the 3-second scroll test: specific, tensioned, relevant.
 
+2. KEY TAKEAWAYS (immediately after the opening hook, before the first H2):
+   Output a Markdown block that begins with the exact heading: ## Key Takeaways
+   Then write 4-6 concise bullet points (using - ) that summarise the most actionable insights the reader will gain from this article. Each bullet must be a complete sentence, 15-25 words, written in Pedram's warm-but-direct voice. These bullets should tease the framework and outcomes — they are a promise to the reader, not a dry abstract. Do NOT use sub-bullets. Do NOT repeat the article title. This section must appear in the article body immediately after the opening hook paragraphs.
+
 3. THE HIDDEN PROBLEM — WHY THIS IS HAPPENING (1 H2, 2-3 paragraphs, 200-250 words):
    H2 must contain a semantic keyword and answer a PAA-style question. Diagnose the root cause — the biology, physiology, Taoist or functional medicine lens. Name the surface symptom, reveal the root cause, explain the mechanism, validate their effort. This earns the right to teach.
 
@@ -395,6 +399,7 @@ export const appRouter = router({
           seoKeywords: z.string().optional(),          // JSON array of semantic keyword strings
           yoastSeoTitle: z.string().optional(),        // Yoast SEO title (shown in SERPs)
           yoastMetaDescription: z.string().optional(), // Yoast meta description (150-160 chars)
+          ctaBannerUrl: z.string().optional(),           // AI-generated CTA banner image URL
         })
       )
       .mutation(async ({ input }) => {
@@ -402,7 +407,6 @@ export const appRouter = router({
         await updateContentItem(id, data);
         return { success: true };
       }),
-
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -868,12 +872,16 @@ Rules:
         // Load topical CTA
         let blogCtaInjection = "";
         let blogCtaLabel = "Lights On (Default)";
+        let blogCtaUrl = "https://lightson.theurbanmonk.com/";
+        let blogCtaText = "";
         try {
           const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.idea);
           blogCtaLabel = cta.label;
+          blogCtaText = cta.ctaText;
           const utmUrl = appendUtmToCtaUrl(cta.url, "blog", ctaLabelToCampaign(cta.label));
-          const urlForPrompt = utmUrl || cta.url || "lightson.theurbanmonk.com";
+          blogCtaUrl = utmUrl || cta.url || "https://lightson.theurbanmonk.com/";
+          const urlForPrompt = blogCtaUrl;
           blogCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally in the Conclusion section of the blog post. Use EXACTLY this URL: ${urlForPrompt}`;
         } catch (err) {
           console.warn("[Blog] Could not load CTA:", err);
@@ -1260,13 +1268,51 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           }
         }
 
-        // Estimate read time (avg 200 words/min)
-        const wordCount = blogData.article.split(/\s+/).length;
-        const readTime = Math.max(1, Math.round(wordCount / 200));
+         // ── Step 3: Generate CTA visual banner ──────────────────────────────────
+        // Generate a branded clickable banner image that links to the CTA URL.
+        // The image is embedded in the article body as an HTML anchor wrapping an img tag.
+        let ctaBannerUrl: string | undefined;
+        let articleWithCtaBanner = blogData.article;
+        try {
+          const ctaBannerPromptResponse = await safeLLM({
+            messages: [
+              {
+                role: "system",
+                content: `You are a visual director for The Urban Monk brand. Write a concise image generation prompt (max 60 words) for a wide-format (16:9) call-to-action banner image. The banner must feel premium, warm, and wellness-focused. It should evoke transformation, health, and ancient wisdom meeting modern science. NO text in the image. NO faces. Cinematic lighting, rich earth tones, deep greens, warm amber. Return ONLY the prompt.`,
+              },
+              {
+                role: "user",
+                content: `CTA label: ${blogCtaLabel}\nCTA text: ${blogCtaText}\nArticle topic: ${cleanIdea}`,
+              },
+            ],
+          });
+          const rawBannerPrompt = ctaBannerPromptResponse.choices?.[0]?.message?.content;
+          const bannerImagePrompt = typeof rawBannerPrompt === "string" ? rawBannerPrompt.trim() : `Serene wellness scene with warm amber light, ancient wisdom meets modern health, cinematic, no text, no faces`;
+          const { url: bannerUrl } = await generateImage({ prompt: bannerImagePrompt });
+          ctaBannerUrl = bannerUrl;
+          // Inject the CTA banner as a clickable HTML block at the end of the article body,
+          // just before the FAQ section (or at the very end if no FAQ).
+          const ctaBannerBlock = `\n\n<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;">\n  <a href="${blogCtaUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">\n    <img src="${ctaBannerUrl}" alt="${blogCtaLabel}" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" />\n    <div style="margin-top:0.75rem;font-size:1rem;font-weight:600;color:#7c5c2e;letter-spacing:0.02em;">${blogCtaText.slice(0, 120)}${blogCtaText.length > 120 ? '\u2026' : ''}</div>\n  </a>\n</div>`;
+          // Insert before FAQ section if present, otherwise append
+          const faqMatch = articleWithCtaBanner.match(/\n##\s*(Frequently Asked Questions|FAQ)/i);
+          if (faqMatch && faqMatch.index !== undefined) {
+            articleWithCtaBanner = articleWithCtaBanner.slice(0, faqMatch.index) + ctaBannerBlock + articleWithCtaBanner.slice(faqMatch.index);
+          } else {
+            articleWithCtaBanner = articleWithCtaBanner + ctaBannerBlock;
+          }
+        } catch (bannerErr) {
+          console.warn("[Blog] CTA banner generation failed (non-fatal):", bannerErr);
+        }
 
+        // Estimate read time (avg 200 words/min)
+        const wordCount = articleWithCtaBanner.split(/\s+/).length;
+        const readTime = Math.max(1, Math.round(wordCount / 200));
         return {
           ...blogData,
+          article: articleWithCtaBanner,
           heroImageUrl,
+          ctaBannerUrl,
+          ctaUrl: blogCtaUrl,
           wordCount,
           readTime,
           semanticKeywords: blogData.semanticKeywords ?? [],

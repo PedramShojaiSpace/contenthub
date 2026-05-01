@@ -1578,3 +1578,15 @@
 - [x] Show reader version in a collapsible panel below the button with Copy + Replace options
 - [x] Write vitest test for the new procedure
 - [x] TypeScript check and checkpoint v123
+
+## v124: Blog CTA Visual Banner + Key Takeaways Section
+
+- [x] Add "Key Takeaways" section to BLOG_PROMPT structure (after opening hook, before section 3)
+- [x] Add post-processing step to inject Key Takeaways block into generated articleBody if missing
+- [x] Add `generateCtaBanner` helper in server/routers.ts — generates a branded CTA image and returns URL
+- [x] Add `ctaBannerUrl` and `ctaUrl` fields to generateBlog return value
+- [x] Inject CTA banner HTML block into articleBody before saving (linked image → CTA URL)
+- [x] Update CreationStudio autoSaveMutation to pass ctaBannerUrl/ctaUrl to saved item
+- [x] Update blog detail modal in CommandCenter to preview CTA banner image with hyperlink
+- [x] Write vitest tests for Key Takeaways injection and CTA banner embed logic
+- [x] TypeScript check and checkpoint v124

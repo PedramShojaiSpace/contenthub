@@ -112,6 +112,7 @@ type ContentItem = {
   seoKeywords: string | null;
   yoastSeoTitle: string | null;
   yoastMetaDescription: string | null;
+  ctaBannerUrl: string | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -1488,7 +1489,7 @@ export default function CommandCenter() {
       refetch();
       toast.success("Deleted.");
     },
-    onError: (err) => toast.error("Delete failed: " + err.message),
+    onError: (err: { message?: string }) => toast.error("Delete failed: " + (err.message ?? "Unknown error")),
   });
 
   const sensors = useSensors(
@@ -2731,6 +2732,29 @@ export default function CommandCenter() {
                   setSelectedItem(prev => prev ? { ...prev, ...updated } : prev);
                   refetch();
                 }} />
+
+                {/* CTA Banner Preview — shown when a banner was auto-generated */}
+                {selectedItem.ctaBannerUrl && (
+                  <div className="rounded-lg border border-amber-600/30 bg-amber-950/20 p-3 space-y-2">
+                    <p className="text-[10px] text-amber-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
+                      <Zap className="h-3 w-3" />
+                      CTA Banner
+                    </p>
+                    <a
+                      href={selectedItem.ctaBannerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <img
+                        src={selectedItem.ctaBannerUrl}
+                        alt="CTA Banner"
+                        className="w-full rounded-md border border-amber-600/20 hover:opacity-90 transition-opacity"
+                      />
+                    </a>
+                    <p className="text-[10px] text-amber-300/60">This banner is embedded in the article body, linked to the CTA URL. Click to preview full image.</p>
+                  </div>
+                )}
 
                 {/* WordPress Publish actions */}
                 <div className="flex items-center gap-2 flex-wrap">

@@ -993,6 +993,9 @@ export default function CreationStudio() {
               if (data.heroImageUrl) {
                 autoUpdateMutation.mutate({ id: saved.id, imageUrl: data.heroImageUrl });
               }
+              if ((data as any).ctaBannerUrl) {
+                autoUpdateMutation.mutate({ id: saved.id, ctaBannerUrl: (data as any).ctaBannerUrl });
+              }
             }
           },
         }

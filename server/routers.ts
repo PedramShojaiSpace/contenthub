@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { compositeCtaBanner } from "./bannerComposite";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -1292,8 +1293,23 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           });
           const rawBannerPrompt = ctaBannerPromptResponse.choices?.[0]?.message?.content;
           const bannerImagePrompt = typeof rawBannerPrompt === "string" ? rawBannerPrompt.trim() : `Premium wellness infographic banner: bold cream headline area at top, glowing golden lotus central motif, deep forest green background, amber CTA button shape at bottom, ancient wisdom meets modern science aesthetic, no faces, clean graphic design style`;
-          const { url: bannerUrl } = await generateImage({ prompt: bannerImagePrompt });
-          ctaBannerUrl = bannerUrl;
+          const { url: rawBannerUrlMaybe } = await generateImage({ prompt: bannerImagePrompt });
+          const rawBannerUrl: string = rawBannerUrlMaybe ?? "";
+          // Composite headline + button label text onto the generated image
+          const ctaHeadline = blogCtaText.split(".")[0].trim().replace(/[*_#]/g, "");
+          const ctaBtnLabel = blogCtaLabel.replace(/[()]/g, "").trim().substring(0, 50);
+          try {
+            const composited = await compositeCtaBanner({
+              imageUrl: rawBannerUrl,
+              headline: ctaHeadline || "Transform Your Health Today",
+              ctaButtonLabel: ctaBtnLabel || "Learn More",
+              keyPrefix: "cta-banners/blog",
+            });
+            ctaBannerUrl = composited.url;
+          } catch (compErr) {
+            console.warn("[Blog] Banner composite failed, using raw image:", compErr);
+            ctaBannerUrl = rawBannerUrl;
+          }
           // Inject the CTA banner as a clickable HTML block at the end of the article body,
           // just before the FAQ section (or at the very end if no FAQ).
           const ctaBannerBlock = `\n\n<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;">\n  <a href="${blogCtaUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">\n    <img src="${ctaBannerUrl}" alt="${blogCtaLabel}" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" />\n    <div style="margin-top:0.75rem;font-size:1rem;font-weight:600;color:#7c5c2e;letter-spacing:0.02em;">${blogCtaText.slice(0, 120)}${blogCtaText.length > 120 ? '\u2026' : ''}</div>\n  </a>\n</div>`;
@@ -2929,7 +2945,24 @@ STRICT RULES:
         const bannerImagePrompt = typeof rawBannerPrompt === 'string' ? rawBannerPrompt.trim() : `Premium wellness infographic banner: bold cream headline area at top, glowing golden lotus central motif, deep forest green background, amber CTA button shape at bottom, ancient wisdom meets modern science aesthetic, no faces, clean graphic design style`;
 
         // Step 2: Generate the banner image
-        const { url: newBannerUrl } = await generateImage({ prompt: bannerImagePrompt });
+        const { url: rawNewBannerUrlMaybe } = await generateImage({ prompt: bannerImagePrompt });
+        const rawNewBannerUrl: string = rawNewBannerUrlMaybe ?? "";
+
+        // Step 2b: Composite headline + button label text onto the image
+        let newBannerUrl = rawNewBannerUrl;
+        try {
+          const ctaHeadline = ctaText.split('.')[0].trim().replace(/[*_#]/g, '');
+          const ctaBtnLabel = ctaLabel.replace(/[()]/g, '').trim().substring(0, 50);
+          const composited = await compositeCtaBanner({
+            imageUrl: rawNewBannerUrl,
+            headline: ctaHeadline || 'Transform Your Health Today',
+            ctaButtonLabel: ctaBtnLabel || 'Learn More',
+            keyPrefix: 'cta-banners/regen',
+          });
+          newBannerUrl = composited.url;
+        } catch (compErr) {
+          console.warn('[Blog] Regen banner composite failed, using raw image:', compErr);
+        }
 
         // Step 3: Replace the old um-cta-banner block in textContent (if any) with the new one
         let updatedTextContent = item.textContent ?? '';
@@ -3007,6 +3040,31 @@ STRICT RULES:
         const succeeded = results.filter((r) => r.success).length;
         const failed = results.filter((r) => !r.success).length;
         return { results, succeeded, failed };
+      }),
+
+    // Replace utm_campaign= in a blog post's textContent with a corrected known slug
+    fixCampaignSlug: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        newCampaignSlug: z.string().min(1).max(64),
+      }))
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+        if (!item.textContent) return { updated: false, message: "No text content to update" };
+
+        // Replace all utm_campaign= values in the text content with the corrected slug
+        const updated = item.textContent.replace(
+          /utm_campaign=([^&"'\s]+)/g,
+          `utm_campaign=${input.newCampaignSlug}`
+        );
+
+        if (updated === item.textContent) {
+          return { updated: false, message: "No utm_campaign parameters found to replace" };
+        }
+
+        await updateContentItem(input.contentItemId, { textContent: updated });
+        return { updated: true, newSlug: input.newCampaignSlug };
       }),
   }),
 

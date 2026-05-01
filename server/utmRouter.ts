@@ -12,7 +12,7 @@ export const utmRouter = router({
     return db.select().from(utmLinks).orderBy(desc(utmLinks.createdAt)).limit(100);
   }),
 
-  // Save a generated UTM link to persistent history
+  // Save a generated UTM link to persistent history (deduplicates by exact URL)
   save: publicProcedure
     .input(
       z.object({
@@ -29,6 +29,19 @@ export const utmRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+
+      // Deduplication: check if an identical URL already exists in history
+      const existing = await db
+        .select({ id: utmLinks.id })
+        .from(utmLinks)
+        .where(eq(utmLinks.url, input.url))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // URL already saved — return the existing record id without inserting
+        return { id: existing[0].id, duplicate: true };
+      }
+
       const [result] = await db.insert(utmLinks).values({
         url: input.url,
         label: input.label,
@@ -39,7 +52,7 @@ export const utmRouter = router({
         term: input.term ?? null,
         destination: input.destination ?? null,
       });
-      return { id: result.insertId };
+      return { id: result.insertId, duplicate: false };
     }),
 
   // Delete a saved UTM link by id

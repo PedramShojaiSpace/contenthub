@@ -1140,6 +1140,12 @@ export default function CommandCenter() {
   const [bufferErrors, setBufferErrors] = useState<Record<number, string>>({});
   const [wpPublishingId, setWpPublishingId] = useState<number | null>(null);
 
+  // GA4 campaign auto-fix state
+  const [campaignWarning, setCampaignWarning] = useState<string | null>(null);
+  const [showCampaignFix, setShowCampaignFix] = useState(false);
+  const [selectedFixSlug, setSelectedFixSlug] = useState<string>("ic-free-screening");
+  const [campaignFixItemId, setCampaignFixItemId] = useState<number | null>(null);
+
   // Teleprompter script state (for card detail modal)
   const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
   const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
@@ -1499,10 +1505,27 @@ export default function CommandCenter() {
     },
   });
 
-  const wpPublishMutation = trpc.blog.publish.useMutation({
+  const fixCampaignSlugMutation = trpc.blog.fixCampaignSlug.useMutation({
     onSuccess: (data) => {
+      if (data.updated) {
+        toast.success(`Campaign slug updated to "${data.newSlug}"! Re-publish to apply.`);
+        setShowCampaignFix(false);
+        setCampaignWarning(null);
+        refetch();
+      } else {
+        toast.info(data.message ?? "No changes made.");
+      }
+    },
+    onError: (err) => toast.error("Fix failed: " + err.message),
+  });
+
+  const wpPublishMutation = trpc.blog.publish.useMutation({
+    onSuccess: (data, variables) => {
       if (data.campaignValidationWarning) {
-        toast.warning(`GA4 Campaign Warning: ${data.campaignValidationWarning}`, { duration: 8000 });
+        setCampaignWarning(data.campaignValidationWarning);
+        setCampaignFixItemId(variables.contentItemId);
+        setShowCampaignFix(true);
+        toast.warning("GA4 Campaign Warning — see Fix Campaign panel below.", { duration: 6000 });
       }
     },
   });
@@ -3027,6 +3050,43 @@ export default function CommandCenter() {
                       View Post
                     </a>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* GA4 Campaign Auto-Fix Panel */}
+            {showCampaignFix && campaignFixItemId === selectedItem.id && (
+              <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-yellow-400 text-xs font-semibold mt-0.5">⚠ GA4 Campaign Mismatch</span>
+                  <button
+                    className="ml-auto text-yellow-400/60 hover:text-yellow-400 text-xs"
+                    onClick={() => { setShowCampaignFix(false); setCampaignWarning(null); }}
+                  >✕</button>
+                </div>
+                <p className="text-xs text-yellow-300/80">{campaignWarning}</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="flex-1 text-xs rounded-md border border-yellow-500/40 bg-background text-foreground px-2 py-1 h-7"
+                    value={selectedFixSlug}
+                    onChange={(e) => setSelectedFixSlug(e.target.value)}
+                  >
+                    {["lights-on","ic-free-screening","upstream-webinar","gut-health","sleep-mastery","stress-resilience","longevity-protocol","detox-reset","urban-monk-academy","supplement-launch","book-launch","podcast-growth","youtube-growth","email-list-growth"].map((slug) => (
+                      <option key={slug} value={slug}>{slug}</option>
+                    ))}
+                  </select>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs bg-yellow-500 hover:bg-yellow-600 text-black"
+                    disabled={fixCampaignSlugMutation.isPending}
+                    onClick={() => {
+                      if (campaignFixItemId) {
+                        fixCampaignSlugMutation.mutate({ contentItemId: campaignFixItemId, newCampaignSlug: selectedFixSlug });
+                      }
+                    }}
+                  >
+                    {fixCampaignSlugMutation.isPending ? "Fixing…" : "Apply Fix"}
+                  </Button>
                 </div>
               </div>
             )}

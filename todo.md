@@ -1625,3 +1625,15 @@
 - [x] Update generateCtaBanner and blog.regenerateBanner to produce infographic-style output
 - [x] Write vitest tests for campaign validation and utm_content override wiring
 - [x] TypeScript check and checkpoint v127
+
+## v128: Campaign Auto-Fix + UTM Dedup + CTA Banner Text Overlay
+
+- [x] Add GA4 campaign auto-fix: when campaignValidationWarning fires after WP publish, show "Fix Campaign" button in toast/modal that opens a dropdown of 14 known slugs
+- [x] Add blog.fixCampaignSlug tRPC mutation — replaces utm_campaign= in textContent with the corrected slug and saves
+- [x] Add UTM Builder history deduplication: before utm.save, check if identical URL already exists and skip insert
+- [x] Install node-canvas package on server
+- [x] Build compositeCtaBanner(imageUrl, headline, ctaButtonLabel) helper in server/bannerComposite.ts — downloads image, draws headline + button label text overlay using node-canvas, uploads result to S3
+- [x] Wire compositeCtaBanner into generateBlog CTA banner step (after image generation)
+- [x] Wire compositeCtaBanner into blog.regenerateBanner procedure
+- [x] Write vitest tests for UTM dedup logic and banner composite helper
+- [x] TypeScript check and checkpoint v128

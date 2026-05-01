@@ -568,8 +568,8 @@ export const appRouter = router({
             // Build platform-specific CTA injection with UTM params auto-appended
             let ctaInjection = "";
             if (ctaBlockData) {
-              const { appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
-              const utmUrl = appendUtmToCtaUrl(ctaBlockData.url, platform, ctaLabelToCampaign(ctaBlockData.label));
+              const { appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
+              const utmUrl = appendUtmToCtaUrl(ctaBlockData.url, platform, ctaLabelToCampaign(ctaBlockData.label), PLATFORM_UTM[platform]?.content);
               const urlForPrompt = utmUrl || ctaBlockData.url || "lightson.theurbanmonk.com";
               ctaInjection = `\n\n[CTA BLOCK — ${ctaBlockData.label}]\n${ctaBlockData.ctaText}\n[END CTA BLOCK]\nCRITICAL URL RULE: If this content includes a link or URL, you MUST use EXACTLY this URL: ${urlForPrompt}. Do NOT invent, shorten, or substitute any other URL. Include this CTA naturally at the end of your content. Do not add any other call to action.`;
             }
@@ -875,11 +875,11 @@ Rules:
         let blogCtaUrl = "https://lightson.theurbanmonk.com/";
         let blogCtaText = "";
         try {
-          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
+          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.idea);
           blogCtaLabel = cta.label;
           blogCtaText = cta.ctaText;
-          const utmUrl = appendUtmToCtaUrl(cta.url, "blog", ctaLabelToCampaign(cta.label));
+          const utmUrl = appendUtmToCtaUrl(cta.url, "blog", ctaLabelToCampaign(cta.label), PLATFORM_UTM["blog"]?.content);
           blogCtaUrl = utmUrl || cta.url || "https://lightson.theurbanmonk.com/";
           const urlForPrompt = blogCtaUrl;
           blogCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally in the Conclusion section of the blog post. Use EXACTLY this URL: ${urlForPrompt}`;
@@ -1370,9 +1370,9 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
         // Load CTA with UTM params
         let ctaInjection = "";
         try {
-          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
+          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
           const cta = await getCtaForTopic(cleanIdea);
-          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label));
+          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label), PLATFORM_UTM[input.platform]?.content);
           const urlForPrompt = utmUrl || cta.url || "lightson.theurbanmonk.com";
           ctaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nCRITICAL URL RULE: Use EXACTLY this URL: ${urlForPrompt} — do NOT substitute any other URL.`;
         } catch { /* ignore */ }
@@ -1646,9 +1646,9 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         }
         let scriptCtaInjection = "";
         try {
-          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
+          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.title);
-          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label));
+          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label), PLATFORM_UTM[input.platform]?.content);
           const urlForPrompt = utmUrl || cta.url || "lightson.theurbanmonk.com";
           scriptCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the script, in the closing call-to-action section. Use EXACTLY this URL: ${urlForPrompt}`;
         } catch (err) {
@@ -1737,9 +1737,9 @@ Return BOTH in this exact format:
         }
         let postCtaInjection = "";
         try {
-          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
+          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.title);
-          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label));
+          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label), PLATFORM_UTM[input.platform]?.content);
           const urlForPrompt = utmUrl || cta.url || "lightson.theurbanmonk.com";
           postCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the post. Use EXACTLY this URL: ${urlForPrompt}`;
         } catch (err) {
@@ -1996,10 +1996,10 @@ CAPTION: [caption text]`;
         let resolvedCtaUrl = input.ctaUrl;
         if (!resolvedCtaUrl && input.platform === "meta") {
           try {
-            const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
+            const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
             const cta = await getCtaForTopic(input.text.slice(0, 200));
             if (cta.url) {
-              resolvedCtaUrl = appendUtmToCtaUrl(cta.url, "instagram", ctaLabelToCampaign(cta.label)) || cta.url;
+              resolvedCtaUrl = appendUtmToCtaUrl(cta.url, "instagram", ctaLabelToCampaign(cta.label), PLATFORM_UTM["instagram"]?.content) || cta.url;
             }
           } catch {
             // Non-fatal: proceed without first comment if CTA lookup fails
@@ -2273,9 +2273,9 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         }
         let scriptCtaInjection = "";
         try {
-          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
+          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.title);
-          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label));
+          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label), PLATFORM_UTM[input.platform]?.content);
           const urlForPrompt = utmUrl || cta.url || "lightson.theurbanmonk.com";
           scriptCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the script, in the closing call-to-action section. Use EXACTLY this URL: ${urlForPrompt}`;
         } catch (err) {
@@ -2364,9 +2364,9 @@ Return BOTH in this exact format:
         }
         let postCtaInjection = "";
         try {
-          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } = await import("./ctaRouter");
+          const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
           const cta = await getCtaForTopic(input.title);
-          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label));
+          const utmUrl = appendUtmToCtaUrl(cta.url, input.platform, ctaLabelToCampaign(cta.label), PLATFORM_UTM[input.platform]?.content);
           const urlForPrompt = utmUrl || cta.url || "lightson.theurbanmonk.com";
           postCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the post. Use EXACTLY this URL: ${urlForPrompt}`;
         } catch (err) {

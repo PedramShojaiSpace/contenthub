@@ -1599,3 +1599,15 @@
 - [x] Add WordPress banner sync on publish — fetch ctaBannerUrl, upload to WP media library via REST API, set _cta_banner_url custom field on the post
 - [x] Write vitest tests for regenerateBanner procedure and WP banner sync logic
 - [x] TypeScript check and checkpoint v125
+
+## v126: UTM ↔ Content Pipeline Integration
+
+- [x] Sync PLATFORM_UTM map in ctaRouter.ts with the full UTM taxonomy from UTMGenerator.tsx (source, medium, content presets)
+- [x] Add `utm_content` parameter to appendUtmToCtaUrl — pass the content placement type (e.g. inline-cta, reel, video-description) based on platform
+- [x] Add `utm.getForPlatform` tRPC procedure — returns the canonical UTM params (source, medium, content) for a given platform
+- [x] Update all content generation procedures (generateBlog, generateContent, generateScript, generateEmail) to pass utm_content based on platform
+- [x] Add UTM preview badge to Command Center blog detail modal — show the injected UTM URL with source/medium/campaign/content chips
+- [x] Add UTM preview to Creation Studio output panels — show the CTA URL with UTM params after generation
+- [x] Wire UTM Generator quick presets to auto-populate from the CTA block's campaign slug
+- [x] Write vitest tests for appendUtmToCtaUrl with utm_content, and the getForPlatform procedure
+- [x] TypeScript check and checkpoint v126

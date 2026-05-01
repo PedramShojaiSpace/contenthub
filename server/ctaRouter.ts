@@ -10,43 +10,52 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 
 /**
- * Maps a content platform to its UTM source and medium values.
- * Used to auto-append UTM params to CTA URLs injected into AI prompts.
+ * Maps a content platform to its UTM source, medium, and default content placement.
+ * Synced with the UTM taxonomy in UTMGenerator.tsx (Urban Monk tracking architecture, April 2026).
+ * GA4 Property: G-CXZK2Q275S | Meta Pixel: 1498608757116877
  */
-const PLATFORM_UTM: Record<string, { source: string; medium: string }> = {
-  blog: { source: "blog", medium: "organic-content" },
-  youtube: { source: "youtube", medium: "video" },
-  meta: { source: "meta", medium: "organic-social" },
-  instagram: { source: "instagram", medium: "organic-social" },
-  linkedin: { source: "linkedin", medium: "organic-social" },
-  x: { source: "twitter-x", medium: "organic-social" },
-  tiktok: { source: "tiktok", medium: "organic-social" },
-  podcast: { source: "podcast", medium: "audio" },
-  all: { source: "content-hub", medium: "organic-content" },
+export const PLATFORM_UTM: Record<string, { source: string; medium: string; content: string }> = {
+  blog:      { source: "blog",       medium: "organic-content", content: "inline-cta" },
+  youtube:   { source: "youtube",    medium: "video",           content: "video-description" },
+  meta:      { source: "meta",       medium: "paid-social",     content: "video-ad" },
+  instagram: { source: "instagram",  medium: "organic-social",  content: "reel" },
+  facebook:  { source: "facebook",   medium: "organic-social",  content: "post" },
+  linkedin:  { source: "linkedin",   medium: "organic-social",  content: "post" },
+  x:         { source: "twitter-x",  medium: "organic-social",  content: "tweet" },
+  tiktok:    { source: "tiktok",     medium: "organic-social",  content: "video" },
+  podcast:   { source: "podcast",    medium: "audio",           content: "episode-description" },
+  email:     { source: "email",      medium: "email",           content: "sequence-email" },
+  newsletter:{ source: "newsletter", medium: "email",           content: "weekly-digest" },
+  script:    { source: "youtube",    medium: "video",           content: "video-description" },
+  all:       { source: "content-hub",medium: "organic-content", content: "multi-platform" },
 };
 
 /**
  * Appends UTM parameters to a CTA URL based on the content platform and campaign.
  * Campaign is derived from the CTA block label (slugified).
+ * utm_content reflects the content placement type (e.g. inline-cta, reel, video-description).
  */
 export function appendUtmToCtaUrl(
   url: string | null,
   platform: string,
-  campaignOverride?: string
+  campaignOverride?: string,
+  contentOverride?: string
 ): string {
   if (!url) return "";
-  const utm = PLATFORM_UTM[platform] ?? { source: platform, medium: "organic-content" };
+  const utm = PLATFORM_UTM[platform] ?? { source: platform, medium: "organic-content", content: "content" };
   const campaign = campaignOverride ?? "ic-free-screening";
+  const utmContent = contentOverride ?? utm.content;
   try {
     const u = new URL(url);
     u.searchParams.set("utm_source", utm.source);
     u.searchParams.set("utm_medium", utm.medium);
     u.searchParams.set("utm_campaign", campaign);
+    u.searchParams.set("utm_content", utmContent);
     return u.toString();
   } catch {
     // Fallback for malformed URLs
     const sep = url.includes("?") ? "&" : "?";
-    return `${url}${sep}utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=${campaign}`;
+    return `${url}${sep}utm_source=${utm.source}&utm_medium=${utm.medium}&utm_campaign=${campaign}&utm_content=${utmContent}`;
   }
 }
 
@@ -201,6 +210,14 @@ export async function getCtaForTopic(topic: string): Promise<{
   };
 }
 
+/**
+ * Returns the canonical UTM params for a given platform.
+ * Used by the frontend to preview what UTM will be injected into generated content.
+ */
+export function getUtmForPlatform(platform: string): { source: string; medium: string; content: string } {
+  return PLATFORM_UTM[platform] ?? { source: platform, medium: "organic-content", content: "content" };
+}
+
 export const ctaRouter = router({
   list: protectedProcedure.query(async () => {
     const db = await getDb();
@@ -259,4 +276,21 @@ export const ctaRouter = router({
     .query(async ({ input }) => {
       return getCtaForTopic(input.topic);
     }),
+
+  /**
+   * Returns UTM params (source, medium, content) for a given platform.
+   * Frontend uses this to show a live UTM preview in Creation Studio and Command Center.
+   */
+  getForPlatform: protectedProcedure
+    .input(z.object({ platform: z.string() }))
+    .query(({ input }) => {
+      return getUtmForPlatform(input.platform);
+    }),
+
+  /**
+   * Returns the full PLATFORM_UTM map so the frontend can render UTM chips for any platform.
+   */
+  platformMap: protectedProcedure.query(() => {
+    return PLATFORM_UTM;
+  }),
 });

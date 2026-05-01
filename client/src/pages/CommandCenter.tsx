@@ -2540,6 +2540,51 @@ export default function CommandCenter() {
               </div>
             )}
 
+            {/* UTM Preview Panel — non-blog platforms */}
+            {selectedItem.platform !== "blog" && (() => {
+              const PLATFORM_UTM_MAP: Record<string, { source: string; medium: string; content: string }> = {
+                youtube:    { source: "youtube",     medium: "video",           content: "video-description" },
+                meta:       { source: "meta",        medium: "paid-social",     content: "video-ad" },
+                instagram:  { source: "instagram",   medium: "organic-social",  content: "reel" },
+                facebook:   { source: "facebook",    medium: "organic-social",  content: "post" },
+                linkedin:   { source: "linkedin",    medium: "organic-social",  content: "post" },
+                x:          { source: "twitter-x",   medium: "organic-social",  content: "tweet" },
+                tiktok:     { source: "tiktok",      medium: "organic-social",  content: "video" },
+                podcast:    { source: "podcast",     medium: "audio",           content: "episode-description" },
+                email:      { source: "email",       medium: "email",           content: "sequence-email" },
+                newsletter: { source: "newsletter",  medium: "email",           content: "weekly-digest" },
+              };
+              const utm = PLATFORM_UTM_MAP[selectedItem.platform] ?? { source: selectedItem.platform, medium: "organic-social", content: "post" };
+              const campaign = (selectedItem as any).ctaBlockLabel
+                ? (selectedItem as any).ctaBlockLabel
+                    .toLowerCase().replace(/\s*\(.*?\)/g, "").trim()
+                    .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").substring(0, 64)
+                : "ic-free-screening";
+              return (
+                <div className="rounded-lg border border-emerald-600/30 bg-emerald-950/20 p-3 space-y-2">
+                  <p className="text-[10px] text-emerald-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
+                    <Link2 className="h-3 w-3" />
+                    UTM Auto-Injection
+                  </p>
+                  <p className="text-[10px] text-emerald-300/60">These UTM parameters are automatically appended to every CTA link in this post.</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                      <span className="text-emerald-500/70">source=</span>{utm.source}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                      <span className="text-emerald-500/70">medium=</span>{utm.medium}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                      <span className="text-emerald-500/70">campaign=</span>{campaign}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                      <span className="text-emerald-500/70">content=</span>{utm.content}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Teleprompter Script — YouTube only */}
             {selectedItem.platform === "youtube" && (
               <div className="space-y-3">
@@ -2789,6 +2834,53 @@ export default function CommandCenter() {
                   setSelectedItem(prev => prev ? { ...prev, ...updated } : prev);
                   refetch();
                 }} />
+
+                {/* UTM Preview Panel — shows what UTM params are injected into this post's CTAs */}
+                {(() => {
+                  // Derive UTM params from the PLATFORM_UTM taxonomy (synced with UTMGenerator.tsx)
+                  const PLATFORM_UTM_MAP: Record<string, { source: string; medium: string; content: string }> = {
+                    blog:       { source: "blog",        medium: "organic-content", content: "inline-cta" },
+                    youtube:    { source: "youtube",     medium: "video",           content: "video-description" },
+                    meta:       { source: "meta",        medium: "paid-social",     content: "video-ad" },
+                    instagram:  { source: "instagram",   medium: "organic-social",  content: "reel" },
+                    facebook:   { source: "facebook",    medium: "organic-social",  content: "post" },
+                    linkedin:   { source: "linkedin",    medium: "organic-social",  content: "post" },
+                    x:          { source: "twitter-x",   medium: "organic-social",  content: "tweet" },
+                    tiktok:     { source: "tiktok",      medium: "organic-social",  content: "video" },
+                    podcast:    { source: "podcast",     medium: "audio",           content: "episode-description" },
+                    email:      { source: "email",       medium: "email",           content: "sequence-email" },
+                    newsletter: { source: "newsletter",  medium: "email",           content: "weekly-digest" },
+                  };
+                  const utm = PLATFORM_UTM_MAP[selectedItem.platform] ?? { source: selectedItem.platform, medium: "organic-content", content: "content" };
+                  const campaign = (selectedItem as any).ctaBlockLabel
+                    ? (selectedItem as any).ctaBlockLabel
+                        .toLowerCase().replace(/\s*\(.*?\)/g, "").trim()
+                        .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").substring(0, 64)
+                    : "ic-free-screening";
+                  return (
+                    <div className="rounded-lg border border-emerald-600/30 bg-emerald-950/20 p-3 space-y-2">
+                      <p className="text-[10px] text-emerald-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
+                        <Link2 className="h-3 w-3" />
+                        UTM Auto-Injection
+                      </p>
+                      <p className="text-[10px] text-emerald-300/60">These UTM parameters are automatically appended to every CTA link in this post.</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                          <span className="text-emerald-500/70">source=</span>{utm.source}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                          <span className="text-emerald-500/70">medium=</span>{utm.medium}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                          <span className="text-emerald-500/70">campaign=</span>{campaign}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                          <span className="text-emerald-500/70">content=</span>{utm.content}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* CTA Banner Panel — shown for all blog posts */}
                 <div className="rounded-lg border border-amber-600/30 bg-amber-950/20 p-3 space-y-2">

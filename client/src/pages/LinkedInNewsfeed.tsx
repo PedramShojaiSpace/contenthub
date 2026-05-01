@@ -1,11 +1,11 @@
 /**
  * LinkedInNewsfeed.tsx — Doovo replacement.
  *
- * v134 additions:
- *   - X/Twitter toggle on Buffer push (checkbox in detail dialog + approved card)
- *   - X version preview textarea (auto-generated, editable)
- *   - Dual-push: LinkedIn (with link preview card) + X (≤280 chars) in one click
- *   - xSentAt badge on cards when X version has been pushed
+ * v135 changes:
+ *   - X toggle moved to Pending cards and detail dialog (set before approving)
+ *   - includeX preference passed through approveArticle and stored in DB
+ *   - Approved tab pre-fills X toggle from stored includeX preference
+ *   - Buffer push no longer sends standalone imageUrl (fixes URL preview being overridden)
  */
 
 import { useState } from "react";
@@ -81,9 +81,10 @@ interface Article {
   contentItemId: number | null;
   bufferSentAt: Date | null;
   xSentAt: Date | null;
+  includeX: boolean | null;
 }
 
-// ─── Pending article card ──────────────────────────────────────────────────────
+// ─── Pending article card (with X toggle) ─────────────────────────────────────
 
 function ArticleCard({
   article,
@@ -93,17 +94,18 @@ function ArticleCard({
   onOpenDetail,
 }: {
   article: Article;
-  onApprove: (id: number) => void;
+  onApprove: (id: number, includeX: boolean) => void;
   onDismiss: (id: number) => void;
   onRegenerate: (id: number) => void;
   onOpenDetail: (article: Article) => void;
 }) {
+  const [includeX, setIncludeX] = useState(false);
   const topicKey = article.topic ?? "";
   const topicColor = TOPIC_COLORS[topicKey] ?? "bg-slate-100 text-slate-700 border-slate-200";
   const topicLabel = TOPIC_LABELS[topicKey] ?? topicKey;
 
   const commentaryPreview = article.commentary
-    ? article.commentary.slice(0, 220) + (article.commentary.length > 220 ? "…" : "")
+    ? article.commentary.slice(0, 200) + (article.commentary.length > 200 ? "…" : "")
     : null;
 
   return (
@@ -119,59 +121,80 @@ function ArticleCard({
         </div>
         <h3
           className="font-semibold text-slate-900 text-sm leading-snug mb-2 cursor-pointer hover:text-blue-700 line-clamp-3"
-          onClick={() => onOpenDetail(article)}
+          onClick={() => onOpenDetail({ ...article, includeX })}
         >
           {article.title}
         </h3>
         {commentaryPreview ? (
           <p
-            className="text-xs text-slate-600 leading-relaxed cursor-pointer"
-            onClick={() => onOpenDetail(article)}
+            className="text-xs text-slate-600 leading-relaxed cursor-pointer line-clamp-3"
+            onClick={() => onOpenDetail({ ...article, includeX })}
           >
             {commentaryPreview}
           </p>
         ) : (
-          <p className="text-xs text-slate-400 italic">No commentary yet</p>
+          <p className="text-xs text-slate-400 italic">No commentary yet — click Regen</p>
         )}
       </div>
-      <div className="p-3 pt-2 border-t border-slate-100 flex items-center gap-1.5">
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-slate-400 hover:text-slate-600 p-1 rounded"
-          title="Open article"
-        >
-          <ExternalLink size={13} />
-        </a>
-        <div className="flex-1" />
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-xs text-slate-500 hover:text-slate-700 h-7 px-2"
-          onClick={() => onRegenerate(article.id)}
-          title="Regenerate commentary"
-        >
-          <RotateCcw size={12} className="mr-1" />
-          Regen
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 h-7 px-2"
-          onClick={() => onDismiss(article.id)}
-        >
-          <X size={12} className="mr-1" />
-          Skip
-        </Button>
-        <Button
-          size="sm"
-          className="text-xs h-7 px-3 bg-blue-600 hover:bg-blue-700 text-white"
-          onClick={() => onApprove(article.id)}
-        >
-          <ThumbsUp size={12} className="mr-1" />
-          Approve
-        </Button>
+
+      {/* Footer with X toggle + actions */}
+      <div className="p-3 pt-2 border-t border-slate-100 space-y-2">
+        {/* X toggle */}
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={includeX}
+            onChange={(e) => setIncludeX(e.target.checked)}
+            className="w-3.5 h-3.5 rounded accent-slate-800"
+          />
+          <span className="text-xs text-slate-500 flex items-center gap-1">
+            <Twitter size={11} className="text-slate-600" />
+            Also push to X when approving
+          </span>
+        </label>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1.5">
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-slate-400 hover:text-slate-600 p-1 rounded"
+            title="Open article"
+          >
+            <ExternalLink size={13} />
+          </a>
+          <div className="flex-1" />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs text-slate-500 hover:text-slate-700 h-7 px-2"
+            onClick={() => onRegenerate(article.id)}
+            title="Regenerate commentary"
+          >
+            <RotateCcw size={12} className="mr-1" />
+            Regen
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+            onClick={() => onDismiss(article.id)}
+          >
+            <X size={12} className="mr-1" />
+            Skip
+          </Button>
+          <Button
+            size="sm"
+            className={`text-xs h-7 px-3 text-white ${
+              includeX ? "bg-slate-800 hover:bg-slate-900" : "bg-blue-600 hover:bg-blue-700"
+            }`}
+            onClick={() => onApprove(article.id, includeX)}
+          >
+            <ThumbsUp size={12} className="mr-1" />
+            {includeX ? "Approve + X" : "Approve"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -190,7 +213,8 @@ function ApprovedArticleCard({
   onOpenDetail: (article: Article) => void;
   isPushing: boolean;
 }) {
-  const [includeX, setIncludeX] = useState(false);
+  // Pre-fill from stored preference
+  const [includeX, setIncludeX] = useState(article.includeX ?? false);
   const topicKey = article.topic ?? "";
 
   return (
@@ -235,9 +259,7 @@ function ApprovedArticleCard({
             <span className="text-xs text-blue-600 flex items-center gap-1">
               <Check size={12} />
               Sent to Buffer
-              {article.xSentAt && (
-                <span className="ml-1 text-slate-500">+ X</span>
-              )}
+              {article.xSentAt && <span className="ml-1 text-slate-500">+ X</span>}
             </span>
             <a
               href={article.url}
@@ -251,7 +273,6 @@ function ApprovedArticleCard({
           </div>
         ) : (
           <div className="space-y-2">
-            {/* X toggle */}
             <label
               className="flex items-center gap-2 cursor-pointer select-none"
               onClick={(e) => e.stopPropagation()}
@@ -279,7 +300,9 @@ function ApprovedArticleCard({
               </a>
               <Button
                 size="sm"
-                className="flex-1 text-xs h-7 bg-[#2C4BFF] hover:bg-[#1a35e0] text-white"
+                className={`flex-1 text-xs h-7 text-white ${
+                  includeX ? "bg-slate-800 hover:bg-slate-900" : "bg-[#2C4BFF] hover:bg-[#1a35e0]"
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onPushToBuffer(article.id, includeX);
@@ -322,7 +345,7 @@ function ArticleDetailDialog({
   article: Article | null;
   open: boolean;
   onClose: () => void;
-  onApprove: (id: number) => void;
+  onApprove: (id: number, includeX: boolean) => void;
   onDismiss: (id: number) => void;
   onRegenerate: (id: number) => void;
   onCommentaryChange: (id: number, text: string) => void;
@@ -331,13 +354,12 @@ function ArticleDetailDialog({
   isPushing: boolean;
 }) {
   const [copied, setCopied] = useState(false);
-  const [includeX, setIncludeX] = useState(false);
-  const [showXPreview, setShowXPreview] = useState(false);
+  // Initialize from article's stored preference or default false
+  const [includeX, setIncludeX] = useState(article?.includeX ?? false);
 
   const getXVersion = trpc.newsfeed.getXVersion.useMutation({
     onSuccess: (data, variables) => {
       onXVersionChange(variables.id, data.xVersion);
-      setShowXPreview(true);
     },
     onError: (err) => toast.error(`X version generation failed: ${err.message}`),
   });
@@ -359,14 +381,13 @@ function ArticleDetailDialog({
   const handleXToggle = (checked: boolean) => {
     setIncludeX(checked);
     if (checked && !article.xVersion) {
-      // Auto-generate X version when toggle is turned on
       getXVersion.mutate({ id: article.id });
-    } else if (checked) {
-      setShowXPreview(true);
-    } else {
-      setShowXPreview(false);
     }
   };
+
+  const hostname = (() => {
+    try { return new URL(article.url).hostname.replace("www.", ""); } catch { return article.url; }
+  })();
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -413,7 +434,7 @@ function ArticleDetailDialog({
             </div>
           )}
 
-          {/* Link preview card */}
+          {/* Link preview card — shows what will be attached to the LinkedIn post */}
           <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
             <div className="flex items-stretch">
               {article.imageUrl && (
@@ -442,15 +463,14 @@ function ArticleDetailDialog({
                   rel="noopener noreferrer"
                   className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1.5"
                 >
-                  {(() => { try { return new URL(article.url).hostname.replace("www.", ""); } catch { return article.url; } })()}
-                  <ExternalLink size={10} />
+                  {hostname} <ExternalLink size={10} />
                 </a>
               </div>
             </div>
             <div className="px-3 py-1.5 bg-blue-50 border-t border-blue-100">
               <p className="text-xs text-blue-700 flex items-center gap-1.5">
                 <ExternalLink size={10} />
-                Article URL will be attached as a LinkedIn link preview card when pushed to Buffer
+                Article URL attached as LinkedIn link preview card — image shown inside the card, not as a separate attachment
               </p>
             </div>
           </div>
@@ -485,15 +505,14 @@ function ArticleDetailDialog({
             <Textarea
               value={article.commentary ?? ""}
               onChange={(e) => onCommentaryChange(article.id, e.target.value)}
-              className="text-sm min-h-[220px] font-mono leading-relaxed resize-none"
+              className="text-sm min-h-[200px] font-mono leading-relaxed resize-none"
               placeholder="Commentary will appear here after generation…"
             />
           </div>
 
-          {/* X/Twitter section — shown when status is approved (ready to push) or pending */}
-          {(article.status === "approved" || article.status === "pending") && !article.bufferSentAt && (
+          {/* X/Twitter toggle — available for both pending and approved (not yet pushed) */}
+          {!article.bufferSentAt && (
             <div className="border border-slate-200 rounded-lg overflow-hidden">
-              {/* X toggle header */}
               <div className="px-3 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
@@ -514,7 +533,6 @@ function ArticleDetailDialog({
                 )}
               </div>
 
-              {/* X version preview — shown when toggle is on */}
               {includeX && (
                 <div className="p-3">
                   {getXVersion.isPending ? (
@@ -573,11 +591,13 @@ function ArticleDetailDialog({
                 Skip Article
               </Button>
               <Button
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => { onApprove(article.id); onClose(); }}
+                className={`flex-1 text-white ${
+                  includeX ? "bg-slate-800 hover:bg-slate-900" : "bg-blue-600 hover:bg-blue-700"
+                }`}
+                onClick={() => { onApprove(article.id, includeX); onClose(); }}
               >
                 <ThumbsUp size={14} className="mr-1.5" />
-                Approve → LinkedIn Kanban
+                {includeX ? "Approve + X" : "Approve → LinkedIn Kanban"}
               </Button>
             </div>
           )}
@@ -599,20 +619,13 @@ function ArticleDetailDialog({
               ) : (
                 <Button
                   className={`w-full text-white ${
-                    includeX
-                      ? "bg-slate-800 hover:bg-slate-900"
-                      : "bg-[#2C4BFF] hover:bg-[#1a35e0]"
+                    includeX ? "bg-slate-800 hover:bg-slate-900" : "bg-[#2C4BFF] hover:bg-[#1a35e0]"
                   }`}
                   onClick={() => onPushToBuffer(article.id, includeX)}
                   disabled={isPushing || (includeX && charCount > 280)}
                 >
                   {isPushing ? (
                     <Loader2 size={14} className="mr-1.5 animate-spin" />
-                  ) : includeX ? (
-                    <>
-                      <Send size={14} className="mr-1.5" />
-                      <Twitter size={14} className="mr-1.5" />
-                    </>
                   ) : (
                     <Send size={14} className="mr-1.5" />
                   )}
@@ -691,7 +704,7 @@ export default function LinkedInNewsfeed() {
         toast.success("Pushed to LinkedIn Buffer!");
         toast.warning(`X push skipped: ${data.xError}`);
       } else {
-        toast.success("Commentary queued in LinkedIn Buffer!");
+        toast.success("Commentary queued in LinkedIn Buffer with article link preview!");
       }
       setPushingId(null);
       refetchArticles();
@@ -744,6 +757,10 @@ export default function LinkedInNewsfeed() {
     });
   };
 
+  const handleApprove = (id: number, includeX: boolean) => {
+    approveMutation.mutate({ id, includeX });
+  };
+
   const handlePushToBuffer = (id: number, includeX: boolean) => {
     bufferMutation.mutate({ id, includeX });
   };
@@ -760,7 +777,7 @@ export default function LinkedInNewsfeed() {
             <div>
               <h1 className="text-lg font-bold text-slate-900">LinkedIn Newsfeed</h1>
               <p className="text-xs text-slate-500">
-                Google News + PubMed → Pedram's voice → LinkedIn + X → Buffer
+                Google News + PubMed → Pedram's voice → LinkedIn (link preview) + optional X → Buffer
               </p>
             </div>
           </div>
@@ -859,7 +876,7 @@ export default function LinkedInNewsfeed() {
                     <ArticleCard
                       key={article.id}
                       article={article}
-                      onApprove={(id) => approveMutation.mutate({ id })}
+                      onApprove={handleApprove}
                       onDismiss={(id) => dismissMutation.mutate({ id })}
                       onRegenerate={(id) => regenMutation.mutate({ id })}
                       onOpenDetail={handleOpenDetail}
@@ -944,7 +961,7 @@ export default function LinkedInNewsfeed() {
         article={selectedArticle}
         open={!!selectedArticle}
         onClose={() => setSelectedArticle(null)}
-        onApprove={(id) => approveMutation.mutate({ id })}
+        onApprove={handleApprove}
         onDismiss={(id) => dismissMutation.mutate({ id })}
         onRegenerate={(id) => regenMutation.mutate({ id })}
         onCommentaryChange={handleCommentaryChange}

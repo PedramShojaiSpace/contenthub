@@ -330,6 +330,13 @@
       "when": 1777677447573,
       "tag": "0046_wide_the_executioner",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1777678959618,
+      "tag": "0047_fine_talkback",
+      "breakpoints": true
     }
   ]
 }

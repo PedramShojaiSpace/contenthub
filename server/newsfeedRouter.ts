@@ -118,20 +118,20 @@ export const newsfeedRouter = router({
 
   // ── Approve article ────────────────────────────────────────────────────────
   approveArticle: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({
+      id: z.number(),
+      includeX: z.boolean().default(false), // persist the X preference set at approval time
+    }))
     .mutation(async ({ input }) => {
       const database = await getDb();
       if (!database) throw new Error("Database not available");
-
       const [article] = await database
         .select()
         .from(newsfeedArticles)
         .where(eq(newsfeedArticles.id, input.id))
         .limit(1);
-
       if (!article) throw new Error("Article not found");
       if (!article.commentary) throw new Error("Article has no commentary yet");
-
       const [inserted] = await database.insert(contentItems).values({
         title: article.title.slice(0, 255),
         platform: "linkedin",
@@ -140,14 +140,16 @@ export const newsfeedRouter = router({
         rawIdea: `[Newsfeed] ${article.source}: ${article.url}`,
         notes: `Source: ${article.source}\nURL: ${article.url}\nTopic: ${article.topic}`,
       });
-
       const contentItemId = (inserted as any).insertId as number;
-
       await database
         .update(newsfeedArticles)
-        .set({ status: "approved", contentItemId, approvedAt: new Date() })
+        .set({
+          status: "approved",
+          contentItemId,
+          approvedAt: new Date(),
+          includeX: input.includeX, // store so Approved tab can pre-fill the toggle
+        })
         .where(eq(newsfeedArticles.id, input.id));
-
       return { contentItemId };
     }),
 
@@ -238,11 +240,15 @@ export const newsfeedRouter = router({
       // ── LinkedIn push ──────────────────────────────────────────────────────
       // Always include the article URL as a link asset (Doovo-style curation).
       const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
+      // IMPORTANT: Do NOT pass imageUrl separately — Buffer treats a standalone image
+      // as a media attachment that overrides the link preview card. Instead, pass the
+      // article image only as thumbnailUrl inside linkAsset so Buffer renders a rich
+      // link preview card (Doovo-style curation) with the image embedded in the card.
       const linkedInResult = await pushToBuffer({
         text: article.commentary,
         profileIds: linkedInChannelIds,
         platform: "linkedin",
-        imageUrl: article.imageUrl ?? undefined,
+        // imageUrl intentionally omitted — image is carried by linkAsset.thumbnailUrl
         linkAsset: {
           url: article.url,
           title: article.title ?? undefined,

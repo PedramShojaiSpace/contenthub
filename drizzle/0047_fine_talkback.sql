@@ -1,0 +1,1 @@
+ALTER TABLE `newsfeed_articles` ADD `includeX` boolean DEFAULT false;

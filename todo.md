@@ -1692,12 +1692,22 @@
 
 ## v134: X/Twitter Toggle on Newsfeed Buffer Push
 
-- [ ] Add `generateXVersion()` helper in `newsfeedCommentary.ts` — LLM condenses LinkedIn commentary to ≤280 chars for X, preserving the key insight and article URL
-- [ ] Add `xVersion` column to `newsfeed_articles` schema (text, nullable) and run db:push
-- [ ] Update `newsfeed.pushToBuffer` procedure to accept `includeX: boolean` — when true, also pushes a condensed version to all connected X channels
-- [ ] Update `newsfeed.approveArticle` to pre-generate the X version alongside commentary
-- [ ] Update `newsfeed.regenerateCommentary` to also regenerate the X version
-- [ ] Add X toggle checkbox and X preview textarea in the ArticleDetailDialog
-- [ ] Show X toggle on the ApprovedArticleCard Buffer push button area
+- [x] Add `generateXVersion()` helper in `newsfeedCommentary.ts` — LLM condenses LinkedIn commentary to ≤280 chars for X, preserving the key insight and article URL
+- [x] Add `xVersion` column to `newsfeed_articles` schema (text, nullable) and run db:push
+- [x] Update `newsfeed.pushToBuffer` procedure to accept `includeX: boolean` — when true, also pushes a condensed version to all connected X channels
+- [x] Update `newsfeed.approveArticle` to pre-generate the X version alongside commentary
+- [x] Update `newsfeed.regenerateCommentary` to also regenerate the X version
+- [x] Add X toggle checkbox and X preview textarea in the ArticleDetailDialog
+- [x] Show X toggle on the ApprovedArticleCard Buffer push button area
 - [ ] Write vitest tests for generateXVersion and the dual-push procedure
 - [x] TypeScript check and checkpoint v134
+
+## v135: Buffer URL/Image Conflict Fix + X Toggle UX
+- [x] Fix Buffer push — remove standalone `imageUrl` so link preview card is never overridden by image
+- [x] Pass article image only as `linkAsset.thumbnailUrl` so LinkedIn renders rich link preview card
+- [x] Add `includeX` boolean column to `newsfeed_articles` schema and run db:push
+- [x] Update `approveArticle` to accept and persist `includeX` preference
+- [x] Move X toggle to Pending article cards (set before approving)
+- [x] Move X toggle to ArticleDetailDialog for both pending and approved articles
+- [x] Pre-fill X toggle on Approved cards from stored `includeX` preference
+- [x] TypeScript check (0 errors) and checkpoint v135

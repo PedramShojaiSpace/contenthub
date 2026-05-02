@@ -5,28 +5,51 @@
  * Fetches new articles from Google News + PubMed, generates commentary,
  * and inserts new articles into the newsfeed_articles table.
  *
- * Auth: Uses the INGEST_SECRET shared secret (same pattern as ingestRouter.ts).
- * The scheduled task agent sends: { secret: "$INGEST_SECRET" }
+ * Auth: Accepts either:
+ *   1. INGEST_SECRET shared secret in body: { secret: "$INGEST_SECRET" }
+ *   2. Valid Manus cron JWT cookie (app_session_id with openId starting with "cron_")
  */
 
 import { Request, Response } from "express";
 import { getDb } from "./db";
-import { newsfeedArticles, contentItems } from "../drizzle/schema";
-import { fetchAllTopics, fetchGoogleNewsRSS, fetchPubMedArticles } from "./newsfeed";
+import { newsfeedArticles } from "../drizzle/schema";
+import { fetchAllTopics } from "./newsfeed";
 import { generateCommentary } from "./newsfeedCommentary";
 import { ENV } from "./_core/env";
+import { sdk } from "./_core/sdk";
 
 export async function handleNewsfeedRefresh(req: Request, res: Response) {
-  // Validate shared secret
+  // Validate auth: accept either INGEST_SECRET or a valid cron cookie JWT
+  const body = req.body ?? {};
   const expectedSecret = ENV.ingestSecret;
-  if (!expectedSecret) {
-    console.error("[newsfeed-scheduled] INGEST_SECRET is not configured");
-    return res.status(500).json({ error: "Server misconfiguration" });
+
+  let authenticated = false;
+
+  // Method 1: INGEST_SECRET in body
+  if (expectedSecret && body.secret && body.secret === expectedSecret) {
+    authenticated = true;
   }
 
-  const body = req.body ?? {};
-  if (!body.secret || body.secret !== expectedSecret) {
-    console.warn("[newsfeed-scheduled] Invalid secret from", req.ip);
+  // Method 2: Valid cron JWT cookie (openId starts with "cron_")
+  if (!authenticated) {
+    try {
+      const cookieHeader = req.headers.cookie ?? "";
+      const match = cookieHeader.match(/app_session_id=([^;]+)/);
+      const cookieValue = match ? match[1] : null;
+      if (cookieValue) {
+        const session = await sdk.verifySession(cookieValue);
+        if (session && session.openId.startsWith("cron_") && session.appId === ENV.appId) {
+          authenticated = true;
+          console.log("[newsfeed-scheduled] Authenticated via cron cookie:", session.openId);
+        }
+      }
+    } catch (err) {
+      // Cron cookie auth failed, fall through
+    }
+  }
+
+  if (!authenticated) {
+    console.warn("[newsfeed-scheduled] Invalid auth from", req.ip);
     return res.status(401).json({ error: "Unauthorized" });
   }
 

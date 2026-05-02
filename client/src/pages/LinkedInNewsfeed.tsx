@@ -209,12 +209,14 @@ function ApprovedArticleCard({
   isPushing,
 }: {
   article: Article;
-  onPushToBuffer: (id: number, includeX: boolean) => void;
+  onPushToBuffer: (id: number, includeX: boolean, customImageUrl?: string) => void;
   onOpenDetail: (article: Article) => void;
   isPushing: boolean;
 }) {
   // Pre-fill from stored preference
   const [includeX, setIncludeX] = useState(article.includeX ?? false);
+  // Custom thumbnail image URL — pre-filled with article's own image if available
+  const [customImageUrl, setCustomImageUrl] = useState(article.imageUrl ?? "");
   const topicKey = article.topic ?? "";
 
   return (
@@ -273,6 +275,17 @@ function ApprovedArticleCard({
           </div>
         ) : (
           <div className="space-y-2">
+            {/* Custom thumbnail image URL */}
+            <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
+              <label className="text-xs text-slate-500 font-medium">Thumbnail image URL (optional)</label>
+              <input
+                type="url"
+                value={customImageUrl}
+                onChange={(e) => setCustomImageUrl(e.target.value)}
+                placeholder="https://... (leave blank for no image)"
+                className="w-full text-xs border border-slate-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 text-slate-700"
+              />
+            </div>
             <label
               className="flex items-center gap-2 cursor-pointer select-none"
               onClick={(e) => e.stopPropagation()}
@@ -305,7 +318,7 @@ function ApprovedArticleCard({
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onPushToBuffer(article.id, includeX);
+                  onPushToBuffer(article.id, includeX, customImageUrl || undefined);
                 }}
                 disabled={isPushing}
               >
@@ -350,12 +363,14 @@ function ArticleDetailDialog({
   onRegenerate: (id: number) => void;
   onCommentaryChange: (id: number, text: string) => void;
   onXVersionChange: (id: number, text: string) => void;
-  onPushToBuffer: (id: number, includeX: boolean) => void;
+  onPushToBuffer: (id: number, includeX: boolean, customImageUrl?: string) => void;
   isPushing: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   // Initialize from article's stored preference or default false
   const [includeX, setIncludeX] = useState(article?.includeX ?? false);
+  // Custom thumbnail image URL — pre-filled with article's own image if available
+  const [customImageUrl, setCustomImageUrl] = useState(article?.imageUrl ?? "");
 
   const getXVersion = trpc.newsfeed.getXVersion.useMutation({
     onSuccess: (data, variables) => {
@@ -617,24 +632,38 @@ function ArticleDetailDialog({
                   Pushed to LinkedIn Buffer on {new Date(article.bufferSentAt).toLocaleString()}
                 </div>
               ) : (
-                <Button
-                  className={`w-full text-white ${
-                    includeX ? "bg-slate-800 hover:bg-slate-900" : "bg-[#2C4BFF] hover:bg-[#1a35e0]"
-                  }`}
-                  onClick={() => onPushToBuffer(article.id, includeX)}
-                  disabled={isPushing || (includeX && charCount > 280)}
-                >
-                  {isPushing ? (
-                    <Loader2 size={14} className="mr-1.5 animate-spin" />
-                  ) : (
-                    <Send size={14} className="mr-1.5" />
-                  )}
-                  {isPushing
-                    ? "Pushing to Buffer…"
-                    : includeX
-                    ? "Push to LinkedIn + X"
-                    : "Push to LinkedIn Buffer Queue"}
-                </Button>
+                <>
+                  {/* Custom thumbnail image URL */}
+                  <div className="space-y-1 mb-2">
+                    <label className="text-xs text-slate-500 font-medium">Thumbnail image URL (optional)</label>
+                    <input
+                      type="url"
+                      value={customImageUrl}
+                      onChange={(e) => setCustomImageUrl(e.target.value)}
+                      placeholder="https://... (paste your own image URL, or leave blank)"
+                      className="w-full text-sm border border-slate-200 rounded px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 text-slate-700"
+                    />
+                    <p className="text-xs text-slate-400">Image will be attached as a standalone thumbnail. The article URL will appear in the post text.</p>
+                  </div>
+                  <Button
+                    className={`w-full text-white ${
+                      includeX ? "bg-slate-800 hover:bg-slate-900" : "bg-[#2C4BFF] hover:bg-[#1a35e0]"
+                    }`}
+                    onClick={() => onPushToBuffer(article.id, includeX, customImageUrl || undefined)}
+                    disabled={isPushing || (includeX && charCount > 280)}
+                  >
+                    {isPushing ? (
+                      <Loader2 size={14} className="mr-1.5 animate-spin" />
+                    ) : (
+                      <Send size={14} className="mr-1.5" />
+                    )}
+                    {isPushing
+                      ? "Pushing to Buffer…"
+                      : includeX
+                      ? "Push to LinkedIn + X"
+                      : "Push to LinkedIn Buffer Queue"}
+                  </Button>
+                </>
               )}
             </div>
           )}
@@ -761,8 +790,8 @@ export default function LinkedInNewsfeed() {
     approveMutation.mutate({ id, includeX });
   };
 
-  const handlePushToBuffer = (id: number, includeX: boolean) => {
-    bufferMutation.mutate({ id, includeX });
+  const handlePushToBuffer = (id: number, includeX: boolean, customImageUrl?: string) => {
+    bufferMutation.mutate({ id, includeX, customImageUrl });
   };
 
   return (

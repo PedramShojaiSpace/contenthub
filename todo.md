@@ -1711,3 +1711,10 @@
 - [x] Move X toggle to ArticleDetailDialog for both pending and approved articles
 - [x] Pre-fill X toggle on Approved cards from stored `includeX` preference
 - [x] TypeScript check (0 errors) and checkpoint v135
+
+## v137: Custom Thumbnail Image on Buffer Push
+- [x] Update `newsfeed.pushToBuffer` to use standalone `imageUrl` attachment (not linkAttachment) — article URL goes in post text
+- [x] Add image URL input field to the Buffer push dialog in LinkedInNewsfeed.tsx (pre-filled with article imageUrl if available)
+- [x] Allow user to paste their own image URL before pushing
+- [x] Ensure article URL is always appended to post text as a plain link
+- [ ] TypeScript check and checkpoint v137

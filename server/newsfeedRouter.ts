@@ -204,13 +204,15 @@ export const newsfeedRouter = router({
     }),
 
   // ── Push to Buffer ─────────────────────────────────────────────────────────
-  // Sends the LinkedIn commentary to Buffer with the article URL as a link
-  // preview card attachment. When includeX is true, also pushes a condensed
-  // ≤280-char version to all connected X/Twitter channels simultaneously.
+  // Sends the LinkedIn commentary to Buffer with the article URL appended in
+  // the post text and an optional custom thumbnail image as a standalone image
+  // attachment. When includeX is true, also pushes a condensed ≤280-char
+  // version to all connected X/Twitter channels simultaneously.
   pushToBuffer: protectedProcedure
     .input(z.object({
       id: z.number(),
       includeX: z.boolean().default(false),
+      customImageUrl: z.string().url().optional(), // user-supplied thumbnail image
     }))
     .mutation(async ({ input }) => {
       const database = await getDb();
@@ -236,26 +238,22 @@ export const newsfeedRouter = router({
           "No LinkedIn channel found in Buffer. Please connect your LinkedIn account in Buffer."
         );
       }
-      // ── LinkedIn push ────────────────────────────────────────────────────────
-      // LinkedIn link preview requires metadata.linkedin.linkAttachment (NOT assets.link).
-      // We must also pass channelServiceMap so pushToBuffer knows the channel is LinkedIn
-      // and builds the correct metadata fragment.
+      // ── LinkedIn push ──────────────────────────────────────────────────────────────────
+      // Post text has the URL appended; image is sent as a standalone attachment.
       const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
-      // Build channelServiceMap: channelId → raw service string ("linkedin")
-      // This is required for pushToBuffer to populate metadata.linkedin.linkAttachment
-      const linkedInServiceMap: Record<string, string> = {};
-      for (const p of linkedInProfiles) {
-        linkedInServiceMap[p.id] = p.service; // p.service is "linkedin" from Buffer API
-      }
+      // Build the post text: commentary + article URL appended as a plain link
+      const postText = article.commentary.includes(article.url)
+        ? article.commentary
+        : `${article.commentary}\n\n${article.url}`;
+
+      // Use custom image if provided, otherwise fall back to article's own imageUrl
+      const imageUrl = input.customImageUrl ?? article.imageUrl ?? undefined;
+
       const linkedInResult = await pushToBuffer({
-        text: article.commentary,
+        text: postText,
         profileIds: linkedInChannelIds,
         platform: "linkedin",
-        channelServiceMap: linkedInServiceMap, // REQUIRED: enables metadata.linkedin.linkAttachment
-        linkAsset: {
-          url: article.url,
-          // title/description/thumbnailUrl fetched automatically by Buffer from OG tags
-        },
+        imageUrl, // standalone image attachment — URL is in the text
       });
       if (!linkedInResult.success) {
         throw new Error(linkedInResult.error ?? "LinkedIn Buffer push failed");

@@ -94,8 +94,9 @@ IMPORTANT: Do NOT include the article URL anywhere in the post — it will be ap
 
   // Strip any URL the LLM may have included (safety net — URL is appended by the router)
   const stripped = text
-    .replace(new RegExp(`Read more:\\s*${article.url.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`, 'gi'), '')
-    .replace(new RegExp(article.url.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'g'), '')
+    .split(`Read more: ${article.url}`).join('')
+    .split(`Read more:${article.url}`).join('')
+    .split(article.url).join('')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 

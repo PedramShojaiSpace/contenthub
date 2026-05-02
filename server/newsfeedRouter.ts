@@ -242,10 +242,11 @@ export const newsfeedRouter = router({
       // Post text has the URL appended; image is sent as a standalone attachment.
       const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
       // Build the post text: commentary (URL-free) + article URL appended once
-      // Strip any stale URL that may be in older saved commentaries
+      // Strip any stale "Read more: URL" from older saved commentaries using simple string replace
       const cleanCommentary = article.commentary
-        .replace(new RegExp(`Read more:\\s*${article.url.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`, 'gi'), '')
-        .replace(new RegExp(article.url.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'g'), '')
+        .split(`Read more: ${article.url}`).join('')
+        .split(`Read more:${article.url}`).join('')
+        .split(article.url).join('')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
       const postText = `${cleanCommentary}\n\n${article.url}`;

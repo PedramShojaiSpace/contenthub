@@ -185,10 +185,13 @@ export async function pushToBuffer(params: {
         : undefined;
 
       // Build assets object — supports image attachment
-      // NOTE: For LinkedIn link previews, the URL must go in metadata.linkedin.linkAttachment,
-      // NOT in assets.link. Using assets.link for LinkedIn does not generate the link preview card.
+      // NOTE: For LinkedIn, when linkAsset is provided, do NOT also send imageUrl as a separate
+      // asset. LinkedIn only allows one attachment type — if both assets.images and
+      // metadata.linkedin.linkAttachment are present, Buffer silently drops the linkAttachment.
+      // The image should travel as thumbnailUrl inside the linkAsset instead.
+      const isLinkedInWithLink = channelService === "linkedin" && !!params.linkAsset;
       let assetsInner = "";
-      if (params.imageUrl) {
+      if (params.imageUrl && !isLinkedInWithLink) {
         assetsInner += `images: [{ url: ${JSON.stringify(params.imageUrl)} }]`;
       }
       const assetsFragment = assetsInner ? `, assets: { ${assetsInner} }` : "";

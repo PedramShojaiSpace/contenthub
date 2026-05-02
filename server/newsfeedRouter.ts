@@ -254,11 +254,20 @@ export const newsfeedRouter = router({
       // Use custom image if provided, otherwise fall back to article's own imageUrl
       const imageUrl = input.customImageUrl ?? article.imageUrl ?? undefined;
 
+      // Build channelServiceMap so pushToBuffer knows which channels are LinkedIn
+      // (required for the metadata.linkedin.linkAttachment block to fire)
+      const linkedInServiceMap: Record<string, string> = {};
+      for (const p of linkedInProfiles) {
+        linkedInServiceMap[p.id] = p.service; // e.g. "linkedin"
+      }
+
       const linkedInResult = await pushToBuffer({
         text: postText,
         profileIds: linkedInChannelIds,
         platform: "linkedin",
         imageUrl, // standalone image attachment — URL is in the text
+        channelServiceMap: linkedInServiceMap,
+        linkAsset: { url: article.url }, // triggers metadata.linkedin.linkAttachment
       });
       if (!linkedInResult.success) {
         throw new Error(linkedInResult.error ?? "LinkedIn Buffer push failed");

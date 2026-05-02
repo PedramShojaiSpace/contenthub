@@ -1726,3 +1726,12 @@
 - [x] newsfeedRouter.ts: pass customImageUrl as linkAsset.thumbnailUrl (not as params.imageUrl)
 - [x] LinkedInNewsfeed.tsx: update thumbnail input label to "Image for link card"
 - [x] Run TypeScript check + tests, save v142 checkpoint
+
+## v143 — Fix URL missing from Buffer posts (Bing News RSS migration)
+- [x] Diagnosed root cause: Google News RSS stores opaque `news.google.com/rss/articles/CBMi...` redirect URLs that cannot be resolved server-side
+- [x] Replaced Google News RSS fetcher with Bing News RSS fetcher (real article URLs extracted from `url=` query param in Bing redirect links)
+- [x] Updated TOPIC_CLUSTERS to use `bingQuery` instead of `googleQuery`
+- [x] Updated newsfeedRouter.ts to import `fetchBingNewsRSS` instead of `fetchGoogleNewsRSS`
+- [x] Updated newsfeed.test.ts with Bing RSS test cases (properly escaped XML + namespace declarations)
+- [x] All 287 tests passing, 0 TypeScript errors
+- [x] Save v143 checkpoint and deploy

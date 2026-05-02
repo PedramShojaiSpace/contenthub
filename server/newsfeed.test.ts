@@ -1,9 +1,9 @@
 /**
- * newsfeed.test.ts — Vitest tests for v131 LinkedIn Newsfeed feature.
+ * newsfeed.test.ts — Vitest tests for LinkedIn Newsfeed feature.
  *
  * Tests cover:
  *   - TOPIC_CLUSTERS structure and completeness
- *   - fetchGoogleNewsRSS: handles empty RSS, malformed XML, valid XML
+ *   - fetchBingNewsRSS: handles empty RSS, malformed XML, valid XML, URL extraction
  *   - fetchPubMedArticles: handles empty results, valid PMID list
  *   - fetchAllTopics: deduplicates by URL
  *   - generateCommentary: prompt structure validation
@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { TOPIC_CLUSTERS, fetchGoogleNewsRSS, fetchPubMedArticles, fetchAllTopics } from "./newsfeed";
+import { TOPIC_CLUSTERS, fetchBingNewsRSS, fetchPubMedArticles, fetchAllTopics } from "./newsfeed";
 
 // ─── TOPIC_CLUSTERS ────────────────────────────────────────────────────────────
 
@@ -27,36 +27,57 @@ describe("TOPIC_CLUSTERS", () => {
     expect(keys).toHaveLength(6);
   });
 
-  it("each cluster has label, googleQuery, and pubmedQuery", () => {
+  it("each cluster has label, bingQuery, and pubmedQuery", () => {
     for (const [key, cluster] of Object.entries(TOPIC_CLUSTERS)) {
       expect(cluster.label, `${key} missing label`).toBeTruthy();
-      expect(cluster.googleQuery, `${key} missing googleQuery`).toBeTruthy();
+      expect(cluster.bingQuery, `${key} missing bingQuery`).toBeTruthy();
       expect(cluster.pubmedQuery, `${key} missing pubmedQuery`).toBeTruthy();
     }
   });
 
-  it("all googleQuery strings include year references for freshness", () => {
+  it("all bingQuery strings include year references for freshness", () => {
     for (const [key, cluster] of Object.entries(TOPIC_CLUSTERS)) {
-      expect(cluster.googleQuery, `${key} googleQuery should include year`).toMatch(/202[0-9]/);
+      expect(cluster.bingQuery, `${key} bingQuery should include year`).toMatch(/202[0-9]/);
     }
   });
 });
 
-// ─── fetchGoogleNewsRSS ────────────────────────────────────────────────────────
+// ─── fetchBingNewsRSS ──────────────────────────────────────────────────────────
 
-describe("fetchGoogleNewsRSS", () => {
+/**
+ * Builds a properly-escaped Bing News RSS redirect link for use in mock XML.
+ * In real Bing RSS, & is escaped as &amp; in the XML.
+ * xml2js will decode &amp; → & when parsing, giving us the real URL in searchParams.
+ */
+function makeBingXmlLink(realUrl: string): string {
+  const encoded = encodeURIComponent(realUrl);
+  return `http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=${encoded}&amp;c=12345`;
+}
+
+/** Wraps items in a valid Bing News RSS envelope with namespace declaration */
+function bingRssEnvelope(items: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:News="https://www.bing.com/news">
+  <channel>
+    <title>Bing News</title>
+    ${items}
+  </channel>
+</rss>`;
+}
+
+describe("fetchBingNewsRSS", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
   it("returns empty array for unknown topic", async () => {
-    const result = await fetchGoogleNewsRSS("nonexistent_topic");
+    const result = await fetchBingNewsRSS("nonexistent_topic");
     expect(result).toEqual([]);
   });
 
   it("returns empty array when fetch fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
-    const result = await fetchGoogleNewsRSS("longevity");
+    const result = await fetchBingNewsRSS("longevity");
     expect(result).toEqual([]);
   });
 
@@ -65,7 +86,7 @@ describe("fetchGoogleNewsRSS", () => {
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, status: 429, text: async () => "" })
     );
-    const result = await fetchGoogleNewsRSS("gut_health");
+    const result = await fetchBingNewsRSS("gut_health");
     expect(result).toEqual([]);
   });
 
@@ -74,61 +95,62 @@ describe("fetchGoogleNewsRSS", () => {
       "fetch",
       vi.fn().mockResolvedValue({ ok: true, text: async () => "not xml at all <<<" })
     );
-    const result = await fetchGoogleNewsRSS("sleep_science");
+    const result = await fetchBingNewsRSS("sleep_science");
     expect(result).toEqual([]);
   });
 
-  it("parses valid RSS XML and extracts articles", async () => {
-    const mockXml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
-    <title>Google News</title>
+  it("extracts real article URL from Bing redirect link", async () => {
+    const realUrl1 = "https://www.healthline.com/health/longevity-breakthrough";
+    const realUrl2 = "https://www.nature.com/articles/sleep-science-update";
+    const mockXml = bingRssEnvelope(`
     <item>
-      <title>Longevity Breakthrough Found - Nature Medicine</title>
-      <link>https://example.com/article1</link>
+      <title>Longevity Breakthrough Found</title>
+      <link>${makeBingXmlLink(realUrl1)}</link>
       <description>Researchers discover new longevity pathway.</description>
+      <News:Source>Healthline</News:Source>
     </item>
     <item>
-      <title>Sleep Science Update - The Guardian</title>
-      <link>https://example.com/article2</link>
+      <title>Sleep Science Update</title>
+      <link>${makeBingXmlLink(realUrl2)}</link>
       <description>New findings on circadian rhythm.</description>
-    </item>
-  </channel>
-</rss>`;
+      <News:Source>Nature</News:Source>
+    </item>`);
 
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: true, text: async () => mockXml })
     );
 
-    const result = await fetchGoogleNewsRSS("longevity", 10);
+    const result = await fetchBingNewsRSS("longevity", 10);
     expect(result).toHaveLength(2);
     expect(result[0].title).toBe("Longevity Breakthrough Found");
-    expect(result[0].source).toBe("Nature Medicine");
-    expect(result[0].url).toBe("https://example.com/article1");
+    expect(result[0].url).toBe(realUrl1);
+    expect(result[0].source).toBe("Healthline");
     expect(result[0].topic).toBe("longevity");
     expect(result[1].title).toBe("Sleep Science Update");
-    expect(result[1].source).toBe("The Guardian");
+    expect(result[1].url).toBe(realUrl2);
+    expect(result[1].source).toBe("Nature");
+    // URLs must NOT be Bing redirect links
+    expect(result[0].url).not.toContain("bing.com");
+    expect(result[1].url).not.toContain("bing.com");
   });
 
   it("strips HTML tags from description", async () => {
-    const mockXml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
+    const realUrl = "https://www.medicalnewstoday.com/articles/test";
+    const mockXml = bingRssEnvelope(`
     <item>
-      <title>Test Article - Source</title>
-      <link>https://example.com/test</link>
+      <title>Test Article</title>
+      <link>${makeBingXmlLink(realUrl)}</link>
       <description>&lt;p&gt;This is &lt;b&gt;bold&lt;/b&gt; text.&lt;/p&gt;</description>
-    </item>
-  </channel>
-</rss>`;
+      <News:Source>Medical News Today</News:Source>
+    </item>`);
 
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: true, text: async () => mockXml })
     );
 
-    const result = await fetchGoogleNewsRSS("integrative_medicine", 5);
+    const result = await fetchBingNewsRSS("integrative_medicine", 5);
     expect(result[0].description).not.toContain("<p>");
     expect(result[0].description).not.toContain("<b>");
     expect(result[0].description).toContain("This is");
@@ -137,36 +159,68 @@ describe("fetchGoogleNewsRSS", () => {
   it("respects maxItems limit", async () => {
     const items = Array.from({ length: 10 }, (_, i) => `
       <item>
-        <title>Article ${i + 1} - Source ${i + 1}</title>
-        <link>https://example.com/article${i + 1}</link>
+        <title>Article ${i + 1}</title>
+        <link>${makeBingXmlLink(`https://example.com/article${i + 1}`)}</link>
         <description>Description ${i + 1}</description>
+        <News:Source>Source ${i + 1}</News:Source>
       </item>`).join("");
 
-    const mockXml = `<?xml version="1.0"?><rss version="2.0"><channel>${items}</channel></rss>`;
+    const mockXml = bingRssEnvelope(items);
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: true, text: async () => mockXml })
     );
 
-    const result = await fetchGoogleNewsRSS("mental_health", 3);
+    const result = await fetchBingNewsRSS("mental_health", 3);
     expect(result).toHaveLength(3);
   });
 
-  it("filters out articles with empty URLs", async () => {
-    const mockXml = `<?xml version="1.0"?>
-<rss version="2.0"><channel>
-  <item><title>Good Article - Source</title><link>https://example.com/good</link><description>Good</description></item>
-  <item><title>Bad Article - Source</title><link></link><description>Bad</description></item>
-</channel></rss>`;
+  it("filters out articles where URL extraction failed (Bing redirect remains)", async () => {
+    const mockXml = bingRssEnvelope(`
+  <item>
+    <title>Good Article</title>
+    <link>${makeBingXmlLink("https://example.com/good")}</link>
+    <description>Good</description>
+    <News:Source>Source</News:Source>
+  </item>
+  <item>
+    <title>Bad Article</title>
+    <link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;c=123</link>
+    <description>Bad — no url= param</description>
+    <News:Source>Source</News:Source>
+  </item>`);
 
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: true, text: async () => mockXml })
     );
 
-    const result = await fetchGoogleNewsRSS("cardiometabolic", 10);
+    const result = await fetchBingNewsRSS("cardiometabolic", 10);
     expect(result).toHaveLength(1);
     expect(result[0].url).toBe("https://example.com/good");
+  });
+
+  it("extracts thumbnail image URL from News:Image element", async () => {
+    const realUrl = "https://www.example.com/article";
+    const mockXml = bingRssEnvelope(`
+  <item>
+    <title>Article with Image</title>
+    <link>${makeBingXmlLink(realUrl)}</link>
+    <description>Description</description>
+    <News:Source>Source</News:Source>
+    <News:Image>http://www.bing.com/th?id=ONUT.abc&amp;pid=News&amp;w={0}&amp;h={1}&amp;c=14</News:Image>
+  </item>`);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, text: async () => mockXml })
+    );
+
+    const result = await fetchBingNewsRSS("longevity", 5);
+    expect(result).toHaveLength(1);
+    expect(result[0].imageUrl).toBeDefined();
+    expect(result[0].imageUrl).toContain("600");
+    expect(result[0].imageUrl).toContain("337");
   });
 });
 
@@ -272,15 +326,19 @@ describe("fetchPubMedArticles", () => {
 
 describe("fetchAllTopics", () => {
   it("deduplicates articles with the same URL", async () => {
-    // Mock fetch to return the same article for every topic
-    const mockXml = `<?xml version="1.0"?>
-<rss version="2.0"><channel>
-  <item>
-    <title>Duplicate Article - Source</title>
-    <link>https://example.com/same-url</link>
-    <description>Same article appearing in multiple topics</description>
-  </item>
-</channel></rss>`;
+    const realUrl = "https://example.com/same-url";
+    const bingLink = `http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=${encodeURIComponent(realUrl)}&amp;c=123`;
+    const mockXml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:News="https://www.bing.com/news">
+  <channel>
+    <item>
+      <title>Duplicate Article</title>
+      <link>${bingLink}</link>
+      <description>Same article appearing in multiple topics</description>
+      <News:Source>Source</News:Source>
+    </item>
+  </channel>
+</rss>`;
 
     vi.stubGlobal(
       "fetch",
@@ -294,7 +352,6 @@ describe("fetchAllTopics", () => {
   });
 
   it("returns articles from multiple topics", async () => {
-    // Return different articles per topic by using a counter
     let callCount = 0;
     vi.stubGlobal(
       "fetch",
@@ -304,15 +361,21 @@ describe("fetchAllTopics", () => {
         if (url.includes("eutils")) {
           return { ok: true, json: async () => ({ esearchresult: { idlist: [] } }) };
         }
+        const realUrl = `https://example.com/article-topic-${topicNum}`;
+        const bingLink = `http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=${encodeURIComponent(realUrl)}&amp;c=123`;
         return {
           ok: true,
-          text: async () => `<?xml version="1.0"?><rss version="2.0"><channel>
-            <item>
-              <title>Article for topic ${topicNum} - Source ${topicNum}</title>
-              <link>https://example.com/article-topic-${topicNum}</link>
-              <description>Description ${topicNum}</description>
-            </item>
-          </channel></rss>`,
+          text: async () => `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:News="https://www.bing.com/news">
+  <channel>
+    <item>
+      <title>Article for topic ${topicNum}</title>
+      <link>${bingLink}</link>
+      <description>Description ${topicNum}</description>
+      <News:Source>Source ${topicNum}</News:Source>
+    </item>
+  </channel>
+</rss>`,
         };
       })
     );
@@ -323,6 +386,10 @@ describe("fetchAllTopics", () => {
     // All should have a topic set
     for (const article of result) {
       expect(article.topic).toBeTruthy();
+    }
+    // No Bing redirect URLs should appear
+    for (const article of result) {
+      expect(article.url).not.toContain("bing.com/news/apiclick");
     }
   });
 });

@@ -3,7 +3,7 @@
  *
  * Procedures:
  *   newsfeed.getArticles           — list articles (with optional topic/status filter)
- *   newsfeed.refreshFeed           — fetch new articles from Google News + PubMed
+ *   newsfeed.refreshFeed           — fetch new articles from Bing News + PubMed
  *   newsfeed.approveArticle        — approve → creates a LinkedIn ContentItem in Kanban
  *   newsfeed.dismissArticle        — mark as dismissed
  *   newsfeed.regenerateCommentary  — re-run LLM commentary for an article
@@ -16,7 +16,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { newsfeedArticles, contentItems } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { fetchAllTopics, fetchGoogleNewsRSS, fetchPubMedArticles, TOPIC_CLUSTERS } from "./newsfeed";
+import { fetchAllTopics, fetchBingNewsRSS, fetchPubMedArticles, TOPIC_CLUSTERS } from "./newsfeed";
 import { generateCommentary, generateXVersion } from "./newsfeedCommentary";
 import { getBufferProfiles, pushToBuffer } from "./buffer";
 
@@ -61,7 +61,7 @@ export const newsfeedRouter = router({
       let rawArticles;
       if (input.topic) {
         const [news, pubmed] = await Promise.all([
-          fetchGoogleNewsRSS(input.topic, 6),
+          fetchBingNewsRSS(input.topic, 6),
           fetchPubMedArticles(input.topic, 4),
         ]);
         rawArticles = [...news, ...pubmed];

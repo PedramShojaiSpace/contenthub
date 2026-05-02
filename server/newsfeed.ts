@@ -2,7 +2,10 @@
  * newsfeed.ts — Article discovery for the LinkedIn Newsfeed (Doovo replacement).
  *
  * Two free, zero-cost sources:
- *   1. Google News RSS  — real-time headlines from any keyword query, no API key
+ *   1. Bing News RSS  — real-time headlines from any keyword query, no API key.
+ *                       The real article URL is embedded in the redirect link's
+ *                       `url=` query parameter and extracted client-side — no
+ *                       HTTP redirect following required.
  *   2. PubMed E-Utilities — peer-reviewed medical literature, free with NCBI email
  *
  * Topic clusters covered:
@@ -24,62 +27,89 @@ export interface RawArticle {
 
 // ─── Topic Cluster Definitions ────────────────────────────────────────────────
 
-export const TOPIC_CLUSTERS: Record<string, { label: string; googleQuery: string; pubmedQuery: string }> = {
+export const TOPIC_CLUSTERS: Record<string, { label: string; bingQuery: string; pubmedQuery: string }> = {
   integrative_medicine: {
     label: "Integrative & Functional Medicine",
-    googleQuery: "integrative medicine functional medicine research 2025 2026",
+    bingQuery: "integrative medicine functional medicine research 2025 2026",
     pubmedQuery: "integrative medicine[MeSH] OR functional medicine[tiab]",
   },
   longevity: {
     label: "Longevity & Healthspan",
-    googleQuery: "longevity science healthspan aging research 2025 2026",
+    bingQuery: "longevity science healthspan aging research 2025 2026",
     pubmedQuery: "longevity[MeSH] OR healthspan[tiab] OR lifespan extension[tiab]",
   },
   gut_health: {
     label: "Gut Health & Microbiome",
-    googleQuery: "gut microbiome health research 2025 2026",
+    bingQuery: "gut microbiome health research 2025 2026",
     pubmedQuery: "gut microbiome[MeSH] OR intestinal microbiota[tiab] OR leaky gut[tiab]",
   },
   sleep_science: {
     label: "Sleep Science & Circadian Rhythm",
-    googleQuery: "sleep science circadian rhythm health research 2025 2026",
+    bingQuery: "sleep science circadian rhythm health research 2025 2026",
     pubmedQuery: "sleep[MeSH] OR circadian rhythm[MeSH] OR sleep quality[tiab]",
   },
   mental_health: {
     label: "Mental Health & Wellness",
-    googleQuery: "mental health wellness mindfulness stress research 2025 2026",
+    bingQuery: "mental health wellness mindfulness stress research 2025 2026",
     pubmedQuery: "mental health[MeSH] OR mindfulness[MeSH] OR stress reduction[tiab]",
   },
   cardiometabolic: {
     label: "Cardiometabolic Health",
-    googleQuery: "cardiometabolic health metabolic syndrome cardiovascular research 2025 2026",
+    bingQuery: "cardiometabolic health metabolic syndrome cardiovascular research 2025 2026",
     pubmedQuery: "cardiometabolic[tiab] OR metabolic syndrome[MeSH] OR cardiovascular health[tiab]",
   },
 };
 
-// ─── Google News RSS Fetcher ──────────────────────────────────────────────────
+// ─── Bing News RSS Fetcher ────────────────────────────────────────────────────
 
 /**
- * Fetches articles from Google News RSS for a given topic cluster.
- * No API key required — uses the public RSS endpoint.
+ * Extracts the real article URL from a Bing News RSS redirect link.
+ *
+ * Bing News RSS links look like:
+ *   http://www.bing.com/news/apiclick.aspx?...&url=https%3a%2f%2fwww.healthline.com%2f...&...
+ *
+ * The real article URL is URL-encoded in the `url=` query parameter.
+ * We extract it directly — no HTTP request needed.
  */
-export async function fetchGoogleNewsRSS(topic: string, maxItems = 8): Promise<RawArticle[]> {
+function extractBingRealUrl(bingLink: string): string {
+  try {
+    const parsed = new URL(bingLink);
+    const realUrl = parsed.searchParams.get("url");
+    if (realUrl && realUrl.startsWith("http")) {
+      return realUrl;
+    }
+  } catch {
+    // fall through
+  }
+  // If extraction fails, return the original link as fallback
+  return bingLink;
+}
+
+/**
+ * Fetches articles from Bing News RSS for a given topic cluster.
+ * No API key required — uses the public RSS endpoint.
+ * Returns real article URLs (extracted from Bing's redirect link).
+ */
+export async function fetchBingNewsRSS(topic: string, maxItems = 8): Promise<RawArticle[]> {
   const cluster = TOPIC_CLUSTERS[topic];
   if (!cluster) return [];
 
-  const query = encodeURIComponent(cluster.googleQuery);
-  const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
+  const query = encodeURIComponent(cluster.bingQuery);
+  const url = `https://www.bing.com/news/search?q=${query}&format=rss`;
 
   let xml: string;
   try {
     const resp = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; UrbanMonkContentHub/1.0)" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; UrbanMonkContentHub/1.0)",
+        "Accept": "application/rss+xml, application/xml, text/xml",
+      },
       signal: AbortSignal.timeout(15_000),
     });
-    if (!resp.ok) throw new Error(`Google News RSS returned ${resp.status}`);
+    if (!resp.ok) throw new Error(`Bing News RSS returned ${resp.status}`);
     xml = await resp.text();
   } catch (err) {
-    console.error(`[newsfeed] Google News RSS fetch failed for topic "${topic}":`, err);
+    console.error(`[newsfeed] Bing News RSS fetch failed for topic "${topic}":`, err);
     return [];
   }
 
@@ -95,11 +125,23 @@ export async function fetchGoogleNewsRSS(topic: string, maxItems = 8): Promise<R
   const itemArray = Array.isArray(items) ? items : [items];
 
   return itemArray.slice(0, maxItems).map((item: any) => {
-    // Google News RSS wraps the real source in the title: "Headline - Source Name"
-    const rawTitle: string = item.title ?? "";
-    const lastDash = rawTitle.lastIndexOf(" - ");
-    const title = lastDash > 0 ? rawTitle.substring(0, lastDash).trim() : rawTitle.trim();
-    const source = lastDash > 0 ? rawTitle.substring(lastDash + 3).trim() : "Google News";
+    const title: string = (item.title ?? "").trim();
+
+    // Extract real article URL from Bing's redirect link
+    const bingLink: string = item.link ?? "";
+    const realUrl = extractBingRealUrl(bingLink);
+
+    // Source comes from the News:Source element (or fall back to domain)
+    const sourceEl = item["News:Source"] ?? item["news:source"] ?? "";
+    const source = typeof sourceEl === "string" ? sourceEl : (sourceEl?._ ?? "Bing News");
+
+    // Extract thumbnail image URL from News:Image element if present
+    const imageEl = item["News:Image"] ?? item["news:image"] ?? "";
+    const rawImageUrl = typeof imageEl === "string" ? imageEl : "";
+    // Bing image URLs use {0}/{1} placeholders — replace with fixed dimensions
+    const imageUrl = rawImageUrl
+      ? rawImageUrl.replace("{0}", "600").replace("{1}", "337")
+      : undefined;
 
     // Strip HTML tags from description
     const rawDesc: string = item.description ?? "";
@@ -107,13 +149,15 @@ export async function fetchGoogleNewsRSS(topic: string, maxItems = 8): Promise<R
 
     return {
       title,
-      url: item.link ?? item.guid ?? "",
+      url: realUrl,
       source,
       description: description.slice(0, 500),
+      imageUrl: imageUrl || undefined,
       topic,
       fetchedAt: new Date(),
     };
-  }).filter((a) => a.url && a.title);
+  }).filter((a) => a.url && a.title && !a.url.includes("bing.com/news/apiclick"));
+  // The last filter removes any items where URL extraction failed (fell back to Bing redirect)
 }
 
 // ─── PubMed E-Utilities Fetcher ───────────────────────────────────────────────
@@ -191,7 +235,7 @@ export async function fetchPubMedArticles(topic: string, maxItems = 5): Promise<
 // ─── Combined Fetcher ─────────────────────────────────────────────────────────
 
 /**
- * Fetches articles from both Google News and PubMed for all topic clusters.
+ * Fetches articles from both Bing News and PubMed for all topic clusters.
  * Returns a deduplicated list sorted by topic.
  */
 export async function fetchAllTopics(): Promise<RawArticle[]> {
@@ -202,7 +246,7 @@ export async function fetchAllTopics(): Promise<RawArticle[]> {
   await Promise.allSettled(
     topics.map(async (topic) => {
       const [newsArticles, pubmedArticles] = await Promise.allSettled([
-        fetchGoogleNewsRSS(topic, 6),
+        fetchBingNewsRSS(topic, 6),
         fetchPubMedArticles(topic, 4),
       ]);
       if (newsArticles.status === "fulfilled") results.push(...newsArticles.value);

@@ -36,6 +36,8 @@ async function bufferGql<T>(
   variables?: Record<string, unknown>
 ): Promise<{ data?: T; errors?: Array<{ message: string }> }> {
   const token = getAccessToken();
+  // DEBUG: log the exact mutation being sent so we can diagnose link preview issues
+  console.log("[Buffer GQL] Sending mutation:", query.trim());
   const res = await fetch(BUFFER_GQL_ENDPOINT, {
     method: "POST",
     headers: {
@@ -44,7 +46,10 @@ async function bufferGql<T>(
     },
     body: JSON.stringify({ query, variables }),
   });
-  return res.json() as Promise<{ data?: T; errors?: Array<{ message: string }> }>;
+  const json = await res.json() as { data?: T; errors?: Array<{ message: string }> };
+  // DEBUG: log the raw response so we can see errors or unexpected shapes
+  console.log("[Buffer GQL] Response:", JSON.stringify(json, null, 2));
+  return json;
 }
 
 /**

@@ -241,10 +241,14 @@ export const newsfeedRouter = router({
       // ── LinkedIn push ──────────────────────────────────────────────────────────────────
       // Post text has the URL appended; image is sent as a standalone attachment.
       const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
-      // Build the post text: commentary + article URL appended as a plain link
-      const postText = article.commentary.includes(article.url)
-        ? article.commentary
-        : `${article.commentary}\n\n${article.url}`;
+      // Build the post text: commentary (URL-free) + article URL appended once
+      // Strip any stale URL that may be in older saved commentaries
+      const cleanCommentary = article.commentary
+        .replace(new RegExp(`Read more:\\s*${article.url.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`, 'gi'), '')
+        .replace(new RegExp(article.url.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'g'), '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      const postText = `${cleanCommentary}\n\n${article.url}`;
 
       // Use custom image if provided, otherwise fall back to article's own imageUrl
       const imageUrl = input.customImageUrl ?? article.imageUrl ?? undefined;

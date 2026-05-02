@@ -40,8 +40,8 @@ Writing rules:
 - Connect the research to a broader pattern you've observed in your clinical work or personal practice
 - Include one concrete, actionable insight they can apply today
 - End with a soft CTA that invites them into the Urban Monk Academy community
-- ALWAYS end the post with the article URL on its own line, preceded by "Read more:" — this is the link back to the original article
-- No hashtags in the body — add 3-5 relevant hashtags at the very end on a new line (after the URL)
+- Do NOT include the article URL in the post body — the URL will be appended automatically after the hashtags
+- No hashtags in the body — add 3-5 relevant hashtags at the very end on a new line
 - No emojis
 - Write as if you're speaking to a smart friend over coffee`;
 
@@ -76,10 +76,9 @@ Write a LinkedIn post in my voice (Dr. Pedram Shojai) that:
 2. Adds my expert perspective and connects it to broader patterns from clinical work or personal practice
 3. Includes one concrete actionable insight
 4. Ends with this CTA (you can rephrase slightly to fit the flow): "${ctaEnding}"
-5. Then on its own line: "Read more: ${article.url}"
-6. Then on a new line: 3-5 relevant hashtags
+5. Then on a new line: 3-5 relevant hashtags
 
-Remember: I am SHARING this article, not just writing about the topic. The URL must appear at the end so readers can click through to the original piece.
+IMPORTANT: Do NOT include the article URL anywhere in the post — it will be appended automatically after the hashtags. Just write the commentary and hashtags.
 200-350 words (not counting the URL line and hashtags).`;
 
   const response = await invokeLLM({
@@ -93,12 +92,14 @@ Remember: I am SHARING this article, not just writing about the topic. The URL m
   if (!content) throw new Error("LLM returned empty commentary");
   const text = typeof content === "string" ? content.trim() : JSON.stringify(content);
 
-  // Safety net: if the LLM forgot to include the URL, append it
-  if (!text.includes(article.url)) {
-    return `${text}\n\nRead more: ${article.url}`;
-  }
+  // Strip any URL the LLM may have included (safety net — URL is appended by the router)
+  const stripped = text
+    .replace(new RegExp(`Read more:\\s*${article.url.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`, 'gi'), '')
+    .replace(new RegExp(article.url.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'g'), '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
-  return text;
+  return stripped;
 }
 
 // ─── X/Twitter Version Generator ─────────────────────────────────────────────

@@ -251,9 +251,6 @@ export const newsfeedRouter = router({
         .trim();
       const postText = `${cleanCommentary}\n\n${article.url}`;
 
-      // Use custom image if provided, otherwise fall back to article's own imageUrl
-      const imageUrl = input.customImageUrl ?? article.imageUrl ?? undefined;
-
       // Build channelServiceMap so pushToBuffer knows which channels are LinkedIn
       // (required for the metadata.linkedin.linkAttachment block to fire)
       const linkedInServiceMap: Record<string, string> = {};
@@ -261,13 +258,18 @@ export const newsfeedRouter = router({
         linkedInServiceMap[p.id] = p.service; // e.g. "linkedin"
       }
 
+      // v142: image travels INSIDE the link card as thumbnailUrl (not as a standalone asset).
+      // This avoids the LinkedIn conflict where assets.images suppresses linkAttachment.
+      // Use custom image if provided, otherwise fall back to article's own imageUrl.
+      const thumbnailUrl = input.customImageUrl ?? article.imageUrl ?? undefined;
+
       const linkedInResult = await pushToBuffer({
         text: postText,
         profileIds: linkedInChannelIds,
         platform: "linkedin",
-        imageUrl, // standalone image attachment — URL is in the text
+        // No standalone imageUrl — image goes inside the link card as thumbnailUrl
         channelServiceMap: linkedInServiceMap,
-        linkAsset: { url: article.url }, // triggers metadata.linkedin.linkAttachment
+        linkAsset: { url: article.url, thumbnailUrl }, // image inside link card
       });
       if (!linkedInResult.success) {
         throw new Error(linkedInResult.error ?? "LinkedIn Buffer push failed");

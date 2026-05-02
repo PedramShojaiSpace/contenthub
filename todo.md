@@ -1718,3 +1718,11 @@
 - [x] Allow user to paste their own image URL before pushing
 - [x] Ensure article URL is always appended to post text as a plain link
 - [ ] TypeScript check and checkpoint v137
+
+## v142 — Image inside link card (thumbnailUrl in linkAttachment)
+
+- [x] buffer.ts: include thumbnailUrl inside linkAttachment when linkAsset.thumbnailUrl is set
+- [x] buffer.ts: remove standalone imageUrl for LinkedIn entirely (image travels inside link card)
+- [x] newsfeedRouter.ts: pass customImageUrl as linkAsset.thumbnailUrl (not as params.imageUrl)
+- [x] LinkedInNewsfeed.tsx: update thumbnail input label to "Image for link card"
+- [x] Run TypeScript check + tests, save v142 checkpoint

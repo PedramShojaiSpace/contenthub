@@ -277,7 +277,7 @@ function ApprovedArticleCard({
           <div className="space-y-2">
             {/* Custom thumbnail image URL */}
             <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
-              <label className="text-xs text-slate-500 font-medium">Thumbnail image URL (optional)</label>
+              <label className="text-xs text-slate-500 font-medium">Image for link card (optional)</label>
               <input
                 type="url"
                 value={customImageUrl}
@@ -635,7 +635,7 @@ function ArticleDetailDialog({
                 <>
                   {/* Custom thumbnail image URL */}
                   <div className="space-y-1 mb-2">
-                    <label className="text-xs text-slate-500 font-medium">Thumbnail image URL (optional)</label>
+                    <label className="text-xs text-slate-500 font-medium">Image for link card (optional)</label>
                     <input
                       type="url"
                       value={customImageUrl}
@@ -643,7 +643,7 @@ function ArticleDetailDialog({
                       placeholder="https://... (paste your own image URL, or leave blank)"
                       className="w-full text-sm border border-slate-200 rounded px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 text-slate-700"
                     />
-                    <p className="text-xs text-slate-400">Image will be attached as a standalone thumbnail. The article URL will appear in the post text.</p>
+                    <p className="text-xs text-slate-400">Image travels inside the LinkedIn link preview card. Leave blank to use the article's own OG image.</p>
                   </div>
                   <Button
                     className={`w-full text-white ${

@@ -214,10 +214,14 @@ export async function pushToBuffer(params: {
           : "";
         metadataFragment = `, metadata: { instagram: { type: ${metaType}, shouldShareToFeed: true${firstCommentFragment} } }`;
       } else if (channelService === "linkedin" && params.linkAsset) {
-        // LinkedIn link preview: must use metadata.linkedin.linkAttachment with url field
-        // LinkAttachmentInput only accepts { url: String! } — title/description/thumbnail
-        // are fetched automatically by Buffer from the URL's Open Graph tags.
-        metadataFragment = `, metadata: { linkedin: { linkAttachment: { url: ${JSON.stringify(params.linkAsset.url)} } } }`;
+        // LinkedIn link preview: must use metadata.linkedin.linkAttachment with url field.
+        // thumbnailUrl is included inside the linkAttachment so the image travels WITH the
+        // link card rather than as a conflicting standalone asset (v142).
+        // Buffer may auto-scrape thumbnail from OG tags if thumbnailUrl is not accepted by API.
+        const thumbFragment = params.linkAsset.thumbnailUrl
+          ? `, thumbnailUrl: ${JSON.stringify(params.linkAsset.thumbnailUrl)}`
+          : "";
+        metadataFragment = `, metadata: { linkedin: { linkAttachment: { url: ${JSON.stringify(params.linkAsset.url)}${thumbFragment} } } }`;
       }
 
       const mutation = `

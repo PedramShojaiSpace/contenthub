@@ -1735,3 +1735,9 @@
 - [x] Updated newsfeed.test.ts with Bing RSS test cases (properly escaped XML + namespace declarations)
 - [x] All 287 tests passing, 0 TypeScript errors
 - [x] Save v143 checkpoint and deploy
+
+## v144 — Fix URL appearing zero or twice in Buffer posts
+- [x] Remove URL from postText entirely — URL now travels exclusively via metadata.linkedin.linkAttachment
+- [x] LinkedIn link card renders the URL once as a preview card (no duplicate in post text)
+- [x] All 287 tests passing, 0 TypeScript errors
+- [x] Save v144 checkpoint

@@ -239,17 +239,20 @@ export const newsfeedRouter = router({
         );
       }
       // ── LinkedIn push ──────────────────────────────────────────────────────────────────
-      // Post text has the URL appended; image is sent as a standalone attachment.
+      // Post text = commentary only (no URL). URL travels as metadata.linkedin.linkAttachment.
       const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
-      // Build the post text: commentary (URL-free) + article URL appended once
-      // Strip any stale "Read more: URL" from older saved commentaries using simple string replace
-      const cleanCommentary = article.commentary
+      // Build the post text: commentary only — the URL is NOT appended to the text.
+      // The article URL is carried exclusively by metadata.linkedin.linkAttachment,
+      // which renders as a link preview card in LinkedIn. This avoids the URL appearing
+      // twice (once in text, once in the card) and avoids Buffer silently dropping the
+      // link card when the text URL conflicts with the attachment URL.
+      // Strip any stale "Read more: URL" or bare URL from older saved commentaries.
+      const postText = article.commentary
         .split(`Read more: ${article.url}`).join('')
         .split(`Read more:${article.url}`).join('')
         .split(article.url).join('')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
-      const postText = `${cleanCommentary}\n\n${article.url}`;
 
       // Build channelServiceMap so pushToBuffer knows which channels are LinkedIn
       // (required for the metadata.linkedin.linkAttachment block to fire)

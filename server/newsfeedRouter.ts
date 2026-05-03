@@ -239,17 +239,18 @@ export const newsfeedRouter = router({
         );
       }
       // ── LinkedIn push ──────────────────────────────────────────────────────────────────
-      // Post text = commentary + URL appended. URL also sent as linkAsset so Buffer
-      // generates a LinkedIn link preview card. This is the v140 approach that worked.
+      // Post text = commentary ONLY (no URL in text).
+      // The URL travels exclusively via metadata.linkedin.linkAttachment which renders
+      // as a LinkedIn link preview card. Having the URL in both the text AND the
+      // linkAttachment causes it to appear twice in Buffer's queue.
       const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
-      // Strip any stale "Read more: URL" from older saved commentaries, then re-append once
-      const cleanCommentary = article.commentary
+      // Strip any stale "Read more: URL" or bare URL from older saved commentaries
+      const postText = article.commentary
         .split(`Read more: ${article.url}`).join('')
         .split(`Read more:${article.url}`).join('')
         .split(article.url).join('')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
-      const postText = `${cleanCommentary}\n\n${article.url}`;
 
       // Use custom image if provided, otherwise fall back to article's own imageUrl
       const imageUrl = input.customImageUrl ?? article.imageUrl ?? undefined;

@@ -239,20 +239,20 @@ export const newsfeedRouter = router({
         );
       }
       // ── LinkedIn push ──────────────────────────────────────────────────────────────────
-      // Post text = commentary only (no URL). URL travels as metadata.linkedin.linkAttachment.
+      // Post text = commentary + URL appended. URL also sent as linkAsset so Buffer
+      // generates a LinkedIn link preview card. This is the v140 approach that worked.
       const linkedInChannelIds = linkedInProfiles.map((p) => p.id);
-      // Build the post text: commentary only — the URL is NOT appended to the text.
-      // The article URL is carried exclusively by metadata.linkedin.linkAttachment,
-      // which renders as a link preview card in LinkedIn. This avoids the URL appearing
-      // twice (once in text, once in the card) and avoids Buffer silently dropping the
-      // link card when the text URL conflicts with the attachment URL.
-      // Strip any stale "Read more: URL" or bare URL from older saved commentaries.
-      const postText = article.commentary
+      // Strip any stale "Read more: URL" from older saved commentaries, then re-append once
+      const cleanCommentary = article.commentary
         .split(`Read more: ${article.url}`).join('')
         .split(`Read more:${article.url}`).join('')
         .split(article.url).join('')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
+      const postText = `${cleanCommentary}\n\n${article.url}`;
+
+      // Use custom image if provided, otherwise fall back to article's own imageUrl
+      const imageUrl = input.customImageUrl ?? article.imageUrl ?? undefined;
 
       // Build channelServiceMap so pushToBuffer knows which channels are LinkedIn
       // (required for the metadata.linkedin.linkAttachment block to fire)
@@ -261,18 +261,13 @@ export const newsfeedRouter = router({
         linkedInServiceMap[p.id] = p.service; // e.g. "linkedin"
       }
 
-      // v142: image travels INSIDE the link card as thumbnailUrl (not as a standalone asset).
-      // This avoids the LinkedIn conflict where assets.images suppresses linkAttachment.
-      // Use custom image if provided, otherwise fall back to article's own imageUrl.
-      const thumbnailUrl = input.customImageUrl ?? article.imageUrl ?? undefined;
-
       const linkedInResult = await pushToBuffer({
         text: postText,
         profileIds: linkedInChannelIds,
         platform: "linkedin",
-        // No standalone imageUrl — image goes inside the link card as thumbnailUrl
+        imageUrl, // standalone image attachment
         channelServiceMap: linkedInServiceMap,
-        linkAsset: { url: article.url, thumbnailUrl }, // image inside link card
+        linkAsset: { url: article.url }, // triggers metadata.linkedin.linkAttachment card
       });
       if (!linkedInResult.success) {
         throw new Error(linkedInResult.error ?? "LinkedIn Buffer push failed");

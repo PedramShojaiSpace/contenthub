@@ -1741,3 +1741,8 @@
 - [x] LinkedIn link card renders the URL once as a preview card (no duplicate in post text)
 - [x] All 287 tests passing, 0 TypeScript errors
 - [x] Save v144 checkpoint
+
+## v147 — Fix URL dropped between LinkedIn Newsfeed approval and Command Center
+- [x] Trace approval flow: find where article.url is lost between newsfeedRouter approval and Command Center post display
+- [x] Fix URL preservation through approval so Command Center post includes the article URL
+- [x] Run TypeScript check + tests, save v147 checkpoint

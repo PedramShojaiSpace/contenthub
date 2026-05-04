@@ -132,11 +132,16 @@ export const newsfeedRouter = router({
         .limit(1);
       if (!article) throw new Error("Article not found");
       if (!article.commentary) throw new Error("Article has no commentary yet");
+      // Build the post text: commentary + article URL appended so the Command Center
+      // card already has the URL ready when pushed to Buffer from the Kanban board.
+      const postTextForCard = article.url
+        ? `${article.commentary.trim()}\n\n${article.url}`
+        : article.commentary.trim();
       const [inserted] = await database.insert(contentItems).values({
         title: article.title.slice(0, 255),
         platform: "linkedin",
         status: "approved",
-        textContent: article.commentary,
+        textContent: postTextForCard,
         rawIdea: `[Newsfeed] ${article.source}: ${article.url}`,
         notes: `Source: ${article.source}\nURL: ${article.url}\nTopic: ${article.topic}`,
       });

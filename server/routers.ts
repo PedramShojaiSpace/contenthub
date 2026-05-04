@@ -474,7 +474,7 @@ export const appRouter = router({
 
         const platforms =
           input.platform === "all"
-            ? (["linkedin", "meta", "x", "youtube"] as const)
+            ? (["linkedin", "meta", "x", "youtube", "tiktok"] as const)
             : ([input.platform] as const);
 
         // Load persona pain points from DB if personaId is provided

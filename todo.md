@@ -1752,3 +1752,13 @@
 - [x] Install @napi-rs/canvas (pre-built WASM, works on musl Linux without native compilation)
 - [x] Update bannerComposite.ts: GlobalFonts.registerFromPath, canvas.encode("jpeg", 88)
 - [x] 287 tests passing, 0 TypeScript errors
+
+## v149 — Daily auto-refresh LinkedIn Newsfeed via scheduled task
+- [x] Add POST /api/scheduled/refresh-newsfeed endpoint (user-role allowed, triggers fetchAndStoreBingNews)
+- [x] Run TypeScript check + tests, save checkpoint, deploy
+- [x] Create daily scheduled task (7am CDT) that POSTs to the endpoint
+
+## v150 — Fix TikTok: zero posts being pushed
+- [x] Investigate TikTok in codebase and Buffer channel setup
+- [x] Fix root cause: add tiktok to generateContent all-platforms array (line 477 routers.ts)
+- [x] Run TypeScript check + tests, save checkpoint

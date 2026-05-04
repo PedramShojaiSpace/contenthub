@@ -10,8 +10,8 @@
  *   - Centre: the original AI image (scaled to fill)
  */
 
-import { createCanvas, loadImage, registerFont } from "canvas";
-import type { CanvasRenderingContext2D as NodeCanvasRenderingContext2D, Image as NodeCanvasImage } from "canvas";
+import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
+import type { SKRSContext2D as NodeCanvasRenderingContext2D } from "@napi-rs/canvas";
 import { storagePut } from "./storage";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -22,8 +22,8 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FONTS_DIR = path.join(__dirname, "fonts");
 try {
-  registerFont(path.join(FONTS_DIR, "Montserrat-Bold.ttf"), { family: "Montserrat", weight: "bold" });
-  registerFont(path.join(FONTS_DIR, "Montserrat-Regular.ttf"), { family: "Montserrat", weight: "normal" });
+  GlobalFonts.registerFromPath(path.join(FONTS_DIR, "Montserrat-Bold.ttf"), "Montserrat");
+  GlobalFonts.registerFromPath(path.join(FONTS_DIR, "Montserrat-Regular.ttf"), "Montserrat");
 } catch {
   // Fonts may already be registered or path differs in production — safe to ignore
 }
@@ -83,20 +83,18 @@ export async function compositeCtaBanner(
 
   // ── 1. Create canvas ────────────────────────────────────────────────────────
   const canvas = createCanvas(CANVAS_W, CANVAS_H);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx = canvas.getContext("2d") as unknown as NodeCanvasRenderingContext2D;
 
   // ── 2. Draw background image ────────────────────────────────────────────────
   try {
-    const img = await loadImage(imageUrl) as unknown as NodeCanvasImage;
+    const img = await loadImage(imageUrl);
     // Cover-fit: scale to fill canvas, centred
-    const scale = Math.max(CANVAS_W / (img.width as number), CANVAS_H / (img.height as number));
-    const sw = (img.width as number) * scale;
-    const sh = (img.height as number) * scale;
+    const scale = Math.max(CANVAS_W / img.width, CANVAS_H / img.height);
+    const sw = img.width * scale;
+    const sh = img.height * scale;
     const sx = (CANVAS_W - sw) / 2;
     const sy = (CANVAS_H - sh) / 2;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (ctx as any).drawImage(img, sx, sy, sw, sh);
+    ctx.drawImage(img, sx, sy, sw, sh);
   } catch {
     // Fallback: dark gradient background if image fails to load
     const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
@@ -203,7 +201,7 @@ export async function compositeCtaBanner(
   ctx.fillText("theurbanmonk.com", CANVAS_W - 24, CANVAS_H - 16);
 
   // ── 8. Export as JPEG buffer and upload to S3 ───────────────────────────────
-  const buffer = canvas.toBuffer("image/jpeg", { quality: 0.88 });
+  const buffer = await canvas.encode("jpeg", 88);
   const suffix = Date.now().toString(36);
   const key = `${keyPrefix}/banner-${suffix}.jpg`;
   const { url } = await storagePut(key, buffer, "image/jpeg");

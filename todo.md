@@ -1746,3 +1746,9 @@
 - [x] Trace approval flow: find where article.url is lost between newsfeedRouter approval and Command Center post display
 - [x] Fix URL preservation through approval so Command Center post includes the article URL
 - [x] Run TypeScript check + tests, save v147 checkpoint
+
+## v148 — Fix deployment: replace canvas native module with @napi-rs/canvas
+- [x] Remove canvas (requires pixman/cairo system libs not in deployment container)
+- [x] Install @napi-rs/canvas (pre-built WASM, works on musl Linux without native compilation)
+- [x] Update bannerComposite.ts: GlobalFonts.registerFromPath, canvas.encode("jpeg", 88)
+- [x] 287 tests passing, 0 TypeScript errors

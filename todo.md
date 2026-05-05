@@ -1762,3 +1762,8 @@
 - [x] Investigate TikTok in codebase and Buffer channel setup
 - [x] Fix root cause: add tiktok to generateContent all-platforms array (line 477 routers.ts)
 - [x] Run TypeScript check + tests, save checkpoint
+
+## v151 — Fix repetitive "For your attention" opener in LinkedIn commentary
+- [x] Replace "Worth your attention" example in PEDRAM_VOICE_SYSTEM prompt with 8 varied opener examples
+- [x] Add explicit NEVER rules: no "For your attention", no "Worth your attention", vary structure not just words
+- [x] Run TypeScript check + tests, save checkpoint

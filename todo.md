@@ -2087,3 +2087,31 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v164
+
+## v165 — Drafting Auto-highlight, Single Hook Regen, Persona Presets
+
+### Command Center — Drafting Column Auto-highlight
+- [x] Read `column` URL param on arrival (e.g. ?column=drafting)
+- [x] When column=drafting, auto-scroll to the Drafting column and add green ring highlight for 3 seconds
+- [x] Clear the URL param after reading to keep the URL clean
+
+### Hook Generator — Regenerate Single Hook
+- [x] Add a refresh/rotate icon button on each HookCard (green on hover)
+- [x] Clicking it calls viralStudio.regenerateSingleHook tRPC procedure with topic, platform, framework
+- [x] While regenerating, show a spinner on that card only (other cards unaffected)
+- [x] Replace the hook text with the new result; show "Regenerated" badge briefly (3 seconds)
+- [x] Added regenerateSingleHook procedure to server/viralStudioRouter.ts
+
+### Script Generator — Persona Presets
+- [x] Added 4 quick-select persona chips above the Target Persona input:
+  - "Stressed professional, 40s, low energy"
+  - "Health-conscious parent, 35-50"
+  - "Biohacker, 30s, optimizing performance"
+  - "Spiritual seeker, 50s, seeking purpose"
+- [x] Clicking a chip fills the input and highlights it; clicking again clears (toggle)
+- [x] Custom text typed in the input deselects all chips
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v165

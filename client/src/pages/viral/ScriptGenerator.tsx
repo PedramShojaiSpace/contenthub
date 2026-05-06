@@ -762,8 +762,30 @@ export default function ScriptGenerator() {
             <>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Target Persona (optional)</Label>
+                {/* Quick-select persona chips */}
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                  {[
+                    "Stressed professional, 40s, low energy",
+                    "Health-conscious parent, 35-50",
+                    "Biohacker, 30s, optimizing performance",
+                    "Spiritual seeker, 50s, seeking purpose",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setPersona(persona === preset ? "" : preset)}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
+                        persona === preset
+                          ? "bg-blue-600 text-white border-blue-600 font-medium"
+                          : "bg-muted/50 text-muted-foreground border-border hover:border-blue-400 hover:text-blue-600"
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
                 <Input
-                  placeholder="e.g. 'Stressed professional, 40s, low energy'"
+                  placeholder="Or type a custom persona..."
                   value={persona}
                   onChange={(e) => setPersona(e.target.value)}
                   className="text-sm"

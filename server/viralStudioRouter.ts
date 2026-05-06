@@ -1156,9 +1156,85 @@ export const getDashboardSummary = protectedProcedure
     };
   });
 
+// ─── Regenerate Single Hook ─────────────────────────────────────────────────
+export const regenerateSingleHook = protectedProcedure
+  .input(
+    z.object({
+      topic: z.string().min(3).max(500),
+      platform: z.enum(["tiktok", "instagram", "linkedin", "youtube", "x"]).default("tiktok"),
+      framework: z.string(),
+      targetPersona: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const platformContext = {
+      tiktok: "TikTok short-form video (spoken aloud in first 3 seconds)",
+      instagram: "Instagram Reels (spoken aloud, also works as caption opener)",
+      linkedin: "LinkedIn text post (written, first line before 'see more')",
+      youtube: "YouTube video (spoken in first 10 seconds)",
+      x: "X/Twitter (written, first line of thread)",
+    }[input.platform];
+
+    const personaContext = input.targetPersona
+      ? `\nTarget persona: ${input.targetPersona}`
+      : "";
+
+    const frameworkDescriptions: Record<string, string> = {
+      CONTRADICTION: "Start with a statement that contradicts common belief",
+      SPECIFICITY: "Use a hyper-specific number, timeframe, or detail",
+      TIMEFRAME_TENSION: "Create urgency with a timeframe or deadline",
+      POV_SHIFT: "Reframe the viewer's perspective on a familiar problem",
+      CURIOSITY_GAP: "Open a loop that can only be closed by watching",
+    };
+    const fwDesc = frameworkDescriptions[input.framework.toUpperCase()] ?? "Create a compelling hook";
+
+    const prompt = `${PEDRAM_VOICE}
+
+Topic: "${input.topic}"
+Platform: ${platformContext}${personaContext}
+
+Write ONE hook using the ${input.framework} framework: ${fwDesc}
+
+Return a JSON object:
+{
+  "hook": "...",
+  "why": "One sentence explaining why this hook works",
+  "score": 4
+}`;
+
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: "You are a world-class viral content strategist. Return only valid JSON." },
+        { role: "user", content: prompt },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "single_hook_response",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              hook: { type: "string" },
+              why: { type: "string" },
+              score: { type: "number" },
+            },
+            required: ["hook", "why", "score"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+
+    const content = response.choices[0].message.content;
+    const parsed = typeof content === "string" ? JSON.parse(content) : content;
+    return { hook: parsed.hook as string, why: parsed.why as string, score: parsed.score as number };
+  });
+
 // ─── Router export ────────────────────────────────────────────────────────────
 export const viralStudioRouter = router({
   generateHooks,
+  regenerateSingleHook,
   getRecentHooks,
   generateScript,
   getRecentScripts,

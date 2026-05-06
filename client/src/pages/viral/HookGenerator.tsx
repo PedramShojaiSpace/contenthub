@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import {
   Zap, Copy, Clock, Star, ChevronDown, ChevronUp, Loader2,
   FlaskConical, CheckCircle2, FileText, ImageIcon, X as XIcon,
-  Pencil, Check, SendHorizonal,
+  Pencil, Check, SendHorizonal, RefreshCw,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -198,7 +198,28 @@ function HookCard({
   const [draftText, setDraftText] = useState(editedHook);
   const [abDialogOpen, setAbDialogOpen] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [justRegenerated, setJustRegenerated] = useState(false);
   const colorClass = FRAMEWORK_COLORS[hook.framework.toLowerCase()] ?? "bg-gray-100 text-gray-700 border-gray-200";
+
+  const regenMutation = trpc.viralStudio.regenerateSingleHook.useMutation({
+    onSuccess: (data) => {
+      onEditChange(data.hook);
+      setDraftText(data.hook);
+      setJustRegenerated(true);
+      toast.success(`${hook.framework} hook regenerated!`);
+      setTimeout(() => setJustRegenerated(false), 3000);
+    },
+    onError: (err) => toast.error(`Regen failed: ${err.message}`),
+  });
+
+  const handleRegenerate = () => {
+    const validPlatforms = ["tiktok", "instagram", "linkedin", "youtube", "x"] as const;
+    type ValidPlatform = typeof validPlatforms[number];
+    const safePlatform: ValidPlatform = (validPlatforms as readonly string[]).includes(platform)
+      ? (platform as ValidPlatform)
+      : "tiktok";
+    regenMutation.mutate({ topic, platform: safePlatform, framework: hook.framework });
+  };
 
   const imagePlatform = HOOK_PLATFORM_TO_IMAGE_PLATFORM[platform] ?? "meta";
 
@@ -253,6 +274,11 @@ function HookCard({
                   Edited
                 </Badge>
               )}
+              {justRegenerated && (
+                <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
+                  <CheckCircle2 className="w-2.5 h-2.5 mr-1" />Regenerated
+                </Badge>
+              )}
               <div className="flex items-center gap-0.5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
@@ -295,6 +321,20 @@ function HookCard({
 
           {!editing && (
             <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-green-600 hover:bg-green-50"
+                onClick={handleRegenerate}
+                disabled={regenMutation.isPending}
+                title="Regenerate this hook (keeps other 4)"
+              >
+                {regenMutation.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

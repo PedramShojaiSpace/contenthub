@@ -81,8 +81,8 @@ import {
   FlaskConical,
   Star,
 } from "lucide-react";  
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect, useRef } from "react";
+import { useLocation, useSearch } from "wouter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1114,6 +1114,27 @@ function DroppableCalendarDay({
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function CommandCenter() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const draftingColumnRef = useRef<HTMLDivElement | null>(null);
+  const [highlightDrafting, setHighlightDrafting] = useState(false);
+
+  // Auto-scroll and highlight Drafting column when ?column=drafting is in URL
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.get("column") === "drafting") {
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("column");
+      window.history.replaceState({}, "", url.toString());
+      // Scroll and highlight after a short delay so the DOM is ready
+      setTimeout(() => {
+        draftingColumnRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        setHighlightDrafting(true);
+        setTimeout(() => setHighlightDrafting(false), 3000);
+      }, 300);
+    }
+  }, [search]);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newIdea, setNewIdea] = useState("");
@@ -2150,8 +2171,17 @@ export default function CommandCenter() {
             <div className="grid grid-cols-6 gap-4 overflow-x-auto">
               {STATUSES.map((col) => {
                 const colItems = (platformFilter === "all" ? items : items.filter((i) => i.platform === platformFilter)).filter((i) => i.status === col.key);
+                const isDrafting = col.key === "drafting";
                 return (
-                  <div key={col.key} className="min-w-[180px]">
+                  <div
+                    key={col.key}
+                    className={`min-w-[180px] rounded-xl transition-all duration-700 ${
+                      isDrafting && highlightDrafting
+                        ? "ring-2 ring-green-400 ring-offset-2 ring-offset-background shadow-lg shadow-green-400/20"
+                        : ""
+                    }`}
+                    ref={isDrafting ? draftingColumnRef : undefined}
+                  >
                     <DroppableColumn status={col.key} label={col.label} count={colItems.length}>
                       <div className="space-y-2">
                         {colItems.map((item) => (

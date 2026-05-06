@@ -220,6 +220,8 @@ function HookCard({
       platform,
       topic,
     });
+    // Pass top-performing framework so ScriptGenerator can surface it
+    if (topFramework) params.set("framework", topFramework);
     setLocation(`/viral-studio?${params.toString()}`);
   };
 

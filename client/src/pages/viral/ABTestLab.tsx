@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FlaskConical, Copy, Loader2, Trophy, Plus, CheckCircle2, Clock, Kanban, BarChart2, ChevronDown, ChevronUp, Star } from "lucide-react";
+import { FlaskConical, Copy, Loader2, Trophy, Plus, CheckCircle2, Clock, Kanban, BarChart2, ChevronDown, ChevronUp, Star, Download } from "lucide-react";
 import { useLocation } from "wouter";
 
 const PLATFORMS = [
@@ -376,6 +376,51 @@ export default function ABTestLab() {
     toast.success("Copied to clipboard");
   };
 
+  const handleExportCSV = () => {
+    if (allTests.length === 0) {
+      toast.error("No tests to export yet");
+      return;
+    }
+    const headers = [
+      "Test Name", "Topic", "Platform", "Variant Type",
+      "Variant A", "Variant B", "Variant C",
+      "Winner", "Winner Reason",
+      "A Views", "A Likes", "A Comments", "A Shares", "A Watch Time %", "A CTR %",
+      "B Views", "B Likes", "B Comments", "B Shares", "B Watch Time %", "B CTR %",
+      "C Views", "C Likes", "C Comments", "C Shares", "C Watch Time %", "C CTR %",
+      "Status", "Created At",
+    ];
+    const escape = (v: string | number | null | undefined) => {
+      if (v == null) return "";
+      const s = String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const getVariantStats = (test: TestVariantRow, label: "A" | "B" | "C") => {
+      const r = (test.results ?? []).find((x) => x.variant === label);
+      if (!r) return ["", "", "", "", "", ""];
+      const parsed = parseResultNotes(r.notes);
+      return [r.views, r.likes, r.comments, r.shares, parsed.watchTimePercent ?? "", parsed.ctr ?? ""];
+    };
+    const rows = allTests.map((t) => [
+      escape(t.testName), escape(t.topic), escape(t.platform), escape(t.variantType),
+      escape(t.variantA), escape(t.variantB), escape(t.variantC),
+      escape(t.winner), escape(t.winnerReason),
+      ...getVariantStats(t, "A").map(escape),
+      ...getVariantStats(t, "B").map(escape),
+      ...getVariantStats(t, "C").map(escape),
+      escape(t.status), escape(new Date(t.createdAt).toISOString()),
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ab-test-results-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${allTests.length} tests as CSV`);
+  };
+
   const handleCreate = () => {
     if (!testName.trim() || !topic.trim() || !variantA.trim() || !variantB.trim()) {
       toast.error("Fill in test name, topic, Variant A and Variant B");
@@ -414,15 +459,27 @@ export default function ABTestLab() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Explainer */}
-      <div className="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-xl p-4">
-        <h3 className="font-semibold text-rose-900 mb-1 flex items-center gap-2">
-          <FlaskConical className="w-4 h-4" />
-          Sub-Account A/B Testing Lab
-        </h3>
-        <p className="text-sm text-rose-700">
-          Growthopia's core strategy: post the same topic with 2–3 different hooks/angles on separate test accounts, measure which performs best, then bring the winner to your main account. Log performance data (views, watch time %, CTR) to build a data-driven feedback loop that improves future hook recommendations.
-        </p>
+      {/* Explainer + Export */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-xl p-4 flex-1 min-w-0">
+          <h3 className="font-semibold text-rose-900 mb-1 flex items-center gap-2">
+            <FlaskConical className="w-4 h-4" />
+            Sub-Account A/B Testing Lab
+          </h3>
+          <p className="text-sm text-rose-700">
+            Growthopia's core strategy: post the same topic with 2–3 different hooks/angles on separate test accounts, measure which performs best, then bring the winner to your main account. Log performance data (views, watch time %, CTR) to build a data-driven feedback loop that improves future hook recommendations.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 border-rose-300 text-rose-700 hover:bg-rose-50"
+          onClick={handleExportCSV}
+          title="Export all test results as CSV"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export CSV
+        </Button>
       </div>
 
       {/* How It Works */}

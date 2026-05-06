@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2, Hash, Search, Zap, Kanban, CheckCircle2 } from "lucide-react";
+import { FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2, Hash, Search, Zap, Kanban, CheckCircle2, Star } from "lucide-react";
 
 const PLATFORMS = [
   { value: "tiktok", label: "TikTok (60s)" },
@@ -233,6 +233,8 @@ export default function ScriptGenerator() {
   const prefillHook = urlParams.get("hook") ?? "";
   const prefillPlatform = urlParams.get("platform") ?? "";
   const prefillTopic = urlParams.get("topic") ?? "";
+  // framework param: top-performing framework passed from Hook Generator
+  const prefillFramework = urlParams.get("framework") ?? "";
 
   const [topic, setTopic] = useState(prefillTopic);
   const [hook, setHook] = useState(prefillHook);
@@ -243,14 +245,17 @@ export default function ScriptGenerator() {
   const [persona, setPersona] = useState("");
   const [result, setResult] = useState<ScriptResult | null>(null);
   const [prefillBanner, setPrefillBanner] = useState(!!prefillHook);
+  const [topFrameworkBanner, setTopFrameworkBanner] = useState(!!prefillFramework);
+  const [topFramework] = useState(prefillFramework);
 
   // Clear URL params after reading them so refreshing doesn't re-fill
   useEffect(() => {
-    if (prefillHook || prefillPlatform || prefillTopic) {
+    if (prefillHook || prefillPlatform || prefillTopic || prefillFramework) {
       const url = new URL(window.location.href);
       url.searchParams.delete("hook");
       url.searchParams.delete("platform");
       url.searchParams.delete("topic");
+      url.searchParams.delete("framework");
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
@@ -294,6 +299,20 @@ export default function ScriptGenerator() {
             <span>Hook pre-filled from Hook Generator. Review the fields below and click Generate Script.</span>
           </div>
           <button className="text-xs text-violet-500 hover:text-violet-700 shrink-0" onClick={() => setPrefillBanner(false)}>✕</button>
+        </div>
+      )}
+
+      {/* Top-performing framework banner */}
+      {topFrameworkBanner && topFramework && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center gap-2 text-sm text-amber-800">
+            <Star className="w-4 h-4 shrink-0 fill-amber-500 text-amber-500" />
+            <span>
+              <strong>Top-performing framework for {platform}:</strong>{" "}
+              <span className="capitalize">{topFramework}</span> — the AI will write the hook section using this proven framework style.
+            </span>
+          </div>
+          <button className="text-xs text-amber-600 hover:text-amber-800 shrink-0" onClick={() => setTopFrameworkBanner(false)}>✕</button>
         </div>
       )}
 

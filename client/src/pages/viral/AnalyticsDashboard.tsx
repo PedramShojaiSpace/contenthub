@@ -5,8 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { BarChart3, Copy, Loader2, TrendingUp, TrendingDown, Minus, Star, ArrowRight, RefreshCw } from "lucide-react";
+import {
+  BarChart3, Copy, Loader2, TrendingUp, TrendingDown, Minus,
+  Star, ArrowRight, RefreshCw, FlaskConical,
+} from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
+} from "recharts";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface PlatformStat {
   platform: string;
   postsPublished: number;
@@ -31,6 +38,7 @@ interface AnalyticsReport {
   createdAt: Date | string;
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const TREND_ICONS = {
   up: <TrendingUp className="w-3.5 h-3.5 text-green-500" />,
   down: <TrendingDown className="w-3.5 h-3.5 text-red-500" />,
@@ -45,6 +53,22 @@ const PLATFORM_COLORS: Record<string, string> = {
   x: "bg-gray-100 text-gray-700 border-gray-200",
 };
 
+const PLATFORMS = ["all", "tiktok", "instagram", "youtube", "linkedin", "x"] as const;
+type PlatformFilter = (typeof PLATFORMS)[number];
+
+const FRAMEWORK_BAR_COLORS: Record<string, string> = {
+  contradiction: "#ef4444",
+  specificity: "#3b82f6",
+  timeframe: "#f59e0b",
+  pov: "#22c55e",
+  "curiosity gap": "#a855f7",
+  curiositygap: "#a855f7",
+  "social proof": "#06b6d4",
+  socialproof: "#06b6d4",
+  transformation: "#f97316",
+};
+
+// ─── StatCard ─────────────────────────────────────────────────────────────────
 function StatCard({ stat }: { stat: PlatformStat }) {
   const color = PLATFORM_COLORS[stat.platform] ?? "bg-gray-100 text-gray-700 border-gray-200";
   return (
@@ -62,7 +86,9 @@ function StatCard({ stat }: { stat: PlatformStat }) {
           <p className="text-xs text-muted-foreground">Posts</p>
         </div>
         <div>
-          <p className="text-lg font-bold text-foreground">{stat.totalReach >= 1000 ? `${(stat.totalReach / 1000).toFixed(1)}K` : stat.totalReach}</p>
+          <p className="text-lg font-bold text-foreground">
+            {stat.totalReach >= 1000 ? `${(stat.totalReach / 1000).toFixed(1)}K` : stat.totalReach}
+          </p>
           <p className="text-xs text-muted-foreground">Reach</p>
         </div>
         <div>
@@ -80,6 +106,124 @@ function StatCard({ stat }: { stat: PlatformStat }) {
   );
 }
 
+// ─── FrameworkChart ───────────────────────────────────────────────────────────
+function FrameworkChart() {
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
+
+  const query = trpc.viralStudio.getTopFrameworks.useQuery({
+    platform: platformFilter === "all" ? undefined : platformFilter,
+  } as any);
+
+  const data = (query.data ?? []).map((row: any) => ({
+    name: row.framework
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (s: string) => s.toUpperCase())
+      .trim(),
+    rawName: row.framework,
+    winRate: row.totalTests > 0 ? Math.round((row.winCount / row.totalTests) * 100) : 0,
+    wins: row.winCount,
+    tests: row.totalTests,
+  }));
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FlaskConical className="w-4 h-4 text-violet-500" />
+            Hook Framework Win Rates
+            <span className="text-xs font-normal text-muted-foreground">(from A/B Test Lab)</span>
+          </CardTitle>
+          {/* Platform filter pills */}
+          <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+            {PLATFORMS.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPlatformFilter(p)}
+                className={`px-2.5 py-1 font-medium capitalize transition-colors ${
+                  platformFilter === p
+                    ? "bg-violet-600 text-white"
+                    : "bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {query.isLoading ? (
+          <div className="flex items-center justify-center h-40">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : data.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-40 text-center">
+            <FlaskConical className="w-8 h-8 text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground">No A/B test winners yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Declare winners in the A/B Test Lab to populate this chart
+            </p>
+          </div>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(v) => `${v}%`}
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tickLine={false}
+                  domain={[0, 100]}
+                />
+                <Tooltip
+                  formatter={(value: number, _name: string, props: any) => [
+                    `${value}% (${props.payload.wins}/${props.payload.tests} tests)`,
+                    "Win Rate",
+                  ]}
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                  }}
+                />
+                <Bar dataKey="winRate" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                  {data.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={FRAMEWORK_BAR_COLORS[entry.rawName.toLowerCase()] ?? "#8b5cf6"}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            {/* Legend table */}
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {data.map((row) => (
+                <div key={row.rawName} className="flex items-center gap-2 text-xs">
+                  <span
+                    className="w-2.5 h-2.5 rounded-sm shrink-0"
+                    style={{ background: FRAMEWORK_BAR_COLORS[row.rawName.toLowerCase()] ?? "#8b5cf6" }}
+                  />
+                  <span className="text-foreground font-medium">{row.name}</span>
+                  <span className="text-muted-foreground ml-auto">{row.winRate}%</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 export default function AnalyticsDashboard() {
   const [report, setReport] = useState<AnalyticsReport | null>(null);
   const [period, setPeriod] = useState<"last_7_days" | "last_30_days" | "last_90_days">("last_30_days");
@@ -92,7 +236,7 @@ export default function AnalyticsDashboard() {
     onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
-  const recentQuery = trpc.viralStudio.getRecentHooks.useQuery({ limit: 5 }); // placeholder — analytics history not yet stored
+  const recentQuery = trpc.viralStudio.getRecentHooks.useQuery({ limit: 5 });
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -114,9 +258,12 @@ export default function AnalyticsDashboard() {
           Performance Analytics & Strategy Narrative
         </h3>
         <p className="text-sm text-cyan-700">
-          Generate a monthly performance report with AI-written narrative: what worked, what to double down on, what to drop, and a concrete action plan for next week. This replaces the Growthopia monthly strategy call.
+          Generate a monthly performance report with AI-written narrative: what worked, what to double down on, what to drop, and a concrete action plan for next week. The framework win-rate chart below is populated automatically as you declare winners in the A/B Test Lab.
         </p>
       </div>
+
+      {/* Framework Win-Rate Chart — always visible */}
+      <FrameworkChart />
 
       {/* Controls */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -134,11 +281,13 @@ export default function AnalyticsDashboard() {
           ))}
         </div>
         <Button
-          onClick={() => generateMutation.mutate({
-            periodLabel: PERIOD_LABELS[period],
-            topPosts: [],
-            totalPosts: 0,
-          })}
+          onClick={() =>
+            generateMutation.mutate({
+              periodLabel: PERIOD_LABELS[period],
+              topPosts: [],
+              totalPosts: 0,
+            })
+          }
           disabled={generateMutation.isPending}
           className="bg-cyan-600 hover:bg-cyan-700 text-white"
         >
@@ -169,16 +318,22 @@ export default function AnalyticsDashboard() {
             <div className="p-4 bg-muted/30 border border-border rounded-xl">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">Strategy Narrative</h3>
-                <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => handleCopy(report.overallNarrative)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs px-2"
+                  onClick={() => handleCopy(report.overallNarrative)}
+                >
                   <Copy className="w-3 h-3 mr-1" />Copy
                 </Button>
               </div>
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{report.overallNarrative}</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {report.overallNarrative}
+              </p>
             </div>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Double Down */}
             {report.contentPillarsToDouble?.length > 0 && (
               <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
                 <h3 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
@@ -196,7 +351,6 @@ export default function AnalyticsDashboard() {
               </div>
             )}
 
-            {/* Drop or Pivot */}
             {report.contentPillarsToDrop?.length > 0 && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
                 <h3 className="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
@@ -215,7 +369,6 @@ export default function AnalyticsDashboard() {
             )}
           </div>
 
-          {/* Key Insights */}
           {report.keyInsights?.length > 0 && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
               <h3 className="text-sm font-semibold text-amber-800 mb-3">Key Insights</h3>
@@ -230,7 +383,6 @@ export default function AnalyticsDashboard() {
             </div>
           )}
 
-          {/* Next Week Action Plan */}
           {report.nextWeekRecommendations?.length > 0 && (
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <div className="flex items-center justify-between mb-3">
@@ -238,14 +390,21 @@ export default function AnalyticsDashboard() {
                   <ArrowRight className="w-4 h-4" />
                   Next Week Action Plan
                 </h3>
-                <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-blue-700" onClick={() => handleCopy(report.nextWeekRecommendations.join("\n"))}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs px-2 text-blue-700"
+                  onClick={() => handleCopy(report.nextWeekRecommendations.join("\n"))}
+                >
                   <Copy className="w-3 h-3 mr-1" />Copy
                 </Button>
               </div>
               <ol className="space-y-2">
                 {report.nextWeekRecommendations.map((rec, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
                     {rec}
                   </li>
                 ))}
@@ -254,14 +413,17 @@ export default function AnalyticsDashboard() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-border rounded-xl text-center p-6">
+        <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-xl text-center p-6">
           <BarChart3 className="w-8 h-8 text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">Generate a report to see your performance analytics and strategy narrative</p>
-          <p className="text-xs text-muted-foreground mt-1">Note: Analytics are based on content in your Command Center. Connect more platforms for richer data.</p>
+          <p className="text-sm text-muted-foreground">
+            Generate a report to see your performance analytics and strategy narrative
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Note: Analytics are based on content in your Command Center. Connect more platforms for richer data.
+          </p>
         </div>
       )}
 
-      {/* Recent Reports */}
       {recentQuery.data && recentQuery.data.length > 0 && (
         <>
           <Separator />
@@ -276,8 +438,12 @@ export default function AnalyticsDashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">{r.period?.replace(/_/g, " ")}</Badge>
-                      <span className="text-sm text-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {r.period?.replace(/_/g, " ")}
+                      </Badge>
+                      <span className="text-sm text-foreground">
+                        {new Date(r.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />
                   </div>

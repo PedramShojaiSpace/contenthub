@@ -2001,3 +2001,26 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint
+
+## v161 — Analytics Dashboard Framework Chart + Script Generator Pre-selection + A/B CSV Export
+
+### Analytics Dashboard — Framework Win-Rate Chart
+- [x] Add getTopFrameworks query to AnalyticsDashboard.tsx (all platforms)
+- [x] Render a bar chart (Recharts BarChart) showing win rate % per framework per platform
+- [x] Add platform filter tabs (All / TikTok / Instagram / LinkedIn / YouTube / X)
+- [x] Show "No data yet — declare winners in A/B Test Lab to populate" empty state
+
+### Script Generator — Framework Pre-selection from URL
+- [x] Read `framework` URL param in ScriptGenerator.tsx (alongside existing hook/platform/topic params)
+- [x] Show amber banner with top-performing framework name when `framework` param is present
+- [x] Update HookGenerator "Build full script →" link to include `framework` param (top-performing framework for the platform)
+
+### A/B Test Lab — CSV Export
+- [x] Add "Export CSV" button to A/B Test Lab header
+- [x] Build client-side CSV from allTests data (testName, topic, platform, variantType, variantA, variantB, winner, winnerReason, views, watchTime%, CTR%, engagementRate per variant)
+- [x] Trigger browser download of the CSV file
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v161

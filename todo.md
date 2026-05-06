@@ -2063,3 +2063,27 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v163
+
+## v164 — Auto-start Countdown, Kanban Toast, Score Badges
+
+### Script Generator — Auto-start Countdown
+- [x] When batch arrives from Hook Generator AND topic is auto-filled, show a 3-second countdown in the batch banner ("Auto-starting in 3... 2... 1...")
+- [x] Cancel button stops the countdown and leaves queue in manual mode
+- [x] After countdown reaches 0, trigger Generate All automatically
+- [x] Countdown only fires when both batchItems and topic are present (not on manual batch entry)
+
+### Script Generator — Kanban Toast with Navigation
+- [x] After Save All succeeds, show a toast with a "View in Kanban →" action button
+- [x] Clicking the toast link navigates to /command-center (Drafting column)
+- [x] Toast persists for 8 seconds (longer than default) so user has time to click
+
+### Hook Generator — Viral Score Badges in History
+- [x] In the ResultCard (Recent Generations accordion), show top 3 score badges in the collapsed header row
+- [x] Score badges are color-coded: green (≥4), amber (3), gray (≤2)
+- [x] Average score shown next to badges
+- [x] Badges hidden when accordion is expanded to reduce clutter
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v164

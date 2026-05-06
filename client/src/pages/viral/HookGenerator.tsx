@@ -431,6 +431,15 @@ function ResultCard({ result, onCopy }: { result: HookResult; onCopy: (text: str
     setLocation(`/viral-studio?${params.toString()}`);
   };
 
+  // Build score summary for collapsed header: top 3 scores
+  const sortedScores = [...result.hooks]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((h) => h.score);
+  const avgScore = result.hooks.length > 0
+    ? Math.round(result.hooks.reduce((s, h) => s + h.score, 0) / result.hooks.length * 10) / 10
+    : 0;
+
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       <button
@@ -442,6 +451,24 @@ function ResultCard({ result, onCopy }: { result: HookResult; onCopy: (text: str
           <span className="text-sm font-medium truncate">{result.topic}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Score badges — top 3 hook scores */}
+          {!open && sortedScores.length > 0 && (
+            <div className="hidden sm:flex items-center gap-1">
+              {sortedScores.map((score, i) => (
+                <span
+                  key={i}
+                  className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                    score >= 4 ? "bg-green-100 text-green-700 border-green-300" :
+                    score === 3 ? "bg-amber-100 text-amber-700 border-amber-300" :
+                    "bg-gray-100 text-gray-600 border-gray-300"
+                  }`}
+                >
+                  <Star className="w-2.5 h-2.5" />{score}
+                </span>
+              ))}
+              <span className="text-[10px] text-muted-foreground ml-0.5">avg {avgScore}</span>
+            </div>
+          )}
           <span className="text-xs text-muted-foreground">{new Date(result.createdAt).toLocaleDateString()}</span>
           {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -229,6 +230,7 @@ function BatchQueuePanel({
   seoKeywords,
   onClearBatch,
   onCopy,
+  autoStart,
 }: {
   items: BatchItem[];
   topic: string;
@@ -238,11 +240,16 @@ function BatchQueuePanel({
   seoKeywords: string;
   onClearBatch: () => void;
   onCopy: (text: string) => void;
+  autoStart?: boolean;
 }) {
   const [queue, setQueue] = useState<BatchItem[]>(items);
   const [isRunningAll, setIsRunningAll] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [savedAll, setSavedAll] = useState(false);
+  // Auto-start countdown
+  const [countdown, setCountdown] = useState<number | null>(autoStart ? 3 : null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [, setLocation] = useLocation();
 
   const generateMutation = trpc.viralStudio.generateScript.useMutation();
 
@@ -257,11 +264,18 @@ function BatchQueuePanel({
   const saveAllMutation = trpc.content.createBulk.useMutation({
     onSuccess: (data) => {
       setSavedAll(true);
+      // Show toast with View in Kanban link
       toast.success(
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <span className="font-semibold">{data.created} scripts saved to Command Center ✓</span>
-          <span className="text-xs text-muted-foreground">Find them in the Drafting column of your Kanban board.</span>
-        </div>
+          <button
+            className="text-xs text-blue-600 hover:text-blue-800 underline text-left font-medium"
+            onClick={() => setLocation("/command-center?column=drafting")}
+          >
+            View in Kanban (Drafting column) →
+          </button>
+        </div>,
+        { duration: 8000 }
       );
     },
     onError: (err) => toast.error(`Save failed: ${err.message}`),
@@ -280,6 +294,29 @@ function BatchQueuePanel({
         textContent: q.result!.fullScript,
       })),
     });
+  };
+
+  // Countdown auto-start logic
+  const handleGenerateAllRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown === 0) {
+      setCountdown(null);
+      handleGenerateAllRef.current();
+      return;
+    }
+    countdownRef.current = setInterval(() => {
+      setCountdown((c) => (c !== null && c > 0 ? c - 1 : null));
+    }, 1000);
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [countdown]);
+
+  const cancelCountdown = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setCountdown(null);
   };
 
   const generateOne = useCallback(async (index: number) => {
@@ -320,11 +357,35 @@ function BatchQueuePanel({
     toast.success("All scripts generated!");
   };
 
+  // Keep ref in sync with latest handleGenerateAll
+  useEffect(() => {
+    handleGenerateAllRef.current = handleGenerateAll;
+  });
+
   const doneCount = queue.filter((q) => q.status === "done").length;
   const pendingCount = queue.filter((q) => q.status === "pending").length;
 
   return (
     <div className="space-y-4">
+      {/* Auto-start countdown banner */}
+      {countdown !== null && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg">
+          <div className="flex items-center gap-2 text-sm text-amber-800">
+            <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+            <span>
+              <strong>Auto-starting in {countdown}...</strong> All scripts will generate automatically.
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs border-amber-400 text-amber-700 hover:bg-amber-100 shrink-0"
+            onClick={cancelCountdown}
+          >
+            <XIcon className="w-3 h-3 mr-1" />Cancel
+          </Button>
+        </div>
+      )}
       {/* Batch header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -735,6 +796,7 @@ export default function ScriptGenerator() {
           seoKeywords={seoKeywords}
           onClearBatch={() => setBatchItems(null)}
           onCopy={handleCopy}
+          autoStart={!!(prefillBatchRaw && (prefillBatchTopic || prefillTopic))}
         />
       ) : result ? (
         <div>

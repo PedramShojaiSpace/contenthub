@@ -70,6 +70,7 @@ import { llmProjectsRouter } from "./llmProjectsRouter";
 import { utmRouter } from "./utmRouter";
 import { ingestGenerateRouter } from "./ingestGenerateRouter";
 import { newsfeedRouter } from "./newsfeedRouter";
+import { viralStudioRouter } from "./viralStudioRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls } from "./urlScrubber";
@@ -3127,6 +3128,7 @@ STRICT RULES:
   utm: utmRouter,
   ingest: ingestGenerateRouter,
   newsfeed: newsfeedRouter,
+  viralStudio: viralStudioRouter,
 
   // ── Verified Internal Links ──────────────────────────────────────────────────────────────────────────
   // Curated whitelist of real URLs the AI may use as internal links in blog posts.

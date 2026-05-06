@@ -1767,3 +1767,55 @@
 - [x] Replace "Worth your attention" example in PEDRAM_VOICE_SYSTEM prompt with 8 varied opener examples
 - [x] Add explicit NEVER rules: no "For your attention", no "Worth your attention", vary structure not just words
 - [x] Run TypeScript check + tests, save checkpoint
+
+## v152-v159 — Viral Studio: 8 Growthopia-Replacement Features
+
+### Feature 1: Hook Generator (5 psychology frameworks)
+- [x] DB schema: hook_generations table
+- [x] Server: hookRouter.ts with generateHooks procedure
+- [x] UI: HookGenerator.tsx page
+- [x] Wire into App.tsx navigation under Viral Studio
+
+### Feature 2: Full Video Script Generator (Social SEO + DM CTA)
+- [x] Server: scriptRouter.ts with generateScript procedure
+- [x] UI: ScriptGenerator.tsx page (hook → problem → value → CTA structure)
+- [x] Social SEO keyword integration in spoken audio
+- [x] Wire into App.tsx navigation
+
+### Feature 3: Content Repurposing Engine (books/podcasts → multi-platform)
+- [x] DB schema: repurpose_jobs table
+- [x] Server: repurposeRouter.ts with repurposeContent procedure
+- [x] UI: RepurposeEngine.tsx page with source input + platform output cards
+- [x] Wire into App.tsx navigation
+
+### Feature 4: Viral Topic Generator (trending + niche)
+- [x] Server: topicRouter.ts with generateTopics procedure (Bing News + LLM)
+- [x] UI: TopicGenerator.tsx page with ranked topic list + hook angles
+- [x] Wire into App.tsx navigation
+
+### Feature 5: Social SEO Caption Optimizer
+- [x] Server: captionRouter.ts with optimizeCaption procedure
+- [x] UI: CaptionOptimizer.tsx page (platform selector + keyword + output)
+- [x] Wire into App.tsx navigation
+
+### Feature 6: DM Automation Playbook Generator
+- [x] Server: dmPlaybookRouter.ts with generatePlaybook procedure
+- [x] UI: DMPlaybook.tsx page (trigger word + 3-message DM sequence + lead magnet)
+- [x] Wire into App.tsx navigation
+
+### Feature 7: Performance Analytics Dashboard
+- [x] Server: analyticsRouter.ts with getBufferAnalytics + generateNarrative procedures
+- [x] UI: AnalyticsDashboard.tsx page with charts + monthly narrative
+- [x] Wire into App.tsx navigation
+
+### Feature 8: Sub-Account Content Testing System
+- [x] DB schema: test_variants, test_results tables
+- [x] Server: testingRouter.ts with createVariant, trackResult, getWinners procedures
+- [x] UI: ContentTesting.tsx page (A/B hook variants + performance tracking)
+- [x] Wire into App.tsx navigation
+
+### Integration & Polish
+- [x] Add "Viral Studio" section to sidebar navigation with all 8 features
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass
+- [ ] Save checkpoint + deploy

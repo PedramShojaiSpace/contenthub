@@ -29,6 +29,7 @@ const UTMGenerator = lazy(() => import("./pages/UTMGenerator"));
 const IngestInbox = lazy(() => import("./pages/IngestInbox"));
 const VerifiedLinks = lazy(() => import("./pages/VerifiedLinks"));
 const LinkedInNewsfeed = lazy(() => import("./pages/LinkedInNewsfeed"));
+const ViralStudio = lazy(() => import("./pages/ViralStudio"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -65,6 +66,7 @@ function Router() {
         <Route path={"/ingest"} component={IngestInbox} />
         <Route path={"/verified-links"} component={VerifiedLinks} />
         <Route path={"/newsfeed"} component={LinkedInNewsfeed} />
+        <Route path={"/viral-studio"} component={ViralStudio} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

@@ -1,4 +1,4 @@
-import { bigint, boolean, int, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, double, float, int, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -803,3 +803,121 @@ export const newsfeedArticles = mysqlTable("newsfeed_articles", {
 });
 export type NewsfeedArticle = typeof newsfeedArticles.$inferSelect;
 export type InsertNewsfeedArticle = typeof newsfeedArticles.$inferInsert;
+
+// ── Viral Studio: Hook Generations ───────────────────────────────────────────
+export const hookGenerations = mysqlTable("hook_generations", {
+  id: int("id").autoincrement().primaryKey(),
+  topic: text("topic").notNull(),
+  platform: varchar("platform", { length: 32 }).notNull().default("tiktok"),
+  targetPersona: text("targetPersona"),
+  hooksJson: longtext("hooksJson").notNull(),
+  topPick: varchar("topPick", { length: 64 }),
+  topPickReason: text("topPickReason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type HookGeneration = typeof hookGenerations.$inferSelect;
+export type InsertHookGeneration = typeof hookGenerations.$inferInsert;
+
+// ── Viral Studio: Script Generations ─────────────────────────────────────────
+export const scriptGenerations = mysqlTable("script_generations", {
+  id: int("id").autoincrement().primaryKey(),
+  topic: text("topic").notNull(),
+  hook: text("hook").notNull(),
+  platform: varchar("platform", { length: 32 }).notNull().default("tiktok"),
+  targetLengthSeconds: int("targetLengthSeconds").default(60),
+  cta: text("cta"),
+  socialSeoKeywords: text("socialSeoKeywords"),  // JSON: string[]
+  targetPersona: text("targetPersona"),
+  fullScript: longtext("fullScript").notNull(),
+  scriptJson: longtext("scriptJson").notNull(),  // JSON: {hook, problem, agitate, value, proof, cta}
+  captionHook: text("captionHook"),
+  suggestedHashtags: text("suggestedHashtags"),  // JSON: string[]
+  wordCount: int("wordCount"),
+  estimatedSeconds: int("estimatedSeconds"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ScriptGeneration = typeof scriptGenerations.$inferSelect;
+export type InsertScriptGeneration = typeof scriptGenerations.$inferInsert;
+
+// ── Viral Studio: Repurpose Jobs ──────────────────────────────────────────────
+export const repurposeJobs = mysqlTable("repurpose_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceType: varchar("sourceType", { length: 64 }).notNull(),
+  sourceTitle: varchar("sourceTitle", { length: 255 }).notNull(),
+  sourceTextSnippet: text("sourceTextSnippet"),
+  targetPlatforms: text("targetPlatforms").notNull(),  // JSON: string[]
+  postsPerPlatform: int("postsPerPlatform").default(3),
+  resultJson: longtext("resultJson"),
+  totalPieces: int("totalPieces").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RepurposeJob = typeof repurposeJobs.$inferSelect;
+export type InsertRepurposeJob = typeof repurposeJobs.$inferInsert;
+
+// ── Viral Studio: Viral Topics ────────────────────────────────────────────────
+export const viralTopics = mysqlTable("viral_topics", {
+  id: int("id").autoincrement().primaryKey(),
+  niche: text("niche").notNull(),
+  platform: varchar("platform", { length: 32 }).notNull().default("all"),
+  topicsJson: longtext("topicsJson").notNull(),  // JSON: topic[]
+  topPick: text("topPick"),
+  weeklyTheme: text("weeklyTheme"),
+  count: int("count").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ViralTopic = typeof viralTopics.$inferSelect;
+export type InsertViralTopic = typeof viralTopics.$inferInsert;
+
+// ── Viral Studio: DM Playbooks ────────────────────────────────────────────────
+export const dmPlaybooks = mysqlTable("dm_playbooks", {
+  id: int("id").autoincrement().primaryKey(),
+  videoTopic: text("videoTopic").notNull(),
+  triggerKeyword: varchar("triggerKeyword", { length: 64 }).notNull(),
+  leadMagnet: text("leadMagnet").notNull(),
+  leadMagnetUrl: text("leadMagnetUrl"),
+  platform: varchar("platform", { length: 32 }).notNull().default("instagram"),
+  videoCTALine: text("videoCTALine"),
+  messagesJson: longtext("messagesJson"),  // JSON: DM message[]
+  setupInstructions: text("setupInstructions"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type DmPlaybook = typeof dmPlaybooks.$inferSelect;
+export type InsertDmPlaybook = typeof dmPlaybooks.$inferInsert;
+
+// ── Viral Studio: A/B Test Variants ──────────────────────────────────────────
+export const testVariants = mysqlTable("test_variants", {
+  id: int("id").autoincrement().primaryKey(),
+  testName: varchar("testName", { length: 255 }).notNull(),
+  topic: text("topic").notNull(),
+  platform: varchar("platform", { length: 32 }).notNull(),
+  variantType: varchar("variantType", { length: 32 }).notNull(),  // hook|cta|format|length|angle
+  variantA: text("variantA").notNull(),
+  variantB: text("variantB").notNull(),
+  variantC: text("variantC"),
+  notes: text("notes"),
+  status: varchar("status", { length: 32 }).notNull().default("active"),  // active|completed
+  winner: varchar("winner", { length: 4 }),  // A|B|C
+  winnerReason: text("winnerReason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TestVariant = typeof testVariants.$inferSelect;
+export type InsertTestVariant = typeof testVariants.$inferInsert;
+
+// ── Viral Studio: A/B Test Results ───────────────────────────────────────────
+export const testResults = mysqlTable("test_results", {
+  id: int("id").autoincrement().primaryKey(),
+  variantId: int("variantId").notNull(),
+  variant: varchar("variant", { length: 4 }).notNull(),  // A|B|C
+  views: int("views").default(0),
+  likes: int("likes").default(0),
+  comments: int("comments").default(0),
+  shares: int("shares").default(0),
+  follows: int("follows").default(0),
+  dmTriggers: int("dmTriggers").default(0),
+  engagementRate: float("engagementRate").default(0),
+  accountHandle: varchar("accountHandle", { length: 128 }),
+  notes: text("notes"),
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+});
+export type TestResult = typeof testResults.$inferSelect;
+export type InsertTestResult = typeof testResults.$inferInsert;

@@ -60,6 +60,7 @@ const topNavItems = [
   { icon: LayoutDashboard, label: "Command Center", path: "/" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
   { icon: Newspaper, label: "LinkedIn Newsfeed", path: "/newsfeed" },
+  { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
   { icon: Film, label: "Script Library", path: "/scripts" },
   { icon: Image, label: "Asset Library", path: "/assets" },
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },

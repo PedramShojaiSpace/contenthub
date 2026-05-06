@@ -615,6 +615,7 @@ export default function HookGenerator() {
       batchTopic: result.topic, // auto-fill topic field in Script Generator
     });
     if (topFramework) params.set("framework", topFramework);
+    if (persona) params.set("batchPersona", persona); // pass persona to Script Generator
     setLocation(`/viral-studio?${params.toString()}`);
   };
 
@@ -679,8 +680,30 @@ export default function HookGenerator() {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Target Persona (optional)</Label>
+              {/* Quick-select persona chips */}
+              <div className="flex flex-wrap gap-1.5 mb-1.5">
+                {[
+                  "Stressed professional, 40s, low energy",
+                  "Health-conscious parent, 35-50",
+                  "Biohacker, 30s, optimizing performance",
+                  "Spiritual seeker, 50s, seeking purpose",
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setPersona(persona === preset ? "" : preset)}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
+                      persona === preset
+                        ? "bg-violet-600 text-white border-violet-600 font-medium"
+                        : "bg-muted/50 text-muted-foreground border-border hover:border-violet-400 hover:text-violet-600"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
               <Input
-                placeholder="e.g. 'Burned-out executive, 45, struggles with energy and sleep'"
+                placeholder="Or type a custom persona..."
                 value={persona}
                 onChange={(e) => setPersona(e.target.value)}
                 className="text-sm"
@@ -707,7 +730,30 @@ export default function HookGenerator() {
             <>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Generated Hooks</h3>
-                <Badge variant="outline" className="text-xs">{result.platform}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">{result.platform}</Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs border-violet-300 text-violet-700 hover:bg-violet-50"
+                    onClick={() => {
+                      if (!topic.trim()) { toast.error("Topic is required to regenerate"); return; }
+                      generateMutation.mutate({
+                        topic: result.topic,
+                        platform: result.platform as "tiktok" | "instagram" | "youtube" | "linkedin" | "x",
+                        targetPersona: persona || undefined,
+                      });
+                    }}
+                    disabled={generateMutation.isPending}
+                    title="Regenerate all 5 hooks with the same topic and platform"
+                  >
+                    {generateMutation.isPending ? (
+                      <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Regenerating...</>
+                    ) : (
+                      <><RefreshCw className="w-3 h-3 mr-1" />Regenerate All</>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               {result.topPick && (

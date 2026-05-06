@@ -2115,3 +2115,28 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v165
+
+## v166 — Persona Chips in Hook Generator, Regenerate All, Length Presets
+
+### Hook Generator — Persona Preset Chips
+- [x] Add persona preset chips to the main HookGenerator form (same 4 presets as Script Generator)
+- [x] Pass persona to generateHooks mutation so the AI tailors hooks to the persona
+- [x] Pass persona through handlePushAll URL params (batchPersona param) so Script Generator receives it in batch mode
+- [x] Persona chips: "Stressed professional, 40s, low energy" / "Health-conscious parent, 35-50" / "Biohacker, 30s, optimizing performance" / "Spiritual seeker, 50s, seeking purpose"
+
+### Hook Generator — Regenerate All Button
+- [x] Added "Regenerate All" button at top of results panel (next to platform badge)
+- [x] Clicking fires generateHooks mutation with same topic/platform/persona — replaces all 5 hooks
+- [x] Shows loading spinner on the button while regenerating
+- [x] Passes persona in the regenerateAll call so new hooks stay persona-aware
+
+### Script Generator — Length Presets
+- [x] Added 4 quick-select duration pill buttons above the length dropdown: 30s / 60s / 90s / 3 min (180s)
+- [x] Clicking a preset sets the dropdown value and highlights the active button
+- [x] Dropdown still available for 2-minute option and custom values
+- [x] Presets styled as pill buttons consistent with persona chips
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v166

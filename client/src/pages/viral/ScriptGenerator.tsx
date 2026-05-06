@@ -28,6 +28,14 @@ const LENGTHS = [
   { value: 60, label: "60 seconds" },
   { value: 90, label: "90 seconds" },
   { value: 120, label: "2 minutes" },
+  { value: 180, label: "3 minutes" },
+];
+
+const LENGTH_PRESETS = [
+  { value: 30, label: "30s" },
+  { value: 60, label: "60s" },
+  { value: 90, label: "90s" },
+  { value: 180, label: "3 min" },
 ];
 
 const FRAMEWORK_COLORS: Record<string, string> = {
@@ -729,6 +737,23 @@ export default function ScriptGenerator() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Target Length</Label>
+              {/* Quick-select preset pills */}
+              <div className="flex flex-wrap gap-1.5 mb-1.5">
+                {LENGTH_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setLengthSeconds(preset.value)}
+                    className={`text-[11px] px-3 py-1 rounded-full border transition-all font-medium ${
+                      lengthSeconds === preset.value
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-muted/50 text-muted-foreground border-border hover:border-blue-400 hover:text-blue-600"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
               <Select value={String(lengthSeconds)} onValueChange={(v) => setLengthSeconds(Number(v))}>
                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>

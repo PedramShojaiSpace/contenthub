@@ -67,7 +67,7 @@ interface SendToABLabDialogProps {
 
 function SendToABLabDialog({ open, onClose, hookText, framework, topic, platform, allHooks }: SendToABLabDialogProps) {
   const [, setLocation] = useLocation();
-  const [testName, setTestName] = useState(`${topic.slice(0, 40)} — Hook Test`);
+  const [testName, setTestName] = useState(`${(topic ?? "").slice(0, 40)} — Hook Test`);
   // Auto-pick a second hook (different framework) as variantB
   const otherHook = allHooks.find((h) => h.hook !== hookText) ?? allHooks[0];
   const [variantB, setVariantB] = useState(otherHook?.hook ?? "");

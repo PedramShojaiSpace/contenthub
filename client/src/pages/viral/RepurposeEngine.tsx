@@ -229,10 +229,11 @@ export default function RepurposeEngine() {
     setSendingPlatform(post.platform);
     try {
       const mappedPlatform = PLATFORM_MAP[post.platform] ?? "tiktok";
-      const title = `[${post.platform.toUpperCase()}] ${result.sourceTitle ?? "Repurposed"} — ${post.hook.slice(0, 60)}`;
-      const textContent = `${post.hook}\n\n${post.script}\n\n---\nCaption:\n${post.caption}\n\n${post.hashtags.join(" ")}`;
+      const hookSafe = post.hook ?? "";
+      const title = `[${post.platform.toUpperCase()}] ${result.sourceTitle ?? "Repurposed"} — ${hookSafe.slice(0, 60)}`;
+      const textContent = `${hookSafe}\n\n${post.script ?? ""}\n\n---\nCaption:\n${post.caption ?? ""}\n\n${(post.hashtags ?? []).join(" ")}`;
       await createBulkMutation.mutateAsync({
-        items: [{ title, rawIdea: post.hook, platform: mappedPlatform, status: "idea", textContent }],
+        items: [{ title, rawIdea: hookSafe, platform: mappedPlatform, status: "idea", textContent }],
       });
       setSentPlatforms(prev => { const next = new Set(Array.from(prev)); next.add(post.platform); return next; });
     } finally {
@@ -246,9 +247,10 @@ export default function RepurposeEngine() {
     try {
       const items = result.posts.map((post) => {
         const mappedPlatform = PLATFORM_MAP[post.platform] ?? "tiktok";
-        const title = `[${post.platform.toUpperCase()}] ${result.sourceTitle ?? "Repurposed"} — ${post.hook.slice(0, 60)}`;
-        const textContent = `${post.hook}\n\n${post.script}\n\n---\nCaption:\n${post.caption}\n\n${post.hashtags.join(" ")}`;
-        return { title, rawIdea: post.hook, platform: mappedPlatform, status: "idea" as const, textContent };
+        const hookSafe2 = post.hook ?? "";
+        const title = `[${post.platform.toUpperCase()}] ${result.sourceTitle ?? "Repurposed"} — ${hookSafe2.slice(0, 60)}`;
+        const textContent = `${hookSafe2}\n\n${post.script ?? ""}\n\n---\nCaption:\n${post.caption ?? ""}\n\n${(post.hashtags ?? []).join(" ")}`;
+        return { title, rawIdea: hookSafe2, platform: mappedPlatform, status: "idea" as const, textContent };
       });
       await createBulkMutation.mutateAsync({ items });
       setSentPlatforms(new Set(result.posts.map(p => p.platform)));

@@ -80,7 +80,7 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
     saveToKanbanMutation.mutate({
       items: [
         {
-          title: result.topic.length > 80 ? result.topic.slice(0, 80) + "…" : result.topic,
+          title: (result.topic ?? "").length > 80 ? (result.topic ?? "").slice(0, 80) + "…" : (result.topic ?? "Untitled Script"),
           platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
           status: "drafting" as const,
           textContent: result.fullScript,

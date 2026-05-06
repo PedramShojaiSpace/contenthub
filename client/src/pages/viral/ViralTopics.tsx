@@ -35,11 +35,16 @@ const PLATFORMS = [
 
 interface TopicIdea {
   topic: string;
-  hook: string;
-  angle: string;
+  hook?: string;
+  // LLM may return hookAngle instead of hook
+  hookAngle?: string;
+  hooks?: { contradiction?: string; specificity?: string; curiosityGap?: string };
+  angle?: string;
+  // LLM may return viralReason instead of angle
+  viralReason?: string;
   viralScore: number;
-  searchVolume: string;
-  keywords: string[];
+  searchVolume?: string;
+  keywords?: string[];
 }
 
 interface TopicsResult {
@@ -47,7 +52,7 @@ interface TopicsResult {
   niche: string;
   platform: string;
   topics: TopicIdea[];
-  trendingKeywords: string[];
+  trendingKeywords?: string[];
   weeklyTheme: string;
   createdAt: Date | string;
 }
@@ -65,6 +70,11 @@ interface CaptionResult {
 }
 
 function TopicCard({ topic, onCopy }: { topic: TopicIdea; onCopy: (t: string) => void }) {
+  // Normalize: LLM may return hookAngle or hooks.contradiction instead of hook
+  const hookText = topic.hook ?? topic.hookAngle ?? topic.hooks?.contradiction ?? topic.hooks?.specificity ?? "";
+  const angleText = topic.angle ?? topic.viralReason ?? "";
+  const keywordList = topic.keywords ?? [];
+  const searchVol = topic.searchVolume ?? "";
   return (
     <div className="border border-border rounded-lg p-4 hover:border-orange-300 transition-colors">
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -77,20 +87,22 @@ function TopicCard({ topic, onCopy }: { topic: TopicIdea; onCopy: (t: string) =>
               />
             ))}
           </div>
-          <Badge variant="outline" className="text-xs">{topic.searchVolume}</Badge>
-          <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">{topic.angle}</Badge>
+          {searchVol && <Badge variant="outline" className="text-xs">{searchVol}</Badge>}
+          {angleText && <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">{angleText}</Badge>}
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => onCopy(topic.topic + "\n\nHook: " + topic.hook)}>
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => onCopy(topic.topic + (hookText ? "\n\nHook: " + hookText : ""))}>
           <Copy className="w-3 h-3" />
         </Button>
       </div>
       <p className="text-sm font-semibold text-foreground mb-1">{topic.topic}</p>
-      <p className="text-xs text-muted-foreground italic mb-2">Hook: "{topic.hook}"</p>
-      <div className="flex flex-wrap gap-1">
-        {topic.keywords.map((kw, i) => (
-          <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
-        ))}
-      </div>
+      {hookText && <p className="text-xs text-muted-foreground italic mb-2">Hook: "{hookText}"</p>}
+      {keywordList.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {keywordList.map((kw, i) => (
+            <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -209,9 +221,9 @@ export default function ViralTopics() {
                       <p className="text-sm font-medium text-foreground">{topicsResult.weeklyTheme}</p>
                     </div>
                   )}
-                  {topicsResult.trendingKeywords?.length > 0 && (
+                  {(topicsResult.trendingKeywords ?? []).length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {topicsResult.trendingKeywords.map((kw, i) => (
+                      {(topicsResult.trendingKeywords ?? []).map((kw, i) => (
                         <Badge key={i} variant="outline" className="text-xs text-orange-600 border-orange-200">{kw}</Badge>
                       ))}
                     </div>

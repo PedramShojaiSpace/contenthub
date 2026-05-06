@@ -921,3 +921,59 @@ export const testResults = mysqlTable("test_results", {
 });
 export type TestResult = typeof testResults.$inferSelect;
 export type InsertTestResult = typeof testResults.$inferInsert;
+
+// ── Video Variant Factory ─────────────────────────────────────────────────────
+// A job groups one set of clips (hooks + body + optional CTA) and produces
+// N variants (one per hook × body combination).
+export const videoVariantJobs = mysqlTable("video_variant_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  jobName: varchar("jobName", { length: 255 }).notNull(),
+  // pending | processing | done | error
+  status: mysqlEnum("jobStatus", ["pending", "processing", "done", "error"])
+    .default("pending")
+    .notNull(),
+  hookCount: int("hookCount").default(0),
+  variantCount: int("variantCount").default(0),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+export type VideoVariantJob = typeof videoVariantJobs.$inferSelect;
+export type InsertVideoVariantJob = typeof videoVariantJobs.$inferInsert;
+
+// Individual uploaded clips belonging to a job
+export const videoClips = mysqlTable("video_clips", {
+  id: int("id").autoincrement().primaryKey(),
+  jobId: int("jobId").notNull(),
+  // hook | body | cta
+  clipType: mysqlEnum("clipType", ["hook", "body", "cta"]).notNull(),
+  s3Key: varchar("s3Key", { length: 512 }).notNull(),
+  s3Url: text("s3Url").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  durationSeconds: float("durationSeconds"),
+  clipOrder: int("clipOrder").default(0),  // ordering for hooks (1, 2, 3…)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type VideoClip = typeof videoClips.$inferSelect;
+export type InsertVideoClip = typeof videoClips.$inferInsert;
+
+// Stitched output variants (hook + body [+ cta])
+export const videoVariants = mysqlTable("video_variants", {
+  id: int("id").autoincrement().primaryKey(),
+  jobId: int("jobId").notNull(),
+  hookClipId: int("hookClipId").notNull(),
+  bodyClipId: int("bodyClipId").notNull(),
+  ctaClipId: int("ctaClipId"),           // optional
+  variantLabel: varchar("variantLabel", { length: 128 }).notNull(), // e.g. "Hook 1 + Body"
+  s3Key: varchar("s3Key", { length: 512 }),
+  s3Url: text("s3Url"),
+  // pending | processing | done | error
+  status: mysqlEnum("variantStatus", ["pending", "processing", "done", "error"])
+    .default("pending")
+    .notNull(),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type VideoVariant = typeof videoVariants.$inferSelect;
+export type InsertVideoVariant = typeof videoVariants.$inferInsert;

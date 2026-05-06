@@ -1876,3 +1876,34 @@
 - [x] Show success toast with link to Command Center after card is created
 - [x] Disable button (show "Saved") after first save to prevent duplicates
 - [x] TypeScript check, tests, checkpoint
+
+## v157 — Video Variant Factory (Hook + Body → Multi-Variant MP4)
+
+### DB Schema
+- [x] Add video_variant_jobs table (id, userId, jobName, status, createdAt, completedAt)
+- [x] Add video_clips table (id, jobId, clipType: hook|body|cta, s3Key, s3Url, filename, durationSeconds, clipOrder, createdAt)
+- [x] Add video_variants table (id, jobId, hookClipId, bodyClipId, variantLabel, s3Key, s3Url, status, createdAt)
+- [x] Run pnpm db:push
+
+### Server
+- [x] Add POST /api/upload/video-clip endpoint for direct MP4 upload to S3
+- [x] Add FFmpeg stitching worker: concatenate hook + body (+ optional CTA) per combination
+- [x] Add videoVariantRouter.ts: createJob, getJob, listJobs, startProcessing, deleteJob procedures
+- [x] Register videoVariantRouter in routers.ts
+
+### UI: VideoVariantFactory page
+- [x] Upload zone: drag-and-drop or file picker for hook clips (up to 10) + body clip + optional CTA
+- [x] Clip list: labeled clips (Hook 1, Hook 2, Body, CTA), duration, delete button
+- [x] "Generate Variants" button: triggers FFmpeg stitching for all hook+body combos
+- [x] Job status: polling (Queued → Processing → Done) with per-variant progress
+- [x] Variants panel: completed variants with download MP4 button and "Send to Kanban" button
+- [x] History: past jobs with variant count and download-all button
+
+### Navigation
+- [x] Add "Video Variants" to DashboardLayout sidebar under Viral Studio
+- [x] Add route /video-variants in App.tsx
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass
+- [ ] Save checkpoint

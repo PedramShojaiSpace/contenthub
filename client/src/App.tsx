@@ -30,6 +30,7 @@ const IngestInbox = lazy(() => import("./pages/IngestInbox"));
 const VerifiedLinks = lazy(() => import("./pages/VerifiedLinks"));
 const LinkedInNewsfeed = lazy(() => import("./pages/LinkedInNewsfeed"));
 const ViralStudio = lazy(() => import("./pages/ViralStudio"));
+const VideoVariantFactory = lazy(() => import("./pages/VideoVariantFactory"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -67,6 +68,7 @@ function Router() {
         <Route path={"/verified-links"} component={VerifiedLinks} />
         <Route path={"/newsfeed"} component={LinkedInNewsfeed} />
         <Route path={"/viral-studio"} component={ViralStudio} />
+        <Route path={"/video-variants"} component={VideoVariantFactory} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

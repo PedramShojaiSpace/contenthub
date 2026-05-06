@@ -71,6 +71,7 @@ import { utmRouter } from "./utmRouter";
 import { ingestGenerateRouter } from "./ingestGenerateRouter";
 import { newsfeedRouter } from "./newsfeedRouter";
 import { viralStudioRouter } from "./viralStudioRouter";
+import { videoVariantRouter } from "./videoVariantRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls } from "./urlScrubber";
@@ -3148,8 +3149,8 @@ STRICT RULES:
   ingest: ingestGenerateRouter,
   newsfeed: newsfeedRouter,
   viralStudio: viralStudioRouter,
-
-  // ── Verified Internal Links ──────────────────────────────────────────────────────────────────────────
+  videoVariant: videoVariantRouter,
+  // ── Verified Internal Linkss ──────────────────────────────────────────────────────────────────────────
   // Curated whitelist of real URLs the AI may use as internal links in blog posts.
   verifiedLinks: router({
     list: protectedProcedure.query(async () => {

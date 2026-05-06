@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { startWeeklyDigestCron } from "../digest";
 import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
+import { videoUploadMiddleware, handleVideoClipUpload } from "../videoUploadHandler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,6 +44,8 @@ async function startServer() {
   app.post("/api/ingest/research-report", handleIngestResearchReport);
   // Daily newsfeed refresh — called by Manus scheduled task at 7 AM
   app.post("/api/scheduled/newsfeed-refresh", handleNewsfeedRefresh);
+  // Video Variant Factory — multipart MP4 upload endpoint
+  app.post("/api/upload/video-clip", videoUploadMiddleware, handleVideoClipUpload);
   // tRPC API
   app.use(
     "/api/trpc",

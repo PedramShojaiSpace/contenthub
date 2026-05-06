@@ -1945,4 +1945,28 @@ Replace the fragmented Viral Studio tabs with a single linear "Video Production 
 - [x] Add "New Video Session" CTA to Command Center Viral Studio widget
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass
+- [x] Save checkpoint
+
+## v159 — Video Production → A/B Test Lab Auto-Wiring
+
+### Goal
+After FFmpeg stitching completes in the Video Variant Factory, auto-create one A/B test entry per hook variant so performance data flows back into the Viral Studio.
+
+### Server
+- [x] Add autoCreateABTests(jobId) helper in videoVariantRouter.ts: after all variants are done, query session_scripts for hook scripts, create test_variants rows per variant
+- [x] Add videoVariant.getLinkedABTests tRPC procedure: returns test_variant rows linked to a job
+- [x] Link video_variants to test_variants via session lookup (job → session → hook scripts)
+
+### UI — VideoVariantFactory variants panel
+- [x] After stitching completes, show "A/B Tests Created" amber badge with test count
+- [x] Show each auto-created test name with active status badge
+- [x] "View in A/B Test Lab →" button links to /viral-studio?tab=testing
+
+### UI — A/B Test Lab
+- [x] Tests from Video Production sessions appear in the A/B Test Lab with hook scripts as variantA/B
+- [x] Video URLs stored in notes field for reference
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass
 - [ ] Save checkpoint

@@ -18,11 +18,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { Link } from "wouter";
 import {
   Upload, Film, Scissors, Play, Download, Trash2,
   CheckCircle2, Clock, AlertCircle, Loader2, Plus,
   Clapperboard, Zap, History, ChevronDown, ChevronUp,
-  FileVideo, RefreshCw
+  FileVideo, RefreshCw, FlaskConical
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -116,6 +117,12 @@ export default function VideoVariantFactory() {
   const historyQuery = trpc.videoVariant.listJobs.useQuery(
     { limit: 20 },
     { enabled: showHistory }
+  );
+
+  // A/B tests auto-created after stitching
+  const abTestsQuery = trpc.videoVariant.getLinkedABTests.useQuery(
+    { jobId: activeJobId! },
+    { enabled: !!activeJobId && jobQuery.data?.job?.status === "done" }
   );
 
   // Stop polling when job is done or errored
@@ -566,6 +573,41 @@ export default function VideoVariantFactory() {
                 <div>
                   <p className="text-sm font-medium text-red-300">Processing failed</p>
                   <p className="text-xs text-zinc-400 mt-1">{job?.errorMessage ?? "Unknown error"}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* A/B Tests auto-created badge */}
+          {isDone && abTestsQuery.data && abTestsQuery.data.tests.length > 0 && (
+            <Card className="bg-zinc-900 border-amber-500/30">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
+                      <FlaskConical className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-amber-300">A/B Tests Created Automatically</p>
+                      <p className="text-xs text-zinc-400">
+                        {abTestsQuery.data.tests.length} test{abTestsQuery.data.tests.length !== 1 ? "s" : ""} created from hook pairs — track performance in the A/B Test Lab
+                      </p>
+                    </div>
+                  </div>
+                  <Link href="/viral-studio?tab=testing">
+                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white text-xs">
+                      <FlaskConical className="w-3 h-3 mr-1" /> View in A/B Test Lab →
+                    </Button>
+                  </Link>
+                </div>
+                <div className="mt-3 space-y-1">
+                  {abTestsQuery.data.tests.map((t: any) => (
+                    <div key={t.id} className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-800/50 rounded px-3 py-1.5">
+                      <FlaskConical className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span className="truncate">{t.testName}</span>
+                      <Badge className="ml-auto text-xs bg-amber-500/20 text-amber-300 border-amber-500/30 shrink-0">{t.status}</Badge>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

@@ -13,7 +13,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { videoVariantJobs, videoClips, videoVariants } from "../drizzle/schema";
+import { videoVariantJobs, videoClips, videoVariants, testVariants, videoProductionSessions, sessionScripts } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { storagePut } from "./storage";
 import ffmpeg from "fluent-ffmpeg";
@@ -168,6 +168,89 @@ async function runStitchingJob(jobId: number) {
         completedAt: new Date(),
       })
       .where(eq(videoVariantJobs.id, jobId));
+
+    // ── Auto-create A/B tests if this job is linked to a Video Production Session ──
+    try {
+      const sessions = await db.select()
+        .from(videoProductionSessions)
+        .where(eq(videoProductionSessions.variantJobId, jobId))
+        .limit(1);
+
+      if (sessions.length > 0) {
+        const session = sessions[0];
+
+        // Get all approved hook scripts for this session
+        const hookScripts = await db.select()
+          .from(sessionScripts)
+          .where(and(
+            eq(sessionScripts.sessionId, session.id),
+            eq(sessionScripts.scriptType, "hook"),
+          ))
+          .orderBy(sessionScripts.scriptOrder);
+
+        // Get all completed variants for this job
+        const doneVariants = await db.select()
+          .from(videoVariants)
+          .where(and(
+            eq(videoVariants.jobId, jobId),
+            eq(videoVariants.status, "done"),
+          ))
+          .orderBy(videoVariants.id);
+
+        // Pair hooks: (Hook1 vs Hook2), (Hook3 vs Hook4), etc.
+        for (let i = 0; i < hookScripts.length - 1; i += 2) {
+          const scriptA = hookScripts[i];
+          const scriptB = hookScripts[i + 1];
+          const variantA = doneVariants[i];
+          const variantB = doneVariants[i + 1];
+
+          const notesA = variantA?.s3Url ? `Video: ${variantA.s3Url}` : "";
+          const notesB = variantB?.s3Url ? `Video: ${variantB.s3Url}` : "";
+          const notes = [notesA, notesB].filter(Boolean).join(" | ");
+
+          await db.insert(testVariants).values({
+            testName: `${session.sessionName} — Hook ${scriptA.scriptOrder} vs Hook ${scriptB.scriptOrder}`,
+            topic: session.idea.slice(0, 500),
+            platform: session.platform,
+            variantType: "hook",
+            variantA: scriptA.scriptText,
+            variantB: scriptB.scriptText,
+            notes: notes || null,
+            status: "active",
+          });
+        }
+
+        // If odd number of hooks, create a solo test for the last one vs the body
+        if (hookScripts.length % 2 !== 0 && hookScripts.length > 0) {
+          const lastHook = hookScripts[hookScripts.length - 1];
+          const bodyScripts = await db.select()
+            .from(sessionScripts)
+            .where(and(
+              eq(sessionScripts.sessionId, session.id),
+              eq(sessionScripts.scriptType, "body"),
+            ))
+            .limit(1);
+
+          if (bodyScripts.length > 0) {
+            const lastVariant = doneVariants[hookScripts.length - 1];
+            const notes = lastVariant?.s3Url ? `Video: ${lastVariant.s3Url}` : "";
+            await db.insert(testVariants).values({
+              testName: `${session.sessionName} — Hook ${lastHook.scriptOrder} (solo test)`,
+              topic: session.idea.slice(0, 500),
+              platform: session.platform,
+              variantType: "hook",
+              variantA: lastHook.scriptText,
+              variantB: bodyScripts[0].scriptText.slice(0, 500),
+              notes: notes || null,
+              status: "active",
+            });
+          }
+        }
+      }
+    } catch (abErr) {
+      // Non-fatal: log but don't fail the job
+      console.error("[VideoVariantFactory] A/B test auto-create failed:", abErr);
+    }
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -326,5 +409,27 @@ export const videoVariantRouter = router({
       await db.delete(videoClips).where(eq(videoClips.jobId, input.jobId));
       await db.delete(videoVariantJobs).where(eq(videoVariantJobs.id, input.jobId));
       return { ok: true };
+    }),
+
+  /** Get A/B test entries auto-created for a job's session */
+  getLinkedABTests: protectedProcedure
+    .input(z.object({ jobId: z.number().int() }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      // Find the session linked to this job
+      const sessions = await db.select()
+        .from(videoProductionSessions)
+        .where(eq(videoProductionSessions.variantJobId, input.jobId))
+        .limit(1);
+      if (sessions.length === 0) return { tests: [], sessionName: null };
+      const session = sessions[0];
+      // Return the A/B tests whose name starts with the session name
+      const tests = await db.select()
+        .from(testVariants)
+        .where(eq(testVariants.topic, session.idea.slice(0, 500)))
+        .orderBy(desc(testVariants.createdAt))
+        .limit(20);
+      return { tests, sessionName: session.sessionName };
     }),
 });

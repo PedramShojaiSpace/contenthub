@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FlaskConical, Copy, Loader2, Trophy, Plus, CheckCircle2, Clock } from "lucide-react";
+import { FlaskConical, Copy, Loader2, Trophy, Plus, CheckCircle2, Clock, Kanban } from "lucide-react";
+import { useLocation } from "wouter";
 
 const PLATFORMS = [
   { value: "tiktok", label: "TikTok" },
@@ -185,7 +186,16 @@ function VariantRow({
   );
 }
 
+const PLATFORM_MAP: Record<string, "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel"> = {
+  tiktok: "tiktok",
+  instagram: "meta",
+  youtube: "youtube",
+  linkedin: "linkedin",
+  x: "x",
+};
+
 export default function ABTestLab() {
+  const [, setLocation] = useLocation();
   const [testName, setTestName] = useState("");
   const [topic, setTopic] = useState("");
   const [platform, setPlatform] = useState("tiktok");
@@ -194,6 +204,7 @@ export default function ABTestLab() {
   const [variantB, setVariantB] = useState("");
   const [variantC, setVariantC] = useState("");
   const [selectedTestId, setSelectedTestId] = useState<number | null>(null);
+  const [promotedTests, setPromotedTests] = useState<Set<number>>(new Set());
 
   const createMutation = trpc.viralStudio.createTestVariant.useMutation({
     onSuccess: (data: any) => {
@@ -221,6 +232,44 @@ export default function ABTestLab() {
   });
 
   const variantsQuery = trpc.viralStudio.getTestVariants.useQuery({ limit: 20, status: "all" });
+
+  const promoteToKanbanMutation = trpc.content.createBulk.useMutation({
+    onSuccess: (data, variables) => {
+      toast.success(
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+          <span>
+            Winner promoted to Kanban!{" "}
+            <button className="underline font-medium" onClick={() => setLocation("/command-center")}>
+              View card →
+            </button>
+          </span>
+        </div>,
+        { duration: 6000 }
+      );
+      // Mark this test as promoted using the first item's title to find the test id
+      if (selectedTest) {
+        setPromotedTests(prev => { const next = new Set(Array.from(prev)); next.add(selectedTest.id); return next; });
+      }
+    },
+    onError: (err) => toast.error(`Failed to promote: ${err.message}`),
+  });
+
+  const handlePromoteWinner = (test: TestVariantRow) => {
+    const winnerText = test.winner === "A" ? test.variantA
+      : test.winner === "B" ? test.variantB
+      : test.variantC ?? "";
+    const mappedPlatform = PLATFORM_MAP[test.platform] ?? "tiktok";
+    promoteToKanbanMutation.mutate({
+      items: [{
+        title: `[${test.platform.toUpperCase()}] ${test.testName} — Winner ${test.winner}`,
+        rawIdea: winnerText,
+        platform: mappedPlatform,
+        status: "idea",
+        textContent: `WINNING HOOK (Variant ${test.winner}):\n${winnerText}\n\nTopic: ${test.topic}\n\nTest: ${test.testName}${test.winnerReason ? `\n\nWhy it won: ${test.winnerReason}` : ""}`,
+      }],
+    });
+  };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -382,9 +431,30 @@ export default function ABTestLab() {
                     {selectedTest.winner === "A" ? selectedTest.variantA : selectedTest.winner === "B" ? selectedTest.variantB : selectedTest.variantC ?? ""}
                   </p>
                   {selectedTest.winnerReason && <p className="text-xs text-green-700 mt-1">{selectedTest.winnerReason}</p>}
-                  <Button size="sm" className="h-7 text-xs mt-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleCopy(selectedTest.winner === "A" ? selectedTest.variantA : selectedTest.winner === "B" ? selectedTest.variantB : selectedTest.variantC ?? "")}>
-                    <Copy className="w-3 h-3 mr-1" />Copy to Main Account
-                  </Button>
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={() => handleCopy(selectedTest.winner === "A" ? selectedTest.variantA : selectedTest.winner === "B" ? selectedTest.variantB : selectedTest.variantC ?? "")}>
+                      <Copy className="w-3 h-3 mr-1" />Copy to Main Account
+                    </Button>
+                    {promotedTests.has(selectedTest.id) ? (
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-green-400 text-green-700" onClick={() => setLocation("/command-center")}>
+                        <Kanban className="w-3 h-3 mr-1" />View in Kanban
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs border-primary/50 text-primary hover:bg-primary/5"
+                        onClick={() => handlePromoteWinner(selectedTest)}
+                        disabled={promoteToKanbanMutation.isPending}
+                      >
+                        {promoteToKanbanMutation.isPending ? (
+                          <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Promoting...</>
+                        ) : (
+                          <><Kanban className="w-3 h-3 mr-1" />Promote winner to Kanban</>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
 

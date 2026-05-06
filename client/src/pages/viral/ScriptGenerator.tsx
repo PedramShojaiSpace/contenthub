@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2, Hash, Search } from "lucide-react";
+import { FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2, Hash, Search, Zap } from "lucide-react";
 
 const PLATFORMS = [
   { value: "tiktok", label: "TikTok (60s)" },
@@ -163,14 +163,32 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
 }
 
 export default function ScriptGenerator() {
-  const [topic, setTopic] = useState("");
-  const [hook, setHook] = useState("");
-  const [platform, setPlatform] = useState("tiktok");
+  // Pre-fill from URL params when navigated from Hook Generator
+  const urlParams = new URLSearchParams(window.location.search);
+  const prefillHook = urlParams.get("hook") ?? "";
+  const prefillPlatform = urlParams.get("platform") ?? "";
+  const prefillTopic = urlParams.get("topic") ?? "";
+
+  const [topic, setTopic] = useState(prefillTopic);
+  const [hook, setHook] = useState(prefillHook);
+  const [platform, setPlatform] = useState(prefillPlatform || "tiktok");
   const [lengthSeconds, setLengthSeconds] = useState(60);
   const [cta, setCta] = useState("Comment 'MONK' below and I'll send you the full guide");
   const [seoKeywords, setSeoKeywords] = useState("");
   const [persona, setPersona] = useState("");
   const [result, setResult] = useState<ScriptResult | null>(null);
+  const [prefillBanner, setPrefillBanner] = useState(!!prefillHook);
+
+  // Clear URL params after reading them so refreshing doesn't re-fill
+  useEffect(() => {
+    if (prefillHook || prefillPlatform || prefillTopic) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("hook");
+      url.searchParams.delete("platform");
+      url.searchParams.delete("topic");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const generateMutation = trpc.viralStudio.generateScript.useMutation({
     onSuccess: (data) => {
@@ -203,6 +221,17 @@ export default function ScriptGenerator() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Pre-fill banner from Hook Generator */}
+      {prefillBanner && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-violet-50 border border-violet-200 rounded-lg">
+          <div className="flex items-center gap-2 text-sm text-violet-700">
+            <Zap className="w-4 h-4 shrink-0" />
+            <span>Hook pre-filled from Hook Generator. Review the fields below and click Generate Script.</span>
+          </div>
+          <button className="text-xs text-violet-500 hover:text-violet-700 shrink-0" onClick={() => setPrefillBanner(false)}>✕</button>
+        </div>
+      )}
+
       {/* Explainer */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
         <h3 className="font-semibold text-blue-900 mb-1">HPAVPC Script Framework</h3>

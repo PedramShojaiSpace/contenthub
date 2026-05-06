@@ -1963,13 +1963,23 @@ export default function CommandCenter() {
               </div>
             )}
 
-            {/* Generate Today’s Topic shortcut */}
+            {/* Generate Today's Topic shortcut */}
             <button
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-xs font-medium text-amber-400 hover:text-amber-300"
               onClick={() => setLocation("/viral-studio")}
             >
               <TrendingUp className="w-3.5 h-3.5" />
-              Generate Today’s Viral Topic
+              Generate Today's Viral Topic
+            </button>
+            {/* Repurpose this book shortcut */}
+            <button
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-border/40 bg-muted/20 hover:bg-amber-500/10 hover:border-amber-500/30 transition-colors text-xs font-medium text-muted-foreground hover:text-amber-400"
+              onClick={() => setLocation("/viral-studio?tab=repurpose")}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              {(viralSummary as any)?.lastRepurposeBook
+                ? `Repurpose: ${String((viralSummary as any).lastRepurposeBook).length > 28 ? String((viralSummary as any).lastRepurposeBook).slice(0, 28) + "…" : String((viralSummary as any).lastRepurposeBook)}`
+                : "Repurpose a Book or Podcast"}
             </button>
           </div>
 

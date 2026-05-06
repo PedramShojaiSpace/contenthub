@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +21,34 @@ const TABS = [
   { id: "abtest", label: "A/B Test Lab", icon: FlaskConical, badge: "Testing" },
 ];
 
+// Map URL tab param values to tab IDs
+const TAB_PARAM_MAP: Record<string, string> = {
+  hooks: "hooks",
+  hook: "hooks",
+  script: "scripts",
+  scripts: "scripts",
+  repurpose: "repurpose",
+  topics: "topics",
+  dm: "dm",
+  analytics: "analytics",
+  abtest: "abtest",
+  ab: "abtest",
+};
+
 export default function ViralStudio() {
-  const [activeTab, setActiveTab] = useState("hooks");
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabParam = urlParams.get("tab") ?? "";
+  const initialTab = TAB_PARAM_MAP[tabParam] ?? "hooks";
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // When navigated with ?tab=... update the active tab
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab");
+    if (t && TAB_PARAM_MAP[t]) {
+      setActiveTab(TAB_PARAM_MAP[t]);
+    }
+  }, [window.location.search]);
 
   return (
     <DashboardLayout>

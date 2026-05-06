@@ -991,7 +991,7 @@ export const declareTestWinner = protectedProcedure
 export const getDashboardSummary = protectedProcedure
   .query(async () => {
     const db = await getDb();
-    if (!db) return { recentHooks: [], winningVariant: null };
+    if (!db) return { recentHooks: [], winningVariant: null, lastRepurposeBook: null };
 
     // Last 3 hook generations
     const recentHooks = await db
@@ -1009,6 +1009,14 @@ export const getDashboardSummary = protectedProcedure
       .limit(1);
 
     const winningVariant = completedTests.length > 0 ? completedTests[0] : null;
+
+    // Most recently used book in repurpose engine
+    const lastRepurposeJobRows = await db
+      .select({ sourceTitle: repurposeJobs.sourceTitle })
+      .from(repurposeJobs)
+      .orderBy(desc(repurposeJobs.createdAt))
+      .limit(1);
+    const lastRepurposeBook = lastRepurposeJobRows.length > 0 ? lastRepurposeJobRows[0].sourceTitle : null;
 
     return {
       recentHooks: recentHooks.map((h: HookGeneration) => ({
@@ -1034,6 +1042,7 @@ export const getDashboardSummary = protectedProcedure
             winnerReason: (winningVariant as TestVariant).winnerReason,
           }
         : null,
+      lastRepurposeBook,
     };
   });
 

@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Zap, Copy, Clock, Star, ChevronDown, ChevronUp, Loader2, FlaskConical, CheckCircle2 } from "lucide-react";
+import { Zap, Copy, Clock, Star, ChevronDown, ChevronUp, Loader2, FlaskConical, CheckCircle2, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 
 const PLATFORMS = [
@@ -178,9 +178,20 @@ function HookCard({
   allHooks: Hook[];
   onCopy: (text: string) => void;
 }) {
+  const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(false);
   const [abDialogOpen, setAbDialogOpen] = useState(false);
   const colorClass = FRAMEWORK_COLORS[hook.framework.toLowerCase()] ?? "bg-gray-100 text-gray-700 border-gray-200";
+
+  const handleBuildScript = () => {
+    const params = new URLSearchParams({
+      tab: "script",
+      hook: hook.hook,
+      platform,
+      topic,
+    });
+    setLocation(`/viral-studio?${params.toString()}`);
+  };
 
   return (
     <>
@@ -236,14 +247,22 @@ function HookCard({
             </Button>
           </div>
         </div>
-        {/* A/B Lab hint on hover */}
-        <div className="mt-2 flex items-center gap-1.5">
+        {/* Action row: A/B Lab + Build Script */}
+        <div className="mt-2 flex items-center gap-3 flex-wrap">
           <button
             className="text-[11px] text-violet-500 hover:text-violet-700 flex items-center gap-1 transition-colors"
             onClick={() => setAbDialogOpen(true)}
           >
             <FlaskConical className="w-3 h-3" />
             Send to A/B Test Lab
+          </button>
+          <span className="text-muted-foreground/30 text-[11px]">|</span>
+          <button
+            className="text-[11px] text-blue-500 hover:text-blue-700 flex items-center gap-1 transition-colors font-medium"
+            onClick={handleBuildScript}
+          >
+            <FileText className="w-3 h-3" />
+            Build full script →
           </button>
         </div>
       </div>

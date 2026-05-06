@@ -1840,3 +1840,24 @@
 - [x] Map each platform output to a content_item (platform, title, textContent, status=idea)
 - [x] Show success toast with count of cards created and link to Command Center
 - [x] TypeScript check, tests, checkpoint
+
+## v154 — Viral Studio Cross-Feature Wiring
+
+### Feature A: A/B Lab → Kanban "Promote Winner"
+- [x] Add "Promote winner to Kanban" button on winning variant card in ABTestLab.tsx
+- [x] On click: call content.create with hook text as title/rawIdea, platform from test, status=idea
+- [x] Show success toast with link to Command Center after card is created
+- [x] Disable button (show "Promoted") after first click to prevent duplicates
+
+### Feature B: Command Center Viral Studio Widget — "Repurpose this book" CTA
+- [x] Add viralStudio.getLastRepurposeBook server procedure (returns sourceTitle of most recent repurpose job)
+- [x] Add "Repurpose this book" button below "Generate Today's Topic" in the Command Center widget
+- [x] Button navigates to /viral-studio?tab=repurpose&book=<lastBook> (or just /viral-studio with repurpose tab)
+- [x] Show last-used book name on the button label
+
+### Feature C: Hook Generator → Script Generator "Build full script"
+- [x] Add shared state (URL param or context) to pass hook text + platform to Script Generator tab
+- [x] Add "Build full script from this hook" button on each hook card in HookGenerator.tsx
+- [x] On click: navigate to /viral-studio?tab=script&hook=<hookText>&platform=<platform>
+- [x] Script Generator reads URL params on mount and pre-fills the hook field
+- [x] TypeScript check, tests, checkpoint

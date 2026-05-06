@@ -2024,3 +2024,25 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v161
+
+## v162 — Hook Generator "Push All to Script Generator" Batch Workflow
+
+### Hook Generator
+- [x] Add inline edit mode on each hook card (pencil icon → editable textarea for the hook text)
+- [x] Add "Push All to Script Generator" primary button below the hook results panel
+- [x] Button serializes all hooks (with any inline edits) + topic + platform + topFramework into URL params as a JSON-encoded batch
+- [x] Show count badge on button: "Push All (5 hooks) to Script Generator →"
+
+### Script Generator — Batch Queue Mode
+- [x] Detect `hookBatch` URL param (JSON array of {hook, framework})
+- [x] When batch present: show a "Batch Queue" panel listing all hooks with their framework labels
+- [x] Each hook in the queue has a status: pending / generating / done
+- [x] "Generate All Scripts" button: processes each hook sequentially, showing progress
+- [x] Each completed script expands inline in the queue with copy + save-to-Kanban buttons
+- [x] "Generate" individual hook button on each queue item for selective generation
+- [x] Clear batch / switch to single mode button
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v162

@@ -17,7 +17,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Zap, Copy, Clock, Star, ChevronDown, ChevronUp, Loader2, FlaskConical, CheckCircle2, FileText, ImageIcon, X as XIcon } from "lucide-react";
+import {
+  Zap, Copy, Clock, Star, ChevronDown, ChevronUp, Loader2,
+  FlaskConical, CheckCircle2, FileText, ImageIcon, X as XIcon,
+  Pencil, Check, SendHorizonal,
+} from "lucide-react";
 import { useLocation } from "wouter";
 
 const PLATFORMS = [
@@ -61,14 +65,12 @@ interface SendToABLabDialogProps {
   framework: string;
   topic: string;
   platform: string;
-  /** All hooks from the same generation — used to auto-populate variantB */
   allHooks: Hook[];
 }
 
 function SendToABLabDialog({ open, onClose, hookText, framework, topic, platform, allHooks }: SendToABLabDialogProps) {
   const [, setLocation] = useLocation();
   const [testName, setTestName] = useState(`${(topic ?? "").slice(0, 40)} — Hook Test`);
-  // Auto-pick a second hook (different framework) as variantB
   const otherHook = allHooks.find((h) => h.hook !== hookText) ?? allHooks[0];
   const [variantB, setVariantB] = useState(otherHook?.hook ?? "");
 
@@ -78,8 +80,8 @@ function SendToABLabDialog({ open, onClose, hookText, framework, topic, platform
         <div className="flex flex-col gap-1">
           <span className="font-semibold">Sent to A/B Test Lab ✓</span>
           <button
-            className="text-xs text-violet-600 underline text-left"
-            onClick={() => setLocation("/viral-studio")}
+            className="text-xs text-left underline text-violet-600"
+            onClick={() => setLocation("/viral-studio?tab=ab")}
           >
             Open A/B Test Lab →
           </button>
@@ -87,36 +89,33 @@ function SendToABLabDialog({ open, onClose, hookText, framework, topic, platform
       );
       onClose();
     },
-    onError: (err) => toast.error(`Failed: ${err.message}`),
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
   const handleSend = () => {
-    if (!testName.trim()) { toast.error("Enter a test name"); return; }
-    if (!variantB.trim()) { toast.error("Enter a Variant B hook"); return; }
     createVariantMutation.mutate({
-      testName: testName.trim(),
-      topic,
-      platform: platform as "tiktok" | "instagram" | "linkedin" | "youtube" | "x",
+      testName: testName.trim() || `${topic.slice(0, 40)} — Hook Test`,
+      topic: topic.trim(),
+      platform: platform as "tiktok",
       variantType: "hook",
       variantA: hookText,
-      variantB: variantB.trim(),
-      notes: `Generated via Hook Generator — framework: ${framework}`,
+      variantB: variantB.trim() || (allHooks[0]?.hook ?? ""),
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FlaskConical className="w-4 h-4 text-violet-500" />
             Send to A/B Test Lab
           </DialogTitle>
           <DialogDescription>
-            This hook becomes Variant A. Add a Variant B to compare against it in the A/B Test Lab.
+            This hook becomes Variant A. Pick a second hook as Variant B to test against.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Test Name</Label>
             <Input
@@ -164,7 +163,7 @@ function SendToABLabDialog({ open, onClose, hookText, framework, topic, platform
   );
 }
 
-// Platform → image-generator platform mapping (tiktok/instagram map to meta for image style)
+// Platform → image-generator platform mapping
 const HOOK_PLATFORM_TO_IMAGE_PLATFORM: Record<string, "meta" | "linkedin" | "x" | "youtube" | "tiktok"> = {
   tiktok: "tiktok",
   instagram: "meta",
@@ -173,24 +172,30 @@ const HOOK_PLATFORM_TO_IMAGE_PLATFORM: Record<string, "meta" | "linkedin" | "x" 
   x: "x",
 };
 
-// ─── HookCard (with Send to A/B Lab button) ──────────────────────────────────
+// ─── HookCard ─────────────────────────────────────────────────────────────────
 function HookCard({
   hook,
+  editedHook,
   topic,
   platform,
   allHooks,
   onCopy,
+  onEditChange,
   topFramework,
 }: {
   hook: Hook;
+  editedHook: string;
   topic: string;
   platform: string;
   allHooks: Hook[];
   onCopy: (text: string) => void;
+  onEditChange: (text: string) => void;
   topFramework?: string | null;
 }) {
   const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftText, setDraftText] = useState(editedHook);
   const [abDialogOpen, setAbDialogOpen] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const colorClass = FRAMEWORK_COLORS[hook.framework.toLowerCase()] ?? "bg-gray-100 text-gray-700 border-gray-200";
@@ -206,30 +211,32 @@ function HookCard({
   });
 
   const handleGenerateImage = () => {
-    const prompt = `Social media visual for the hook: "${hook.hook}". Topic: ${topic}. Platform: ${platform}. The image should be striking, editorial, and complement the hook's message.`;
-    generateImageMutation.mutate({
-      prompt,
-      platform: imagePlatform,
-    });
+    const prompt = `Social media visual for the hook: "${editedHook}". Topic: ${topic}. Platform: ${platform}. The image should be striking, editorial, and complement the hook's message.`;
+    generateImageMutation.mutate({ prompt, platform: imagePlatform });
   };
 
   const handleBuildScript = () => {
-    const params = new URLSearchParams({
-      tab: "script",
-      hook: hook.hook,
-      platform,
-      topic,
-    });
-    // Pass top-performing framework so ScriptGenerator can surface it
+    const params = new URLSearchParams({ tab: "script", hook: editedHook, platform, topic });
     if (topFramework) params.set("framework", topFramework);
     setLocation(`/viral-studio?${params.toString()}`);
   };
 
+  const handleSaveEdit = () => {
+    onEditChange(draftText);
+    setEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setDraftText(editedHook);
+    setEditing(false);
+  };
+
   const isTopFramework = topFramework && hook.framework.toLowerCase() === topFramework.toLowerCase();
+  const isEdited = editedHook !== hook.hook;
 
   return (
     <>
-      <div className="border border-border rounded-lg p-4 hover:border-violet-300 transition-colors">
+      <div className={`border rounded-lg p-4 transition-colors ${isEdited ? "border-violet-400 bg-violet-50/30" : "border-border hover:border-violet-300"}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -241,6 +248,11 @@ function HookCard({
                   <Star className="w-3 h-3 mr-1 fill-amber-500" />Top performing
                 </Badge>
               )}
+              {isEdited && (
+                <Badge className="bg-violet-100 text-violet-700 border-violet-300 text-xs">
+                  Edited
+                </Badge>
+              )}
               <div className="flex items-center gap-0.5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
@@ -250,81 +262,115 @@ function HookCard({
                 ))}
               </div>
             </div>
-            <p className="text-sm font-medium text-foreground leading-relaxed">{hook.hook}</p>
-            {expanded && (
+
+            {/* Hook text — editable or display */}
+            {editing ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={draftText}
+                  onChange={(e) => setDraftText(e.target.value)}
+                  rows={3}
+                  className="text-sm resize-none border-violet-300 focus:ring-violet-400"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-xs bg-violet-600 hover:bg-violet-700 text-white" onClick={handleSaveEdit}>
+                    <Check className="w-3 h-3 mr-1" />Save
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleCancelEdit}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm font-medium text-foreground leading-relaxed">{editedHook}</p>
+            )}
+
+            {expanded && !editing && (
               <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                 <span className="font-medium">Why it works: </span>{hook.why}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => onCopy(hook.hook)}
-              title="Copy hook"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-violet-500 hover:text-violet-700 hover:bg-violet-50"
+
+          {!editing && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-violet-600 hover:bg-violet-50"
+                onClick={() => { setDraftText(editedHook); setEditing(true); }}
+                title="Edit hook text"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => onCopy(editedHook)}
+                title="Copy hook"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-violet-500 hover:text-violet-700 hover:bg-violet-50"
+                onClick={() => setAbDialogOpen(true)}
+                title="Send to A/B Test Lab"
+              >
+                <FlaskConical className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setExpanded(!expanded)}
+              >
+                {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Action row */}
+        {!editing && (
+          <div className="mt-2 flex items-center gap-3 flex-wrap">
+            <button
+              className="text-[11px] text-violet-500 hover:text-violet-700 flex items-center gap-1 transition-colors"
               onClick={() => setAbDialogOpen(true)}
-              title="Send to A/B Test Lab"
             >
-              <FlaskConical className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setExpanded(!expanded)}
+              <FlaskConical className="w-3 h-3" />
+              A/B Test Lab
+            </button>
+            <span className="text-muted-foreground/30 text-[11px]">|</span>
+            <button
+              className="text-[11px] text-blue-500 hover:text-blue-700 flex items-center gap-1 transition-colors font-medium"
+              onClick={handleBuildScript}
             >
-              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </Button>
+              <FileText className="w-3 h-3" />
+              Build script for this hook →
+            </button>
+            <span className="text-muted-foreground/30 text-[11px]">|</span>
+            <button
+              className="text-[11px] text-emerald-500 hover:text-emerald-700 flex items-center gap-1 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleGenerateImage}
+              disabled={generateImageMutation.isPending}
+            >
+              {generateImageMutation.isPending ? (
+                <><Loader2 className="w-3 h-3 animate-spin" />Generating...</>
+              ) : (
+                <><ImageIcon className="w-3 h-3" />Generate image</>
+              )}
+            </button>
           </div>
-        </div>
-        {/* Action row: A/B Lab + Build Script + Generate Image */}
-        <div className="mt-2 flex items-center gap-3 flex-wrap">
-          <button
-            className="text-[11px] text-violet-500 hover:text-violet-700 flex items-center gap-1 transition-colors"
-            onClick={() => setAbDialogOpen(true)}
-          >
-            <FlaskConical className="w-3 h-3" />
-            Send to A/B Test Lab
-          </button>
-          <span className="text-muted-foreground/30 text-[11px]">|</span>
-          <button
-            className="text-[11px] text-blue-500 hover:text-blue-700 flex items-center gap-1 transition-colors font-medium"
-            onClick={handleBuildScript}
-          >
-            <FileText className="w-3 h-3" />
-            Build full script →
-          </button>
-          <span className="text-muted-foreground/30 text-[11px]">|</span>
-          <button
-            className="text-[11px] text-emerald-500 hover:text-emerald-700 flex items-center gap-1 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleGenerateImage}
-            disabled={generateImageMutation.isPending}
-          >
-            {generateImageMutation.isPending ? (
-              <><Loader2 className="w-3 h-3 animate-spin" />Generating image...</>
-            ) : (
-              <><ImageIcon className="w-3 h-3" />Generate image→</>
-            )}
-          </button>
-        </div>
+        )}
 
         {/* Inline image preview */}
         {generatedImageUrl && (
           <div className="mt-3 relative rounded-lg overflow-hidden border border-border">
-            <img
-              src={generatedImageUrl}
-              alt="Generated hook visual"
-              className="w-full h-40 object-cover"
-            />
+            <img src={generatedImageUrl} alt="Generated hook visual" className="w-full h-40 object-cover" />
             <div className="absolute top-2 right-2 flex gap-1">
               <button
                 className="bg-black/60 hover:bg-black/80 text-white rounded p-1 transition-colors"
@@ -351,7 +397,7 @@ function HookCard({
       <SendToABLabDialog
         open={abDialogOpen}
         onClose={() => setAbDialogOpen(false)}
-        hookText={hook.hook}
+        hookText={editedHook}
         framework={hook.framework}
         topic={topic}
         platform={platform}
@@ -395,10 +441,12 @@ function ResultCard({ result, onCopy }: { result: HookResult; onCopy: (text: str
               <HookCard
                 key={i}
                 hook={hook}
+                editedHook={hook.hook}
                 topic={result.topic}
                 platform={result.platform}
                 allHooks={result.hooks}
                 onCopy={onCopy}
+                onEditChange={() => {}}
               />
             ))}
           </div>
@@ -410,16 +458,20 @@ function ResultCard({ result, onCopy }: { result: HookResult; onCopy: (text: str
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HookGenerator() {
+  const [, setLocation] = useLocation();
   const [topic, setTopic] = useState("");
   const [platform, setPlatform] = useState("tiktok");
   const [persona, setPersona] = useState("");
   const [result, setResult] = useState<HookResult | null>(null);
   const [sentToLabCount, setSentToLabCount] = useState(0);
+  // Editable hook texts — keyed by index
+  const [editedHooks, setEditedHooks] = useState<Record<number, string>>({});
 
   const generateMutation = trpc.viralStudio.generateHooks.useMutation({
     onSuccess: (data) => {
       setResult(data as unknown as HookResult);
       setSentToLabCount(0);
+      setEditedHooks({});
       toast.success("5 hooks generated!");
     },
     onError: (err) => toast.error(`Failed: ${err.message}`),
@@ -427,7 +479,6 @@ export default function HookGenerator() {
 
   const historyQuery = trpc.viralStudio.getRecentHooks.useQuery({ limit: 20 });
 
-  // Top-performing frameworks for the selected platform (from A/B Test Lab wins)
   const topFrameworksQuery = trpc.viralStudio.getTopFrameworks.useQuery({ platform });
   const topFramework = topFrameworksQuery.data?.[0]?.framework ?? null;
 
@@ -437,15 +488,31 @@ export default function HookGenerator() {
   };
 
   const handleGenerate = () => {
-    if (!topic.trim()) {
-      toast.error("Enter a topic first");
-      return;
-    }
+    if (!topic.trim()) { toast.error("Enter a topic first"); return; }
     generateMutation.mutate({
       topic: topic.trim(),
       platform: platform as "tiktok" | "instagram" | "youtube" | "linkedin" | "x",
       targetPersona: persona || undefined,
     });
+  };
+
+  const getEditedHook = (i: number) =>
+    editedHooks[i] !== undefined ? editedHooks[i] : (result?.hooks[i]?.hook ?? "");
+
+  const handlePushAll = () => {
+    if (!result) return;
+    const batch = result.hooks.map((h, i) => ({
+      hook: getEditedHook(i),
+      framework: h.framework,
+    }));
+    const params = new URLSearchParams({
+      tab: "script",
+      topic: result.topic,
+      platform: result.platform,
+      hookBatch: JSON.stringify(batch),
+    });
+    if (topFramework) params.set("framework", topFramework);
+    setLocation(`/viral-studio?${params.toString()}`);
   };
 
   return (
@@ -454,7 +521,7 @@ export default function HookGenerator() {
       <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl p-4">
         <h3 className="font-semibold text-violet-900 mb-1">5 Psychology-Backed Hook Frameworks</h3>
         <p className="text-sm text-violet-700">
-          Every hook is generated using one of five proven viral frameworks: <strong>Contradiction</strong> (challenges what people believe), <strong>Specificity</strong> (precise numbers/facts), <strong>Timeframe Tension</strong> (urgency/before-after), <strong>POV</strong> (personal authority), and <strong>Curiosity Gap</strong> (opens a loop). Each is scored 1–5 for viral potential. Click <FlaskConical className="w-3 h-3 inline text-violet-500" /> on any hook to send it directly to the A/B Test Lab.
+          Every hook is generated using one of five proven viral frameworks: <strong>Contradiction</strong>, <strong>Specificity</strong>, <strong>Timeframe Tension</strong>, <strong>POV</strong>, and <strong>Curiosity Gap</strong>. Each is scored 1–5 for viral potential. Use the <Pencil className="w-3 h-3 inline text-violet-500" /> icon to edit any hook inline, then click <strong>Push All to Script Generator</strong> to batch-generate full scripts for all of them at once.
         </p>
       </div>
 
@@ -462,7 +529,7 @@ export default function HookGenerator() {
       {sentToLabCount > 0 && (
         <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{sentToLabCount} hook{sentToLabCount > 1 ? "s" : ""} sent to A/B Test Lab. Switch to the A/B Test Lab tab to track results.</span>
+          <span>{sentToLabCount} hook{sentToLabCount > 1 ? "s" : ""} sent to A/B Test Lab.</span>
         </div>
       )}
 
@@ -502,7 +569,7 @@ export default function HookGenerator() {
               {topFramework && (
                 <p className="text-xs text-amber-700 flex items-center gap-1 mt-1">
                   <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                  Top-performing framework for {platform}: <span className="font-semibold capitalize">{topFramework}</span>
+                  Top-performing for {platform}: <span className="font-semibold capitalize">{topFramework}</span>
                 </p>
               )}
             </div>
@@ -539,6 +606,7 @@ export default function HookGenerator() {
                 <h3 className="text-sm font-semibold">Generated Hooks</h3>
                 <Badge variant="outline" className="text-xs">{result.platform}</Badge>
               </div>
+
               {result.topPick && (
                 <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
                   <p className="text-xs font-semibold text-violet-700 mb-1">⭐ AI Top Pick</p>
@@ -553,25 +621,45 @@ export default function HookGenerator() {
                   </Button>
                 </div>
               )}
+
               <div className="space-y-2">
                 {result.hooks.map((hook, i) => (
                   <HookCard
                     key={i}
                     hook={hook}
+                    editedHook={getEditedHook(i)}
                     topic={result.topic}
                     platform={result.platform}
                     allHooks={result.hooks}
                     onCopy={handleCopy}
+                    onEditChange={(text) => setEditedHooks((prev) => ({ ...prev, [i]: text }))}
                     topFramework={topFramework}
                   />
                 ))}
+              </div>
+
+              {/* Push All to Script Generator */}
+              <div className="pt-2 border-t border-border">
+                <Button
+                  onClick={handlePushAll}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                  size="lg"
+                >
+                  <SendHorizonal className="w-4 h-4 mr-2" />
+                  Push All {result.hooks.length} Hooks to Script Generator →
+                </Button>
+                <p className="text-[11px] text-muted-foreground text-center mt-1.5">
+                  Edits you made above are included. The Script Generator will queue all hooks and let you generate full scripts one by one.
+                </p>
               </div>
             </>
           ) : (
             <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-border rounded-xl text-center p-6">
               <Zap className="w-8 h-8 text-muted-foreground/40 mb-3" />
               <p className="text-sm text-muted-foreground">Enter a topic and click Generate to see 5 viral hooks</p>
-              <p className="text-xs text-muted-foreground mt-1">Each hook has a <FlaskConical className="w-3 h-3 inline text-violet-400" /> button to send it directly to the A/B Test Lab</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Edit any hook inline, then push the whole batch to the Script Generator
+              </p>
             </div>
           )}
         </div>

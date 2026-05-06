@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2, Hash, Search, Zap, Kanban, CheckCircle2, Star } from "lucide-react";
+import {
+  FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2,
+  Zap, Kanban, CheckCircle2, Star, SendHorizonal, Play, X as XIcon,
+  ListChecks, RotateCcw,
+} from "lucide-react";
 
 const PLATFORMS = [
   { value: "tiktok", label: "TikTok (60s)" },
@@ -24,6 +28,17 @@ const LENGTHS = [
   { value: 90, label: "90 seconds" },
   { value: 120, label: "2 minutes" },
 ];
+
+const FRAMEWORK_COLORS: Record<string, string> = {
+  contradiction: "bg-red-100 text-red-700 border-red-200",
+  specificity: "bg-blue-100 text-blue-700 border-blue-200",
+  timeframe: "bg-amber-100 text-amber-700 border-amber-200",
+  pov: "bg-green-100 text-green-700 border-green-200",
+  curiosity: "bg-purple-100 text-purple-700 border-purple-200",
+  curiositygap: "bg-purple-100 text-purple-700 border-purple-200",
+  socialproof: "bg-cyan-100 text-cyan-700 border-cyan-200",
+  transformation: "bg-orange-100 text-orange-700 border-orange-200",
+};
 
 interface ScriptResult {
   id: number;
@@ -48,11 +63,19 @@ interface ScriptResult {
   createdAt: Date | string;
 }
 
+interface BatchItem {
+  hook: string;
+  framework: string;
+  status: "pending" | "generating" | "done" | "error";
+  result?: ScriptResult;
+  error?: string;
+}
+
+// ─── ScriptDisplay ─────────────────────────────────────────────────────────────
 function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text: string) => void }) {
   const [showStructure, setShowStructure] = useState(false);
   const [savedToKanban, setSavedToKanban] = useState(false);
 
-  // Map viral studio platforms to content_items platform enum
   const PLATFORM_MAP: Record<string, string> = {
     tiktok: "tiktok",
     instagram: "meta",
@@ -101,7 +124,6 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
 
   return (
     <div className="space-y-4">
-      {/* Meta */}
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline" className="text-xs">{result.platform}</Badge>
         {result.estimatedSeconds && (
@@ -112,7 +134,6 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
         )}
       </div>
 
-      {/* Full Script */}
       <div className="relative">
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Full Script</h4>
@@ -120,97 +141,68 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
             <Copy className="w-3 h-3 mr-1" />Copy Script
           </Button>
         </div>
-        <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono text-foreground">
+        <div className="bg-muted/30 border border-border rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
           {result.fullScript}
         </div>
       </div>
 
-      {/* Structure Toggle */}
       {sections.length > 0 && (
         <div>
           <button
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setShowStructure(!showStructure)}
           >
-            {showStructure ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            {showStructure ? "Hide" : "Show"} HPAVPC Structure
+            {showStructure ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {showStructure ? "Hide" : "Show"} HPAVPC structure
           </button>
           {showStructure && (
-            <div className="mt-3 space-y-2">
-              {sections.map((s) => (
-                <div key={s.key} className={`border-l-2 ${s.color} pl-3 py-1`}>
-                  <p className="text-xs font-semibold text-muted-foreground mb-0.5">{s.label}</p>
-                  <p className="text-sm text-foreground">{result.script[s.key as keyof typeof result.script]}</p>
-                </div>
-              ))}
+            <div className="mt-2 space-y-2">
+              {sections.map((s) => {
+                const text = (result.script as any)[s.key];
+                if (!text) return null;
+                return (
+                  <div key={s.key} className={`border-l-2 pl-3 py-1 ${s.color}`}>
+                    <p className="text-xs font-semibold text-muted-foreground mb-0.5">{s.label}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{text}</p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* Caption */}
       {result.captionHook && (
         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs font-semibold text-blue-700">Caption Hook</p>
-            <Button variant="ghost" size="sm" className="h-5 text-xs px-1.5 text-blue-600" onClick={() => onCopy(result.captionHook!)}>
-              <Copy className="w-3 h-3 mr-1" />Copy
+            <Button variant="ghost" size="sm" className="h-5 text-xs px-1 text-blue-600" onClick={() => onCopy(result.captionHook!)}>
+              <Copy className="w-3 h-3" />
             </Button>
           </div>
-          <p className="text-sm text-foreground">{result.captionHook}</p>
+          <p className="text-xs text-foreground">{result.captionHook}</p>
         </div>
       )}
 
-      {/* SEO Keywords */}
-      {result.seoKeywords?.length > 0 && (
-        <div>
-          <div className="flex items-center gap-1.5 mb-2">
-            <Search className="w-3.5 h-3.5 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Social SEO Keywords</p>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {result.seoKeywords.map((kw, i) => (
-              <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Hashtags */}
       {result.hashtags?.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <Hash className="w-3.5 h-3.5 text-muted-foreground" />
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hashtags</p>
-            </div>
-            <Button variant="ghost" size="sm" className="h-5 text-xs px-1.5" onClick={() => onCopy(result.hashtags.join(" "))}>
-              <Copy className="w-3 h-3 mr-1" />Copy All
-            </Button>
-          </div>
+          <p className="text-xs font-semibold text-muted-foreground mb-1.5">Hashtags</p>
           <div className="flex flex-wrap gap-1.5">
             {result.hashtags.map((tag, i) => (
-              <Badge key={i} variant="outline" className="text-xs text-blue-600 border-blue-200 cursor-pointer" onClick={() => onCopy(tag)}>
-                {tag}
-              </Badge>
+              <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded-full text-foreground">{tag}</span>
             ))}
           </div>
         </div>
       )}
 
-      {/* Save to Command Center */}
       <div className="pt-2 border-t border-border">
         <Button
           onClick={handleSaveToKanban}
           disabled={savedToKanban || saveToKanbanMutation.isPending}
-          className={`w-full ${
-            savedToKanban
-              ? "bg-green-600 hover:bg-green-600 text-white cursor-default"
-              : "bg-blue-600 hover:bg-blue-700 text-white"
-          }`}
+          className={`w-full ${savedToKanban ? "bg-green-600 hover:bg-green-600 text-white cursor-default" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
         >
           {saveToKanbanMutation.isPending ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving to Command Center...</>
+            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
           ) : savedToKanban ? (
             <><CheckCircle2 className="w-4 h-4 mr-2" />Saved to Command Center ✓</>
           ) : (
@@ -227,14 +219,221 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
   );
 }
 
+// ─── BatchQueuePanel ──────────────────────────────────────────────────────────
+function BatchQueuePanel({
+  items,
+  topic,
+  platform,
+  lengthSeconds,
+  cta,
+  seoKeywords,
+  onClearBatch,
+  onCopy,
+}: {
+  items: BatchItem[];
+  topic: string;
+  platform: string;
+  lengthSeconds: number;
+  cta: string;
+  seoKeywords: string;
+  onClearBatch: () => void;
+  onCopy: (text: string) => void;
+}) {
+  const [queue, setQueue] = useState<BatchItem[]>(items);
+  const [isRunningAll, setIsRunningAll] = useState(false);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  const generateMutation = trpc.viralStudio.generateScript.useMutation();
+
+  const generateOne = useCallback(async (index: number) => {
+    const item = queue[index];
+    if (!item || item.status === "done") return;
+
+    setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "generating" } : q));
+    try {
+      const result = await generateMutation.mutateAsync({
+        topic: topic.trim(),
+        hook: item.hook,
+        platform: platform as "tiktok",
+        targetLengthSeconds: lengthSeconds,
+        cta: cta || undefined,
+        socialSeoKeywords: seoKeywords ? seoKeywords.split(",").map(k => k.trim()).filter(Boolean) : undefined,
+      });
+      setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "done", result: result as unknown as ScriptResult } : q));
+      setExpandedIndex(index);
+    } catch (err: any) {
+      setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "error", error: err.message } : q));
+    }
+  }, [queue, topic, platform, lengthSeconds, cta, seoKeywords, generateMutation]);
+
+  const handleGenerateAll = async () => {
+    setIsRunningAll(true);
+    for (let i = 0; i < queue.length; i++) {
+      if (queue[i].status !== "done") {
+        await generateOne(i);
+      }
+    }
+    setIsRunningAll(false);
+    toast.success("All scripts generated!");
+  };
+
+  const doneCount = queue.filter((q) => q.status === "done").length;
+  const pendingCount = queue.filter((q) => q.status === "pending").length;
+
+  return (
+    <div className="space-y-4">
+      {/* Batch header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <ListChecks className="w-4 h-4 text-blue-500" />
+          <h3 className="text-sm font-semibold">Script Queue</h3>
+          <Badge variant="outline" className="text-xs">
+            {doneCount}/{queue.length} done
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs"
+            onClick={handleGenerateAll}
+            disabled={isRunningAll || pendingCount === 0}
+          >
+            {isRunningAll ? (
+              <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Generating...</>
+            ) : (
+              <><Play className="w-3.5 h-3.5 mr-1.5" />Generate All Scripts</>
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={onClearBatch}
+            title="Exit batch mode"
+          >
+            <XIcon className="w-3.5 h-3.5 mr-1.5" />Exit batch
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-xs text-blue-700">
+        <strong>Batch mode:</strong> {queue.length} hooks from Hook Generator. Click <strong>Generate All Scripts</strong> to process them sequentially, or click <Play className="w-3 h-3 inline" /> on any individual hook to generate just that one. Edit the settings below before generating.
+      </div>
+
+      {/* Queue items */}
+      <div className="space-y-2">
+        {queue.map((item, i) => {
+          const colorClass = FRAMEWORK_COLORS[item.framework.toLowerCase()] ?? "bg-gray-100 text-gray-700 border-gray-200";
+          const isExpanded = expandedIndex === i;
+          return (
+            <div
+              key={i}
+              className={`border rounded-xl overflow-hidden transition-colors ${
+                item.status === "done" ? "border-green-300 bg-green-50/30" :
+                item.status === "generating" ? "border-blue-300 bg-blue-50/30" :
+                item.status === "error" ? "border-red-300 bg-red-50/30" :
+                "border-border"
+              }`}
+            >
+              {/* Row header */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                {/* Status indicator */}
+                <div className="shrink-0">
+                  {item.status === "done" && <CheckCircle2 className="w-4 h-4 text-green-600" />}
+                  {item.status === "generating" && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+                  {item.status === "pending" && (
+                    <span className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-[10px] font-bold text-muted-foreground">{i + 1}</span>
+                  )}
+                  {item.status === "error" && (
+                    <span className="w-4 h-4 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-[10px] font-bold">!</span>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <Badge variant="outline" className={`text-xs capitalize ${colorClass}`}>{item.framework}</Badge>
+                    {item.status === "done" && <span className="text-xs text-green-600 font-medium">Script ready</span>}
+                    {item.status === "error" && <span className="text-xs text-red-600">{item.error}</span>}
+                  </div>
+                  <p className="text-xs text-foreground leading-relaxed line-clamp-2">{item.hook}</p>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  {item.status === "pending" && !isRunningAll && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs px-2 border-blue-300 text-blue-600 hover:bg-blue-50"
+                      onClick={() => generateOne(i)}
+                    >
+                      <Play className="w-3 h-3 mr-1" />Generate
+                    </Button>
+                  )}
+                  {item.status === "error" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs px-2 border-red-300 text-red-600 hover:bg-red-50"
+                      onClick={() => {
+                        setQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "pending", error: undefined } : q));
+                        generateOne(i);
+                      }}
+                    >
+                      <RotateCcw className="w-3 h-3 mr-1" />Retry
+                    </Button>
+                  )}
+                  {item.status === "done" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs px-2"
+                      onClick={() => setExpandedIndex(isExpanded ? null : i)}
+                    >
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded script */}
+              {isExpanded && item.result && (
+                <div className="px-4 pb-4 border-t border-border">
+                  <div className="mt-3">
+                    <ScriptDisplay result={item.result} onCopy={onCopy} />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {doneCount === queue.length && queue.length > 0 && (
+        <div className="p-3 bg-green-50 border border-green-300 rounded-xl text-center">
+          <p className="text-sm font-semibold text-green-800">
+            🎉 All {queue.length} scripts generated! Expand each one above to copy or save to Command Center.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 export default function ScriptGenerator() {
-  // Pre-fill from URL params when navigated from Hook Generator
+  // Read URL params — single hook mode
   const urlParams = new URLSearchParams(window.location.search);
   const prefillHook = urlParams.get("hook") ?? "";
   const prefillPlatform = urlParams.get("platform") ?? "";
   const prefillTopic = urlParams.get("topic") ?? "";
-  // framework param: top-performing framework passed from Hook Generator
   const prefillFramework = urlParams.get("framework") ?? "";
+  // Batch mode: hookBatch is a JSON array of {hook, framework}
+  const prefillBatchRaw = urlParams.get("hookBatch") ?? "";
+
+  const parsedBatch: Array<{ hook: string; framework: string }> = (() => {
+    try { return prefillBatchRaw ? JSON.parse(prefillBatchRaw) : []; }
+    catch { return []; }
+  })();
 
   const [topic, setTopic] = useState(prefillTopic);
   const [hook, setHook] = useState(prefillHook);
@@ -244,18 +443,25 @@ export default function ScriptGenerator() {
   const [seoKeywords, setSeoKeywords] = useState("");
   const [persona, setPersona] = useState("");
   const [result, setResult] = useState<ScriptResult | null>(null);
-  const [prefillBanner, setPrefillBanner] = useState(!!prefillHook);
+  const [prefillBanner, setPrefillBanner] = useState(!!prefillHook && !prefillBatchRaw);
   const [topFrameworkBanner, setTopFrameworkBanner] = useState(!!prefillFramework);
   const [topFramework] = useState(prefillFramework);
+  // Batch mode
+  const [batchItems, setBatchItems] = useState<BatchItem[] | null>(
+    parsedBatch.length > 0
+      ? parsedBatch.map((b) => ({ hook: b.hook, framework: b.framework, status: "pending" as const }))
+      : null
+  );
 
-  // Clear URL params after reading them so refreshing doesn't re-fill
+  // Clear URL params after reading
   useEffect(() => {
-    if (prefillHook || prefillPlatform || prefillTopic || prefillFramework) {
+    if (prefillHook || prefillPlatform || prefillTopic || prefillFramework || prefillBatchRaw) {
       const url = new URL(window.location.href);
       url.searchParams.delete("hook");
       url.searchParams.delete("platform");
       url.searchParams.delete("topic");
       url.searchParams.delete("framework");
+      url.searchParams.delete("hookBatch");
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
@@ -291,8 +497,23 @@ export default function ScriptGenerator() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Pre-fill banner from Hook Generator */}
-      {prefillBanner && (
+      {/* Batch mode banner */}
+      {batchItems && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-blue-50 border border-blue-300 rounded-lg">
+          <div className="flex items-center gap-2 text-sm text-blue-800">
+            <SendHorizonal className="w-4 h-4 shrink-0" />
+            <span>
+              <strong>Batch mode active:</strong> {batchItems.length} hooks from Hook Generator. Adjust settings below, then generate all scripts.
+            </span>
+          </div>
+          <button className="text-xs text-blue-600 hover:text-blue-800 shrink-0 font-medium" onClick={() => setBatchItems(null)}>
+            Exit batch
+          </button>
+        </div>
+      )}
+
+      {/* Single-hook pre-fill banner */}
+      {prefillBanner && !batchItems && (
         <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-violet-50 border border-violet-200 rounded-lg">
           <div className="flex items-center gap-2 text-sm text-violet-700">
             <Zap className="w-4 h-4 shrink-0" />
@@ -303,7 +524,7 @@ export default function ScriptGenerator() {
       )}
 
       {/* Top-performing framework banner */}
-      {topFrameworkBanner && topFramework && (
+      {topFrameworkBanner && topFramework && !batchItems && (
         <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-center gap-2 text-sm text-amber-800">
             <Star className="w-4 h-4 shrink-0 fill-amber-500 text-amber-500" />
@@ -320,31 +541,38 @@ export default function ScriptGenerator() {
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
         <h3 className="font-semibold text-blue-900 mb-1">HPAVPC Script Framework</h3>
         <p className="text-sm text-blue-700">
-          Every script follows the <strong>Hook → Problem → Agitate → Value → Proof → CTA</strong> structure — the same framework used by top creators to maximize watch time and drive DM conversions. Social SEO keywords are woven into the spoken audio naturally so the algorithm surfaces your content to the right audience.
+          Every script follows the <strong>Hook → Problem → Agitate → Value → Proof → CTA</strong> structure. Set your platform, length, and CTA below — then either generate a single script or run the full batch from Hook Generator.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Input */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-500" />
-              Script Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Topic *</Label>
-              <Textarea
-                placeholder="e.g. 'How your gut microbiome controls your mood and energy'"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                rows={2}
-                className="text-sm resize-none"
-              />
-            </div>
+      {/* Settings card — always visible so batch mode can use it */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="w-4 h-4 text-blue-500" />
+            Script Settings
+            {batchItems && (
+              <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs ml-1">
+                applies to all {batchItems.length} hooks
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Topic — always shown */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Topic *</Label>
+            <Textarea
+              placeholder="e.g. 'How your gut microbiome controls your mood and energy'"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              rows={2}
+              className="text-sm resize-none"
+            />
+          </div>
 
+          {/* Hook — only in single mode */}
+          {!batchItems && (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Opening Hook * <span className="text-muted-foreground font-normal">(use Hook Generator)</span></Label>
               <Textarea
@@ -355,95 +583,103 @@ export default function ScriptGenerator() {
                 className="text-sm resize-none"
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Platform</Label>
-                <Select value={platform} onValueChange={setPlatform}>
-                  <SelectTrigger className="text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PLATFORMS.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Target Length</Label>
-                <Select value={String(lengthSeconds)} onValueChange={(v) => setLengthSeconds(Number(v))}>
-                  <SelectTrigger className="text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LENGTHS.map((l) => (
-                      <SelectItem key={l.value} value={String(l.value)}>{l.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">DM Trigger CTA</Label>
-              <Input
-                placeholder="Comment 'MONK' below and I'll send you the guide"
-                value={cta}
-                onChange={(e) => setCta(e.target.value)}
-                className="text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Social SEO Keywords <span className="text-muted-foreground font-normal">(comma-separated)</span></Label>
-              <Input
-                placeholder="gut health, microbiome, brain fog, energy, mood"
-                value={seoKeywords}
-                onChange={(e) => setSeoKeywords(e.target.value)}
-                className="text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Target Persona (optional)</Label>
-              <Input
-                placeholder="e.g. 'Stressed professional, 40s, low energy'"
-                value={persona}
-                onChange={(e) => setPersona(e.target.value)}
-                className="text-sm"
-              />
-            </div>
-
-            <Button
-              onClick={handleGenerate}
-              disabled={generateMutation.isPending || !topic.trim() || !hook.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {generateMutation.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Writing script...</>
-              ) : (
-                <><FileText className="w-4 h-4 mr-2" />Generate Full Script</>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Result */}
-        <div>
-          {result ? (
-            <ScriptDisplay result={result} onCopy={handleCopy} />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-border rounded-xl text-center p-6">
-              <FileText className="w-8 h-8 text-muted-foreground/40 mb-3" />
-              <p className="text-sm text-muted-foreground">Fill in the settings and click Generate to get a full HPAVPC script</p>
-            </div>
           )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Platform</Label>
+              <Select value={platform} onValueChange={setPlatform}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PLATFORMS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Target Length</Label>
+              <Select value={String(lengthSeconds)} onValueChange={(v) => setLengthSeconds(Number(v))}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LENGTHS.map((l) => <SelectItem key={l.value} value={String(l.value)}>{l.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">DM Trigger CTA</Label>
+            <Input
+              placeholder="Comment 'MONK' below and I'll send you the guide"
+              value={cta}
+              onChange={(e) => setCta(e.target.value)}
+              className="text-sm"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Social SEO Keywords <span className="text-muted-foreground font-normal">(comma-separated)</span></Label>
+            <Input
+              placeholder="gut health, microbiome, brain fog, energy, mood"
+              value={seoKeywords}
+              onChange={(e) => setSeoKeywords(e.target.value)}
+              className="text-sm"
+            />
+          </div>
+
+          {!batchItems && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Target Persona (optional)</Label>
+                <Input
+                  placeholder="e.g. 'Stressed professional, 40s, low energy'"
+                  value={persona}
+                  onChange={(e) => setPersona(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <Button
+                onClick={handleGenerate}
+                disabled={generateMutation.isPending || !topic.trim() || !hook.trim()}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {generateMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Writing script...</>
+                ) : (
+                  <><FileText className="w-4 h-4 mr-2" />Generate Full Script</>
+                )}
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Batch queue or single result */}
+      {batchItems ? (
+        <BatchQueuePanel
+          items={batchItems}
+          topic={topic}
+          platform={platform}
+          lengthSeconds={lengthSeconds}
+          cta={cta}
+          seoKeywords={seoKeywords}
+          onClearBatch={() => setBatchItems(null)}
+          onCopy={handleCopy}
+        />
+      ) : result ? (
+        <div>
+          <h3 className="text-sm font-semibold mb-3">Generated Script</h3>
+          <ScriptDisplay result={result} onCopy={handleCopy} />
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-xl text-center p-6">
+          <FileText className="w-8 h-8 text-muted-foreground/40 mb-3" />
+          <p className="text-sm text-muted-foreground">Fill in the settings and click Generate to get a full HPAVPC script</p>
+          <p className="text-xs text-muted-foreground mt-1">Or use <strong>Push All to Script Generator</strong> in the Hook Generator to batch-generate scripts for all 5 hooks</p>
+        </div>
+      )}
 
       {/* History */}
-      {historyQuery.data && historyQuery.data.length > 0 && (
+      {!batchItems && historyQuery.data && historyQuery.data.length > 0 && (
         <>
           <Separator />
           <div className="space-y-3">

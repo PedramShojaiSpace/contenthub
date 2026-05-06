@@ -1861,3 +1861,18 @@
 - [x] On click: navigate to /viral-studio?tab=script&hook=<hookText>&platform=<platform>
 - [x] Script Generator reads URL params on mount and pre-fills the hook field
 - [x] TypeScript check, tests, checkpoint
+
+## v155 — Viral Studio Image & Kanban Wiring
+
+### Feature A: Hook Card → Image Generator
+- [x] Add "Generate image for this hook" button on each HookCard in HookGenerator.tsx
+- [x] On click: navigate to /creation-studio?hookText=<hook>&platform=<platform> (or open inline image dialog)
+- [x] Pre-select platform brand style in image generator based on hook's platform
+- [x] Show generated image inline on the hook card (optional preview)
+
+### Feature B: Script Generator → Kanban "Save script to Command Center"
+- [x] Add "Save script to Command Center" button on ScriptDisplay component after script is generated
+- [x] On click: call content.create with title=topic, platform, textContent=fullScript, status=drafting
+- [x] Show success toast with link to Command Center after card is created
+- [x] Disable button (show "Saved") after first save to prevent duplicates
+- [x] TypeScript check, tests, checkpoint

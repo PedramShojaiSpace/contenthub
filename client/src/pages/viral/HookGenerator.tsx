@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Zap, Copy, Clock, Star, ChevronDown, ChevronUp, Loader2, FlaskConical, CheckCircle2, FileText } from "lucide-react";
+import { Zap, Copy, Clock, Star, ChevronDown, ChevronUp, Loader2, FlaskConical, CheckCircle2, FileText, ImageIcon, X as XIcon } from "lucide-react";
 import { useLocation } from "wouter";
 
 const PLATFORMS = [
@@ -164,6 +164,15 @@ function SendToABLabDialog({ open, onClose, hookText, framework, topic, platform
   );
 }
 
+// Platform → image-generator platform mapping (tiktok/instagram map to meta for image style)
+const HOOK_PLATFORM_TO_IMAGE_PLATFORM: Record<string, "meta" | "linkedin" | "x" | "youtube" | "tiktok"> = {
+  tiktok: "tiktok",
+  instagram: "meta",
+  youtube: "youtube",
+  linkedin: "linkedin",
+  x: "x",
+};
+
 // ─── HookCard (with Send to A/B Lab button) ──────────────────────────────────
 function HookCard({
   hook,
@@ -181,7 +190,26 @@ function HookCard({
   const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(false);
   const [abDialogOpen, setAbDialogOpen] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const colorClass = FRAMEWORK_COLORS[hook.framework.toLowerCase()] ?? "bg-gray-100 text-gray-700 border-gray-200";
+
+  const imagePlatform = HOOK_PLATFORM_TO_IMAGE_PLATFORM[platform] ?? "meta";
+
+  const generateImageMutation = trpc.ai.generateImage.useMutation({
+    onSuccess: (data) => {
+      if (data.url) setGeneratedImageUrl(data.url);
+      toast.success("Image generated!");
+    },
+    onError: (err) => toast.error(`Image generation failed: ${err.message}`),
+  });
+
+  const handleGenerateImage = () => {
+    const prompt = `Social media visual for the hook: "${hook.hook}". Topic: ${topic}. Platform: ${platform}. The image should be striking, editorial, and complement the hook's message.`;
+    generateImageMutation.mutate({
+      prompt,
+      platform: imagePlatform,
+    });
+  };
 
   const handleBuildScript = () => {
     const params = new URLSearchParams({
@@ -247,7 +275,7 @@ function HookCard({
             </Button>
           </div>
         </div>
-        {/* Action row: A/B Lab + Build Script */}
+        {/* Action row: A/B Lab + Build Script + Generate Image */}
         <div className="mt-2 flex items-center gap-3 flex-wrap">
           <button
             className="text-[11px] text-violet-500 hover:text-violet-700 flex items-center gap-1 transition-colors"
@@ -264,7 +292,49 @@ function HookCard({
             <FileText className="w-3 h-3" />
             Build full script →
           </button>
+          <span className="text-muted-foreground/30 text-[11px]">|</span>
+          <button
+            className="text-[11px] text-emerald-500 hover:text-emerald-700 flex items-center gap-1 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleGenerateImage}
+            disabled={generateImageMutation.isPending}
+          >
+            {generateImageMutation.isPending ? (
+              <><Loader2 className="w-3 h-3 animate-spin" />Generating image...</>
+            ) : (
+              <><ImageIcon className="w-3 h-3" />Generate image→</>
+            )}
+          </button>
         </div>
+
+        {/* Inline image preview */}
+        {generatedImageUrl && (
+          <div className="mt-3 relative rounded-lg overflow-hidden border border-border">
+            <img
+              src={generatedImageUrl}
+              alt="Generated hook visual"
+              className="w-full h-40 object-cover"
+            />
+            <div className="absolute top-2 right-2 flex gap-1">
+              <button
+                className="bg-black/60 hover:bg-black/80 text-white rounded p-1 transition-colors"
+                onClick={() => { navigator.clipboard.writeText(generatedImageUrl); toast.success("Image URL copied"); }}
+                title="Copy image URL"
+              >
+                <Copy className="w-3 h-3" />
+              </button>
+              <button
+                className="bg-black/60 hover:bg-black/80 text-white rounded p-1 transition-colors"
+                onClick={() => setGeneratedImageUrl(null)}
+                title="Dismiss"
+              >
+                <XIcon className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2">
+              <p className="text-[10px] text-white/80 capitalize">{platform} style</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <SendToABLabDialog

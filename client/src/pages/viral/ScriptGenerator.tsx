@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2, Hash, Search, Zap } from "lucide-react";
+import { FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2, Hash, Search, Zap, Kanban, CheckCircle2 } from "lucide-react";
 
 const PLATFORMS = [
   { value: "tiktok", label: "TikTok (60s)" },
@@ -50,6 +50,45 @@ interface ScriptResult {
 
 function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text: string) => void }) {
   const [showStructure, setShowStructure] = useState(false);
+  const [savedToKanban, setSavedToKanban] = useState(false);
+
+  // Map viral studio platforms to content_items platform enum
+  const PLATFORM_MAP: Record<string, string> = {
+    tiktok: "tiktok",
+    instagram: "meta",
+    youtube: "youtube",
+    linkedin: "linkedin",
+    x: "x",
+  };
+  const kanbanPlatform = PLATFORM_MAP[result.platform] ?? "meta";
+
+  const saveToKanbanMutation = trpc.content.createBulk.useMutation({
+    onSuccess: () => {
+      setSavedToKanban(true);
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Script saved to Command Center ✓</span>
+          <span className="text-xs text-muted-foreground">Find it in the Drafting column of your Kanban board.</span>
+        </div>
+      );
+    },
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
+  });
+
+  const handleSaveToKanban = () => {
+    if (savedToKanban) return;
+    saveToKanbanMutation.mutate({
+      items: [
+        {
+          title: result.topic.length > 80 ? result.topic.slice(0, 80) + "…" : result.topic,
+          platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
+          status: "drafting" as const,
+          textContent: result.fullScript,
+          rawIdea: result.hook,
+        },
+      ],
+    });
+  };
 
   const sections = result.script ? [
     { label: "Hook (0–3s)", key: "hook", color: "border-l-red-400" },
@@ -158,6 +197,32 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
           </div>
         </div>
       )}
+
+      {/* Save to Command Center */}
+      <div className="pt-2 border-t border-border">
+        <Button
+          onClick={handleSaveToKanban}
+          disabled={savedToKanban || saveToKanbanMutation.isPending}
+          className={`w-full ${
+            savedToKanban
+              ? "bg-green-600 hover:bg-green-600 text-white cursor-default"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
+        >
+          {saveToKanbanMutation.isPending ? (
+            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving to Command Center...</>
+          ) : savedToKanban ? (
+            <><CheckCircle2 className="w-4 h-4 mr-2" />Saved to Command Center ✓</>
+          ) : (
+            <><Kanban className="w-4 h-4 mr-2" />Save script to Command Center</>
+          )}
+        </Button>
+        {!savedToKanban && (
+          <p className="text-[11px] text-muted-foreground text-center mt-1.5">
+            Creates a Drafting card in your Kanban board with the full script as content.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

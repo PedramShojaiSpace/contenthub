@@ -81,7 +81,13 @@ function clipTypeBadgeColor(t: ClipType) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function VideoVariantFactory() {
-  const [jobName, setJobName]           = useState("");
+  // Read ?session=<name> URL param to pre-fill job name when arriving from Video Production Session
+  const [jobName, setJobName]           = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("session") ?? "";
+    } catch { return ""; }
+  });
   const [activeJobId, setActiveJobId]   = useState<number | null>(null);
   const [uploadedClips, setUploadedClips] = useState<UploadedClip[]>([]);
   const [uploadingClips, setUploadingClips] = useState<UploadingClip[]>([]);

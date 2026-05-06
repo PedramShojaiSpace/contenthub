@@ -72,6 +72,7 @@ import { ingestGenerateRouter } from "./ingestGenerateRouter";
 import { newsfeedRouter } from "./newsfeedRouter";
 import { viralStudioRouter } from "./viralStudioRouter";
 import { videoVariantRouter } from "./videoVariantRouter";
+import { videoSessionRouter } from "./videoSessionRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls } from "./urlScrubber";
@@ -3150,6 +3151,7 @@ STRICT RULES:
   newsfeed: newsfeedRouter,
   viralStudio: viralStudioRouter,
   videoVariant: videoVariantRouter,
+  videoSession: videoSessionRouter,
   // ── Verified Internal Linkss ──────────────────────────────────────────────────────────────────────────
   // Curated whitelist of real URLs the AI may use as internal links in blog posts.
   verifiedLinks: router({

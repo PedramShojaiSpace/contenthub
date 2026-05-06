@@ -977,3 +977,42 @@ export const videoVariants = mysqlTable("video_variants", {
 });
 export type VideoVariant = typeof videoVariants.$inferSelect;
 export type InsertVideoVariant = typeof videoVariants.$inferInsert;
+
+// ─── Video Production Sessions ────────────────────────────────────────────────
+// A unified session: idea → scripts → teleprompter → record → splice
+export const videoProductionSessions = mysqlTable("video_production_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: varchar("userId", { length: 128 }).notNull(),
+  sessionName: varchar("sessionName", { length: 255 }).notNull(),
+  idea: text("idea").notNull(),
+  platform: mysqlEnum("vps_platform", ["tiktok", "instagram", "youtube", "linkedin", "x", "meta"]).default("instagram").notNull(),
+  // scripting | ready_to_record | uploading | stitching | done
+  status: mysqlEnum("vps_status", ["scripting", "ready_to_record", "uploading", "stitching", "done"])
+    .default("scripting")
+    .notNull(),
+  // optional link to a video_variant_jobs row created in the splice phase
+  variantJobId: int("variantJobId"),
+  createdAt: timestamp("vps_createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("vps_updatedAt").defaultNow().notNull(),
+});
+export type VideoProductionSession = typeof videoProductionSessions.$inferSelect;
+export type InsertVideoProductionSession = typeof videoProductionSessions.$inferInsert;
+
+// Individual scripts within a session (hooks, body, cta)
+export const sessionScripts = mysqlTable("session_scripts", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  // hook | body | cta
+  scriptType: mysqlEnum("ss_scriptType", ["hook", "body", "cta"]).notNull(),
+  scriptOrder: int("scriptOrder").default(0).notNull(), // 1-5 for hooks, 0 for body/cta
+  scriptText: text("scriptText").notNull(),
+  approved: boolean("approved").default(false).notNull(),
+  approvedAt: timestamp("approvedAt"),
+  // optional: S3 URL of the uploaded recording for this script
+  recordingUrl: text("recordingUrl"),
+  recordingKey: varchar("recordingKey", { length: 512 }),
+  createdAt: timestamp("ss_createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("ss_updatedAt").defaultNow().notNull(),
+});
+export type SessionScript = typeof sessionScripts.$inferSelect;
+export type InsertSessionScript = typeof sessionScripts.$inferInsert;

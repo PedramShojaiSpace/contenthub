@@ -1906,4 +1906,43 @@
 ### Quality
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass
+- [x] Save checkpoint
+
+## v158 — Video Production Session (Unified Idea → Teleprompter → Record → Splice Workflow)
+
+### Goal
+Replace the fragmented Viral Studio tabs with a single linear "Video Production Session" that takes Dr. Shojai from idea to teleprompter-ready scripts, then picks back up when he returns with the recorded MP4s.
+
+### Phase A: DB Schema
+- [x] Add video_production_sessions table (id, userId, sessionName, idea, platform, status: scripting|ready_to_record|uploading|stitching|done, createdAt)
+- [x] Add session_scripts table (id, sessionId, scriptType: hook|body|cta, scriptOrder, scriptText, approved: bool, approvedAt)
+- [x] Run pnpm db:push
+
+### Phase B: Server
+- [x] Add videoSessionRouter.ts with procedures:
+  - [x] createSession (idea, platform, sessionName)
+  - [x] generateScripts (sessionId) — LLM generates 5 hooks + 1 body + 1 CTA in one call
+  - [x] updateScript (scriptId, scriptText) — inline edit
+  - [x] approveScript (scriptId, approved) — toggle approved
+  - [x] approveAll (sessionId) — approve all scripts at once
+  - [x] exportTeleprompter (sessionId) — returns DOCX blob of all approved scripts
+  - [x] getSession (sessionId) — full session with scripts + clips + variants
+  - [x] listSessions (limit) — history
+- [x] Register videoSessionRouter in routers.ts
+
+### Phase C: UI — VideoProductionSession page
+- [x] Step 1 "Idea" panel: session name, idea input, platform selector, "Generate Scripts" button
+- [x] Step 2 "Review Scripts" panel: 5 hook cards + body card + CTA card, each with inline edit textarea, approve toggle, character count
+- [x] "Approve All" button at top of review panel
+- [x] Step 3 "Teleprompter" panel: full-screen clean teleprompter view of approved scripts (large white text on black, scrollable), "Export DOCX" button
+- [x] Step 4 "Upload Recordings" panel: upload zone per approved script (Hook 1 MP4, Hook 2 MP4, Body MP4, CTA MP4), each labeled with the script text preview
+- [x] Step 5 "Variants" panel: auto-stitch status + download buttons (reuses FFmpeg worker from v157)
+- [x] Session history sidebar: list of past sessions with status badges
+
+### Phase D: Navigation & Integration
+- [x] Replace /viral-studio route with the new VideoProductionSession as the primary entry point
+- [x] Keep old Viral Studio tools (Hook Generator, Script Generator, etc.) accessible via a "Tools" sub-tab for power users
+- [x] Add "New Video Session" CTA to Command Center Viral Studio widget
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass
 - [ ] Save checkpoint

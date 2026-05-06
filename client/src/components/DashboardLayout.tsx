@@ -62,6 +62,7 @@ const topNavItems = [
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
   { icon: Newspaper, label: "LinkedIn Newsfeed", path: "/newsfeed" },
   { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
+  { icon: Video, label: "Video Production", path: "/video-production" },
   { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
   { icon: Film, label: "Script Library", path: "/scripts" },
   { icon: Image, label: "Asset Library", path: "/assets" },

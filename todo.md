@@ -1818,4 +1818,25 @@
 - [x] Add "Viral Studio" section to sidebar navigation with all 8 features
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass
-- [ ] Save checkpoint + deploy
+- [x] Save checkpoint + deploy
+
+## v153 — Viral Studio Integrations
+
+### Feature A: Hook Generator → A/B Test Lab Pipeline
+- [x] Add server procedure: viralStudio.sendHookToABLab (creates testVariant from hook text)
+- [x] Add "Send to A/B Test Lab" button on each hook card in HookGenerator.tsx
+- [x] Show success toast with link to A/B Test Lab after variant is created
+- [x] Auto-populate variant fields: hookText, framework, topic, platform
+
+### Feature B: Viral Studio Quick-Access Card on Command Center
+- [x] Add server procedures: viralStudio.getRecentHooks (last 3), viralStudio.getWinningVariant
+- [x] Build ViralStudioWidget.tsx component with 3 recent hooks + winning variant + "Generate Topic" CTA
+- [x] Embed widget in CommandCenter.tsx dashboard above or alongside the Kanban board
+- [x] "Generate Topic" CTA navigates to /viral-studio with topics tab pre-selected
+
+### Feature C: Repurpose Engine → Kanban "Save all to Command Center"
+- [x] Add server procedure: content.createBulk (creates multiple draft content_items at once)
+- [x] Add "Save all to Command Center" button in RepurposeEngine.tsx after repurpose completes
+- [x] Map each platform output to a content_item (platform, title, textContent, status=idea)
+- [x] Show success toast with count of cards created and link to Command Center
+- [x] TypeScript check, tests, checkpoint

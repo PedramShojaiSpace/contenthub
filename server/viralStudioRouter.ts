@@ -987,6 +987,56 @@ export const declareTestWinner = protectedProcedure
     return { success: true };
   });
 
+// ─── Dashboard Summary (for Command Center widget) ──────────────────────────
+export const getDashboardSummary = protectedProcedure
+  .query(async () => {
+    const db = await getDb();
+    if (!db) return { recentHooks: [], winningVariant: null };
+
+    // Last 3 hook generations
+    const recentHooks = await db
+      .select()
+      .from(hookGenerations)
+      .orderBy(desc(hookGenerations.createdAt))
+      .limit(3);
+
+    // Most recent completed test with a winner
+    const completedTests = await db
+      .select()
+      .from(testVariants)
+      .where(eq(testVariants.status, "completed"))
+      .orderBy(desc(testVariants.createdAt))
+      .limit(1);
+
+    const winningVariant = completedTests.length > 0 ? completedTests[0] : null;
+
+    return {
+      recentHooks: recentHooks.map((h: HookGeneration) => ({
+        id: h.id,
+        topic: h.topic,
+        platform: h.platform,
+        topPick: h.topPick,
+        createdAt: h.createdAt,
+      })),
+      winningVariant: winningVariant
+        ? {
+            id: (winningVariant as TestVariant).id,
+            testName: (winningVariant as TestVariant).testName,
+            topic: (winningVariant as TestVariant).topic,
+            platform: (winningVariant as TestVariant).platform,
+            winner: (winningVariant as TestVariant).winner,
+            winnerText:
+              (winningVariant as TestVariant).winner === "A"
+                ? (winningVariant as TestVariant).variantA
+                : (winningVariant as TestVariant).winner === "B"
+                ? (winningVariant as TestVariant).variantB
+                : ((winningVariant as TestVariant).variantC ?? null),
+            winnerReason: (winningVariant as TestVariant).winnerReason,
+          }
+        : null,
+    };
+  });
+
 // ─── Router export ────────────────────────────────────────────────────────────
 export const viralStudioRouter = router({
   generateHooks,
@@ -1005,4 +1055,5 @@ export const viralStudioRouter = router({
   recordTestResult,
   getTestVariants,
   declareTestWinner,
+  getDashboardSummary,
 });

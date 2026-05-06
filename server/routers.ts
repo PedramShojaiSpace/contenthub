@@ -435,10 +435,29 @@ export const appRouter = router({
           }
         }
 
-        return { success: true };
+         return { success: true };
+      }),
+    createBulk: protectedProcedure
+      .input(
+        z.object({
+          items: z.array(
+            z.object({
+              title: z.string().min(1),
+              rawIdea: z.string().optional(),
+              platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel"]).default("tiktok"),
+              status: z.enum(["idea", "drafting", "review", "approved", "scheduled", "published"]).default("idea"),
+              textContent: z.string().optional(),
+            })
+          ).min(1).max(20),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const created = await Promise.all(
+          input.items.map((item) => createContentItem(item))
+        );
+        return { created: created.length, ids: created.map((c) => (c as { id: number }).id) };
       }),
   }),
-
   // ─── AI Generation ──────────────────────────────────────────────────────────
   ai: router({
     generateContent: protectedProcedure

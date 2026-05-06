@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { RefreshCw, Copy, Clock, ChevronDown, ChevronUp, Loader2, BookOpen } from "lucide-react";
+import { RefreshCw, Copy, Clock, ChevronDown, ChevronUp, Loader2, BookOpen, Kanban, CheckCircle2 } from "lucide-react";
+import { useLocation } from "wouter";
 
 const SOURCE_TYPES = [
   { value: "book_chapter", label: "Book Chapter" },
@@ -29,6 +30,15 @@ const BOOKS = [
   "Custom / Paste Below",
 ];
 
+// Map repurpose platform names to Kanban platform enum values
+const PLATFORM_MAP: Record<string, "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel"> = {
+  tiktok: "tiktok",
+  instagram: "meta",
+  youtube: "youtube",
+  linkedin: "linkedin",
+  x: "x",
+};
+
 interface RepurposedPost {
   platform: string;
   hook: string;
@@ -47,7 +57,19 @@ interface RepurposeResult {
   createdAt: Date | string;
 }
 
-function PostCard({ post, onCopy }: { post: RepurposedPost; onCopy: (t: string) => void }) {
+function PostCard({
+  post,
+  onCopy,
+  onSendToKanban,
+  isSending,
+  isSent,
+}: {
+  post: RepurposedPost;
+  onCopy: (t: string) => void;
+  onSendToKanban?: () => void;
+  isSending?: boolean;
+  isSent?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const platformColors: Record<string, string> = {
     tiktok: "bg-pink-100 text-pink-700 border-pink-200",
@@ -68,7 +90,28 @@ function PostCard({ post, onCopy }: { post: RepurposedPost; onCopy: (t: string) 
           <Badge variant="outline" className={`text-xs capitalize shrink-0 ${color}`}>{post.platform}</Badge>
           <span className="text-sm truncate text-muted-foreground">{post.hook}</span>
         </div>
-        {open ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+        <div className="flex items-center gap-2 shrink-0">
+          {onSendToKanban && (
+            <button
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                isSent
+                  ? "bg-green-100 text-green-700 border-green-300"
+                  : "bg-background text-muted-foreground border-border hover:border-primary hover:text-primary"
+              }`}
+              onClick={(e) => { e.stopPropagation(); if (!isSent) onSendToKanban(); }}
+              disabled={isSending || isSent}
+            >
+              {isSent ? (
+                <><CheckCircle2 className="w-3 h-3" />Saved</>
+              ) : isSending ? (
+                <><Loader2 className="w-3 h-3 animate-spin" />Saving...</>
+              ) : (
+                <><Kanban className="w-3 h-3" />Save to Kanban</>
+              )}
+            </button>
+          )}
+          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </div>
       </button>
       {open && (
         <div className="px-4 pb-4 border-t border-border space-y-3">
@@ -113,19 +156,47 @@ function PostCard({ post, onCopy }: { post: RepurposedPost; onCopy: (t: string) 
 }
 
 export default function RepurposeEngine() {
+  const [, setLocation] = useLocation();
   const [sourceType, setSourceType] = useState("book_chapter");
   const [selectedBook, setSelectedBook] = useState(BOOKS[0]);
   const [sourceTitle, setSourceTitle] = useState("");
   const [content, setContent] = useState("");
   const [platforms, setPlatforms] = useState<string[]>(["tiktok", "instagram", "youtube", "linkedin"]);
   const [result, setResult] = useState<RepurposeResult | null>(null);
+  const [sentPlatforms, setSentPlatforms] = useState<Set<string>>(new Set());
+  const [sendingPlatform, setSendingPlatform] = useState<string | null>(null);
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [allSaved, setAllSaved] = useState(false);
 
   const generateMutation = trpc.viralStudio.repurposeContent.useMutation({
     onSuccess: (data) => {
       setResult(data as unknown as RepurposeResult);
+      setSentPlatforms(new Set());
+      setAllSaved(false);
       toast.success(`${(data as unknown as RepurposeResult).posts.length} posts generated!`);
     },
     onError: (err) => toast.error(`Failed: ${err.message}`),
+  });
+
+  const createBulkMutation = trpc.content.createBulk.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+          <span>
+            {data.created} draft cards created in Command Center!{" "}
+            <button
+              className="underline font-medium"
+              onClick={() => setLocation("/command-center")}
+            >
+              View Kanban →
+            </button>
+          </span>
+        </div>,
+        { duration: 6000 }
+      );
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
 
   const historyQuery = trpc.viralStudio.getRecentRepurposeJobs.useQuery({ limit: 10 });
@@ -153,6 +224,40 @@ export default function RepurposeEngine() {
     });
   };
 
+  const handleSaveOneToKanban = async (post: RepurposedPost) => {
+    if (!result) return;
+    setSendingPlatform(post.platform);
+    try {
+      const mappedPlatform = PLATFORM_MAP[post.platform] ?? "tiktok";
+      const title = `[${post.platform.toUpperCase()}] ${result.sourceTitle ?? "Repurposed"} — ${post.hook.slice(0, 60)}`;
+      const textContent = `${post.hook}\n\n${post.script}\n\n---\nCaption:\n${post.caption}\n\n${post.hashtags.join(" ")}`;
+      await createBulkMutation.mutateAsync({
+        items: [{ title, rawIdea: post.hook, platform: mappedPlatform, status: "idea", textContent }],
+      });
+      setSentPlatforms(prev => { const next = new Set(Array.from(prev)); next.add(post.platform); return next; });
+    } finally {
+      setSendingPlatform(null);
+    }
+  };
+
+  const handleSaveAllToKanban = async () => {
+    if (!result || result.posts.length === 0) return;
+    setIsSavingAll(true);
+    try {
+      const items = result.posts.map((post) => {
+        const mappedPlatform = PLATFORM_MAP[post.platform] ?? "tiktok";
+        const title = `[${post.platform.toUpperCase()}] ${result.sourceTitle ?? "Repurposed"} — ${post.hook.slice(0, 60)}`;
+        const textContent = `${post.hook}\n\n${post.script}\n\n---\nCaption:\n${post.caption}\n\n${post.hashtags.join(" ")}`;
+        return { title, rawIdea: post.hook, platform: mappedPlatform, status: "idea" as const, textContent };
+      });
+      await createBulkMutation.mutateAsync({ items });
+      setSentPlatforms(new Set(result.posts.map(p => p.platform)));
+      setAllSaved(true);
+    } finally {
+      setIsSavingAll(false);
+    }
+  };
+
   const PLATFORM_OPTIONS = ["tiktok", "instagram", "youtube", "linkedin", "x"];
 
   return (
@@ -161,7 +266,7 @@ export default function RepurposeEngine() {
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
         <h3 className="font-semibold text-green-900 mb-1 flex items-center gap-2">
           <BookOpen className="w-4 h-4" />
-          Turn Your Books & Podcasts Into Viral Content
+          Turn Your Books &amp; Podcasts Into Viral Content
         </h3>
         <p className="text-sm text-green-700">
           Paste any chapter, transcript, or article and get platform-optimized short-form video scripts for every channel simultaneously. This is the highest-leverage feature — your 8 books contain hundreds of viral video ideas waiting to be unlocked.
@@ -253,6 +358,47 @@ export default function RepurposeEngine() {
         <div className="space-y-4">
           {result ? (
             <>
+              {/* Save all to Command Center CTA */}
+              <div className="flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Kanban className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {allSaved ? "All posts saved to Kanban!" : `${result.posts.length} posts ready`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {allSaved
+                        ? "Find them in the Idea column of the Command Center"
+                        : "Save all as draft cards in the Command Center Kanban"}
+                    </p>
+                  </div>
+                </div>
+                {allSaved ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 text-xs"
+                    onClick={() => setLocation("/command-center")}
+                  >
+                    <Kanban className="w-3.5 h-3.5 mr-1.5" />
+                    View Kanban
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="shrink-0 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={handleSaveAllToKanban}
+                    disabled={isSavingAll || createBulkMutation.isPending}
+                  >
+                    {isSavingAll ? (
+                      <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving...</>
+                    ) : (
+                      <><Kanban className="w-3.5 h-3.5 mr-1.5" />Save all to Command Center</>
+                    )}
+                  </Button>
+                )}
+              </div>
+
               {/* Key Insights */}
               {result.keyInsights?.length > 0 && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -289,7 +435,14 @@ export default function RepurposeEngine() {
               <div className="space-y-2">
                 <p className="text-sm font-semibold">{result.posts.length} Platform Posts</p>
                 {result.posts.map((post, i) => (
-                  <PostCard key={i} post={post} onCopy={handleCopy} />
+                  <PostCard
+                    key={i}
+                    post={post}
+                    onCopy={handleCopy}
+                    onSendToKanban={() => handleSaveOneToKanban(post)}
+                    isSending={sendingPlatform === post.platform}
+                    isSent={sentPlatforms.has(post.platform)}
+                  />
                 ))}
               </div>
             </>
@@ -312,38 +465,45 @@ export default function RepurposeEngine() {
               <h3 className="text-sm font-semibold">Recent Repurposing Sessions</h3>
             </div>
             <div className="space-y-2">
-              {historyQuery.data.map((r: any) => {
-                const [open, setOpen] = useState(false);
-                const parsed = r as unknown as RepurposeResult;
+              {historyQuery.data.map((r: unknown) => {
+                const parsed = r as RepurposeResult;
                 return (
-                  <div key={r.id} className="border border-border rounded-lg overflow-hidden">
-                    <button
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                      onClick={() => setOpen(!open)}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Badge variant="outline" className="text-xs shrink-0">{r.sourceType}</Badge>
-                        <span className="text-sm font-medium truncate">{r.sourceTitle ?? "Untitled"}</span>
-                        <Badge variant="secondary" className="text-xs shrink-0">{parsed.posts?.length ?? 0} posts</Badge>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
-                        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </div>
-                    </button>
-                    {open && parsed.posts && (
-                      <div className="px-4 pb-4 border-t border-border space-y-2 mt-3">
-                        {parsed.posts.map((post, i) => (
-                          <PostCard key={i} post={post} onCopy={handleCopy} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <HistoryItem key={parsed.id} r={parsed} onCopy={handleCopy} />
                 );
               })}
             </div>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// Separate component to avoid hooks-in-map issue
+function HistoryItem({ r, onCopy }: { r: RepurposeResult; onCopy: (t: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-border rounded-lg overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+        onClick={() => setOpen(!open)}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <Badge variant="outline" className="text-xs shrink-0">{r.sourceType}</Badge>
+          <span className="text-sm font-medium truncate">{r.sourceTitle ?? "Untitled"}</span>
+          <Badge variant="secondary" className="text-xs shrink-0">{r.posts?.length ?? 0} posts</Badge>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
+          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </div>
+      </button>
+      {open && r.posts && (
+        <div className="px-4 pb-4 border-t border-border space-y-2 mt-3">
+          {r.posts.map((post, i) => (
+            <PostCard key={i} post={post} onCopy={onCopy} />
+          ))}
+        </div>
       )}
     </div>
   );

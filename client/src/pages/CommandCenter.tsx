@@ -78,6 +78,8 @@ import {
   AlertCircle,
   AlertTriangle,
   BookOpen,
+  FlaskConical,
+  Star,
 } from "lucide-react";  
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -1276,9 +1278,10 @@ export default function CommandCenter() {
 
   // Buffer profiles (cached — fetched once)
   const { data: bufferProfiles = [] } = trpc.syndication.getProfiles.useQuery();
-
   // Growth cadence data
   const { data: cadenceData, refetch: refetchCadence } = trpc.growth.weeklyCadence.useQuery();
+  // Viral Studio dashboard summary
+  const { data: viralSummary } = trpc.viralStudio.getDashboardSummary.useQuery();
   const seedPillarsMutation = trpc.growth.seedPillars.useMutation({ onSuccess: () => refetchCadence() });
 
   const syndicationMutation = trpc.syndication.push.useMutation({
@@ -1910,8 +1913,67 @@ export default function CommandCenter() {
               Import responses →
             </div>
           </div>
+          {/* ── Viral Studio Quick-Access Widget ───────────────────────────────────────────── */}
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 space-y-3">
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/15 border border-amber-500/25 shrink-0">
+                  <Zap className="h-3.5 w-3.5 text-amber-400" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">Viral Studio</span>
+              </div>
+              <button
+                className="text-xs text-amber-400 hover:text-amber-300 font-medium transition-colors"
+                onClick={() => setLocation("/viral-studio")}
+              >
+                Open studio →
+              </button>
+            </div>
 
-           {/* ── Weekly Cadence Tracker ─────────────────────────────────────── */}
+            {/* Last 3 hooks */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Recent Hooks</p>
+              {viralSummary?.recentHooks && viralSummary.recentHooks.length > 0 ? (
+                viralSummary.recentHooks.map((h: { id: number; topic: string; platform: string; topPick: string | null; createdAt: Date | string }) => (
+                  <div key={h.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setLocation("/viral-studio")}>
+                    <Zap className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-foreground truncate leading-snug">{h.topPick ?? h.topic}</p>
+                      <p className="text-[10px] text-muted-foreground capitalize">{h.platform} · {new Date(h.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No hooks generated yet — go generate your first!</p>
+              )}
+            </div>
+
+            {/* Winning A/B variant */}
+            {viralSummary?.winningVariant && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Current Winning Hook</p>
+                <div className="p-2 rounded-lg bg-green-500/8 border border-green-500/25">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <FlaskConical className="w-3 h-3 text-green-400 shrink-0" />
+                    <span className="text-[10px] text-green-400 font-medium">Variant {viralSummary.winningVariant.winner} won — {viralSummary.winningVariant.testName}</span>
+                  </div>
+                  <p className="text-xs text-foreground leading-snug line-clamp-2">{viralSummary.winningVariant.winnerText}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Generate Today’s Topic shortcut */}
+            <button
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-xs font-medium text-amber-400 hover:text-amber-300"
+              onClick={() => setLocation("/viral-studio")}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              Generate Today’s Viral Topic
+            </button>
+          </div>
+
+           {/* ── Weekly Cadence Tracker ─────────────────────────────────────────────────────── */}
            {cadenceData && (
              <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-3">
                <div className="flex items-center justify-between">

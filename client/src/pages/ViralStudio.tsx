@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -36,19 +37,19 @@ const TAB_PARAM_MAP: Record<string, string> = {
 };
 
 export default function ViralStudio() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const tabParam = urlParams.get("tab") ?? "";
-  const initialTab = TAB_PARAM_MAP[tabParam] ?? "hooks";
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // useSearch() from wouter re-renders whenever the URL search string changes
+  const search = useSearch();
+  const tabParam = new URLSearchParams(search).get("tab") ?? "";
+  const resolvedTab = TAB_PARAM_MAP[tabParam] ?? "";
 
-  // When navigated with ?tab=... update the active tab
+  const [activeTab, setActiveTab] = useState(resolvedTab || "hooks");
+
+  // Reactively switch tab when URL search changes (e.g. Push All from Hook Generator)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const t = params.get("tab");
-    if (t && TAB_PARAM_MAP[t]) {
-      setActiveTab(TAB_PARAM_MAP[t]);
+    if (resolvedTab && resolvedTab !== activeTab) {
+      setActiveTab(resolvedTab);
     }
-  }, [window.location.search]);
+  }, [resolvedTab]);
 
   return (
     <DashboardLayout>

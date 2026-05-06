@@ -251,10 +251,16 @@ function BatchQueuePanel({
 
     setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "generating" } : q));
     try {
+      // Map platform to values accepted by generateScript (tiktok|instagram|youtube|linkedin)
+      const validPlatforms = ["tiktok", "instagram", "youtube", "linkedin"] as const;
+      type ValidPlatform = typeof validPlatforms[number];
+      const safePlatform: ValidPlatform = (validPlatforms as readonly string[]).includes(platform)
+        ? (platform as ValidPlatform)
+        : "tiktok";
       const result = await generateMutation.mutateAsync({
         topic: topic.trim(),
         hook: item.hook,
-        platform: platform as "tiktok",
+        platform: safePlatform,
         targetLengthSeconds: lengthSeconds,
         cta: cta || undefined,
         socialSeoKeywords: seoKeywords ? seoKeywords.split(",").map(k => k.trim()).filter(Boolean) : undefined,
@@ -484,10 +490,15 @@ export default function ScriptGenerator() {
   const handleGenerate = () => {
     if (!topic.trim()) { toast.error("Enter a topic first"); return; }
     if (!hook.trim()) { toast.error("Enter a hook first (use Hook Generator above)"); return; }
+    const validPlatforms = ["tiktok", "instagram", "youtube", "linkedin"] as const;
+    type ValidPlatform = typeof validPlatforms[number];
+    const safePlatform: ValidPlatform = (validPlatforms as readonly string[]).includes(platform)
+      ? (platform as ValidPlatform)
+      : "tiktok";
     generateMutation.mutate({
       topic: topic.trim(),
       hook: hook.trim(),
-      platform: platform as "tiktok",
+      platform: safePlatform,
       targetLengthSeconds: lengthSeconds,
       cta: cta || undefined,
       socialSeoKeywords: seoKeywords ? seoKeywords.split(",").map(k => k.trim()).filter(Boolean) : undefined,

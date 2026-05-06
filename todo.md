@@ -2046,3 +2046,20 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v162
+
+## v163 — Batch Save All, Topic Auto-fill, Hook History Edit
+
+### Script Generator
+- [x] Batch Save All to Kanban: add a "Save All to Command Center" button at the bottom of the batch queue panel that saves every completed script in one click
+- [x] Topic auto-fill: when batch arrives via URL params, read `batchTopic` param and pre-populate the Topic field so the queue is ready to run immediately
+- [x] Batch mode banner shows topic auto-fill confirmation inline
+
+### Hook Generator — Recent Generations History
+- [x] Add inline pencil-edit mode to each hook in the Recent Generations accordion (same UX as current hook cards)
+- [x] Add "Push All to Script Generator" button inside each historical generation so older batches can be re-sent with edits
+- [x] Edited hooks in history use the same editedHooks state pattern as current results
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v163

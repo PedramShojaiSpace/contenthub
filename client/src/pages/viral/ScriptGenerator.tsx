@@ -242,8 +242,45 @@ function BatchQueuePanel({
   const [queue, setQueue] = useState<BatchItem[]>(items);
   const [isRunningAll, setIsRunningAll] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [savedAll, setSavedAll] = useState(false);
 
   const generateMutation = trpc.viralStudio.generateScript.useMutation();
+
+  const PLATFORM_MAP_BATCH: Record<string, string> = {
+    tiktok: "tiktok",
+    instagram: "meta",
+    youtube: "youtube",
+    linkedin: "linkedin",
+    x: "x",
+  };
+
+  const saveAllMutation = trpc.content.createBulk.useMutation({
+    onSuccess: (data) => {
+      setSavedAll(true);
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">{data.created} scripts saved to Command Center ✓</span>
+          <span className="text-xs text-muted-foreground">Find them in the Drafting column of your Kanban board.</span>
+        </div>
+      );
+    },
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
+  });
+
+  const handleSaveAll = () => {
+    const doneItems = queue.filter((q) => q.status === "done" && q.result);
+    if (doneItems.length === 0) { toast.error("No completed scripts to save yet"); return; }
+    const kanbanPlatform = PLATFORM_MAP_BATCH[platform] ?? "tiktok";
+    saveAllMutation.mutate({
+      items: doneItems.map((q) => ({
+        title: q.result!.hook.slice(0, 80),
+        rawIdea: q.result!.hook,
+        platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
+        status: "drafting" as const,
+        textContent: q.result!.fullScript,
+      })),
+    });
+  };
 
   const generateOne = useCallback(async (index: number) => {
     const item = queue[index];
@@ -415,10 +452,28 @@ function BatchQueuePanel({
       </div>
 
       {doneCount === queue.length && queue.length > 0 && (
-        <div className="p-3 bg-green-50 border border-green-300 rounded-xl text-center">
-          <p className="text-sm font-semibold text-green-800">
-            🎉 All {queue.length} scripts generated! Expand each one above to copy or save to Command Center.
+        <div className="p-4 bg-green-50 border border-green-300 rounded-xl space-y-3">
+          <p className="text-sm font-semibold text-green-800 text-center">
+            🎉 All {queue.length} scripts generated!
           </p>
+          <Button
+            className={`w-full ${savedAll ? "bg-green-600 hover:bg-green-600 text-white cursor-default" : "bg-green-700 hover:bg-green-800 text-white"}`}
+            onClick={handleSaveAll}
+            disabled={savedAll || saveAllMutation.isPending}
+          >
+            {saveAllMutation.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving all scripts...</>
+            ) : savedAll ? (
+              <><CheckCircle2 className="w-4 h-4 mr-2" />{doneCount} scripts saved to Command Center ✓</>
+            ) : (
+              <><Kanban className="w-4 h-4 mr-2" />Save All {doneCount} Scripts to Command Center</>
+            )}
+          </Button>
+          {!savedAll && (
+            <p className="text-xs text-green-700 text-center">
+              Creates {doneCount} Drafting cards in your Kanban board — or expand individual scripts above to save selectively.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -433,15 +488,17 @@ export default function ScriptGenerator() {
   const prefillPlatform = urlParams.get("platform") ?? "";
   const prefillTopic = urlParams.get("topic") ?? "";
   const prefillFramework = urlParams.get("framework") ?? "";
-  // Batch mode: hookBatch is a JSON array of {hook, framework}
+  // Batch mode: hookBatch is a JSON array of {hook, framework, topic?}
   const prefillBatchRaw = urlParams.get("hookBatch") ?? "";
+  const prefillBatchTopic = urlParams.get("batchTopic") ?? "";
 
   const parsedBatch: Array<{ hook: string; framework: string }> = (() => {
     try { return prefillBatchRaw ? JSON.parse(prefillBatchRaw) : []; }
     catch { return []; }
   })();
 
-  const [topic, setTopic] = useState(prefillTopic);
+  // Auto-fill topic: prefer explicit topic param, then batchTopic param
+  const [topic, setTopic] = useState(prefillTopic || prefillBatchTopic);
   const [hook, setHook] = useState(prefillHook);
   const [platform, setPlatform] = useState(prefillPlatform || "tiktok");
   const [lengthSeconds, setLengthSeconds] = useState(60);
@@ -461,13 +518,14 @@ export default function ScriptGenerator() {
 
   // Clear URL params after reading
   useEffect(() => {
-    if (prefillHook || prefillPlatform || prefillTopic || prefillFramework || prefillBatchRaw) {
+    if (prefillHook || prefillPlatform || prefillTopic || prefillFramework || prefillBatchRaw || prefillBatchTopic) {
       const url = new URL(window.location.href);
       url.searchParams.delete("hook");
       url.searchParams.delete("platform");
       url.searchParams.delete("topic");
       url.searchParams.delete("framework");
       url.searchParams.delete("hookBatch");
+      url.searchParams.delete("batchTopic");
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
@@ -514,7 +572,9 @@ export default function ScriptGenerator() {
           <div className="flex items-center gap-2 text-sm text-blue-800">
             <SendHorizonal className="w-4 h-4 shrink-0" />
             <span>
-              <strong>Batch mode active:</strong> {batchItems.length} hooks from Hook Generator. Adjust settings below, then generate all scripts.
+              <strong>Batch mode active:</strong> {batchItems.length} hooks from Hook Generator.
+              {topic ? <> Topic auto-filled: <em>"{topic.slice(0, 60)}{topic.length > 60 ? "..." : ""}"</em>. </> : " "}
+              Adjust settings below, then generate all scripts.
             </span>
           </div>
           <button className="text-xs text-blue-600 hover:text-blue-800 shrink-0 font-medium" onClick={() => setBatchItems(null)}>

@@ -410,6 +410,27 @@ function HookCard({
 // ─── ResultCard (history) ─────────────────────────────────────────────────────
 function ResultCard({ result, onCopy }: { result: HookResult; onCopy: (text: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [editedHooks, setEditedHooks] = useState<Record<number, string>>({});
+  const [, setLocation] = useLocation();
+
+  const getEditedHook = (i: number) =>
+    editedHooks[i] !== undefined ? editedHooks[i] : (result.hooks[i]?.hook ?? "");
+
+  const handlePushAllHistory = () => {
+    const batch = result.hooks.map((h, i) => ({
+      hook: getEditedHook(i),
+      framework: h.framework,
+    }));
+    const params = new URLSearchParams({
+      tab: "script",
+      topic: result.topic,
+      platform: result.platform,
+      hookBatch: JSON.stringify(batch),
+      batchTopic: result.topic,
+    });
+    setLocation(`/viral-studio?${params.toString()}`);
+  };
+
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       <button
@@ -441,15 +462,29 @@ function ResultCard({ result, onCopy }: { result: HookResult; onCopy: (text: str
               <HookCard
                 key={i}
                 hook={hook}
-                editedHook={hook.hook}
+                editedHook={getEditedHook(i)}
                 topic={result.topic}
                 platform={result.platform}
                 allHooks={result.hooks}
                 onCopy={onCopy}
-                onEditChange={() => {}}
+                onEditChange={(newText) =>
+                  setEditedHooks((prev) => ({ ...prev, [i]: newText }))
+                }
               />
             ))}
           </div>
+          {/* Push All from history */}
+          <Button
+            size="sm"
+            className="w-full bg-violet-600 hover:bg-violet-700 text-white mt-2"
+            onClick={handlePushAllHistory}
+          >
+            <SendHorizonal className="w-3.5 h-3.5 mr-2" />
+            Push All {result.hooks.length} Hooks to Script Generator →
+          </Button>
+          <p className="text-xs text-muted-foreground text-center -mt-1">
+            Edit any hook above, then push the batch to generate full scripts.
+          </p>
         </div>
       )}
     </div>
@@ -510,6 +545,7 @@ export default function HookGenerator() {
       topic: result.topic,
       platform: result.platform,
       hookBatch: JSON.stringify(batch),
+      batchTopic: result.topic, // auto-fill topic field in Script Generator
     });
     if (topFramework) params.set("framework", topFramework);
     setLocation(`/viral-studio?${params.toString()}`);

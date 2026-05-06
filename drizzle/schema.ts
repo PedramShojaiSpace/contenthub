@@ -1016,3 +1016,20 @@ export const sessionScripts = mysqlTable("session_scripts", {
 });
 export type SessionScript = typeof sessionScripts.$inferSelect;
 export type InsertSessionScript = typeof sessionScripts.$inferInsert;
+
+// ── Viral Studio: Framework Performance Feedback Loop ────────────────────────
+// Tracks which hook frameworks win A/B tests per platform.
+// Updated automatically when a winner is declared in the A/B Test Lab.
+export const frameworkPerformance = mysqlTable("framework_performance", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  platform: varchar("fp_platform", { length: 32 }).notNull(),
+  framework: varchar("fp_framework", { length: 64 }).notNull(),  // contradiction|curiosityGap|specificity|socialProof|transformation
+  winCount: int("winCount").default(0).notNull(),
+  totalTests: int("totalTests").default(0).notNull(),
+  lastWonAt: timestamp("lastWonAt"),
+  createdAt: timestamp("fp_createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("fp_updatedAt").defaultNow().notNull(),
+});
+export type FrameworkPerformance = typeof frameworkPerformance.$inferSelect;
+export type InsertFrameworkPerformance = typeof frameworkPerformance.$inferInsert;

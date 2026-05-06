@@ -23,6 +23,7 @@ import {
   dmPlaybooks,
   testVariants,
   testResults,
+  frameworkPerformance,
   type HookGeneration,
   type ScriptGeneration,
   type RepurposeJob,
@@ -31,7 +32,7 @@ import {
   type TestVariant,
   type TestResult,
 } from "../drizzle/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and, sql } from "drizzle-orm";
 
 // ─── Pedram voice context ─────────────────────────────────────────────────────
 const PEDRAM_VOICE = `
@@ -920,6 +921,8 @@ export const recordTestResult = protectedProcedure
       shares: z.number().default(0),
       follows: z.number().default(0),
       dmTriggers: z.number().default(0),
+      watchTimePercent: z.number().min(0).max(100).optional(),  // 0-100%
+      ctr: z.number().min(0).max(100).optional(),               // click-through rate 0-100%
       accountHandle: z.string().optional(),
       notes: z.string().optional(),
     })
@@ -937,7 +940,12 @@ export const recordTestResult = protectedProcedure
       follows: input.follows,
       dmTriggers: input.dmTriggers,
       accountHandle: input.accountHandle ?? null,
-      notes: input.notes ?? null,
+      // Store watchTimePercent and ctr in the notes field as JSON
+      notes: JSON.stringify({
+        watchTimePercent: input.watchTimePercent ?? null,
+        ctr: input.ctr ?? null,
+        userNotes: input.notes ?? null,
+      }),
       engagementRate: input.views > 0
         ? Math.round(((input.likes + input.comments + input.shares) / input.views) * 10000) / 100
         : 0,
@@ -977,14 +985,116 @@ export const declareTestWinner = protectedProcedure
     variantId: z.number(),
     winner: z.enum(["A", "B", "C"]),
     winnerReason: z.string().optional(),
+    winnerFramework: z.string().optional(),  // e.g. "contradiction", "curiosityGap", "specificity", "socialProof", "transformation"
+    userId: z.number().optional(),
   }))
-  .mutation(async ({ input }) => {
+  .mutation(async ({ input, ctx }) => {
     const db = await getDb();
     if (!db) throw new Error("DB unavailable");
+
+    // Update the test variant
     await db.update(testVariants)
       .set({ status: "completed", winner: input.winner, winnerReason: input.winnerReason ?? null })
       .where(eq(testVariants.id, input.variantId));
+
+    // If a framework is provided, upsert the framework_performance record
+    if (input.winnerFramework) {
+      const [testRow] = await db.select()
+        .from(testVariants)
+        .where(eq(testVariants.id, input.variantId))
+        .limit(1);
+
+      if (testRow) {
+        const uid = ctx.user.id;
+        const platform = testRow.platform;
+        const framework = input.winnerFramework;
+
+        // Check if a record already exists
+        const existing = await db.select()
+          .from(frameworkPerformance)
+          .where(and(
+            eq(frameworkPerformance.userId, uid),
+            eq(frameworkPerformance.platform, platform),
+            eq(frameworkPerformance.framework, framework)
+          ))
+          .limit(1);
+
+        if (existing.length > 0) {
+          // Increment winCount and totalTests
+          await db.update(frameworkPerformance)
+            .set({
+              winCount: sql`${frameworkPerformance.winCount} + 1`,
+              totalTests: sql`${frameworkPerformance.totalTests} + 1`,
+              lastWonAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(frameworkPerformance.id, existing[0].id));
+        } else {
+          await db.insert(frameworkPerformance).values({
+            userId: uid,
+            platform,
+            framework,
+            winCount: 1,
+            totalTests: 1,
+            lastWonAt: new Date(),
+          });
+        }
+
+        // Also increment totalTests for all other frameworks on this platform that were in the test
+        // (they participated but didn't win)
+        const otherFrameworks = ["contradiction", "curiosityGap", "specificity", "socialProof", "transformation"]
+          .filter(f => f !== framework);
+        // We only increment totalTests for frameworks that have existing records (they've been tested before)
+        for (const otherFw of otherFrameworks) {
+          const otherExisting = await db.select()
+            .from(frameworkPerformance)
+            .where(and(
+              eq(frameworkPerformance.userId, uid),
+              eq(frameworkPerformance.platform, platform),
+              eq(frameworkPerformance.framework, otherFw)
+            ))
+            .limit(1);
+          if (otherExisting.length > 0) {
+            await db.update(frameworkPerformance)
+              .set({
+                totalTests: sql`${frameworkPerformance.totalTests} + 1`,
+                updatedAt: new Date(),
+              })
+              .where(eq(frameworkPerformance.id, otherExisting[0].id));
+          }
+        }
+      }
+    }
+
     return { success: true };
+  });
+
+// Returns top 3 frameworks per platform ordered by win rate
+export const getTopFrameworks = protectedProcedure
+  .input(z.object({ platform: z.string().optional() }))
+  .query(async ({ input, ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db.select()
+      .from(frameworkPerformance)
+      .where(
+        input.platform
+          ? and(
+              eq(frameworkPerformance.userId, ctx.user.id),
+              eq(frameworkPerformance.platform, input.platform)
+            )
+          : eq(frameworkPerformance.userId, ctx.user.id)
+      )
+      .orderBy(desc(frameworkPerformance.winCount))
+      .limit(10);
+    // Sort by win rate (winCount / totalTests)
+    return rows
+      .map(r => ({
+        ...r,
+        winRate: r.totalTests > 0 ? Math.round((r.winCount / r.totalTests) * 100) : 0,
+      }))
+      .sort((a, b) => b.winRate - a.winRate)
+      .slice(0, 3);
   });
 
 // ─── Dashboard Summary (for Command Center widget) ──────────────────────────
@@ -1064,5 +1174,6 @@ export const viralStudioRouter = router({
   recordTestResult,
   getTestVariants,
   declareTestWinner,
+  getTopFrameworks,
   getDashboardSummary,
 });

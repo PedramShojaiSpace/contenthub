@@ -1969,4 +1969,35 @@ After FFmpeg stitching completes in the Video Variant Factory, auto-create one A
 ### Quality
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass
-- [ ] Save checkpoint
+- [x] Save checkpoint
+
+## v160 — A/B Test Lab Performance Data + Hook Generator Framework Feedback Loop
+
+### Goal
+Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When a winner is declared, log the winning hook's framework and platform to a new framework_performance table. The Hook Generator reads this table and surfaces the top-performing framework as a highlighted recommendation.
+
+### DB Schema
+- [x] Add performance metric columns to test_variants: viewCountA, viewCountB, watchTimeA, watchTimeB, ctrA, ctrB (all nullable integers/floats)
+- [x] Add framework_performance table: id, userId, platform, framework, winCount, totalTests, lastWonAt
+- [x] Run pnpm db:push
+
+### Server
+- [x] Add viralStudio.recordPerformance procedure: update viewCount/watchTime/ctr for variantA or variantB (stored as JSON in notes field)
+- [x] Update viralStudio.declareWinner: after declaring winner, upsert framework_performance row for the winning framework+platform
+- [x] Add viralStudio.getTopFrameworks procedure: returns top 3 frameworks per platform ordered by winCount
+
+### UI — A/B Test Lab
+- [x] Add "Record Performance" expandable section per test card with view count, watch time %, CTR % inputs for each variant
+- [x] Show performance metrics on the test card when they exist
+- [x] Winner declaration now shows which framework won and logs it (winnerFramework dropdown in dialog)
+- [x] Show "Data-driven winner" badge when winner was declared with performance data
+
+### UI — Hook Generator
+- [x] Add viralStudio.getTopFrameworks query at top of HookGenerator
+- [x] Show "Top performing for [platform]" badge on the framework selector button that matches the top framework
+- [x] Add a "Recommended" chip on the framework with the highest win rate for the selected platform
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint

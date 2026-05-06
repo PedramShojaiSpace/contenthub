@@ -180,12 +180,14 @@ function HookCard({
   platform,
   allHooks,
   onCopy,
+  topFramework,
 }: {
   hook: Hook;
   topic: string;
   platform: string;
   allHooks: Hook[];
   onCopy: (text: string) => void;
+  topFramework?: string | null;
 }) {
   const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(false);
@@ -221,15 +223,22 @@ function HookCard({
     setLocation(`/viral-studio?${params.toString()}`);
   };
 
+  const isTopFramework = topFramework && hook.framework.toLowerCase() === topFramework.toLowerCase();
+
   return (
     <>
       <div className="border border-border rounded-lg p-4 hover:border-violet-300 transition-colors">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Badge variant="outline" className={`text-xs capitalize ${colorClass}`}>
                 {hook.framework}
               </Badge>
+              {isTopFramework && (
+                <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-xs">
+                  <Star className="w-3 h-3 mr-1 fill-amber-500" />Top performing
+                </Badge>
+              )}
               <div className="flex items-center gap-0.5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
@@ -416,6 +425,10 @@ export default function HookGenerator() {
 
   const historyQuery = trpc.viralStudio.getRecentHooks.useQuery({ limit: 20 });
 
+  // Top-performing frameworks for the selected platform (from A/B Test Lab wins)
+  const topFrameworksQuery = trpc.viralStudio.getTopFrameworks.useQuery({ platform });
+  const topFramework = topFrameworksQuery.data?.[0]?.framework ?? null;
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
@@ -484,6 +497,12 @@ export default function HookGenerator() {
                   ))}
                 </SelectContent>
               </Select>
+              {topFramework && (
+                <p className="text-xs text-amber-700 flex items-center gap-1 mt-1">
+                  <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                  Top-performing framework for {platform}: <span className="font-semibold capitalize">{topFramework}</span>
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -541,6 +560,7 @@ export default function HookGenerator() {
                     platform={result.platform}
                     allHooks={result.hooks}
                     onCopy={handleCopy}
+                    topFramework={topFramework}
                   />
                 ))}
               </div>

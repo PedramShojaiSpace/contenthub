@@ -165,38 +165,78 @@ export default function VideoVariantFactory() {
       formData.append("clipType", clipType);
       formData.append("clipOrder", String(clipOrder));
 
-      // Use XMLHttpRequest for progress tracking
-      const result = await new Promise<{ clipId: number; s3Url: string; filename: string }>((resolve, reject) => {
+      // XHR for upload progress tracking.
+      // Server responds 202 immediately after receiving the file bytes (avoids
+      // Cloud Run request timeouts on large body clips). S3 upload + DB insert
+      // happen in the background. We poll until the clip appears in the server list.
+      await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener("progress", (e) => {
           if (e.lengthComputable) {
             const pct = Math.round((e.loaded / e.total) * 100);
-            setUploadingClips(prev => prev.map(c => c.id === tempId ? { ...c, progress: pct } : c));
+            // Cap at 90% — remaining 10% covers server-side S3 processing
+            setUploadingClips(prev => prev.map(c =>
+              c.id === tempId ? { ...c, progress: Math.min(pct, 90) } : c
+            ));
           }
         });
         xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(JSON.parse(xhr.responseText));
+          if (xhr.status === 200 || xhr.status === 202) {
+            resolve();
           } else {
-            reject(new Error(JSON.parse(xhr.responseText)?.error ?? "Upload failed"));
+            try {
+              reject(new Error(JSON.parse(xhr.responseText)?.error ?? "Upload failed"));
+            } catch {
+              reject(new Error(`Upload failed (${xhr.status})`));
+            }
           }
         });
         xhr.addEventListener("error", () => reject(new Error("Network error")));
+        xhr.addEventListener("timeout", () => reject(new Error("Upload timed out")));
         xhr.open("POST", "/api/upload/video-clip");
         xhr.withCredentials = true;
+        xhr.timeout = 10 * 60 * 1000; // 10 min max for very large files
         xhr.send(formData);
       });
 
-      setUploadingClips(prev => prev.filter(c => c.id !== tempId));
-      setUploadedClips(prev => [...prev, {
-        clipId: result.clipId,
-        s3Url: result.s3Url,
-        filename: result.filename,
-        clipType,
-        clipOrder,
-      }]);
-      toast.success(`${clipTypeLabel(clipType, clipOrder)} uploaded`);
-      utils.videoVariant.getJob.invalidate({ jobId: activeJobId });
+      // File received — show "processing" at 95% while S3 upload finishes in background
+      setUploadingClips(prev => prev.map(c =>
+        c.id === tempId ? { ...c, progress: 95 } : c
+      ));
+
+      // Poll every 2s for up to 3 minutes until the clip appears in the server list
+      const maxWaitMs = 3 * 60 * 1000;
+      const pollInterval = 2000;
+      const startTime = Date.now();
+      let found = false;
+
+      while (Date.now() - startTime < maxWaitMs) {
+        await new Promise(r => setTimeout(r, pollInterval));
+        const freshData = await utils.videoVariant.getJob.fetch({ jobId: activeJobId });
+        const serverClips: any[] = freshData?.clips ?? [];
+        // For hooks match by clipOrder; for body/cta just match by type
+        const newClip = serverClips.find((c: any) =>
+          c.clipType === clipType &&
+          (clipType !== "hook" || c.clipOrder === clipOrder)
+        );
+        if (newClip) {
+          found = true;
+          setUploadingClips(prev => prev.filter(c => c.id !== tempId));
+          utils.videoVariant.getJob.invalidate({ jobId: activeJobId });
+          toast.success(`${clipTypeLabel(clipType, clipOrder)} ready`);
+          break;
+        }
+      }
+
+      if (!found) {
+        setUploadingClips(prev => prev.map(c =>
+          c.id === tempId
+            ? { ...c, error: "Processing timed out — please try again", progress: 0 }
+            : c
+        ));
+        toast.error("Clip processing timed out. Please try again.");
+      }
+
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
       setUploadingClips(prev => prev.map(c => c.id === tempId ? { ...c, error: msg, progress: 0 } : c));
@@ -240,15 +280,15 @@ export default function VideoVariantFactory() {
   // ── Start processing ───────────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!activeJobId) return;
-    const hooks = uploadedClips.filter(c => c.clipType === "hook");
-    const body  = uploadedClips.filter(c => c.clipType === "body");
-    if (hooks.length === 0) { toast.error("Upload at least one hook clip"); return; }
-    if (body.length === 0)  { toast.error("Upload a body clip"); return; }
+    // Use the merged clips list (server + pending local) so the Generate button
+    // works even if the body clip was just uploaded and is still being processed
+    if (hookClips.length === 0) { toast.error("Upload at least one hook clip"); return; }
+    if (bodyClips.length === 0) { toast.error("Upload a body clip"); return; }
 
     try {
       await startProcessingMutation.mutateAsync({ jobId: activeJobId });
       setPollEnabled(true);
-      toast.success(`Generating ${hooks.length} variant${hooks.length > 1 ? "s" : ""}…`);
+      toast.success(`Generating ${hookClips.length} variant${hookClips.length > 1 ? "s" : ""}…`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to start";
       toast.error(msg);

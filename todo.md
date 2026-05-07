@@ -2254,3 +2254,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add "Replace Body Clip" button so user can swap body without deleting the job
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
+
+## v172 — Video Variant Factory Body Clip Stall Fix (Deep Fix)
+- [x] Diagnose root cause: Cloud Run times out the HTTP connection before server can respond after S3 upload
+- [x] Rewrite videoUploadHandler to respond 202 immediately after multer receives the file
+- [x] S3 upload + DB insert now run in processUploadInBackground() after response is sent
+- [x] Frontend XHR now accepts 202 as success and enters a polling loop (every 2s, up to 3 min)
+- [x] Progress bar caps at 90% during transfer, jumps to 95% while server processes, clears when clip appears
+- [x] handleGenerate updated to use merged hookClips/bodyClips derived state (not just uploadedClips)
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)

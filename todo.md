@@ -2274,3 +2274,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add ManyChat Wizard to sidebar nav and App.tsx routes
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287+)
+
+## v174 — Video Upload Middleware Order Fix
+- [x] Move /api/upload/video-clip route BEFORE express.json() body parser in index.ts
+- [x] Add multer error handler middleware for 413/400 errors with JSON response
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)

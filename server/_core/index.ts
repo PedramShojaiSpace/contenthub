@@ -34,7 +34,24 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
+
+  // ── Video upload MUST be registered BEFORE body parsers ──────────────────────
+  // express.json() / urlencoded() will consume the request stream if they run
+  // first on a multipart request, causing multer to fail mid-upload.
+  app.post("/api/upload/video-clip", videoUploadMiddleware, handleVideoClipUpload);
+
+  // Multer error handler — returns JSON so the client sees the real cause
+  app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err && err.code && err.code.startsWith('LIMIT_')) {
+      return res.status(413).json({ error: `File too large: ${err.message}` });
+    }
+    if (err && err.message === 'Only MP4 files are accepted') {
+      return res.status(400).json({ error: err.message });
+    }
+    next(err);
+  });
+
+  // Configure body parser with larger size limit for JSON/form endpoints
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
@@ -44,8 +61,6 @@ async function startServer() {
   app.post("/api/ingest/research-report", handleIngestResearchReport);
   // Daily newsfeed refresh — called by Manus scheduled task at 7 AM
   app.post("/api/scheduled/newsfeed-refresh", handleNewsfeedRefresh);
-  // Video Variant Factory — multipart MP4 upload endpoint
-  app.post("/api/upload/video-clip", videoUploadMiddleware, handleVideoClipUpload);
   // tRPC API
   app.use(
     "/api/trpc",

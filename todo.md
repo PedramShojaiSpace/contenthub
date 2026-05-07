@@ -2226,3 +2226,23 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v169
+
+## v170 — Analytics Dashboard Platform Comparison Chart
+
+### Server
+- [x] Add getAllPlatformFrameworks procedure — returns all framework_performance rows for user, grouped by platform, with winRate computed
+- [x] Register procedure in viralStudioRouter exports
+
+### Analytics Dashboard UI
+- [x] Add PlatformComparisonChart component below the existing FrameworkChart
+- [x] Grouped bar chart: X-axis = framework names, grouped bars per platform (TikTok/IG/YouTube/LinkedIn/X)
+- [x] Each platform gets a distinct color; Legend shows platform colors
+- [x] Platform toggle pills to show/hide individual platforms from the chart
+- [x] Tooltip shows: platform, framework, win rate %, wins/tests
+- [x] Empty state if no cross-platform data yet
+- [x] "Best framework per platform" summary table below chart
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v170

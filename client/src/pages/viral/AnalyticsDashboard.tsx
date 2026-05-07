@@ -7,10 +7,11 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   BarChart3, Copy, Loader2, TrendingUp, TrendingDown, Minus,
-  Star, ArrowRight, RefreshCw, FlaskConical,
+  Star, ArrowRight, RefreshCw, FlaskConical, LayoutGrid,
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Cell, Legend,
 } from "recharts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,8 +54,20 @@ const PLATFORM_COLORS: Record<string, string> = {
   x: "bg-gray-100 text-gray-700 border-gray-200",
 };
 
-const PLATFORMS = ["all", "tiktok", "instagram", "youtube", "linkedin", "x"] as const;
-type PlatformFilter = (typeof PLATFORMS)[number];
+// Recharts bar colors per platform (hex for recharts)
+const PLATFORM_BAR_COLORS: Record<string, string> = {
+  tiktok: "#ec4899",    // pink-500
+  instagram: "#a855f7", // purple-500
+  youtube: "#ef4444",   // red-500
+  linkedin: "#3b82f6",  // blue-500
+  x: "#6b7280",         // gray-500
+};
+
+const PLATFORMS_ORDERED = ["tiktok", "instagram", "youtube", "linkedin", "x"] as const;
+type Platform = (typeof PLATFORMS_ORDERED)[number];
+
+const PLATFORMS_FILTER = ["all", ...PLATFORMS_ORDERED] as const;
+type PlatformFilter = (typeof PLATFORMS_FILTER)[number];
 
 const FRAMEWORK_BAR_COLORS: Record<string, string> = {
   contradiction: "#ef4444",
@@ -67,6 +80,14 @@ const FRAMEWORK_BAR_COLORS: Record<string, string> = {
   socialproof: "#06b6d4",
   transformation: "#f97316",
 };
+
+// Normalize framework keys to display labels
+function fwLabel(fw: string): string {
+  return fw
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (s) => s.toUpperCase())
+    .trim();
+}
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 function StatCard({ stat }: { stat: PlatformStat }) {
@@ -106,7 +127,7 @@ function StatCard({ stat }: { stat: PlatformStat }) {
   );
 }
 
-// ─── FrameworkChart ───────────────────────────────────────────────────────────
+// ─── FrameworkChart (single-platform) ─────────────────────────────────────────
 function FrameworkChart() {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
 
@@ -115,10 +136,7 @@ function FrameworkChart() {
   } as any);
 
   const data = (query.data ?? []).map((row: any) => ({
-    name: row.framework
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (s: string) => s.toUpperCase())
-      .trim(),
+    name: fwLabel(row.framework),
     rawName: row.framework,
     winRate: row.totalTests > 0 ? Math.round((row.winCount / row.totalTests) * 100) : 0,
     wins: row.winCount,
@@ -136,7 +154,7 @@ function FrameworkChart() {
           </CardTitle>
           {/* Platform filter pills */}
           <div className="flex rounded-lg border border-border overflow-hidden text-xs">
-            {PLATFORMS.map((p) => (
+            {PLATFORMS_FILTER.map((p) => (
               <button
                 key={p}
                 onClick={() => setPlatformFilter(p)}
@@ -223,6 +241,216 @@ function FrameworkChart() {
   );
 }
 
+// ─── PlatformComparisonChart ──────────────────────────────────────────────────
+// Grouped bar chart: X-axis = framework, one bar per platform, side by side.
+function PlatformComparisonChart() {
+  const [visiblePlatforms, setVisiblePlatforms] = useState<Set<string>>(
+    new Set(PLATFORMS_ORDERED)
+  );
+
+  const query = trpc.viralStudio.getAllPlatformFrameworks.useQuery();
+
+  const rawRows: Array<{ platform: string; framework: string; winRate: number; winCount: number; totalTests: number }> =
+    query.data ?? [];
+
+  // Build a set of all unique frameworks present in the data
+  const allFrameworks = Array.from(new Set(rawRows.map((r) => r.framework)));
+
+  // Build grouped chart data: one entry per framework, with a key per platform
+  const chartData = allFrameworks.map((fw) => {
+    const entry: Record<string, any> = { framework: fwLabel(fw), rawFramework: fw };
+    for (const p of PLATFORMS_ORDERED) {
+      const row = rawRows.find((r) => r.framework === fw && r.platform === p);
+      entry[p] = row?.winRate ?? 0;
+      entry[`${p}_wins`] = row?.winCount ?? 0;
+      entry[`${p}_tests`] = row?.totalTests ?? 0;
+    }
+    return entry;
+  });
+
+  // Best framework per platform summary
+  const bestPerPlatform: Array<{ platform: string; framework: string; winRate: number }> =
+    PLATFORMS_ORDERED.map((p) => {
+      const rows = rawRows.filter((r) => r.platform === p);
+      if (rows.length === 0) return null;
+      const best = rows.reduce((a, b) => (a.winRate >= b.winRate ? a : b));
+      return { platform: p, framework: best.framework, winRate: best.winRate };
+    }).filter(Boolean) as Array<{ platform: string; framework: string; winRate: number }>;
+
+  const togglePlatform = (p: string) => {
+    setVisiblePlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) {
+        if (next.size === 1) return prev; // keep at least one
+        next.delete(p);
+      } else {
+        next.add(p);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4 text-emerald-500" />
+            Platform Comparison
+            <span className="text-xs font-normal text-muted-foreground">
+              — framework win rates across all platforms
+            </span>
+          </CardTitle>
+          {/* Platform toggle pills */}
+          <div className="flex flex-wrap gap-1">
+            {PLATFORMS_ORDERED.map((p) => {
+              const active = visiblePlatforms.has(p);
+              return (
+                <button
+                  key={p}
+                  onClick={() => togglePlatform(p)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize border transition-all ${
+                    active
+                      ? "text-white border-transparent"
+                      : "bg-background text-muted-foreground border-border opacity-50"
+                  }`}
+                  style={active ? { background: PLATFORM_BAR_COLORS[p] } : undefined}
+                >
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {query.isLoading ? (
+          <div className="flex items-center justify-center h-48">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 text-center">
+            <LayoutGrid className="w-8 h-8 text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground">No cross-platform data yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Run A/B tests on multiple platforms and declare winners to see comparisons here
+            </p>
+          </div>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 4, right: 8, left: -16, bottom: 4 }}
+                barCategoryGap="20%"
+                barGap={2}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="framework"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(v) => `${v}%`}
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tickLine={false}
+                  domain={[0, 100]}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div
+                        className="rounded-lg border border-border bg-popover p-3 shadow-md text-xs space-y-1"
+                        style={{ minWidth: 160 }}
+                      >
+                        <p className="font-semibold text-foreground mb-1">{label}</p>
+                        {payload.map((entry: any) => {
+                          const p = entry.dataKey as string;
+                          const wins = entry.payload[`${p}_wins`];
+                          const tests = entry.payload[`${p}_tests`];
+                          if (!visiblePlatforms.has(p)) return null;
+                          return (
+                            <div key={p} className="flex items-center gap-2">
+                              <span
+                                className="w-2 h-2 rounded-sm shrink-0"
+                                style={{ background: PLATFORM_BAR_COLORS[p] }}
+                              />
+                              <span className="capitalize text-muted-foreground">{p}:</span>
+                              <span className="font-medium text-foreground ml-auto">
+                                {entry.value}%
+                                {tests > 0 && (
+                                  <span className="text-muted-foreground font-normal ml-1">
+                                    ({wins}/{tests})
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }}
+                />
+                <Legend
+                  formatter={(value) => (
+                    <span className="text-xs capitalize text-muted-foreground">{value}</span>
+                  )}
+                />
+                {PLATFORMS_ORDERED.filter((p) => visiblePlatforms.has(p)).map((p) => (
+                  <Bar
+                    key={p}
+                    dataKey={p}
+                    name={p}
+                    fill={PLATFORM_BAR_COLORS[p]}
+                    radius={[3, 3, 0, 0]}
+                    maxBarSize={28}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+
+            {/* Best framework per platform summary table */}
+            {bestPerPlatform.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  Best Framework Per Platform
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {bestPerPlatform.map(({ platform, framework, winRate }) => (
+                    <div
+                      key={platform}
+                      className="rounded-lg border border-border p-2.5 text-center space-y-1"
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ background: PLATFORM_BAR_COLORS[platform] ?? "#6b7280" }}
+                        />
+                        <span className="text-xs font-medium capitalize text-foreground">
+                          {platform}
+                        </span>
+                      </div>
+                      <p
+                        className="text-xs font-semibold"
+                        style={{ color: FRAMEWORK_BAR_COLORS[framework.toLowerCase()] ?? "#8b5cf6" }}
+                      >
+                        {fwLabel(framework)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{winRate}% win rate</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function AnalyticsDashboard() {
   const [report, setReport] = useState<AnalyticsReport | null>(null);
@@ -258,12 +486,15 @@ export default function AnalyticsDashboard() {
           Performance Analytics & Strategy Narrative
         </h3>
         <p className="text-sm text-cyan-700">
-          Generate a monthly performance report with AI-written narrative: what worked, what to double down on, what to drop, and a concrete action plan for next week. The framework win-rate chart below is populated automatically as you declare winners in the A/B Test Lab.
+          Generate a monthly performance report with AI-written narrative: what worked, what to double down on, what to drop, and a concrete action plan for next week. The framework win-rate charts below are populated automatically as you declare winners in the A/B Test Lab.
         </p>
       </div>
 
-      {/* Framework Win-Rate Chart — always visible */}
+      {/* Framework Win-Rate Chart — single platform filter */}
       <FrameworkChart />
+
+      {/* Platform Comparison Chart — all platforms side by side */}
+      <PlatformComparisonChart />
 
       {/* Controls */}
       <div className="flex items-center gap-3 flex-wrap">

@@ -1387,6 +1387,25 @@ export const saveTopicHistory = protectedProcedure
     return { topics: updated };
   });
 
+// ─── getAllPlatformFrameworks ────────────────────────────────────────────────
+// Returns every framework_performance row for the user, grouped by platform.
+// Used by the Analytics Dashboard platform comparison chart.
+export const getAllPlatformFrameworks = protectedProcedure
+  .query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [] as Array<{ platform: string; framework: string; winCount: number; totalTests: number; winRate: number }>;
+    const rows = await db.select()
+      .from(frameworkPerformance)
+      .where(eq(frameworkPerformance.userId, ctx.user.id));
+    return rows.map(r => ({
+      platform: r.platform,
+      framework: r.framework,
+      winCount: r.winCount,
+      totalTests: r.totalTests,
+      winRate: r.totalTests > 0 ? Math.round((r.winCount / r.totalTests) * 100) : 0,
+    }));
+  });
+
 // ─── getTopicHistory ──────────────────────────────────────────────────────────
 export const getTopicHistory = protectedProcedure
   .query(async ({ ctx }) => {
@@ -1425,4 +1444,5 @@ export const viralStudioRouter = router({
   suggestPersonas,
   saveTopicHistory,
   getTopicHistory,
+  getAllPlatformFrameworks,
 });

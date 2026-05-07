@@ -2202,3 +2202,27 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v168
+
+## v169 — Keyword-Reply CTAs + UTM Code Generator
+
+### Video Production Modal — Keyword-Reply CTAs
+- [x] Added CtaKeywordPanel component below the CTA ScriptCard in VideoProductionSession
+- [x] Auto-suggests keyword from the session idea (first meaningful word, uppercased)
+- [x] 3 platform-specific CTA templates per platform (TikTok/IG/YouTube/LinkedIn/X/Meta)
+- [x] Keyword input (all-caps enforced, max 20 chars)
+- [x] Template selector shows all 3 options with live preview
+- [x] Final CTA copy shown with one-click copy button
+- [x] UTM hint linking to UTM Code Generator in Strategy
+
+### UTM Code Generator
+- [x] UTM Generator already existed at /utm with full taxonomy
+- [x] Added VIDEO_KEYWORD_PRESETS section: 4 platform paths (TikTok/IG/YouTube/LinkedIn) with keyword-reply content type
+- [x] Keyword-Reply Paths card shown prominently at top with sky-blue styling
+- [x] Instructions: select path → enter keyword in Term field → keyword becomes utm_term in GA4
+- [x] MessageSquare icon imported and used in the new card
+- [x] applyVideoPreset handler clears term field so user enters their keyword
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v169

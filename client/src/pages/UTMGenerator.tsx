@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Trash2, Link2, Zap, Download } from "lucide-react";
+import { Copy, Check, Trash2, Link2, Zap, Download, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── UTM TAXONOMY ─────────────────────────────────────────────────────────────
@@ -96,6 +96,46 @@ const CONTENT_PRESETS: Record<string, string[]> = {
   email: ["sequence-email", "broadcast", "welcome-email"],
   newsletter: ["weekly-digest", "promo-blast"],
 };
+
+// Keyword-reply UTM path presets for Video Production sessions
+const VIDEO_KEYWORD_PRESETS = [
+  {
+    label: "TikTok Keyword → IC Opt-in",
+    src: "tiktok",
+    med: "organic-social",
+    cmp: "ic-free-screening",
+    cnt: "keyword-reply",
+    dest: "https://theacademy.theurbanmonk.com/ic-interconnected-free-screening-Meta",
+    termHint: "e.g. ENERGY, SLEEP, GUT",
+  },
+  {
+    label: "IG Reel Keyword → IC Opt-in",
+    src: "instagram",
+    med: "organic-social",
+    cmp: "ic-free-screening",
+    cnt: "keyword-reply",
+    dest: "https://theacademy.theurbanmonk.com/ic-interconnected-free-screening-Meta",
+    termHint: "e.g. ENERGY, SLEEP, GUT",
+  },
+  {
+    label: "YouTube Keyword → Upstream Webinar",
+    src: "youtube",
+    med: "video",
+    cmp: "upstream-webinar",
+    cnt: "keyword-reply",
+    dest: "https://upstream.theurbanmonk.com",
+    termHint: "e.g. HEALTH, STRESS, FOCUS",
+  },
+  {
+    label: "LinkedIn Keyword → Upstream Course",
+    src: "linkedin",
+    med: "organic-social",
+    cmp: "upstream-course",
+    cnt: "keyword-reply",
+    dest: "https://get.theurbanmonk.com",
+    termHint: "e.g. UPSTREAM, COURSE, HEALTH",
+  },
+];
 
 const QUICK_PRESETS = [
   {
@@ -235,6 +275,15 @@ export default function UTMGenerator() {
     setDestination(p.dest);
   };
 
+  const applyVideoPreset = (p: typeof VIDEO_KEYWORD_PRESETS[0]) => {
+    handleSourceChange(p.src);
+    setCampaign(p.cmp);
+    setContent(p.cnt);
+    setDestination(p.dest);
+    // Don't auto-fill term — user must enter their keyword
+    setTerm("");
+  };
+
   const contentOptions = CONTENT_PRESETS[source] || [];
 
   return (
@@ -254,6 +303,34 @@ export default function UTMGenerator() {
             Links are saved to your persistent history.
           </p>
         </div>
+
+        {/* Video Keyword Reply Presets */}
+        <Card className="bg-sky-950/30 border-sky-500/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-sky-300 flex items-center gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5 text-sky-400" />
+              Video Keyword-Reply Paths
+              <span className="text-xs font-normal text-sky-400/70 ml-1">— select a path, then enter your CTA keyword in the Term field</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {VIDEO_KEYWORD_PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => applyVideoPreset(p)}
+                  className="text-left text-xs border border-sky-500/30 rounded-md px-3 py-2.5 hover:bg-sky-900/40 hover:border-sky-400/50 transition-colors leading-tight bg-sky-950/20"
+                >
+                  <span className="text-sky-200 font-medium block">{p.label}</span>
+                  <span className="text-sky-400/60 mt-0.5 block">{p.termHint}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-sky-400/50 mt-3">
+              After selecting a path, enter your CTA keyword (e.g. <code className="bg-sky-900/40 px-1 rounded font-mono">ENERGY</code>) in the <strong className="text-sky-300/70">Term</strong> field below. The keyword becomes <code className="bg-sky-900/40 px-1 rounded font-mono">utm_term</code> so you can track which keyword drove each conversion in GA4.
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Quick Presets */}
         <Card className="bg-card border-border">

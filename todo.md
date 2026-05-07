@@ -2140,3 +2140,30 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v166
+
+## v167 — Persona Persistence, Batch Persona Auto-fill, Topic Suggestions
+
+### Persona Persistence
+- [x] Add viralStudio.savePersona procedure: upsert a user_preferences row with lastPersona field
+- [x] Add viralStudio.getPersona procedure: return the saved persona for the current user
+- [x] HookGenerator: on mount, load saved persona; on persona change, debounce-save to server
+- [x] ScriptGenerator: on mount, load saved persona; on persona change, debounce-save to server
+
+### Script Generator — Batch Persona Auto-fill
+- [x] Read batchPersona URL param in ScriptGenerator main component
+- [x] Pass batchPersona into BatchQueuePanel as a prop
+- [x] Wire batchPersona into the generateOne mutation call (targetPersona field)
+- [x] batchPersona cleared from URL after reading
+
+### Hook Generator — Topic Suggestions
+- [x] Add viralStudio.suggestTopics procedure: given platform + persona, return 5 topic ideas
+- [x] Add "Suggest topics" button next to the Topic field label (violet, with Zap icon)
+- [x] Clicking shows an inline panel with 5 AI-generated topic cards (topic + angle)
+- [x] Clicking a topic fills the Topic textarea and closes the panel
+- [x] Dismiss (X) button on the suggestions panel
+- [x] Show loading spinner on the button while AI generates
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v167

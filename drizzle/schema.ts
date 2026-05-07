@@ -1033,3 +1033,14 @@ export const frameworkPerformance = mysqlTable("framework_performance", {
 });
 export type FrameworkPerformance = typeof frameworkPerformance.$inferSelect;
 export type InsertFrameworkPerformance = typeof frameworkPerformance.$inferInsert;
+
+// ── Viral Studio: User Preferences ───────────────────────────────────────────
+// Persists per-user settings like last-used persona so they pre-fill on next visit.
+export const viralUserPreferences = mysqlTable("viral_user_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  lastPersona: varchar("lastPersona", { length: 512 }),
+  updatedAt: timestamp("vup_updatedAt").defaultNow().notNull(),
+});
+export type ViralUserPreferences = typeof viralUserPreferences.$inferSelect;
+export type InsertViralUserPreferences = typeof viralUserPreferences.$inferInsert;

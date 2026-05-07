@@ -236,6 +236,7 @@ function BatchQueuePanel({
   lengthSeconds,
   cta,
   seoKeywords,
+  persona,
   onClearBatch,
   onCopy,
   autoStart,
@@ -246,6 +247,7 @@ function BatchQueuePanel({
   lengthSeconds: number;
   cta: string;
   seoKeywords: string;
+  persona?: string;
   onClearBatch: () => void;
   onCopy: (text: string) => void;
   autoStart?: boolean;
@@ -346,13 +348,14 @@ function BatchQueuePanel({
         targetLengthSeconds: lengthSeconds,
         cta: cta || undefined,
         socialSeoKeywords: seoKeywords ? seoKeywords.split(",").map(k => k.trim()).filter(Boolean) : undefined,
+        targetPersona: persona || undefined,
       });
       setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "done", result: result as unknown as ScriptResult } : q));
       setExpandedIndex(index);
     } catch (err: any) {
       setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "error", error: err.message } : q));
     }
-  }, [queue, topic, platform, lengthSeconds, cta, seoKeywords, generateMutation]);
+  }, [queue, topic, platform, lengthSeconds, cta, seoKeywords, persona, generateMutation]);
 
   const handleGenerateAll = async () => {
     setIsRunningAll(true);
@@ -560,6 +563,7 @@ export default function ScriptGenerator() {
   // Batch mode: hookBatch is a JSON array of {hook, framework, topic?}
   const prefillBatchRaw = urlParams.get("hookBatch") ?? "";
   const prefillBatchTopic = urlParams.get("batchTopic") ?? "";
+  const prefillBatchPersona = urlParams.get("batchPersona") ?? "";
 
   const parsedBatch: Array<{ hook: string; framework: string }> = (() => {
     try { return prefillBatchRaw ? JSON.parse(prefillBatchRaw) : []; }
@@ -573,7 +577,7 @@ export default function ScriptGenerator() {
   const [lengthSeconds, setLengthSeconds] = useState(60);
   const [cta, setCta] = useState("Comment 'MONK' below and I'll send you the full guide");
   const [seoKeywords, setSeoKeywords] = useState("");
-  const [persona, setPersona] = useState("");
+  const [persona, setPersona] = useState(prefillBatchPersona);
   const [result, setResult] = useState<ScriptResult | null>(null);
   const [prefillBanner, setPrefillBanner] = useState(!!prefillHook && !prefillBatchRaw);
   const [topFrameworkBanner, setTopFrameworkBanner] = useState(!!prefillFramework);
@@ -585,9 +589,29 @@ export default function ScriptGenerator() {
       : null
   );
 
+  // Persona persistence
+  const savedPersonaQuery = trpc.viralStudio.getPersona.useQuery();
+  const savePersonaMutation = trpc.viralStudio.savePersona.useMutation();
+  const savePersonaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load saved persona on mount (only if not already set from batch param)
+  useEffect(() => {
+    if (savedPersonaQuery.data?.persona && !persona) {
+      setPersona(savedPersonaQuery.data.persona);
+    }
+  }, [savedPersonaQuery.data]);
+
+  const handlePersonaChange = useCallback((value: string) => {
+    setPersona(value);
+    if (savePersonaTimer.current) clearTimeout(savePersonaTimer.current);
+    savePersonaTimer.current = setTimeout(() => {
+      if (value.trim()) savePersonaMutation.mutate({ persona: value.trim() });
+    }, 1200);
+  }, [savePersonaMutation]);
+
   // Clear URL params after reading
   useEffect(() => {
-    if (prefillHook || prefillPlatform || prefillTopic || prefillFramework || prefillBatchRaw || prefillBatchTopic) {
+    if (prefillHook || prefillPlatform || prefillTopic || prefillFramework || prefillBatchRaw || prefillBatchTopic || prefillBatchPersona) {
       const url = new URL(window.location.href);
       url.searchParams.delete("hook");
       url.searchParams.delete("platform");
@@ -595,6 +619,7 @@ export default function ScriptGenerator() {
       url.searchParams.delete("framework");
       url.searchParams.delete("hookBatch");
       url.searchParams.delete("batchTopic");
+      url.searchParams.delete("batchPersona");
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
@@ -798,7 +823,7 @@ export default function ScriptGenerator() {
                     <button
                       key={preset}
                       type="button"
-                      onClick={() => setPersona(persona === preset ? "" : preset)}
+                      onClick={() => handlePersonaChange(persona === preset ? "" : preset)}
                       className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
                         persona === preset
                           ? "bg-blue-600 text-white border-blue-600 font-medium"
@@ -812,7 +837,7 @@ export default function ScriptGenerator() {
                 <Input
                   placeholder="Or type a custom persona..."
                   value={persona}
-                  onChange={(e) => setPersona(e.target.value)}
+                  onChange={(e) => handlePersonaChange(e.target.value)}
                   className="text-sm"
                 />
               </div>
@@ -841,6 +866,7 @@ export default function ScriptGenerator() {
           lengthSeconds={lengthSeconds}
           cta={cta}
           seoKeywords={seoKeywords}
+          persona={persona}
           onClearBatch={() => setBatchItems(null)}
           onCopy={handleCopy}
           autoStart={!!(prefillBatchRaw && (prefillBatchTopic || prefillTopic))}

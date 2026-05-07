@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +22,7 @@ import {
   Pencil, Check, SendHorizonal, RefreshCw,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 const PLATFORMS = [
   { value: "tiktok", label: "TikTok" },
@@ -584,6 +584,45 @@ export default function HookGenerator() {
   const topFrameworksQuery = trpc.viralStudio.getTopFrameworks.useQuery({ platform });
   const topFramework = topFrameworksQuery.data?.[0]?.framework ?? null;
 
+  // Topic suggestions
+  const [topicSuggestions, setTopicSuggestions] = useState<Array<{ topic: string; angle: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestTopicsMutation = trpc.viralStudio.suggestTopics.useMutation({
+    onSuccess: (data) => {
+      setTopicSuggestions(data.topics);
+      setShowSuggestions(true);
+    },
+    onError: (err) => toast.error(`Failed to suggest topics: ${err.message}`),
+  });
+
+  const handleSuggestTopics = () => {
+    suggestTopicsMutation.mutate({
+      platform,
+      persona: persona || undefined,
+    });
+  };
+
+  // Persona persistence
+  const savedPersonaQuery = trpc.viralStudio.getPersona.useQuery();
+  const savePersonaMutation = trpc.viralStudio.savePersona.useMutation();
+  const savePersonaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load saved persona on mount
+  useEffect(() => {
+    if (savedPersonaQuery.data?.persona && !persona) {
+      setPersona(savedPersonaQuery.data.persona);
+    }
+  }, [savedPersonaQuery.data]);
+
+  // Debounce-save persona on change
+  const handlePersonaChange = useCallback((value: string) => {
+    setPersona(value);
+    if (savePersonaTimer.current) clearTimeout(savePersonaTimer.current);
+    savePersonaTimer.current = setTimeout(() => {
+      if (value.trim()) savePersonaMutation.mutate({ persona: value.trim() });
+    }, 1200);
+  }, [savePersonaMutation]);
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
@@ -648,7 +687,21 @@ export default function HookGenerator() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Topic or Idea *</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Topic or Idea *</Label>
+                <button
+                  type="button"
+                  onClick={handleSuggestTopics}
+                  disabled={suggestTopicsMutation.isPending}
+                  className="flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {suggestTopicsMutation.isPending ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" />Suggesting...</>
+                  ) : (
+                    <><Zap className="w-3 h-3" />Suggest topics</>
+                  )}
+                </button>
+              </div>
               <Textarea
                 placeholder="e.g. 'The gut-brain connection and why your mood is controlled by your microbiome'"
                 value={topic}
@@ -656,6 +709,28 @@ export default function HookGenerator() {
                 rows={3}
                 className="text-sm resize-none"
               />
+              {/* Topic suggestions panel */}
+              {showSuggestions && topicSuggestions.length > 0 && (
+                <div className="border border-violet-200 rounded-lg bg-violet-50/50 p-3 space-y-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[11px] font-semibold text-violet-700">AI Topic Suggestions — click to use</p>
+                    <button type="button" onClick={() => setShowSuggestions(false)} className="text-muted-foreground hover:text-foreground">
+                      <XIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {topicSuggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { setTopic(s.topic); setShowSuggestions(false); }}
+                      className="w-full text-left text-xs p-2 rounded-md bg-white border border-violet-100 hover:border-violet-400 hover:bg-violet-50 transition-all group"
+                    >
+                      <p className="font-medium text-foreground group-hover:text-violet-700">{s.topic}</p>
+                      <p className="text-muted-foreground mt-0.5">{s.angle}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -691,7 +766,7 @@ export default function HookGenerator() {
                   <button
                     key={preset}
                     type="button"
-                    onClick={() => setPersona(persona === preset ? "" : preset)}
+                    onClick={() => handlePersonaChange(persona === preset ? "" : preset)}
                     className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
                       persona === preset
                         ? "bg-violet-600 text-white border-violet-600 font-medium"
@@ -705,7 +780,7 @@ export default function HookGenerator() {
               <Input
                 placeholder="Or type a custom persona..."
                 value={persona}
-                onChange={(e) => setPersona(e.target.value)}
+                onChange={(e) => handlePersonaChange(e.target.value)}
                 className="text-sm"
               />
             </div>

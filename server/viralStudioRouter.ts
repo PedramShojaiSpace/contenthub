@@ -24,6 +24,7 @@ import {
   testVariants,
   testResults,
   frameworkPerformance,
+  viralUserPreferences,
   type HookGeneration,
   type ScriptGeneration,
   type RepurposeJob,
@@ -1231,6 +1232,85 @@ Return a JSON object:
     return { hook: parsed.hook as string, why: parsed.why as string, score: parsed.score as number };
   });
 
+// ─── Persona Persistence ──────────────────────────────────────────────────────
+export const savePersona = protectedProcedure
+  .input(z.object({ persona: z.string().max(512) }))
+  .mutation(async ({ input, ctx }) => {
+    const db = await getDb();
+    if (!db) return { success: false };
+    const uid = ctx.user.id;
+    const existing = await db.select().from(viralUserPreferences).where(eq(viralUserPreferences.userId, uid)).limit(1);
+    if (existing.length > 0) {
+      await db.update(viralUserPreferences)
+        .set({ lastPersona: input.persona, updatedAt: new Date() })
+        .where(eq(viralUserPreferences.userId, uid));
+    } else {
+      await db.insert(viralUserPreferences).values({ userId: uid, lastPersona: input.persona, updatedAt: new Date() });
+    }
+    return { success: true };
+  });
+
+export const getPersona = protectedProcedure
+  .query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { persona: null };
+    const rows = await db.select().from(viralUserPreferences).where(eq(viralUserPreferences.userId, ctx.user.id)).limit(1);
+    return { persona: rows.length > 0 ? rows[0].lastPersona : null };
+  });
+
+// ─── Topic Suggestions ─────────────────────────────────────────────────────────
+export const suggestTopics = protectedProcedure
+  .input(z.object({
+    platform: z.string().default("tiktok"),
+    persona: z.string().optional(),
+  }))
+  .mutation(async ({ input }) => {
+    const personaCtx = input.persona ? `\nTarget persona: ${input.persona}` : "";
+    const platformCtx = {
+      tiktok: "TikTok short-form video (15-60s)",
+      instagram: "Instagram Reels",
+      linkedin: "LinkedIn video/text post",
+      youtube: "YouTube Shorts or long-form",
+      x: "X/Twitter thread",
+    }[input.platform] ?? input.platform;
+
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: `You are a viral content strategist for Dr. Pedram Shojai (The Urban Monk). Generate 5 compelling content topic ideas for ${platformCtx}.${personaCtx}\n\nFocus on health, longevity, gut health, energy, stress, mindfulness, and functional medicine. Each topic should be specific, timely, and have strong viral hook potential. Return JSON only.` },
+        { role: "user", content: "Generate 5 content topic ideas." },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "topic_suggestions",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              topics: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    topic: { type: "string" },
+                    angle: { type: "string" },
+                  },
+                  required: ["topic", "angle"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["topics"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+    const content = response.choices[0].message.content;
+    const parsed = typeof content === "string" ? JSON.parse(content) : content;
+    return parsed as { topics: Array<{ topic: string; angle: string }> };
+  });
+
 // ─── Router export ────────────────────────────────────────────────────────────
 export const viralStudioRouter = router({
   generateHooks,
@@ -1252,4 +1332,7 @@ export const viralStudioRouter = router({
   declareTestWinner,
   getTopFrameworks,
   getDashboardSummary,
+  savePersona,
+  getPersona,
+  suggestTopics,
 });

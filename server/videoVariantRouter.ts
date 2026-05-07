@@ -17,11 +17,17 @@ import { videoVariantJobs, videoClips, videoVariants, testVariants, videoProduct
 import { eq, desc, and } from "drizzle-orm";
 import { storagePut } from "./storage";
 import ffmpeg from "fluent-ffmpeg";
+import ffmpegStatic from "ffmpeg-static";
 import fs from "fs";
 import path from "path";
 import os from "os";
 import https from "https";
 import http from "http";
+
+// Use bundled ffmpeg-static binary so stitching works in Cloud Run (no system ffmpeg required)
+if (ffmpegStatic) {
+  ffmpeg.setFfmpegPath(ffmpegStatic);
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

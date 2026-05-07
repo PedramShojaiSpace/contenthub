@@ -258,12 +258,21 @@ export default function VideoVariantFactory() {
   // ── Derived state ──────────────────────────────────────────────────────────
   const job      = jobQuery.data?.job;
   const variants = jobQuery.data?.variants ?? [];
-  // Merge server clips (have .id) with locally-tracked uploaded clips (have .clipId)
+  // Merge server clips with locally-tracked uploaded clips.
+  // Server clips are the source of truth for confirmed uploads.
+  // Locally-tracked clips fill in for clips that haven't been confirmed by the server yet
+  // (e.g., a body clip uploaded after hooks are already on the server).
   const serverClips = jobQuery.data?.clips ?? [];
-  const clips: any[] = serverClips.length > 0 ? serverClips : uploadedClips;
+  const serverClipIds = new Set(serverClips.map((c: any) => c.id));
+  // Include local clips whose clipId is NOT yet reflected in serverClips
+  const pendingLocalClips = uploadedClips.filter(
+    c => !serverClips.some((sc: any) => sc.id === c.clipId)
+  );
+  const clips: any[] = [...serverClips, ...pendingLocalClips];
   const hookClips = clips.filter((c: any) => c.clipType === "hook");
   const bodyClips = clips.filter((c: any) => c.clipType === "body");
   const ctaClips  = clips.filter((c: any) => c.clipType === "cta");
+  void serverClipIds; // suppress unused var warning
   const isProcessing = job?.status === "processing" || pollEnabled;
   const isDone       = job?.status === "done";
   const hasError     = job?.status === "error";
@@ -462,17 +471,29 @@ export default function VideoVariantFactory() {
                   {uploadingClips.filter(c => c.clipType === "body").map(c => (
                     <UploadingRow key={c.id} clip={c} />
                   ))}
+                  <input ref={bodyInputRef} type="file" accept="video/mp4,.mp4" className="hidden" onChange={handleBodyFile} />
                   {bodyClips.length === 0 && uploadingClips.filter(c => c.clipType === "body").length === 0 && (
-                    <>
-                      <input ref={bodyInputRef} type="file" accept="video/mp4,.mp4" className="hidden" onChange={handleBodyFile} />
-                      <Button
-                        variant="outline" size="sm"
-                        className="w-full border-dashed border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-                        onClick={() => bodyInputRef.current?.click()}
-                      >
-                        <Upload className="w-3 h-3 mr-2" /> Upload Body MP4
-                      </Button>
-                    </>
+                    <Button
+                      variant="outline" size="sm"
+                      className="w-full border-dashed border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                      onClick={() => bodyInputRef.current?.click()}
+                    >
+                      <Upload className="w-3 h-3 mr-2" /> Upload Body MP4
+                    </Button>
+                  )}
+                  {bodyClips.length > 0 && uploadingClips.filter(c => c.clipType === "body").length === 0 && (
+                    <Button
+                      variant="outline" size="sm"
+                      className="w-full border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 text-xs"
+                      onClick={async () => {
+                        // Delete existing body clip then open file picker
+                        const existing = bodyClips[0];
+                        if (existing) await handleDeleteClip(existing.id ?? existing.clipId);
+                        bodyInputRef.current?.click();
+                      }}
+                    >
+                      <RefreshCw className="w-3 h-3 mr-2" /> Replace Body Clip
+                    </Button>
                   )}
                 </CardContent>
               </Card>

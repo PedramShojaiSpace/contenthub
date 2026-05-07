@@ -2246,3 +2246,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v170
+
+## v171 — Video Variant Factory ffmpeg Fix
+- [x] Install ffmpeg-static so stitching works in deployed Cloud Run environment
+- [x] Wire ffmpeg-static path into videoVariantRouter so fluent-ffmpeg uses the bundled binary
+- [x] Fix clips merge logic — body clip no longer lost when hooks are already on server
+- [x] Add "Replace Body Clip" button so user can swap body without deleting the job
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)

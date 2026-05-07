@@ -50,6 +50,7 @@ import {
   ShieldCheck,
   Newspaper,
   Clapperboard,
+  MessageSquare,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -64,6 +65,7 @@ const topNavItems = [
   { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
   { icon: Video, label: "Video Production", path: "/video-production" },
   { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
+  { icon: MessageSquare, label: "ManyChat Wizard", path: "/manychat-wizard" },
   { icon: Film, label: "Script Library", path: "/scripts" },
   { icon: Image, label: "Asset Library", path: "/assets" },
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },

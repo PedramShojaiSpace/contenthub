@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { MessageSquare, Copy, Loader2, Clock, ChevronDown, ChevronUp, Zap, Target } from "lucide-react";
+import { MessageSquare, Copy, Loader2, Clock, ChevronDown, ChevronUp, Zap, Target, Link2, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 
 const PLATFORMS = [
   { value: "instagram", label: "Instagram" },
@@ -30,6 +31,9 @@ interface DMMessage {
   delay: string;
   message: string;
   purpose: string;
+  buttonText?: string | null;
+  buttonUrl?: string | null;
+  body?: string;
 }
 
 interface PlaybookResult {
@@ -38,11 +42,34 @@ interface PlaybookResult {
   platform: string;
   conversionGoal: string;
   keywordTrigger: string;
+  triggerKeyword: string;
   ctaLine: string;
+  videoCTALine: string;
   dmSequence: DMMessage[];
+  messages: Array<{ delay: string; body: string; subject: string; buttonText?: string | null; buttonUrl?: string | null }>;
   manychatSetupNotes: string;
+  setupInstructions: string;
   expectedConversionRate: string;
+  leadMagnetUrl?: string | null;
   createdAt: Date | string;
+}
+
+function normalizeResult(raw: any): PlaybookResult {
+  // Normalize both the old shape (dmSequence) and new shape (messages[])
+  const msgs: DMMessage[] = raw.dmSequence ?? (raw.messages ?? []).map((m: any) => ({
+    delay: m.delay ?? "Immediate",
+    message: m.body ?? m.message ?? "",
+    purpose: m.subject ?? m.purpose ?? "",
+    buttonText: m.buttonText ?? null,
+    buttonUrl: m.buttonUrl ?? null,
+  }));
+  return {
+    ...raw,
+    keywordTrigger: raw.keywordTrigger ?? raw.triggerKeyword ?? "",
+    ctaLine: raw.ctaLine ?? raw.videoCTALine ?? "",
+    dmSequence: msgs,
+    manychatSetupNotes: raw.manychatSetupNotes ?? raw.setupInstructions ?? "",
+  };
 }
 
 function MessageBubble({ msg, index, onCopy }: { msg: DMMessage; index: number; onCopy: (t: string) => void }) {
@@ -58,6 +85,19 @@ function MessageBubble({ msg, index, onCopy }: { msg: DMMessage; index: number; 
         </div>
         <div className="bg-violet-50 border border-violet-100 rounded-lg rounded-tl-none p-3 relative">
           <p className="text-sm text-foreground whitespace-pre-wrap">{msg.message}</p>
+          {msg.buttonText && msg.buttonUrl && (
+            <div className="mt-2 pt-2 border-t border-violet-200">
+              <a
+                href={msg.buttonUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-violet-700 font-medium hover:underline"
+              >
+                <ExternalLink className="w-3 h-3" />
+                {msg.buttonText}
+              </a>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -77,12 +117,13 @@ export default function DMPlaybook() {
   const [platform, setPlatform] = useState("instagram");
   const [conversionGoal, setConversionGoal] = useState("academy_signup");
   const [offerDetails, setOfferDetails] = useState("");
+  const [kajabiUrl, setKajabiUrl] = useState("");
   const [result, setResult] = useState<PlaybookResult | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const generateMutation = trpc.viralStudio.generateDMPlaybook.useMutation({
     onSuccess: (data) => {
-      setResult(data as unknown as PlaybookResult);
+      setResult(normalizeResult(data));
       toast.success("DM Playbook generated!");
     },
     onError: (err) => toast.error(`Failed: ${err.message}`),
@@ -100,15 +141,32 @@ export default function DMPlaybook() {
     const full = [
       `KEYWORD TRIGGER: ${result.keywordTrigger}`,
       `CTA LINE (add to video): "${result.ctaLine}"`,
+      result.leadMagnetUrl ? `KAJABI OPT-IN URL: ${result.leadMagnetUrl}` : "",
       ``,
       `DM SEQUENCE:`,
-      ...result.dmSequence.map((m, i) => `Message ${i + 1} (${m.delay}):\n${m.message}`),
+      ...result.dmSequence.map((m, i) => `Message ${i + 1} (${m.delay}):\n${m.message}${m.buttonUrl ? `\n→ Button: ${m.buttonText} — ${m.buttonUrl}` : ""}`),
       ``,
       `SETUP NOTES:\n${result.manychatSetupNotes}`,
-    ].join("\n\n");
+    ].filter(Boolean).join("\n\n");
     navigator.clipboard.writeText(full);
     toast.success("Full playbook copied!");
   };
+
+  const handleGenerate = () => {
+    const url = kajabiUrl.trim() || undefined;
+    generateMutation.mutate({
+      videoTopic: videoTopic.trim(),
+      triggerKeyword: conversionGoal === "academy_signup" ? "MONK" : "LEARN",
+      leadMagnet: offerDetails.trim() || "Urban Monk Academy — $297/year membership with 200+ hours of content",
+      leadMagnetUrl: url,
+      platform: platform as "instagram",
+    });
+  };
+
+  // Build wizard URL params from current result
+  const wizardParams = result
+    ? `?keyword=${encodeURIComponent(result.keywordTrigger)}&platform=${encodeURIComponent(result.platform ?? platform)}&url=${encodeURIComponent(result.leadMagnetUrl ?? kajabiUrl ?? "")}&topic=${encodeURIComponent(result.videoTopic ?? videoTopic)}`
+    : "";
 
   return (
     <div className="p-6 space-y-6">
@@ -119,7 +177,7 @@ export default function DMPlaybook() {
           DM Automation Playbook Generator
         </h3>
         <p className="text-sm text-violet-700">
-          Generate a complete ManyChat-ready DM automation playbook for any video: keyword trigger, CTA line to say in the video, and a 3-message DM sequence that converts viewers into Academy members. This is the Growthopia "secret weapon" — now built into your Content Hub.
+          Generate a complete ManyChat-ready DM automation playbook for any video: keyword trigger, CTA line to say in the video, and a 3-message DM sequence that converts viewers into Academy members. Paste your Kajabi opt-in URL so Message 1 delivers the right link automatically.
         </p>
       </div>
 
@@ -167,6 +225,25 @@ export default function DMPlaybook() {
               </Select>
             </div>
 
+            {/* Kajabi URL — the key new field */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <Link2 className="w-3.5 h-3.5 text-orange-500" />
+                Kajabi Opt-in URL
+                <span className="text-muted-foreground font-normal">(Message 1 delivery link)</span>
+              </Label>
+              <Input
+                type="url"
+                placeholder="https://app.kajabi.com/your-optin-page"
+                value={kajabiUrl}
+                onChange={(e) => setKajabiUrl(e.target.value)}
+                className="text-sm font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Paste the Kajabi landing page URL where viewers opt in. This becomes the button link in Message 1.
+              </p>
+            </div>
+
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Offer Details <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Textarea
@@ -179,13 +256,7 @@ export default function DMPlaybook() {
             </div>
 
             <Button
-              onClick={() => generateMutation.mutate({
-                videoTopic: videoTopic.trim(),
-                triggerKeyword: conversionGoal === "academy_signup" ? "MONK" : "LEARN",
-                leadMagnet: offerDetails.trim() || "Urban Monk Academy — $297/year membership with 200+ hours of content",
-                leadMagnetUrl: "https://urbanmonkacademy.com",
-                platform: platform as "instagram",
-              })}
+              onClick={handleGenerate}
               disabled={generateMutation.isPending || !videoTopic.trim()}
               className="w-full bg-violet-600 hover:bg-violet-700 text-white"
             >
@@ -216,14 +287,31 @@ export default function DMPlaybook() {
                 <p className="text-xs text-green-600 mt-2">Set this as the ManyChat keyword trigger. Tell viewers to comment this word.</p>
               </div>
 
+              {/* Kajabi URL display */}
+              {(result.leadMagnetUrl || kajabiUrl) && (
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide flex items-center gap-1">
+                      <Link2 className="w-3 h-3" />
+                      Kajabi Opt-in URL (Message 1 link)
+                    </p>
+                    <Button variant="ghost" size="sm" className="h-5 text-xs px-1.5 text-orange-700"
+                      onClick={() => handleCopy(result.leadMagnetUrl ?? kajabiUrl)}>
+                      <Copy className="w-3 h-3 mr-1" />Copy
+                    </Button>
+                  </div>
+                  <p className="text-xs font-mono text-foreground break-all">{result.leadMagnetUrl ?? kajabiUrl}</p>
+                </div>
+              )}
+
               {/* CTA Line */}
-              <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide flex items-center gap-1">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
                     <Target className="w-3 h-3" />
                     Say This in Your Video
                   </p>
-                  <Button variant="ghost" size="sm" className="h-5 text-xs px-1.5 text-orange-700" onClick={() => handleCopy(result.ctaLine)}>
+                  <Button variant="ghost" size="sm" className="h-5 text-xs px-1.5 text-amber-700" onClick={() => handleCopy(result.ctaLine)}>
                     <Copy className="w-3 h-3 mr-1" />Copy
                   </Button>
                 </div>
@@ -264,15 +352,29 @@ export default function DMPlaybook() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground">Expected Conversion Rate</p>
-                    <p className="text-sm font-medium text-foreground">{result.expectedConversionRate}</p>
+                    <p className="text-sm font-medium">{result.expectedConversionRate}</p>
                   </div>
                 </div>
               )}
+
+              {/* ManyChat Wizard CTA */}
+              <div className="p-4 bg-gradient-to-r from-violet-600 to-purple-600 rounded-xl text-white">
+                <p className="text-sm font-semibold mb-1">Ready to wire this in ManyChat?</p>
+                <p className="text-xs text-violet-200 mb-3">
+                  The Setup Wizard gives your VA a step-by-step checklist to configure the keyword trigger, delays, and message blocks — no guesswork.
+                </p>
+                <Link href={`/manychat-wizard${wizardParams}`}>
+                  <Button size="sm" className="bg-white text-violet-700 hover:bg-violet-50 font-semibold">
+                    <Zap className="w-3.5 h-3.5 mr-1.5" />
+                    Open ManyChat Setup Wizard
+                  </Button>
+                </Link>
+              </div>
             </>
           ) : (
             <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-border rounded-xl text-center p-6">
               <MessageSquare className="w-8 h-8 text-muted-foreground/40 mb-3" />
-              <p className="text-sm text-muted-foreground">Enter a video topic to generate a complete DM automation playbook</p>
+              <p className="text-sm text-muted-foreground">Enter a video topic and your Kajabi opt-in URL to generate a complete DM automation playbook</p>
             </div>
           )}
         </div>
@@ -297,11 +399,16 @@ export default function DMPlaybook() {
                   <div
                     key={r.id}
                     className="border border-border rounded-lg p-3 hover:border-violet-300 cursor-pointer transition-colors"
-                    onClick={() => setResult(r as unknown as PlaybookResult)}
+                    onClick={() => setResult(normalizeResult(r))}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="outline" className="text-xs capitalize">{r.platform}</Badge>
-                      <Badge variant="outline" className="text-xs text-green-600 border-green-200">{r.keywordTrigger}</Badge>
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-200">{r.triggerKeyword}</Badge>
+                      {r.leadMagnetUrl && (
+                        <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">
+                          <Link2 className="w-2.5 h-2.5 mr-1" />Kajabi URL
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm font-medium truncate">{r.videoTopic}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{new Date(r.createdAt).toLocaleDateString()}</p>

@@ -2264,3 +2264,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] handleGenerate updated to use merged hookClips/bodyClips derived state (not just uploadedClips)
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
+
+## v173 — Kajabi URL + ManyChat Setup Wizard
+- [x] Add kajabiUrl field to dmPlaybooks schema and push migration
+- [x] Add kajabiUrl input to DM Playbook generator form
+- [x] Include Kajabi URL in generated DM copy (Message 1 delivery link)
+- [x] Build ManyChat Setup Wizard page with step-by-step VA instructions
+- [x] Wire Wizard to active playbook keyword and Kajabi URL
+- [x] Add ManyChat Wizard to sidebar nav and App.tsx routes
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287+)

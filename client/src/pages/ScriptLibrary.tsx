@@ -774,6 +774,7 @@ export default function ScriptLibrary() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductionStatus | "all">("all");
   const [typeFilter, setTypeFilter] = useState<ScriptType | "all">("all");
+  const [goalFilter, setGoalFilter] = useState<ContentGoal | "all">("all");
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -937,22 +938,24 @@ export default function ScriptLibrary() {
     }
   };
 
-  // Filter by platform, search, status, and type
+  // Filter by platform, search, status, type, and content goal
   const filteredScripts = allScripts.filter((s) => {
     if (platformFilter !== "all" && s.platform !== platformFilter) return false;
     if (statusFilter !== "all" && s.productionStatus !== statusFilter) return false;
     if (typeFilter !== "all" && s.scriptType !== typeFilter) return false;
+    if (goalFilter !== "all" && s.contentGoal !== goalFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       const inTitle = s.title.toLowerCase().includes(q);
       const inBody = (s.scriptBody ?? "").toLowerCase().includes(q);
       const inNotes = (s.notes ?? "").toLowerCase().includes(q);
-      if (!inTitle && !inBody && !inNotes) return false;
+      const inAngle = (s.competitorAngle ?? "").toLowerCase().includes(q);
+      if (!inTitle && !inBody && !inNotes && !inAngle) return false;
     }
     return true;
   });
 
-  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0) + (goalFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
 
   // Group by status
   const scriptsByStatus = STATUS_COLUMNS.reduce((acc, col) => {
@@ -1105,10 +1108,23 @@ export default function ScriptLibrary() {
             </SelectContent>
           </Select>
 
+          {/* Content Goal filter */}
+          <Select value={goalFilter} onValueChange={(v) => setGoalFilter(v as ContentGoal | "all")}>
+            <SelectTrigger className="h-8 w-[160px] text-xs border-border bg-background">
+              <SelectValue placeholder="Content Goal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Goals</SelectItem>
+              <SelectItem value="audience_growth">Audience Growth</SelectItem>
+              <SelectItem value="llm_seo">LLM SEO</SelectItem>
+              <SelectItem value="community_engagement">Community Engagement</SelectItem>
+            </SelectContent>
+          </Select>
+
           {/* Active filter count + clear */}
           {activeFilterCount > 0 && (
             <button
-              onClick={() => { setSearchQuery(""); setStatusFilter("all"); setTypeFilter("all"); }}
+              onClick={() => { setSearchQuery(""); setStatusFilter("all"); setTypeFilter("all"); setGoalFilter("all"); }}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
             >
               <SlidersHorizontal className="w-3 h-3" />

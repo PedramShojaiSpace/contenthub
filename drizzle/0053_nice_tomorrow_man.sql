@@ -1,0 +1,1 @@
+ALTER TABLE `viral_user_preferences` ADD `topicHistory` text;

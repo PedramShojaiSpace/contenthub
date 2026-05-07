@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import {
   Zap, Copy, Clock, Star, ChevronDown, ChevronUp, Loader2,
   FlaskConical, CheckCircle2, FileText, ImageIcon, X as XIcon,
-  Pencil, Check, SendHorizonal, RefreshCw,
+  Pencil, Check, SendHorizonal, RefreshCw, Users, History,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -584,6 +584,25 @@ export default function HookGenerator() {
   const topFrameworksQuery = trpc.viralStudio.getTopFrameworks.useQuery({ platform });
   const topFramework = topFrameworksQuery.data?.[0]?.framework ?? null;
 
+  // Persona suggestions
+  const [personaSuggestions, setPersonaSuggestions] = useState<Array<{ persona: string; description: string }>>([]);
+  const [showPersonaSuggestions, setShowPersonaSuggestions] = useState(false);
+  const suggestPersonasMutation = trpc.viralStudio.suggestPersonas.useMutation({
+    onSuccess: (data) => {
+      setPersonaSuggestions(data.personas);
+      setShowPersonaSuggestions(true);
+    },
+    onError: (err) => toast.error(`Failed to suggest personas: ${err.message}`),
+  });
+  const handleSuggestPersonas = () => {
+    suggestPersonasMutation.mutate({ platform, topic: topic.trim() || undefined });
+  };
+
+  // Topic history
+  const topicHistoryQuery = trpc.viralStudio.getTopicHistory.useQuery();
+  const saveTopicHistoryMutation = trpc.viralStudio.saveTopicHistory.useMutation();
+  const [showTopicHistory, setShowTopicHistory] = useState(false);
+
   // Topic suggestions
   const [topicSuggestions, setTopicSuggestions] = useState<Array<{ topic: string; angle: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -634,6 +653,10 @@ export default function HookGenerator() {
       topic: topic.trim(),
       platform: platform as "tiktok" | "instagram" | "youtube" | "linkedin" | "x",
       targetPersona: persona || undefined,
+    }, {
+      onSuccess: () => {
+        if (topic.trim()) saveTopicHistoryMutation.mutate({ topic: topic.trim() });
+      },
     });
   };
 
@@ -702,13 +725,35 @@ export default function HookGenerator() {
                   )}
                 </button>
               </div>
-              <Textarea
-                placeholder="e.g. 'The gut-brain connection and why your mood is controlled by your microbiome'"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                rows={3}
-                className="text-sm resize-none"
-              />
+              <div className="relative">
+                <Textarea
+                  placeholder="e.g. 'The gut-brain connection and why your mood is controlled by your microbiome'"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  onFocus={() => { if ((topicHistoryQuery.data?.topics?.length ?? 0) > 0) setShowTopicHistory(true); }}
+                  onBlur={() => setTimeout(() => setShowTopicHistory(false), 150)}
+                  rows={3}
+                  className="text-sm resize-none"
+                />
+                {/* Topic history dropdown */}
+                {showTopicHistory && (topicHistoryQuery.data?.topics?.length ?? 0) > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+                    <p className="text-[10px] font-semibold text-muted-foreground px-3 pt-2 pb-1 flex items-center gap-1">
+                      <History className="w-3 h-3" /> Recent topics
+                    </p>
+                    {topicHistoryQuery.data?.topics.map((t, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); setTopic(t); setShowTopicHistory(false); }}
+                        className="w-full text-left text-xs px-3 py-2 hover:bg-muted transition-colors truncate"
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {/* Topic suggestions panel */}
               {showSuggestions && topicSuggestions.length > 0 && (
                 <div className="border border-violet-200 rounded-lg bg-violet-50/50 p-3 space-y-2">
@@ -754,7 +799,43 @@ export default function HookGenerator() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Target Persona (optional)</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Target Persona (optional)</Label>
+                <button
+                  type="button"
+                  onClick={handleSuggestPersonas}
+                  disabled={suggestPersonasMutation.isPending}
+                  className="flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {suggestPersonasMutation.isPending ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" />Suggesting...</>
+                  ) : (
+                    <><Users className="w-3 h-3" />Suggest persona</>
+                  )}
+                </button>
+              </div>
+              {/* Persona suggestions panel */}
+              {showPersonaSuggestions && personaSuggestions.length > 0 && (
+                <div className="border border-violet-200 rounded-lg bg-violet-50/50 p-3 space-y-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[11px] font-semibold text-violet-700">AI Persona Suggestions — click to use</p>
+                    <button type="button" onClick={() => setShowPersonaSuggestions(false)} className="text-muted-foreground hover:text-foreground">
+                      <XIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {personaSuggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { handlePersonaChange(s.persona); setShowPersonaSuggestions(false); }}
+                      className="w-full text-left text-xs p-2 rounded-md bg-white border border-violet-100 hover:border-violet-400 hover:bg-violet-50 transition-all group"
+                    >
+                      <p className="font-medium text-foreground group-hover:text-violet-700">{s.persona}</p>
+                      <p className="text-muted-foreground mt-0.5">{s.description}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Quick-select persona chips */}
               <div className="flex flex-wrap gap-1.5 mb-1.5">
                 {[

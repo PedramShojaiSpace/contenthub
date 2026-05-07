@@ -1040,6 +1040,7 @@ export const viralUserPreferences = mysqlTable("viral_user_preferences", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().unique(),
   lastPersona: varchar("lastPersona", { length: 512 }),
+  topicHistory: text("topicHistory"), // JSON array of last 5 topics
   updatedAt: timestamp("vup_updatedAt").defaultNow().notNull(),
 });
 export type ViralUserPreferences = typeof viralUserPreferences.$inferSelect;

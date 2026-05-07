@@ -2167,3 +2167,38 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v167
+
+## v168 — Persona Suggestions, Topic History, Script Library Search
+
+### Server
+- [x] Add viralStudio.suggestPersonas procedure: given platform + topic, return 4 persona descriptions
+- [x] Add viralStudio.saveTopicHistory procedure: upsert last 10 topics for the user in viralUserPreferences
+- [x] Add viralStudio.getTopicHistory procedure: return last 5 topics for the user
+
+### Hook Generator — Persona Suggestions
+- [x] Add "Suggest persona" button (Users icon, blue) next to the Target Persona label
+- [x] On click, call suggestPersonas mutation with current platform + topic
+- [x] Show inline panel with 4 persona suggestion cards; clicking fills the persona field
+- [x] Show loading spinner while AI generates
+
+### Hook Generator — Topic History
+- [x] On successful hook generation, save the topic to history via saveTopicHistory
+- [x] Show a "Recent topics" dropdown below the Topic textarea when it has focus and history exists
+- [x] Clicking a recent topic fills the textarea and closes the dropdown
+- [x] Show last 5 topics in reverse-chronological order
+
+### Script Generator — Persona Suggestions
+- [x] Add "Suggest persona" button (Users icon, blue) next to the Target Persona label
+- [x] Same inline panel UX as Hook Generator
+
+### Script Library — Search & Filter
+- [x] Existing search input already searches title, body, notes; extended to also search competitorAngle
+- [x] Added Content Goal filter dropdown (Audience Growth / LLM SEO / Community Engagement)
+- [x] activeFilterCount updated to include goalFilter
+- [x] Clear filters button resets all filters including goalFilter
+- [x] Result count shown ("X of Y scripts")
+
+### Quality
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v168

@@ -1311,6 +1311,93 @@ export const suggestTopics = protectedProcedure
     return parsed as { topics: Array<{ topic: string; angle: string }> };
   });
 
+// ─── suggestPersonas ────────────────────────────────────────────────────────
+export const suggestPersonas = protectedProcedure
+  .input(z.object({
+    platform: z.string().default("tiktok"),
+    topic: z.string().optional(),
+  }))
+  .mutation(async ({ input }) => {
+    const topicCtx = input.topic ? `\nContent topic: ${input.topic}` : "";
+    const platformCtx = {
+      tiktok: "TikTok short-form video (15-60s)",
+      instagram: "Instagram Reels",
+      linkedin: "LinkedIn video/text post",
+      youtube: "YouTube Shorts or long-form",
+      x: "X/Twitter thread",
+    }[input.platform] ?? input.platform;
+
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: `You are an audience research expert for Dr. Pedram Shojai (The Urban Monk). Generate 3 specific target persona descriptions for ${platformCtx}.${topicCtx}\n\nFocus on the health, wellness, and longevity audience. Each persona should be vivid, specific, and actionable for content creation. Return JSON only.` },
+        { role: "user", content: "Generate 3 target persona descriptions." },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "persona_suggestions",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              personas: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    persona: { type: "string", description: "Short persona label, e.g. 'Stressed executive, 45, burnout recovery'" },
+                    description: { type: "string", description: "2-sentence description of this persona's pain points and goals" },
+                  },
+                  required: ["persona", "description"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["personas"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+    const content = response.choices[0].message.content;
+    const parsed = typeof content === "string" ? JSON.parse(content) : content;
+    return parsed as { personas: Array<{ persona: string; description: string }> };
+  });
+
+// ─── saveTopicHistory ─────────────────────────────────────────────────────────
+export const saveTopicHistory = protectedProcedure
+  .input(z.object({ topic: z.string().min(1) }))
+  .mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+    const existing = await db.select().from(viralUserPreferences)
+      .where(eq(viralUserPreferences.userId, ctx.user.id)).limit(1);
+    const current: string[] = existing[0]?.topicHistory
+      ? JSON.parse(existing[0].topicHistory)
+      : [];
+    const updated = [input.topic, ...current.filter(t => t !== input.topic)].slice(0, 5);
+    if (existing.length > 0) {
+      await db.update(viralUserPreferences)
+        .set({ topicHistory: JSON.stringify(updated), updatedAt: new Date() })
+        .where(eq(viralUserPreferences.userId, ctx.user.id));
+    } else {
+      await db.insert(viralUserPreferences)
+        .values({ userId: ctx.user.id, topicHistory: JSON.stringify(updated) });
+    }
+    return { topics: updated };
+  });
+
+// ─── getTopicHistory ──────────────────────────────────────────────────────────
+export const getTopicHistory = protectedProcedure
+  .query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { topics: [] as string[] };
+    const row = await db.select().from(viralUserPreferences)
+      .where(eq(viralUserPreferences.userId, ctx.user.id)).limit(1);
+    const topics: string[] = row[0]?.topicHistory ? JSON.parse(row[0].topicHistory) : [];
+    return { topics };
+  });
+
 // ─── Router export ────────────────────────────────────────────────────────────
 export const viralStudioRouter = router({
   generateHooks,
@@ -1335,4 +1422,7 @@ export const viralStudioRouter = router({
   savePersona,
   getPersona,
   suggestTopics,
+  suggestPersonas,
+  saveTopicHistory,
+  getTopicHistory,
 });

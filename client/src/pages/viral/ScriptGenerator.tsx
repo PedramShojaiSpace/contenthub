@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2,
   Zap, Kanban, CheckCircle2, Star, SendHorizonal, Play, X as XIcon,
-  ListChecks, RotateCcw,
+  ListChecks, RotateCcw, Users,
 } from "lucide-react";
 
 const PLATFORMS = [
@@ -609,6 +609,14 @@ export default function ScriptGenerator() {
     }, 1200);
   }, [savePersonaMutation]);
 
+  // Persona suggestions
+  const [personaSuggestions, setPersonaSuggestions] = useState<Array<{ persona: string; description: string }>>([]);
+  const [showPersonaSuggestions, setShowPersonaSuggestions] = useState(false);
+  const suggestPersonasMutation = trpc.viralStudio.suggestPersonas.useMutation({
+    onSuccess: (data) => { setPersonaSuggestions(data.personas); setShowPersonaSuggestions(true); },
+    onError: (err) => toast.error(`Failed to suggest personas: ${err.message}`),
+  });
+
   // Clear URL params after reading
   useEffect(() => {
     if (prefillHook || prefillPlatform || prefillTopic || prefillFramework || prefillBatchRaw || prefillBatchTopic || prefillBatchPersona) {
@@ -811,7 +819,43 @@ export default function ScriptGenerator() {
           {!batchItems && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Target Persona (optional)</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Target Persona (optional)</Label>
+                  <button
+                    type="button"
+                    onClick={() => suggestPersonasMutation.mutate({ platform, topic: topic.trim() || undefined })}
+                    disabled={suggestPersonasMutation.isPending}
+                    className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {suggestPersonasMutation.isPending ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" />Suggesting...</>
+                    ) : (
+                      <><Users className="w-3 h-3" />Suggest persona</>
+                    )}
+                  </button>
+                </div>
+                {/* Persona suggestions panel */}
+                {showPersonaSuggestions && personaSuggestions.length > 0 && (
+                  <div className="border border-blue-200 rounded-lg bg-blue-50/50 p-3 space-y-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[11px] font-semibold text-blue-700">AI Persona Suggestions — click to use</p>
+                      <button type="button" onClick={() => setShowPersonaSuggestions(false)} className="text-muted-foreground hover:text-foreground">
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {personaSuggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => { handlePersonaChange(s.persona); setShowPersonaSuggestions(false); }}
+                        className="w-full text-left text-xs p-2 rounded-md bg-white border border-blue-100 hover:border-blue-400 hover:bg-blue-50 transition-all group"
+                      >
+                        <p className="font-medium text-foreground group-hover:text-blue-700">{s.persona}</p>
+                        <p className="text-muted-foreground mt-0.5">{s.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {/* Quick-select persona chips */}
                 <div className="flex flex-wrap gap-1.5 mb-1.5">
                   {[

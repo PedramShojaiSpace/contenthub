@@ -26,10 +26,11 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import FormData from "form-data";
+import axios from "axios";
 import { getDb } from "./db";
 import { videoClips, videoVariantJobs } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { storagePut } from "./storage";
 import { sdk } from "./_core/sdk";
 
 const CHUNK_UPLOAD_DIR = path.join(os.tmpdir(), "vvf-chunks");
@@ -65,6 +66,47 @@ export const videoUploadMiddleware = legacyUpload.single("file");
 
 function randomSuffix() {
   return Math.random().toString(36).slice(2, 8);
+}
+
+// ── Stream upload to storage proxy using axios (no full-file RAM load) ────────
+// Uses Node.js form-data with a ReadStream so the file is piped directly
+// from disk to the proxy without buffering the whole video in memory.
+async function streamUploadToStorage(
+  relKey: string,
+  filePath: string,
+  contentType: string,
+  timeoutMs = 20 * 60 * 1000  // 20-minute timeout for large files
+): Promise<{ key: string; url: string }> {
+  const { ENV } = await import("./_core/env");
+  const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
+  const apiKey = ENV.forgeApiKey;
+  if (!baseUrl || !apiKey) throw new Error("Storage proxy credentials missing");
+
+  const key = relKey.replace(/^\/+/, "");
+  const uploadUrl = `${baseUrl}/v1/storage/upload?path=${encodeURIComponent(key)}`;
+  const filename = key.split("/").pop() ?? key;
+
+  const form = new FormData();
+  // Append as a ReadStream — axios will stream it directly without loading into RAM
+  form.append("file", fs.createReadStream(filePath), {
+    filename,
+    contentType,
+    knownLength: fs.statSync(filePath).size,
+  });
+
+  const response = await axios.post(uploadUrl, form, {
+    headers: {
+      ...form.getHeaders(),
+      Authorization: `Bearer ${apiKey}`,
+    },
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+    timeout: timeoutMs,
+  });
+
+  const url = response.data?.url;
+  if (!url) throw new Error("Storage proxy did not return a URL");
+  return { key, url };
 }
 
 // ── Background S3 upload + DB insert ─────────────────────────────────────────
@@ -107,17 +149,9 @@ async function processUploadInBackground(opts: {
         .where(eq(videoVariantJobs.id, jobId));
     }
 
-    // ── Read file and upload to S3 with a 15-minute hard timeout ─────────────
-    const fileBuffer = await fs.promises.readFile(filePath);
-    const controller = new AbortController();
-    const uploadTimeout = setTimeout(() => controller.abort(), 15 * 60 * 1000);
-    let s3Url: string;
-    try {
-      const result = await storagePutWithSignal(s3Key, fileBuffer, "video/mp4", controller.signal);
-      s3Url = result.url;
-    } finally {
-      clearTimeout(uploadTimeout);
-    }
+    // ── Stream file directly to storage proxy (no full-file RAM load) ─────────
+    console.log(`[VVF] Starting stream upload for ${clipType} clip (job ${jobId}): ${filePath}`);
+    const { url: s3Url } = await streamUploadToStorage(s3Key, filePath, "video/mp4");
 
     try { fs.unlinkSync(filePath); } catch {}
 
@@ -128,7 +162,7 @@ async function processUploadInBackground(opts: {
         .where(eq(videoClips.id, clipId));
     }
 
-    console.log(`[VVF] Background upload complete: ${clipType} clip for job ${jobId} (clipId=${clipId})`);
+    console.log(`[VVF] Stream upload complete: ${clipType} clip for job ${jobId} (clipId=${clipId})`);
   } catch (err) {
     console.error(`[VVF] Background upload failed for job ${jobId}:`, err);
     // Remove the placeholder row so the client poll doesn't find a broken clip
@@ -140,43 +174,6 @@ async function processUploadInBackground(opts: {
     }
     try { fs.unlinkSync(filePath); } catch {}
   }
-}
-
-// storagePut wrapper that accepts an AbortSignal for large-file timeout support
-async function storagePutWithSignal(
-  relKey: string,
-  data: Buffer | Uint8Array | string,
-  contentType: string,
-  signal: AbortSignal
-): Promise<{ key: string; url: string }> {
-  // storagePut uses fetch internally — we replicate it here with signal support
-  const { ENV } = await import("./_core/env");
-  const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
-  const apiKey = ENV.forgeApiKey;
-  if (!baseUrl || !apiKey) throw new Error("Storage proxy credentials missing");
-
-  const key = relKey.replace(/^\/+/, "");
-  const uploadUrl = new URL(`${baseUrl}/v1/storage/upload`);
-  uploadUrl.searchParams.set("path", key);
-
-  const blob = new Blob([data as any], { type: contentType });
-  const form = new FormData();
-  form.append("file", blob, key.split("/").pop() ?? key);
-
-  const response = await fetch(uploadUrl.toString(), {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: form,
-    signal,
-  });
-
-  if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(`Storage upload failed (${response.status}): ${message}`);
-  }
-
-  const url = (await response.json()).url;
-  return { key, url };
 }
 
 // ── Chunk receive handler ─────────────────────────────────────────────────────

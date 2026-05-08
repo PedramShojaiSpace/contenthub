@@ -2329,3 +2329,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix: client Generate button should be disabled while any clip still has empty s3Url (S3 upload in progress)
 - [x] Fix: server startProcessing should wait/retry for clips with empty s3Url before failing
 - [x] Deploy fix
+
+## v184-hotfix-4 — S3 Background Upload Hangs for Large Body Video
+
+- [x] Diagnose storagePut hang — single-buffer fetch with no timeout silently hangs for large files
+- [x] Fix: replaced storagePutWithSignal with streamUploadToStorage using axios + form-data ReadStream — pipes file directly from disk to proxy without loading into RAM
+- [x] Fix: axios timeout set to 20 minutes; maxBodyLength/maxContentLength set to Infinity for large files
+- [x] Deploy fix

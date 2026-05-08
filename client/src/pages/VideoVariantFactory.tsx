@@ -23,7 +23,7 @@ import {
   Upload, Film, Scissors, Play, Download, Trash2,
   CheckCircle2, Clock, AlertCircle, Loader2, Plus,
   Clapperboard, Zap, History, ChevronDown, ChevronUp,
-  FileVideo, RefreshCw, FlaskConical
+  FileVideo, RefreshCw, FlaskConical, FolderDown
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -302,9 +302,11 @@ export default function VideoVariantFactory() {
     e.target.value = "";
   };
 
-  const handleCtaFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) uploadClip(file, "cta", 0);
+  const handleCtaFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const existingCtaCount = clips.filter((c: any) => c.clipType === "cta").length
+      + uploadingClips.filter(c => c.clipType === "cta").length;
+    files.forEach((file, i) => uploadClip(file, "cta", existingCtaCount + i + 1));
     e.target.value = "";
   };
 
@@ -360,7 +362,9 @@ export default function VideoVariantFactory() {
   const isDone       = job?.status === "done";
   const hasError     = job?.status === "error";
   const doneVariants = variants.filter(v => v.status === "done");
-  const totalVariants = hookClips.length; // one per hook
+  // Full combinatorial count: N hooks × M CTAs (or N×1 if no CTAs)
+  const ctaCount = Math.max(ctaClips.length, 1);
+  const totalVariants = hookClips.length * ctaCount;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
@@ -593,25 +597,21 @@ export default function VideoVariantFactory() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-xs text-zinc-500">Optional call-to-action clip appended to every variant.</p>
+                  <p className="text-xs text-zinc-500">Upload 1–5 CTA MP4s. Each CTA is paired with every hook (N hooks × M CTAs = N×M variants).</p>
                   {ctaClips.map((c: any) => (
                     <ClipRow key={c.id ?? c.clipId} clip={c} onDelete={() => handleDeleteClip(c.id ?? c.clipId)} />
                   ))}
                   {uploadingClips.filter(c => c.clipType === "cta").map(c => (
                     <UploadingRow key={c.id} clip={c} />
                   ))}
-                  {ctaClips.length === 0 && uploadingClips.filter(c => c.clipType === "cta").length === 0 && (
-                    <>
-                      <input ref={ctaInputRef} type="file" accept="video/mp4,.mp4" className="hidden" onChange={handleCtaFile} />
-                      <Button
-                        variant="outline" size="sm"
-                        className="w-full border-dashed border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-                        onClick={() => ctaInputRef.current?.click()}
-                      >
-                        <Upload className="w-3 h-3 mr-2" /> Upload CTA MP4
-                      </Button>
-                    </>
-                  )}
+                  <input ref={ctaInputRef} type="file" accept="video/mp4,.mp4" multiple className="hidden" onChange={handleCtaFiles} />
+                  <Button
+                    variant="outline" size="sm"
+                    className="w-full border-dashed border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                    onClick={() => ctaInputRef.current?.click()}
+                  >
+                    <Upload className="w-3 h-3 mr-2" /> {ctaClips.length === 0 ? "Upload CTA MP4" : "Add Another CTA"}
+                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -626,8 +626,8 @@ export default function VideoVariantFactory() {
                 </p>
                 <p className="text-xs text-zinc-500">
                   {hookClips.length} hook{hookClips.length !== 1 ? "s" : ""} × 1 body
-                  {ctaClips.length > 0 ? " + CTA" : ""}
-                  {" "}= {hookClips.length} output MP4{hookClips.length !== 1 ? "s" : ""}
+                  {ctaClips.length > 0 ? ` × ${ctaClips.length} CTA${ctaClips.length !== 1 ? "s" : ""}` : ""}
+                  {" "}= {totalVariants} output MP4{totalVariants !== 1 ? "s" : ""}
                 </p>
               </div>
               <Button
@@ -637,7 +637,7 @@ export default function VideoVariantFactory() {
               >
                 {startProcessingMutation.isPending
                   ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting…</>
-                  : <><Zap className="w-4 h-4 mr-2" /> Generate Variants</>
+                  : <><Zap className="w-4 h-4 mr-2" /> Generate All {totalVariants > 0 ? totalVariants : ""} Variants</>
                 }
               </Button>
             </div>
@@ -721,15 +721,43 @@ export default function VideoVariantFactory() {
           {variants.length > 0 && (
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base text-zinc-200 flex items-center gap-2">
-                  <FileVideo className="w-4 h-4 text-emerald-400" />
-                  Output Variants
-                  <Badge className="ml-2 text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
-                    {doneVariants.length} ready
-                  </Badge>
-                </CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="text-base text-zinc-200 flex items-center gap-2">
+                    <FileVideo className="w-4 h-4 text-emerald-400" />
+                    Output Variants
+                    <Badge className="ml-2 text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                      {doneVariants.length} ready
+                    </Badge>
+                  </CardTitle>
+                  {doneVariants.length > 1 && (
+                    <Button
+                      size="sm"
+                      className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs"
+                      onClick={() => {
+                        // Download all done variants sequentially by opening each in a new tab
+                        doneVariants.forEach((v, i) => {
+                          if (v.s3Url) {
+                            setTimeout(() => {
+                              const a = document.createElement("a");
+                              a.href = v.s3Url!;
+                              a.download = `${v.variantLabel.replace(/[^a-z0-9]+/gi, "-")}.mp4`;
+                              a.target = "_blank";
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                            }, i * 800); // stagger by 800ms to avoid browser blocking
+                          }
+                        });
+                        toast.success(`Downloading ${doneVariants.length} variants…`);
+                      }}
+                    >
+                      <FolderDown className="w-3 h-3 mr-1" /> Download All ({doneVariants.length})
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
-              <CardContent>
+             
+<CardContent>
                 <div className="space-y-2">
                   {variants.map(v => (
                     <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">

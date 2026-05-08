@@ -107,13 +107,20 @@ async function runStitchingJob(jobId: number) {
     }
 
     const bodyClip = bodyClips[0];
-    const ctaClip  = ctaClips[0] ?? null;
+
+    // ── Full combinatorial matrix: every hook × every CTA ──────────────────────
+    // If no CTAs uploaded, generate one variant per hook (hook + body).
+    // If CTAs exist, generate hook × CTA variants: N hooks × M CTAs = N×M total.
+    const ctaVariants: (typeof ctaClips[0] | null)[] =
+      ctaClips.length > 0 ? ctaClips : [null];
 
     let variantsDone = 0;
 
     for (const hookClip of hookClips) {
+      for (const ctaClip of ctaVariants) {
       // Create variant row (pending)
-      const label = `Hook ${hookClip.clipOrder} + Body${ctaClip ? " + CTA" : ""}`;
+      const ctaLabel = ctaClip ? ` + CTA ${ctaClip.clipOrder}` : "";
+      const label = `Hook ${hookClip.clipOrder} + Body${ctaLabel}`;
       const [inserted] = await db.insert(videoVariants).values({
         jobId,
         hookClipId: hookClip.id,
@@ -137,13 +144,14 @@ async function runStitchingJob(jobId: number) {
           ctaLocal = await downloadToTemp(ctaClip.s3Url, "mp4");
         }
 
-        // Stitch
+        // Stitch: hook → body → cta
         const parts = [hookLocal, bodyLocal, ...(ctaLocal ? [ctaLocal] : [])];
-        outLocal = path.join(os.tmpdir(), `vvf-out-${jobId}-${hookClip.clipOrder}-${randomSuffix()}.mp4`);
+        const ctaSuffix = ctaClip ? `-cta${ctaClip.clipOrder}` : "";
+        outLocal = path.join(os.tmpdir(), `vvf-out-${jobId}-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`);
         await concatVideos(parts, outLocal);
 
         // Upload to S3
-        const s3Key = `video-variants/${jobId}/variant-hook${hookClip.clipOrder}-${randomSuffix()}.mp4`;
+        const s3Key = `video-variants/${jobId}/variant-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`;
         const fileBuffer = fs.readFileSync(outLocal);
         const { url: s3Url } = await storagePut(s3Key, fileBuffer, "video/mp4");
 
@@ -164,7 +172,8 @@ async function runStitchingJob(jobId: number) {
           if (f) try { fs.unlinkSync(f); } catch {}
         }
       }
-    }
+      } // end ctaVariants loop
+    } // end hookClips loop
 
     // Mark job done
     await db.update(videoVariantJobs)

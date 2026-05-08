@@ -179,7 +179,20 @@ export default function VideoVariantFactory() {
   };
 
   // ── Upload a clip file ─────────────────────────────────────────────────────
+  // Serialization ref: queue of pending uploads to prevent concurrent state races
+  const uploadQueueRef = useRef<Promise<void>>(Promise.resolve());
+
   const uploadClip = useCallback(async (file: File, clipType: ClipType, clipOrder: number) => {
+    if (!activeJobId) return;
+    // Chain this upload onto the previous one so state mutations are sequential
+    uploadQueueRef.current = uploadQueueRef.current.then(() =>
+      _doUploadClip(file, clipType, clipOrder)
+    );
+    return uploadQueueRef.current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeJobId, utils]);
+
+  const _doUploadClip = async (file: File, clipType: ClipType, clipOrder: number) => {
     if (!activeJobId) return;
 
     const tempId = `${clipType}-${clipOrder}-${Date.now()}`;
@@ -287,9 +300,11 @@ export default function VideoVariantFactory() {
         await new Promise(r => setTimeout(r, pollInterval));
         const freshData = await utils.videoVariant.getJob.fetch({ jobId: activeJobId });
         const serverClips: any[] = freshData?.clips ?? [];
+        // Match on BOTH clipType AND clipOrder for all types to avoid false positives.
+        // For body clips, clipOrder is 0; for hooks it's 1-based; for cta it's 1-based.
         const newClip = serverClips.find((c: any) =>
           c.clipType === clipType &&
-          (clipType !== "hook" || c.clipOrder === clipOrder)
+          c.clipOrder === clipOrder
         );
         if (newClip) {
           found = true;
@@ -314,7 +329,7 @@ export default function VideoVariantFactory() {
       setUploadingClips(prev => prev.map(c => c.id === tempId ? { ...c, error: msg, progress: 0 } : c));
       toast.error(`Upload failed: ${msg}`);
     }
-  }, [activeJobId, utils]);
+  };
 
   // ── Handle file input changes ──────────────────────────────────────────────
   const handleHookFiles = (e: React.ChangeEvent<HTMLInputElement>) => {

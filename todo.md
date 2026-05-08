@@ -2308,3 +2308,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] v184 tests for Source Tag Generator, Approval Queue, and Performance Signal
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287+)
+
+## v184-hotfix — Video Variants Uploader Stall
+
+- [x] Fix polling match logic: body/cta clips use clipOrder 0 but poll finds the FIRST existing clip of that type (false positive from hook 1 already uploaded)
+- [x] Fix concurrent upload stall: multiple files trigger uploadClip() in parallel, each racing to mutate uploadingClips state — serialize uploads or fix state race
+- [x] Fix hook polling: clipOrder match is correct for hooks but body/cta need exact clipOrder match too
+- [x] Deploy fix

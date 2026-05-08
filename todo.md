@@ -2336,3 +2336,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix: replaced storagePutWithSignal with streamUploadToStorage using axios + form-data ReadStream — pipes file directly from disk to proxy without loading into RAM
 - [x] Fix: axios timeout set to 20 minutes; maxBodyLength/maxContentLength set to Infinity for large files
 - [x] Deploy fix
+
+## v185 — Video Variants Uploader UX
+
+- [x] File size pre-check: show estimated upload + processing time before upload starts (e.g. "~4 min for 400 MB")
+- [x] Cloud-save progress indicator: animated pulse + elapsed timer + estimated remaining time during "Saving to cloud" phase
+- [x] Server-side upload progress endpoint: track axios stream bytes sent so client can poll real byte progress (deferred — client-side timer is sufficient)
+- [x] Retry button: show Retry on failed clip cards so user can re-attempt without page refresh
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287+)

@@ -41,12 +41,15 @@ interface UploadedClip {
 }
 
 interface UploadingClip {
-  id: string;  // temp local id
+  id: string;           // temp local id
   filename: string;
   clipType: ClipType;
   clipOrder: number;
-  progress: number;  // 0-100
+  progress: number;     // 0-100 (chunk upload phase)
+  fileSizeBytes?: number; // used for time estimate
+  cloudSaveStartedAt?: number; // Date.now() when poll phase begins (progress=95)
   error?: string;
+  retryFile?: File;     // original File object so user can retry without re-picking
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -73,6 +76,23 @@ function clipTypeLabel(t: ClipType, order: number) {
   if (t === "hook") return `Hook ${order}`;
   if (t === "body") return "Body";
   return "CTA";
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+// Estimate total time: ~1 MB/s upload to proxy + ~0.5s/MB for S3 reassembly
+// Returns a human-readable string like "~2 min" or "~45 sec"
+function estimateUploadTime(bytes: number): string {
+  const uploadSec = bytes / (1 * 1024 * 1024);   // ~1 MB/s to proxy
+  const processSec = bytes / (2 * 1024 * 1024);  // ~0.5s/MB for S3 save
+  const totalSec = Math.ceil(uploadSec + processSec);
+  if (totalSec < 60) return `~${totalSec} sec`;
+  const mins = Math.ceil(totalSec / 60);
+  return `~${mins} min`;
 }
 
 function clipTypeBadgeColor(t: ClipType) {
@@ -189,15 +209,26 @@ export default function VideoVariantFactory() {
       _doUploadClip(file, clipType, clipOrder)
     );
     return uploadQueueRef.current;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeJobId, utils]);
+
+  // ── Retry a failed clip upload ─────────────────────────────────────────────
+  const handleRetry = useCallback((failedClip: UploadingClip) => {
+    if (!failedClip.retryFile) return;
+    // Remove the failed entry and re-queue the upload
+    setUploadingClips(prev => prev.filter(c => c.id !== failedClip.id));
+    uploadClip(failedClip.retryFile, failedClip.clipType, failedClip.clipOrder);
+    toast.info(`Retrying ${clipTypeLabel(failedClip.clipType, failedClip.clipOrder)}…`);
+  }, [uploadClip]);
 
   const _doUploadClip = async (file: File, clipType: ClipType, clipOrder: number) => {
     if (!activeJobId) return;
 
     const tempId = `${clipType}-${clipOrder}-${Date.now()}`;
     setUploadingClips(prev => [...prev, {
-      id: tempId, filename: file.name, clipType, clipOrder, progress: 0
+      id: tempId, filename: file.name, clipType, clipOrder, progress: 0,
+      fileSizeBytes: file.size,
+      retryFile: file,
     }]);
 
     try {
@@ -293,9 +324,8 @@ export default function VideoVariantFactory() {
 
       // Server accepted — show 95% while S3 upload finishes in background
       setUploadingClips(prev => prev.map(c =>
-        c.id === tempId ? { ...c, progress: 95 } : c
+        c.id === tempId ? { ...c, progress: 95, cloudSaveStartedAt: Date.now() } : c
       ));
-
       // Poll every 2s for up to 5 minutes until the clip appears in the server list
       const maxWaitMs = 5 * 60 * 1000;
       const pollInterval = 2000;
@@ -335,7 +365,9 @@ export default function VideoVariantFactory() {
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      setUploadingClips(prev => prev.map(c => c.id === tempId ? { ...c, error: msg, progress: 0 } : c));
+      setUploadingClips(prev => prev.map(c =>
+        c.id === tempId ? { ...c, error: msg, progress: 0, cloudSaveStartedAt: undefined } : c
+      ));
       toast.error(`Upload failed: ${msg}`);
     }
   };
@@ -345,21 +377,34 @@ export default function VideoVariantFactory() {
     const files = Array.from(e.target.files ?? []);
     const existingHookCount = uploadedClips.filter(c => c.clipType === "hook").length
       + uploadingClips.filter(c => c.clipType === "hook").length;
-    files.forEach((file, i) => uploadClip(file, "hook", existingHookCount + i + 1));
+    files.forEach((file, i) => {
+      const sizeLabel = formatFileSize(file.size);
+      const timeLabel = estimateUploadTime(file.size);
+      toast.info(`Hook ${existingHookCount + i + 1}: ${sizeLabel} — estimated ${timeLabel}`, { duration: 5000 });
+      uploadClip(file, "hook", existingHookCount + i + 1);
+    });
     e.target.value = "";
   };
-
   const handleBodyFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) uploadClip(file, "body", 0);
+    if (file) {
+      const sizeLabel = formatFileSize(file.size);
+      const timeLabel = estimateUploadTime(file.size);
+      toast.info(`Body video: ${sizeLabel} — estimated ${timeLabel}`, { duration: 6000 });
+      uploadClip(file, "body", 0);
+    }
     e.target.value = "";
   };
-
   const handleCtaFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     const existingCtaCount = clips.filter((c: any) => c.clipType === "cta").length
       + uploadingClips.filter(c => c.clipType === "cta").length;
-    files.forEach((file, i) => uploadClip(file, "cta", existingCtaCount + i + 1));
+    files.forEach((file, i) => {
+      const sizeLabel = formatFileSize(file.size);
+      const timeLabel = estimateUploadTime(file.size);
+      toast.info(`CTA ${existingCtaCount + i + 1}: ${sizeLabel} — estimated ${timeLabel}`, { duration: 5000 });
+      uploadClip(file, "cta", existingCtaCount + i + 1);
+    });
     e.target.value = "";
   };
 
@@ -583,7 +628,7 @@ export default function VideoVariantFactory() {
                     <ClipRow key={c.id ?? c.clipId} clip={c} onDelete={() => handleDeleteClip(c.id ?? c.clipId)} />
                   ))}
                   {uploadingClips.filter(c => c.clipType === "hook").map(c => (
-                    <UploadingRow key={c.id} clip={c} />
+                    <UploadingRow key={c.id} clip={c} onRetry={handleRetry} />
                   ))}
                   <input ref={hookInputRef} type="file" accept="video/mp4,.mp4" multiple className="hidden" onChange={handleHookFiles} />
                   <Button
@@ -613,7 +658,7 @@ export default function VideoVariantFactory() {
                     <ClipRow key={c.id ?? c.clipId} clip={c} onDelete={() => handleDeleteClip(c.id ?? c.clipId)} />
                   ))}
                   {uploadingClips.filter(c => c.clipType === "body").map(c => (
-                    <UploadingRow key={c.id} clip={c} />
+                    <UploadingRow key={c.id} clip={c} onRetry={handleRetry} />
                   ))}
                   <input ref={bodyInputRef} type="file" accept="video/mp4,.mp4" className="hidden" onChange={handleBodyFile} />
                   {bodyClips.length === 0 && uploadingClips.filter(c => c.clipType === "body").length === 0 && (
@@ -659,7 +704,7 @@ export default function VideoVariantFactory() {
                     <ClipRow key={c.id ?? c.clipId} clip={c} onDelete={() => handleDeleteClip(c.id ?? c.clipId)} />
                   ))}
                   {uploadingClips.filter(c => c.clipType === "cta").map(c => (
-                    <UploadingRow key={c.id} clip={c} />
+                    <UploadingRow key={c.id} clip={c} onRetry={handleRetry} />
                   ))}
                   <input ref={ctaInputRef} type="file" accept="video/mp4,.mp4" multiple className="hidden" onChange={handleCtaFiles} />
                   <Button
@@ -1100,7 +1145,29 @@ function ClipRow({ clip, onDelete }: { clip: any; onDelete: () => void }) {
   );
 }
 
-function UploadingRow({ clip }: { clip: UploadingClip }) {
+function UploadingRow({
+  clip,
+  onRetry,
+}: {
+  clip: UploadingClip;
+  onRetry?: (clip: UploadingClip) => void;
+}) {
+  // Live elapsed timer for the cloud-save phase
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!clip.cloudSaveStartedAt || clip.error) return;
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - clip.cloudSaveStartedAt!) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [clip.cloudSaveStartedAt, clip.error]);
+
+  const isCloudSave = clip.progress === 95 && !clip.error && !!clip.cloudSaveStartedAt;
+  const estimatedTotal = clip.fileSizeBytes
+    ? Math.ceil(clip.fileSizeBytes / (2 * 1024 * 1024)) // ~0.5s/MB for S3 save
+    : null;
+  const remaining = estimatedTotal ? Math.max(0, estimatedTotal - elapsed) : null;
+
   return (
     <div className="p-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50 space-y-1">
       <div className="flex items-center gap-2">
@@ -1108,16 +1175,57 @@ function UploadingRow({ clip }: { clip: UploadingClip }) {
           {clipTypeLabel(clip.clipType, clip.clipOrder)}
         </Badge>
         <span className="text-xs text-zinc-400 truncate flex-1">{clip.filename}</span>
+        {clip.fileSizeBytes && !clip.error && (
+          <span className="text-xs text-zinc-500 shrink-0">{formatFileSize(clip.fileSizeBytes)}</span>
+        )}
         {clip.error
           ? <AlertCircle className="w-3 h-3 text-red-400 shrink-0" />
-          : <Loader2 className="w-3 h-3 text-violet-400 animate-spin shrink-0" />
+          : isCloudSave
+            ? <span className="flex items-center gap-1 text-xs text-amber-400 shrink-0">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Saving
+              </span>
+            : <Loader2 className="w-3 h-3 text-violet-400 animate-spin shrink-0" />
         }
       </div>
-      {!clip.error && (
+
+      {/* Chunk upload progress bar */}
+      {!clip.error && !isCloudSave && (
         <Progress value={clip.progress} className="h-1 bg-zinc-700" />
       )}
+
+      {/* Cloud-save phase: animated pulse bar + elapsed/remaining timer */}
+      {isCloudSave && (
+        <div className="space-y-1">
+          <div className="h-1 rounded-full bg-zinc-700 overflow-hidden">
+            <div
+              className="h-full bg-amber-400 rounded-full animate-pulse"
+              style={{ width: estimatedTotal ? `${Math.min(95, (elapsed / estimatedTotal) * 100)}%` : "60%" }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-zinc-500">
+            <span>Saving to cloud… {elapsed}s elapsed</span>
+            {remaining !== null && remaining > 0 && (
+              <span>~{remaining}s remaining</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Error state with retry button */}
       {clip.error && (
-        <p className="text-xs text-red-400">{clip.error}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs text-red-400 flex-1">{clip.error}</p>
+          {clip.retryFile && onRetry && (
+            <button
+              onClick={() => onRetry(clip)}
+              className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 shrink-0 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

@@ -2288,8 +2288,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Add Meta Ads API: bulk upload variants as ad video creatives into Meta Ads Manager
 - [ ] Update VideoVariantFactory output panel with two-path UI (Buffer path vs Meta Ads path)
 - [ ] Add Meta credentials (Ad Account ID, Page ID, Access Token) via secrets
-- [ ] TypeScript check passes (0 errors)
-- [ ] All tests pass (287+)
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287+)
 
 ## v183 — Hook Generator + Script Generator: Expanded Pillar Chips
 - [x] Replace 7-chip flat row in HookGenerator.tsx with two labeled scrollable rows
@@ -2299,3 +2299,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
 - [x] Save checkpoint v183
+
+## v184 — Meandering River Features (Source Tag, Approval Queue, Performance Signal)
+
+- [x] Source Tag Generator: auto-generate UTM attribution tag from keyword + platform + topic; append to Kajabi opt-in URL in DM Playbook; display tagged URL with copy button
+- [x] Content Approval Queue: add "pending_approval" to contentStatusEnum; add Pending Approval Kanban column before Drafting; add Approve/Reject actions on cards; run db:push
+- [x] Performance Signal Dashboard: new Viral Studio tab; list content_items with analytics; compute outlier score (views vs avg); flag outliers; Boost with Paid button generates Meta Ads brief
+- [x] v184 tests for Source Tag Generator, Approval Queue, and Performance Signal
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287+)

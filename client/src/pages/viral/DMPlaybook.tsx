@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { MessageSquare, Copy, Loader2, Clock, ChevronDown, ChevronUp, Zap, Target, Link2, ExternalLink } from "lucide-react";
+import { MessageSquare, Copy, Loader2, Clock, ChevronDown, ChevronUp, Zap, Target, Link2, ExternalLink, Tag, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 
 const PLATFORMS = [
@@ -52,6 +52,38 @@ interface PlaybookResult {
   expectedConversionRate: string;
   leadMagnetUrl?: string | null;
   createdAt: Date | string;
+}
+
+// ─── Source Tag Generator ────────────────────────────────────────────────────
+// Generates a UTM-style attribution tag from keyword + platform + topic slug
+// Format: organic_{platform}_{keyword}_{topicSlug}_{MMMYY}
+function buildSourceTag(keyword: string, platform: string, topic: string): string {
+  const now = new Date();
+  const monthYear = now.toLocaleString("en-US", { month: "short", year: "2-digit" })
+    .toLowerCase().replace(" ", "");
+  const topicSlug = topic
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .join("_");
+  return `organic_${platform}_${keyword.toLowerCase()}_${topicSlug}_${monthYear}`;
+}
+
+function buildTaggedUrl(baseUrl: string, sourceTag: string): string {
+  if (!baseUrl) return "";
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set("utm_source", "organic_social");
+    url.searchParams.set("utm_medium", "dm_automation");
+    url.searchParams.set("utm_campaign", sourceTag);
+    return url.toString();
+  } catch {
+    // If URL parsing fails, append as query string
+    const sep = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${sep}utm_source=organic_social&utm_medium=dm_automation&utm_campaign=${encodeURIComponent(sourceTag)}`;
+  }
 }
 
 function normalizeResult(raw: any): PlaybookResult {
@@ -120,6 +152,8 @@ export default function DMPlaybook() {
   const [kajabiUrl, setKajabiUrl] = useState("");
   const [result, setResult] = useState<PlaybookResult | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [tagCopied, setTagCopied] = useState(false);
+  const [taggedUrlCopied, setTaggedUrlCopied] = useState(false);
 
   const generateMutation = trpc.viralStudio.generateDMPlaybook.useMutation({
     onSuccess: (data) => {
@@ -134,6 +168,12 @@ export default function DMPlaybook() {
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
+  };
+
+  const handleCopyTag = (text: string, setter: (v: boolean) => void) => {
+    navigator.clipboard.writeText(text);
+    setter(true);
+    setTimeout(() => setter(false), 2000);
   };
 
   const handleCopyAll = () => {
@@ -287,22 +327,82 @@ export default function DMPlaybook() {
                 <p className="text-xs text-green-600 mt-2">Set this as the ManyChat keyword trigger. Tell viewers to comment this word.</p>
               </div>
 
-              {/* Kajabi URL display */}
-              {(result.leadMagnetUrl || kajabiUrl) && (
-                <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide flex items-center gap-1">
-                      <Link2 className="w-3 h-3" />
-                      Kajabi Opt-in URL (Message 1 link)
-                    </p>
-                    <Button variant="ghost" size="sm" className="h-5 text-xs px-1.5 text-orange-700"
-                      onClick={() => handleCopy(result.leadMagnetUrl ?? kajabiUrl)}>
-                      <Copy className="w-3 h-3 mr-1" />Copy
-                    </Button>
+              {/* Source Tag Generator */}
+              {(result.leadMagnetUrl || kajabiUrl) && (() => {
+                const baseUrl = result.leadMagnetUrl ?? kajabiUrl;
+                const sourceTag = buildSourceTag(
+                  result.keywordTrigger,
+                  result.platform ?? platform,
+                  result.videoTopic ?? videoTopic
+                );
+                const taggedUrl = buildTaggedUrl(baseUrl, sourceTag);
+                return (
+                  <div className="space-y-2">
+                    {/* Raw Kajabi URL */}
+                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide flex items-center gap-1">
+                          <Link2 className="w-3 h-3" />
+                          Kajabi Opt-in URL (base)
+                        </p>
+                        <Button variant="ghost" size="sm" className="h-5 text-xs px-1.5 text-orange-700"
+                          onClick={() => handleCopy(baseUrl)}>
+                          <Copy className="w-3 h-3 mr-1" />Copy
+                        </Button>
+                      </div>
+                      <p className="text-xs font-mono text-foreground break-all">{baseUrl}</p>
+                    </div>
+
+                    {/* Source Attribution Tag */}
+                    <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide flex items-center gap-1.5">
+                          <Tag className="w-3 h-3" />
+                          Attribution Source Tag
+                        </p>
+                        <Button
+                          variant="ghost" size="sm"
+                          className={`h-5 text-xs px-1.5 transition-colors ${tagCopied ? "text-green-600" : "text-teal-700"}`}
+                          onClick={() => handleCopyTag(sourceTag, setTagCopied)}
+                        >
+                          {tagCopied ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                          {tagCopied ? "Copied!" : "Copy"}
+                        </Button>
+                      </div>
+                      <div className="bg-white border border-teal-200 rounded-lg px-3 py-2">
+                        <code className="text-xs text-teal-800 font-mono break-all">{sourceTag}</code>
+                      </div>
+                      <p className="text-xs text-teal-600 mt-1.5">
+                        This tag is auto-generated from your keyword, platform, topic, and month. Paste it as <code className="bg-teal-100 px-1 rounded">utm_campaign</code> in your Kajabi URL or CRM.
+                      </p>
+                    </div>
+
+                    {/* Tagged URL (ready to paste into ManyChat) */}
+                    <div className="p-3 bg-violet-50 border border-violet-200 rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5">
+                          <Tag className="w-3 h-3" />
+                          Tagged URL — Paste into ManyChat Message 1
+                        </p>
+                        <Button
+                          variant="ghost" size="sm"
+                          className={`h-5 text-xs px-1.5 transition-colors ${taggedUrlCopied ? "text-green-600" : "text-violet-700"}`}
+                          onClick={() => handleCopyTag(taggedUrl, setTaggedUrlCopied)}
+                        >
+                          {taggedUrlCopied ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                          {taggedUrlCopied ? "Copied!" : "Copy"}
+                        </Button>
+                      </div>
+                      <div className="bg-white border border-violet-200 rounded-lg px-3 py-2">
+                        <code className="text-xs text-violet-800 font-mono break-all">{taggedUrl}</code>
+                      </div>
+                      <p className="text-xs text-violet-600 mt-1.5">
+                        Use this URL in ManyChat Message 1 instead of the plain Kajabi URL. Every lead that enters through this playbook will be tagged in your CRM — clean attribution, no guesswork.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs font-mono text-foreground break-all">{result.leadMagnetUrl ?? kajabiUrl}</p>
-                </div>
-              )}
+                );
+              })()}
 
               {/* CTA Line */}
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">

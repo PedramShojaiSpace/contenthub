@@ -352,7 +352,7 @@ export const appRouter = router({
           rawIdea: z.string().optional(),
           platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel"]).default("linkedin"),
           status: z
-            .enum(["idea", "drafting", "review", "approved", "scheduled", "published"])
+            .enum(["idea", "pending_approval", "drafting", "review", "approved", "scheduled", "published"])
             .default("idea"),
           textContent: z.string().optional(),
           notes: z.string().optional(),
@@ -382,7 +382,7 @@ export const appRouter = router({
           rawIdea: z.string().optional(),
           platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel"]).optional(),
           status: z
-            .enum(["idea", "drafting", "review", "approved", "scheduled", "published"])
+            .enum(["idea", "pending_approval", "drafting", "review", "approved", "scheduled", "published"])
             .optional(),
           textContent: z.string().optional(),
           imageUrl: z.string().optional(),
@@ -423,12 +423,11 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number(),
-          status: z.enum(["idea", "drafting", "review", "approved", "scheduled", "published"]),
+           status: z.enum(["idea", "pending_approval", "drafting", "review", "approved", "scheduled", "published"]),
         })
       )
       .mutation(async ({ input }) => {
         await updateContentItem(input.id, { status: input.status });
-
         // If moving to Published, auto-mark any linked gap query as addressed
         if (input.status === "published") {
           const item = await getContentItem(input.id);
@@ -447,7 +446,7 @@ export const appRouter = router({
               title: z.string().min(1),
               rawIdea: z.string().optional(),
               platform: z.enum(["meta", "linkedin", "x", "youtube", "tiktok", "blog", "email", "carousel"]).default("tiktok"),
-              status: z.enum(["idea", "drafting", "review", "approved", "scheduled", "published"]).default("idea"),
+              status: z.enum(["idea", "pending_approval", "drafting", "review", "approved", "scheduled", "published"]).default("idea"),
               textContent: z.string().optional(),
             })
           ).min(1).max(20),

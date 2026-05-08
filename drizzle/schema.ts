@@ -15,9 +15,10 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// Content status workflow: idea -> drafting -> review -> approved -> scheduled -> published
+// Content status workflow: idea -> pending_approval -> drafting -> review -> approved -> scheduled -> published
 export const contentStatusEnum = mysqlEnum("status", [
   "idea",
+  "pending_approval",
   "drafting",
   "review",
   "approved",

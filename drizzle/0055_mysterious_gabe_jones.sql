@@ -1,0 +1,1 @@
+ALTER TABLE `content_items` MODIFY COLUMN `status` enum('idea','pending_approval','drafting','review','approved','scheduled','published') NOT NULL DEFAULT 'idea';

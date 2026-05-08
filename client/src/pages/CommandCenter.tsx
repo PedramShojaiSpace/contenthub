@@ -92,7 +92,7 @@ import {
 import { toast } from "sonner";
 
 type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel";
-type Status = "idea" | "drafting" | "review" | "approved" | "scheduled" | "published";
+type Status = "idea" | "pending_approval" | "drafting" | "review" | "approved" | "scheduled" | "published";
 
 type ContentItem = {
   id: number;
@@ -120,6 +120,7 @@ type ContentItem = {
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
   { key: "idea", label: "Idea", color: "bg-muted/50 border-border" },
+  { key: "pending_approval", label: "Pending Approval", color: "bg-amber-950/30 border-amber-700/30" },
   { key: "drafting", label: "Drafting", color: "bg-blue-950/30 border-blue-800/30" },
   { key: "review", label: "Review", color: "bg-yellow-950/30 border-yellow-800/30" },
   { key: "approved", label: "Approved", color: "bg-green-950/30 border-green-800/30" },
@@ -941,7 +942,36 @@ function DraggableCard({
         {isPublished && (
           <AnalyticsPanel item={item} onUpdate={onAnalyticsUpdate} />
         )}
-
+        {/* Approve / Reject quick actions — Pending Approval column only */}
+        {item.status === "pending_approval" && (
+          <div className="mt-2 flex gap-1.5">
+            <Button
+              size="sm"
+              className="flex-1 h-6 text-[10px] bg-green-600 hover:bg-green-700 text-white gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStatusChange(item.id, "drafting");
+                toast.success("Approved — moved to Drafting");
+              }}
+            >
+              <CheckCircle2 className="h-2.5 w-2.5" />
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 h-6 text-[10px] border-red-500/40 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-500 gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStatusChange(item.id, "idea");
+                toast.info("Rejected — moved back to Idea");
+              }}
+            >
+              <X className="h-2.5 w-2.5" />
+              Reject
+            </Button>
+          </div>
+        )}
         {/* Action buttons — visible on hover */}
         {!isPublished && (
           <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity space-y-1">
@@ -1409,7 +1439,7 @@ export default function CommandCenter() {
       return;
     }
     setWpPublishingId(item.id);
-    const previousStatus = item.status as "idea" | "drafting" | "review" | "approved" | "scheduled" | "published";
+    const previousStatus = item.status as "idea" | "pending_approval" | "drafting" | "review" | "approved" | "scheduled" | "published";
     const slug = item.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80);
     // Parse seoKeywords from JSON string if present
     let semanticKeywords: string[] | undefined;
@@ -1652,7 +1682,7 @@ export default function CommandCenter() {
 
     // Dropped on a Kanban column
     if (overId.startsWith("col-")) {
-      const newStatus = overId.replace("col-", "") as Status;
+      const newStatus = overId.replace("col-", "") as Status; // Status now includes pending_approval
       const item = items.find((i) => i.id === itemId);
       if (item && item.status !== newStatus) {
         if (newStatus === "published") {

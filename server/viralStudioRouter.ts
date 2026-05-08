@@ -1418,6 +1418,89 @@ export const getTopicHistory = protectedProcedure
     return { topics };
   });
 
+// ─── Performance Signal Dashboard ──────────────────────────────────────────
+// Returns all published content_items with analytics, computes outlier score,
+// and generates a Meta Ads brief for flagged outliers.
+export const getPerformanceSignals = protectedProcedure
+  .query(async () => {
+    const db = await getDb();
+    if (!db) return { items: [], avgViews: 0, avgEngagement: 0 };
+    const { contentItems } = await import("../drizzle/schema");
+    const { eq: eqOp } = await import("drizzle-orm");
+    const rows = await db.select().from(contentItems)
+      .where(eqOp(contentItems.status, "published"))
+      .orderBy(desc(contentItems.publishedAt));
+    // Compute averages across all published items with non-zero views
+    const withViews = rows.filter(r => (r.analyticsViews ?? 0) > 0);
+    const avgViews = withViews.length > 0
+      ? Math.round(withViews.reduce((s, r) => s + (r.analyticsViews ?? 0), 0) / withViews.length)
+      : 0;
+    const avgEngagement = withViews.length > 0
+      ? Math.round(withViews.reduce((s, r) => s + (r.analyticsLikes ?? 0) + (r.analyticsComments ?? 0) + (r.analyticsShares ?? 0), 0) / withViews.length)
+      : 0;
+    // Score each item: outlierScore = views / max(avgViews, 1) — items >= 2x avg are flagged
+    const items = rows.map(r => {
+      const views = r.analyticsViews ?? 0;
+      const engagement = (r.analyticsLikes ?? 0) + (r.analyticsComments ?? 0) + (r.analyticsShares ?? 0);
+      const outlierScore = avgViews > 0 ? parseFloat((views / avgViews).toFixed(2)) : 0;
+      const isOutlier = outlierScore >= 2.0;
+      return {
+        id: r.id,
+        title: r.title,
+        platform: r.platform,
+        publishedAt: r.publishedAt,
+        publishUrl: r.publishUrl,
+        imageUrl: r.imageUrl,
+        views,
+        likes: r.analyticsLikes ?? 0,
+        comments: r.analyticsComments ?? 0,
+        shares: r.analyticsShares ?? 0,
+        engagement,
+        outlierScore,
+        isOutlier,
+      };
+    });
+    return { items, avgViews, avgEngagement };
+  });
+
+export const generateBoostBrief = protectedProcedure
+  .input(z.object({
+    contentItemId: z.number(),
+    title: z.string(),
+    platform: z.string(),
+    views: z.number(),
+    engagement: z.number(),
+    outlierScore: z.number(),
+    publishUrl: z.string().optional(),
+  }))
+  .mutation(async ({ input }) => {
+    const prompt = `${PEDRAM_VOICE}
+
+You are writing a Meta Ads campaign brief for a piece of organic content that has proven itself as an outlier performer.
+
+Content Title: "${input.title}"
+Platform: ${input.platform}
+Organic Views: ${input.views.toLocaleString()}
+Organic Engagement: ${input.engagement.toLocaleString()}
+Outlier Score: ${input.outlierScore}x average (${input.outlierScore >= 3 ? "exceptional" : input.outlierScore >= 2 ? "strong" : "moderate"} outlier)
+${input.publishUrl ? `Content URL: ${input.publishUrl}` : ""}
+
+Write a concise Meta Ads campaign brief (300-400 words) that includes:
+1. CAMPAIGN OBJECTIVE: What Meta campaign objective to use and why (Traffic, Engagement, Conversions, etc.)
+2. TARGET AUDIENCE: 3 specific audience segments to test (cold lookalike, warm retargeting, interest-based)
+3. AD FORMAT: Which format to use (video clip, image, carousel) and why based on the content type
+4. HOOK ADAPTATION: How to adapt the organic hook into a paid ad hook (first 3 seconds)
+5. CTA: The specific call-to-action to use and where it should point (Academy opt-in, lead magnet, etc.)
+6. BUDGET RECOMMENDATION: Daily budget range and test duration
+7. SUCCESS METRICS: What KPIs to track (CPL, CTR, ROAS targets)
+
+Be specific, actionable, and grounded in what we know about Pedram's audience. No fluff.`;
+    const response = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
+    const rawContent = response.choices?.[0]?.message?.content;
+    const brief = typeof rawContent === "string" ? rawContent : "Brief generation failed.";
+    return { brief };
+  });
+
 // ─── Router export ────────────────────────────────────────────────────────────
 export const viralStudioRouter = router({
   generateHooks,
@@ -1446,4 +1529,6 @@ export const viralStudioRouter = router({
   saveTopicHistory,
   getTopicHistory,
   getAllPlatformFrameworks,
+  getPerformanceSignals,
+  generateBoostBrief,
 });

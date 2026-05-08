@@ -3,7 +3,7 @@ import { useSearch } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Zap, FileText, RefreshCw, TrendingUp, MessageSquare, BarChart2, FlaskConical } from "lucide-react";
+import { Zap, FileText, RefreshCw, TrendingUp, MessageSquare, BarChart2, FlaskConical, Flame } from "lucide-react";
 import HookGenerator from "./viral/HookGenerator";
 import ScriptGenerator from "./viral/ScriptGenerator";
 import RepurposeEngine from "./viral/RepurposeEngine";
@@ -11,6 +11,7 @@ import ViralTopics from "./viral/ViralTopics";
 import DMPlaybook from "./viral/DMPlaybook";
 import AnalyticsDashboard from "./viral/AnalyticsDashboard";
 import ABTestLab from "./viral/ABTestLab";
+import PerformanceSignal from "./viral/PerformanceSignal";
 
 const TABS = [
   { id: "hooks", label: "Hook Generator", icon: Zap, badge: "Core" },
@@ -34,6 +35,8 @@ const TAB_PARAM_MAP: Record<string, string> = {
   analytics: "analytics",
   abtest: "abtest",
   ab: "abtest",
+  signals: "signals",
+  signal: "signals",
 };
 
 export default function ViralStudio() {
@@ -108,6 +111,9 @@ export default function ViralStudio() {
             </TabsContent>
             <TabsContent value="abtest" className="m-0 h-full">
               <ABTestLab />
+            </TabsContent>
+            <TabsContent value="signals" className="m-0 h-full">
+              <PerformanceSignal />
             </TabsContent>
           </div>
         </Tabs>

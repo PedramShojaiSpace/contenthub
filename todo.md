@@ -2290,3 +2290,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Add Meta credentials (Ad Account ID, Page ID, Access Token) via secrets
 - [ ] TypeScript check passes (0 errors)
 - [ ] All tests pass (287+)
+
+## v183 — Hook Generator + Script Generator: Expanded Pillar Chips
+- [x] Replace 7-chip flat row in HookGenerator.tsx with two labeled scrollable rows
+- [x] Health row (10 chips): Gut Health, Longevity, Sleep, Stress, Brain, Energy, Detox, Fasting, Hormones, Supplements
+- [x] Mind row (10 chips): Consciousness, Enlightenment, Metaphysics, Non-Duality, Quantum Mind, Taoism, Ancient Wisdom, Meditation, Near-Death, Time & Reality
+- [x] Apply same two-row scrollable structure to ScriptGenerator.tsx
+- [x] TypeScript check passes (0 errors)
+- [x] All tests pass (287 passing)
+- [x] Save checkpoint v183

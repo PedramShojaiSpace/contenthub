@@ -735,26 +735,54 @@ export default function ScriptGenerator() {
           {/* Topic — always shown */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Topic *</Label>
-            {/* Content pillar quick-select chips */}
-            <div className="flex flex-wrap gap-1.5 mb-1">
-              {[
-                { label: "Gut Health", topic: "How your gut microbiome controls your mood and energy", color: "bg-green-100 text-green-700 border-green-300" },
-                { label: "Sleep", topic: "Why most sleep advice is wrong and what actually restores your brain overnight", color: "bg-blue-100 text-blue-700 border-blue-300" },
-                { label: "Longevity", topic: "The 3 daily habits that separate people who age well from those who don't", color: "bg-orange-100 text-orange-700 border-orange-300" },
-                { label: "Stress", topic: "How chronic stress is silently destroying your hormones and what to do about it", color: "bg-red-100 text-red-700 border-red-300" },
-                { label: "Consciousness", topic: "What neuroscience is finally confirming about the nature of consciousness and awareness", color: "bg-indigo-100 text-indigo-700 border-indigo-300" },
-                { label: "Enlightenment", topic: "The ancient practices that modern science is now proving actually change your brain", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-                { label: "Metaphysics", topic: "Why the materialist model of reality is breaking down and what it means for how you live", color: "bg-purple-100 text-purple-700 border-purple-300" },
-              ].map((p) => (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => setTopic(p.topic)}
-                  className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all hover:opacity-80 ${p.color}`}
-                >
-                  {p.label}
-                </button>
-              ))}
+            {/* Content pillar quick-select chips — two labeled scrollable rows */}
+            <div className="space-y-1.5 mb-1">
+              {/* Health row */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Health</span>
+                <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                  {[
+                    { label: "Gut Health", topic: "How your gut microbiome controls your mood and energy", color: "bg-green-100 text-green-700 border-green-300" },
+                    { label: "Longevity", topic: "The 3 daily habits that separate people who age well from those who don't", color: "bg-orange-100 text-orange-700 border-orange-300" },
+                    { label: "Sleep", topic: "Why most sleep advice is wrong and what actually restores your brain overnight", color: "bg-blue-100 text-blue-700 border-blue-300" },
+                    { label: "Stress", topic: "How chronic stress is silently destroying your hormones and what to do about it", color: "bg-red-100 text-red-700 border-red-300" },
+                    { label: "Brain", topic: "The daily habits that are silently shrinking your brain and how to reverse them", color: "bg-cyan-100 text-cyan-700 border-cyan-300" },
+                    { label: "Energy", topic: "Why your mitochondria are the real key to all-day energy and how to fix them", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+                    { label: "Detox", topic: "The toxins hiding in your everyday environment that are disrupting your hormones", color: "bg-lime-100 text-lime-700 border-lime-300" },
+                    { label: "Fasting", topic: "What happens inside your body during a 24-hour fast that doctors rarely explain", color: "bg-amber-100 text-amber-700 border-amber-300" },
+                    { label: "Hormones", topic: "Why your cortisol rhythm is the master switch for energy, weight, and sleep", color: "bg-rose-100 text-rose-700 border-rose-300" },
+                    { label: "Supplements", topic: "The 3 supplements most people take that are actually making their gut worse", color: "bg-teal-100 text-teal-700 border-teal-300" },
+                  ].map((p) => (
+                    <button key={p.label} type="button" onClick={() => setTopic(p.topic)}
+                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all hover:opacity-80 shrink-0 ${p.color}`}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Mind / Consciousness row */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Mind</span>
+                <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                  {[
+                    { label: "Consciousness", topic: "What neuroscience is finally confirming about the nature of consciousness and awareness", color: "bg-indigo-100 text-indigo-700 border-indigo-300" },
+                    { label: "Enlightenment", topic: "The ancient practices that modern science is now proving actually change your brain", color: "bg-violet-100 text-violet-700 border-violet-300" },
+                    { label: "Metaphysics", topic: "Why the materialist model of reality is breaking down and what it means for how you live", color: "bg-purple-100 text-purple-700 border-purple-300" },
+                    { label: "Non-Duality", topic: "What the experience of non-dual awareness actually feels like and why it changes everything", color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300" },
+                    { label: "Quantum Mind", topic: "Why quantum physics and consciousness research are converging on the same radical conclusion", color: "bg-sky-100 text-sky-700 border-sky-300" },
+                    { label: "Taoism", topic: "The Taoist principle that modern high-achievers are violating and why it is burning them out", color: "bg-emerald-100 text-emerald-700 border-emerald-300" },
+                    { label: "Ancient Wisdom", topic: "What 5000-year-old wisdom traditions knew about the mind that neuroscience is just catching up to", color: "bg-amber-100 text-amber-700 border-amber-300" },
+                    { label: "Meditation", topic: "The specific type of meditation that rewires your default mode network in 8 weeks", color: "bg-blue-100 text-blue-700 border-blue-300" },
+                    { label: "Near-Death", topic: "What near-death experiences are telling us about the nature of consciousness and reality", color: "bg-pink-100 text-pink-700 border-pink-300" },
+                    { label: "Time & Reality", topic: "Why your perception of time is an illusion and what that means for how you live", color: "bg-orange-100 text-orange-700 border-orange-300" },
+                  ].map((p) => (
+                    <button key={p.label} type="button" onClick={() => setTopic(p.topic)}
+                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all hover:opacity-80 shrink-0 ${p.color}`}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <Textarea
               placeholder="e.g. 'How your gut microbiome controls your mood and energy'"

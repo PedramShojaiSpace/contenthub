@@ -2345,3 +2345,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Retry button: show Retry on failed clip cards so user can re-attempt without page refresh
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287+)
+
+## v185-hotfix-5 — Gateway HTML Error on Body Video Chunk Upload
+
+- [x] Diagnose: identify which request (which chunk number) triggers the HTML error page
+- [x] Fix: replaced multipart FormData with raw binary application/octet-stream + query params — eliminates multipart encoding overhead
+- [x] Deploy fix

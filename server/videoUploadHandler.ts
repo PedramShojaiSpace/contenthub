@@ -21,7 +21,7 @@
  *     → 202 { pending: true, tempId }
  */
 
-import { Request, Response } from "express";
+import express, { Request, Response } from "express";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
@@ -42,13 +42,7 @@ try { fs.mkdirSync(LEGACY_UPLOAD_DIR, { recursive: true }); } catch {}
 
 // ── Multer instances ──────────────────────────────────────────────────────────
 
-// For chunk uploads: each chunk is at most 4 MB, no mime filter (it's a raw binary slice)
-const chunkUpload = multer({
-  dest: CHUNK_UPLOAD_DIR,
-  limits: { fileSize: 6 * 1024 * 1024 }, // 6 MB safety margin (chunks are 4 MB)
-});
-
-// For legacy single-file uploads (small files only)
+// For legacy single-file uploads (small files only))
 const legacyUpload = multer({
   dest: LEGACY_UPLOAD_DIR,
   limits: { fileSize: 500 * 1024 * 1024 },
@@ -61,7 +55,13 @@ const legacyUpload = multer({
   },
 });
 
-export const videoChunkMiddleware = chunkUpload.single("chunk");
+// Raw binary middleware for chunk uploads — avoids multipart encoding overhead
+// that can trigger Cloud Run gateway 413/502 errors.
+// Metadata is passed via query parameters instead of form fields.
+export const videoChunkMiddleware = express.raw({
+  type: "application/octet-stream",
+  limit: "6mb",
+});
 export const videoUploadMiddleware = legacyUpload.single("file");
 
 function randomSuffix() {
@@ -176,38 +176,34 @@ async function processUploadInBackground(opts: {
   }
 }
 
-// ── Chunk receive handler ─────────────────────────────────────────────────────
-
+// ── Chunk receive handler (raw binary) ─────────────────────────────────────────
+// Client sends: Content-Type: application/octet-stream
+// Metadata in query params: uploadId, chunkIndex, totalChunks, jobId, clipType, clipOrder
 export async function handleVideoChunkUpload(req: Request, res: Response) {
   try {
     let user = null;
     try { user = await sdk.authenticateRequest(req); } catch { user = null; }
-    if (!user) {
-      if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
-      return res.status(401).json({ error: "Unauthorized" });
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+    const chunkBuffer = req.body as Buffer;
+    if (!Buffer.isBuffer(chunkBuffer) || chunkBuffer.length === 0) {
+      return res.status(400).json({ error: "No chunk data received" });
     }
 
-    const chunk = req.file;
-    if (!chunk) return res.status(400).json({ error: "No chunk received" });
+    const uploadId = (req.query.uploadId ?? req.headers["x-upload-id"]) as string;
+    const chunkIndex = parseInt((req.query.chunkIndex ?? req.headers["x-chunk-index"]) as string ?? "0", 10);
 
-    const uploadId = req.body.uploadId as string;
-    const chunkIndex = parseInt(req.body.chunkIndex ?? "0", 10);
+    if (!uploadId) return res.status(400).json({ error: "uploadId is required" });
 
-    if (!uploadId) {
-      fs.unlinkSync(chunk.path);
-      return res.status(400).json({ error: "uploadId is required" });
-    }
-
-    // Move chunk to a named location so finalize can find it
+    // Write chunk buffer directly to disk
     const chunkDir = path.join(CHUNK_UPLOAD_DIR, uploadId);
     fs.mkdirSync(chunkDir, { recursive: true });
     const destPath = path.join(chunkDir, `chunk-${chunkIndex}`);
-    fs.renameSync(chunk.path, destPath);
+    fs.writeFileSync(destPath, chunkBuffer);
 
     return res.status(200).json({ received: true, chunkIndex });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
     if (!res.headersSent) return res.status(500).json({ error: msg });
   }
 }

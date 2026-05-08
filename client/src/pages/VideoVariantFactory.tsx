@@ -239,21 +239,21 @@ export default function VideoVariantFactory() {
       const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
       const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+      // Send chunk as raw binary (application/octet-stream) with metadata in query params.
+      // This avoids multipart encoding overhead that can trigger Cloud Run gateway 413 errors.
       const sendChunk = (chunkIndex: number): Promise<void> => {
         return new Promise((resolve, reject) => {
           const start = chunkIndex * CHUNK_SIZE;
           const end = Math.min(start + CHUNK_SIZE, file.size);
           const blob = file.slice(start, end);
-
-          const fd = new FormData();
-          fd.append("chunk", blob, file.name);
-          fd.append("uploadId", uploadId);
-          fd.append("chunkIndex", String(chunkIndex));
-          fd.append("totalChunks", String(totalChunks));
-          fd.append("jobId", String(activeJobId));
-          fd.append("clipType", clipType);
-          fd.append("clipOrder", String(clipOrder));
-
+          const params = new URLSearchParams({
+            uploadId,
+            chunkIndex: String(chunkIndex),
+            totalChunks: String(totalChunks),
+            jobId: String(activeJobId),
+            clipType,
+            clipOrder: String(clipOrder),
+          });
           const xhr = new XMLHttpRequest();
           xhr.upload.addEventListener("progress", (e) => {
             if (e.lengthComputable) {
@@ -286,10 +286,11 @@ export default function VideoVariantFactory() {
           });
           xhr.addEventListener("error", () => reject(new Error(`Network error on chunk ${chunkIndex}`)));
           xhr.addEventListener("timeout", () => reject(new Error(`Chunk ${chunkIndex} timed out`)));
-          xhr.open("POST", "/api/upload/video-chunk");
+          xhr.open("POST", `/api/upload/video-chunk?${params.toString()}`);
           xhr.withCredentials = true;
           xhr.timeout = 5 * 60 * 1000; // 5 min per chunk
-          xhr.send(fd);
+          xhr.setRequestHeader("Content-Type", "application/octet-stream");
+          xhr.send(blob);
         });
       };
 

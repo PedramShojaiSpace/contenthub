@@ -2351,3 +2351,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Diagnose: identify which request (which chunk number) triggers the HTML error page
 - [x] Fix: replaced multipart FormData with raw binary application/octet-stream + query params — eliminates multipart encoding overhead
 - [x] Deploy fix
+
+## v185-hotfix-6 — S3 Upload Hangs Even for Small Files
+
+- [x] Diagnose: storage proxy has ~20 MB limit; files above that hang silently
+- [x] Fix: uploadFileSegmented splits assembled file into 14 MB segments, uploads each separately, stores JSON array of URLs in s3Url column
+- [x] Fix: downloadToTemp in stitching job detects JSON array and concatenates segments before FFmpeg processing
+- [x] TypeScript: 0 errors | Tests: 287 passing
+- [x] Deploy fix

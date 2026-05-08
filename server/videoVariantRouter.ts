@@ -35,10 +35,9 @@ function randomSuffix() {
   return Math.random().toString(36).slice(2, 8);
 }
 
-/** Download a URL to a local temp file, return the local path */
-function downloadToTemp(url: string, ext: string): Promise<string> {
+/** Download a single URL to a specific local path */
+function downloadSingleUrl(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const dest = path.join(os.tmpdir(), `vvf-${randomSuffix()}.${ext}`);
     const file = fs.createWriteStream(dest);
     const client = url.startsWith("https") ? https : http;
     client.get(url, (res) => {
@@ -47,10 +46,43 @@ function downloadToTemp(url: string, ext: string): Promise<string> {
         return;
       }
       res.pipe(file);
-      file.on("finish", () => { file.close(); resolve(dest); });
+      file.on("finish", () => { file.close(); resolve(); });
       file.on("error", reject);
     }).on("error", reject);
   });
+}
+
+/**
+ * Download a URL (or JSON array of segment URLs) to a local temp file.
+ * Large clips are stored as JSON arrays of 14 MB segment URLs by the uploader.
+ * This function detects that case and concatenates the segments transparently.
+ */
+async function downloadToTemp(urlOrSegments: string, ext: string): Promise<string> {
+  // Detect JSON array of segment URLs (produced by uploadFileSegmented)
+  if (urlOrSegments.trimStart().startsWith("[")) {
+    let segUrls: string[];
+    try { segUrls = JSON.parse(urlOrSegments); } catch { throw new Error("Invalid segment URL JSON"); }
+    if (!Array.isArray(segUrls) || segUrls.length === 0) throw new Error("Empty segment URL array");
+
+    const dest = path.join(os.tmpdir(), `vvf-${randomSuffix()}.${ext}`);
+    const outStream = fs.createWriteStream(dest, { flags: "w" });
+
+    for (const segUrl of segUrls) {
+      const segDest = path.join(os.tmpdir(), `vvf-seg-${randomSuffix()}.${ext}`);
+      await downloadSingleUrl(segUrl, segDest);
+      const segBuf = fs.readFileSync(segDest);
+      await new Promise<void>((res, rej) => outStream.write(segBuf, (e) => e ? rej(e) : res()));
+      try { fs.unlinkSync(segDest); } catch {}
+    }
+
+    await new Promise<void>((res) => outStream.end(res));
+    return dest;
+  }
+
+  // Plain URL — original behaviour
+  const dest = path.join(os.tmpdir(), `vvf-${randomSuffix()}.${ext}`);
+  await downloadSingleUrl(urlOrSegments, dest);
+  return dest;
 }
 
 /** Concatenate an array of local MP4 paths into a single output MP4 using FFmpeg concat demuxer */

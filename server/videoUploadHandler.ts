@@ -68,45 +68,80 @@ function randomSuffix() {
   return Math.random().toString(36).slice(2, 8);
 }
 
-// ── Stream upload to storage proxy using axios (no full-file RAM load) ────────
-// Uses Node.js form-data with a ReadStream so the file is piped directly
-// from disk to the proxy without buffering the whole video in memory.
-async function streamUploadToStorage(
-  relKey: string,
-  filePath: string,
+// ── Upload a single buffer segment to the storage proxy ─────────────────────
+const SEGMENT_SIZE = 14 * 1024 * 1024; // 14 MB — safely under the ~20 MB proxy limit
+
+async function uploadSegmentToStorage(
+  segKey: string,
+  buffer: Buffer,
   contentType: string,
-  timeoutMs = 20 * 60 * 1000  // 20-minute timeout for large files
-): Promise<{ key: string; url: string }> {
+): Promise<string> {
   const { ENV } = await import("./_core/env");
   const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
   const apiKey = ENV.forgeApiKey;
   if (!baseUrl || !apiKey) throw new Error("Storage proxy credentials missing");
 
-  const key = relKey.replace(/^\/+/, "");
+  const key = segKey.replace(/^\/+/, "");
   const uploadUrl = `${baseUrl}/v1/storage/upload?path=${encodeURIComponent(key)}`;
   const filename = key.split("/").pop() ?? key;
 
   const form = new FormData();
-  // Append as a ReadStream — axios will stream it directly without loading into RAM
-  form.append("file", fs.createReadStream(filePath), {
-    filename,
-    contentType,
-    knownLength: fs.statSync(filePath).size,
-  });
+  form.append("file", buffer, { filename, contentType, knownLength: buffer.length });
 
   const response = await axios.post(uploadUrl, form, {
-    headers: {
-      ...form.getHeaders(),
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { ...form.getHeaders(), Authorization: `Bearer ${apiKey}` },
     maxBodyLength: Infinity,
     maxContentLength: Infinity,
-    timeout: timeoutMs,
+    timeout: 3 * 60 * 1000, // 3 min per segment
   });
 
   const url = response.data?.url;
-  if (!url) throw new Error("Storage proxy did not return a URL");
-  return { key, url };
+  if (!url) throw new Error(`Storage proxy did not return a URL for segment ${segKey}`);
+  return url;
+}
+
+// ── Segment-upload a file, splitting into 14 MB chunks if needed ──────────────
+// For files ≤ 14 MB: uploads as a single segment, returns a plain URL string.
+// For files > 14 MB: splits into N segments, uploads each, returns a JSON array
+// of URLs that downloadToTemp() in the stitching job knows how to reassemble.
+async function uploadFileSegmented(
+  baseKey: string,
+  filePath: string,
+  contentType: string,
+): Promise<string> {
+  const fileSize = fs.statSync(filePath).size;
+
+  if (fileSize <= SEGMENT_SIZE) {
+    // Small file — single upload
+    const buf = fs.readFileSync(filePath);
+    return uploadSegmentToStorage(baseKey, buf, contentType);
+  }
+
+  // Large file — split into segments
+  const fd = fs.openSync(filePath, "r");
+  const urls: string[] = [];
+  let offset = 0;
+  let segIndex = 0;
+
+  try {
+    while (offset < fileSize) {
+      const segSize = Math.min(SEGMENT_SIZE, fileSize - offset);
+      const buf = Buffer.alloc(segSize);
+      fs.readSync(fd, buf, 0, segSize, offset);
+      const segKey = `${baseKey}.seg${segIndex}`;
+      console.log(`[VVF] Uploading segment ${segIndex} (${(segSize / 1024 / 1024).toFixed(1)} MB) → ${segKey}`);
+      const url = await uploadSegmentToStorage(segKey, buf, contentType);
+      urls.push(url);
+      offset += segSize;
+      segIndex++;
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+
+  console.log(`[VVF] Segmented upload complete: ${segIndex} segments for ${baseKey}`);
+  // Return a JSON array so downloadToTemp() can detect and reassemble
+  return JSON.stringify(urls);
 }
 
 // ── Background S3 upload + DB insert ─────────────────────────────────────────
@@ -149,9 +184,9 @@ async function processUploadInBackground(opts: {
         .where(eq(videoVariantJobs.id, jobId));
     }
 
-    // ── Stream file directly to storage proxy (no full-file RAM load) ─────────
-    console.log(`[VVF] Starting stream upload for ${clipType} clip (job ${jobId}): ${filePath}`);
-    const { url: s3Url } = await streamUploadToStorage(s3Key, filePath, "video/mp4");
+    // ── Upload file in 14 MB segments to stay under the storage proxy limit ─────
+    console.log(`[VVF] Starting segmented upload for ${clipType} clip (job ${jobId}): ${filePath}`);
+    const s3Url = await uploadFileSegmented(s3Key, filePath, "video/mp4");
 
     try { fs.unlinkSync(filePath); } catch {}
 
@@ -340,5 +375,39 @@ export async function handleVideoClipUpload(req: Request, res: Response) {
     const msg = err instanceof Error ? err.message : String(err);
     if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
     if (!res.headersSent) return res.status(500).json({ error: msg });
+  }
+}
+
+// ── TEMPORARY DIAGNOSTIC: test storage proxy with a small video ───────────────
+export async function handleStorageDiagnostic(req: Request, res: Response) {
+  try {
+    const { ENV } = await import("./_core/env");
+    const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
+    const apiKey = ENV.forgeApiKey;
+    if (!baseUrl || !apiKey) return res.json({ error: "No credentials" });
+
+    // Create a tiny fake MP4 buffer (just header bytes for testing)
+    const testBuffer = Buffer.alloc(1024 * 50, 0); // 50KB
+    const key = `diag-test-${Date.now()}.mp4`;
+    const uploadUrl = `${baseUrl}/v1/storage/upload?path=${encodeURIComponent(key)}`;
+
+    const form = new FormData();
+    form.append("file", testBuffer, { filename: key, contentType: "video/mp4", knownLength: testBuffer.length });
+
+    const response = await axios.post(uploadUrl, form, {
+      headers: { ...form.getHeaders(), Authorization: `Bearer ${apiKey}` },
+      maxBodyLength: Infinity,
+      timeout: 15000,
+    });
+    return res.json({ success: true, data: response.data });
+  } catch (err: any) {
+    return res.json({
+      success: false,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      body: err.response?.data,
+      message: err.message,
+      code: err.code,
+    });
   }
 }

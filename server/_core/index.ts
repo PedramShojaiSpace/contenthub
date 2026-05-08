@@ -10,7 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { startWeeklyDigestCron } from "../digest";
 import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
-import { videoUploadMiddleware, handleVideoClipUpload, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize } from "../videoUploadHandler";
+import { videoUploadMiddleware, handleVideoClipUpload, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleStorageDiagnostic } from "../videoUploadHandler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -42,6 +42,8 @@ async function startServer() {
   // Chunked upload endpoints (bypass Cloud Run 32 MB gateway limit):
   app.post("/api/upload/video-chunk", videoChunkMiddleware, handleVideoChunkUpload);
   app.post("/api/upload/video-chunk/finalize", express.json(), handleVideoChunkFinalize);
+  // Temporary diagnostic endpoint — tests storage proxy with a small video buffer
+  app.get("/api/upload/storage-diag", handleStorageDiagnostic);
   // Legacy single-file endpoint (kept for backward compat / small files):
   app.post("/api/upload/video-clip", videoUploadMiddleware, handleVideoClipUpload);
 

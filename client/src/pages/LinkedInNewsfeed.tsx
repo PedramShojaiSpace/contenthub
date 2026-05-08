@@ -52,6 +52,9 @@ const TOPIC_COLORS: Record<string, string> = {
   sleep_science: "bg-blue-100 text-blue-800 border-blue-200",
   mental_health: "bg-rose-100 text-rose-800 border-rose-200",
   cardiometabolic: "bg-red-100 text-red-800 border-red-200",
+  consciousness: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  enlightenment: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  metaphysics: "bg-purple-100 text-purple-800 border-purple-200",
 };
 
 const TOPIC_LABELS: Record<string, string> = {
@@ -61,6 +64,9 @@ const TOPIC_LABELS: Record<string, string> = {
   sleep_science: "Sleep Science",
   mental_health: "Mental Health",
   cardiometabolic: "Cardiometabolic",
+  consciousness: "Consciousness",
+  enlightenment: "Enlightenment",
+  metaphysics: "Metaphysics",
 };
 
 // ─── Article type ──────────────────────────────────────────────────────────────

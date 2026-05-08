@@ -16,7 +16,7 @@ import { TOPIC_CLUSTERS, fetchBingNewsRSS, fetchPubMedArticles, fetchAllTopics }
 // ─── TOPIC_CLUSTERS ────────────────────────────────────────────────────────────
 
 describe("TOPIC_CLUSTERS", () => {
-  it("has all 6 required topic keys", () => {
+  it("has all 9 required topic keys", () => {
     const keys = Object.keys(TOPIC_CLUSTERS);
     expect(keys).toContain("integrative_medicine");
     expect(keys).toContain("longevity");
@@ -24,7 +24,10 @@ describe("TOPIC_CLUSTERS", () => {
     expect(keys).toContain("sleep_science");
     expect(keys).toContain("mental_health");
     expect(keys).toContain("cardiometabolic");
-    expect(keys).toHaveLength(6);
+    expect(keys).toContain("consciousness");
+    expect(keys).toContain("enlightenment");
+    expect(keys).toContain("metaphysics");
+    expect(keys).toHaveLength(9);
   });
 
   it("each cluster has label, bingQuery, and pubmedQuery", () => {
@@ -410,8 +413,8 @@ describe("Commentary prompt structure", () => {
     // We can't directly access TOPIC_CTAS (not exported), but we verify the module loads
     const module = await import("./newsfeedCommentary");
     expect(module.generateCommentary).toBeDefined();
-    // All 6 topic keys are valid
-    expect(topicKeys).toHaveLength(6);
+    // All 9 topic keys are valid (6 health + 3 consciousness/enlightenment/metaphysics)
+    expect(topicKeys).toHaveLength(9);
   });
 });
 

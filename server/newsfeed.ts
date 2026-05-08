@@ -10,7 +10,7 @@
  *
  * Topic clusters covered:
  *   integrative_medicine | longevity | gut_health | sleep_science |
- *   mental_health | cardiometabolic
+ *   mental_health | cardiometabolic | consciousness | enlightenment | metaphysics
  */
 
 import { parseStringPromise } from "xml2js";
@@ -57,6 +57,21 @@ export const TOPIC_CLUSTERS: Record<string, { label: string; bingQuery: string; 
     label: "Cardiometabolic Health",
     bingQuery: "cardiometabolic health metabolic syndrome cardiovascular research 2025 2026",
     pubmedQuery: "cardiometabolic[tiab] OR metabolic syndrome[MeSH] OR cardiovascular health[tiab]",
+  },
+  consciousness: {
+    label: "Consciousness & Neuroscience",
+    bingQuery: "consciousness science neuroscience awareness mind research 2025 2026",
+    pubmedQuery: "consciousness[MeSH] OR neural correlates of consciousness[tiab] OR awareness[tiab] OR altered states of consciousness[tiab]",
+  },
+  enlightenment: {
+    label: "Enlightenment & Spiritual Growth",
+    bingQuery: "enlightenment spiritual awakening growth meditation practice 2025 2026",
+    pubmedQuery: "spiritual well-being[MeSH] OR meditation[MeSH] OR mindfulness-based stress reduction[tiab] OR transcendence[tiab]",
+  },
+  metaphysics: {
+    label: "Metaphysics & Philosophy of Mind",
+    bingQuery: "metaphysics philosophy of mind consciousness reality quantum mind 2025 2026",
+    pubmedQuery: "philosophy of mind[tiab] OR hard problem of consciousness[tiab] OR quantum mind[tiab] OR non-local consciousness[tiab]",
   },
 };
 

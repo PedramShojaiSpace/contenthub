@@ -64,6 +64,9 @@ const TOPIC_CTAS: Record<string, string> = {
   sleep_science: "If you're ready to stop fighting your biology and start sleeping like the high performer you are, the Urban Monk Academy has the framework.",
   mental_health: "If you're ready to build real resilience — not just cope, but actually thrive — the Urban Monk Academy is where that practice begins.",
   cardiometabolic: "If you want to understand what your metabolic health is really telling you and how to course-correct before it becomes a crisis, the Urban Monk Academy is the place.",
+  consciousness: "If you're curious about the deeper nature of mind, awareness, and what it means to be fully awake — not just alive — the Urban Monk Academy is where that inquiry goes deep.",
+  enlightenment: "If you're ready to move beyond information and into genuine transformation — the kind that changes how you see everything — the Urban Monk Academy is where that path begins.",
+  metaphysics: "If you want to explore the big questions — what reality actually is, what mind truly is, and how to live from that understanding — the Urban Monk Academy is the place for that conversation.",
 };
 
 // ─── Commentary Generator ─────────────────────────────────────────────────────

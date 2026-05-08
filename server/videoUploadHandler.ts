@@ -35,10 +35,12 @@ import { sdk } from "./_core/sdk";
 
 const CHUNK_UPLOAD_DIR = path.join(os.tmpdir(), "vvf-chunks");
 const LEGACY_UPLOAD_DIR = path.join(os.tmpdir(), "vvf-uploads");
+const SEG_PROGRESS_DIR = path.join(os.tmpdir(), "vvf-seg-progress");
 
 // Ensure temp dirs exist
 try { fs.mkdirSync(CHUNK_UPLOAD_DIR, { recursive: true }); } catch {}
 try { fs.mkdirSync(LEGACY_UPLOAD_DIR, { recursive: true }); } catch {}
+try { fs.mkdirSync(SEG_PROGRESS_DIR, { recursive: true }); } catch {}
 
 // ── Multer instances ──────────────────────────────────────────────────────────
 
@@ -58,8 +60,14 @@ const legacyUpload = multer({
 // Raw binary middleware for chunk uploads — avoids multipart encoding overhead
 // that can trigger Cloud Run gateway 413/502 errors.
 // Metadata is passed via query parameters instead of form fields.
+//
+// IMPORTANT: type must be "*/*" (not "application/octet-stream") because the
+// Cloud Run gateway / Vite proxy can rewrite or strip the Content-Type header
+// in transit. Using "*/*" ensures express.raw() always parses the body buffer
+// regardless of what the gateway does to the header. The route is scoped only
+// to /api/upload/video-chunk so there is no risk of consuming other requests.
 export const videoChunkMiddleware = express.raw({
-  type: "application/octet-stream",
+  type: "*/*",
   limit: "6mb",
 });
 export const videoUploadMiddleware = legacyUpload.single("file");
@@ -104,17 +112,27 @@ async function uploadSegmentToStorage(
 // For files ≤ 14 MB: uploads as a single segment, returns a plain URL string.
 // For files > 14 MB: splits into N segments, uploads each, returns a JSON array
 // of URLs that downloadToTemp() in the stitching job knows how to reassemble.
+// progressKey: if provided, writes a JSON progress file to SEG_PROGRESS_DIR
+// so the client can poll /api/upload/video-chunk/progress?uploadId=<progressKey>
 async function uploadFileSegmented(
   baseKey: string,
   filePath: string,
   contentType: string,
+  progressKey?: string,
 ): Promise<string> {
   const fileSize = fs.statSync(filePath).size;
 
   if (fileSize <= SEGMENT_SIZE) {
     // Small file — single upload
+    if (progressKey) {
+      try { fs.writeFileSync(path.join(SEG_PROGRESS_DIR, progressKey), JSON.stringify({ done: 0, total: 1 })); } catch {}
+    }
     const buf = fs.readFileSync(filePath);
-    return uploadSegmentToStorage(baseKey, buf, contentType);
+    const url = await uploadSegmentToStorage(baseKey, buf, contentType);
+    if (progressKey) {
+      try { fs.writeFileSync(path.join(SEG_PROGRESS_DIR, progressKey), JSON.stringify({ done: 1, total: 1 })); } catch {}
+    }
+    return url;
   }
 
   // Large file — split into segments
@@ -122,6 +140,12 @@ async function uploadFileSegmented(
   const urls: string[] = [];
   let offset = 0;
   let segIndex = 0;
+  const totalSegs = Math.ceil(fileSize / SEGMENT_SIZE);
+
+  // Write initial progress
+  if (progressKey) {
+    try { fs.writeFileSync(path.join(SEG_PROGRESS_DIR, progressKey), JSON.stringify({ done: 0, total: totalSegs })); } catch {}
+  }
 
   try {
     while (offset < fileSize) {
@@ -129,11 +153,15 @@ async function uploadFileSegmented(
       const buf = Buffer.alloc(segSize);
       fs.readSync(fd, buf, 0, segSize, offset);
       const segKey = `${baseKey}.seg${segIndex}`;
-      console.log(`[VVF] Uploading segment ${segIndex} (${(segSize / 1024 / 1024).toFixed(1)} MB) → ${segKey}`);
+      console.log(`[VVF] Uploading segment ${segIndex + 1}/${totalSegs} (${(segSize / 1024 / 1024).toFixed(1)} MB) → ${segKey}`);
       const url = await uploadSegmentToStorage(segKey, buf, contentType);
       urls.push(url);
       offset += segSize;
       segIndex++;
+      // Update progress after each segment completes
+      if (progressKey) {
+        try { fs.writeFileSync(path.join(SEG_PROGRESS_DIR, progressKey), JSON.stringify({ done: segIndex, total: totalSegs })); } catch {}
+      }
     }
   } finally {
     fs.closeSync(fd);
@@ -152,6 +180,7 @@ async function processUploadInBackground(opts: {
   jobId: number;
   clipType: "hook" | "body" | "cta";
   clipOrder: number;
+  uploadId?: string;  // used as progressKey for segment progress tracking
 }) {
   const { filePath, originalName, jobId, clipType, clipOrder } = opts;
   let clipId: number | null = null;
@@ -186,7 +215,8 @@ async function processUploadInBackground(opts: {
 
     // ── Upload file in 14 MB segments to stay under the storage proxy limit ─────
     console.log(`[VVF] Starting segmented upload for ${clipType} clip (job ${jobId}): ${filePath}`);
-    const s3Url = await uploadFileSegmented(s3Key, filePath, "video/mp4");
+    // Pass the uploadId as progressKey so the client can poll segment progress
+    const s3Url = await uploadFileSegmented(s3Key, filePath, "video/mp4", opts.uploadId);
 
     try { fs.unlinkSync(filePath); } catch {}
 
@@ -308,6 +338,7 @@ export async function handleVideoChunkFinalize(req: Request, res: Response) {
           jobId,
           clipType: clipType as "hook" | "body" | "cta",
           clipOrder,
+          uploadId,  // for segment progress tracking
         });
       } catch (err) {
         console.error(`[VVF] Chunk finalize failed for uploadId ${uploadId}:`, err);
@@ -375,6 +406,26 @@ export async function handleVideoClipUpload(req: Request, res: Response) {
     const msg = err instanceof Error ? err.message : String(err);
     if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
     if (!res.headersSent) return res.status(500).json({ error: msg });
+  }
+}
+
+// ── Segment progress polling endpoint ─────────────────────────────────────────
+// GET /api/upload/video-chunk/progress?uploadId=<id>
+// Returns { done: number, total: number } — client shows "Saving segment X of Y"
+export async function handleSegmentProgress(req: Request, res: Response) {
+  const uploadId = req.query.uploadId as string;
+  if (!uploadId) return res.status(400).json({ error: "uploadId required" });
+  const progressFile = path.join(SEG_PROGRESS_DIR, uploadId);
+  if (!fs.existsSync(progressFile)) {
+    // Not started yet or already cleaned up
+    return res.json({ done: 0, total: 0 });
+  }
+  try {
+    const raw = fs.readFileSync(progressFile, "utf8");
+    const data = JSON.parse(raw);
+    return res.json(data);
+  } catch {
+    return res.json({ done: 0, total: 0 });
   }
 }
 

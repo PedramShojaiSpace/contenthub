@@ -13,7 +13,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { videoVariantJobs, videoClips, videoVariants, testVariants, videoProductionSessions, sessionScripts, userCredentials } from "../drizzle/schema";
+import { videoVariantJobs, videoClips, videoVariants, testVariants, videoProductionSessions, sessionScripts, userCredentials, contentItems } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { storagePut } from "./storage";
 import ffmpeg from "fluent-ffmpeg";
@@ -685,5 +685,39 @@ export const videoVariantRouter = router({
         });
       }
       return { success: true };
+    }),
+
+  /**
+   * Bulk-create content_items in "pending_approval" status for all done variants.
+   * Each variant becomes one content card in the Command Center Kanban.
+   * Returns the count of cards created.
+   */
+  bulkSendToPendingApproval: protectedProcedure
+    .input(z.object({ jobId: z.number().int() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [job] = await db.select().from(videoVariantJobs)
+        .where(and(eq(videoVariantJobs.id, input.jobId), eq(videoVariantJobs.userId, ctx.user.id)));
+      if (!job) throw new Error("Job not found");
+
+      const doneVariants = await db.select().from(videoVariants)
+        .where(and(eq(videoVariants.jobId, input.jobId), eq(videoVariants.status, "done")));
+      if (doneVariants.length === 0) throw new Error("No completed variants to send");
+
+      let created = 0;
+      for (const v of doneVariants) {
+        if (!v.s3Url) continue;
+        await db.insert(contentItems).values({
+          title: `${job.jobName} — ${v.variantLabel}`,
+          rawIdea: `Video variant from job: ${job.jobName}`,
+          platform: "meta",
+          status: "pending_approval",
+          imageUrl: v.s3Url,  // store the variant video URL in imageUrl for preview
+          notes: `Auto-created from Video Variant Factory job #${job.id}. Variant: ${v.variantLabel}.`,
+        });
+        created++;
+      }
+      return { created };
     }),
 });

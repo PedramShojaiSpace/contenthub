@@ -48,6 +48,8 @@ interface UploadingClip {
   progress: number;     // 0-100 (chunk upload phase)
   fileSizeBytes?: number; // used for time estimate
   cloudSaveStartedAt?: number; // Date.now() when poll phase begins (progress=95)
+  segmentsDone?: number;  // segments uploaded so far (from progress endpoint)
+  totalSegments?: number; // total segments for this clip
   error?: string;
   retryFile?: File;     // original File object so user can retry without re-picking
 }
@@ -140,6 +142,7 @@ export default function VideoVariantFactory() {
   const syndicateToBufferMutation = trpc.videoVariant.syndicateToBuffer.useMutation();
   const uploadToMetaMutation      = trpc.videoVariant.uploadToMetaAds.useMutation();
   const saveMetaCredentialsMutation = trpc.videoVariant.saveMetaCredentials.useMutation();
+  const bulkSendToPendingApprovalMutation = trpc.videoVariant.bulkSendToPendingApproval.useMutation();
 
   // Load saved Meta credentials on mount and auto-fill fields
   const { data: savedMetaCreds } = trpc.videoVariant.getMetaCredentials.useQuery(undefined, {
@@ -241,7 +244,7 @@ export default function VideoVariantFactory() {
 
       // Send chunk as raw binary (application/octet-stream) with metadata in query params.
       // This avoids multipart encoding overhead that can trigger Cloud Run gateway 413 errors.
-      const sendChunk = (chunkIndex: number): Promise<void> => {
+      const sendChunkOnce = (chunkIndex: number): Promise<void> => {
         return new Promise((resolve, reject) => {
           const start = chunkIndex * CHUNK_SIZE;
           const end = Math.min(start + CHUNK_SIZE, file.size);
@@ -294,6 +297,24 @@ export default function VideoVariantFactory() {
         });
       };
 
+      // Auto-retry backoff: attempt each chunk up to 2 times before surfacing error
+      const sendChunk = async (chunkIndex: number): Promise<void> => {
+        const MAX_ATTEMPTS = 2;
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          try {
+            await sendChunkOnce(chunkIndex);
+            return; // success
+          } catch (err) {
+            if (attempt < MAX_ATTEMPTS) {
+              // Wait 2s before retrying
+              await new Promise(r => setTimeout(r, 2000));
+            } else {
+              throw err; // surface after final attempt
+            }
+          }
+        }
+      };
+
       // Send chunks sequentially
       for (let i = 0; i < totalChunks; i++) {
         await sendChunk(i);
@@ -330,12 +351,26 @@ export default function VideoVariantFactory() {
       // Poll every 3s for up to 20 minutes until the clip appears in the server list.
       // Large body videos (100–200 MB) take 8–12 min to upload to storage on Cloud Run.
       const maxWaitMs = 20 * 60 * 1000;
-      const pollInterval = 2000;
+      const pollInterval = 3000;
       const startTime = Date.now();
       let found = false;
 
       while (Date.now() - startTime < maxWaitMs) {
         await new Promise(r => setTimeout(r, pollInterval));
+
+        // Poll segment progress so the UI can show "Saving segment X of Y"
+        try {
+          const progRes = await fetch(`/api/upload/video-chunk/progress?uploadId=${encodeURIComponent(uploadId)}`, { credentials: "include" });
+          if (progRes.ok) {
+            const prog = await progRes.json() as { done: number; total: number };
+            if (prog.total > 0) {
+              setUploadingClips(prev => prev.map(c =>
+                c.id === tempId ? { ...c, segmentsDone: prog.done, totalSegments: prog.total } : c
+              ));
+            }
+          }
+        } catch { /* progress polling is best-effort */ }
+
         const freshData = await utils.videoVariant.getJob.fetch({ jobId: activeJobId });
         const serverClips: any[] = freshData?.clips ?? [];
         // Match on BOTH clipType AND clipOrder for all types to avoid false positives.
@@ -846,29 +881,49 @@ export default function VideoVariantFactory() {
                     </Badge>
                   </CardTitle>
                   {doneVariants.length > 0 && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-zinc-700 text-zinc-400 hover:text-zinc-200 text-xs"
-                      onClick={() => {
-                        doneVariants.forEach((v, i) => {
-                          if (v.s3Url) {
-                            setTimeout(() => {
-                              const a = document.createElement("a");
-                              a.href = v.s3Url!;
-                              a.download = `${v.variantLabel.replace(/[^a-z0-9]+/gi, "-")}.mp4`;
-                              a.target = "_blank";
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                            }, i * 800);
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700 text-zinc-400 hover:text-zinc-200 text-xs"
+                        onClick={() => {
+                          doneVariants.forEach((v, i) => {
+                            if (v.s3Url) {
+                              setTimeout(() => {
+                                const a = document.createElement("a");
+                                a.href = v.s3Url!;
+                                a.download = `${v.variantLabel.replace(/[^a-z0-9]+/gi, "-")}.mp4`;
+                                a.target = "_blank";
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                              }, i * 800);
+                            }
+                          });
+                          toast.success(`Downloading ${doneVariants.length} variants…`);
+                        }}
+                      >
+                        <FolderDown className="w-3 h-3 mr-1" /> Download All ({doneVariants.length})
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-violet-600 hover:bg-violet-500 text-white text-xs"
+                        disabled={bulkSendToPendingApprovalMutation.isPending}
+                        onClick={async () => {
+                          if (!activeJobId) return;
+                          try {
+                            const res = await bulkSendToPendingApprovalMutation.mutateAsync({ jobId: activeJobId });
+                            toast.success(`${res.created} content card${res.created !== 1 ? "s" : ""} sent to Pending Approval`);
+                          } catch (err: any) {
+                            toast.error(err.message ?? "Failed to send to Pending Approval");
                           }
-                        });
-                        toast.success(`Downloading ${doneVariants.length} variants…`);
-                      }}
-                    >
-                      <FolderDown className="w-3 h-3 mr-1" /> Download All ({doneVariants.length})
-                    </Button>
+                        }}
+                      >
+                        {bulkSendToPendingApprovalMutation.isPending
+                          ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Sending…</>
+                          : <><Send className="w-3 h-3 mr-1" /> Send to Pending Approval</>}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -1202,13 +1257,24 @@ function UploadingRow({
           <div className="h-1 rounded-full bg-zinc-700 overflow-hidden">
             <div
               className="h-full bg-amber-400 rounded-full animate-pulse"
-              style={{ width: estimatedTotal ? `${Math.min(95, (elapsed / estimatedTotal) * 100)}%` : "60%" }}
+              style={{
+                width: clip.totalSegments && clip.totalSegments > 1
+                  ? `${Math.min(95, ((clip.segmentsDone ?? 0) / clip.totalSegments) * 100)}%`
+                  : estimatedTotal ? `${Math.min(95, (elapsed / estimatedTotal) * 100)}%` : "60%"
+              }}
             />
           </div>
           <div className="flex justify-between text-xs text-zinc-500">
-            <span>Saving to cloud… {elapsed}s elapsed</span>
-            {remaining !== null && remaining > 0 && (
+            {clip.totalSegments && clip.totalSegments > 1 ? (
+              <span>Saving segment {(clip.segmentsDone ?? 0) + 1} of {clip.totalSegments}…</span>
+            ) : (
+              <span>Saving to cloud… {elapsed}s elapsed</span>
+            )}
+            {(!clip.totalSegments || clip.totalSegments <= 1) && remaining !== null && remaining > 0 && (
               <span>~{remaining}s remaining</span>
+            )}
+            {clip.totalSegments && clip.totalSegments > 1 && clip.segmentsDone !== undefined && clip.segmentsDone < clip.totalSegments && (
+              <span>{clip.segmentsDone}/{clip.totalSegments} done</span>
             )}
           </div>
         </div>

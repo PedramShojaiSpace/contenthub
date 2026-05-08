@@ -1045,3 +1045,16 @@ export const viralUserPreferences = mysqlTable("viral_user_preferences", {
 });
 export type ViralUserPreferences = typeof viralUserPreferences.$inferSelect;
 export type InsertViralUserPreferences = typeof viralUserPreferences.$inferInsert;
+
+// Per-user saved credentials for external integrations (Meta Ads, etc.)
+export const userCredentials = mysqlTable("user_credentials", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  // Meta Ads Manager
+  metaAdAccountId: varchar("metaAdAccountId", { length: 128 }),
+  metaPageId: varchar("metaPageId", { length: 128 }),
+  metaAccessToken: text("metaAccessToken"), // long-lived token, stored as text
+  updatedAt: timestamp("uc_updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UserCredentials = typeof userCredentials.$inferSelect;
+export type InsertUserCredentials = typeof userCredentials.$inferInsert;

@@ -119,6 +119,19 @@ export default function VideoVariantFactory() {
   const deleteJobMutation   = trpc.videoVariant.deleteJob.useMutation();
   const syndicateToBufferMutation = trpc.videoVariant.syndicateToBuffer.useMutation();
   const uploadToMetaMutation      = trpc.videoVariant.uploadToMetaAds.useMutation();
+  const saveMetaCredentialsMutation = trpc.videoVariant.saveMetaCredentials.useMutation();
+
+  // Load saved Meta credentials on mount and auto-fill fields
+  const { data: savedMetaCreds } = trpc.videoVariant.getMetaCredentials.useQuery(undefined, {
+    staleTime: Infinity,
+  });
+  useEffect(() => {
+    if (savedMetaCreds) {
+      if (savedMetaCreds.metaAdAccountId) setMetaAdAccountId(savedMetaCreds.metaAdAccountId);
+      if (savedMetaCreds.metaPageId) setMetaPageId(savedMetaCreds.metaPageId);
+      if (savedMetaCreds.metaAccessToken) setMetaAccessToken(savedMetaCreds.metaAccessToken);
+    }
+  }, [savedMetaCreds]);
   const utils               = trpc.useUtils();
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -941,10 +954,34 @@ export default function VideoVariantFactory() {
                             className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
                           />
                         </div>
-                        <p className="text-xs text-zinc-500">
-                          Each variant is uploaded as an AdVideo and an AdCreative is created automatically.
-                          You can then attach them to any ad set in Ads Manager and go live.
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-zinc-500">
+                            Each variant is uploaded as an AdVideo and an AdCreative is created automatically.
+                            You can then attach them to any ad set in Ads Manager and go live.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="ml-3 shrink-0 border-zinc-600 text-zinc-400 hover:text-zinc-200 text-xs"
+                            disabled={saveMetaCredentialsMutation.isPending || !metaAdAccountId || !metaPageId || !metaAccessToken}
+                            onClick={async () => {
+                              try {
+                                await saveMetaCredentialsMutation.mutateAsync({
+                                  metaAdAccountId,
+                                  metaPageId,
+                                  metaAccessToken,
+                                });
+                                toast.success("Meta credentials saved — they will pre-fill next time");
+                              } catch (err: any) {
+                                toast.error(err.message ?? "Failed to save credentials");
+                              }
+                            }}
+                          >
+                            {saveMetaCredentialsMutation.isPending
+                              ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Saving…</>
+                              : <><CheckCircle2 className="w-3 h-3 mr-1" /> Save Credentials</>}
+                          </Button>
+                        </div>
                         {outputResults.length > 0 && (
                           <div className="space-y-1">
                             {outputResults.map((r, i) => (

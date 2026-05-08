@@ -13,7 +13,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { videoVariantJobs, videoClips, videoVariants, testVariants, videoProductionSessions, sessionScripts } from "../drizzle/schema";
+import { videoVariantJobs, videoClips, videoVariants, testVariants, videoProductionSessions, sessionScripts, userCredentials } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { storagePut } from "./storage";
 import ffmpeg from "fluent-ffmpeg";
@@ -581,5 +581,57 @@ export const videoVariantRouter = router({
         .orderBy(desc(testVariants.createdAt))
         .limit(20);
       return { tests, sessionName: session.sessionName };
+    }),
+
+  /** Get saved Meta Ads credentials for the current user */
+  getMetaCredentials: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const rows = await db.select()
+        .from(userCredentials)
+        .where(eq(userCredentials.userId, ctx.user.id))
+        .limit(1);
+      if (rows.length === 0) return { metaAdAccountId: "", metaPageId: "", metaAccessToken: "" };
+      const row = rows[0];
+      return {
+        metaAdAccountId: row.metaAdAccountId ?? "",
+        metaPageId: row.metaPageId ?? "",
+        metaAccessToken: row.metaAccessToken ?? "",
+      };
+    }),
+
+  /** Save Meta Ads credentials for the current user (upsert) */
+  saveMetaCredentials: protectedProcedure
+    .input(z.object({
+      metaAdAccountId: z.string().max(128),
+      metaPageId: z.string().max(128),
+      metaAccessToken: z.string().max(4096),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      // Check if row already exists
+      const existing = await db.select({ id: userCredentials.id })
+        .from(userCredentials)
+        .where(eq(userCredentials.userId, ctx.user.id))
+        .limit(1);
+      if (existing.length > 0) {
+        await db.update(userCredentials)
+          .set({
+            metaAdAccountId: input.metaAdAccountId,
+            metaPageId: input.metaPageId,
+            metaAccessToken: input.metaAccessToken,
+          })
+          .where(eq(userCredentials.userId, ctx.user.id));
+      } else {
+        await db.insert(userCredentials).values({
+          userId: ctx.user.id,
+          metaAdAccountId: input.metaAdAccountId,
+          metaPageId: input.metaPageId,
+          metaAccessToken: input.metaAccessToken,
+        });
+      }
+      return { success: true };
     }),
 });

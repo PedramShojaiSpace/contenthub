@@ -41,7 +41,7 @@ async function startServer() {
   //
   // Chunked upload endpoints (bypass Cloud Run 32 MB gateway limit):
   app.post("/api/upload/video-chunk", videoChunkMiddleware, handleVideoChunkUpload);
-  app.post("/api/upload/video-chunk/finalize", handleVideoChunkFinalize);
+  app.post("/api/upload/video-chunk/finalize", express.json(), handleVideoChunkFinalize);
   // Legacy single-file endpoint (kept for backward compat / small files):
   app.post("/api/upload/video-clip", videoUploadMiddleware, handleVideoClipUpload);
 

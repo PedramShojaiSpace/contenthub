@@ -2359,3 +2359,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix: downloadToTemp in stitching job detects JSON array and concatenates segments before FFmpeg processing
 - [x] TypeScript: 0 errors | Tests: 287 passing
 - [x] Deploy fix
+
+## v185-hotfix-7 — Direct S3 Upload via Presigned URLs (Bypass Proxy)
+
+- [x] Diagnose: 20 MB probe succeeded from sandbox but fails in production — issue is Cloud Run outbound bandwidth making each segment take 5-8 min, exceeding the 3 min timeout
+- [x] Fix: extended server-side segment upload timeout from 3 min to 10 min per segment
+- [x] Fix: extended client-side poll timeout from 5 min to 20 min for large body videos
+- [x] TypeScript: 0 errors | Tests: 287 passing
+- [x] Deploy fix

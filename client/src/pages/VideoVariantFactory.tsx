@@ -327,8 +327,9 @@ export default function VideoVariantFactory() {
       setUploadingClips(prev => prev.map(c =>
         c.id === tempId ? { ...c, progress: 95, cloudSaveStartedAt: Date.now() } : c
       ));
-      // Poll every 2s for up to 5 minutes until the clip appears in the server list
-      const maxWaitMs = 5 * 60 * 1000;
+      // Poll every 3s for up to 20 minutes until the clip appears in the server list.
+      // Large body videos (100–200 MB) take 8–12 min to upload to storage on Cloud Run.
+      const maxWaitMs = 20 * 60 * 1000;
       const pollInterval = 2000;
       const startTime = Date.now();
       let found = false;

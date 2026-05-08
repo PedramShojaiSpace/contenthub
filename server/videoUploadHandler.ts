@@ -92,7 +92,7 @@ async function uploadSegmentToStorage(
     headers: { ...form.getHeaders(), Authorization: `Bearer ${apiKey}` },
     maxBodyLength: Infinity,
     maxContentLength: Infinity,
-    timeout: 3 * 60 * 1000, // 3 min per segment
+    timeout: 10 * 60 * 1000, // 10 min per segment — large segments on Cloud Run can take 5–8 min
   });
 
   const url = response.data?.url;

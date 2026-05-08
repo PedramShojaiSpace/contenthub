@@ -725,6 +725,27 @@ export default function HookGenerator() {
                   )}
                 </button>
               </div>
+              {/* Content pillar quick-select chips */}
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {[
+                  { label: "Gut Health", topic: "The gut-brain connection and why your mood is controlled by your microbiome", color: "bg-green-100 text-green-700 border-green-300" },
+                  { label: "Sleep", topic: "Why most sleep advice is wrong and what actually restores your brain overnight", color: "bg-blue-100 text-blue-700 border-blue-300" },
+                  { label: "Longevity", topic: "The 3 daily habits that separate people who age well from those who don't", color: "bg-orange-100 text-orange-700 border-orange-300" },
+                  { label: "Stress", topic: "How chronic stress is silently destroying your hormones and what to do about it", color: "bg-red-100 text-red-700 border-red-300" },
+                  { label: "Consciousness", topic: "What neuroscience is finally confirming about the nature of consciousness and awareness", color: "bg-indigo-100 text-indigo-700 border-indigo-300" },
+                  { label: "Enlightenment", topic: "The ancient practices that modern science is now proving actually change your brain", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+                  { label: "Metaphysics", topic: "Why the materialist model of reality is breaking down and what it means for how you live", color: "bg-purple-100 text-purple-700 border-purple-300" },
+                ].map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setTopic(p.topic)}
+                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all hover:opacity-80 ${p.color}`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
               <div className="relative">
                 <Textarea
                   placeholder="e.g. 'The gut-brain connection and why your mood is controlled by your microbiome'"

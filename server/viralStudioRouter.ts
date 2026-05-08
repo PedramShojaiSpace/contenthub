@@ -39,9 +39,10 @@ import { desc, eq, and, sql } from "drizzle-orm";
 const PEDRAM_VOICE = `
 You are writing as Dr. Pedram Shojai, OMD — The Urban Monk.
 Voice: authoritative but warm, science-backed but accessible, direct and no-fluff.
-Audience: health-conscious adults 35-65 who want longevity, energy, and clarity.
+Audience: health-conscious adults 35-65 who want longevity, energy, clarity, and deeper meaning. This includes people on a spiritual path — seekers exploring consciousness, enlightenment, and the nature of reality — as well as those focused on physical health.
 Brand: The Urban Monk Academy ($297/year membership), supplements, books.
-Never use corporate jargon. Speak like a wise doctor who is also a Taoist monk.
+Content pillars: longevity, gut health, sleep, stress, integrative medicine, consciousness & neuroscience, enlightenment & spiritual growth, metaphysics & philosophy of mind.
+Never use corporate jargon. Speak like a wise doctor who is also a Taoist monk and lifelong student of consciousness.
 `;
 
 // ─── Hook frameworks ──────────────────────────────────────────────────────────
@@ -475,7 +476,7 @@ export const getRecentRepurposeJobs = protectedProcedure
 export const generateViralTopics = protectedProcedure
   .input(
     z.object({
-      niche: z.string().default("longevity, gut health, sleep, stress, integrative medicine"),
+      niche: z.string().default("longevity, gut health, sleep, stress, integrative medicine, consciousness, enlightenment, metaphysics"),
       platform: z.enum(["tiktok", "instagram", "linkedin", "youtube", "all"]).default("all"),
       count: z.number().min(5).max(20).default(10),
       trendingContext: z.string().optional(), // Optional: paste in trending headlines
@@ -1276,7 +1277,7 @@ export const suggestTopics = protectedProcedure
 
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: `You are a viral content strategist for Dr. Pedram Shojai (The Urban Monk). Generate 5 compelling content topic ideas for ${platformCtx}.${personaCtx}\n\nFocus on health, longevity, gut health, energy, stress, mindfulness, and functional medicine. Each topic should be specific, timely, and have strong viral hook potential. Return JSON only.` },
+        { role: "system", content: `You are a viral content strategist for Dr. Pedram Shojai (The Urban Monk). Generate 5 compelling content topic ideas for ${platformCtx}.${personaCtx}\n\nContent pillars to draw from: longevity, gut health, sleep, stress, integrative medicine, consciousness & neuroscience, enlightenment & spiritual growth, metaphysics & philosophy of mind. Mix health/science pillars with consciousness/spiritual pillars for variety. Each topic should be specific, timely, and have strong viral hook potential. Return JSON only.` },
         { role: "user", content: "Generate 5 content topic ideas." },
       ],
       response_format: {

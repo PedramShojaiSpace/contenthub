@@ -134,6 +134,7 @@ export async function pushToBuffer(params: {
   metaPostType?: "post" | "story" | "reel"; // required for facebook/instagram channels
   channelServiceMap?: Record<string, string>; // channelId → service (e.g. "facebook", "instagram")
   ctaUrl?: string; // UTM-tracked CTA URL — sent as Instagram first comment, not in caption
+  videoUrl?: string; // S3 URL of the video to attach (for video posts)
   linkAsset?: {
     url: string;
     title?: string;
@@ -191,7 +192,10 @@ export async function pushToBuffer(params: {
       // The image should travel as thumbnailUrl inside the linkAsset instead.
       const isLinkedInWithLink = channelService === "linkedin" && !!params.linkAsset;
       let assetsInner = "";
-      if (params.imageUrl && !isLinkedInWithLink) {
+      if (params.videoUrl) {
+        // Video post — use assets.videos (takes precedence over images)
+        assetsInner += `videos: [{ url: ${JSON.stringify(params.videoUrl)} }]`;
+      } else if (params.imageUrl && !isLinkedInWithLink) {
         assetsInner += `images: [{ url: ${JSON.stringify(params.imageUrl)} }]`;
       }
       const assetsFragment = assetsInner ? `, assets: { ${assetsInner} }` : "";

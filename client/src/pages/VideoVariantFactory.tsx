@@ -23,8 +23,10 @@ import {
   Upload, Film, Scissors, Play, Download, Trash2,
   CheckCircle2, Clock, AlertCircle, Loader2, Plus,
   Clapperboard, Zap, History, ChevronDown, ChevronUp,
-  FileVideo, RefreshCw, FlaskConical, FolderDown
+  FileVideo, RefreshCw, FlaskConical, FolderDown,
+  Share2, Megaphone, Send, ExternalLink
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -94,6 +96,18 @@ export default function VideoVariantFactory() {
   const [uploadingClips, setUploadingClips] = useState<UploadingClip[]>([]);
   const [showHistory, setShowHistory]   = useState(false);
   const [pollEnabled, setPollEnabled]   = useState(false);
+
+  // ── Output path state ──────────────────────────────────────────────────────
+  const [outputPath, setOutputPath]     = useState<"none" | "buffer" | "meta">("none");
+  // Buffer syndication
+  const [bufferCaption, setBufferCaption] = useState("");
+  const [bufferCtaUrl, setBufferCtaUrl]   = useState("");
+  // Meta Ads
+  const [metaAdAccountId, setMetaAdAccountId] = useState("");
+  const [metaPageId, setMetaPageId]           = useState("");
+  const [metaAccessToken, setMetaAccessToken] = useState("");
+  const [metaAdName, setMetaAdName]           = useState("");
+  const [outputResults, setOutputResults]     = useState<{ label: string; success: boolean; error?: string; videoId?: string; creativeId?: string }[]>([]);
   const hookInputRef = useRef<HTMLInputElement>(null);
   const bodyInputRef = useRef<HTMLInputElement>(null);
   const ctaInputRef  = useRef<HTMLInputElement>(null);
@@ -103,6 +117,8 @@ export default function VideoVariantFactory() {
   const startProcessingMutation = trpc.videoVariant.startProcessing.useMutation();
   const deleteClipMutation  = trpc.videoVariant.deleteClip.useMutation();
   const deleteJobMutation   = trpc.videoVariant.deleteJob.useMutation();
+  const syndicateToBufferMutation = trpc.videoVariant.syndicateToBuffer.useMutation();
+  const uploadToMetaMutation      = trpc.videoVariant.uploadToMetaAds.useMutation();
   const utils               = trpc.useUtils();
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -721,7 +737,7 @@ export default function VideoVariantFactory() {
           {variants.length > 0 && (
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <CardTitle className="text-base text-zinc-200 flex items-center gap-2">
                     <FileVideo className="w-4 h-4 text-emerald-400" />
                     Output Variants
@@ -729,12 +745,12 @@ export default function VideoVariantFactory() {
                       {doneVariants.length} ready
                     </Badge>
                   </CardTitle>
-                  {doneVariants.length > 1 && (
+                  {doneVariants.length > 0 && (
                     <Button
                       size="sm"
-                      className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs"
+                      variant="outline"
+                      className="border-zinc-700 text-zinc-400 hover:text-zinc-200 text-xs"
                       onClick={() => {
-                        // Download all done variants sequentially by opening each in a new tab
                         doneVariants.forEach((v, i) => {
                           if (v.s3Url) {
                             setTimeout(() => {
@@ -745,7 +761,7 @@ export default function VideoVariantFactory() {
                               document.body.appendChild(a);
                               a.click();
                               document.body.removeChild(a);
-                            }, i * 800); // stagger by 800ms to avoid browser blocking
+                            }, i * 800);
                           }
                         });
                         toast.success(`Downloading ${doneVariants.length} variants…`);
@@ -756,8 +772,8 @@ export default function VideoVariantFactory() {
                   )}
                 </div>
               </CardHeader>
-             
-<CardContent>
+              <CardContent className="space-y-4">
+                {/* Variant list */}
                 <div className="space-y-2">
                   {variants.map(v => (
                     <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
@@ -771,20 +787,215 @@ export default function VideoVariantFactory() {
                         </div>
                       </div>
                       {v.status === "done" && v.s3Url && (
-                        <a
-                          href={v.s3Url}
-                          download
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                        <a href={v.s3Url} download target="_blank" rel="noopener noreferrer">
                           <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
-                            <Download className="w-3 h-3 mr-1" /> Download MP4
+                            <Download className="w-3 h-3 mr-1" /> MP4
                           </Button>
                         </a>
                       )}
                     </div>
                   ))}
                 </div>
+
+                {/* Two-path output selector */}
+                {doneVariants.length > 0 && (
+                  <div className="border-t border-zinc-800 pt-4 space-y-4">
+                    <p className="text-sm font-semibold text-zinc-200">Send Variants To…</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setOutputPath(outputPath === "buffer" ? "none" : "buffer")}
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          outputPath === "buffer"
+                            ? "border-sky-500/60 bg-sky-500/10"
+                            : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Share2 className="w-4 h-4 text-sky-400" />
+                          <span className="text-sm font-medium text-zinc-200">Buffer</span>
+                          <Badge className="ml-auto text-xs bg-sky-500/20 text-sky-300 border-sky-500/30">Organic</Badge>
+                        </div>
+                        <p className="text-xs text-zinc-500">Schedule all variants as video posts across your social channels. Best for ManyChat keyword-reply CTAs.</p>
+                      </button>
+                      <button
+                        onClick={() => setOutputPath(outputPath === "meta" ? "none" : "meta")}
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          outputPath === "meta"
+                            ? "border-blue-500/60 bg-blue-500/10"
+                            : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Megaphone className="w-4 h-4 text-blue-400" />
+                          <span className="text-sm font-medium text-zinc-200">Meta Ads</span>
+                          <Badge className="ml-auto text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">Paid</Badge>
+                        </div>
+                        <p className="text-xs text-zinc-500">Upload all variants to Meta Ads Manager as AdCreatives. Ready to attach to ad sets and go live immediately.</p>
+                      </button>
+                    </div>
+
+                    {/* Buffer config panel */}
+                    {outputPath === "buffer" && (
+                      <div className="p-4 rounded-xl bg-sky-500/5 border border-sky-500/20 space-y-3">
+                        <p className="text-xs font-semibold text-sky-300 uppercase tracking-wide">Buffer Syndication</p>
+                        <div>
+                          <label className="text-xs text-zinc-400 mb-1 block">Caption (applies to all variants)</label>
+                          <Textarea
+                            value={bufferCaption}
+                            onChange={e => setBufferCaption(e.target.value)}
+                            placeholder="Write your caption here… or leave blank to use the job name"
+                            className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm resize-none"
+                            rows={3}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-zinc-400 mb-1 block">CTA URL (optional — added as first comment on Instagram)</label>
+                          <Input
+                            value={bufferCtaUrl}
+                            onChange={e => setBufferCtaUrl(e.target.value)}
+                            placeholder="https://urbanmonkacademy.com/join"
+                            className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                          />
+                        </div>
+                        <p className="text-xs text-zinc-500">Channels are pulled from your Buffer connection. All {doneVariants.length} variants will be queued simultaneously.</p>
+                        {outputResults.length > 0 && (
+                          <div className="space-y-1">
+                            {outputResults.map((r, i) => (
+                              <div key={i} className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded ${
+                                r.success ? "bg-emerald-500/10 text-emerald-300" : "bg-red-500/10 text-red-300"
+                              }`}>
+                                {r.success ? <CheckCircle2 className="w-3 h-3 shrink-0" /> : <AlertCircle className="w-3 h-3 shrink-0" />}
+                                <span className="truncate">{r.label}</span>
+                                {r.error && <span className="ml-auto shrink-0 text-red-400">{r.error}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <Button
+                          className="w-full bg-sky-600 hover:bg-sky-500 text-white"
+                          disabled={syndicateToBufferMutation.isPending}
+                          onClick={async () => {
+                            if (!activeJobId) return;
+                            try {
+                              setOutputResults([]);
+                              const res = await syndicateToBufferMutation.mutateAsync({
+                                jobId: activeJobId,
+                                channelIds: [], // Buffer uses all connected channels when empty
+                                caption: bufferCaption,
+                                ctaUrl: bufferCtaUrl || undefined,
+                              });
+                              setOutputResults(res.results.map(r => ({ label: r.label, success: r.success, error: r.error })));
+                              toast.success(`${res.successCount}/${res.totalVariants} variants sent to Buffer`);
+                            } catch (err: any) {
+                              toast.error(err.message ?? "Buffer syndication failed");
+                            }
+                          }}
+                        >
+                          {syndicateToBufferMutation.isPending
+                            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending to Buffer…</>
+                            : <><Send className="w-4 h-4 mr-2" /> Send All {doneVariants.length} Variants to Buffer</>}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Meta Ads config panel */}
+                    {outputPath === "meta" && (
+                      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-3">
+                        <p className="text-xs font-semibold text-blue-300 uppercase tracking-wide">Meta Ads Manager</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-zinc-400 mb-1 block">Ad Account ID</label>
+                            <Input
+                              value={metaAdAccountId}
+                              onChange={e => setMetaAdAccountId(e.target.value)}
+                              placeholder="act_123456789"
+                              className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-zinc-400 mb-1 block">Facebook Page ID</label>
+                            <Input
+                              value={metaPageId}
+                              onChange={e => setMetaPageId(e.target.value)}
+                              placeholder="123456789"
+                              className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-zinc-400 mb-1 block">Access Token</label>
+                          <Input
+                            value={metaAccessToken}
+                            onChange={e => setMetaAccessToken(e.target.value)}
+                            placeholder="EAAxxxxxxx…"
+                            type="password"
+                            className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-zinc-400 mb-1 block">Ad Name Prefix (optional)</label>
+                          <Input
+                            value={metaAdName}
+                            onChange={e => setMetaAdName(e.target.value)}
+                            placeholder="UM-GutHealth-W20"
+                            className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                          />
+                        </div>
+                        <p className="text-xs text-zinc-500">
+                          Each variant is uploaded as an AdVideo and an AdCreative is created automatically.
+                          You can then attach them to any ad set in Ads Manager and go live.
+                        </p>
+                        {outputResults.length > 0 && (
+                          <div className="space-y-1">
+                            {outputResults.map((r, i) => (
+                              <div key={i} className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded ${
+                                r.success ? "bg-emerald-500/10 text-emerald-300" : "bg-red-500/10 text-red-300"
+                              }`}>
+                                {r.success ? <CheckCircle2 className="w-3 h-3 shrink-0" /> : <AlertCircle className="w-3 h-3 shrink-0" />}
+                                <span className="truncate">{r.label}</span>
+                                {r.success && r.videoId && (
+                                  <a
+                                    href={`https://business.facebook.com/adsmanager/manage/ads`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="ml-auto shrink-0 flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                                  >
+                                    <ExternalLink className="w-3 h-3" /> Ads Manager
+                                  </a>
+                                )}
+                                {r.error && <span className="ml-auto shrink-0 text-red-400 truncate max-w-[200px]">{r.error}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <Button
+                          className="w-full bg-blue-600 hover:bg-blue-500 text-white"
+                          disabled={uploadToMetaMutation.isPending || !metaAdAccountId || !metaPageId || !metaAccessToken}
+                          onClick={async () => {
+                            if (!activeJobId) return;
+                            try {
+                              setOutputResults([]);
+                              const res = await uploadToMetaMutation.mutateAsync({
+                                jobId: activeJobId,
+                                adAccountId: metaAdAccountId,
+                                pageId: metaPageId,
+                                accessToken: metaAccessToken,
+                                adName: metaAdName,
+                              });
+                              setOutputResults(res.results.map(r => ({ label: r.label, success: r.success, error: r.error, videoId: r.videoId, creativeId: r.creativeId })));
+                              toast.success(`${res.successCount}/${res.totalVariants} variants uploaded to Meta Ads Manager`);
+                            } catch (err: any) {
+                              toast.error(err.message ?? "Meta upload failed");
+                            }
+                          }}
+                        >
+                          {uploadToMetaMutation.isPending
+                            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading to Meta…</>
+                            : <><Megaphone className="w-4 h-4 mr-2" /> Upload All {doneVariants.length} to Meta Ads Manager</>}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

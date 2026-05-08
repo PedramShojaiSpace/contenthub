@@ -2280,3 +2280,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add multer error handler middleware for 413/400 errors with JSON response
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287 passing)
+
+## v178 — Video Variant Factory: Two Output Paths
+- [ ] Audit existing Buffer integration in the codebase
+- [ ] Research Meta Marketing API video upload / ad creative requirements
+- [ ] Add Buffer bulk-syndication: send all done variants to Buffer simultaneously (one click)
+- [ ] Add Meta Ads API: bulk upload variants as ad video creatives into Meta Ads Manager
+- [ ] Update VideoVariantFactory output panel with two-path UI (Buffer path vs Meta Ads path)
+- [ ] Add Meta credentials (Ad Account ID, Page ID, Access Token) via secrets
+- [ ] TypeScript check passes (0 errors)
+- [ ] All tests pass (287+)

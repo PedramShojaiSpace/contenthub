@@ -426,6 +426,141 @@ export const videoVariantRouter = router({
       return { ok: true };
     }),
 
+  /** Syndicate all done variants to Buffer (video posts) */
+  syndicateToBuffer: protectedProcedure
+    .input(z.object({
+      jobId: z.number().int(),
+      channelIds: z.array(z.string()).min(1),
+      caption: z.string().default(""),
+      ctaUrl: z.string().optional(),
+      channelServiceMap: z.record(z.string(), z.string()).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [job] = await db.select().from(videoVariantJobs)
+        .where(and(eq(videoVariantJobs.id, input.jobId), eq(videoVariantJobs.userId, ctx.user.id)));
+      if (!job) throw new Error("Job not found");
+      const variants = await db.select().from(videoVariants)
+        .where(and(eq(videoVariants.jobId, input.jobId), eq(videoVariants.status, "done")));
+      if (variants.length === 0) throw new Error("No completed variants to syndicate");
+
+      const { pushToBuffer } = await import("./buffer");
+      const results: { variantId: number; label: string; success: boolean; error?: string }[] = [];
+      const serviceMap: Record<string, string> | undefined = input.channelServiceMap as Record<string, string> | undefined;
+
+      for (const variant of variants) {
+        if (!variant.s3Url) continue;
+        const res = await pushToBuffer({
+          text: input.caption || job.jobName,
+          profileIds: input.channelIds,
+          videoUrl: variant.s3Url,
+          ctaUrl: input.ctaUrl,
+          channelServiceMap: serviceMap,
+        });
+        results.push({
+          variantId: variant.id,
+          label: variant.variantLabel ?? `Variant ${variant.id}`,
+          success: res.success,
+          error: res.error,
+        });
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      return { results, successCount, totalVariants: variants.length };
+    }),
+
+  /** Upload all done variants to Meta Ads Manager as AdVideo creatives */
+  uploadToMetaAds: protectedProcedure
+    .input(z.object({
+      jobId: z.number().int(),
+      adAccountId: z.string().min(1),
+      pageId: z.string().min(1),
+      accessToken: z.string().min(1),
+      adName: z.string().default(""),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [job] = await db.select().from(videoVariantJobs)
+        .where(and(eq(videoVariantJobs.id, input.jobId), eq(videoVariantJobs.userId, ctx.user.id)));
+      if (!job) throw new Error("Job not found");
+      const variants = await db.select().from(videoVariants)
+        .where(and(eq(videoVariants.jobId, input.jobId), eq(videoVariants.status, "done")));
+      if (variants.length === 0) throw new Error("No completed variants to upload");
+
+      const adAccountId = input.adAccountId.startsWith("act_")
+        ? input.adAccountId
+        : `act_${input.adAccountId}`;
+      const graphBase = "https://graph.facebook.com/v20.0";
+      const results: {
+        variantId: number;
+        label: string;
+        success: boolean;
+        videoId?: string;
+        creativeId?: string;
+        error?: string;
+      }[] = [];
+
+      for (const variant of variants) {
+        if (!variant.s3Url) continue;
+        const label = variant.variantLabel ?? `Variant ${variant.id}`;
+        try {
+          // Step 1: Upload video to ad account via file_url
+          const uploadRes = await fetch(
+            `${graphBase}/${adAccountId}/advideos`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                file_url: variant.s3Url,
+                title: `${input.adName || job.jobName} \u2014 ${label}`,
+                access_token: input.accessToken,
+              }),
+            }
+          );
+          const uploadJson = await uploadRes.json() as { id?: string; video_id?: string; error?: { message: string } };
+          if (uploadJson.error) throw new Error(uploadJson.error.message);
+          const videoId = uploadJson.video_id ?? uploadJson.id;
+          if (!videoId) throw new Error("No video_id returned from Meta");
+
+          // Step 2: Create AdCreative referencing the video
+          const creativeRes = await fetch(
+            `${graphBase}/${adAccountId}/adcreatives`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: `${input.adName || job.jobName} \u2014 ${label}`,
+                object_story_spec: {
+                  page_id: input.pageId,
+                  video_data: {
+                    video_id: videoId,
+                    call_to_action: { type: "LEARN_MORE" },
+                  },
+                },
+                access_token: input.accessToken,
+              }),
+            }
+          );
+          const creativeJson = await creativeRes.json() as { id?: string; error?: { message: string } };
+          if (creativeJson.error) throw new Error(creativeJson.error.message);
+
+          results.push({ variantId: variant.id, label, success: true, videoId, creativeId: creativeJson.id });
+        } catch (err: unknown) {
+          results.push({
+            variantId: variant.id,
+            label,
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      return { results, successCount, totalVariants: variants.length };
+    }),
+
   /** Get A/B test entries auto-created for a job's session */
   getLinkedABTests: protectedProcedure
     .input(z.object({ jobId: z.number().int() }))

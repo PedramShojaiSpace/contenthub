@@ -159,53 +159,97 @@ export default function VideoVariantFactory() {
     }]);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("jobId", String(activeJobId));
-      formData.append("clipType", clipType);
-      formData.append("clipOrder", String(clipOrder));
+      // ── Chunked upload (bypasses Cloud Run 32 MB gateway limit) ──────────────
+      // Slice the file into 8 MB chunks, send each one individually, then
+      // call /finalize so the server reassembles and uploads to S3 in background.
+      const CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB
+      const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+      const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      // XHR for upload progress tracking.
-      // Server responds 202 immediately after receiving the file bytes (avoids
-      // Cloud Run request timeouts on large body clips). S3 upload + DB insert
-      // happen in the background. We poll until the clip appears in the server list.
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener("progress", (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 100);
-            // Cap at 90% — remaining 10% covers server-side S3 processing
-            setUploadingClips(prev => prev.map(c =>
-              c.id === tempId ? { ...c, progress: Math.min(pct, 90) } : c
-            ));
-          }
-        });
-        xhr.addEventListener("load", () => {
-          if (xhr.status === 200 || xhr.status === 202) {
-            resolve();
-          } else {
-            try {
-              reject(new Error(JSON.parse(xhr.responseText)?.error ?? "Upload failed"));
-            } catch {
-              reject(new Error(`Upload failed (${xhr.status})`));
+      const sendChunk = (chunkIndex: number): Promise<void> => {
+        return new Promise((resolve, reject) => {
+          const start = chunkIndex * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, file.size);
+          const blob = file.slice(start, end);
+
+          const fd = new FormData();
+          fd.append("chunk", blob, file.name);
+          fd.append("uploadId", uploadId);
+          fd.append("chunkIndex", String(chunkIndex));
+          fd.append("totalChunks", String(totalChunks));
+          fd.append("jobId", String(activeJobId));
+          fd.append("clipType", clipType);
+          fd.append("clipOrder", String(clipOrder));
+
+          const xhr = new XMLHttpRequest();
+          xhr.upload.addEventListener("progress", (e) => {
+            if (e.lengthComputable) {
+              // Overall progress = chunks done + fraction of current chunk
+              // Reserve last 10% for server-side S3 processing
+              const chunksDone = chunkIndex / totalChunks;
+              const chunkFraction = (e.loaded / e.total) / totalChunks;
+              const pct = Math.round((chunksDone + chunkFraction) * 90);
+              setUploadingClips(prev => prev.map(c =>
+                c.id === tempId ? { ...c, progress: Math.min(pct, 90) } : c
+              ));
             }
-          }
+          });
+          xhr.addEventListener("load", () => {
+            if (xhr.status === 200) {
+              resolve();
+            } else {
+              try {
+                reject(new Error(JSON.parse(xhr.responseText)?.error ?? `Chunk ${chunkIndex} failed`));
+              } catch {
+                reject(new Error(`Chunk ${chunkIndex} failed (${xhr.status})`));
+              }
+            }
+          });
+          xhr.addEventListener("error", () => reject(new Error(`Network error on chunk ${chunkIndex}`)));
+          xhr.addEventListener("timeout", () => reject(new Error(`Chunk ${chunkIndex} timed out`)));
+          xhr.open("POST", "/api/upload/video-chunk");
+          xhr.withCredentials = true;
+          xhr.timeout = 5 * 60 * 1000; // 5 min per chunk
+          xhr.send(fd);
         });
-        xhr.addEventListener("error", () => reject(new Error("Network error")));
-        xhr.addEventListener("timeout", () => reject(new Error("Upload timed out")));
-        xhr.open("POST", "/api/upload/video-clip");
-        xhr.withCredentials = true;
-        xhr.timeout = 10 * 60 * 1000; // 10 min max for very large files
-        xhr.send(formData);
+      };
+
+      // Send chunks sequentially
+      for (let i = 0; i < totalChunks; i++) {
+        await sendChunk(i);
+      }
+
+      // All chunks received — tell server to reassemble and upload to S3
+      setUploadingClips(prev => prev.map(c =>
+        c.id === tempId ? { ...c, progress: 92 } : c
+      ));
+
+      const finalizeRes = await fetch("/api/upload/video-chunk/finalize", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploadId,
+          jobId: activeJobId,
+          clipType,
+          clipOrder,
+          filename: file.name,
+          totalChunks,
+        }),
       });
 
-      // File received — show "processing" at 95% while S3 upload finishes in background
+      if (!finalizeRes.ok) {
+        const errJson = await finalizeRes.json().catch(() => ({}));
+        throw new Error(errJson?.error ?? `Finalize failed (${finalizeRes.status})`);
+      }
+
+      // Server accepted — show 95% while S3 upload finishes in background
       setUploadingClips(prev => prev.map(c =>
         c.id === tempId ? { ...c, progress: 95 } : c
       ));
 
-      // Poll every 2s for up to 3 minutes until the clip appears in the server list
-      const maxWaitMs = 3 * 60 * 1000;
+      // Poll every 2s for up to 5 minutes until the clip appears in the server list
+      const maxWaitMs = 5 * 60 * 1000;
       const pollInterval = 2000;
       const startTime = Date.now();
       let found = false;
@@ -214,7 +258,6 @@ export default function VideoVariantFactory() {
         await new Promise(r => setTimeout(r, pollInterval));
         const freshData = await utils.videoVariant.getJob.fetch({ jobId: activeJobId });
         const serverClips: any[] = freshData?.clips ?? [];
-        // For hooks match by clipOrder; for body/cta just match by type
         const newClip = serverClips.find((c: any) =>
           c.clipType === clipType &&
           (clipType !== "hook" || c.clipOrder === clipOrder)

@@ -10,7 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { startWeeklyDigestCron } from "../digest";
 import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
-import { videoUploadMiddleware, handleVideoClipUpload } from "../videoUploadHandler";
+import { videoUploadMiddleware, handleVideoClipUpload, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize } from "../videoUploadHandler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,6 +38,11 @@ async function startServer() {
   // ── Video upload MUST be registered BEFORE body parsers ──────────────────────
   // express.json() / urlencoded() will consume the request stream if they run
   // first on a multipart request, causing multer to fail mid-upload.
+  //
+  // Chunked upload endpoints (bypass Cloud Run 32 MB gateway limit):
+  app.post("/api/upload/video-chunk", videoChunkMiddleware, handleVideoChunkUpload);
+  app.post("/api/upload/video-chunk/finalize", handleVideoChunkFinalize);
+  // Legacy single-file endpoint (kept for backward compat / small files):
   app.post("/api/upload/video-clip", videoUploadMiddleware, handleVideoClipUpload);
 
   // Multer error handler — returns JSON so the client sees the real cause

@@ -95,9 +95,11 @@ async function runStitchingJob(jobId: number) {
       .where(eq(videoClips.jobId, jobId))
       .orderBy(videoClips.clipOrder);
 
-    const hookClips = clips.filter(c => c.clipType === "hook");
-    const bodyClips = clips.filter(c => c.clipType === "body");
-    const ctaClips  = clips.filter(c => c.clipType === "cta");
+    // Only include clips whose S3 upload has completed (s3Url non-empty).
+    // Placeholder rows (inserted before S3 upload finishes) have s3Url = "".
+    const hookClips = clips.filter(c => c.clipType === "hook" && c.s3Url);
+    const bodyClips = clips.filter(c => c.clipType === "body" && c.s3Url);
+    const ctaClips  = clips.filter(c => c.clipType === "cta" && c.s3Url);
 
     if (hookClips.length === 0 || bodyClips.length === 0) {
       await db.update(videoVariantJobs)

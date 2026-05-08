@@ -2315,3 +2315,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix concurrent upload stall: multiple files trigger uploadClip() in parallel, each racing to mutate uploadingClips state — serialize uploads or fix state race
 - [x] Fix hook polling: clipOrder match is correct for hooks but body/cta need exact clipOrder match too
 - [x] Deploy fix
+
+## v184-hotfix-2 — Body Video Upload Stalls at 85-90%
+
+- [x] Diagnose: stall is at 85-90% which is the chunked upload phase (not polling) — likely a Cloud Run request body size limit or timeout on large files
+- [x] Check if the body video is larger than hook clips and hitting a different limit
+- [x] Fix the underlying cause (chunk size, timeout, or finalize race condition for large files)
+- [x] Deploy fix

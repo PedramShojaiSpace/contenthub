@@ -41,10 +41,10 @@ try { fs.mkdirSync(LEGACY_UPLOAD_DIR, { recursive: true }); } catch {}
 
 // ── Multer instances ──────────────────────────────────────────────────────────
 
-// For chunk uploads: each chunk is at most ~8 MB, no mime filter (it's a raw binary slice)
+// For chunk uploads: each chunk is at most 4 MB, no mime filter (it's a raw binary slice)
 const chunkUpload = multer({
   dest: CHUNK_UPLOAD_DIR,
-  limits: { fileSize: 12 * 1024 * 1024 }, // 12 MB safety margin
+  limits: { fileSize: 6 * 1024 * 1024 }, // 6 MB safety margin (chunks are 4 MB)
 });
 
 // For legacy single-file uploads (small files only)
@@ -77,6 +77,7 @@ async function processUploadInBackground(opts: {
   clipOrder: number;
 }) {
   const { filePath, originalName, jobId, clipType, clipOrder } = opts;
+  let clipId: number | null = null;
   try {
     const db = await getDb();
     if (!db) throw new Error("DB unavailable");
@@ -84,21 +85,20 @@ async function processUploadInBackground(opts: {
     const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
     const s3Key = `video-clips/${jobId}/${clipType}-${clipOrder}-${randomSuffix()}-${safeName}`;
 
-    const fileBuffer = await fs.promises.readFile(filePath);
-    const { url: s3Url } = await storagePut(s3Key, fileBuffer, "video/mp4");
-
-    try { fs.unlinkSync(filePath); } catch {}
-
-    await db.insert(videoClips).values({
+    // ── Insert a placeholder row BEFORE the S3 upload so the client poll
+    // can detect the clip immediately after finalize, even for large files.
+    // s3Url starts as empty string and gets updated once S3 confirms.
+    const [inserted] = await db.insert(videoClips).values({
       jobId,
       clipType,
       s3Key,
-      s3Url,
+      s3Url: "",          // placeholder — updated below
       filename: originalName,
       clipOrder,
     });
+    clipId = (inserted as any).insertId ?? null;
 
-    if (clipType === "hook") {
+    if (clipType === "hook" && clipId !== null) {
       const hooks = await db.select()
         .from(videoClips)
         .where(and(eq(videoClips.jobId, jobId), eq(videoClips.clipType, "hook")));
@@ -107,11 +107,76 @@ async function processUploadInBackground(opts: {
         .where(eq(videoVariantJobs.id, jobId));
     }
 
-    console.log(`[VVF] Background upload complete: ${clipType} clip for job ${jobId}`);
+    // ── Read file and upload to S3 with a 15-minute hard timeout ─────────────
+    const fileBuffer = await fs.promises.readFile(filePath);
+    const controller = new AbortController();
+    const uploadTimeout = setTimeout(() => controller.abort(), 15 * 60 * 1000);
+    let s3Url: string;
+    try {
+      const result = await storagePutWithSignal(s3Key, fileBuffer, "video/mp4", controller.signal);
+      s3Url = result.url;
+    } finally {
+      clearTimeout(uploadTimeout);
+    }
+
+    try { fs.unlinkSync(filePath); } catch {}
+
+    // ── Update the placeholder row with the real S3 URL ───────────────────────
+    if (clipId !== null) {
+      await db.update(videoClips)
+        .set({ s3Url })
+        .where(eq(videoClips.id, clipId));
+    }
+
+    console.log(`[VVF] Background upload complete: ${clipType} clip for job ${jobId} (clipId=${clipId})`);
   } catch (err) {
     console.error(`[VVF] Background upload failed for job ${jobId}:`, err);
+    // Remove the placeholder row so the client poll doesn't find a broken clip
+    if (clipId !== null) {
+      try {
+        const db = await getDb();
+        if (db) await db.delete(videoClips).where(eq(videoClips.id, clipId));
+      } catch {}
+    }
     try { fs.unlinkSync(filePath); } catch {}
   }
+}
+
+// storagePut wrapper that accepts an AbortSignal for large-file timeout support
+async function storagePutWithSignal(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType: string,
+  signal: AbortSignal
+): Promise<{ key: string; url: string }> {
+  // storagePut uses fetch internally — we replicate it here with signal support
+  const { ENV } = await import("./_core/env");
+  const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
+  const apiKey = ENV.forgeApiKey;
+  if (!baseUrl || !apiKey) throw new Error("Storage proxy credentials missing");
+
+  const key = relKey.replace(/^\/+/, "");
+  const uploadUrl = new URL(`${baseUrl}/v1/storage/upload`);
+  uploadUrl.searchParams.set("path", key);
+
+  const blob = new Blob([data as any], { type: contentType });
+  const form = new FormData();
+  form.append("file", blob, key.split("/").pop() ?? key);
+
+  const response = await fetch(uploadUrl.toString(), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+    signal,
+  });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => response.statusText);
+    throw new Error(`Storage upload failed (${response.status}): ${message}`);
+  }
+
+  const url = (await response.json()).url;
+  return { key, url };
 }
 
 // ── Chunk receive handler ─────────────────────────────────────────────────────

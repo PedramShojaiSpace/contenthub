@@ -202,9 +202,9 @@ export default function VideoVariantFactory() {
 
     try {
       // ── Chunked upload (bypasses Cloud Run 32 MB gateway limit) ──────────────
-      // Slice the file into 8 MB chunks, send each one individually, then
+      // Slice the file into 4 MB chunks, send each one individually, then
       // call /finalize so the server reassembles and uploads to S3 in background.
-      const CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB
+      const CHUNK_SIZE = 4 * 1024 * 1024; // 4 MB — well under Cloud Run 32 MB gateway limit
       const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
       const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -240,11 +240,17 @@ export default function VideoVariantFactory() {
             if (xhr.status === 200) {
               resolve();
             } else {
+              // Try to parse JSON error from server; fall back to raw text for gateway errors
+              let errMsg = `Chunk ${chunkIndex} failed (${xhr.status})`;
               try {
-                reject(new Error(JSON.parse(xhr.responseText)?.error ?? `Chunk ${chunkIndex} failed`));
+                const parsed = JSON.parse(xhr.responseText);
+                if (parsed?.error) errMsg = parsed.error;
               } catch {
-                reject(new Error(`Chunk ${chunkIndex} failed (${xhr.status})`));
+                // Gateway returned HTML/text — show first 120 chars for diagnosis
+                const raw = xhr.responseText?.slice(0, 120).trim();
+                if (raw) errMsg = `Gateway error (${xhr.status}): ${raw}`;
               }
+              reject(new Error(errMsg));
             }
           });
           xhr.addEventListener("error", () => reject(new Error(`Network error on chunk ${chunkIndex}`)));

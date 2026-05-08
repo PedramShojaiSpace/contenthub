@@ -2322,3 +2322,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Check if the body video is larger than hook clips and hitting a different limit
 - [x] Fix the underlying cause (chunk size, timeout, or finalize race condition for large files)
 - [x] Deploy fix
+
+## v184-hotfix-3 — Stitching Job Fails Despite Clips Uploaded
+
+- [x] Fix: placeholder row (empty s3Url) causes stitching job to see 0 valid clips — need to either wait for S3 to finish before allowing Generate, or have server wait for s3Url to populate before stitching
+- [x] Fix: client Generate button should be disabled while any clip still has empty s3Url (S3 upload in progress)
+- [x] Fix: server startProcessing should wait/retry for clips with empty s3Url before failing
+- [x] Deploy fix

@@ -89,21 +89,39 @@ async function runStitchingJob(jobId: number) {
       .set({ status: "processing" })
       .where(eq(videoVariantJobs.id, jobId));
 
-    // Load all clips for this job
-    const clips = await db.select()
-      .from(videoClips)
-      .where(eq(videoClips.jobId, jobId))
-      .orderBy(videoClips.clipOrder);
+    // ── Wait for all clip S3 uploads to complete ─────────────────────────────
+    // Placeholder rows are inserted before S3 upload finishes (s3Url = "").
+    // Poll up to 15 minutes for all clips to have a non-empty s3Url.
+    const waitMaxMs = 15 * 60 * 1000;
+    const waitInterval = 3000;
+    const waitStart = Date.now();
+    let readyClips: typeof videoClips.$inferSelect[] = [];
+
+    while (Date.now() - waitStart < waitMaxMs) {
+      readyClips = await db.select()
+        .from(videoClips)
+        .where(eq(videoClips.jobId, jobId))
+        .orderBy(videoClips.clipOrder);
+
+      const pendingUploads = readyClips.filter(c => !c.s3Url);
+      if (pendingUploads.length === 0) break; // all clips have s3Url
+
+      console.log(`[VVF] Job ${jobId}: waiting for ${pendingUploads.length} clip(s) to finish S3 upload…`);
+      await new Promise(r => setTimeout(r, waitInterval));
+    }
 
     // Only include clips whose S3 upload has completed (s3Url non-empty).
-    // Placeholder rows (inserted before S3 upload finishes) have s3Url = "".
-    const hookClips = clips.filter(c => c.clipType === "hook" && c.s3Url);
-    const bodyClips = clips.filter(c => c.clipType === "body" && c.s3Url);
-    const ctaClips  = clips.filter(c => c.clipType === "cta" && c.s3Url);
+    const hookClips = readyClips.filter(c => c.clipType === "hook" && c.s3Url);
+    const bodyClips = readyClips.filter(c => c.clipType === "body" && c.s3Url);
+    const ctaClips  = readyClips.filter(c => c.clipType === "cta" && c.s3Url);
 
     if (hookClips.length === 0 || bodyClips.length === 0) {
+      const pendingCount = readyClips.filter(c => !c.s3Url).length;
+      const errMsg = pendingCount > 0
+        ? `${pendingCount} clip(s) are still uploading to cloud storage. Please wait a moment and try again.`
+        : "Need at least one hook clip and one body clip";
       await db.update(videoVariantJobs)
-        .set({ status: "error", errorMessage: "Need at least one hook clip and one body clip" })
+        .set({ status: "error", errorMessage: errMsg })
         .where(eq(videoVariantJobs.id, jobId));
       return;
     }

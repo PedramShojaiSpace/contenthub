@@ -308,9 +308,12 @@ export default function VideoVariantFactory() {
         const serverClips: any[] = freshData?.clips ?? [];
         // Match on BOTH clipType AND clipOrder for all types to avoid false positives.
         // For body clips, clipOrder is 0; for hooks it's 1-based; for cta it's 1-based.
+        // Only consider the clip ready once s3Url is populated.
+        // Placeholder rows (inserted before S3 upload finishes) have s3Url = "".
         const newClip = serverClips.find((c: any) =>
           c.clipType === clipType &&
-          c.clipOrder === clipOrder
+          c.clipOrder === clipOrder &&
+          c.s3Url  // non-empty means S3 upload is complete
         );
         if (newClip) {
           found = true;
@@ -404,9 +407,13 @@ export default function VideoVariantFactory() {
     c => !serverClips.some((sc: any) => sc.id === c.clipId)
   );
   const clips: any[] = [...serverClips, ...pendingLocalClips];
-  const hookClips = clips.filter((c: any) => c.clipType === "hook");
-  const bodyClips = clips.filter((c: any) => c.clipType === "body");
-  const ctaClips  = clips.filter((c: any) => c.clipType === "cta");
+  // Only count clips whose S3 upload is complete (s3Url non-empty).
+  // Placeholder rows have s3Url = "" and must not enable the Generate button.
+  const hookClips = clips.filter((c: any) => c.clipType === "hook" && c.s3Url);
+  const bodyClips = clips.filter((c: any) => c.clipType === "body" && c.s3Url);
+  const ctaClips  = clips.filter((c: any) => c.clipType === "cta" && c.s3Url);
+  // Clips still uploading to S3 (placeholder rows with empty s3Url)
+  const pendingS3Clips = serverClips.filter((c: any) => !c.s3Url);
   void serverClipIds; // suppress unused var warning
   const isProcessing = job?.status === "processing" || pollEnabled;
   const isDone       = job?.status === "done";
@@ -671,18 +678,30 @@ export default function VideoVariantFactory() {
           {(job?.status === "pending" || !job) && (
             <div className="flex items-center gap-4 p-4 rounded-xl bg-zinc-900 border border-zinc-800">
               <div className="flex-1">
-                <p className="text-sm font-medium text-zinc-200">
-                  Ready to generate {hookClips.length > 0 ? hookClips.length : "?"} variant{hookClips.length !== 1 ? "s" : ""}
-                </p>
-                <p className="text-xs text-zinc-500">
-                  {hookClips.length} hook{hookClips.length !== 1 ? "s" : ""} × 1 body
-                  {ctaClips.length > 0 ? ` × ${ctaClips.length} CTA${ctaClips.length !== 1 ? "s" : ""}` : ""}
-                  {" "}= {totalVariants} output MP4{totalVariants !== 1 ? "s" : ""}
-                </p>
+                {pendingS3Clips.length > 0 ? (
+                  <>
+                    <p className="text-sm font-medium text-amber-400 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Saving {pendingS3Clips.length} clip{pendingS3Clips.length !== 1 ? "s" : ""} to cloud…
+                    </p>
+                    <p className="text-xs text-zinc-500">Generate will unlock when all clips are saved</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-zinc-200">
+                      Ready to generate {hookClips.length > 0 ? hookClips.length : "?"} variant{hookClips.length !== 1 ? "s" : ""}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {hookClips.length} hook{hookClips.length !== 1 ? "s" : ""} × 1 body
+                      {ctaClips.length > 0 ? ` × ${ctaClips.length} CTA${ctaClips.length !== 1 ? "s" : ""}` : ""}
+                      {" "}= {totalVariants} output MP4{totalVariants !== 1 ? "s" : ""}
+                    </p>
+                  </>
+                )}
               </div>
               <Button
                 onClick={handleGenerate}
-                disabled={hookClips.length === 0 || bodyClips.length === 0 || startProcessingMutation.isPending}
+                disabled={hookClips.length === 0 || bodyClips.length === 0 || pendingS3Clips.length > 0 || startProcessingMutation.isPending}
                 className="bg-violet-600 hover:bg-violet-500 text-white px-6"
               >
                 {startProcessingMutation.isPending

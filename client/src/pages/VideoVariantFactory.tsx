@@ -349,9 +349,10 @@ export default function VideoVariantFactory() {
       setUploadingClips(prev => prev.map(c =>
         c.id === tempId ? { ...c, progress: 95, cloudSaveStartedAt: Date.now() } : c
       ));
-      // Poll every 3s for up to 20 minutes until the clip appears in the server list.
-      // Large body videos (100–200 MB) take 8–12 min to upload to storage on Cloud Run.
-      const maxWaitMs = 20 * 60 * 1000;
+      // Poll every 3s for up to 90 minutes until the clip appears in the server list.
+      // Large body videos (500 MB+) can take 30–60 min to upload all segments to storage
+      // on Cloud Run. The 90-minute ceiling is a safety net; most clips finish much sooner.
+      const maxWaitMs = 90 * 60 * 1000;
       const pollInterval = 3000;
       const startTime = Date.now();
       let found = false;
@@ -1266,10 +1267,23 @@ function UploadingRow({
   }, [clip.cloudSaveStartedAt, clip.error]);
 
   const isCloudSave = clip.progress === 95 && !clip.error && !!clip.cloudSaveStartedAt;
+
+  // Estimate based on 8 MB segments at ~30 s/segment on Cloud Run.
+  // This gives a rough ceiling — actual time varies with file size and server load.
+  const SEGMENT_BYTES = 8 * 1024 * 1024;
+  const SECS_PER_SEGMENT = 30; // conservative estimate
   const estimatedTotal = clip.fileSizeBytes
-    ? Math.ceil(clip.fileSizeBytes / (2 * 1024 * 1024)) // ~0.5s/MB for S3 save
+    ? Math.ceil(clip.fileSizeBytes / SEGMENT_BYTES) * SECS_PER_SEGMENT
     : null;
   const remaining = estimatedTotal ? Math.max(0, estimatedTotal - elapsed) : null;
+
+  // Format remaining time as "Xm Ys" for long uploads
+  const formatRemaining = (secs: number) => {
+    if (secs < 60) return `~${secs}s`;
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return s > 0 ? `~${m}m ${s}s` : `~${m}m`;
+  };
 
   return (
     <div className="p-2 rounded-lg bg-secondary border border-border space-y-1">
@@ -1314,10 +1328,10 @@ function UploadingRow({
             {clip.totalSegments && clip.totalSegments > 1 ? (
               <span>Saving segment {(clip.segmentsDone ?? 0) + 1} of {clip.totalSegments}…</span>
             ) : (
-              <span>Saving to cloud… {elapsed}s elapsed</span>
+              <span>Saving to cloud… {elapsed > 0 ? `${elapsed}s elapsed` : "starting…"}</span>
             )}
             {(!clip.totalSegments || clip.totalSegments <= 1) && remaining !== null && remaining > 0 && (
-              <span>~{remaining}s remaining</span>
+              <span className="text-amber-600 font-medium">{formatRemaining(remaining)} remaining</span>
             )}
             {clip.totalSegments && clip.totalSegments > 1 && clip.segmentsDone !== undefined && clip.segmentsDone < clip.totalSegments && (
               <span>{clip.segmentsDone}/{clip.totalSegments} done</span>

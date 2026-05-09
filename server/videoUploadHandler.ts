@@ -77,7 +77,9 @@ function randomSuffix() {
 }
 
 // ── Upload a single buffer segment to the storage proxy ─────────────────────
-const SEGMENT_SIZE = 14 * 1024 * 1024; // 14 MB — safely under the ~20 MB proxy limit
+// 8 MB segments: smaller than before so each segment uploads faster and
+// the total job is more resilient to Cloud Run's variable network throughput.
+const SEGMENT_SIZE = 8 * 1024 * 1024; // 8 MB
 
 async function uploadSegmentToStorage(
   segKey: string,
@@ -100,7 +102,11 @@ async function uploadSegmentToStorage(
     headers: { ...form.getHeaders(), Authorization: `Bearer ${apiKey}` },
     maxBodyLength: Infinity,
     maxContentLength: Infinity,
-    timeout: 10 * 60 * 1000, // 10 min per segment — large segments on Cloud Run can take 5–8 min
+    // 20 min per segment — Cloud Run storage proxy can be slow under load.
+    // With 8 MB segments, a 500 MB file = ~63 segments × up to 20 min each.
+    // The per-variant VARIANT_TIMEOUT_MS (45 min) in the stitching worker is
+    // separate and unaffected by this upload timeout.
+    timeout: 20 * 60 * 1000,
   });
 
   const url = response.data?.url;

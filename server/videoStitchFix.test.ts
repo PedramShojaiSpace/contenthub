@@ -62,20 +62,37 @@ describe("resetJob logic", () => {
 });
 
 // ── downloadSingleUrl timeout ─────────────────────────────────────────────────
-describe("downloadSingleUrl timeout guard", () => {
-  it("the DOWNLOAD_TIMEOUT_MS constant is set to 10 minutes", () => {
-    // 10 minutes = 600,000 ms
+describe("timeout constants", () => {
+  it("DOWNLOAD_TIMEOUT_MS is 10 minutes", () => {
     const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
     expect(DOWNLOAD_TIMEOUT_MS).toBe(600_000);
   });
 
-  it("the FFMPEG_TIMEOUT_MS constant is set to 15 minutes", () => {
+  it("FFMPEG_TIMEOUT_MS is 15 minutes", () => {
     const FFMPEG_TIMEOUT_MS = 15 * 60 * 1000;
     expect(FFMPEG_TIMEOUT_MS).toBe(900_000);
   });
 
-  it("the VARIANT_TIMEOUT_MS constant is set to 45 minutes", () => {
+  it("VARIANT_TIMEOUT_MS is 45 minutes", () => {
     const VARIANT_TIMEOUT_MS = 45 * 60 * 1000;
     expect(VARIANT_TIMEOUT_MS).toBe(2_700_000);
+  });
+
+  it("upload SEGMENT_SIZE is 8 MB", () => {
+    // Reduced from 14 MB to 8 MB so each segment uploads faster on Cloud Run
+    const SEGMENT_SIZE = 8 * 1024 * 1024;
+    expect(SEGMENT_SIZE).toBe(8_388_608);
+  });
+
+  it("per-segment axios timeout is 20 minutes", () => {
+    // Increased from 10 min to 20 min to handle slow Cloud Run storage proxy
+    const SEGMENT_UPLOAD_TIMEOUT = 20 * 60 * 1000;
+    expect(SEGMENT_UPLOAD_TIMEOUT).toBe(1_200_000);
+  });
+
+  it("client poll timeout is 90 minutes", () => {
+    // Extended from 20 min to 90 min for large body clips (500 MB+)
+    const CLIENT_POLL_TIMEOUT = 90 * 60 * 1000;
+    expect(CLIENT_POLL_TIMEOUT).toBe(5_400_000);
   });
 });

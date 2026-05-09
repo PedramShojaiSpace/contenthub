@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, jobName, status, variantCount, errorMessage, createdAt, completedAt FROM video_variant_jobs WHERE id = 300001;\nSELECT id, jobId, variantLabel, status, errorMessage, createdAt FROM video_variants WHERE jobId = 300001 ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2Xox4WBe4KrUPbP.bb54cdcee2e7 --database iUgsiz76NwfDUVHZHV7CyJ --execute SELECT id, jobName, status, variantCount, errorMessage, createdAt, completedAt FROM video_variant_jobs WHERE id = 300001;\nSELECT id, jobId, variantLabel, status, errorMessage, createdAt FROM video_variants WHERE jobId = 300001 ORDER BY id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'status' in 'field list'"
+  ]
+}

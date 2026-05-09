@@ -200,6 +200,31 @@ async function runStitchingJob(jobId: number) {
 
     const bodyClip = bodyClips[0];
 
+    // ── Pre-download all clips ONCE before the variant loop ──────────────────
+    // Each clip is downloaded once and reused across all variants.
+    // This avoids downloading the large body clip N times (once per variant).
+    console.log(`[VVF] Job ${jobId}: pre-downloading body clip (${bodyClip.filename})…`);
+    const bodyLocal = await downloadToTemp(bodyClip.s3Url, "mp4");
+    console.log(`[VVF] Job ${jobId}: body clip downloaded to ${bodyLocal}`);
+
+    // Pre-download all hook clips
+    const hookLocalMap = new Map<number, string>();
+    for (const hookClip of hookClips) {
+      console.log(`[VVF] Job ${jobId}: pre-downloading hook ${hookClip.clipOrder} (${hookClip.filename})…`);
+      const hookLocal = await downloadToTemp(hookClip.s3Url, "mp4");
+      hookLocalMap.set(hookClip.id, hookLocal);
+      console.log(`[VVF] Job ${jobId}: hook ${hookClip.clipOrder} downloaded`);
+    }
+
+    // Pre-download all CTA clips
+    const ctaLocalMap = new Map<number, string>();
+    for (const ctaClip of ctaClips) {
+      console.log(`[VVF] Job ${jobId}: pre-downloading CTA ${ctaClip.clipOrder} (${ctaClip.filename})…`);
+      const ctaLocal = await downloadToTemp(ctaClip.s3Url, "mp4");
+      ctaLocalMap.set(ctaClip.id, ctaLocal);
+      console.log(`[VVF] Job ${jobId}: CTA ${ctaClip.clipOrder} downloaded`);
+    }
+
     // ── Full combinatorial matrix: every hook × every CTA ──────────────────────
     // If no CTAs uploaded, generate one variant per hook (hook + body).
     // If CTAs exist, generate hook × CTA variants: N hooks × M CTAs = N×M total.
@@ -210,7 +235,7 @@ async function runStitchingJob(jobId: number) {
 
     for (const hookClip of hookClips) {
       for (const ctaClip of ctaVariants) {
-      // Create variant row (pending)
+      // Create variant row (processing)
       const ctaLabel = ctaClip ? ` + CTA ${ctaClip.clipOrder}` : "";
       const label = `Hook ${hookClip.clipOrder} + Body${ctaLabel}`;
       const [inserted] = await db.insert(videoVariants).values({
@@ -223,29 +248,21 @@ async function runStitchingJob(jobId: number) {
       });
       const variantId = (inserted as unknown as { insertId: number }).insertId;
 
-      let hookLocal: string | null = null;
-      let bodyLocal: string | null = null;
-      let ctaLocal:  string | null = null;
-      let outLocal:  string | null = null;
+      // Retrieve pre-downloaded local paths
+      const hookLocalPath = hookLocalMap.get(hookClip.id)!;
+      const ctaLocalPath = ctaClip ? ctaLocalMap.get(ctaClip.id) ?? null : null;
+
+      let outLocal: string | null = null;
 
       const ctaSuffix = ctaClip ? `-cta${ctaClip.clipOrder}` : "";
       const variantLabel = `Hook ${hookClip.clipOrder}${ctaSuffix}`;
 
       try {
-        // Wrap the entire per-variant work in a hard timeout so one hung variant
-        // cannot block the rest of the job indefinitely.
+        // Wrap the entire per-variant stitch+upload in a hard timeout
         await withTimeout(
           (async () => {
-            // Download clips to temp
-            console.log(`[VVF] Job ${jobId}: downloading ${variantLabel}…`);
-            hookLocal = await downloadToTemp(hookClip.s3Url, "mp4");
-            bodyLocal = await downloadToTemp(bodyClip.s3Url, "mp4");
-            if (ctaClip) {
-              ctaLocal = await downloadToTemp(ctaClip.s3Url, "mp4");
-            }
-
-            // Stitch: hook → body → cta
-            const parts = [hookLocal, bodyLocal, ...(ctaLocal ? [ctaLocal] : [])];
+            // Stitch: hook → body → cta (using pre-downloaded files)
+            const parts = [hookLocalPath, bodyLocal, ...(ctaLocalPath ? [ctaLocalPath] : [])];
             outLocal = path.join(os.tmpdir(), `vvf-out-${jobId}-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`);
             console.log(`[VVF] Job ${jobId}: stitching ${variantLabel} (${parts.length} parts)…`);
             await concatVideos(parts, outLocal);
@@ -274,13 +291,17 @@ async function runStitchingJob(jobId: number) {
           .set({ status: "error", errorMessage: msg })
           .where(eq(videoVariants.id, variantId));
       } finally {
-        // Clean up temp files
-        for (const f of [hookLocal, bodyLocal, ctaLocal, outLocal]) {
-          if (f) try { fs.unlinkSync(f); } catch {}
-        }
+        // Only clean up the stitched output — pre-downloaded source files are reused
+        if (outLocal) try { fs.unlinkSync(outLocal); } catch {}
       }
       } // end ctaVariants loop
     } // end hookClips loop
+
+    // Clean up pre-downloaded source files now that all variants are done
+    const allSourceFiles = [bodyLocal, ...Array.from(hookLocalMap.values()), ...Array.from(ctaLocalMap.values())];
+    for (const f of allSourceFiles) {
+      try { fs.unlinkSync(f); } catch {}
+    }
 
     // Mark job done
     await db.update(videoVariantJobs)

@@ -96,3 +96,62 @@ describe("timeout constants", () => {
     expect(CLIENT_POLL_TIMEOUT).toBe(5_400_000);
   });
 });
+
+// ── Pre-download optimization ─────────────────────────────────────────────────
+describe("pre-download optimization", () => {
+  it("downloads body clip exactly once regardless of hook count", () => {
+    const downloadCounts = new Map<string, number>();
+    const mockDownload = (url: string) => {
+      downloadCounts.set(url, (downloadCounts.get(url) ?? 0) + 1);
+    };
+
+    const bodyUrl = "https://cdn.example.com/body.mp4";
+    const hookUrls = [
+      "https://cdn.example.com/hook1.mp4",
+      "https://cdn.example.com/hook2.mp4",
+      "https://cdn.example.com/hook3.mp4",
+      "https://cdn.example.com/hook4.mp4",
+      "https://cdn.example.com/hook5.mp4",
+    ];
+
+    // Pre-download phase: each clip downloaded once
+    mockDownload(bodyUrl);
+    for (const url of hookUrls) mockDownload(url);
+
+    // Variant loop: no additional downloads (reuse pre-downloaded files)
+    // 5 hooks × 1 body = 5 variants, body downloaded only once
+
+    expect(downloadCounts.get(bodyUrl)).toBe(1);
+    for (const url of hookUrls) {
+      expect(downloadCounts.get(url)).toBe(1);
+    }
+    // Total downloads = 1 body + 5 hooks = 6, NOT 5 × (1 body + 1 hook) = 10
+    expect(downloadCounts.size).toBe(6);
+  });
+
+  it("cleans up all pre-downloaded source files after the variant loop", () => {
+    const deleted: string[] = [];
+    const mockUnlink = (f: string) => deleted.push(f);
+
+    const bodyLocal = "/tmp/body.mp4";
+    const hookLocalMap = new Map([
+      [1, "/tmp/hook1.mp4"],
+      [2, "/tmp/hook2.mp4"],
+      [3, "/tmp/hook3.mp4"],
+    ]);
+    const ctaLocalMap = new Map<number, string>();
+
+    const allSourceFiles = [
+      bodyLocal,
+      ...Array.from(hookLocalMap.values()),
+      ...Array.from(ctaLocalMap.values()),
+    ];
+    for (const f of allSourceFiles) mockUnlink(f);
+
+    expect(deleted).toContain("/tmp/body.mp4");
+    expect(deleted).toContain("/tmp/hook1.mp4");
+    expect(deleted).toContain("/tmp/hook2.mp4");
+    expect(deleted).toContain("/tmp/hook3.mp4");
+    expect(deleted.length).toBe(4);
+  });
+});

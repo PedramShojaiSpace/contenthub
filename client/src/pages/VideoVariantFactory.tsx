@@ -321,9 +321,11 @@ export default function VideoVariantFactory() {
         await sendChunk(i);
       }
 
-      // All chunks received — tell server to reassemble and get the forge upload URL
+      // All chunks received — tell server to reassemble + upload to forge storage.
+      // Server uses multipart/form-data with the server-side API key (only key with
+      // storage write permission). Upload takes ~5s for 150 MB from Cloud Run.
       setUploadingClips(prev => prev.map(c =>
-        c.id === tempId ? { ...c, progress: 92 } : c
+        c.id === tempId ? { ...c, progress: 92, cloudSaveStartedAt: Date.now() } : c
       ));
 
       const finalizeRes = await fetch("/api/upload/video-chunk/finalize", {
@@ -345,82 +347,20 @@ export default function VideoVariantFactory() {
         throw new Error(errJson?.error ?? `Finalize failed (${finalizeRes.status})`);
       }
 
+      // Server returns clipId + s3Url — the clip is already saved to the DB
       const finalizeData = await finalizeRes.json() as {
-        s3Key: string;
-        uploadUrl: string;
-        forgeApiKey: string;
         clipId: number;
-        assembledPath: string;
+        s3Url: string;
+        s3Key: string;
       };
 
-      // ── Browser-direct upload to forge storage proxy ──────────────────────────
-      // Upload the assembled file directly from the browser to forge storage,
-      // bypassing Cloud Run entirely. This eliminates the Cloud Run → proxy
-      // bottleneck that caused the "Saving to cloud" hang.
-      setUploadingClips(prev => prev.map(c =>
-        c.id === tempId ? { ...c, progress: 95, cloudSaveStartedAt: Date.now() } : c
-      ));
-
-      // Re-assemble the file in the browser from the original File object
-      // (we already have it — no need to re-download from the server)
-      const cdnUrl = await new Promise<string>((resolve, reject) => {
-        const formData = new FormData();
-        formData.append("file", file, file.name);
-
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener("progress", (e) => {
-          if (e.lengthComputable) {
-            // Map 95→100% during the direct upload phase
-            const pct = 95 + Math.round((e.loaded / e.total) * 4);
-            setUploadingClips(prev => prev.map(c =>
-              c.id === tempId ? { ...c, progress: Math.min(pct, 99) } : c
-            ));
-          }
-        });
-        xhr.addEventListener("load", () => {
-          if (xhr.status === 200) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              if (data?.url) {
-                resolve(data.url);
-              } else {
-                reject(new Error("Storage proxy did not return a URL"));
-              }
-            } catch {
-              reject(new Error(`Storage proxy response parse error: ${xhr.responseText?.slice(0, 120)}`));
-            }
-          } else {
-            reject(new Error(`Storage upload failed (${xhr.status}): ${xhr.responseText?.slice(0, 120)}`))
-          }
-        });
-        xhr.addEventListener("error", () => reject(new Error("Network error during storage upload")));
-        xhr.addEventListener("timeout", () => reject(new Error("Storage upload timed out")));
-        // 90 min timeout — large body clips can be 500 MB+
-        xhr.timeout = 90 * 60 * 1000;
-        xhr.open("POST", `${finalizeData.uploadUrl}`);
-        xhr.setRequestHeader("Authorization", `Bearer ${finalizeData.forgeApiKey}`);
-        xhr.send(formData);
-      });
-
-      // ── Confirm: tell server to write the CDN URL to the DB ──────────────────
-      const confirmRes = await fetch("/api/upload/video-chunk/confirm", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobId: activeJobId,
-          clipType,
-          clipOrder,
-          s3Key: finalizeData.s3Key,
-          s3Url: cdnUrl,
-          assembledPath: finalizeData.assembledPath,
-        }),
-      });
-
-      if (!confirmRes.ok) {
-        const errJson = await confirmRes.json().catch(() => ({}));
-        throw new Error(errJson?.error ?? `Confirm failed (${confirmRes.status})`);
+      if (!finalizeData.s3Url) {
+        throw new Error("Server did not return a storage URL");
       }
+
+      setUploadingClips(prev => prev.map(c =>
+        c.id === tempId ? { ...c, progress: 99 } : c
+      ));
 
       // Done — remove from uploading list and refresh the clip list
       setUploadingClips(prev => prev.filter(c => c.id !== tempId));

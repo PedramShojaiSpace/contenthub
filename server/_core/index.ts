@@ -10,7 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { startWeeklyDigestCron } from "../digest";
 import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
-import { videoUploadMiddleware, handleVideoClipUpload, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm, handleStorageDiagnostic } from "../videoUploadHandler";
+import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -44,10 +44,7 @@ async function startServer() {
   app.post("/api/upload/video-chunk/finalize", express.json(), handleVideoChunkFinalize);
   // Confirm endpoint — browser calls this after direct-to-forge upload succeeds
   app.post("/api/upload/video-chunk/confirm", express.json(), handleVideoChunkConfirm);
-  // Temporary diagnostic endpoint — tests storage proxy with a small video buffer
-  app.get("/api/upload/storage-diag", handleStorageDiagnostic);
-  // Legacy single-file endpoint (kept for backward compat / small files):
-  app.post("/api/upload/video-clip", videoUploadMiddleware, handleVideoClipUpload);
+  // Legacy single-file endpoint removed — all uploads now use chunked flow
 
   // Multer error handler — returns JSON so the client sees the real cause
   app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {

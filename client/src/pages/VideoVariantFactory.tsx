@@ -58,19 +58,19 @@ interface UploadingClip {
 
 function statusColor(status: string) {
   switch (status) {
-    case "done":      return "text-emerald-400";
-    case "processing": return "text-amber-400";
-    case "error":     return "text-red-400";
-    default:          return "text-zinc-400";
+    case "done":      return "text-emerald-600";
+    case "processing": return "text-amber-600";
+    case "error":     return "text-red-600";
+    default:          return "text-muted-foreground";
   }
 }
 
 function statusIcon(status: string) {
   switch (status) {
-    case "done":       return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
-    case "processing": return <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />;
-    case "error":      return <AlertCircle className="w-4 h-4 text-red-400" />;
-    default:           return <Clock className="w-4 h-4 text-zinc-400" />;
+    case "done": return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
+    case "processing": return <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />;
+    case "error": return <AlertCircle className="w-4 h-4 text-red-500" />;
+    default: return <Clock className="w-4 h-4 text-muted-foreground" />;
   }
 }
 
@@ -98,9 +98,9 @@ function estimateUploadTime(bytes: number): string {
 }
 
 function clipTypeBadgeColor(t: ClipType) {
-  if (t === "hook") return "bg-violet-500/20 text-violet-300 border-violet-500/30";
-  if (t === "body") return "bg-sky-500/20 text-sky-300 border-sky-500/30";
-  return "bg-amber-500/20 text-amber-300 border-amber-500/30";
+  if (t === "hook") return "bg-primary/10 text-primary border-primary/20";
+  if (t === "body") return "bg-sky-100 text-sky-700 border-sky-300";
+  return "bg-amber-100 text-amber-700 border-amber-300";
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -506,22 +506,22 @@ export default function VideoVariantFactory() {
   const totalVariants = hookClips.length * ctaCount;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
+    <div className="min-h-screen bg-background text-foreground p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center border border-violet-500/30">
-            <Clapperboard className="w-5 h-5 text-violet-400" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+            <Clapperboard className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-zinc-100">Video Variant Factory</h1>
-            <p className="text-sm text-zinc-400">Upload hooks + body → auto-stitch every combination</p>
+            <h1 className="text-xl font-bold text-foreground">Video Variant Factory</h1>
+            <p className="text-sm text-muted-foreground">Upload hooks + body → auto-stitch every combination</p>
           </div>
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          className="border-border text-muted-foreground hover:bg-secondary"
           onClick={() => setShowHistory(h => !h)}
         >
           <History className="w-4 h-4 mr-2" />
@@ -532,32 +532,32 @@ export default function VideoVariantFactory() {
 
       {/* History panel */}
       {showHistory && (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-zinc-300">Past Jobs</CardTitle>
+            <CardTitle className="text-sm text-foreground">Past Jobs</CardTitle>
           </CardHeader>
           <CardContent>
             {historyQuery.isLoading ? (
-              <div className="flex items-center gap-2 text-zinc-500 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Loader2 className="w-4 h-4 animate-spin" /> Loading…
               </div>
             ) : (historyQuery.data ?? []).length === 0 ? (
-              <p className="text-zinc-500 text-sm">No jobs yet.</p>
+              <p className="text-muted-foreground text-sm">No jobs yet.</p>
             ) : (
               <div className="space-y-2">
                 {(historyQuery.data ?? []).map(j => (
-                  <div key={j.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                  <div key={j.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
                     <div className="flex items-center gap-3">
                       {statusIcon(j.status)}
                       <div>
-                        <p className="text-sm font-medium text-zinc-200">{j.jobName}</p>
-                        <p className="text-xs text-zinc-500">{j.hookCount} hooks · {j.variantCount} variants</p>
+                        <p className="text-sm font-medium text-foreground">{j.jobName}</p>
+                        <p className="text-xs text-muted-foreground">{j.hookCount} hooks · {j.variantCount} variants</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost" size="sm"
-                        className="text-zinc-400 hover:text-zinc-200 text-xs"
+                        className="text-muted-foreground hover:text-foreground text-xs"
                         onClick={() => {
                           setActiveJobId(j.id);
                           setJobName(j.jobName);
@@ -590,10 +590,10 @@ export default function VideoVariantFactory() {
 
       {/* Step 1: Name the job */}
       {!activeJobId && (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base text-zinc-200 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 text-xs flex items-center justify-center font-bold">1</span>
+            <CardTitle className="text-base text-foreground flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">1</span>
               Name your test batch
             </CardTitle>
           </CardHeader>
@@ -603,12 +603,12 @@ export default function VideoVariantFactory() {
               onChange={e => setJobName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleCreateJob()}
               placeholder="e.g. Week 20 — Gut Health Hooks"
-              className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+              className="bg-background border-border text-foreground placeholder:text-muted-foreground"
             />
             <Button
               onClick={handleCreateJob}
               disabled={!jobName.trim() || createJobMutation.isPending}
-              className="bg-violet-600 hover:bg-violet-500 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {createJobMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
               Create Job
@@ -621,19 +621,19 @@ export default function VideoVariantFactory() {
       {activeJobId && (
         <div className="space-y-4">
           {/* Job header */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-900 border border-zinc-800">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
             <div className="flex items-center gap-3">
               {statusIcon(job?.status ?? "pending")}
               <div>
-                <p className="font-semibold text-zinc-100">{job?.jobName ?? jobName}</p>
-                <p className="text-xs text-zinc-500">Job #{activeJobId}</p>
+                <p className="font-semibold text-foreground">{job?.jobName ?? jobName}</p>
+                <p className="text-xs text-muted-foreground">Job #{activeJobId}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {(isDone || hasError) && (
                 <Button
                   variant="ghost" size="sm"
-                  className="text-zinc-400 hover:text-zinc-200 text-xs"
+                  className="text-muted-foreground hover:text-foreground text-xs"
                   onClick={() => { setActiveJobId(null); setJobName(""); setUploadedClips([]); setPollEnabled(false); }}
                 >
                   New Job
@@ -649,18 +649,18 @@ export default function VideoVariantFactory() {
           {(job?.status === "pending" || !job) && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Hook clips */}
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-zinc-200 flex items-center gap-2">
-                    <Scissors className="w-4 h-4 text-violet-400" />
+                  <CardTitle className="text-sm text-foreground flex items-center gap-2">
+                    <Scissors className="w-4 h-4 text-primary" />
                     Hook Clips
-                    <Badge className="ml-auto text-xs bg-violet-500/20 text-violet-300 border-violet-500/30">
+                    <Badge className="ml-auto text-xs bg-primary/10 text-primary border-primary/20">
                       {hookClips.length} uploaded
                     </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-xs text-zinc-500">Upload 1–10 hook MP4s. Each becomes a separate variant.</p>
+                  <p className="text-xs text-muted-foreground">Upload 1–10 hook MP4s. Each becomes a separate variant.</p>
                   {hookClips.map((c: any) => (
                     <ClipRow key={c.id ?? c.clipId} clip={c} onDelete={() => handleDeleteClip(c.id ?? c.clipId)} />
                   ))}
@@ -670,7 +670,7 @@ export default function VideoVariantFactory() {
                   <input ref={hookInputRef} type="file" accept="video/mp4,.mp4" multiple className="hidden" onChange={handleHookFiles} />
                   <Button
                     variant="outline" size="sm"
-                    className="w-full border-dashed border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                    className="w-full border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
                     onClick={() => hookInputRef.current?.click()}
                   >
                     <Upload className="w-3 h-3 mr-2" /> Add Hook MP4
@@ -679,18 +679,18 @@ export default function VideoVariantFactory() {
               </Card>
 
               {/* Body clip */}
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-zinc-200 flex items-center gap-2">
-                    <Film className="w-4 h-4 text-sky-400" />
+                  <CardTitle className="text-sm text-foreground flex items-center gap-2">
+                    <Film className="w-4 h-4 text-sky-500" />
                     Body Clip
-                    <Badge className="ml-auto text-xs bg-sky-500/20 text-sky-300 border-sky-500/30">
+                    <Badge className="ml-auto text-xs bg-sky-100 text-sky-700 border-sky-300">
                       {bodyClips.length > 0 ? "1 uploaded" : "required"}
                     </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-xs text-zinc-500">The main content that stays the same across all variants.</p>
+                  <p className="text-xs text-muted-foreground">The main content that stays the same across all variants.</p>
                   {bodyClips.map((c: any) => (
                     <ClipRow key={c.id ?? c.clipId} clip={c} onDelete={() => handleDeleteClip(c.id ?? c.clipId)} />
                   ))}
@@ -701,8 +701,8 @@ export default function VideoVariantFactory() {
                   {bodyClips.length === 0 && uploadingClips.filter(c => c.clipType === "body").length === 0 && (
                     <Button
                       variant="outline" size="sm"
-                      className="w-full border-dashed border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-                      onClick={() => bodyInputRef.current?.click()}
+                    className="w-full border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    onClick={() => bodyInputRef.current?.click()}
                     >
                       <Upload className="w-3 h-3 mr-2" /> Upload Body MP4
                     </Button>
@@ -710,7 +710,7 @@ export default function VideoVariantFactory() {
                   {bodyClips.length > 0 && uploadingClips.filter(c => c.clipType === "body").length === 0 && (
                     <Button
                       variant="outline" size="sm"
-                      className="w-full border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 text-xs"
+                      className="w-full border-border text-muted-foreground hover:text-foreground hover:bg-secondary text-xs"
                       onClick={async () => {
                         // Delete existing body clip then open file picker
                         const existing = bodyClips[0];
@@ -725,18 +725,18 @@ export default function VideoVariantFactory() {
               </Card>
 
               {/* CTA clip (optional) */}
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-zinc-200 flex items-center gap-2">
-                    <Play className="w-4 h-4 text-amber-400" />
+                  <CardTitle className="text-sm text-foreground flex items-center gap-2">
+                    <Play className="w-4 h-4 text-amber-500" />
                     CTA Clip
-                    <Badge className="ml-auto text-xs bg-zinc-700 text-zinc-400 border-zinc-600">
+                    <Badge className="ml-auto text-xs bg-muted text-muted-foreground border-border">
                       optional
                     </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-xs text-zinc-500">Upload 1–5 CTA MP4s. Each CTA is paired with every hook (N hooks × M CTAs = N×M variants).</p>
+                  <p className="text-xs text-muted-foreground">Upload 1–5 CTA MP4s. Each CTA is paired with every hook (N hooks × M CTAs = N×M variants).</p>
                   {ctaClips.map((c: any) => (
                     <ClipRow key={c.id ?? c.clipId} clip={c} onDelete={() => handleDeleteClip(c.id ?? c.clipId)} />
                   ))}
@@ -746,7 +746,7 @@ export default function VideoVariantFactory() {
                   <input ref={ctaInputRef} type="file" accept="video/mp4,.mp4" multiple className="hidden" onChange={handleCtaFiles} />
                   <Button
                     variant="outline" size="sm"
-                    className="w-full border-dashed border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                    className="w-full border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
                     onClick={() => ctaInputRef.current?.click()}
                   >
                     <Upload className="w-3 h-3 mr-2" /> {ctaClips.length === 0 ? "Upload CTA MP4" : "Add Another CTA"}
@@ -758,22 +758,22 @@ export default function VideoVariantFactory() {
 
           {/* Generate button */}
           {(job?.status === "pending" || !job) && (
-            <div className="flex items-center gap-4 p-4 rounded-xl bg-zinc-900 border border-zinc-800">
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border">
               <div className="flex-1">
                 {pendingS3Clips.length > 0 ? (
                   <>
-                    <p className="text-sm font-medium text-amber-400 flex items-center gap-1">
+                    <p className="text-sm font-medium text-amber-600 flex items-center gap-1">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       Saving {pendingS3Clips.length} clip{pendingS3Clips.length !== 1 ? "s" : ""} to cloud…
                     </p>
-                    <p className="text-xs text-zinc-500">Generate will unlock when all clips are saved</p>
+                    <p className="text-xs text-muted-foreground">Generate will unlock when all clips are saved</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-sm font-medium text-zinc-200">
+                    <p className="text-sm font-medium text-foreground">
                       Ready to generate {hookClips.length > 0 ? hookClips.length : "?"} variant{hookClips.length !== 1 ? "s" : ""}
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-muted-foreground">
                       {hookClips.length} hook{hookClips.length !== 1 ? "s" : ""} × 1 body
                       {ctaClips.length > 0 ? ` × ${ctaClips.length} CTA${ctaClips.length !== 1 ? "s" : ""}` : ""}
                       {" "}= {totalVariants} output MP4{totalVariants !== 1 ? "s" : ""}
@@ -784,7 +784,7 @@ export default function VideoVariantFactory() {
               <Button
                 onClick={handleGenerate}
                 disabled={hookClips.length === 0 || bodyClips.length === 0 || pendingS3Clips.length > 0 || startProcessingMutation.isPending}
-                className="bg-violet-600 hover:bg-violet-500 text-white px-6"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
               >
                 {startProcessingMutation.isPending
                   ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting…</>
@@ -796,14 +796,14 @@ export default function VideoVariantFactory() {
 
           {/* Processing status */}
           {isProcessing && !isDone && (
-            <Card className="bg-zinc-900 border-amber-500/30">
+            <Card className="bg-amber-50 border-amber-500/30">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
-                  <p className="text-sm font-medium text-amber-300">Stitching variants with FFmpeg…</p>
+                  <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                  <p className="text-sm font-medium text-amber-700">Stitching variants with FFmpeg…</p>
                   <Button
                     variant="ghost" size="sm"
-                    className="ml-auto text-zinc-400 hover:text-zinc-200"
+                    className="ml-auto text-muted-foreground hover:text-foreground"
                     onClick={() => utils.videoVariant.getJob.invalidate({ jobId: activeJobId })}
                   >
                     <RefreshCw className="w-3 h-3 mr-1" /> Refresh
@@ -811,9 +811,9 @@ export default function VideoVariantFactory() {
                 </div>
                 <Progress
                   value={totalVariants > 0 ? (doneVariants.length / totalVariants) * 100 : 0}
-                  className="h-2 bg-zinc-800"
+                  className="h-2 bg-muted"
                 />
-                <p className="text-xs text-zinc-500 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   {doneVariants.length} of {totalVariants} variant{totalVariants !== 1 ? "s" : ""} complete
                 </p>
               </CardContent>
@@ -822,12 +822,12 @@ export default function VideoVariantFactory() {
 
           {/* Error */}
           {hasError && (
-            <Card className="bg-zinc-900 border-red-500/30">
+            <Card className="bg-red-50 border-red-500/30">
               <CardContent className="pt-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-red-300">Processing failed</p>
-                  <p className="text-xs text-zinc-400 mt-1">{job?.errorMessage ?? "Unknown error"}</p>
+                  <p className="text-sm font-medium text-red-700">Processing failed</p>
+                  <p className="text-xs text-muted-foreground mt-1">{job?.errorMessage ?? "Unknown error"}</p>
                 </div>
               </CardContent>
             </Card>
@@ -835,16 +835,16 @@ export default function VideoVariantFactory() {
 
           {/* A/B Tests auto-created badge */}
           {isDone && abTestsQuery.data && abTestsQuery.data.tests.length > 0 && (
-            <Card className="bg-zinc-900 border-amber-500/30">
+            <Card className="bg-amber-50 border-amber-500/30">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center border border-amber-300">
                       <FlaskConical className="w-4 h-4 text-amber-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-amber-300">A/B Tests Created Automatically</p>
-                      <p className="text-xs text-zinc-400">
+                      <p className="text-sm font-semibold text-amber-700">A/B Tests Created Automatically</p>
+                      <p className="text-xs text-muted-foreground">
                         {abTestsQuery.data.tests.length} test{abTestsQuery.data.tests.length !== 1 ? "s" : ""} created from hook pairs — track performance in the A/B Test Lab
                       </p>
                     </div>
@@ -857,7 +857,7 @@ export default function VideoVariantFactory() {
                 </div>
                 <div className="mt-3 space-y-1">
                   {abTestsQuery.data.tests.map((t: any) => (
-                    <div key={t.id} className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-800/50 rounded px-3 py-1.5">
+                    <div key={t.id} className="flex items-center gap-2 text-xs text-muted-foreground bg-amber-100/50 rounded px-3 py-1.5">
                       <FlaskConical className="w-3 h-3 text-amber-400 shrink-0" />
                       <span className="truncate">{t.testName}</span>
                       <Badge className="ml-auto text-xs bg-amber-500/20 text-amber-300 border-amber-500/30 shrink-0">{t.status}</Badge>
@@ -870,13 +870,13 @@ export default function VideoVariantFactory() {
 
           {/* Variants output panel */}
           {variants.length > 0 && (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <CardTitle className="text-base text-zinc-200 flex items-center gap-2">
+                  <CardTitle className="text-base text-foreground flex items-center gap-2">
                     <FileVideo className="w-4 h-4 text-emerald-400" />
                     Output Variants
-                    <Badge className="ml-2 text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                    <Badge className="ml-2 text-xs bg-emerald-100 text-emerald-700 border-emerald-300">
                       {doneVariants.length} ready
                     </Badge>
                   </CardTitle>
@@ -885,7 +885,7 @@ export default function VideoVariantFactory() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-zinc-700 text-zinc-400 hover:text-zinc-200 text-xs"
+                        className="border-border text-muted-foreground hover:text-foreground text-xs"
                         onClick={() => {
                           doneVariants.forEach((v, i) => {
                             if (v.s3Url) {
@@ -931,13 +931,13 @@ export default function VideoVariantFactory() {
                 {/* Variant list */}
                 <div className="space-y-2">
                   {variants.map(v => (
-                    <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                    <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
                       <div className="flex items-center gap-3">
                         {statusIcon(v.status)}
                         <div>
-                          <p className="text-sm font-medium text-zinc-200">{v.variantLabel}</p>
+                          <p className="text-sm font-medium text-foreground">{v.variantLabel}</p>
                           {v.status === "error" && (
-                            <p className="text-xs text-red-400">{v.errorMessage}</p>
+                            <p className="text-xs text-red-600">{v.errorMessage}</p>
                           )}
                         </div>
                       </div>
@@ -954,74 +954,74 @@ export default function VideoVariantFactory() {
 
                 {/* Two-path output selector */}
                 {doneVariants.length > 0 && (
-                  <div className="border-t border-zinc-800 pt-4 space-y-4">
-                    <p className="text-sm font-semibold text-zinc-200">Send Variants To…</p>
+                  <div className="border-t border-border pt-4 space-y-4">
+                    <p className="text-sm font-semibold text-foreground">Send Variants To…</p>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setOutputPath(outputPath === "buffer" ? "none" : "buffer")}
                         className={`p-4 rounded-xl border text-left transition-all ${
                           outputPath === "buffer"
                             ? "border-sky-500/60 bg-sky-500/10"
-                            : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600"
+                            : "border-border bg-secondary hover:border-sky-400"
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <Share2 className="w-4 h-4 text-sky-400" />
-                          <span className="text-sm font-medium text-zinc-200">Buffer</span>
+                          <Share2 className="w-4 h-4 text-sky-500" />
+                          <span className="text-sm font-medium text-foreground">Buffer</span>
                           <Badge className="ml-auto text-xs bg-sky-500/20 text-sky-300 border-sky-500/30">Organic</Badge>
                         </div>
-                        <p className="text-xs text-zinc-500">Schedule all variants as video posts across your social channels. Best for ManyChat keyword-reply CTAs.</p>
+                        <p className="text-xs text-muted-foreground">Schedule all variants as video posts across your social channels. Best for ManyChat keyword-reply CTAs.</p>
                       </button>
                       <button
                         onClick={() => setOutputPath(outputPath === "meta" ? "none" : "meta")}
                         className={`p-4 rounded-xl border text-left transition-all ${
                           outputPath === "meta"
                             ? "border-blue-500/60 bg-blue-500/10"
-                            : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600"
+                            : "border-border bg-secondary hover:border-blue-400"
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <Megaphone className="w-4 h-4 text-blue-400" />
-                          <span className="text-sm font-medium text-zinc-200">Meta Ads</span>
+                          <Megaphone className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm font-medium text-foreground">Meta Ads</span>
                           <Badge className="ml-auto text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">Paid</Badge>
                         </div>
-                        <p className="text-xs text-zinc-500">Upload all variants to Meta Ads Manager as AdCreatives. Ready to attach to ad sets and go live immediately.</p>
+                        <p className="text-xs text-muted-foreground">Upload all variants to Meta Ads Manager as AdCreatives. Ready to attach to ad sets and go live immediately.</p>
                       </button>
                     </div>
 
                     {/* Buffer config panel */}
                     {outputPath === "buffer" && (
                       <div className="p-4 rounded-xl bg-sky-500/5 border border-sky-500/20 space-y-3">
-                        <p className="text-xs font-semibold text-sky-300 uppercase tracking-wide">Buffer Syndication</p>
+                        <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Buffer Syndication</p>
                         <div>
-                          <label className="text-xs text-zinc-400 mb-1 block">Caption (applies to all variants)</label>
+                          <label className="text-xs text-muted-foreground mb-1 block">Caption (applies to all variants)</label>
                           <Textarea
                             value={bufferCaption}
                             onChange={e => setBufferCaption(e.target.value)}
                             placeholder="Write your caption here… or leave blank to use the job name"
-                            className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm resize-none"
+                            className="bg-background border-border text-foreground text-sm resize-none"
                             rows={3}
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-zinc-400 mb-1 block">CTA URL (optional — added as first comment on Instagram)</label>
+                          <label className="text-xs text-muted-foreground mb-1 block">CTA URL (optional — added as first comment on Instagram)</label>
                           <Input
                             value={bufferCtaUrl}
                             onChange={e => setBufferCtaUrl(e.target.value)}
                             placeholder="https://urbanmonkacademy.com/join"
-                            className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                            className="bg-background border-border text-foreground text-sm"
                           />
                         </div>
-                        <p className="text-xs text-zinc-500">Channels are pulled from your Buffer connection. All {doneVariants.length} variants will be queued simultaneously.</p>
+                        <p className="text-xs text-muted-foreground">Channels are pulled from your Buffer connection. All {doneVariants.length} variants will be queued simultaneously.</p>
                         {outputResults.length > 0 && (
                           <div className="space-y-1">
                             {outputResults.map((r, i) => (
                               <div key={i} className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded ${
-                                r.success ? "bg-emerald-500/10 text-emerald-300" : "bg-red-500/10 text-red-300"
+                                r.success ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
                               }`}>
                                 {r.success ? <CheckCircle2 className="w-3 h-3 shrink-0" /> : <AlertCircle className="w-3 h-3 shrink-0" />}
                                 <span className="truncate">{r.label}</span>
-                                {r.error && <span className="ml-auto shrink-0 text-red-400">{r.error}</span>}
+                                {r.error && <span className="ml-auto shrink-0 text-red-500">{r.error}</span>}
                               </div>
                             ))}
                           </div>
@@ -1056,55 +1056,55 @@ export default function VideoVariantFactory() {
                     {/* Meta Ads config panel */}
                     {outputPath === "meta" && (
                       <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-3">
-                        <p className="text-xs font-semibold text-blue-300 uppercase tracking-wide">Meta Ads Manager</p>
+                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Meta Ads Manager</p>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs text-zinc-400 mb-1 block">Ad Account ID</label>
+                            <label className="text-xs text-muted-foreground mb-1 block">Ad Account ID</label>
                             <Input
                               value={metaAdAccountId}
                               onChange={e => setMetaAdAccountId(e.target.value)}
                               placeholder="act_123456789"
-                              className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                              className="bg-background border-border text-foreground text-sm"
                             />
                           </div>
                           <div>
-                            <label className="text-xs text-zinc-400 mb-1 block">Facebook Page ID</label>
+                            <label className="text-xs text-muted-foreground mb-1 block">Facebook Page ID</label>
                             <Input
                               value={metaPageId}
                               onChange={e => setMetaPageId(e.target.value)}
                               placeholder="123456789"
-                              className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                              className="bg-background border-border text-foreground text-sm"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="text-xs text-zinc-400 mb-1 block">Access Token</label>
+                          <label className="text-xs text-muted-foreground mb-1 block">Access Token</label>
                           <Input
                             value={metaAccessToken}
                             onChange={e => setMetaAccessToken(e.target.value)}
                             placeholder="EAAxxxxxxx…"
                             type="password"
-                            className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                            className="bg-background border-border text-foreground text-sm"
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-zinc-400 mb-1 block">Ad Name Prefix (optional)</label>
+                          <label className="text-xs text-muted-foreground mb-1 block">Ad Name Prefix (optional)</label>
                           <Input
                             value={metaAdName}
                             onChange={e => setMetaAdName(e.target.value)}
                             placeholder="UM-GutHealth-W20"
-                            className="bg-zinc-900 border-zinc-700 text-zinc-200 text-sm"
+                            className="bg-background border-border text-foreground text-sm"
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <p className="text-xs text-zinc-500">
+                          <p className="text-xs text-muted-foreground">
                             Each variant is uploaded as an AdVideo and an AdCreative is created automatically.
                             You can then attach them to any ad set in Ads Manager and go live.
                           </p>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="ml-3 shrink-0 border-zinc-600 text-zinc-400 hover:text-zinc-200 text-xs"
+                            className="ml-3 shrink-0 border-border text-muted-foreground hover:text-foreground text-xs"
                             disabled={saveMetaCredentialsMutation.isPending || !metaAdAccountId || !metaPageId || !metaAccessToken}
                             onClick={async () => {
                               try {
@@ -1128,7 +1128,7 @@ export default function VideoVariantFactory() {
                           <div className="space-y-1">
                             {outputResults.map((r, i) => (
                               <div key={i} className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded ${
-                                r.success ? "bg-emerald-500/10 text-emerald-300" : "bg-red-500/10 text-red-300"
+                                r.success ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
                               }`}>
                                 {r.success ? <CheckCircle2 className="w-3 h-3 shrink-0" /> : <AlertCircle className="w-3 h-3 shrink-0" />}
                                 <span className="truncate">{r.label}</span>
@@ -1190,12 +1190,12 @@ function ClipRow({ clip, onDelete }: { clip: any; onDelete: () => void }) {
   const ct: ClipType = clip.clipType;
   const order: number = clip.clipOrder ?? 0;
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+    <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary border border-border">
       <Badge className={`text-xs border shrink-0 ${clipTypeBadgeColor(ct)}`}>
         {clipTypeLabel(ct, order)}
       </Badge>
-      <span className="text-xs text-zinc-300 truncate flex-1">{clip.filename}</span>
-      <button onClick={onDelete} className="text-zinc-500 hover:text-red-400 transition-colors shrink-0">
+      <span className="text-xs text-foreground truncate flex-1">{clip.filename}</span>
+      <button onClick={onDelete} className="text-muted-foreground hover:text-red-500 transition-colors shrink-0">
         <Trash2 className="w-3 h-3" />
       </button>
     </div>
@@ -1226,35 +1226,35 @@ function UploadingRow({
   const remaining = estimatedTotal ? Math.max(0, estimatedTotal - elapsed) : null;
 
   return (
-    <div className="p-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50 space-y-1">
+    <div className="p-2 rounded-lg bg-secondary border border-border space-y-1">
       <div className="flex items-center gap-2">
         <Badge className={`text-xs border shrink-0 ${clipTypeBadgeColor(clip.clipType)}`}>
           {clipTypeLabel(clip.clipType, clip.clipOrder)}
         </Badge>
-        <span className="text-xs text-zinc-400 truncate flex-1">{clip.filename}</span>
+        <span className="text-xs text-muted-foreground truncate flex-1">{clip.filename}</span>
         {clip.fileSizeBytes && !clip.error && (
-          <span className="text-xs text-zinc-500 shrink-0">{formatFileSize(clip.fileSizeBytes)}</span>
+          <span className="text-xs text-muted-foreground shrink-0">{formatFileSize(clip.fileSizeBytes)}</span>
         )}
         {clip.error
           ? <AlertCircle className="w-3 h-3 text-red-400 shrink-0" />
           : isCloudSave
-            ? <span className="flex items-center gap-1 text-xs text-amber-400 shrink-0">
+            ? <span className="flex items-center gap-1 text-xs text-amber-600 shrink-0">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Saving
               </span>
-            : <Loader2 className="w-3 h-3 text-violet-400 animate-spin shrink-0" />
+            : <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
         }
       </div>
 
       {/* Chunk upload progress bar */}
       {!clip.error && !isCloudSave && (
-        <Progress value={clip.progress} className="h-1 bg-zinc-700" />
+        <Progress value={clip.progress} className="h-1 bg-muted" />
       )}
 
       {/* Cloud-save phase: animated pulse bar + elapsed/remaining timer */}
       {isCloudSave && (
         <div className="space-y-1">
-          <div className="h-1 rounded-full bg-zinc-700 overflow-hidden">
+          <div className="h-1 rounded-full bg-muted overflow-hidden">
             <div
               className="h-full bg-amber-400 rounded-full animate-pulse"
               style={{
@@ -1264,7 +1264,7 @@ function UploadingRow({
               }}
             />
           </div>
-          <div className="flex justify-between text-xs text-zinc-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             {clip.totalSegments && clip.totalSegments > 1 ? (
               <span>Saving segment {(clip.segmentsDone ?? 0) + 1} of {clip.totalSegments}…</span>
             ) : (
@@ -1283,11 +1283,11 @@ function UploadingRow({
       {/* Error state with retry button */}
       {clip.error && (
         <div className="flex items-start justify-between gap-2">
-          <p className="text-xs text-red-400 flex-1">{clip.error}</p>
+          <p className="text-xs text-red-600 flex-1">{clip.error}</p>
           {clip.retryFile && onRetry && (
             <button
               onClick={() => onRetry(clip)}
-              className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 shrink-0 transition-colors"
+              className="flex items-center gap-1 text-xs text-primary hover:text-primary/70 shrink-0 transition-colors"
             >
               <RefreshCw className="w-3 h-3" />
               Retry

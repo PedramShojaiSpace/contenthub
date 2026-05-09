@@ -245,8 +245,8 @@ function ScriptCard({
     <div
       className={`rounded-xl border p-4 transition-all ${
         script.approved
-          ? "border-emerald-500/40 bg-emerald-950/20"
-          : "border-white/10 bg-white/5"
+          ? "border-emerald-500/40 bg-emerald-50"
+          : "border-border bg-card"
       }`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -278,7 +278,7 @@ function ScriptCard({
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 w-7 p-0 text-white/50 hover:text-white"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
             onClick={() => onTeleprompter(script.scriptText, label)}
             title="Open in teleprompter"
           >
@@ -288,7 +288,7 @@ function ScriptCard({
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0 text-white/50 hover:text-white"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
               onClick={() => { setDraft(script.scriptText); setEditing(true); }}
               title="Edit script"
             >
@@ -298,7 +298,7 @@ function ScriptCard({
           <Button
             size="sm"
             variant="ghost"
-            className={`h-7 w-7 p-0 ${script.approved ? "text-emerald-400 hover:text-white" : "text-white/50 hover:text-emerald-400"}`}
+            className={`h-7 w-7 p-0 ${script.approved ? "text-emerald-600 hover:text-foreground" : "text-muted-foreground hover:text-emerald-600"}`}
             onClick={() => onApprove(script.id, !script.approved)}
             title={script.approved ? "Unapprove" : "Approve"}
           >
@@ -312,20 +312,20 @@ function ScriptCard({
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="min-h-[120px] bg-black/40 border-white/20 text-white/90 text-sm resize-none"
+            className="min-h-[120px] bg-background border-border text-foreground text-sm resize-none"
             autoFocus
           />
           <div className="flex gap-2">
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-7 px-3" onClick={handleSave}>
               <Check className="w-3 h-3 mr-1" /> Save
             </Button>
-            <Button size="sm" variant="ghost" className="text-white/60 h-7 px-3" onClick={handleCancel}>
+            <Button size="sm" variant="ghost" className="text-muted-foreground h-7 px-3" onClick={handleCancel}>
               <X className="w-3 h-3 mr-1" /> Cancel
             </Button>
           </div>
         </div>
       ) : (
-        <p className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap">{script.scriptText}</p>
+        <p className="text-foreground/80 text-sm leading-relaxed whitespace-pre-wrap">{script.scriptText}</p>
       )}
     </div>
   );
@@ -367,29 +367,29 @@ function CtaKeywordPanel({
   };
 
   return (
-    <div className="mt-4 rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-3">
+    <div className="mt-4 rounded-xl border border-sky-500/30 bg-sky-50 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <MessageSquare className="w-4 h-4 text-sky-400" />
-        <span className="text-sky-300 text-sm font-semibold">Keyword-Reply CTA</span>
-        <span className="text-white/40 text-xs ml-1">— viewers comment a word to receive your link via DM</span>
+        <span className="text-sky-700 text-sm font-semibold">Keyword-Reply CTA</span>
+        <span className="text-muted-foreground text-xs ml-1">— viewers comment a word to receive your link via DM</span>
       </div>
 
       {/* Keyword input */}
       <div className="flex items-center gap-2">
-        <label className="text-white/60 text-xs w-20 shrink-0">Keyword</label>
+        <label className="text-muted-foreground text-xs w-20 shrink-0">Keyword</label>
         <Input
           value={keyword}
           onChange={(e) => setKeyword(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
           placeholder="e.g. ENERGY"
-          className="bg-black/40 border-white/20 text-white font-mono text-sm h-8 uppercase max-w-[160px]"
+          className="bg-background border-border text-foreground font-mono text-sm h-8 uppercase max-w-[160px]"
           maxLength={20}
         />
-        <span className="text-white/30 text-xs">All caps, no spaces</span>
+        <span className="text-muted-foreground text-xs">All caps, no spaces</span>
       </div>
 
       {/* Template selector */}
       <div className="space-y-1.5">
-        <label className="text-white/60 text-xs">CTA Template</label>
+        <label className="text-muted-foreground text-xs">CTA Template</label>
         <div className="space-y-1.5">
           {templates.map((tpl, i) => (
             <button
@@ -397,8 +397,8 @@ function CtaKeywordPanel({
               onClick={() => setTemplateIdx(i)}
               className={`w-full text-left text-sm px-3 py-2 rounded-lg border transition-all ${
                 templateIdx === i
-                  ? "border-sky-500/60 bg-sky-900/30 text-sky-100"
-                  : "border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white/80"
+                  ? "border-sky-500/60 bg-sky-100 text-sky-800"
+                  : "border-border bg-background text-muted-foreground hover:border-sky-300 hover:text-foreground"
               }`}
             >
               {tpl.replace("{KEYWORD}", keyword || "KEYWORD")}
@@ -408,15 +408,15 @@ function CtaKeywordPanel({
       </div>
 
       {/* Final CTA copy */}
-      <div className="bg-black/40 border border-white/10 rounded-lg p-3 flex items-start justify-between gap-3">
+      <div className="bg-background border border-border rounded-lg p-3 flex items-start justify-between gap-3">
         <div>
-          <p className="text-white/40 text-xs mb-1">Your CTA copy:</p>
-          <p className="text-white font-medium text-sm">{ctaCopy}</p>
+          <p className="text-muted-foreground text-xs mb-1">Your CTA copy:</p>
+          <p className="text-foreground font-medium text-sm">{ctaCopy}</p>
         </div>
         <Button
           size="sm"
           variant="ghost"
-          className="text-white/50 hover:text-white h-7 w-7 p-0 shrink-0"
+          className="text-muted-foreground hover:text-foreground h-7 w-7 p-0 shrink-0"
           onClick={() => copyToClipboard(ctaCopy)}
           title="Copy CTA text"
         >
@@ -425,9 +425,9 @@ function CtaKeywordPanel({
       </div>
 
       {/* UTM hint */}
-      <div className="flex items-center gap-2 text-xs text-white/40">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Link2 className="w-3 h-3" />
-        <span>Use the <strong className="text-white/60">UTM Code Generator</strong> in Strategy to create a trackable link for this keyword.</span>
+        <span>Use the <strong className="text-foreground/70">UTM Code Generator</strong> in Strategy to create a trackable link for this keyword.</span>
       </div>
     </div>
   );
@@ -465,47 +465,47 @@ function NewSessionForm({ onCreated }: { onCreated: (id: number) => void }) {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-white">New Video Production Session</h2>
-        <p className="text-white/60 text-sm">Enter your idea and we'll generate 5 hooks, a main body, and a CTA — all in Dr. Shojai's voice.</p>
+        <h2 className="text-2xl font-bold text-foreground">New Video Production Session</h2>
+        <p className="text-muted-foreground text-sm">Enter your idea and we'll generate 5 hooks, a main body, and a CTA — all in Dr. Shojai's voice.</p>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
         <div>
-          <label className="text-white/70 text-sm font-medium mb-1.5 block">Session Name</label>
+          <label className="text-foreground/70 text-sm font-medium mb-1.5 block">Session Name</label>
           <Input
             placeholder="e.g., 'Why You're Always Tired' — May 2026"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="bg-black/40 border-white/20 text-white placeholder:text-white/30"
+            className="bg-background border-border text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
         <div>
-          <label className="text-white/70 text-sm font-medium mb-1.5 block">Video Idea</label>
+          <label className="text-foreground/70 text-sm font-medium mb-1.5 block">Video Idea</label>
           <Textarea
             placeholder="Describe the core idea, topic, or message you want to convey in this video. Be as specific as possible — the more detail you give, the better the scripts."
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
-            className="min-h-[120px] bg-black/40 border-white/20 text-white placeholder:text-white/30 resize-none"
+            className="min-h-[120px] bg-background border-border text-foreground placeholder:text-muted-foreground resize-none"
           />
         </div>
 
         <div>
-          <label className="text-white/70 text-sm font-medium mb-1.5 block">Platform</label>
+          <label className="text-foreground/70 text-sm font-medium mb-1.5 block">Platform</label>
           <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
-            <SelectTrigger className="bg-black/40 border-white/20 text-white">
+            <SelectTrigger className="bg-background border-border text-foreground">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-white/10">
+            <SelectContent className="bg-card border-border">
               {(Object.entries(PLATFORM_LABELS) as [Platform, string][]).map(([k, v]) => (
-                <SelectItem key={k} value={k} className="text-white hover:bg-white/10">{v}</SelectItem>
+                <SelectItem key={k} value={k} className="text-foreground">{v}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
         <Button
-          className="w-full bg-violet-600 hover:bg-violet-700 text-white h-11 font-semibold"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 font-semibold"
           onClick={handleSubmit}
           disabled={isLoading}
         >
@@ -599,9 +599,9 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
   );
 
   if (error || !data) return (
-    <div className="text-center py-20 text-white/50">
+    <div className="text-center py-20 text-muted-foreground">
       <p>Failed to load session.</p>
-      <Button variant="ghost" className="text-white/60 mt-2" onClick={onBack}>← Back</Button>
+      <Button variant="ghost" className="text-muted-foreground mt-2" onClick={onBack}>← Back</Button>
     </div>
   );
 
@@ -619,17 +619,17 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <Button variant="ghost" className="text-white/50 hover:text-white -ml-2 mb-1 h-7 text-xs" onClick={onBack}>
+          <Button variant="ghost" className="text-muted-foreground hover:text-foreground -ml-2 mb-1 h-7 text-xs" onClick={onBack}>
             <ChevronLeft className="w-3 h-3 mr-1" /> All Sessions
           </Button>
-          <h2 className="text-xl font-bold text-white">{session.sessionName}</h2>
-          <p className="text-white/50 text-sm mt-0.5">{session.idea.slice(0, 120)}{session.idea.length > 120 ? "…" : ""}</p>
+          <h2 className="text-xl font-bold text-foreground">{session.sessionName}</h2>
+          <p className="text-muted-foreground text-sm mt-0.5">{session.idea.slice(0, 120)}{session.idea.length > 120 ? "…" : ""}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className="border-white/20 text-white/60 text-xs">
+          <Badge variant="outline" className="border-border text-muted-foreground text-xs">
             {PLATFORM_LABELS[session.platform]}
           </Badge>
-          <Badge className="bg-violet-600/20 text-violet-300 border-violet-500/30 text-xs">
+          <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
             {approvedCount}/{scripts.length} approved
           </Badge>
         </div>
@@ -640,14 +640,14 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
         {STATUS_STEPS.map((step, i) => (
           <div key={step.key} className="flex items-center gap-1">
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
-              i < currentStepIdx ? "bg-emerald-600/20 text-emerald-300" :
-              i === currentStepIdx ? "bg-violet-600/30 text-violet-200 ring-1 ring-violet-500/50" :
-              "bg-white/5 text-white/30"
+              i < currentStepIdx ? "bg-emerald-100 text-emerald-700" :
+              i === currentStepIdx ? "bg-primary/10 text-primary ring-1 ring-primary/30" :
+              "bg-muted text-muted-foreground"
             }`}>
               {i < currentStepIdx ? <CheckCircle2 className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
               {step.label}
             </div>
-            {i < STATUS_STEPS.length - 1 && <ChevronRight className="w-3 h-3 text-white/20 shrink-0" />}
+            {i < STATUS_STEPS.length - 1 && <ChevronRight className="w-3 h-3 text-muted-foreground/40 shrink-0" />}
           </div>
         ))}
       </div>
@@ -677,7 +677,7 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
         <Button
           size="sm"
           variant="outline"
-          className="border-white/20 text-white/70 hover:text-white h-8"
+          className="border-border text-muted-foreground hover:text-foreground h-8"
           onClick={() => {
             setRegenerating(true);
             generateMutation.mutate({ sessionId });
@@ -691,7 +691,7 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
 
       {/* Scripts */}
       {scripts.length === 0 ? (
-        <div className="text-center py-12 text-white/40">
+        <div className="text-center py-12 text-muted-foreground">
           <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-30" />
           <p>No scripts yet. Click "Regenerate All Scripts" to generate.</p>
         </div>
@@ -699,8 +699,8 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
         <div className="space-y-4">
           {/* Hooks */}
           <div>
-            <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
+            <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary inline-block" />
               Hooks (5 Variants for Split Testing)
             </h3>
             <div className="space-y-3">
@@ -720,7 +720,7 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
           {/* Body */}
           {body && (
             <div>
-              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+              <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
                 Main Body (Record Once)
               </h3>
@@ -737,7 +737,7 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
           {/* CTA */}
           {cta && (
             <div>
-              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+              <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
                 Call to Action (Record Once)
               </h3>
@@ -756,11 +756,11 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
 
       {/* Next step callout */}
       {allApproved && session.status === "ready_to_record" && (
-        <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+        <div className="bg-amber-50 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
           <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-amber-200 font-semibold text-sm">Ready to Record</p>
-            <p className="text-amber-200/70 text-sm mt-1">
+            <p className="text-amber-700 font-semibold text-sm">Ready to Record</p>
+            <p className="text-amber-600/80 text-sm mt-1">
               Export the DOCX above for your teleprompter app, record your clips, then come back to the{" "}
               <strong>Video Variants</strong> page to upload and stitch them into final variants.
             </p>
@@ -809,34 +809,34 @@ function SessionHistory({ onSelect }: { onSelect: (id: number) => void }) {
 
   return (
     <div>
-      <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">Recent Sessions</h3>
+      <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-3">Recent Sessions</h3>
       <div className="space-y-2">
         {sessions.map((s: Session) => (
           <div
             key={s.id}
-            className="flex items-center gap-3 bg-white/5 hover:bg-white/8 border border-white/10 rounded-xl px-4 py-3 cursor-pointer group transition-colors"
+            className="flex items-center gap-3 bg-card hover:bg-secondary border border-border rounded-xl px-4 py-3 cursor-pointer group transition-colors"
             onClick={() => onSelect(s.id)}
           >
             <Video className="w-4 h-4 text-violet-400 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-white font-medium text-sm truncate">{s.sessionName}</p>
-              <p className="text-white/40 text-xs truncate">{s.idea.slice(0, 80)}{s.idea.length > 80 ? "…" : ""}</p>
+              <p className="text-foreground font-medium text-sm truncate">{s.sessionName}</p>
+              <p className="text-muted-foreground text-xs truncate">{s.idea.slice(0, 80)}{s.idea.length > 80 ? "…" : ""}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge variant="outline" className="border-white/20 text-white/50 text-xs hidden sm:flex">
+              <Badge variant="outline" className="border-border text-muted-foreground text-xs hidden sm:flex">
                 {PLATFORM_LABELS[s.platform]}
               </Badge>
               <Badge className={`text-xs ${
-                s.status === "done" ? "bg-emerald-600/20 text-emerald-300" :
-                s.status === "ready_to_record" ? "bg-amber-600/20 text-amber-300" :
-                "bg-violet-600/20 text-violet-300"
+                s.status === "done" ? "bg-emerald-100 text-emerald-700" :
+                s.status === "ready_to_record" ? "bg-amber-100 text-amber-700" :
+                "bg-primary/10 text-primary"
               }`}>
                 {STATUS_STEPS.find((st) => st.key === s.status)?.label ?? s.status}
               </Badge>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 w-7 p-0 text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                className="h-7 w-7 p-0 text-muted-foreground/30 hover:text-red-400 opacity-0 group-hover:opacity-100"
                 onClick={(e) => { e.stopPropagation(); deleteMutation.mutate({ sessionId: s.id }); }}
               >
                 <Trash2 className="w-3 h-3" />
@@ -866,20 +866,20 @@ export default function VideoProductionSession() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Page header */}
         {view === "list" && (
           <div className="mb-8">
             <div className="flex items-start justify-between gap-4 mb-2">
               <div>
-                <h1 className="text-3xl font-bold text-white">Video Production Studio</h1>
-                <p className="text-white/50 mt-1 text-sm">
+                <h1 className="text-3xl font-bold text-foreground">Video Production Studio</h1>
+                <p className="text-muted-foreground mt-1 text-sm">
                   Idea → Scripts → Teleprompter → Record → Splice. One session, start to finish.
                 </p>
               </div>
               <Button
-                className="bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
                 onClick={() => setView("new")}
               >
                 <Plus className="w-4 h-4 mr-2" /> New Session
@@ -895,10 +895,10 @@ export default function VideoProductionSession() {
                 { icon: Upload, label: "4. Upload", desc: "Upload your MP4s" },
                 { icon: Scissors, label: "5. Splice", desc: "Auto-stitch variants" },
               ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="bg-white/5 border border-white/8 rounded-xl p-3 text-center">
-                  <Icon className="w-5 h-5 mx-auto mb-1.5 text-violet-400" />
-                  <p className="text-white text-xs font-semibold">{label}</p>
-                  <p className="text-white/40 text-xs mt-0.5">{desc}</p>
+                <div key={label} className="bg-card border border-border rounded-xl p-3 text-center">
+                  <Icon className="w-5 h-5 mx-auto mb-1.5 text-accent" />
+                  <p className="text-foreground text-xs font-semibold">{label}</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">{desc}</p>
                 </div>
               ))}
             </div>
@@ -908,7 +908,7 @@ export default function VideoProductionSession() {
         {view === "list" && <SessionHistory onSelect={handleSelect} />}
         {view === "new" && (
           <div>
-            <Button variant="ghost" className="text-white/50 hover:text-white -ml-2 mb-4 h-7 text-xs" onClick={() => setView("list")}>
+            <Button variant="ghost" className="text-muted-foreground hover:text-foreground -ml-2 mb-4 h-7 text-xs" onClick={() => setView("list")}>
               <ChevronLeft className="w-3 h-3 mr-1" /> Back
             </Button>
             <NewSessionForm onCreated={handleCreated} />

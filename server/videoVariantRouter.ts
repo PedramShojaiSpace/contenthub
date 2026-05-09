@@ -35,20 +35,39 @@ function randomSuffix() {
   return Math.random().toString(36).slice(2, 8);
 }
 
-/** Download a single URL to a specific local path */
+// Per-download timeout: 10 minutes. Large segment files on Cloud Run can take 3–5 min.
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
+// Per-FFmpeg stitch timeout: 15 minutes. A 10-minute video stitching job should finish well within this.
+const FFMPEG_TIMEOUT_MS = 15 * 60 * 1000;
+// Per-variant total timeout (download + stitch + upload): 45 minutes.
+const VARIANT_TIMEOUT_MS = 45 * 60 * 1000;
+
+/** Download a single URL to a specific local path — with a hard timeout */
 function downloadSingleUrl(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
     const client = url.startsWith("https") ? https : http;
-    client.get(url, (res) => {
+    const req = client.get(url, (res) => {
       if (res.statusCode !== 200) {
+        file.close();
         reject(new Error(`Download failed: ${res.statusCode} ${url}`));
         return;
       }
       res.pipe(file);
       file.on("finish", () => { file.close(); resolve(); });
-      file.on("error", reject);
+      file.on("error", (e) => { req.destroy(); reject(e); });
+      res.on("error", (e) => { req.destroy(); reject(e); });
     }).on("error", reject);
+
+    // Hard timeout — destroy the request if it stalls
+    const timer = setTimeout(() => {
+      req.destroy();
+      reject(new Error(`Download timed out after ${DOWNLOAD_TIMEOUT_MS / 60000} min: ${url}`));
+    }, DOWNLOAD_TIMEOUT_MS);
+
+    // Clear the timer once the file stream finishes (success or error)
+    file.on("finish", () => clearTimeout(timer));
+    file.on("error", () => clearTimeout(timer));
   });
 }
 
@@ -93,20 +112,41 @@ function concatVideos(inputPaths: string[], outputPath: string): Promise<void> {
     const listContent = inputPaths.map(p => `file '${p}'`).join("\n");
     fs.writeFileSync(listPath, listContent);
 
-    ffmpeg()
+    let settled = false;
+    const done = (err?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { fs.unlinkSync(listPath); } catch {}
+      if (err) reject(err); else resolve();
+    };
+
+    const cmd = ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
       .outputOptions(["-c copy"])
       .output(outputPath)
-      .on("end", () => {
-        fs.unlinkSync(listPath);
-        resolve();
-      })
-      .on("error", (err) => {
-        try { fs.unlinkSync(listPath); } catch {}
-        reject(err);
-      })
-      .run();
+      .on("end", () => done())
+      .on("error", (err) => done(err));
+
+    cmd.run();
+
+    // Hard timeout: kill FFmpeg if it stalls
+    const timer = setTimeout(() => {
+      try { (cmd as any).ffmpegProc?.kill("SIGKILL"); } catch {}
+      done(new Error(`FFmpeg stitch timed out after ${FFMPEG_TIMEOUT_MS / 60000} min`));
+    }, FFMPEG_TIMEOUT_MS);
+  });
+}
+
+/** Race a promise against a timeout, rejecting with a descriptive error if it stalls */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 60000} min`)), ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
   });
 }
 
@@ -188,33 +228,48 @@ async function runStitchingJob(jobId: number) {
       let ctaLocal:  string | null = null;
       let outLocal:  string | null = null;
 
+      const ctaSuffix = ctaClip ? `-cta${ctaClip.clipOrder}` : "";
+      const variantLabel = `Hook ${hookClip.clipOrder}${ctaSuffix}`;
+
       try {
-        // Download clips to temp
-        hookLocal = await downloadToTemp(hookClip.s3Url, "mp4");
-        bodyLocal = await downloadToTemp(bodyClip.s3Url, "mp4");
-        if (ctaClip) {
-          ctaLocal = await downloadToTemp(ctaClip.s3Url, "mp4");
-        }
+        // Wrap the entire per-variant work in a hard timeout so one hung variant
+        // cannot block the rest of the job indefinitely.
+        await withTimeout(
+          (async () => {
+            // Download clips to temp
+            console.log(`[VVF] Job ${jobId}: downloading ${variantLabel}…`);
+            hookLocal = await downloadToTemp(hookClip.s3Url, "mp4");
+            bodyLocal = await downloadToTemp(bodyClip.s3Url, "mp4");
+            if (ctaClip) {
+              ctaLocal = await downloadToTemp(ctaClip.s3Url, "mp4");
+            }
 
-        // Stitch: hook → body → cta
-        const parts = [hookLocal, bodyLocal, ...(ctaLocal ? [ctaLocal] : [])];
-        const ctaSuffix = ctaClip ? `-cta${ctaClip.clipOrder}` : "";
-        outLocal = path.join(os.tmpdir(), `vvf-out-${jobId}-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`);
-        await concatVideos(parts, outLocal);
+            // Stitch: hook → body → cta
+            const parts = [hookLocal, bodyLocal, ...(ctaLocal ? [ctaLocal] : [])];
+            outLocal = path.join(os.tmpdir(), `vvf-out-${jobId}-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`);
+            console.log(`[VVF] Job ${jobId}: stitching ${variantLabel} (${parts.length} parts)…`);
+            await concatVideos(parts, outLocal);
 
-        // Upload to S3
-        const s3Key = `video-variants/${jobId}/variant-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`;
-        const fileBuffer = fs.readFileSync(outLocal);
-        const { url: s3Url } = await storagePut(s3Key, fileBuffer, "video/mp4");
+            // Upload to S3
+            const s3Key = `video-variants/${jobId}/variant-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`;
+            console.log(`[VVF] Job ${jobId}: uploading ${variantLabel} to S3…`);
+            const fileBuffer = fs.readFileSync(outLocal);
+            const { url: s3Url } = await storagePut(s3Key, fileBuffer, "video/mp4");
 
-        // Mark variant done
-        await db.update(videoVariants)
-          .set({ status: "done", s3Key, s3Url })
-          .where(eq(videoVariants.id, variantId));
+            // Mark variant done
+            await db.update(videoVariants)
+              .set({ status: "done", s3Key, s3Url })
+              .where(eq(videoVariants.id, variantId));
 
-        variantsDone++;
+            variantsDone++;
+            console.log(`[VVF] Job ${jobId}: ${variantLabel} done (${variantsDone} total)`);
+          })(),
+          VARIANT_TIMEOUT_MS,
+          `Variant ${variantLabel}`,
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[VVF] Job ${jobId}: ${variantLabel} failed — ${msg}`);
         await db.update(videoVariants)
           .set({ status: "error", errorMessage: msg })
           .where(eq(videoVariants.id, variantId));
@@ -685,6 +740,28 @@ export const videoVariantRouter = router({
         });
       }
       return { success: true };
+    }),
+
+  /**
+   * Reset a stuck/processing job back to "pending" so the user can retry.
+   * Deletes all variant rows (they are stale/incomplete) and resets the job status.
+   * Does NOT delete the uploaded clips — those are preserved so the user can re-run.
+   */
+  resetJob: protectedProcedure
+    .input(z.object({ jobId: z.number().int() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [job] = await db.select().from(videoVariantJobs)
+        .where(and(eq(videoVariantJobs.id, input.jobId), eq(videoVariantJobs.userId, ctx.user.id)));
+      if (!job) throw new Error("Job not found");
+      // Delete stale variant rows
+      await db.delete(videoVariants).where(eq(videoVariants.jobId, input.jobId));
+      // Reset job to pending so startProcessing can be called again
+      await db.update(videoVariantJobs)
+        .set({ status: "pending", errorMessage: null, variantCount: 0, completedAt: null })
+        .where(eq(videoVariantJobs.id, input.jobId));
+      return { ok: true };
     }),
 
   /**

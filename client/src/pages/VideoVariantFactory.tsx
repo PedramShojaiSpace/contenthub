@@ -143,6 +143,7 @@ export default function VideoVariantFactory() {
   const uploadToMetaMutation      = trpc.videoVariant.uploadToMetaAds.useMutation();
   const saveMetaCredentialsMutation = trpc.videoVariant.saveMetaCredentials.useMutation();
   const bulkSendToPendingApprovalMutation = trpc.videoVariant.bulkSendToPendingApproval.useMutation();
+  const resetJobMutation = trpc.videoVariant.resetJob.useMutation();
 
   // Load saved Meta credentials on mount and auto-fill fields
   const { data: savedMetaCreds } = trpc.videoVariant.getMetaCredentials.useQuery(undefined, {
@@ -801,13 +802,36 @@ export default function VideoVariantFactory() {
                 <div className="flex items-center gap-3 mb-3">
                   <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
                   <p className="text-sm font-medium text-amber-700">Stitching variants with FFmpeg…</p>
-                  <Button
-                    variant="ghost" size="sm"
-                    className="ml-auto text-muted-foreground hover:text-foreground"
-                    onClick={() => utils.videoVariant.getJob.invalidate({ jobId: activeJobId })}
-                  >
-                    <RefreshCw className="w-3 h-3 mr-1" /> Refresh
-                  </Button>
+                  <div className="ml-auto flex items-center gap-2">
+                    <Button
+                      variant="ghost" size="sm"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => utils.videoVariant.getJob.invalidate({ jobId: activeJobId })}
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" /> Refresh
+                    </Button>
+                    <Button
+                      variant="outline" size="sm"
+                      className="border-red-300 text-red-600 hover:bg-red-50 text-xs"
+                      disabled={resetJobMutation.isPending}
+                      onClick={async () => {
+                        if (!activeJobId) return;
+                        if (!confirm("Reset this stuck job? The uploaded clips will be kept, but all variant rows will be cleared so you can re-run stitching.")) return;
+                        try {
+                          await resetJobMutation.mutateAsync({ jobId: activeJobId });
+                          await utils.videoVariant.getJob.invalidate({ jobId: activeJobId });
+                          toast.success("Job reset — you can now click Generate Variants again");
+                        } catch (e: any) {
+                          toast.error(e.message ?? "Reset failed");
+                        }
+                      }}
+                    >
+                      {resetJobMutation.isPending
+                        ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Resetting…</>
+                        : <><RefreshCw className="w-3 h-3 mr-1" /> Reset Stuck Job</>
+                      }
+                    </Button>
+                  </div>
                 </div>
                 <Progress
                   value={totalVariants > 0 ? (doneVariants.length / totalVariants) * 100 : 0}
@@ -823,11 +847,33 @@ export default function VideoVariantFactory() {
           {/* Error */}
           {hasError && (
             <Card className="bg-red-50 border-red-500/30">
-              <CardContent className="pt-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-red-700">Processing failed</p>
-                  <p className="text-xs text-muted-foreground mt-1">{job?.errorMessage ?? "Unknown error"}</p>
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-700">Processing failed</p>
+                    <p className="text-xs text-muted-foreground mt-1">{job?.errorMessage ?? "Unknown error"}</p>
+                  </div>
+                  <Button
+                    variant="outline" size="sm"
+                    className="border-red-300 text-red-600 hover:bg-red-50 text-xs shrink-0"
+                    disabled={resetJobMutation.isPending}
+                    onClick={async () => {
+                      if (!activeJobId) return;
+                      try {
+                        await resetJobMutation.mutateAsync({ jobId: activeJobId });
+                        await utils.videoVariant.getJob.invalidate({ jobId: activeJobId });
+                        toast.success("Job reset — click Generate Variants to retry");
+                      } catch (e: any) {
+                        toast.error(e.message ?? "Reset failed");
+                      }
+                    }}
+                  >
+                    {resetJobMutation.isPending
+                      ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Resetting…</>
+                      : <><RefreshCw className="w-3 h-3 mr-1" /> Reset &amp; Retry</>
+                    }
+                  </Button>
                 </div>
               </CardContent>
             </Card>

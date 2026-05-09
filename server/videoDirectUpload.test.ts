@@ -1,15 +1,10 @@
 /**
- * Tests for the video upload handler.
+ * Tests for the stateless video upload handler.
  *
- * Upload flow:
- *   1. Browser sends 4 MB chunks → /api/upload/video-chunk (raw binary)
- *   2. Browser calls /finalize → server reassembles + uploads to forge via multipart/form-data
- *      → returns { clipId, s3Url, s3Key }
- *   3. /confirm endpoint is a no-op kept for backward compatibility
- *
- * KEY FINDING: forge storage /v1/storage/upload REQUIRES multipart/form-data.
- * Raw binary returns 400 "record not found". Frontend API key also returns 400.
- * Only the server-side key with multipart/form-data works.
+ * ARCHITECTURE: Each chunk is uploaded to forge storage immediately on receipt.
+ * Finalize downloads all chunks from forge and concatenates them.
+ * This eliminates the "Missing chunk X" bug caused by Cloud Run multi-instance
+ * deployments where /tmp is not shared between instances.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -153,7 +148,7 @@ describe("handleVideoChunkFinalize", () => {
   });
 
   it("returns 404 if job does not belong to user", async () => {
-    mockDb.where.mockResolvedValueOnce([]); // no job found
+    mockDb.where.mockResolvedValueOnce([]);
     const { handleVideoChunkFinalize } = await import("./videoUploadHandler");
     const req = { body: { uploadId: "abc", jobId: "999", totalChunks: "1" }, headers: {} } as any;
     const res = mockRes();
@@ -163,7 +158,7 @@ describe("handleVideoChunkFinalize", () => {
   });
 });
 
-// ── Tests: confirm endpoint (backward compat no-op) ──────────────────────────
+// ── Tests: confirm endpoint (backward compat) ─────────────────────────────────
 
 describe("handleVideoChunkConfirm", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -220,5 +215,33 @@ describe("handleVideoChunkConfirm", () => {
     const res = mockRes();
     await handleVideoChunkConfirm(req, res);
     expect(res._status).toBe(401);
+  });
+});
+
+// ── Tests: stateless architecture invariants ──────────────────────────────────
+
+describe("stateless chunk architecture", () => {
+  it("videoUploadHandler exports all required handlers", async () => {
+    const mod = await import("./videoUploadHandler");
+    expect(typeof mod.handleVideoChunkUpload).toBe("function");
+    expect(typeof mod.handleVideoChunkFinalize).toBe("function");
+    expect(typeof mod.handleVideoChunkConfirm).toBe("function");
+    expect(mod.videoChunkMiddleware).toBeDefined();
+    expect(mod.videoUploadMiddleware).toBeDefined();
+  });
+
+  it("chunk upload returns 400 for non-Buffer body (JSON body parser ran first)", async () => {
+    const { handleVideoChunkUpload } = await import("./videoUploadHandler");
+    // Simulate what happens when express.json() runs before express.raw()
+    // and parses the body as an object instead of a Buffer
+    const req = {
+      body: { parsed: "by json" }, // object, not Buffer
+      query: { uploadId: "abc", chunkIndex: "0" },
+      headers: {},
+    } as any;
+    const res = mockRes();
+    await handleVideoChunkUpload(req, res);
+    expect(res._status).toBe(400);
+    expect(res._json?.error).toMatch(/No chunk data/);
   });
 });

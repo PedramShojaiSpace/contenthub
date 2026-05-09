@@ -321,7 +321,7 @@ export default function VideoVariantFactory() {
         await sendChunk(i);
       }
 
-      // All chunks received — tell server to reassemble and upload to S3
+      // All chunks received — tell server to reassemble and get the forge upload URL
       setUploadingClips(prev => prev.map(c =>
         c.id === tempId ? { ...c, progress: 92 } : c
       ));
@@ -345,62 +345,87 @@ export default function VideoVariantFactory() {
         throw new Error(errJson?.error ?? `Finalize failed (${finalizeRes.status})`);
       }
 
-      // Server accepted — show 95% while S3 upload finishes in background
+      const finalizeData = await finalizeRes.json() as {
+        s3Key: string;
+        uploadUrl: string;
+        forgeApiKey: string;
+        clipId: number;
+        assembledPath: string;
+      };
+
+      // ── Browser-direct upload to forge storage proxy ──────────────────────────
+      // Upload the assembled file directly from the browser to forge storage,
+      // bypassing Cloud Run entirely. This eliminates the Cloud Run → proxy
+      // bottleneck that caused the "Saving to cloud" hang.
       setUploadingClips(prev => prev.map(c =>
         c.id === tempId ? { ...c, progress: 95, cloudSaveStartedAt: Date.now() } : c
       ));
-      // Poll every 3s for up to 90 minutes until the clip appears in the server list.
-      // Large body videos (500 MB+) can take 30–60 min to upload all segments to storage
-      // on Cloud Run. The 90-minute ceiling is a safety net; most clips finish much sooner.
-      const maxWaitMs = 90 * 60 * 1000;
-      const pollInterval = 3000;
-      const startTime = Date.now();
-      let found = false;
 
-      while (Date.now() - startTime < maxWaitMs) {
-        await new Promise(r => setTimeout(r, pollInterval));
+      // Re-assemble the file in the browser from the original File object
+      // (we already have it — no need to re-download from the server)
+      const cdnUrl = await new Promise<string>((resolve, reject) => {
+        const formData = new FormData();
+        formData.append("file", file, file.name);
 
-        // Poll segment progress so the UI can show "Saving segment X of Y"
-        try {
-          const progRes = await fetch(`/api/upload/video-chunk/progress?uploadId=${encodeURIComponent(uploadId)}`, { credentials: "include" });
-          if (progRes.ok) {
-            const prog = await progRes.json() as { done: number; total: number };
-            if (prog.total > 0) {
-              setUploadingClips(prev => prev.map(c =>
-                c.id === tempId ? { ...c, segmentsDone: prog.done, totalSegments: prog.total } : c
-              ));
-            }
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+            // Map 95→100% during the direct upload phase
+            const pct = 95 + Math.round((e.loaded / e.total) * 4);
+            setUploadingClips(prev => prev.map(c =>
+              c.id === tempId ? { ...c, progress: Math.min(pct, 99) } : c
+            ));
           }
-        } catch { /* progress polling is best-effort */ }
+        });
+        xhr.addEventListener("load", () => {
+          if (xhr.status === 200) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (data?.url) {
+                resolve(data.url);
+              } else {
+                reject(new Error("Storage proxy did not return a URL"));
+              }
+            } catch {
+              reject(new Error(`Storage proxy response parse error: ${xhr.responseText?.slice(0, 120)}`));
+            }
+          } else {
+            reject(new Error(`Storage upload failed (${xhr.status}): ${xhr.responseText?.slice(0, 120)}`))
+          }
+        });
+        xhr.addEventListener("error", () => reject(new Error("Network error during storage upload")));
+        xhr.addEventListener("timeout", () => reject(new Error("Storage upload timed out")));
+        // 90 min timeout — large body clips can be 500 MB+
+        xhr.timeout = 90 * 60 * 1000;
+        xhr.open("POST", `${finalizeData.uploadUrl}`);
+        xhr.setRequestHeader("Authorization", `Bearer ${finalizeData.forgeApiKey}`);
+        xhr.send(formData);
+      });
 
-        const freshData = await utils.videoVariant.getJob.fetch({ jobId: activeJobId });
-        const serverClips: any[] = freshData?.clips ?? [];
-        // Match on BOTH clipType AND clipOrder for all types to avoid false positives.
-        // For body clips, clipOrder is 0; for hooks it's 1-based; for cta it's 1-based.
-        // Only consider the clip ready once s3Url is populated.
-        // Placeholder rows (inserted before S3 upload finishes) have s3Url = "".
-        const newClip = serverClips.find((c: any) =>
-          c.clipType === clipType &&
-          c.clipOrder === clipOrder &&
-          c.s3Url  // non-empty means S3 upload is complete
-        );
-        if (newClip) {
-          found = true;
-          setUploadingClips(prev => prev.filter(c => c.id !== tempId));
-          utils.videoVariant.getJob.invalidate({ jobId: activeJobId });
-          toast.success(`${clipTypeLabel(clipType, clipOrder)} ready`);
-          break;
-        }
+      // ── Confirm: tell server to write the CDN URL to the DB ──────────────────
+      const confirmRes = await fetch("/api/upload/video-chunk/confirm", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId: activeJobId,
+          clipType,
+          clipOrder,
+          s3Key: finalizeData.s3Key,
+          s3Url: cdnUrl,
+          assembledPath: finalizeData.assembledPath,
+        }),
+      });
+
+      if (!confirmRes.ok) {
+        const errJson = await confirmRes.json().catch(() => ({}));
+        throw new Error(errJson?.error ?? `Confirm failed (${confirmRes.status})`);
       }
 
-      if (!found) {
-        setUploadingClips(prev => prev.map(c =>
-          c.id === tempId
-            ? { ...c, error: "Processing timed out — please try again", progress: 0 }
-            : c
-        ));
-        toast.error("Clip processing timed out. Please try again.");
-      }
+      // Done — remove from uploading list and refresh the clip list
+      setUploadingClips(prev => prev.filter(c => c.id !== tempId));
+      utils.videoVariant.getJob.invalidate({ jobId: activeJobId });
+      toast.success(`${clipTypeLabel(clipType, clipOrder)} ready`);
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
@@ -1268,12 +1293,11 @@ function UploadingRow({
 
   const isCloudSave = clip.progress === 95 && !clip.error && !!clip.cloudSaveStartedAt;
 
-  // Estimate based on 8 MB segments at ~30 s/segment on Cloud Run.
-  // This gives a rough ceiling — actual time varies with file size and server load.
-  const SEGMENT_BYTES = 8 * 1024 * 1024;
-  const SECS_PER_SEGMENT = 30; // conservative estimate
+  // Estimate based on ~5 MB/s browser upload speed to forge storage proxy.
+  // This gives a rough ceiling — actual time varies with connection speed.
+  const BYTES_PER_SEC = 5 * 1024 * 1024; // ~5 MB/s
   const estimatedTotal = clip.fileSizeBytes
-    ? Math.ceil(clip.fileSizeBytes / SEGMENT_BYTES) * SECS_PER_SEGMENT
+    ? Math.ceil(clip.fileSizeBytes / BYTES_PER_SEC)
     : null;
   const remaining = estimatedTotal ? Math.max(0, estimatedTotal - elapsed) : null;
 
@@ -1325,11 +1349,7 @@ function UploadingRow({
             />
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
-            {clip.totalSegments && clip.totalSegments > 1 ? (
-              <span>Saving segment {(clip.segmentsDone ?? 0) + 1} of {clip.totalSegments}…</span>
-            ) : (
-              <span>Saving to cloud… {elapsed > 0 ? `${elapsed}s elapsed` : "starting…"}</span>
-            )}
+            <span>Uploading to storage… {elapsed > 0 ? `${elapsed}s elapsed` : "starting…"}</span>
             {(!clip.totalSegments || clip.totalSegments <= 1) && remaining !== null && remaining > 0 && (
               <span className="text-amber-600 font-medium">{formatRemaining(remaining)} remaining</span>
             )}

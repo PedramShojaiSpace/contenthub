@@ -1,11 +1,11 @@
 /**
  * Tests for Video Variant Factory v2 features:
  * 1. bulkSendToPendingApproval procedure structure
- * 2. handleSegmentProgress handler structure
+ * 2. handleVideoChunkConfirm validates required fields
  * 3. auto-retry backoff logic (unit test of the retry wrapper concept)
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -32,55 +32,65 @@ describe("videoVariantRouter.bulkSendToPendingApproval", () => {
   });
 });
 
-// ─── 2. handleSegmentProgress reads from SEG_PROGRESS_DIR ────────────────────
-describe("handleSegmentProgress", () => {
-  const SEG_PROGRESS_DIR = path.join(os.tmpdir(), "vvf-seg-progress");
-
-  it("returns { done: 0, total: 0 } when no progress file exists", async () => {
-    const { handleSegmentProgress } = await import("./videoUploadHandler");
-    const uploadId = `test-nonexistent-${Date.now()}`;
-    const req = { query: { uploadId } } as any;
-    let responseData: any = null;
-    const res = {
-      status: () => res,
-      json: (data: any) => { responseData = data; return res; },
-    } as any;
-    await handleSegmentProgress(req, res);
-    expect(responseData).toEqual({ done: 0, total: 0 });
+// ─── 2. handleVideoChunkConfirm validates required fields ────────────────────
+describe("handleVideoChunkConfirm", () => {
+  it("is exported from videoUploadHandler", async () => {
+    const mod = await import("./videoUploadHandler");
+    expect(typeof mod.handleVideoChunkConfirm).toBe("function");
   });
 
-  it("returns the progress data when a progress file exists", async () => {
-    const { handleSegmentProgress } = await import("./videoUploadHandler");
-    const uploadId = `test-progress-${Date.now()}`;
-    const progressFile = path.join(SEG_PROGRESS_DIR, uploadId);
-    fs.mkdirSync(SEG_PROGRESS_DIR, { recursive: true });
-    fs.writeFileSync(progressFile, JSON.stringify({ done: 3, total: 7 }));
-
-    const req = { query: { uploadId } } as any;
-    let responseData: any = null;
-    const res = {
-      status: () => res,
-      json: (data: any) => { responseData = data; return res; },
-    } as any;
-    await handleSegmentProgress(req, res);
-    expect(responseData).toEqual({ done: 3, total: 7 });
-
-    // Cleanup
-    try { fs.unlinkSync(progressFile); } catch {}
-  });
-
-  it("returns 400 when uploadId is missing", async () => {
-    const { handleSegmentProgress } = await import("./videoUploadHandler");
-    const req = { query: {} } as any;
+  it("returns 400 when s3Url is missing", async () => {
+    const { sdk } = await import("./_core/sdk");
+    vi.spyOn(sdk, "authenticateRequest").mockResolvedValueOnce({ id: "user-1" } as any);
+    const { handleVideoChunkConfirm } = await import("./videoUploadHandler");
+    const req = { body: { jobId: "1", s3Key: "video-clips/1/hook.mp4" }, headers: {} } as any;
     let statusCode = 200;
     let responseData: any = null;
     const res = {
       status: (code: number) => { statusCode = code; return res; },
       json: (data: any) => { responseData = data; return res; },
+      headersSent: false,
     } as any;
-    await handleSegmentProgress(req, res);
+    await handleVideoChunkConfirm(req, res);
     expect(statusCode).toBe(400);
-    expect(responseData?.error).toBeTruthy();
+    expect(responseData?.error).toMatch(/s3Url/);
+  });
+
+  it("returns 400 when s3Key is missing", async () => {
+    const { sdk } = await import("./_core/sdk");
+    vi.spyOn(sdk, "authenticateRequest").mockResolvedValueOnce({ id: "user-1" } as any);
+    const { handleVideoChunkConfirm } = await import("./videoUploadHandler");
+    const req = { body: { jobId: "1", s3Url: "https://cdn.example.com/clip.mp4" }, headers: {} } as any;
+    let statusCode = 200;
+    let responseData: any = null;
+    const res = {
+      status: (code: number) => { statusCode = code; return res; },
+      json: (data: any) => { responseData = data; return res; },
+      headersSent: false,
+    } as any;
+    await handleVideoChunkConfirm(req, res);
+    expect(statusCode).toBe(400);
+    expect(responseData?.error).toMatch(/s3Key/);
+  });
+
+  it("returns 400 when jobId is missing", async () => {
+    const { sdk } = await import("./_core/sdk");
+    vi.spyOn(sdk, "authenticateRequest").mockResolvedValueOnce({ id: "user-1" } as any);
+    const { handleVideoChunkConfirm } = await import("./videoUploadHandler");
+    const req = {
+      body: { s3Key: "video-clips/1/hook.mp4", s3Url: "https://cdn.example.com/clip.mp4" },
+      headers: {},
+    } as any;
+    let statusCode = 200;
+    let responseData: any = null;
+    const res = {
+      status: (code: number) => { statusCode = code; return res; },
+      json: (data: any) => { responseData = data; return res; },
+      headersSent: false,
+    } as any;
+    await handleVideoChunkConfirm(req, res);
+    expect(statusCode).toBe(400);
+    expect(responseData?.error).toMatch(/jobId/);
   });
 });
 

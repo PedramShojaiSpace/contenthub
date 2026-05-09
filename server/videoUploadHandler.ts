@@ -1,19 +1,26 @@
 /**
  * Chunked video upload for Video Variant Factory.
  *
- * The Cloud Run gateway has a hard request-body size limit (~32 MB).
- * To support large MP4 files (100 MB+), the browser slices the file into
- * 8 MB chunks and sends them one at a time.
+ * NEW FLOW (browser-direct upload — bypasses Cloud Run for large S3 uploads):
  *
- * Endpoints:
- *   POST /api/upload/video-chunk
- *     Fields: uploadId, chunkIndex, totalChunks, jobId, clipType, clipOrder
- *     File:   chunk (binary slice of the MP4)
- *     → 200 { received: true, chunkIndex }
+ *   1. Browser slices file into 4 MB chunks and POSTs each to Cloud Run:
+ *        POST /api/upload/video-chunk?uploadId=X&chunkIndex=N&...
+ *        → 200 { received: true, chunkIndex }
  *
- *   POST /api/upload/video-chunk/finalize
- *     Body (JSON): { uploadId, jobId, clipType, clipOrder, filename, totalChunks }
- *     → 202 { pending: true, tempId } (background: reassemble → S3 → DB)
+ *   2. Browser calls finalize. Cloud Run reassembles chunks on disk,
+ *      inserts a placeholder DB row, and returns the forge upload URL
+ *      so the browser can upload directly to storage:
+ *        POST /api/upload/video-chunk/finalize
+ *        → 200 { s3Key, uploadUrl, forgeApiKey }
+ *
+ *   3. Browser uploads the assembled MP4 directly to the forge storage proxy
+ *      using the returned uploadUrl + forgeApiKey. This bypasses Cloud Run
+ *      entirely for the large upload, eliminating the proxy bottleneck.
+ *
+ *   4. Browser calls confirm with the final CDN URL:
+ *        POST /api/upload/video-chunk/confirm
+ *        Body: { uploadId, jobId, clipType, clipOrder, filename, s3Key, s3Url }
+ *        → 200 { clipId }
  *
  * Legacy single-file endpoint still works for small files (< 8 MB):
  *   POST /api/upload/video-clip
@@ -26,25 +33,22 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import FormData from "form-data";
-import axios from "axios";
 import { getDb } from "./db";
 import { videoClips, videoVariantJobs } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { sdk } from "./_core/sdk";
+import { ENV } from "./_core/env";
 
 const CHUNK_UPLOAD_DIR = path.join(os.tmpdir(), "vvf-chunks");
 const LEGACY_UPLOAD_DIR = path.join(os.tmpdir(), "vvf-uploads");
-const SEG_PROGRESS_DIR = path.join(os.tmpdir(), "vvf-seg-progress");
 
 // Ensure temp dirs exist
 try { fs.mkdirSync(CHUNK_UPLOAD_DIR, { recursive: true }); } catch {}
 try { fs.mkdirSync(LEGACY_UPLOAD_DIR, { recursive: true }); } catch {}
-try { fs.mkdirSync(SEG_PROGRESS_DIR, { recursive: true }); } catch {}
 
 // ── Multer instances ──────────────────────────────────────────────────────────
 
-// For legacy single-file uploads (small files only))
+// For legacy single-file uploads (small files only)
 const legacyUpload = multer({
   dest: LEGACY_UPLOAD_DIR,
   limits: { fileSize: 500 * 1024 * 1024 },
@@ -74,177 +78,6 @@ export const videoUploadMiddleware = legacyUpload.single("file");
 
 function randomSuffix() {
   return Math.random().toString(36).slice(2, 8);
-}
-
-// ── Upload a single buffer segment to the storage proxy ─────────────────────
-// 8 MB segments: smaller than before so each segment uploads faster and
-// the total job is more resilient to Cloud Run's variable network throughput.
-const SEGMENT_SIZE = 8 * 1024 * 1024; // 8 MB
-
-async function uploadSegmentToStorage(
-  segKey: string,
-  buffer: Buffer,
-  contentType: string,
-): Promise<string> {
-  const { ENV } = await import("./_core/env");
-  const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
-  const apiKey = ENV.forgeApiKey;
-  if (!baseUrl || !apiKey) throw new Error("Storage proxy credentials missing");
-
-  const key = segKey.replace(/^\/+/, "");
-  const uploadUrl = `${baseUrl}/v1/storage/upload?path=${encodeURIComponent(key)}`;
-  const filename = key.split("/").pop() ?? key;
-
-  const form = new FormData();
-  form.append("file", buffer, { filename, contentType, knownLength: buffer.length });
-
-  const response = await axios.post(uploadUrl, form, {
-    headers: { ...form.getHeaders(), Authorization: `Bearer ${apiKey}` },
-    maxBodyLength: Infinity,
-    maxContentLength: Infinity,
-    // 20 min per segment — Cloud Run storage proxy can be slow under load.
-    // With 8 MB segments, a 500 MB file = ~63 segments × up to 20 min each.
-    // The per-variant VARIANT_TIMEOUT_MS (45 min) in the stitching worker is
-    // separate and unaffected by this upload timeout.
-    timeout: 20 * 60 * 1000,
-  });
-
-  const url = response.data?.url;
-  if (!url) throw new Error(`Storage proxy did not return a URL for segment ${segKey}`);
-  return url;
-}
-
-// ── Segment-upload a file, splitting into 14 MB chunks if needed ──────────────
-// For files ≤ 14 MB: uploads as a single segment, returns a plain URL string.
-// For files > 14 MB: splits into N segments, uploads each, returns a JSON array
-// of URLs that downloadToTemp() in the stitching job knows how to reassemble.
-// progressKey: if provided, writes a JSON progress file to SEG_PROGRESS_DIR
-// so the client can poll /api/upload/video-chunk/progress?uploadId=<progressKey>
-async function uploadFileSegmented(
-  baseKey: string,
-  filePath: string,
-  contentType: string,
-  progressKey?: string,
-): Promise<string> {
-  const fileSize = fs.statSync(filePath).size;
-
-  if (fileSize <= SEGMENT_SIZE) {
-    // Small file — single upload
-    if (progressKey) {
-      try { fs.writeFileSync(path.join(SEG_PROGRESS_DIR, progressKey), JSON.stringify({ done: 0, total: 1 })); } catch {}
-    }
-    const buf = fs.readFileSync(filePath);
-    const url = await uploadSegmentToStorage(baseKey, buf, contentType);
-    if (progressKey) {
-      try { fs.writeFileSync(path.join(SEG_PROGRESS_DIR, progressKey), JSON.stringify({ done: 1, total: 1 })); } catch {}
-    }
-    return url;
-  }
-
-  // Large file — split into segments
-  const fd = fs.openSync(filePath, "r");
-  const urls: string[] = [];
-  let offset = 0;
-  let segIndex = 0;
-  const totalSegs = Math.ceil(fileSize / SEGMENT_SIZE);
-
-  // Write initial progress
-  if (progressKey) {
-    try { fs.writeFileSync(path.join(SEG_PROGRESS_DIR, progressKey), JSON.stringify({ done: 0, total: totalSegs })); } catch {}
-  }
-
-  try {
-    while (offset < fileSize) {
-      const segSize = Math.min(SEGMENT_SIZE, fileSize - offset);
-      const buf = Buffer.alloc(segSize);
-      fs.readSync(fd, buf, 0, segSize, offset);
-      const segKey = `${baseKey}.seg${segIndex}`;
-      console.log(`[VVF] Uploading segment ${segIndex + 1}/${totalSegs} (${(segSize / 1024 / 1024).toFixed(1)} MB) → ${segKey}`);
-      const url = await uploadSegmentToStorage(segKey, buf, contentType);
-      urls.push(url);
-      offset += segSize;
-      segIndex++;
-      // Update progress after each segment completes
-      if (progressKey) {
-        try { fs.writeFileSync(path.join(SEG_PROGRESS_DIR, progressKey), JSON.stringify({ done: segIndex, total: totalSegs })); } catch {}
-      }
-    }
-  } finally {
-    fs.closeSync(fd);
-  }
-
-  console.log(`[VVF] Segmented upload complete: ${segIndex} segments for ${baseKey}`);
-  // Return a JSON array so downloadToTemp() can detect and reassemble
-  return JSON.stringify(urls);
-}
-
-// ── Background S3 upload + DB insert ─────────────────────────────────────────
-
-async function processUploadInBackground(opts: {
-  filePath: string;
-  originalName: string;
-  jobId: number;
-  clipType: "hook" | "body" | "cta";
-  clipOrder: number;
-  uploadId?: string;  // used as progressKey for segment progress tracking
-}) {
-  const { filePath, originalName, jobId, clipType, clipOrder } = opts;
-  let clipId: number | null = null;
-  try {
-    const db = await getDb();
-    if (!db) throw new Error("DB unavailable");
-
-    const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const s3Key = `video-clips/${jobId}/${clipType}-${clipOrder}-${randomSuffix()}-${safeName}`;
-
-    // ── Insert a placeholder row BEFORE the S3 upload so the client poll
-    // can detect the clip immediately after finalize, even for large files.
-    // s3Url starts as empty string and gets updated once S3 confirms.
-    const [inserted] = await db.insert(videoClips).values({
-      jobId,
-      clipType,
-      s3Key,
-      s3Url: "",          // placeholder — updated below
-      filename: originalName,
-      clipOrder,
-    });
-    clipId = (inserted as any).insertId ?? null;
-
-    if (clipType === "hook" && clipId !== null) {
-      const hooks = await db.select()
-        .from(videoClips)
-        .where(and(eq(videoClips.jobId, jobId), eq(videoClips.clipType, "hook")));
-      await db.update(videoVariantJobs)
-        .set({ hookCount: hooks.length })
-        .where(eq(videoVariantJobs.id, jobId));
-    }
-
-    // ── Upload file in 14 MB segments to stay under the storage proxy limit ─────
-    console.log(`[VVF] Starting segmented upload for ${clipType} clip (job ${jobId}): ${filePath}`);
-    // Pass the uploadId as progressKey so the client can poll segment progress
-    const s3Url = await uploadFileSegmented(s3Key, filePath, "video/mp4", opts.uploadId);
-
-    try { fs.unlinkSync(filePath); } catch {}
-
-    // ── Update the placeholder row with the real S3 URL ───────────────────────
-    if (clipId !== null) {
-      await db.update(videoClips)
-        .set({ s3Url })
-        .where(eq(videoClips.id, clipId));
-    }
-
-    console.log(`[VVF] Stream upload complete: ${clipType} clip for job ${jobId} (clipId=${clipId})`);
-  } catch (err) {
-    console.error(`[VVF] Background upload failed for job ${jobId}:`, err);
-    // Remove the placeholder row so the client poll doesn't find a broken clip
-    if (clipId !== null) {
-      try {
-        const db = await getDb();
-        if (db) await db.delete(videoClips).where(eq(videoClips.id, clipId));
-      } catch {}
-    }
-    try { fs.unlinkSync(filePath); } catch {}
-  }
 }
 
 // ── Chunk receive handler (raw binary) ─────────────────────────────────────────
@@ -280,6 +113,9 @@ export async function handleVideoChunkUpload(req: Request, res: Response) {
 }
 
 // ── Chunk finalize handler ────────────────────────────────────────────────────
+// NEW: Reassembles chunks on disk, inserts a placeholder DB row, and returns
+// the forge upload URL + frontend API key so the browser can upload directly.
+// The browser then calls /confirm once the upload succeeds.
 
 export async function handleVideoChunkFinalize(req: Request, res: Response) {
   try {
@@ -315,43 +151,129 @@ export async function handleVideoChunkFinalize(req: Request, res: Response) {
       }
     }
 
-    // Respond immediately — reassembly + S3 upload happens in background
-    const tempId = `${clipType}-${clipOrder}-${randomSuffix()}`;
-    res.status(202).json({ pending: true, tempId, clipType, clipOrder });
-
-    // Background: reassemble chunks into one file, then upload to S3
-    (async () => {
-      const assembledPath = path.join(os.tmpdir(), `vvf-assembled-${uploadId}.mp4`);
-      try {
-        const writeStream = fs.createWriteStream(assembledPath);
-        for (let i = 0; i < totalChunks; i++) {
-          const chunkPath = path.join(chunkDir, `chunk-${i}`);
-          const chunkData = await fs.promises.readFile(chunkPath);
-          await new Promise<void>((resolve, reject) => {
-            writeStream.write(chunkData, (err) => err ? reject(err) : resolve());
-          });
-        }
+    // Reassemble chunks into one file synchronously (fast — just disk I/O)
+    const assembledPath = path.join(os.tmpdir(), `vvf-assembled-${uploadId}.mp4`);
+    try {
+      const writeStream = fs.createWriteStream(assembledPath);
+      for (let i = 0; i < totalChunks; i++) {
+        const chunkPath = path.join(chunkDir, `chunk-${i}`);
+        const chunkData = await fs.promises.readFile(chunkPath);
         await new Promise<void>((resolve, reject) => {
-          writeStream.end((err: Error | null | undefined) => err ? reject(err) : resolve());
+          writeStream.write(chunkData, (err) => err ? reject(err) : resolve());
         });
-
-        // Clean up chunk dir
-        try { fs.rmSync(chunkDir, { recursive: true, force: true }); } catch {}
-
-        await processUploadInBackground({
-          filePath: assembledPath,
-          originalName: filename || `clip-${uploadId}.mp4`,
-          jobId,
-          clipType: clipType as "hook" | "body" | "cta",
-          clipOrder,
-          uploadId,  // for segment progress tracking
-        });
-      } catch (err) {
-        console.error(`[VVF] Chunk finalize failed for uploadId ${uploadId}:`, err);
-        try { fs.unlinkSync(assembledPath); } catch {}
-        try { fs.rmSync(chunkDir, { recursive: true, force: true }); } catch {}
       }
-    })();
+      await new Promise<void>((resolve, reject) => {
+        writeStream.end((err: Error | null | undefined) => err ? reject(err) : resolve());
+      });
+      // Clean up chunk dir
+      try { fs.rmSync(chunkDir, { recursive: true, force: true }); } catch {}
+    } catch (err) {
+      try { fs.unlinkSync(assembledPath); } catch {}
+      try { fs.rmSync(chunkDir, { recursive: true, force: true }); } catch {}
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).json({ error: `Reassembly failed: ${msg}` });
+    }
+
+    // Build the S3 key and forge upload URL
+    const safeName = (filename || `clip-${uploadId}.mp4`).replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `video-clips/${jobId}/${clipType}-${clipOrder}-${randomSuffix()}-${safeName}`;
+
+    const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
+    const serverApiKey = ENV.forgeApiKey;
+    const frontendApiKey = process.env.VITE_FRONTEND_FORGE_API_KEY ?? "";
+
+    if (!baseUrl || !serverApiKey) {
+      return res.status(500).json({ error: "Storage proxy credentials missing" });
+    }
+
+    const uploadUrl = `${baseUrl}/v1/storage/upload?path=${encodeURIComponent(s3Key)}`;
+
+    // Insert a placeholder DB row so the confirm endpoint can update it
+    const [inserted] = await db.insert(videoClips).values({
+      jobId,
+      clipType: clipType as "hook" | "body" | "cta",
+      s3Key,
+      s3Url: "",   // placeholder — updated by /confirm
+      filename: filename || `clip-${uploadId}.mp4`,
+      clipOrder,
+    });
+    const clipId = (inserted as any).insertId ?? null;
+
+    if (clipType === "hook" && clipId !== null) {
+      const hooks = await db.select()
+        .from(videoClips)
+        .where(and(eq(videoClips.jobId, jobId), eq(videoClips.clipType, "hook")));
+      await db.update(videoVariantJobs)
+        .set({ hookCount: hooks.length })
+        .where(eq(videoVariantJobs.id, jobId));
+    }
+
+    // Schedule assembled file cleanup after 2 hours (browser uploads directly)
+    setTimeout(() => {
+      try { fs.unlinkSync(assembledPath); } catch {}
+    }, 2 * 60 * 60 * 1000);
+
+    console.log(`[VVF] Finalize ready: ${clipType} clip for job ${jobId}, clipId=${clipId}, key=${s3Key}`);
+
+    // Return the upload URL and frontend API key so the browser can upload directly
+    return res.status(200).json({
+      s3Key,
+      uploadUrl,
+      // Use the frontend API key so the browser can authenticate with forge
+      // without exposing the server-side key
+      forgeApiKey: frontendApiKey || serverApiKey,
+      clipId,
+      assembledPath,  // returned so confirm endpoint can clean up
+    });
+
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!res.headersSent) return res.status(500).json({ error: msg });
+  }
+}
+
+// ── Confirm handler ────────────────────────────────────────────────────────────
+// Called by the browser after it successfully uploads to forge storage.
+// Writes the final CDN URL to the DB row and cleans up the assembled temp file.
+
+export async function handleVideoChunkConfirm(req: Request, res: Response) {
+  try {
+    let user = null;
+    try { user = await sdk.authenticateRequest(req); } catch { user = null; }
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+    const { jobId: jobIdStr, clipType, clipOrder: clipOrderStr, s3Key, s3Url, assembledPath } = req.body;
+    const jobId = parseInt(jobIdStr ?? "0", 10);
+    const clipOrder = parseInt(clipOrderStr ?? "0", 10);
+
+    if (!jobId || !s3Key || !s3Url) {
+      return res.status(400).json({ error: "jobId, s3Key, s3Url are required" });
+    }
+
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: "DB unavailable" });
+
+    // Verify the job belongs to this user
+    const [job] = await db.select()
+      .from(videoVariantJobs)
+      .where(and(eq(videoVariantJobs.id, jobId), eq(videoVariantJobs.userId, user.id)));
+    if (!job) return res.status(404).json({ error: "Job not found" });
+
+    // Update the placeholder row with the real CDN URL
+    await db.update(videoClips)
+      .set({ s3Url })
+      .where(and(
+        eq(videoClips.jobId, jobId),
+        eq(videoClips.s3Key, s3Key),
+      ));
+
+    // Clean up assembled temp file
+    if (assembledPath) {
+      try { fs.unlinkSync(assembledPath); } catch {}
+    }
+
+    console.log(`[VVF] Confirm: ${clipType} clip for job ${jobId}, clipOrder=${clipOrder}, url=${s3Url.substring(0, 60)}...`);
+    return res.status(200).json({ ok: true });
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -400,7 +322,8 @@ export async function handleVideoClipUpload(req: Request, res: Response) {
     const tempId = `${clipType}-${clipOrder}-${randomSuffix()}`;
     res.status(202).json({ pending: true, tempId, clipType, clipOrder });
 
-    processUploadInBackground({
+    // For legacy small-file uploads, still use the server-side upload path
+    _processLegacyUpload({
       filePath: file.path,
       originalName: file.originalname,
       jobId,
@@ -415,39 +338,79 @@ export async function handleVideoClipUpload(req: Request, res: Response) {
   }
 }
 
-// ── Segment progress polling endpoint ─────────────────────────────────────────
-// GET /api/upload/video-chunk/progress?uploadId=<id>
-// Returns { done: number, total: number } — client shows "Saving segment X of Y"
-export async function handleSegmentProgress(req: Request, res: Response) {
-  const uploadId = req.query.uploadId as string;
-  if (!uploadId) return res.status(400).json({ error: "uploadId required" });
-  const progressFile = path.join(SEG_PROGRESS_DIR, uploadId);
-  if (!fs.existsSync(progressFile)) {
-    // Not started yet or already cleaned up
-    return res.json({ done: 0, total: 0 });
-  }
+// Legacy upload helper — only used by the old single-file endpoint
+async function _processLegacyUpload(opts: {
+  filePath: string;
+  originalName: string;
+  jobId: number;
+  clipType: "hook" | "body" | "cta";
+  clipOrder: number;
+}) {
+  const { filePath, originalName, jobId, clipType, clipOrder } = opts;
   try {
-    const raw = fs.readFileSync(progressFile, "utf8");
-    const data = JSON.parse(raw);
-    return res.json(data);
-  } catch {
-    return res.json({ done: 0, total: 0 });
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+
+    const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `video-clips/${jobId}/${clipType}-${clipOrder}-${randomSuffix()}-${safeName}`;
+
+    const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
+    const apiKey = ENV.forgeApiKey;
+    if (!baseUrl || !apiKey) throw new Error("Storage proxy credentials missing");
+
+    const buf = fs.readFileSync(filePath);
+    const FormData = (await import("form-data")).default;
+    const axios = (await import("axios")).default;
+    const form = new FormData();
+    form.append("file", buf, { filename: safeName, contentType: "video/mp4", knownLength: buf.length });
+    const uploadUrl = `${baseUrl}/v1/storage/upload?path=${encodeURIComponent(s3Key)}`;
+    const response = await axios.post(uploadUrl, form, {
+      headers: { ...form.getHeaders(), Authorization: `Bearer ${apiKey}` },
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      timeout: 10 * 60 * 1000,
+    });
+    const s3Url = response.data?.url;
+    if (!s3Url) throw new Error("Storage proxy did not return a URL");
+
+    try { fs.unlinkSync(filePath); } catch {}
+
+    await db.insert(videoClips).values({
+      jobId,
+      clipType,
+      s3Key,
+      s3Url,
+      filename: originalName,
+      clipOrder,
+    });
+
+    if (clipType === "hook") {
+      const hooks = await db.select()
+        .from(videoClips)
+        .where(and(eq(videoClips.jobId, jobId), eq(videoClips.clipType, "hook")));
+      await db.update(videoVariantJobs)
+        .set({ hookCount: hooks.length })
+        .where(eq(videoVariantJobs.id, jobId));
+    }
+  } catch (err) {
+    console.error(`[VVF] Legacy upload failed for job ${jobId}:`, err);
+    try { fs.unlinkSync(filePath); } catch {}
   }
 }
 
 // ── TEMPORARY DIAGNOSTIC: test storage proxy with a small video ───────────────
 export async function handleStorageDiagnostic(req: Request, res: Response) {
   try {
-    const { ENV } = await import("./_core/env");
     const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
     const apiKey = ENV.forgeApiKey;
     if (!baseUrl || !apiKey) return res.json({ error: "No credentials" });
 
-    // Create a tiny fake MP4 buffer (just header bytes for testing)
     const testBuffer = Buffer.alloc(1024 * 50, 0); // 50KB
     const key = `diag-test-${Date.now()}.mp4`;
     const uploadUrl = `${baseUrl}/v1/storage/upload?path=${encodeURIComponent(key)}`;
 
+    const FormData = (await import("form-data")).default;
+    const axios = (await import("axios")).default;
     const form = new FormData();
     form.append("file", testBuffer, { filename: key, contentType: "video/mp4", knownLength: testBuffer.length });
 

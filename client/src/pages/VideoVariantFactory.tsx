@@ -245,7 +245,8 @@ export default function VideoVariantFactory() {
 
       // Send chunk as raw binary (application/octet-stream) with metadata in query params.
       // This avoids multipart encoding overhead that can trigger Cloud Run gateway 413 errors.
-      const sendChunkOnce = (chunkIndex: number): Promise<void> => {
+      // Returns the CDN URL for the chunk (used by finalize to download directly)
+      const sendChunkOnce = (chunkIndex: number): Promise<string> => {
         return new Promise((resolve, reject) => {
           const start = chunkIndex * CHUNK_SIZE;
           const end = Math.min(start + CHUNK_SIZE, file.size);
@@ -273,7 +274,18 @@ export default function VideoVariantFactory() {
           });
           xhr.addEventListener("load", () => {
             if (xhr.status === 200) {
-              resolve();
+              // Server returns { received: true, chunkIndex, chunkUrl }
+              // chunkUrl is the CDN URL — finalize downloads directly from it
+              try {
+                const data = JSON.parse(xhr.responseText);
+                if (data?.chunkUrl) {
+                  resolve(data.chunkUrl);
+                } else {
+                  reject(new Error(`Chunk ${chunkIndex}: server did not return chunkUrl`));
+                }
+              } catch {
+                reject(new Error(`Chunk ${chunkIndex}: could not parse server response`));
+              }
             } else {
               // Try to parse JSON error from server; fall back to raw text for gateway errors
               let errMsg = `Chunk ${chunkIndex} failed (${xhr.status})`;
@@ -299,12 +311,12 @@ export default function VideoVariantFactory() {
       };
 
       // Auto-retry backoff: attempt each chunk up to 2 times before surfacing error
-      const sendChunk = async (chunkIndex: number): Promise<void> => {
+      // Returns the CDN URL for the chunk on success
+      const sendChunk = async (chunkIndex: number): Promise<string> => {
         const MAX_ATTEMPTS = 2;
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
           try {
-            await sendChunkOnce(chunkIndex);
-            return; // success
+            return await sendChunkOnce(chunkIndex);
           } catch (err) {
             if (attempt < MAX_ATTEMPTS) {
               // Wait 2s before retrying
@@ -314,11 +326,14 @@ export default function VideoVariantFactory() {
             }
           }
         }
+        throw new Error(`Chunk ${chunkIndex} failed after ${MAX_ATTEMPTS} attempts`);
       };
 
-      // Send chunks sequentially
+      // Send chunks sequentially, collecting CDN URLs for finalize
+      const chunkUrls: string[] = [];
       for (let i = 0; i < totalChunks; i++) {
-        await sendChunk(i);
+        const url = await sendChunk(i);
+        chunkUrls.push(url);
       }
 
       // All chunks received — tell server to reassemble + upload to forge storage.
@@ -339,6 +354,7 @@ export default function VideoVariantFactory() {
           clipOrder,
           filename: file.name,
           totalChunks,
+          chunkUrls,  // CDN URLs — server downloads directly, no forge GET endpoint needed
         }),
       });
 

@@ -137,6 +137,40 @@ describe("handleVideoChunkFinalize", () => {
     expect(res._json?.error).toMatch(/totalChunks/);
   });
 
+  it("returns 400 if chunkUrls length does not match totalChunks", async () => {
+    const { handleVideoChunkFinalize } = await import("./videoUploadHandler");
+    const req = {
+      body: {
+        uploadId: "abc",
+        jobId: "1",
+        totalChunks: "3",
+        chunkUrls: ["url0", "url1"], // only 2, expected 3
+      },
+      headers: {},
+    } as any;
+    const res = mockRes();
+    await handleVideoChunkFinalize(req, res);
+    expect(res._status).toBe(400);
+    expect(res._json?.error).toMatch(/chunkUrls length mismatch/);
+  });
+
+  it("returns 400 if a chunkUrl is empty string", async () => {
+    const { handleVideoChunkFinalize } = await import("./videoUploadHandler");
+    const req = {
+      body: {
+        uploadId: "abc",
+        jobId: "1",
+        totalChunks: "2",
+        chunkUrls: ["https://cdn.example.com/chunk-0", ""], // chunk 1 is empty
+      },
+      headers: {},
+    } as any;
+    const res = mockRes();
+    await handleVideoChunkFinalize(req, res);
+    expect(res._status).toBe(400);
+    expect(res._json?.error).toMatch(/Missing chunk 1/);
+  });
+
   it("returns 401 if user is not authenticated", async () => {
     const { sdk } = await import("./_core/sdk");
     vi.mocked(sdk.authenticateRequest).mockRejectedValueOnce(new Error("Unauthorized"));

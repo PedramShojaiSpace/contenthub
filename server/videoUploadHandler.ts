@@ -268,6 +268,7 @@ export async function handleVideoChunkFinalize(req: Request, res: Response) {
       clipOrder: clipOrderStr,
       filename,
       totalChunks: totalChunksStr,
+      chunkUrls,  // CDN URLs returned by chunk upload — download directly, no forge GET needed
     } = req.body;
 
     const jobId = parseInt(jobIdStr ?? "0", 10);
@@ -292,57 +293,27 @@ export async function handleVideoChunkFinalize(req: Request, res: Response) {
     const serverKey = ENV.forgeApiKey;
     if (!baseUrl || !serverKey) return res.status(500).json({ error: "Storage credentials missing" });
 
-    // Build chunk URLs — they were stored at vvf-chunks/{uploadId}/chunk-{N}
-    // We need the CDN URLs to download them. Since we stored them with forge,
-    // we can reconstruct the URL by uploading a tiny probe or use the forge
-    // get endpoint. Simpler: re-download using the forge storage get endpoint.
-    //
-    // Forge storage GET: GET /v1/storage/file?path={key} returns { url } (presigned)
+    // Validate that chunkUrls were provided by the client
+    // Each chunk upload returns a CDN URL — the client collects them and sends here.
+    // We download directly from CDN (no forge GET endpoint needed — it returns 404).
+    const urls: string[] = Array.isArray(chunkUrls) ? chunkUrls : [];
+    if (urls.length !== totalChunks) {
+      return res.status(400).json({
+        error: `chunkUrls length mismatch: got ${urls.length}, expected ${totalChunks}`,
+      });
+    }
+    for (let i = 0; i < totalChunks; i++) {
+      if (!urls[i]) return res.status(400).json({ error: `Missing chunk ${i}` });
+    }
+
     console.log(`[VVF] Finalizing ${totalChunks} chunks for uploadId=${uploadId}`);
 
-    // Download all chunks from forge in order
+    // Download all chunks from CDN in order and concatenate
     assembledPath = path.join(os.tmpdir(), `vvf-assembled-${uploadId}.mp4`);
     const writeStream = fs.createWriteStream(assembledPath);
 
     for (let i = 0; i < totalChunks; i++) {
-      const chunkKey = `vvf-chunks/${uploadId}/chunk-${i}`;
-
-      // Get presigned download URL from forge
-      const getUrl = `${baseUrl}/v1/storage/file?path=${encodeURIComponent(chunkKey)}`;
-      const isHttps = getUrl.startsWith("https");
-      const transport = isHttps ? https : http;
-
-      const presignedUrl = await new Promise<string>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`Presign timeout for chunk ${i}`)), 30000);
-        const getReq = transport.get(
-          getUrl,
-          { headers: { Authorization: `Bearer ${serverKey}` } },
-          (res) => {
-            let body = "";
-            res.on("data", (d) => (body += d));
-            res.on("end", () => {
-              clearTimeout(timer);
-              if (res.statusCode === 200) {
-                try {
-                  const d = JSON.parse(body);
-                  if (d?.url) resolve(d.url);
-                  else reject(new Error(`Missing chunk ${i}: no URL in forge response`));
-                } catch {
-                  reject(new Error(`Missing chunk ${i}: parse error`));
-                }
-              } else if (res.statusCode === 404) {
-                reject(new Error(`Missing chunk ${i}`));
-              } else {
-                reject(new Error(`Forge get chunk ${i} failed (${res.statusCode}): ${body.slice(0, 100)}`));
-              }
-            });
-          }
-        );
-        getReq.on("error", (e) => { clearTimeout(timer); reject(e); });
-      });
-
-      // Download chunk data
-      const chunkData = await downloadToBuffer(presignedUrl);
+      const chunkData = await downloadToBuffer(urls[i]);
       console.log(`[VVF] Downloaded chunk ${i}: ${(chunkData.length / 1024).toFixed(0)} KB`);
 
       // Write to assembled file
@@ -371,7 +342,7 @@ export async function handleVideoChunkFinalize(req: Request, res: Response) {
     assembledPath = null;
 
     // Clean up chunk files from forge (fire and forget — don't block the response)
-    cleanupChunksFromForge(uploadId, totalChunks, baseUrl, serverKey).catch((e) =>
+    cleanupChunksFromForge(uploadId, totalChunks, baseUrl!, serverKey!).catch((e) =>
       console.warn(`[VVF] Chunk cleanup warning: ${e.message}`)
     );
 

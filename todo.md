@@ -2367,3 +2367,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix: extended client-side poll timeout from 5 min to 20 min for large body videos
 - [x] TypeScript: 0 errors | Tests: 287 passing
 - [x] Deploy fix
+
+## v186 — Stitching Worker Upload Hang Fix
+
+- [x] Diagnose: FFmpeg concat works fine (165 MB output in ~2s). The hang is in the S3 upload step — `storagePut()` uses `fs.readFileSync()` to load the entire stitched file into RAM then sends it via `fetch()` with a Blob body, which silently hangs on Cloud Run for large files (same root cause as the upload handler hang fixed in v184-hotfix-4)
+- [x] Fix: replaced `storagePut(readFileSync(outLocal))` with new `uploadFileFromDisk()` function that uses `fs.createReadStream()` + native `https.request()` + `form-data` pipe — streams directly from disk without loading into RAM
+- [x] Removed `storagePut` import (no longer needed in videoVariantRouter)
+- [x] Added `FormData` (form-data) and `ENV` imports to videoVariantRouter
+- [x] TypeScript: 0 errors | Tests: 337 passing

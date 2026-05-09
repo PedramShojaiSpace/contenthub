@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT id, status, created_at, updated_at FROM video_variant_jobs WHERE id = 330001;\nSELECT id, job_id, variant_label, status, created_at, updated_at FROM video_variants WHERE job_id = 330001;\nSELECT id, job_id, clip_type, clip_order, s3_url, file_name FROM video_clips WHERE job_id = 330001;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2Xox4WBe4KrUPbP.bb54cdcee2e7 --database iUgsiz76NwfDUVHZHV7CyJ --execute \nSELECT id, status, created_at, updated_at FROM video_variant_jobs WHERE id = 330001;\nSELECT id, job_id, variant_label, status, created_at, updated_at FROM video_variants WHERE job_id = 330001;\nSELECT id, job_id, clip_type, clip_order, s3_url, file_name FROM video_clips WHERE job_id = 330001;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'status' in 'field list'"
+  ]
+}

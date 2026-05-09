@@ -15,7 +15,6 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { videoVariantJobs, videoClips, videoVariants, testVariants, videoProductionSessions, sessionScripts, userCredentials, contentItems } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { storagePut } from "./storage";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
 import fs from "fs";
@@ -23,6 +22,8 @@ import path from "path";
 import os from "os";
 import https from "https";
 import http from "http";
+import FormData from "form-data";
+import { ENV } from "./_core/env";
 
 // Use bundled ffmpeg-static binary so stitching works in Cloud Run (no system ffmpeg required)
 if (ffmpegStatic) {
@@ -30,6 +31,82 @@ if (ffmpegStatic) {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Upload a local file to forge storage via streaming multipart/form-data.
+ * Uses native https.request + form-data ReadStream — avoids loading the entire
+ * file into RAM (which causes silent hangs on Cloud Run for large files).
+ */
+function uploadFileFromDisk(
+  filePath: string,
+  s3Key: string,
+  timeoutMs = 20 * 60 * 1000
+): Promise<string> {
+  const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
+  const serverKey = ENV.forgeApiKey;
+  if (!baseUrl || !serverKey) throw new Error("Storage proxy credentials missing");
+
+  const form = new FormData();
+  form.append("file", fs.createReadStream(filePath), {
+    filename: path.basename(filePath),
+    contentType: "video/mp4",
+    knownLength: fs.statSync(filePath).size,
+  });
+
+  const uploadPath = `/v1/storage/upload?path=${encodeURIComponent(s3Key)}`;
+  const url = new URL(baseUrl + uploadPath);
+  const isHttps = url.protocol === "https:";
+  const transport = isHttps ? https : http;
+
+  return new Promise<string>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Storage upload timed out after ${timeoutMs / 1000}s`));
+    }, timeoutMs);
+
+    const headers = {
+      ...form.getHeaders(),
+      Authorization: `Bearer ${serverKey}`,
+    };
+
+    const req = transport.request(
+      {
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname + url.search,
+        method: "POST",
+        headers,
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (d) => (body += d));
+        res.on("end", () => {
+          clearTimeout(timer);
+          if (res.statusCode === 200) {
+            try {
+              const data = JSON.parse(body);
+              if (data?.url) {
+                resolve(data.url);
+              } else {
+                reject(new Error(`Storage proxy did not return a URL: ${body.slice(0, 200)}`));
+              }
+            } catch {
+              reject(new Error(`Storage proxy response parse error: ${body.slice(0, 200)}`));
+            }
+          } else {
+            reject(new Error(`Storage upload failed (${res.statusCode}): ${body.slice(0, 200)}`));
+          }
+        });
+      }
+    );
+
+    req.on("error", (e) => {
+      clearTimeout(timer);
+      reject(new Error(`Storage upload network error: ${e.message}`));
+    });
+
+    form.pipe(req);
+  });
+}
 
 function randomSuffix() {
   return Math.random().toString(36).slice(2, 8);
@@ -267,11 +344,10 @@ async function runStitchingJob(jobId: number) {
             console.log(`[VVF] Job ${jobId}: stitching ${variantLabel} (${parts.length} parts)…`);
             await concatVideos(parts, outLocal);
 
-            // Upload to S3
+            // Upload to S3 — stream directly from disk to avoid loading 150+ MB into RAM
             const s3Key = `video-variants/${jobId}/variant-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`;
-            console.log(`[VVF] Job ${jobId}: uploading ${variantLabel} to S3…`);
-            const fileBuffer = fs.readFileSync(outLocal);
-            const { url: s3Url } = await storagePut(s3Key, fileBuffer, "video/mp4");
+            console.log(`[VVF] Job ${jobId}: uploading ${variantLabel} to S3 (streaming from disk)…`);
+            const s3Url = await uploadFileFromDisk(outLocal, s3Key);
 
             // Mark variant done
             await db.update(videoVariants)

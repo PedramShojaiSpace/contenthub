@@ -118,6 +118,10 @@ export default function VideoVariantFactory() {
   const [uploadingClips, setUploadingClips] = useState<UploadingClip[]>([]);
   const [showHistory, setShowHistory]   = useState(false);
   const [pollEnabled, setPollEnabled]   = useState(false);
+  // Track when generation started so we can show elapsed time + ETA
+  const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [firstVariantDoneAt, setFirstVariantDoneAt] = useState<number | null>(null);
 
   // ── Output path state ──────────────────────────────────────────────────────
   const [outputPath, setOutputPath]     = useState<"none" | "buffer" | "meta">("none");
@@ -185,6 +189,24 @@ export default function VideoVariantFactory() {
       setPollEnabled(false);
     }
   }, [jobQuery.data?.job?.status]);
+
+  // Live elapsed-seconds counter while generation is running
+  useEffect(() => {
+    if (!generationStartedAt || !pollEnabled) return;
+    setElapsedSeconds(Math.floor((Date.now() - generationStartedAt) / 1000));
+    const timer = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - generationStartedAt!) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [generationStartedAt, pollEnabled]);
+
+  // Track when the first variant completes so we can project remaining time
+  useEffect(() => {
+    const doneCount = (jobQuery.data?.variants ?? []).filter((v: any) => v.status === "done").length;
+    if (doneCount >= 1 && !firstVariantDoneAt && generationStartedAt) {
+      setFirstVariantDoneAt(Date.now());
+    }
+  }, [jobQuery.data?.variants, firstVariantDoneAt, generationStartedAt]);
 
   // ── Create Job ─────────────────────────────────────────────────────────────
   const handleCreateJob = async () => {
@@ -451,6 +473,9 @@ export default function VideoVariantFactory() {
     try {
       await startProcessingMutation.mutateAsync({ jobId: activeJobId });
       setPollEnabled(true);
+      setGenerationStartedAt(Date.now());
+      setElapsedSeconds(0);
+      setFirstVariantDoneAt(null);
       toast.success(`Generating ${hookClips.length} variant${hookClips.length > 1 ? "s" : ""}…`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to start";
@@ -778,53 +803,124 @@ export default function VideoVariantFactory() {
           )}
 
           {/* Processing status */}
-          {isProcessing && !isDone && (
-            <Card className="bg-amber-50 border-amber-500/30">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
-                  <p className="text-sm font-medium text-amber-700">Stitching variants with FFmpeg…</p>
-                  <div className="ml-auto flex items-center gap-2">
-                    <Button
-                      variant="ghost" size="sm"
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={() => utils.videoVariant.getJob.invalidate({ jobId: activeJobId })}
-                    >
-                      <RefreshCw className="w-3 h-3 mr-1" /> Refresh
-                    </Button>
-                    <Button
-                      variant="outline" size="sm"
-                      className="border-red-300 text-red-600 hover:bg-red-50 text-xs"
-                      disabled={resetJobMutation.isPending}
-                      onClick={async () => {
-                        if (!activeJobId) return;
-                        if (!confirm("Reset this stuck job? The uploaded clips will be kept, but all variant rows will be cleared so you can re-run stitching.")) return;
-                        try {
-                          await resetJobMutation.mutateAsync({ jobId: activeJobId });
-                          await utils.videoVariant.getJob.invalidate({ jobId: activeJobId });
-                          toast.success("Job reset — you can now click Generate Variants again");
-                        } catch (e: any) {
-                          toast.error(e.message ?? "Reset failed");
+          {isProcessing && !isDone && (() => {
+            // ── Time helpers ──────────────────────────────────────────────────
+            const formatTime = (secs: number) => {
+              if (secs < 60) return `${secs}s`;
+              const m = Math.floor(secs / 60);
+              const s = secs % 60;
+              return s > 0 ? `${m}m ${s}s` : `${m}m`;
+            };
+
+            // Estimate remaining time based on how long the first variant took
+            let etaLabel = "";
+            const remainingVariants = totalVariants - doneVariants.length;
+            if (firstVariantDoneAt && generationStartedAt && doneVariants.length > 0 && remainingVariants > 0) {
+              const secsPerVariant = (firstVariantDoneAt - generationStartedAt) / 1000;
+              const etaSecs = Math.round(secsPerVariant * remainingVariants);
+              etaLabel = `~${formatTime(etaSecs)} remaining`;
+            } else if (!firstVariantDoneAt && generationStartedAt && totalVariants > 0) {
+              // Before first variant completes: estimate 3–5 min per variant
+              const estimatedTotalSecs = totalVariants * 4 * 60;
+              const remaining = Math.max(0, estimatedTotalSecs - elapsedSeconds);
+              etaLabel = `~${formatTime(remaining)} estimated`;
+            }
+
+            const pct = totalVariants > 0 ? Math.round((doneVariants.length / totalVariants) * 100) : 0;
+
+            return (
+              <Card className="bg-amber-50 border-amber-200">
+                <CardContent className="pt-4 pb-4">
+                  {/* Header row */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <Loader2 className="w-5 h-5 text-amber-500 animate-spin shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-amber-800">
+                        Generating variants… {pct}%
+                      </p>
+                      <p className="text-xs text-amber-600 mt-0.5">
+                        {doneVariants.length} of {totalVariants} complete
+                        {elapsedSeconds > 0 && ` · ${formatTime(elapsedSeconds)} elapsed`}
+                        {etaLabel && ` · ${etaLabel}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="ghost" size="sm"
+                        className="text-amber-700 hover:text-amber-900 hover:bg-amber-100 text-xs"
+                        onClick={() => utils.videoVariant.getJob.invalidate({ jobId: activeJobId })}
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1" /> Refresh
+                      </Button>
+                      <Button
+                        variant="outline" size="sm"
+                        className="border-red-300 text-red-600 hover:bg-red-50 text-xs"
+                        disabled={resetJobMutation.isPending}
+                        onClick={async () => {
+                          if (!activeJobId) return;
+                          if (!confirm("Reset this stuck job? The uploaded clips will be kept, but all variant rows will be cleared so you can re-run stitching.")) return;
+                          try {
+                            await resetJobMutation.mutateAsync({ jobId: activeJobId });
+                            await utils.videoVariant.getJob.invalidate({ jobId: activeJobId });
+                            toast.success("Job reset — you can now click Generate Variants again");
+                          } catch (e: any) {
+                            toast.error(e.message ?? "Reset failed");
+                          }
+                        }}
+                      >
+                        {resetJobMutation.isPending
+                          ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Resetting…</>
+                          : <><RefreshCw className="w-3 h-3 mr-1" /> Reset Stuck Job</>
                         }
-                      }}
-                    >
-                      {resetJobMutation.isPending
-                        ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Resetting…</>
-                        : <><RefreshCw className="w-3 h-3 mr-1" /> Reset Stuck Job</>
-                      }
-                    </Button>
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <Progress
-                  value={totalVariants > 0 ? (doneVariants.length / totalVariants) * 100 : 0}
-                  className="h-2 bg-muted"
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  {doneVariants.length} of {totalVariants} variant{totalVariants !== 1 ? "s" : ""} complete
-                </p>
-              </CardContent>
-            </Card>
-          )}
+
+                  {/* Overall progress bar */}
+                  <div className="mb-4">
+                    <Progress value={pct} className="h-3 bg-amber-100" />
+                  </div>
+
+                  {/* Per-variant status rows */}
+                  {variants.length > 0 && (
+                    <div className="space-y-2">
+                      {variants.map((v: any) => (
+                        <div key={v.id} className="flex items-center gap-2 text-xs">
+                          {v.status === "done" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          {v.status === "processing" && <Loader2 className="w-3.5 h-3.5 text-amber-500 animate-spin shrink-0" />}
+                          {v.status === "error" && <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+                          {(v.status !== "done" && v.status !== "processing" && v.status !== "error") && <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                          <span className={`flex-1 truncate ${
+                            v.status === "done" ? "text-emerald-700" :
+                            v.status === "error" ? "text-red-600" :
+                            v.status === "processing" ? "text-amber-700 font-medium" :
+                            "text-muted-foreground"
+                          }`}>
+                            {v.variantLabel ?? `Variant ${v.id}`}
+                          </span>
+                          <span className={`text-xs font-medium capitalize ${
+                            v.status === "done" ? "text-emerald-600" :
+                            v.status === "error" ? "text-red-500" :
+                            v.status === "processing" ? "text-amber-600" :
+                            "text-muted-foreground"
+                          }`}>
+                            {v.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Waiting for first variant row to appear */}
+                  {variants.length === 0 && (
+                    <p className="text-xs text-amber-600 italic">
+                      Downloading source clips from cloud storage… this may take a minute.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Error */}
           {hasError && (

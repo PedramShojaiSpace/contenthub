@@ -181,38 +181,133 @@ async function downloadToTemp(urlOrSegments: string, ext: string): Promise<strin
   return dest;
 }
 
-/** Concatenate an array of local MP4 paths into a single output MP4 using FFmpeg concat demuxer */
-function concatVideos(inputPaths: string[], outputPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    // Write a concat list file
-    const listPath = outputPath + ".txt";
-    const listContent = inputPaths.map(p => `file '${p}'`).join("\n");
-    fs.writeFileSync(listPath, listContent);
+/**
+ * Concatenate MP4 files and STREAM the output directly to the forge upload API.
+ * Returns the CDN URL of the uploaded file.
+ *
+ * This avoids writing the ~165 MB output to /tmp, which prevents OOM on Cloud Run
+ * (tmpfs = RAM; writing 165 MB output on top of 234 MB source files = OOM kill).
+ */
+function concatAndUpload(
+  inputPaths: string[],
+  s3Key: string,
+  timeoutMs = FFMPEG_TIMEOUT_MS,
+): Promise<string> {
+  const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
+  const serverKey = ENV.forgeApiKey;
+  if (!baseUrl || !serverKey) throw new Error("Storage proxy credentials missing");
 
+  const listPath = path.join(os.tmpdir(), `vvf-list-${randomSuffix()}.txt`);
+  const listContent = inputPaths.map(p => `file '${p}'`).join("\n");
+  fs.writeFileSync(listPath, listContent);
+
+  return new Promise<string>((resolve, reject) => {
     let settled = false;
-    const done = (err?: Error) => {
+    const done = (err: Error | null, url?: string) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       try { fs.unlinkSync(listPath); } catch {}
-      if (err) reject(err); else resolve();
+      if (err) reject(err); else resolve(url!);
     };
 
-    const cmd = ffmpeg()
-      .input(listPath)
-      .inputOptions(["-f concat", "-safe 0"])
-      .outputOptions(["-c copy"])
-      .output(outputPath)
-      .on("end", () => done())
-      .on("error", (err) => done(err));
-
-    cmd.run();
-
-    // Hard timeout: kill FFmpeg if it stalls
+    // Hard timeout — kill FFmpeg if it stalls
     const timer = setTimeout(() => {
-      try { (cmd as any).ffmpegProc?.kill("SIGKILL"); } catch {}
-      done(new Error(`FFmpeg stitch timed out after ${FFMPEG_TIMEOUT_MS / 60000} min`));
-    }, FFMPEG_TIMEOUT_MS);
+      try { ffmpegProc?.kill("SIGKILL"); } catch {}
+      done(new Error(`FFmpeg stitch timed out after ${timeoutMs / 60000} min`));
+    }, timeoutMs);
+
+    // Use a PassThrough stream to bridge FFmpeg stdout → form-data → upload request
+    const { PassThrough } = require("stream");
+    const { spawn } = require("child_process");
+    const passthrough = new PassThrough();
+
+    // Build form-data with the passthrough stream as the file field
+    const form = new FormData();
+    form.append("file", passthrough, {
+      filename: path.basename(s3Key),
+      contentType: "video/mp4",
+    });
+
+    // Build the upload request using form.getHeaders() so the boundary is correct
+    const uploadPath = `/v1/storage/upload?path=${encodeURIComponent(s3Key)}`;
+    const uploadUrl = new URL(baseUrl + uploadPath);
+    const isHttps = uploadUrl.protocol === "https:";
+    const transport = isHttps ? https : http;
+
+    const uploadReq = transport.request(
+      {
+        hostname: uploadUrl.hostname,
+        port: uploadUrl.port || (isHttps ? 443 : 80),
+        path: uploadUrl.pathname + uploadUrl.search,
+        method: "POST",
+        headers: {
+          ...form.getHeaders(),
+          "Authorization": `Bearer ${serverKey}`,
+        },
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (d) => (body += d));
+        res.on("end", () => {
+          if (res.statusCode === 200) {
+            try {
+              const data = JSON.parse(body);
+              if (data?.url) done(null, data.url);
+              else done(new Error(`Storage proxy did not return a URL: ${body.slice(0, 200)}`));
+            } catch {
+              done(new Error(`Storage proxy response parse error: ${body.slice(0, 200)}`));
+            }
+          } else {
+            done(new Error(`Storage upload failed (${res.statusCode}): ${body.slice(0, 200)}`));
+          }
+        });
+      },
+    );
+    uploadReq.on("error", (e) => done(new Error(`Storage upload network error: ${e.message}`)));
+
+    // Pipe form-data → upload request
+    form.pipe(uploadReq);
+
+    // Spawn FFmpeg with pipe:1 output (stdout)
+    // -movflags frag_keyframe+empty_moov makes the MP4 streamable without seeking
+    const ffmpegBin = ffmpegStatic || "ffmpeg";
+    const args = [
+      "-f", "concat",
+      "-safe", "0",
+      "-i", listPath,
+      "-c", "copy",
+      "-movflags", "frag_keyframe+empty_moov",
+      "-f", "mp4",
+      "pipe:1",
+    ];
+
+    const ffmpegProc = spawn(ffmpegBin, args, { stdio: ["ignore", "pipe", "pipe"] });
+
+    // Pipe FFmpeg stdout → passthrough → form-data → upload request
+    ffmpegProc.stdout.pipe(passthrough);
+
+    // Collect stderr for error reporting
+    let stderrBuf = "";
+    ffmpegProc.stderr.on("data", (d: Buffer) => {
+      stderrBuf += d.toString();
+      // Keep only last 2KB to avoid unbounded growth
+      if (stderrBuf.length > 2048) stderrBuf = stderrBuf.slice(-2048);
+    });
+
+    ffmpegProc.on("close", (code: number | null) => {
+      if (code !== 0 && !settled) {
+        // FFmpeg failed — destroy the passthrough so form-data/upload can clean up
+        passthrough.destroy(new Error(`FFmpeg exited with code ${code}: ${stderrBuf.slice(-500)}`));
+        done(new Error(`FFmpeg exited with code ${code}: ${stderrBuf.slice(-500)}`));
+      }
+      // If code === 0, the upload response handler will call done(null, url)
+    });
+
+    ffmpegProc.on("error", (e: Error) => {
+      passthrough.destroy(e);
+      done(new Error(`FFmpeg spawn error: ${e.message}`));
+    });
   });
 }
 
@@ -277,105 +372,98 @@ export async function runStitchingJob(jobId: number) {
 
     const bodyClip = bodyClips[0];
 
-    // ── Pre-download all clips ONCE before the variant loop ──────────────────
-    // Each clip is downloaded once and reused across all variants.
-    // This avoids downloading the large body clip N times (once per variant).
-    console.log(`[VVF] Job ${jobId}: pre-downloading body clip (${bodyClip.filename})…`);
+    // ── Download body clip ONCE (reused across all variants) ──────────────────
+    // Body is the largest file (149 MB). Download it once and reuse.
+    console.log(`[VVF] Job ${jobId}: downloading body clip (${bodyClip.filename})…`);
     const bodyLocal = await downloadToTemp(bodyClip.s3Url, "mp4");
-    console.log(`[VVF] Job ${jobId}: body clip downloaded to ${bodyLocal}`);
+    console.log(`[VVF] Job ${jobId}: body clip ready at ${bodyLocal}`);
 
-    // Pre-download all hook clips
-    const hookLocalMap = new Map<number, string>();
-    for (const hookClip of hookClips) {
-      console.log(`[VVF] Job ${jobId}: pre-downloading hook ${hookClip.clipOrder} (${hookClip.filename})…`);
-      const hookLocal = await downloadToTemp(hookClip.s3Url, "mp4");
-      hookLocalMap.set(hookClip.id, hookLocal);
-      console.log(`[VVF] Job ${jobId}: hook ${hookClip.clipOrder} downloaded`);
-    }
-
-    // Pre-download all CTA clips
+    // ── Pre-download CTA clips (small, reused across all hook variants) ─────────
     const ctaLocalMap = new Map<number, string>();
     for (const ctaClip of ctaClips) {
-      console.log(`[VVF] Job ${jobId}: pre-downloading CTA ${ctaClip.clipOrder} (${ctaClip.filename})…`);
+      console.log(`[VVF] Job ${jobId}: downloading CTA ${ctaClip.clipOrder} (${ctaClip.filename})…`);
       const ctaLocal = await downloadToTemp(ctaClip.s3Url, "mp4");
       ctaLocalMap.set(ctaClip.id, ctaLocal);
-      console.log(`[VVF] Job ${jobId}: CTA ${ctaClip.clipOrder} downloaded`);
+      console.log(`[VVF] Job ${jobId}: CTA ${ctaClip.clipOrder} ready`);
     }
 
     // ── Full combinatorial matrix: every hook × every CTA ──────────────────────
     // If no CTAs uploaded, generate one variant per hook (hook + body).
     // If CTAs exist, generate hook × CTA variants: N hooks × M CTAs = N×M total.
+    //
+    // MEMORY STRATEGY: Download each hook clip just-in-time, then delete it after
+    // all its variants are done. This keeps /tmp usage to:
+    //   body(149MB) + 1 hook(17MB) = 166MB — well within Cloud Run's 256MB tmpfs.
+    // FFmpeg output is streamed directly to the forge upload API (no /tmp write).
     const ctaVariants: (typeof ctaClips[0] | null)[] =
       ctaClips.length > 0 ? ctaClips : [null];
 
     let variantsDone = 0;
 
     for (const hookClip of hookClips) {
-      for (const ctaClip of ctaVariants) {
-      // Create variant row (processing)
-      const ctaLabel = ctaClip ? ` + CTA ${ctaClip.clipOrder}` : "";
-      const label = `Hook ${hookClip.clipOrder} + Body${ctaLabel}`;
-      const [inserted] = await db.insert(videoVariants).values({
-        jobId,
-        hookClipId: hookClip.id,
-        bodyClipId: bodyClip.id,
-        ctaClipId: ctaClip?.id ?? undefined,
-        variantLabel: label,
-        status: "processing",
-      });
-      const variantId = (inserted as unknown as { insertId: number }).insertId;
-
-      // Retrieve pre-downloaded local paths
-      const hookLocalPath = hookLocalMap.get(hookClip.id)!;
-      const ctaLocalPath = ctaClip ? ctaLocalMap.get(ctaClip.id) ?? null : null;
-
-      let outLocal: string | null = null;
-
-      const ctaSuffix = ctaClip ? `-cta${ctaClip.clipOrder}` : "";
-      const variantLabel = `Hook ${hookClip.clipOrder}${ctaSuffix}`;
+      // Download this hook clip just-in-time
+      console.log(`[VVF] Job ${jobId}: downloading hook ${hookClip.clipOrder} (${hookClip.filename})…`);
+      const hookLocalPath = await downloadToTemp(hookClip.s3Url, "mp4");
+      console.log(`[VVF] Job ${jobId}: hook ${hookClip.clipOrder} ready`);
 
       try {
-        // Wrap the entire per-variant stitch+upload in a hard timeout
-        await withTimeout(
-          (async () => {
-            // Stitch: hook → body → cta (using pre-downloaded files)
-            const parts = [hookLocalPath, bodyLocal, ...(ctaLocalPath ? [ctaLocalPath] : [])];
-            outLocal = path.join(os.tmpdir(), `vvf-out-${jobId}-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`);
-            console.log(`[VVF] Job ${jobId}: stitching ${variantLabel} (${parts.length} parts)…`);
-            await concatVideos(parts, outLocal);
+        for (const ctaClip of ctaVariants) {
+          // Create variant row (processing)
+          const ctaLabel = ctaClip ? ` + CTA ${ctaClip.clipOrder}` : "";
+          const label = `Hook ${hookClip.clipOrder} + Body${ctaLabel}`;
+          const [inserted] = await db.insert(videoVariants).values({
+            jobId,
+            hookClipId: hookClip.id,
+            bodyClipId: bodyClip.id,
+            ctaClipId: ctaClip?.id ?? undefined,
+            variantLabel: label,
+            status: "processing",
+          });
+          const variantId = (inserted as unknown as { insertId: number }).insertId;
 
-            // Upload to S3 — stream directly from disk to avoid loading 150+ MB into RAM
-            const s3Key = `video-variants/${jobId}/variant-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`;
-            console.log(`[VVF] Job ${jobId}: uploading ${variantLabel} to S3 (streaming from disk)…`);
-            const s3Url = await uploadFileFromDisk(outLocal, s3Key);
+          const ctaLocalPath = ctaClip ? ctaLocalMap.get(ctaClip.id) ?? null : null;
+          const ctaSuffix = ctaClip ? `-cta${ctaClip.clipOrder}` : "";
+          const variantLabel = `Hook ${hookClip.clipOrder}${ctaSuffix}`;
 
-            // Mark variant done
+          try {
+            // Wrap the entire per-variant stitch+upload in a hard timeout
+            await withTimeout(
+              (async () => {
+                // Stitch: hook → body → cta, streaming output directly to forge S3
+                // No output file written to /tmp — avoids OOM on Cloud Run
+                const parts = [hookLocalPath, bodyLocal, ...(ctaLocalPath ? [ctaLocalPath] : [])];
+                const s3Key = `video-variants/${jobId}/variant-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`;
+                console.log(`[VVF] Job ${jobId}: stitching+uploading ${variantLabel} (${parts.length} parts, streaming to S3)…`);
+                const s3Url = await concatAndUpload(parts, s3Key);
+
+                // Mark variant done
+                await db.update(videoVariants)
+                  .set({ status: "done", s3Key, s3Url })
+                  .where(eq(videoVariants.id, variantId));
+
+                variantsDone++;
+                console.log(`[VVF] Job ${jobId}: ${variantLabel} done (${variantsDone} total)`);
+              })(),
+              VARIANT_TIMEOUT_MS,
+              `Variant ${variantLabel}`,
+            );
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[VVF] Job ${jobId}: ${variantLabel} failed — ${msg}`);
             await db.update(videoVariants)
-              .set({ status: "done", s3Key, s3Url })
+              .set({ status: "error", errorMessage: msg })
               .where(eq(videoVariants.id, variantId));
-
-            variantsDone++;
-            console.log(`[VVF] Job ${jobId}: ${variantLabel} done (${variantsDone} total)`);
-          })(),
-          VARIANT_TIMEOUT_MS,
-          `Variant ${variantLabel}`,
-        );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[VVF] Job ${jobId}: ${variantLabel} failed — ${msg}`);
-        await db.update(videoVariants)
-          .set({ status: "error", errorMessage: msg })
-          .where(eq(videoVariants.id, variantId));
+          }
+        } // end ctaVariants loop
       } finally {
-        // Only clean up the stitched output — pre-downloaded source files are reused
-        if (outLocal) try { fs.unlinkSync(outLocal); } catch {}
+        // Delete this hook clip after all its variants are done to free /tmp space
+        try { fs.unlinkSync(hookLocalPath); } catch {}
       }
-      } // end ctaVariants loop
     } // end hookClips loop
 
-    // Clean up pre-downloaded source files now that all variants are done
-    const allSourceFiles = [bodyLocal, ...Array.from(hookLocalMap.values()), ...Array.from(ctaLocalMap.values())];
-    for (const f of allSourceFiles) {
+    // Clean up body and CTA source files
+    try { fs.unlinkSync(bodyLocal); } catch {}
+    for (const f of Array.from(ctaLocalMap.values())) {
       try { fs.unlinkSync(f); } catch {}
     }
 

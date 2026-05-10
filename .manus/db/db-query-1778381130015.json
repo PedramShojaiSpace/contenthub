@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, clipType, fileName, LEFT(s3Url, 200) as s3Url_200 FROM video_clips WHERE jobId = 330003 AND clipType = 'body';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2Xox4WBe4KrUPbP.bb54cdcee2e7 --database iUgsiz76NwfDUVHZHV7CyJ --execute SELECT id, clipType, fileName, LEFT(s3Url, 200) as s3Url_200 FROM video_clips WHERE jobId = 330003 AND clipType = 'body';",
+  "rows": [
+    {
+      "id": "270018",
+      "clipType": "body",
+      "fileName": "MAIN BODY.mp4",
+      "s3Url_200": "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/video-clips/330003/body-0-bsye31-MAIN_BODY.mp4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclipType\tfileName\ts3Url_200\n270018\tbody\tMAIN BODY.mp4\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/video-clips/330003/body-0-bsye31-MAIN_BODY.mp4\n",
+  "stderr": "",
+  "execution_time_ms": 262
+}

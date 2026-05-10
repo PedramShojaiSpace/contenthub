@@ -2384,3 +2384,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix: Client's handleGenerate fires fetch(/api/stitch-job/:jobId) fire-and-forget after startProcessing returns; UI continues polling getJob() for status as before.
 - [x] Exported runStitchingJob from videoVariantRouter.ts so it can be imported by the stitch endpoint.
 - [x] TypeScript: 0 errors | Tests: 337 passing
+
+## v186-hotfix2 — Stitching OOM Fix: FFmpeg Pipe Output + Just-in-Time Hook Downloads
+
+- [x] Root cause: Cloud Run OOM kills container mid-stitch. Pre-downloading all 5 hooks (85MB) + body (149MB) = 234MB in /tmp. Then FFmpeg writes 165MB output = 399MB total, exceeding Cloud Run's 256MB tmpfs (= 50% of 512MB RAM). Container is killed, variant stays "processing" forever.
+- [x] Fix 1: Replaced concatVideos()+uploadFileFromDisk() with concatAndUpload() — FFmpeg stdout is piped directly to the forge upload API via form-data PassThrough stream. No 165MB output file written to /tmp.
+- [x] Fix 2: Changed hook download strategy from "pre-download all hooks" to "download one hook just-in-time, delete after its variants are done". Peak /tmp usage: body(149MB) + 1 hook(17MB) = 166MB — fits comfortably in 256MB tmpfs.
+- [x] Verified FFmpeg pipe output locally: 165MB, 154.6s duration, valid MP4.
+- [x] TypeScript: 0 errors | Tests: 337 passing

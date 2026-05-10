@@ -471,12 +471,24 @@ export default function VideoVariantFactory() {
     if (bodyClips.length === 0) { toast.error("Upload a body clip"); return; }
 
     try {
+      // Step 1: Mark job as processing in DB
       await startProcessingMutation.mutateAsync({ jobId: activeJobId });
       setPollEnabled(true);
       setGenerationStartedAt(Date.now());
       setElapsedSeconds(0);
       setFirstVariantDoneAt(null);
       toast.success(`Generating ${hookClips.length} variant${hookClips.length > 1 ? "s" : ""}…`);
+
+      // Step 2: Call /api/stitch-job/:jobId — this runs stitching SYNCHRONOUSLY
+      // inside a long-lived HTTP request, keeping the Cloud Run container alive
+      // so FFmpeg child processes are not killed between requests.
+      // We fire-and-forget from the client; the UI polls getJob() for status.
+      fetch(`/api/stitch-job/${activeJobId}`, {
+        method: "POST",
+        credentials: "include",
+      }).catch((err) => {
+        console.error("[stitch-job] fetch error:", err);
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to start";
       toast.error(msg);

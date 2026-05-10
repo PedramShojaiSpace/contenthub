@@ -228,7 +228,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 /** Run the full stitching job in the background (fire-and-forget) */
-async function runStitchingJob(jobId: number) {
+export async function runStitchingJob(jobId: number) {
   const db = await getDb();
   if (!db) return;
 
@@ -573,8 +573,12 @@ export const videoVariantRouter = router({
       if (!job) throw new Error("Job not found");
       if (job.status === "processing") throw new Error("Already processing");
 
-      // Fire-and-forget
-      runStitchingJob(input.jobId).catch(console.error);
+      // Mark job as processing so the client knows to call /api/stitch-job/:jobId
+      // The actual stitching runs in /api/stitch-job (long-lived HTTP request)
+      // to keep the Cloud Run container alive during FFmpeg processing.
+      await db.update(videoVariantJobs)
+        .set({ status: "processing" })
+        .where(eq(videoVariantJobs.id, input.jobId));
       return { ok: true, message: "Processing started" };
     }),
 

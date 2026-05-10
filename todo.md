@@ -2375,3 +2375,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Removed `storagePut` import (no longer needed in videoVariantRouter)
 - [x] Added `FormData` (form-data) and `ENV` imports to videoVariantRouter
 - [x] TypeScript: 0 errors | Tests: 337 passing
+
+## v186-hotfix — Stitching Hangs: Cloud Run Kills FFmpeg Child Processes
+
+- [x] Diagnose: FFmpeg concat completes in ~2s locally. On Cloud Run, the fire-and-forget background task has no active HTTP request after startProcessing returns, so Cloud Run terminates the container instance and kills the FFmpeg child process before it can complete.
+- [x] Fix: Created POST /api/stitch-job/:jobId Express endpoint that runs runStitchingJob() SYNCHRONOUSLY within a long-lived HTTP request, keeping the Cloud Run container alive for the full duration of FFmpeg processing.
+- [x] Fix: startProcessing tRPC mutation now only marks the job as "processing" in DB; actual stitching is triggered by the client calling /api/stitch-job/:jobId.
+- [x] Fix: Client's handleGenerate fires fetch(/api/stitch-job/:jobId) fire-and-forget after startProcessing returns; UI continues polling getJob() for status as before.
+- [x] Exported runStitchingJob from videoVariantRouter.ts so it can be imported by the stitch endpoint.
+- [x] TypeScript: 0 errors | Tests: 337 passing

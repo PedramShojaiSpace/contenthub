@@ -1,0 +1,58 @@
+{
+  "query": "SELECT id, jobId, clipType, clipOrder, LEFT(s3Url, 80) as s3Url_preview, fileName FROM video_clips WHERE jobId = 330002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2Xox4WBe4KrUPbP.bb54cdcee2e7 --database iUgsiz76NwfDUVHZHV7CyJ --execute SELECT id, jobId, clipType, clipOrder, LEFT(s3Url, 80) as s3Url_preview, fileName FROM video_clips WHERE jobId = 330002;",
+  "rows": [
+    {
+      "id": "270007",
+      "jobId": "330002",
+      "clipType": "hook",
+      "clipOrder": "1",
+      "s3Url_preview": "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/",
+      "fileName": "HOOK 5 - BOLD PROMISE.mp4"
+    },
+    {
+      "id": "270008",
+      "jobId": "330002",
+      "clipType": "hook",
+      "clipOrder": "2",
+      "s3Url_preview": "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/",
+      "fileName": "HOOK 4 - PAIN POINT.mp4"
+    },
+    {
+      "id": "270009",
+      "jobId": "330002",
+      "clipType": "hook",
+      "clipOrder": "3",
+      "s3Url_preview": "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/",
+      "fileName": "HOOK 3 - CURIOSITY GAP.mp4"
+    },
+    {
+      "id": "270010",
+      "jobId": "330002",
+      "clipType": "hook",
+      "clipOrder": "4",
+      "s3Url_preview": "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/",
+      "fileName": "HOOK 2- SPECIFICITY.mp4"
+    },
+    {
+      "id": "270011",
+      "jobId": "330002",
+      "clipType": "hook",
+      "clipOrder": "5",
+      "s3Url_preview": "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/",
+      "fileName": "HOOK 1 - CONTRADICTION.mp4"
+    },
+    {
+      "id": "270012",
+      "jobId": "330002",
+      "clipType": "body",
+      "clipOrder": "0",
+      "s3Url_preview": "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/",
+      "fileName": "MAIN BODY.mp4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tjobId\tclipType\tclipOrder\ts3Url_preview\tfileName\n270007\t330002\thook\t1\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/\tHOOK 5 - BOLD PROMISE.mp4\n270008\t330002\thook\t2\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/\tHOOK 4 - PAIN POINT.mp4\n270009\t330002\thook\t3\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/\tHOOK 3 - CURIOSITY GAP.mp4\n270010\t330002\thook\t4\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/\tHOOK 2- SPECIFICITY.mp4\n270011\t330002\thook\t5\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/\tHOOK 1 - CONTRADICTION.mp4\n270012\t330002\tbody\t0\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/\tMAIN BODY.mp4\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}

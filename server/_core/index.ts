@@ -11,6 +11,11 @@ import { startWeeklyDigestCron } from "../digest";
 import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
+import { runStitchingJob } from "../videoVariantRouter";
+import { sdk } from "./sdk";
+import { getDb } from "../db";
+import { videoVariantJobs } from "../../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -67,6 +72,36 @@ async function startServer() {
   app.post("/api/ingest/research-report", handleIngestResearchReport);
   // Daily newsfeed refresh — called by Manus scheduled task at 7 AM
   app.post("/api/scheduled/newsfeed-refresh", handleNewsfeedRefresh);
+  // ── Stitch job endpoint ─────────────────────────────────────────────────────
+  // Runs the full stitching job SYNCHRONOUSLY within an HTTP request.
+  // This keeps the Cloud Run container alive (active request) for the full
+  // duration of FFmpeg processing, preventing child process termination.
+  // The client calls this fire-and-forget after startProcessing.
+  app.post("/api/stitch-job/:jobId", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      const jobId = parseInt(req.params.jobId, 10);
+      if (isNaN(jobId)) return res.status(400).json({ error: "Invalid jobId" });
+      // Verify job belongs to this user
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "DB unavailable" });
+      const [job] = await db.select()
+        .from(videoVariantJobs)
+        .where(and(eq(videoVariantJobs.id, jobId), eq(videoVariantJobs.userId, user.id)));
+      if (!job) return res.status(404).json({ error: "Job not found" });
+      // Run stitching synchronously — keeps this HTTP request alive on Cloud Run
+      // so the container stays up and FFmpeg child processes are not killed.
+      console.log(`[stitch-job] Starting job ${jobId} for user ${user.id}`);
+      await runStitchingJob(jobId);
+      console.log(`[stitch-job] Job ${jobId} complete`);
+      return res.json({ ok: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[stitch-job] Error:`, msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

@@ -1,0 +1,31 @@
+{
+  "query": "SELECT id, jobStatus, hookCount, variantCount, errorMessage FROM video_variant_jobs WHERE id = 330002; SELECT id, jobId, variantLabel, variantStatus, errorMessage FROM video_variants WHERE jobId = 330002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2Xox4WBe4KrUPbP.bb54cdcee2e7 --database iUgsiz76NwfDUVHZHV7CyJ --execute SELECT id, jobStatus, hookCount, variantCount, errorMessage FROM video_variant_jobs WHERE id = 330002; SELECT id, jobId, variantLabel, variantStatus, errorMessage FROM video_variants WHERE jobId = 330002;",
+  "rows": [
+    {
+      "id": "330002",
+      "jobStatus": "processing",
+      "hookCount": "5",
+      "variantCount": "0",
+      "errorMessage": "NULL"
+    },
+    {
+      "id": "id",
+      "jobStatus": "jobId",
+      "hookCount": "variantLabel",
+      "variantCount": "variantStatus",
+      "errorMessage": "errorMessage"
+    },
+    {
+      "id": "90002",
+      "jobStatus": "330002",
+      "hookCount": "Hook 1 + Body",
+      "variantCount": "processing",
+      "errorMessage": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tjobStatus\thookCount\tvariantCount\terrorMessage\n330002\tprocessing\t5\t0\tNULL\nid\tjobId\tvariantLabel\tvariantStatus\terrorMessage\n90002\t330002\tHook 1 + Body\tprocessing\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 267
+}

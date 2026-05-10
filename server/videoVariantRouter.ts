@@ -24,6 +24,8 @@ import https from "https";
 import http from "http";
 import FormData from "form-data";
 import { ENV } from "./_core/env";
+import { PassThrough } from "stream";
+import { spawn } from "child_process";
 
 // Use bundled ffmpeg-static binary so stitching works in Cloud Run (no system ffmpeg required)
 if (ffmpegStatic) {
@@ -218,8 +220,6 @@ function concatAndUpload(
     }, timeoutMs);
 
     // Use a PassThrough stream to bridge FFmpeg stdout → form-data → upload request
-    const { PassThrough } = require("stream");
-    const { spawn } = require("child_process");
     const passthrough = new PassThrough();
 
     // Build form-data with the passthrough stream as the file field

@@ -35,17 +35,56 @@ Your audience on LinkedIn:
 Writing rules:
 - 200-350 words total
 - You are SHARING an article and adding your expert commentary — you are a curator and thought leader, not just an opinion writer
-- Open naturally by referencing the article or its source — use a DIFFERENT opener every time. Examples of varied openers:
-  "I came across this piece in [Source] and had to share it..."
-  "This research from [Source] stopped me in my tracks..."
-  "[Source] just published something that confirms what I've been seeing in practice..."
+- Open naturally by referencing the article or its source — CHOOSE the opener that best fits the specific article's tone, finding, and emotional weight. Do NOT default to the same structure every time.
+
+OPENER LIBRARY — pick the one that fits the article, or invent a new structure entirely:
+
+  SURPRISING FINDING openers:
+  "[Source] just published data that challenges everything we thought we knew about [topic]..."
+  "I had to read this [Source] piece twice before I believed it..."
+  "[Source] confirmed something this week that most doctors still won't say out loud..."
+  "The numbers in this [Source] study are not what I expected..."
+
+  VALIDATION openers:
+  "I've been saying this for years. Now [Source] has the data to back it up..."
+  "[Source] just gave us the science for what practitioners have known for decades..."
+  "Finally — [Source] is asking the right questions about [topic]..."
+  "This [Source] finding validates something I see in practice every single week..."
+
+  CURIOSITY / SHARE openers:
+  "Something in [Source] this week made me put down what I was doing..."
+  "[Source] published a piece that I keep thinking about..."
+  "I came across this in [Source] and immediately wanted to share it..."
+  "A [Source] article landed in my feed this week that's worth your time..."
+
+  TREND / PATTERN openers:
+  "[Source] just published something that fits a pattern I've been tracking for years..."
   "New data from [Source] is reshaping how I think about [topic]..."
-  "[Source] dropped a study this week that every high-performer should read..."
-  "Something in [Source] caught my eye this week..."
-  "The science is catching up — [Source] just published..."
-  "I've been saying this for years, and now [Source] has the data..."
-- NEVER start with "For your attention", "Worth your attention", or any variation of that phrase
-- NEVER use the same opening phrase twice — vary the structure, not just the words
+  "The science is catching up — [Source] just published what practitioners have long suspected..."
+  "[Source] is now reporting what integrative medicine has been saying for a generation..."
+
+  DIRECT INSIGHT openers:
+  "[Source] dropped a study this week with one finding that changes the conversation on [topic]..."
+  "There's a line in this [Source] piece that every high-performer needs to hear..."
+  "[Source] published research this week that reframes a question I get asked constantly..."
+  "One statistic in this [Source] study stopped me cold — and it should stop you too..."
+
+  PERSONAL REFLECTION openers:
+  "Twenty-five years of clinical work and this [Source] finding still surprised me..."
+  "I've worked with thousands of patients on [topic]. This [Source] data adds important context..."
+  "Reading this [Source] piece reminded me of a pattern I see constantly in practice..."
+  "This [Source] research connects to something I've been thinking about a lot lately..."
+
+- BANNED PHRASES — never use any of these, ever:
+  "This stopped me in my tracks"
+  "stopped me in my tracks"
+  "Worth your attention"
+  "For your attention"
+  "I had to share this"
+  "you need to read this"
+  "game changer"
+  "game-changer"
+- NEVER use the same opening phrase twice — vary the structure, the emotional register, and the angle based on what the article actually says
 - Do NOT summarize the article — share your PERSPECTIVE and what this means for real people
 - Connect the research to a broader pattern you've observed in your clinical work or personal practice
 - Include one concrete, actionable insight they can apply today
@@ -85,7 +124,7 @@ TOPIC CLUSTER: ${topicLabel}
 EXCERPT: ${article.description || "(no excerpt available)"}
 
 Write a LinkedIn post in my voice (Dr. Pedram Shojai) that:
-1. Opens by naturally referencing this article and its source — I am sharing this piece with my audience as a curator
+1. Opens by naturally referencing this article and its source — choose the opener style that fits the EMOTIONAL TONE of this specific article (surprising? validating? alarming? hopeful?). Do NOT use "stopped me in my tracks" or any banned phrase. Do NOT default to the same opener structure you used before.
 2. Adds my expert perspective and connects it to broader patterns from clinical work or personal practice
 3. Includes one concrete actionable insight
 4. Ends with this CTA (you can rephrase slightly to fit the flow): "${ctaEnding}"

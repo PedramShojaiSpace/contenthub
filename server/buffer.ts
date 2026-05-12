@@ -185,20 +185,20 @@ export async function pushToBuffer(params: {
         ? new Date(params.scheduledAt).toISOString()
         : undefined;
 
-      // Build assets object — supports image attachment
+      // Build assets array — Buffer API v2 uses an ordered array format:
+      //   assets: [{ image: { url: "..." } }]  or  assets: [{ video: { url: "..." } }]
       // NOTE: For LinkedIn, when linkAsset is provided, do NOT also send imageUrl as a separate
-      // asset. LinkedIn only allows one attachment type — if both assets.images and
+      // asset. LinkedIn only allows one attachment type — if both assets and
       // metadata.linkedin.linkAttachment are present, Buffer silently drops the linkAttachment.
       // The image should travel as thumbnailUrl inside the linkAsset instead.
       const isLinkedInWithLink = channelService === "linkedin" && !!params.linkAsset;
-      let assetsInner = "";
+      let assetsFragment = "";
       if (params.videoUrl) {
-        // Video post — use assets.videos (takes precedence over images)
-        assetsInner += `videos: [{ url: ${JSON.stringify(params.videoUrl)} }]`;
+        // Video post — use assets: [{ video: { url } }]
+        assetsFragment = `, assets: [{ video: { url: ${JSON.stringify(params.videoUrl)} } }]`;
       } else if (params.imageUrl && !isLinkedInWithLink) {
-        assetsInner += `images: [{ url: ${JSON.stringify(params.imageUrl)} }]`;
+        assetsFragment = `, assets: [{ image: { url: ${JSON.stringify(params.imageUrl)} } }]`;
       }
-      const assetsFragment = assetsInner ? `, assets: { ${assetsInner} }` : "";
 
       const dueAtFragment = dueAt ? `, dueAt: "${dueAt}"` : "";
 
@@ -319,9 +319,9 @@ export async function pushCarouselToBuffer(params: {
     return { success: false, error: "No slide images provided" };
   }
 
-  // Buffer supports up to 10 images per carousel post
-  const images = params.imageUrls.slice(0, 10).map((url) => `{ url: ${JSON.stringify(url)} }`);
-  const assetsFragment = `, assets: { images: [${images.join(", ")}] }`;
+  // Buffer API v2: assets is an ordered array of { image: { url } } entries
+  const images = params.imageUrls.slice(0, 10).map((url) => `{ image: { url: ${JSON.stringify(url)} } }`);
+  const assetsFragment = `, assets: [${images.join(", ")}]`;
 
   const results: BufferUpdateResult[] = [];
 

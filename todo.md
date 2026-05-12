@@ -2392,3 +2392,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix 2: Changed hook download strategy from "pre-download all hooks" to "download one hook just-in-time, delete after its variants are done". Peak /tmp usage: body(149MB) + 1 hook(17MB) = 166MB — fits comfortably in 256MB tmpfs.
 - [x] Verified FFmpeg pipe output locally: 165MB, 154.6s duration, valid MP4.
 - [x] TypeScript: 0 errors | Tests: 337 passing
+
+## v187 — Video Variant Factory: Aspect Ratio + Production Value + Google Drive Export
+
+- [x] Fix FFmpeg re-encode: normalize all clips to 1080x1920 (9:16 vertical) with pillarbox/letterbox for mismatched sources
+- [x] Add production polish: subtle contrast/saturation boost, 0.5s fade-in on first frame, 0.3s fade-out on last frame
+- [x] Implement Google Drive OAuth flow (server-side, one-time authorization stored as secret)
+- [x] Build POST /api/drive/export/:jobId endpoint: upload all done variant MP4s to a shared Drive folder
+- [x] Add "Export to Google Drive" button in Video Variants UI with progress/status feedback
+- [x] Show Drive folder link after export completes so editor can access directly

@@ -138,6 +138,12 @@ export default function VideoVariantFactory() {
   const bodyInputRef = useRef<HTMLInputElement>(null);
   const ctaInputRef  = useRef<HTMLInputElement>(null);
 
+  // ── Google Drive Export state ──────────────────────────────────────────────
+  const [driveExporting, setDriveExporting] = useState(false);
+  const [driveFolderUrl, setDriveFolderUrl] = useState<string | null>(null);
+  const [driveError, setDriveError]         = useState<string | null>(null);
+  const [driveAuthorized, setDriveAuthorized] = useState<boolean | null>(null);
+
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createJobMutation   = trpc.videoVariant.createJob.useMutation();
   const startProcessingMutation = trpc.videoVariant.startProcessing.useMutation();
@@ -521,6 +527,18 @@ export default function VideoVariantFactory() {
   const isDone       = job?.status === "done";
   const hasError     = job?.status === "error";
   const doneVariants = variants.filter(v => v.status === "done");
+
+  // Check Drive authorization status when we have done variants
+  // (placed here, after doneVariants is declared, to avoid "used before declaration" TS error)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (doneVariants.length === 0) return;
+    fetch("/api/drive/status", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setDriveAuthorized(d.authorized))
+      .catch(() => setDriveAuthorized(false));
+  }, [doneVariants.length]);
+
   // Full combinatorial count: N hooks × M CTAs (or N×1 if no CTAs)
   const ctaCount = Math.max(ctaClips.length, 1);
   const totalVariants = hookClips.length * ctaCount;
@@ -1041,6 +1059,56 @@ export default function VideoVariantFactory() {
                       >
                         <FolderDown className="w-3 h-3 mr-1" /> Download All ({doneVariants.length})
                       </Button>
+                      {/* Export to Google Drive */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-emerald-400 text-emerald-700 hover:bg-emerald-50 text-xs gap-1"
+                        disabled={driveExporting || doneVariants.length === 0}
+                        onClick={async () => {
+                          if (!activeJobId) return;
+                          // If not authorized, open the auth URL in a new tab
+                          if (driveAuthorized === false) {
+                            try {
+                              const r = await fetch("/api/drive/auth-url", { credentials: "include" });
+                              const d = await r.json();
+                              if (d.url) {
+                                window.open(d.url, "_blank");
+                                toast.info("After authorizing Google Drive, click Export again.");
+                              } else {
+                                toast.error(d.error || "Could not get auth URL");
+                              }
+                            } catch (e: any) {
+                              toast.error(e.message || "Drive auth failed");
+                            }
+                            return;
+                          }
+                          setDriveExporting(true);
+                          setDriveError(null);
+                          setDriveFolderUrl(null);
+                          try {
+                            const r = await fetch(`/api/drive/export/${activeJobId}`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const d = await r.json();
+                            if (!r.ok) throw new Error(d.error || "Export failed");
+                            setDriveFolderUrl(d.folderUrl);
+                            toast.success(`${d.uploadedFiles?.length ?? 0} variants exported to Google Drive!`);
+                          } catch (e: any) {
+                            setDriveError(e.message || "Export failed");
+                            toast.error(e.message || "Drive export failed");
+                          } finally {
+                            setDriveExporting(false);
+                          }
+                        }}
+                      >
+                        {driveExporting
+                          ? <><Loader2 className="w-3 h-3 animate-spin" /> Exporting…</>
+                          : driveAuthorized === false
+                            ? <><ExternalLink className="w-3 h-3" /> Connect Drive</>
+                            : <><ExternalLink className="w-3 h-3" /> Export to Drive</>}
+                      </Button>
                       <Button
                         size="sm"
                         className="bg-violet-600 hover:bg-violet-500 text-white text-xs"
@@ -1087,6 +1155,30 @@ export default function VideoVariantFactory() {
                     </div>
                   ))}
                 </div>
+
+                {/* Drive export status */}
+                {driveFolderUrl && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-emerald-800">Exported to Google Drive</p>
+                      <a
+                        href={driveFolderUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-emerald-700 underline truncate block"
+                      >
+                        Open Drive Folder →
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {driveError && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+                    <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                    <p className="text-xs text-red-700">{driveError}</p>
+                  </div>
+                )}
 
                 {/* Two-path output selector */}
                 {doneVariants.length > 0 && (

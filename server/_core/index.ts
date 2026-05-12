@@ -12,6 +12,7 @@ import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 import { runStitchingJob } from "../videoVariantRouter";
+import { getDriveAuthUrl, exchangeCodeForTokens, exportVariantsToDrive, isDriveAuthorized } from "../googleDrive";
 import { sdk } from "./sdk";
 import { getDb } from "../db";
 import { videoVariantJobs } from "../../drizzle/schema";
@@ -98,6 +99,89 @@ async function startServer() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[stitch-job] Error:`, msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
+  // ── Google Drive OAuth ──────────────────────────────────────────────────────
+  // GET /api/drive/auth-url — returns the Google OAuth authorization URL
+  app.get("/api/drive/auth-url", async (req, res) => {
+    try {
+      await sdk.authenticateRequest(req);
+      const url = getDriveAuthUrl();
+      return res.json({ url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(400).json({ error: msg });
+    }
+  });
+
+  // GET /api/drive/callback — Google redirects here after authorization
+  app.get("/api/drive/callback", async (req, res) => {
+    const code = req.query.code as string;
+    if (!code) return res.status(400).send("Missing authorization code");
+    try {
+      const { refreshToken } = await exchangeCodeForTokens(code);
+      // Store the refresh token as an environment variable via the forge secrets API
+      // For now, display it so the owner can add it to secrets manually
+      return res.send(`
+        <html><body style="font-family:sans-serif;padding:40px;max-width:600px">
+          <h2>✅ Google Drive Connected!</h2>
+          <p>Add this refresh token to your project secrets as <strong>GOOGLE_REFRESH_TOKEN</strong>:</p>
+          <textarea style="width:100%;height:80px;font-family:monospace;font-size:12px">${refreshToken}</textarea>
+          <p>Go to <strong>Settings → Secrets</strong> in your Manus project and add the value above, then close this tab.</p>
+        </body></html>
+      `);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>❌ Authorization failed</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  // GET /api/drive/status — check if Drive is authorized
+  app.get("/api/drive/status", async (req, res) => {
+    try {
+      await sdk.authenticateRequest(req);
+      return res.json({ authorized: isDriveAuthorized() });
+    } catch {
+      return res.json({ authorized: false });
+    }
+  });
+
+  // POST /api/drive/export/:jobId — export all done variants for a job to Drive
+  app.post("/api/drive/export/:jobId", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      const jobId = parseInt(req.params.jobId, 10);
+      if (isNaN(jobId)) return res.status(400).json({ error: "Invalid jobId" });
+
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "DB unavailable" });
+
+      // Verify job belongs to this user
+      const { videoVariantJobs: jobsTable, videoVariants: variantsTable } = await import("../../drizzle/schema");
+      const [job] = await db.select().from(jobsTable)
+        .where(and(eq(jobsTable.id, jobId), eq(jobsTable.userId, user.id)));
+      if (!job) return res.status(404).json({ error: "Job not found" });
+
+      // Get all done variants
+      const variants = await db.select().from(variantsTable)
+        .where(and(eq(variantsTable.jobId, jobId)));
+      const doneVariants = variants.filter((v: any) => v.status === "done" && v.s3Url);
+      if (doneVariants.length === 0) {
+        return res.status(400).json({ error: "No completed variants to export" });
+      }
+
+      console.log(`[Drive Export] Exporting ${doneVariants.length} variants for job ${jobId}…`);
+      const result = await exportVariantsToDrive({
+        jobTitle: job.jobName || `Job ${jobId}`,
+        variants: doneVariants.map((v: any) => ({ label: v.variantLabel, s3Url: v.s3Url })),
+      });
+
+      return res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Drive Export] Error:`, msg);
       return res.status(500).json({ error: msg });
     }
   });

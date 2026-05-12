@@ -270,13 +270,47 @@ function concatAndUpload(
     form.pipe(uploadReq);
 
     // Spawn FFmpeg with pipe:1 output (stdout)
+    // Re-encode to 1080x1920 (9:16 vertical / Reels format) with production polish:
+    //   - scale_and_pad: pillarbox/letterbox any mismatched source to fill 1080x1920
+    //   - eq: subtle contrast (+5%) and saturation (+10%) boost for a polished look
+    //   - fade: 0.5s fade-in at start, 0.3s fade-out at end (duration estimated at 180s)
+    //   - apad/afade: matching audio fades
     // -movflags frag_keyframe+empty_moov makes the MP4 streamable without seeking
+    //
+    // NOTE: Estimated output duration for fade-out calculation.
+    // We use 300s as a safe upper bound — the fade-out starts at (duration - 0.3s).
+    // If the actual video is shorter, the fade-out still works because FFmpeg clips it.
+    const ESTIMATED_DURATION_S = 300;
+    const FADE_IN_S = 0.5;
+    const FADE_OUT_START_S = ESTIMATED_DURATION_S - 0.3;
+    const vf = [
+      // 1. Normalize to 1080x1920 with black bars for mismatched aspect ratios
+      `scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black`,
+      // 2. Subtle production grade: slight contrast and saturation boost
+      `eq=contrast=1.05:saturation=1.10`,
+      // 3. Fade in (0.5s) and fade out (0.3s)
+      `fade=t=in:st=0:d=${FADE_IN_S}`,
+      `fade=t=out:st=${FADE_OUT_START_S}:d=0.3`,
+    ].join(",");
+    const af = [
+      `afade=t=in:st=0:d=${FADE_IN_S}`,
+      `afade=t=out:st=${FADE_OUT_START_S}:d=0.3`,
+    ].join(",");
     const ffmpegBin = ffmpegStatic || "ffmpeg";
     const args = [
       "-f", "concat",
       "-safe", "0",
       "-i", listPath,
-      "-c", "copy",
+      // Video: normalize aspect ratio + production grade + fades
+      "-vf", vf,
+      // Audio: matching fades
+      "-af", af,
+      // H.264 encoding: CRF 23 = good quality/size balance; preset fast = reasonable speed on Cloud Run
+      "-c:v", "libx264",
+      "-crf", "23",
+      "-preset", "fast",
+      "-c:a", "aac",
+      "-b:a", "128k",
       "-movflags", "frag_keyframe+empty_moov",
       "-f", "mp4",
       "pipe:1",

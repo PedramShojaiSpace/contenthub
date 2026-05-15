@@ -77,6 +77,12 @@ export async function wrapLLM<T>(fn: () => Promise<T>): Promise<T> {
           "AI generation limit reached. Please wait 30\u201360 seconds and try again.",
       });
     }
-    throw err;
+    // Catch-all: any other error (e.g. LLM returned non-JSON, parse failed, unexpected response)
+    // Convert to a clean TRPCError so the client never sees a raw JSON.parse crash message.
+    console.error(`[wrapLLM] Unexpected error:`, msg.slice(0, 200));
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "The AI service encountered an unexpected error. Please try again in a moment.",
+    });
   }
 }

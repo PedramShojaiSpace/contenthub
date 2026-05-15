@@ -33,7 +33,14 @@ async function safeLLM(params: InvokeParams, _retryCount = 0): Promise<Awaited<R
         message: "The AI service is temporarily unavailable. Please try again in a moment.",
       });
     }
-    throw err;
+    // Catch-all: any other error from invokeLLM (e.g. LLM returned non-JSON, parse failed, unexpected response)
+    // Convert to a clean TRPCError so the client never sees a raw JSON.parse crash message.
+    const rawMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[safeLLM] Unexpected error:`, rawMsg.slice(0, 200));
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "The AI service encountered an unexpected error. Please try again in a moment.",
+    });
   }
 }
 import { systemRouter } from "./_core/systemRouter";

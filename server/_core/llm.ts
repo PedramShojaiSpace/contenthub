@@ -432,5 +432,30 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
     }
   }
 
+  // Guard: API returned a valid JSON object but it's an error envelope (e.g. {"error": "Service Unavailable"})
+  // or the choices array is missing/empty — both indicate a transient upstream failure.
+  const hasChoices = Array.isArray(parsed?.choices) && parsed.choices.length > 0;
+  if (!hasChoices) {
+    const errorField = (parsed as any)?.error;
+    const errorMsg = typeof errorField === 'string' ? errorField.toLowerCase() :
+      typeof errorField === 'object' ? JSON.stringify(errorField).toLowerCase() : '';
+    const isTransient =
+      errorMsg.includes('service unavailable') ||
+      errorMsg.includes('bad gateway') ||
+      errorMsg.includes('temporarily unavailable') ||
+      errorMsg.includes('gateway timeout') ||
+      errorMsg.includes('unavailable') ||
+      !hasChoices; // any response without choices is unexpected — treat as transient
+    if (isTransient) {
+      if (_retryCount < INVOKE_LLM_MAX_RETRIES) {
+        const delay = INVOKE_LLM_BASE_DELAY_MS * Math.pow(2, _retryCount);
+        console.warn(`[invokeLLM] Malformed/error response (no choices) — retrying in ${delay}ms (attempt ${_retryCount + 1}/${INVOKE_LLM_MAX_RETRIES}): ${JSON.stringify(parsed).slice(0, 80)}`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return invokeLLM(params, _retryCount + 1);
+      }
+      throw new Error(`SERVICE_UNAVAILABLE: The AI service returned an unexpected response. Please try again in a moment.`);
+    }
+  }
+
   return parsed;
 }

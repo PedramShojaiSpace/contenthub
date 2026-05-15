@@ -41,27 +41,33 @@ queryClient.getMutationCache().subscribe(event => {
  * Safe fetch wrapper for tRPC.
  *
  * The Cloud Run gateway can return plain-text "Service Unavailable" or an HTML
- * error page — even with a 200 status code — when it is overloaded.
- * tRPC's httpBatchLink calls response.json() internally and crashes with
- * "Unexpected token 'S'" or "Unable to transform response from server".
+ * error page on non-2xx status codes. tRPC's httpBatchLink calls
+ * response.json() internally and crashes with "Unexpected token 'S'" or
+ * "Unable to transform response from server" when the body isn't JSON.
  *
- * This wrapper reads EVERY response body as text first, checks whether it is
- * valid JSON, and throws a clean Error if it is not. tRPC's httpBatchLink
- * catches thrown errors and surfaces them as TRPCClientError with the message
- * intact, bypassing the JSON parse and superjson transform entirely.
+ * Strategy:
+ * - 2xx responses: pass through untouched (auth, normal tRPC responses)
+ * - non-2xx responses: read body as text, check if JSON, throw clean Error if not
+ *
+ * NOTE: The "Unable to transform response from server" error on 2xx is a
+ * superjson deserialization failure caused by a server-side bug, not a
+ * gateway-level issue. Those are handled by the server-side wrapLLM/safeLLM
+ * guards that throw TRPCErrors before the response is serialized.
  */
 async function safeTrpcFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const response = await globalThis.fetch(input, { ...(init ?? {}), credentials: "include" });
 
-  // Always read the body as text so we can inspect it before tRPC tries to JSON.parse it
+  // Fast path: 2xx responses are valid tRPC JSON — pass through untouched
+  // (reading the body here would break streaming, auth callbacks, etc.)
+  if (response.ok) return response;
+
+  // For non-2xx responses, read the body as text to check if it's JSON
   const text = await response.text();
   const trimmed = text.trim();
-
-  // Check if the body is valid JSON (tRPC responses always start with { or [)
   const isJson = trimmed.startsWith("{") || trimmed.startsWith("[");
 
   if (isJson) {
-    // Reconstruct the response with the consumed body text
+    // Already valid JSON — reconstruct the response with the consumed body
     return new Response(trimmed, {
       status: response.status,
       statusText: response.statusText,
@@ -69,14 +75,12 @@ async function safeTrpcFetch(input: RequestInfo | URL, init?: RequestInit): Prom
     });
   }
 
-  // Non-JSON body — plain text or HTML gateway error page
-  // Determine if this looks like a transient service error
+  // Non-JSON body (plain text "Service Unavailable" or HTML gateway error page)
   const isTransient =
     response.status === 503 ||
     response.status === 502 ||
     response.status === 504 ||
     response.status === 500 ||
-    response.status === 200 || // Gateway sometimes returns 200 with error body
     trimmed.toLowerCase().includes("service unavailable") ||
     trimmed.toLowerCase().includes("bad gateway") ||
     trimmed.toLowerCase().includes("gateway timeout") ||

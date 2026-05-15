@@ -243,6 +243,17 @@ async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      onError({ path, error }) {
+        // Log every tRPC error with full stack trace to trace JSON.parse crashes
+        const cause = error.cause;
+        const causeMsg = cause instanceof Error ? cause.message : String(cause ?? '');
+        const causeStack = cause instanceof Error ? cause.stack : '';
+        console.error(`[tRPC ERROR] path=${path} code=${error.code}`);
+        console.error(`[tRPC ERROR] message: ${error.message}`);
+        if (causeMsg) console.error(`[tRPC ERROR] cause: ${causeMsg}`);
+        if (causeStack) console.error(`[tRPC ERROR] cause.stack:\n${causeStack}`);
+        if (error.stack) console.error(`[tRPC ERROR] error.stack:\n${error.stack}`);
+      },
     })
   );
   // development mode uses Vite, production mode uses static files

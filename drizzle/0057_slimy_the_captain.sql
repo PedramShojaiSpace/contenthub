@@ -1,0 +1,1 @@
+ALTER TABLE `video_variant_jobs` ADD `driveExportUrl` text;

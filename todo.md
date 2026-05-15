@@ -2411,3 +2411,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Re-stitch button on each failed variant row in Output Variants panel
 - [x] Add editor notes textarea in Output Variants panel (shown when Drive is authorized)
 - [x] Pass editor notes to Drive export endpoint and save as NOTES.txt in the Drive folder
+
+## v189 — Video Variant Factory: Aspect Ratio Badge + Duplicate Job + Drive History Link
+
+- [x] Show aspect ratio badge (9:16 / 16:9 / 1:1 pill) on the active job header next to the job name
+- [x] Add "Duplicate with different ratio" button on the job header — opens a picker to select new ratio, creates a new job with the same clips
+- [x] Add driveExportUrl column to video_variant_jobs table to persist the Drive folder URL after export
+- [x] Store driveExportUrl when Drive export completes
+- [x] Show Drive folder icon/link in History list rows for jobs that have been exported

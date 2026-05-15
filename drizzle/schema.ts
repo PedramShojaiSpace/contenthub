@@ -939,6 +939,8 @@ export const videoVariantJobs = mysqlTable("video_variant_jobs", {
   errorMessage: text("errorMessage"),
   // Output aspect ratio: 9:16 vertical (Reels/TikTok), 16:9 horizontal (YouTube), 1:1 square (Instagram)
   aspectRatio: mysqlEnum("aspectRatio", ["9:16", "16:9", "1:1"]).default("9:16").notNull(),
+  // Google Drive folder URL after export (null if not yet exported)
+  driveExportUrl: text("driveExportUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   completedAt: timestamp("completedAt"),
 });

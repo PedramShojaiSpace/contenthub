@@ -103,6 +103,71 @@ function clipTypeBadgeColor(t: ClipType) {
   return "bg-amber-100 text-amber-700 border-amber-300";
 }
 
+// ─── DuplicateJobButton ─────────────────────────────────────────────────────
+
+function DuplicateJobButton({
+  jobId,
+  currentRatio,
+  onDuplicated,
+}: {
+  jobId: number;
+  currentRatio?: "9:16" | "16:9" | "1:1";
+  onDuplicated: (newJobId: number, newJobName: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const duplicateMutation = trpc.videoVariant.duplicateJob.useMutation();
+
+  const ratios: Array<{ value: "9:16" | "16:9" | "1:1"; label: string; desc: string }> = [
+    { value: "9:16", label: "9:16 Vertical",   desc: "Reels / TikTok / Shorts" },
+    { value: "16:9", label: "16:9 Horizontal", desc: "YouTube / Landscape" },
+    { value: "1:1",  label: "1:1 Square",      desc: "Instagram Feed" },
+  ];
+
+  const handleSelect = async (ratio: "9:16" | "16:9" | "1:1") => {
+    setOpen(false);
+    try {
+      const result = await duplicateMutation.mutateAsync({ jobId, aspectRatio: ratio });
+      onDuplicated(result.newJobId, result.newJobName);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to duplicate job");
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline" size="sm"
+        className="text-xs border-primary/30 text-primary hover:bg-primary/5"
+        onClick={() => setOpen(o => !o)}
+        disabled={duplicateMutation.isPending}
+      >
+        {duplicateMutation.isPending ? (
+          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+        ) : (
+          <Plus className="w-3 h-3 mr-1" />
+        )}
+        Duplicate
+        <ChevronDown className="w-3 h-3 ml-1" />
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-lg border border-border bg-popover shadow-lg py-1">
+          <p className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Choose output format</p>
+          {ratios.filter(r => r.value !== currentRatio).map(r => (
+            <button
+              key={r.value}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+              onClick={() => handleSelect(r.value)}
+            >
+              <span className="font-medium text-foreground">{r.label}</span>
+              <span className="block text-xs text-muted-foreground">{r.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function VideoVariantFactory() {
@@ -593,11 +658,32 @@ export default function VideoVariantFactory() {
                     <div className="flex items-center gap-3">
                       {statusIcon(j.status)}
                       <div>
-                        <p className="text-sm font-medium text-foreground">{j.jobName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-foreground">{j.jobName}</p>
+                          {/* Aspect ratio badge */}
+                          {j.aspectRatio && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 leading-none">
+                              {j.aspectRatio}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">{j.hookCount} hooks · {j.variantCount} variants</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Drive folder link if previously exported */}
+                      {j.driveExportUrl && (
+                        <a
+                          href={j.driveExportUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open Drive folder"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                        >
+                          <FolderDown className="w-3.5 h-3.5" />
+                          Drive
+                        </a>
+                      )}
                       <Button
                         variant="ghost" size="sm"
                         className="text-muted-foreground hover:text-foreground text-xs"
@@ -688,11 +774,34 @@ export default function VideoVariantFactory() {
             <div className="flex items-center gap-3">
               {statusIcon(job?.status ?? "pending")}
               <div>
-                <p className="font-semibold text-foreground">{job?.jobName ?? jobName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-foreground">{job?.jobName ?? jobName}</p>
+                  {/* Aspect ratio badge */}
+                  {job?.aspectRatio && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 leading-none">
+                      {job.aspectRatio}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">Job #{activeJobId}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Duplicate with different aspect ratio */}
+              {isDone && (
+                <DuplicateJobButton
+                  jobId={activeJobId}
+                  currentRatio={job?.aspectRatio as "9:16" | "16:9" | "1:1" | undefined}
+                  onDuplicated={(newJobId, newJobName) => {
+                    setActiveJobId(newJobId);
+                    setJobName(newJobName);
+                    setUploadedClips([]);
+                    setPollEnabled(false);
+                    utils.videoVariant.listJobs.invalidate();
+                    toast.success(`Duplicated as "${newJobName}" — ready to generate`);
+                  }}
+                />
+              )}
               {(isDone || hasError) && (
                 <Button
                   variant="ghost" size="sm"

@@ -1068,4 +1068,57 @@ export const videoVariantRouter = router({
       }
       return { created };
     }),
+
+  /**
+   * Duplicate a job with a different aspect ratio.
+   * Copies the job row and all its clip references (same S3 URLs, no re-upload).
+   * Returns the new job ID so the client can open it immediately.
+   */
+  duplicateJob: protectedProcedure
+    .input(z.object({
+      jobId: z.number().int(),
+      aspectRatio: z.enum(["9:16", "16:9", "1:1"]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+
+      // Verify ownership
+      const [job] = await db.select().from(videoVariantJobs)
+        .where(and(eq(videoVariantJobs.id, input.jobId), eq(videoVariantJobs.userId, ctx.user.id)));
+      if (!job) throw new Error("Job not found");
+
+      // Build new job name: append the ratio label
+      const ratioLabel = input.aspectRatio === "9:16" ? "Vertical" : input.aspectRatio === "16:9" ? "Horizontal" : "Square";
+      const newJobName = `${job.jobName} (${ratioLabel})`;
+
+      // Insert new job row
+      const [newJob] = await db.insert(videoVariantJobs).values({
+        userId: ctx.user.id,
+        jobName: newJobName,
+        status: "pending",
+        hookCount: job.hookCount,
+        variantCount: 0,
+        aspectRatio: input.aspectRatio,
+      }).$returningId();
+      const newJobId = newJob.id;
+
+      // Copy all clip rows (same S3 keys/URLs, no re-upload needed)
+      const clips = await db.select().from(videoClips).where(eq(videoClips.jobId, input.jobId));
+      if (clips.length > 0) {
+        await db.insert(videoClips).values(
+          clips.map(c => ({
+            jobId: newJobId,
+            clipType: c.clipType,
+            s3Key: c.s3Key,
+            s3Url: c.s3Url,
+            filename: c.filename,
+            durationSeconds: c.durationSeconds,
+            clipOrder: c.clipOrder,
+          }))
+        );
+      }
+
+      return { newJobId, newJobName };
+    }),
 });

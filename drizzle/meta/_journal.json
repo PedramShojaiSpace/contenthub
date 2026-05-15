@@ -400,6 +400,13 @@
       "when": 1778854260816,
       "tag": "0056_nervous_lester",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "5",
+      "when": 1778856459996,
+      "tag": "0057_slimy_the_captain",
+      "breakpoints": true
     }
   ]
 }

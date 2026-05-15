@@ -222,6 +222,13 @@ async function startServer() {
         notes: notes || undefined,
       });
 
+      // Persist the Drive folder URL on the job row so it shows in History
+      if (result.folderUrl) {
+        await db.update(jobsTable)
+          .set({ driveExportUrl: result.folderUrl })
+          .where(eq(jobsTable.id, jobId));
+      }
+
       return res.json(result);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

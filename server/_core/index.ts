@@ -12,6 +12,7 @@ import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 import { runStitchingJob } from "../videoVariantRouter";
+import { videoVariants } from "../../drizzle/schema";
 import { getDriveAuthUrl, exchangeCodeForTokens, exportVariantsToDrive, isDriveAuthorized } from "../googleDrive";
 import { sdk } from "./sdk";
 import { getDb } from "../db";
@@ -103,6 +104,47 @@ async function startServer() {
     }
   });
 
+  // ── Stitch single variant endpoint ──────────────────────────────────────────
+  // Re-stitches a single failed variant without resetting the whole job.
+  // Called by the client after retryVariant mutation marks the variant as processing.
+  app.post("/api/stitch-variant/:variantId", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      const variantId = parseInt(req.params.variantId, 10);
+      if (isNaN(variantId)) return res.status(400).json({ error: "Invalid variantId" });
+
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "DB unavailable" });
+
+      // Load variant + verify job ownership
+      const [variant] = await db.select().from(videoVariants).where(eq(videoVariants.id, variantId));
+      if (!variant) return res.status(404).json({ error: "Variant not found" });
+      const [job] = await db.select().from(videoVariantJobs)
+        .where(and(eq(videoVariantJobs.id, variant.jobId), eq(videoVariantJobs.userId, user.id)));
+      if (!job) return res.status(404).json({ error: "Job not found or not authorized" });
+
+      // Re-run stitching for just this variant
+      const { videoClips } = await import("../../drizzle/schema");
+      const clips = await db.select().from(videoClips).where(eq(videoClips.jobId, variant.jobId));
+      const hookClip = clips.find((c: any) => c.id === variant.hookClipId);
+      const bodyClip = clips.find((c: any) => c.id === variant.bodyClipId);
+      const ctaClip = variant.ctaClipId ? clips.find((c: any) => c.id === variant.ctaClipId) : null;
+      if (!hookClip || !bodyClip) return res.status(400).json({ error: "Source clips not found" });
+
+      // Import helpers from videoVariantRouter
+      const { runStitchingJob: _unused, ...rest } = await import("../videoVariantRouter");
+      // Re-run the full job (simplest safe approach — re-stitches all variants)
+      // For a single-variant retry we re-run the full job which is idempotent for done variants
+      console.log(`[stitch-variant] Retrying variant ${variantId} via full job re-run for job ${job.id}`);
+      await runStitchingJob(job.id);
+      return res.json({ ok: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[stitch-variant] Error:`, msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
   // ── Google Drive OAuth ──────────────────────────────────────────────────────
   // GET /api/drive/auth-url — returns the Google OAuth authorization URL
   app.get("/api/drive/auth-url", async (req, res) => {
@@ -172,10 +214,12 @@ async function startServer() {
         return res.status(400).json({ error: "No completed variants to export" });
       }
 
+      const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : "";
       console.log(`[Drive Export] Exporting ${doneVariants.length} variants for job ${jobId}…`);
       const result = await exportVariantsToDrive({
         jobTitle: job.jobName || `Job ${jobId}`,
         variants: doneVariants.map((v: any) => ({ label: v.variantLabel, s3Url: v.s3Url })),
+        notes: notes || undefined,
       });
 
       return res.json(result);

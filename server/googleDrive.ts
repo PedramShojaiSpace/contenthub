@@ -196,10 +196,12 @@ export interface DriveExportResult {
  * Creates a folder named "VVF – {jobTitle} – {date}" inside an
  * "Urban Monk Video Variants" root folder, uploads each MP4, and
  * makes the folder publicly viewable for the editor.
+ * If notes are provided, also uploads a NOTES.txt file to the folder.
  */
 export async function exportVariantsToDrive(params: {
   jobTitle: string;
   variants: Array<{ label: string; s3Url: string }>;
+  notes?: string;
 }): Promise<DriveExportResult> {
   const drive = getDriveClient();
 
@@ -217,6 +219,28 @@ export async function exportVariantsToDrive(params: {
   const folderUrl = `https://drive.google.com/drive/folders/${folderId}`;
   const uploadedFiles: DriveExportResult["uploadedFiles"] = [];
   const errors: DriveExportResult["errors"] = [];
+
+  // Upload NOTES.txt if editor notes were provided
+  if (params.notes && params.notes.trim()) {
+    try {
+      const notesContent = `Editor Notes — ${params.jobTitle}\n${'='.repeat(60)}\n\n${params.notes.trim()}\n\nExported: ${new Date().toLocaleString()}\n`;
+      await drive.files.create({
+        requestBody: {
+          name: "NOTES.txt",
+          parents: [folderId],
+          mimeType: "text/plain",
+        },
+        media: {
+          mimeType: "text/plain",
+          body: Readable.from(Buffer.from(notesContent, "utf-8")),
+        },
+        fields: "id",
+      });
+      console.log(`[Drive Export] NOTES.txt uploaded`);
+    } catch (err) {
+      console.error(`[Drive Export] Failed to upload NOTES.txt:`, err);
+    }
+  }
 
   // Upload each variant sequentially (avoids parallel memory pressure)
   for (const variant of params.variants) {

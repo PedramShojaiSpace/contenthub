@@ -190,9 +190,19 @@ async function downloadToTemp(urlOrSegments: string, ext: string): Promise<strin
  * This avoids writing the ~165 MB output to /tmp, which prevents OOM on Cloud Run
  * (tmpfs = RAM; writing 165 MB output on top of 234 MB source files = OOM kill).
  */
+/**
+ * Map an aspect ratio string to the target width × height for FFmpeg.
+ */
+function getTargetDimensions(aspectRatio: "9:16" | "16:9" | "1:1"): { w: number; h: number } {
+  if (aspectRatio === "16:9") return { w: 1920, h: 1080 };
+  if (aspectRatio === "1:1")  return { w: 1080, h: 1080 };
+  return { w: 1080, h: 1920 }; // default 9:16
+}
+
 function concatAndUpload(
   inputPaths: string[],
   s3Key: string,
+  aspectRatio: "9:16" | "16:9" | "1:1" = "9:16",
   timeoutMs = FFMPEG_TIMEOUT_MS,
 ): Promise<string> {
   const baseUrl = ENV.forgeApiUrl?.replace(/\/+$/, "");
@@ -280,12 +290,13 @@ function concatAndUpload(
     // NOTE: Estimated output duration for fade-out calculation.
     // We use 300s as a safe upper bound — the fade-out starts at (duration - 0.3s).
     // If the actual video is shorter, the fade-out still works because FFmpeg clips it.
+    const { w, h } = getTargetDimensions(aspectRatio);
     const ESTIMATED_DURATION_S = 300;
     const FADE_IN_S = 0.5;
     const FADE_OUT_START_S = ESTIMATED_DURATION_S - 0.3;
     const vf = [
-      // 1. Normalize to 1080x1920 with black bars for mismatched aspect ratios
-      `scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black`,
+      // 1. Normalize to target dimensions with black bars for mismatched aspect ratios
+      `scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2:black`,
       // 2. Subtle production grade: slight contrast and saturation boost
       `eq=contrast=1.05:saturation=1.10`,
       // 3. Fade in (0.5s) and fade out (0.3s)
@@ -362,6 +373,11 @@ export async function runStitchingJob(jobId: number) {
   if (!db) return;
 
   try {
+    // Fetch the job row to get aspectRatio and other metadata
+    const [jobRow] = await db.select().from(videoVariantJobs).where(eq(videoVariantJobs.id, jobId));
+    if (!jobRow) { console.error(`[VVF] Job ${jobId} not found`); return; }
+    const aspectRatio = (jobRow.aspectRatio ?? "9:16") as "9:16" | "16:9" | "1:1";
+
     // Mark job as processing
     await db.update(videoVariantJobs)
       .set({ status: "processing" })
@@ -467,8 +483,8 @@ export async function runStitchingJob(jobId: number) {
                 // No output file written to /tmp — avoids OOM on Cloud Run
                 const parts = [hookLocalPath, bodyLocal, ...(ctaLocalPath ? [ctaLocalPath] : [])];
                 const s3Key = `video-variants/${jobId}/variant-h${hookClip.clipOrder}${ctaSuffix}-${randomSuffix()}.mp4`;
-                console.log(`[VVF] Job ${jobId}: stitching+uploading ${variantLabel} (${parts.length} parts, streaming to S3)…`);
-                const s3Url = await concatAndUpload(parts, s3Key);
+                console.log(`[VVF] Job ${jobId}: stitching+uploading ${variantLabel} (${parts.length} parts, ${aspectRatio}, streaming to S3)…`);
+                const s3Url = await concatAndUpload(parts, s3Key, aspectRatio);
 
                 // Mark variant done
                 await db.update(videoVariants)
@@ -607,7 +623,10 @@ export const videoVariantRouter = router({
 
   /** Create a new job shell (no clips yet) */
   createJob: protectedProcedure
-    .input(z.object({ jobName: z.string().min(1).max(255) }))
+    .input(z.object({
+      jobName: z.string().min(1).max(255),
+      aspectRatio: z.enum(["9:16", "16:9", "1:1"]).default("9:16"),
+    }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
@@ -617,6 +636,7 @@ export const videoVariantRouter = router({
         status: "pending",
         hookCount: 0,
         variantCount: 0,
+        aspectRatio: input.aspectRatio,
       });
       const jobId = (result as unknown as { insertId: number }).insertId;
       return { jobId };
@@ -963,6 +983,34 @@ export const videoVariantRouter = router({
         });
       }
       return { success: true };
+    }),
+
+  /**
+   * Retry a single failed variant without resetting the whole job.
+   * Re-stitches the variant using the same hook + body + CTA clips.
+   * The actual stitching is triggered via /api/stitch-variant/:variantId.
+   */
+  retryVariant: protectedProcedure
+    .input(z.object({ variantId: z.number().int() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+
+      // Verify ownership
+      const [variant] = await db.select().from(videoVariants)
+        .where(eq(videoVariants.id, input.variantId));
+      if (!variant) throw new Error("Variant not found");
+      const [job] = await db.select().from(videoVariantJobs)
+        .where(and(eq(videoVariantJobs.id, variant.jobId), eq(videoVariantJobs.userId, ctx.user.id)));
+      if (!job) throw new Error("Not authorized");
+      if (variant.status !== "error") throw new Error("Variant is not in error state");
+
+      // Reset variant to processing so the client knows to call /api/stitch-variant/:variantId
+      await db.update(videoVariants)
+        .set({ status: "processing", errorMessage: null, s3Key: null, s3Url: null })
+        .where(eq(videoVariants.id, input.variantId));
+
+      return { ok: true, variantId: input.variantId, jobId: job.id };
     }),
 
   /**

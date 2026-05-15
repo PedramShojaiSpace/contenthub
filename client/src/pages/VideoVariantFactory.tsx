@@ -114,6 +114,7 @@ export default function VideoVariantFactory() {
     } catch { return ""; }
   });
   const [activeJobId, setActiveJobId]   = useState<number | null>(null);
+  const [aspectRatio, setAspectRatio]   = useState<"9:16" | "16:9" | "1:1">("9:16");
   const [uploadedClips, setUploadedClips] = useState<UploadedClip[]>([]);
   const [uploadingClips, setUploadingClips] = useState<UploadingClip[]>([]);
   const [showHistory, setShowHistory]   = useState(false);
@@ -154,6 +155,10 @@ export default function VideoVariantFactory() {
   const saveMetaCredentialsMutation = trpc.videoVariant.saveMetaCredentials.useMutation();
   const bulkSendToPendingApprovalMutation = trpc.videoVariant.bulkSendToPendingApproval.useMutation();
   const resetJobMutation = trpc.videoVariant.resetJob.useMutation();
+  const retryVariantMutation = trpc.videoVariant.retryVariant.useMutation();
+
+  // ── Editor notes for Drive export ─────────────────────────────────────────
+  const [editorNotes, setEditorNotes] = useState("");
 
   // Load saved Meta credentials on mount and auto-fill fields
   const { data: savedMetaCreds } = trpc.videoVariant.getMetaCredentials.useQuery(undefined, {
@@ -221,7 +226,7 @@ export default function VideoVariantFactory() {
       return;
     }
     try {
-      const { jobId } = await createJobMutation.mutateAsync({ jobName: jobName.trim() });
+      const { jobId } = await createJobMutation.mutateAsync({ jobName: jobName.trim(), aspectRatio });
       setActiveJobId(jobId);
       setUploadedClips([]);
       toast.success(`Job "${jobName}" created — now upload your clips`);
@@ -643,6 +648,26 @@ export default function VideoVariantFactory() {
               placeholder="e.g. Week 20 — Gut Health Hooks"
               className="bg-background border-border text-foreground placeholder:text-muted-foreground"
             />
+            {/* Aspect ratio selector */}
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground font-medium">Output aspect ratio</p>
+              <div className="flex gap-2">
+                {(["9:16", "16:9", "1:1"] as const).map(ratio => (
+                  <button
+                    key={ratio}
+                    type="button"
+                    onClick={() => setAspectRatio(ratio)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                      aspectRatio === ratio
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    {ratio === "9:16" ? "9:16 Vertical (Reels)" : ratio === "16:9" ? "16:9 Horizontal (YouTube)" : "1:1 Square (Feed)"}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Button
               onClick={handleCreateJob}
               disabled={!jobName.trim() || createJobMutation.isPending}
@@ -1090,6 +1115,8 @@ export default function VideoVariantFactory() {
                             const r = await fetch(`/api/drive/export/${activeJobId}`, {
                               method: "POST",
                               credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ notes: editorNotes }),
                             });
                             const d = await r.json();
                             if (!r.ok) throw new Error(d.error || "Export failed");
@@ -1145,16 +1172,58 @@ export default function VideoVariantFactory() {
                           )}
                         </div>
                       </div>
-                      {v.status === "done" && v.s3Url && (
-                        <a href={v.s3Url} download target="_blank" rel="noopener noreferrer">
-                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
-                            <Download className="w-3 h-3 mr-1" /> MP4
+                      <div className="flex items-center gap-2">
+                        {v.status === "done" && v.s3Url && (
+                          <a href={v.s3Url} download target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
+                              <Download className="w-3 h-3 mr-1" /> MP4
+                            </Button>
+                          </a>
+                        )}
+                        {v.status === "error" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-amber-400 text-amber-700 hover:bg-amber-50 text-xs gap-1"
+                            disabled={retryVariantMutation.isPending}
+                            onClick={async () => {
+                              if (!activeJobId) return;
+                              try {
+                                await retryVariantMutation.mutateAsync({ variantId: v.id });
+                                // Fire the stitch-variant endpoint to re-run stitching
+                                fetch(`/api/stitch-variant/${v.id}`, { method: "POST", credentials: "include" })
+                                  .catch(() => {});
+                                toast.info(`Re-stitching ${v.variantLabel}…`);
+                                setPollEnabled(true);
+                              } catch (e: any) {
+                                toast.error(e.message ?? "Retry failed");
+                              }
+                            }}
+                          >
+                            {retryVariantMutation.isPending
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <RefreshCw className="w-3 h-3" />}
+                            Re-stitch
                           </Button>
-                        </a>
-                      )}
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Editor notes for Drive export */}
+                {doneVariants.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground font-medium">Editor notes (optional — saved as NOTES.txt in Drive folder)</p>
+                    <Textarea
+                      value={editorNotes}
+                      onChange={e => setEditorNotes(e.target.value)}
+                      placeholder="e.g. Hook 3 is the strongest — prioritize that one. Color grade to match the Gut Health series. Add lower-third text overlay for the CTA."
+                      className="text-xs min-h-[80px] bg-background border-border text-foreground placeholder:text-muted-foreground resize-none"
+                      rows={3}
+                    />
+                  </div>
+                )}
 
                 {/* Drive export status */}
                 {driveFolderUrl && (

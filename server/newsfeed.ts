@@ -14,6 +14,7 @@
  */
 
 import { parseStringPromise } from "xml2js";
+import { safeParseJson } from "./fetchUtils";
 
 export interface RawArticle {
   title: string;
@@ -197,8 +198,7 @@ export async function fetchPubMedArticles(topic: string, maxItems = 5): Promise<
   let pmids: string[] = [];
   try {
     const resp = await fetch(searchUrl, { signal: AbortSignal.timeout(15_000) });
-    if (!resp.ok) throw new Error(`PubMed search returned ${resp.status}`);
-    const data = await resp.json();
+    const data = await safeParseJson<any>(resp, "PubMed search");
     pmids = data?.esearchresult?.idlist ?? [];
   } catch (err) {
     console.error(`[newsfeed] PubMed search failed for topic "${topic}":`, err);
@@ -214,8 +214,7 @@ export async function fetchPubMedArticles(topic: string, maxItems = 5): Promise<
   let summaries: any;
   try {
     const resp = await fetch(summaryUrl, { signal: AbortSignal.timeout(15_000) });
-    if (!resp.ok) throw new Error(`PubMed summary returned ${resp.status}`);
-    summaries = await resp.json();
+    summaries = await safeParseJson<any>(resp, "PubMed summary");
   } catch (err) {
     console.error(`[newsfeed] PubMed summary fetch failed for topic "${topic}":`, err);
     return [];

@@ -3,6 +3,7 @@ import { invokeLLM } from "./_core/llm";
 import { wrapLLM } from "./llmUtils";
 import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
+import { safeParseJson } from "./fetchUtils";
 
 const TYPEFORM_BASE = "https://api.typeform.com";
 
@@ -16,11 +17,7 @@ async function typeformGet(path: string) {
   const res = await fetch(`${TYPEFORM_BASE}${path}`, {
     headers: getTypeformHeaders(),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Typeform API error ${res.status}: ${text}`);
-  }
-  return res.json();
+  return safeParseJson(res, "Typeform API");
 }
 
 // Flatten a Typeform response item into readable Q&A pairs

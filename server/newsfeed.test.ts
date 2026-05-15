@@ -250,6 +250,8 @@ describe("fetchPubMedArticles", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ esearchresult: { idlist: [] } }),
         json: async () => ({ esearchresult: { idlist: [] } }),
       })
     );
@@ -281,9 +283,12 @@ describe("fetchPubMedArticles", () => {
       "fetch",
       vi.fn().mockImplementation(async () => {
         callCount++;
+        const data = callCount === 1 ? mockSearch : mockSummary;
         return {
           ok: true,
-          json: async () => (callCount === 1 ? mockSearch : mockSummary),
+          status: 200,
+          text: async () => JSON.stringify(data),
+          json: async () => data,
         };
       })
     );
@@ -316,7 +321,8 @@ describe("fetchPubMedArticles", () => {
       "fetch",
       vi.fn().mockImplementation(async () => {
         callCount++;
-        return { ok: true, json: async () => (callCount === 1 ? mockSearch : mockSummary) };
+        const data = callCount === 1 ? mockSearch : mockSummary;
+        return { ok: true, status: 200, text: async () => JSON.stringify(data), json: async () => data };
       })
     );
 
@@ -362,7 +368,8 @@ describe("fetchAllTopics", () => {
         callCount++;
         const topicNum = callCount;
         if (url.includes("eutils")) {
-          return { ok: true, json: async () => ({ esearchresult: { idlist: [] } }) };
+          const emptySearch = { esearchresult: { idlist: [] } };
+          return { ok: true, status: 200, text: async () => JSON.stringify(emptySearch), json: async () => emptySearch };
         }
         const realUrl = `https://example.com/article-topic-${topicNum}`;
         const bingLink = `http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=${encodeURIComponent(realUrl)}&amp;c=123`;

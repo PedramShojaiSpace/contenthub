@@ -337,8 +337,16 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
     ) {
       throw new Error("RATE_LIMIT: AI generation limit reached. Please wait a moment and try again.");
     }
-    // Detect transient server errors (503 Service Unavailable, 502 Bad Gateway, 504 Gateway Timeout)
-    if (response.status === 503 || response.status === 502 || response.status === 504) {
+    // Detect transient server errors (500/502/503/504) OR body contains 'Service Unavailable' / HTML error page
+    const bodyLower = rawBody.toLowerCase();
+    const isTransientBody =
+      bodyLower.includes("service unavailable") ||
+      bodyLower.includes("bad gateway") ||
+      bodyLower.includes("gateway timeout") ||
+      bodyLower.includes("temporarily unavailable") ||
+      rawBody.trim().startsWith("<html") ||
+      rawBody.trim().startsWith("<HTML");
+    if (response.status === 503 || response.status === 502 || response.status === 504 || response.status === 500 || isTransientBody) {
       if (_retryCount < INVOKE_LLM_MAX_RETRIES) {
         const delay = INVOKE_LLM_BASE_DELAY_MS * Math.pow(2, _retryCount);
         console.warn(`[invokeLLM] ${response.status} transient error — retrying in ${delay}ms (attempt ${_retryCount + 1}/${INVOKE_LLM_MAX_RETRIES})`);

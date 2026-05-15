@@ -18,6 +18,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { storagePut } from "./storage";
 import { getDb } from "./db";
 import { personas, webinarSessions } from "../drizzle/schema";
+import { safeParseJson } from "./fetchUtils";
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ Design guidelines:
     const errorText = await response.text();
     throw new Error(`Gamma API error ${response.status}: ${errorText}`);
   }
-  const data = (await response.json()) as { generationId: string };
+  const data = await safeParseJson<{ generationId: string }>(response, "Gamma API generation");
   return data.generationId;
 }
 
@@ -120,7 +121,7 @@ async function pollGamma(generationId: string): Promise<{ status: "pending" | "c
     const errorText = await response.text();
     throw new Error(`Gamma poll error ${response.status}: ${errorText}`);
   }
-  const data = (await response.json()) as { status: string; gammaUrl?: string; error?: string };
+  const data = await safeParseJson<{ status: string; gammaUrl?: string; error?: string }>(response, "Gamma poll");
   if (data.status === "completed") return { status: "completed", gammaUrl: data.gammaUrl };
   if (data.status === "failed") return { status: "failed", error: data.error ?? "Generation failed" };
   return { status: "pending" };
@@ -805,7 +806,7 @@ Design guidelines:
         const errorText = await response.text();
         throw new Error(`Gamma API error ${response.status}: ${errorText}`);
       }
-      const data = (await response.json()) as { generationId: string };
+      const data = await safeParseJson<{ generationId: string }>(response, "Gamma thank-you generation");
       await updateWebinar(input.id, { thankYouGammaGenerationId: data.generationId });
       return { generationId: data.generationId };
     }),
@@ -977,7 +978,7 @@ Return ONLY the JSON array, no markdown wrapping.`;
         throw new Error(`Typeform API error ${response.status}: ${errorText}`);
       }
 
-      const data = (await response.json()) as { id: string; _links: { display: string } };
+      const data = await safeParseJson<{ id: string; _links: { display: string } }>(response, "Typeform survey creation");
       const typeformUrl = data._links?.display ?? `https://theurbanmonk.typeform.com/to/${data.id}`;
 
       // Save the URL back to the webinar session

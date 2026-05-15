@@ -390,5 +390,30 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
   } catch {
     throw new Error(`LLM response JSON parse failed: ${trimmed.slice(0, 200)}`);
   }
+
+  // Guard: sometimes the API returns a valid JSON envelope but the content field
+  // contains a plain-text error like "Service Unavailable" instead of the actual response.
+  // Detect this and treat it as a transient error so callers don't crash on JSON.parse.
+  const firstContent = parsed?.choices?.[0]?.message?.content;
+  if (typeof firstContent === "string") {
+    const lower = firstContent.trim().toLowerCase();
+    if (
+      lower === "service unavailable" ||
+      lower === "bad gateway" ||
+      lower === "gateway timeout" ||
+      lower.startsWith("503") ||
+      lower.startsWith("502") ||
+      lower.startsWith("504")
+    ) {
+      if (_retryCount < INVOKE_LLM_MAX_RETRIES) {
+        const delay = INVOKE_LLM_BASE_DELAY_MS * Math.pow(2, _retryCount);
+        console.warn(`[invokeLLM] Content field contains error text "${firstContent.trim()}" — retrying in ${delay}ms (attempt ${_retryCount + 1}/${INVOKE_LLM_MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return invokeLLM(params, _retryCount + 1);
+      }
+      throw new Error(`SERVICE_UNAVAILABLE: The AI service returned an error in the response content. Please try again in a moment.`);
+    }
+  }
+
   return parsed;
 }

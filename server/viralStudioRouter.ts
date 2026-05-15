@@ -14,6 +14,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { parseLLMJson } from "./llmUtils";
 import { getDb } from "./db";
 import {
   hookGenerations,
@@ -171,7 +172,7 @@ Return a JSON object with this exact structure:
     });
 
     const content = response.choices[0].message.content;
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
+    const parsed = parseLLMJson(typeof content === "string" ? content : JSON.stringify(content), "hook generation");
 
     // Persist to DB
     const db = await getDb();
@@ -323,9 +324,8 @@ Return JSON:
       },
     });
 
-    const content = response.choices[0].message.content;
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
-
+     const content = response.choices[0].message.content;
+    const parsed = parseLLMJson(typeof content === "string" ? content : JSON.stringify(content), "script generation");
     // Persist
     const db = await getDb();
     if (!db) throw new Error("DB unavailable");
@@ -654,7 +654,7 @@ Return JSON:
     });
 
     const content = response.choices[0].message.content;
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
+    const parsed = parseLLMJson(typeof content === "string" ? content : JSON.stringify(content), "content repurposing");
     return parsed;
   });
 
@@ -1229,8 +1229,8 @@ Return a JSON object:
     });
 
     const content = response.choices[0].message.content;
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
-    return { hook: parsed.hook as string, why: parsed.why as string, score: parsed.score as number };
+    const parsed = parseLLMJson<{ hook: string; why: string; score: number }>(typeof content === "string" ? content : JSON.stringify(content), "hook scoring");
+    return { hook: parsed.hook, why: parsed.why, score: parsed.score };
   });
 
 // ─── Persona Persistence ──────────────────────────────────────────────────────
@@ -1308,8 +1308,8 @@ export const suggestTopics = protectedProcedure
       },
     });
     const content = response.choices[0].message.content;
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
-    return parsed as { topics: Array<{ topic: string; angle: string }> };
+    const parsed = parseLLMJson<{ topics: Array<{ topic: string; angle: string }> }>(typeof content === "string" ? content : JSON.stringify(content), "topic generation");
+    return parsed;
   });
 
 // ─── suggestPersonas ────────────────────────────────────────────────────────
@@ -1361,8 +1361,8 @@ export const suggestPersonas = protectedProcedure
       },
     });
     const content = response.choices[0].message.content;
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
-    return parsed as { personas: Array<{ persona: string; description: string }> };
+    const parsed = parseLLMJson<{ personas: Array<{ persona: string; description: string }> }>(typeof content === "string" ? content : JSON.stringify(content), "persona suggestion");
+    return parsed;
   });
 
 // ─── saveTopicHistory ─────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
-import { wrapLLM } from "./llmUtils";
+import { wrapLLM, parseLLMJson } from "./llmUtils";
 import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { safeParseJson } from "./fetchUtils";
@@ -214,7 +214,7 @@ Analyze the responses and return a JSON object with these exact keys:
       }));
 
       const raw = response.choices?.[0]?.message?.content;
-      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      const parsed = parseLLMJson(typeof raw === "string" ? raw : JSON.stringify(raw), "audience analysis");
 
       return {
         ...parsed,
@@ -369,7 +369,7 @@ Return a JSON array of 8 persona segment objects.`;
       }));
 
       const raw = response.choices?.[0]?.message?.content;
-      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      const parsed = parseLLMJson(typeof raw === "string" ? raw : JSON.stringify(raw), "persona segmentation");
 
       // Auto-enrich all matching personas in DB
       const db = await getDb();

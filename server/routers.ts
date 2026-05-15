@@ -2724,12 +2724,17 @@ Rules:
         });
 
         const raw = String(response.choices?.[0]?.message?.content ?? "{}");
-        const fields = JSON.parse(raw) as {
-          seoTitle: string;
-          metaDescription: string;
-          focusKeyphrase: string;
-          semanticKeywords: string[];
-        };
+        let fields: { seoTitle: string; metaDescription: string; focusKeyphrase: string; semanticKeywords: string[] };
+        try {
+          // Strip markdown code fences if present
+          const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+          fields = JSON.parse(cleaned);
+        } catch {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "The AI service returned an invalid response. Please try again.",
+          });
+        }
 
         // Persist to DB immediately
         await updateContentItem(input.contentItemId, {
@@ -2842,12 +2847,13 @@ Rules:
             });
 
             const raw = String(response.choices?.[0]?.message?.content ?? '{}');
-            const fields = JSON.parse(raw) as {
-              seoTitle: string;
-              metaDescription: string;
-              focusKeyphrase: string;
-              semanticKeywords: string[];
-            };
+            let fields: { seoTitle: string; metaDescription: string; focusKeyphrase: string; semanticKeywords: string[] };
+            try {
+              const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+              fields = JSON.parse(cleaned);
+            } catch {
+              throw new Error('AI returned invalid JSON for Yoast fields');
+            }
 
             await updateContentItem(item.id, {
               yoastSeoTitle: fields.seoTitle,

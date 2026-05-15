@@ -400,22 +400,31 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
   }
 
   // Guard: sometimes the API returns a valid JSON envelope but the content field
-  // contains a plain-text error like "Service Unavailable" instead of the actual response.
+  // contains a plain-text or HTML error instead of the actual response.
   // Detect this and treat it as a transient error so callers don't crash on JSON.parse.
   const firstContent = parsed?.choices?.[0]?.message?.content;
   if (typeof firstContent === "string") {
-    const lower = firstContent.trim().toLowerCase();
-    if (
+    const trimmedContent = firstContent.trim();
+    const lower = trimmedContent.toLowerCase();
+    const isErrorContent =
       lower === "service unavailable" ||
       lower === "bad gateway" ||
       lower === "gateway timeout" ||
       lower.startsWith("503") ||
       lower.startsWith("502") ||
-      lower.startsWith("504")
-    ) {
+      lower.startsWith("504") ||
+      lower.startsWith("500") ||
+      trimmedContent.startsWith("<!DOCTYPE") ||
+      trimmedContent.startsWith("<!doctype") ||
+      trimmedContent.startsWith("<html") ||
+      trimmedContent.startsWith("<HTML") ||
+      lower.includes("service unavailable") ||
+      lower.includes("bad gateway") ||
+      lower.includes("temporarily unavailable");
+    if (isErrorContent) {
       if (_retryCount < INVOKE_LLM_MAX_RETRIES) {
         const delay = INVOKE_LLM_BASE_DELAY_MS * Math.pow(2, _retryCount);
-        console.warn(`[invokeLLM] Content field contains error text "${firstContent.trim()}" — retrying in ${delay}ms (attempt ${_retryCount + 1}/${INVOKE_LLM_MAX_RETRIES})`);
+        console.warn(`[invokeLLM] Content field contains error/HTML — retrying in ${delay}ms (attempt ${_retryCount + 1}/${INVOKE_LLM_MAX_RETRIES}): ${trimmedContent.slice(0, 60)}`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         return invokeLLM(params, _retryCount + 1);
       }

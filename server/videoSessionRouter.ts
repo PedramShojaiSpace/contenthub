@@ -25,7 +25,7 @@ import {
 } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
-import { wrapLLM } from "./llmUtils";
+import { wrapLLM, parseLLMJson } from "./llmUtils";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -120,7 +120,7 @@ Return a JSON object:
   }));
 
   const raw = response?.choices?.[0]?.message?.content ?? "{}";
-  const parsed: GeneratedScripts = typeof raw === "string" ? JSON.parse(raw) : raw;
+  const parsed: GeneratedScripts = parseLLMJson<GeneratedScripts>(typeof raw === "string" ? raw : JSON.stringify(raw), "video scripts");
   while (parsed.hooks.length < 5) parsed.hooks.push("");
   parsed.hooks = parsed.hooks.slice(0, 5);
   return parsed;

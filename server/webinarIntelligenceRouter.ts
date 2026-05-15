@@ -10,7 +10,7 @@ import {
 } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
-import { wrapLLM } from "./llmUtils";
+import { wrapLLM, parseLLMJson } from "./llmUtils";
 import { safeParseJson } from "./fetchUtils";
 
 // ─── Webinar Intelligence Router ──────────────────────────────────────────────
@@ -535,7 +535,7 @@ Synthesize these into an updated cumulative avatar profile. Return ONLY valid JS
       }));
 
       const rawContent = response.choices?.[0]?.message?.content;
-      const synthesized = typeof rawContent === "string" ? JSON.parse(rawContent) : rawContent;
+      const synthesized = parseLLMJson(typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent), "avatar synthesis");
 
       // Update the avatar profile with synthesized intelligence
       await db

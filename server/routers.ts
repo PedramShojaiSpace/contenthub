@@ -6,8 +6,11 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { generateImage } from "./_core/imageGeneration";
 import { invokeLLM, type InvokeParams } from "./_core/llm";
 
-// Wrapper that converts RATE_LIMIT errors from invokeLLM into user-friendly TRPCErrors
-async function safeLLM(params: InvokeParams) {
+// Wrapper that converts RATE_LIMIT / SERVICE_UNAVAILABLE errors from invokeLLM into user-friendly TRPCErrors.
+// Automatically retries up to 3 times on transient 503/502/504 errors with exponential backoff.
+async function safeLLM(params: InvokeParams, _retryCount = 0): Promise<Awaited<ReturnType<typeof invokeLLM>>> {
+  const MAX_RETRIES = 3;
+  const BASE_DELAY_MS = 2000; // 2s, 4s, 8s
   try {
     return await invokeLLM(params);
   } catch (err: unknown) {
@@ -15,7 +18,19 @@ async function safeLLM(params: InvokeParams) {
     if (msg.startsWith("RATE_LIMIT:")) {
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
-        message: "AI generation limit reached. Please wait 30–60 seconds and try again.",
+        message: "AI generation limit reached. Please wait 30\u201360 seconds and try again.",
+      });
+    }
+    if (msg.startsWith("SERVICE_UNAVAILABLE:")) {
+      if (_retryCount < MAX_RETRIES) {
+        const delay = BASE_DELAY_MS * Math.pow(2, _retryCount);
+        console.warn(`[safeLLM] Service unavailable — retrying in ${delay}ms (attempt ${_retryCount + 1}/${MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return safeLLM(params, _retryCount + 1);
+      }
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "The AI service is temporarily unavailable. Please try again in a moment.",
       });
     }
     throw err;

@@ -265,7 +265,10 @@ const normalizeResponseFormat = ({
   };
 };
 
-export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+const INVOKE_LLM_MAX_RETRIES = 3;
+const INVOKE_LLM_BASE_DELAY_MS = 2000; // 2s → 4s → 8s
+
+export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<InvokeResult> {
   assertApiKey();
 
   const {
@@ -334,12 +337,22 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     ) {
       throw new Error("RATE_LIMIT: AI generation limit reached. Please wait a moment and try again.");
     }
+    // Detect transient server errors (503 Service Unavailable, 502 Bad Gateway, 504 Gateway Timeout)
+    if (response.status === 503 || response.status === 502 || response.status === 504) {
+      if (_retryCount < INVOKE_LLM_MAX_RETRIES) {
+        const delay = INVOKE_LLM_BASE_DELAY_MS * Math.pow(2, _retryCount);
+        console.warn(`[invokeLLM] ${response.status} transient error — retrying in ${delay}ms (attempt ${_retryCount + 1}/${INVOKE_LLM_MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return invokeLLM(params, _retryCount + 1);
+      }
+      throw new Error(`SERVICE_UNAVAILABLE: The AI service is temporarily unavailable (${response.status}). Please try again in a moment.`);
+    }
     throw new Error(
       `LLM invoke failed: ${response.status} ${response.statusText} – ${rawBody}`
     );
   }
 
-  // Even on HTTP 200, the API sometimes returns a plain-text error (e.g. "Rate exceeded.")
+  // Even on HTTP 200, the API sometimes returns a plain-text error (e.g. "Rate exceeded.", "Service Unavailable")
   // Detect this before attempting JSON.parse to avoid cryptic parse errors
   const trimmed = rawBody.trim();
   if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
@@ -352,6 +365,21 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     ) {
       // Use a distinctive prefix so callers can detect this specifically
       throw new Error(`RATE_LIMIT: AI generation limit reached. Please wait 30–60 seconds and try again. (raw: ${trimmed.slice(0, 80)})`);
+    }
+    // Detect plain-text service unavailable responses (e.g. "Service Unavailable")
+    if (
+      lower.includes("service unavailable") ||
+      lower.includes("bad gateway") ||
+      lower.includes("gateway timeout") ||
+      lower.includes("temporarily unavailable")
+    ) {
+      if (_retryCount < INVOKE_LLM_MAX_RETRIES) {
+        const delay = INVOKE_LLM_BASE_DELAY_MS * Math.pow(2, _retryCount);
+        console.warn(`[invokeLLM] Plain-text service unavailable — retrying in ${delay}ms (attempt ${_retryCount + 1}/${INVOKE_LLM_MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return invokeLLM(params, _retryCount + 1);
+      }
+      throw new Error(`SERVICE_UNAVAILABLE: The AI service is temporarily unavailable. Please try again in a moment. (raw: ${trimmed.slice(0, 80)})`);
     }
     throw new Error(`LLM returned non-JSON response: ${trimmed.slice(0, 200)}`);
   }

@@ -2419,3 +2419,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add driveExportUrl column to video_variant_jobs table to persist the Drive folder URL after export
 - [x] Store driveExportUrl when Drive export completes
 - [x] Show Drive folder icon/link in History list rows for jobs that have been exported
+
+## v190 — Blog Generation 503 Error Fix
+
+- [x] Add SERVICE_UNAVAILABLE detection in invokeLLM for HTTP 503/502/504 status codes
+- [x] Add plain-text "Service Unavailable" detection in invokeLLM for 200-OK responses with error body
+- [x] Add automatic retry with exponential backoff (3 retries: 2s, 4s, 8s) directly in invokeLLM so all callers benefit
+- [x] Add SERVICE_UNAVAILABLE handling in safeLLM to surface clean user-facing TRPCError after retries exhausted
+- [x] Fix covers blog generation and all other LLM-powered features (LinkedIn, Twitter, YouTube, etc.)

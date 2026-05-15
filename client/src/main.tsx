@@ -43,16 +43,17 @@ queryClient.getMutationCache().subscribe(event => {
  * The Cloud Run gateway can return plain-text "Service Unavailable" or an HTML
  * error page at the HTTP level — BEFORE the request reaches the Express server.
  * tRPC's httpBatchLink calls response.json() internally and crashes with
- * "Unexpected token 'S'" when the body isn't JSON.
+ * "Unexpected token 'S'" or "Unable to transform response from server" when
+ * the body isn't valid superjson-encoded tRPC JSON.
  *
- * This wrapper intercepts those gateway-level errors and converts them into a
- * synthetic tRPC-compatible error response so the user sees a clean message
- * instead of a raw JSON parse crash.
+ * This wrapper intercepts those gateway-level errors and throws a plain Error
+ * with a clean user-facing message. tRPC's error handling catches it and
+ * surfaces it as a TRPCClientError with the message intact.
  */
 async function safeTrpcFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const response = await globalThis.fetch(input, { ...(init ?? {}), credentials: "include" });
 
-  // Fast path: 2xx responses are almost always JSON — return as-is
+  // Fast path: 2xx responses are almost always valid tRPC JSON — return as-is
   if (response.ok) return response;
 
   // For non-2xx responses, read the body as text to check if it's JSON
@@ -70,7 +71,8 @@ async function safeTrpcFetch(input: RequestInfo | URL, init?: RequestInit): Prom
   }
 
   // Non-JSON body (plain text "Service Unavailable" or HTML gateway error page)
-  // Synthesize a tRPC-compatible batch error response so tRPC doesn't crash on JSON.parse
+  // Throw a plain Error — tRPC's httpBatchLink will catch this and surface it
+  // as a TRPCClientError with the message intact, avoiding the JSON parse crash.
   const isTransient =
     response.status === 503 ||
     response.status === 502 ||
@@ -90,20 +92,7 @@ async function safeTrpcFetch(input: RequestInfo | URL, init?: RequestInit): Prom
 
   console.warn(`[safeTrpcFetch] Non-JSON gateway response (${response.status}): ${trimmed.slice(0, 80)}`);
 
-  // tRPC batch responses are arrays; return a synthetic error in batch format
-  const syntheticBody = JSON.stringify([{
-    error: {
-      message: userMessage,
-      code: -32603,
-      data: { code: "INTERNAL_SERVER_ERROR", httpStatus: response.status }
-    }
-  }]);
-
-  return new Response(syntheticBody, {
-    status: 207, // Multi-status — tRPC batch responses use non-200 for errors
-    statusText: "Multi-Status",
-    headers: { "content-type": "application/json" },
-  });
+  throw new Error(userMessage);
 }
 
 const trpcClient = trpc.createClient({

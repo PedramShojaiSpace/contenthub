@@ -14,6 +14,8 @@
  * Meta Graph API version: v21.0
  */
 
+import { safeParseJson } from "./fetchUtils";
+
 const GRAPH_VERSION = "v21.0";
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
@@ -46,8 +48,8 @@ async function graphPost(path: string, body: Record<string, string>): Promise<an
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
-  const json = await res.json();
-  if (!res.ok || json.error) {
+  const json = await safeParseJson<any>(res, "Meta Graph API");
+  if (json.error) {
     const msg = json.error?.message ?? `Meta API error ${res.status}`;
     throw new Error(`[Meta API] ${msg}`);
   }

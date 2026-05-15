@@ -14,6 +14,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { wrapLLM } from "./llmUtils";
+import { safeParseJson } from "./fetchUtils";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { landingPages } from "../drizzle/schema";
@@ -285,7 +286,7 @@ Design guidelines:
     throw new Error(`Gamma API error ${response.status}: ${errorText}`);
   }
 
-  const data = (await response.json()) as { generationId: string };
+  const data = await safeParseJson<{ generationId: string }>(response, "Gamma API create generation");
   return data.generationId;
 }
 
@@ -306,11 +307,11 @@ async function pollGammaGeneration(generationId: string): Promise<{
     throw new Error(`Gamma poll error ${response.status}: ${errorText}`);
   }
 
-  const data = (await response.json()) as {
+  const data = await safeParseJson<{
     status: string;
     gammaUrl?: string;
     error?: string;
-  };
+  }>(response, "Gamma API poll generation");
 
   if (data.status === "completed") {
     return { status: "completed", gammaUrl: data.gammaUrl };

@@ -26,6 +26,7 @@
  * ```
  */
 import { ENV } from "./env";
+import { safeParseJson } from "server/fetchUtils";
 
 export type TranscribeOptions = {
   audioUrl: string; // URL to the audio file (e.g., S3 URL)
@@ -171,7 +172,7 @@ export async function transcribeAudio(
     }
 
     // Step 5: Parse and return the transcription result
-    const whisperResponse = await response.json() as WhisperResponse;
+    const whisperResponse = await safeParseJson<WhisperResponse>(response, "Voice transcription");
     
     // Validate response structure
     if (!whisperResponse.text || typeof whisperResponse.text !== 'string') {

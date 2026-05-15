@@ -26,6 +26,7 @@ import FormData from "form-data";
 import { ENV } from "./_core/env";
 import { PassThrough } from "stream";
 import { spawn } from "child_process";
+import { safeParseJson } from "./fetchUtils";
 
 // Use bundled ffmpeg-static binary so stitching works in Cloud Run (no system ffmpeg required)
 if (ffmpegStatic) {
@@ -869,7 +870,7 @@ export const videoVariantRouter = router({
               }),
             }
           );
-          const uploadJson = await uploadRes.json() as { id?: string; video_id?: string; error?: { message: string } };
+          const uploadJson = await safeParseJson<{ id?: string; video_id?: string; error?: { message: string } }>(uploadRes, "Meta video upload");
           if (uploadJson.error) throw new Error(uploadJson.error.message);
           const videoId = uploadJson.video_id ?? uploadJson.id;
           if (!videoId) throw new Error("No video_id returned from Meta");
@@ -893,7 +894,7 @@ export const videoVariantRouter = router({
               }),
             }
           );
-          const creativeJson = await creativeRes.json() as { id?: string; error?: { message: string } };
+          const creativeJson = await safeParseJson<{ id?: string; error?: { message: string } }>(creativeRes, "Meta ad creative");
           if (creativeJson.error) throw new Error(creativeJson.error.message);
 
           results.push({ variantId: variant.id, label, success: true, videoId, creativeId: creativeJson.id });

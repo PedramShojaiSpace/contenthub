@@ -11,6 +11,7 @@ import {
 import { eq, desc, and } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { wrapLLM } from "./llmUtils";
+import { safeParseJson } from "./fetchUtils";
 
 // ─── Webinar Intelligence Router ──────────────────────────────────────────────
 // Stores and processes attendee survey data (pre-registration + post-webinar)
@@ -212,11 +213,10 @@ Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, q
       const formRes = await fetch(`https://api.typeform.com/forms/${input.typeformId}`, {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
-      if (!formRes.ok) throw new Error(`Typeform API error: ${formRes.status} ${formRes.statusText}`);
-      const form = await formRes.json() as {
+      const form = await safeParseJson<{
         title: string;
         fields?: Array<{ id: string; title: string; type: string }>;
-      };
+      }>(formRes, "Typeform form fetch");
 
       // Build a field ID → label map
       const fieldMap: Record<string, string> = {};
@@ -244,12 +244,11 @@ Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, q
           pageToken ? `&before=${pageToken}` : ""
         }`;
         const respRes = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
-        if (!respRes.ok) throw new Error(`Typeform responses error: ${respRes.status}`);
-        const page = await respRes.json() as {
+        const page = await safeParseJson<{
           items: typeof allItems;
           page_count: number;
           total_items: number;
-        };
+        }>(respRes, "Typeform responses fetch");
         allItems = allItems.concat(page.items ?? []);
         // If we got a full page, there may be more — use last item's token
         pageToken = page.items?.length === 200 ? page.items[page.items.length - 1].submitted_at : null;

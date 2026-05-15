@@ -17,6 +17,7 @@
  */
 import { storagePut } from "server/storage";
 import { ENV } from "./env";
+import { safeParseJson } from "server/fetchUtils";
 
 export type GenerateImageOptions = {
   prompt: string;
@@ -71,12 +72,12 @@ export async function generateImage(
     );
   }
 
-  const result = (await response.json()) as {
+  const result = await safeParseJson<{
     image: {
       b64Json: string;
       mimeType: string;
     };
-  };
+  }>(response, "Image generation");
   const base64Data = result.image.b64Json;
   const buffer = Buffer.from(base64Data, "base64");
 

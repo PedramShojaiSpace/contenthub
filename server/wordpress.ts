@@ -10,6 +10,8 @@
  * - Open Graph and Twitter Card meta via Yoast
  */
 
+import { safeParseJson } from "./fetchUtils";
+
 function getWpAuth(): { baseUrl: string; authHeader: string } {
   const baseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
   const username = process.env.WORDPRESS_USERNAME ?? "";
@@ -90,10 +92,10 @@ export async function uploadMediaFromUrl(
     throw new Error(`WordPress media upload failed: ${errText}`);
   }
 
-  const media = (await uploadRes.json()) as {
+  const media = await safeParseJson<{
     id: number;
     source_url: string;
-  };
+  }>(uploadRes, "WordPress media upload");
 
   // Set alt text for image SEO
   if (altText && media.id) {
@@ -322,11 +324,11 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
     throw new Error(`WordPress post creation failed: ${errText}`);
   }
 
-  const post = (await res.json()) as {
+  const post = await safeParseJson<{
     id: number;
     link: string;
     status: string;
-  };
+  }>(res, "WordPress post creation");
 
   // ─── Second-pass Yoast update ────────────────────────────────────────────────
   // Some Yoast fields (metadesc, focuskw) may not be written on the initial POST
@@ -456,7 +458,7 @@ export async function fetchAllWpPosts(): Promise<WpPostSummary[]> {
       throw new Error(`WP posts fetch failed (page ${page}): ${res.statusText}`);
     }
 
-    const data = (await res.json()) as Array<{
+    const data = await safeParseJson<Array<{
       id: number;
       title: { rendered: string };
       slug: string;
@@ -465,7 +467,7 @@ export async function fetchAllWpPosts(): Promise<WpPostSummary[]> {
       categories: number[];
       tags: number[];
       date_gmt: string;
-    }>;
+    }>>(res, "WordPress posts fetch");
 
     if (!data || data.length === 0) break;
 

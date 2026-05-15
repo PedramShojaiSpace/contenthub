@@ -19,6 +19,7 @@
  */
 
 import { marked } from "marked";
+import { safeParseJson } from "./fetchUtils";
 
 /**
  * Fetch wrapper with a hard timeout for WordPress API calls.
@@ -207,7 +208,7 @@ export async function resolveOrCreateWpTags(
         8_000
       );
       if (searchRes.ok) {
-        const existing = (await searchRes.json()) as Array<{ id: number; name: string; slug: string }>;
+        const existing = await safeParseJson<Array<{ id: number; name: string; slug: string }>>(searchRes, "WordPress tag search");
         const match = existing.find(
           (t) =>
             t.name.toLowerCase() === keyword.toLowerCase() ||
@@ -229,7 +230,7 @@ export async function resolveOrCreateWpTags(
         body: JSON.stringify({ name: keyword, slug }),
       }, 8_000);
       if (createRes.ok) {
-        const newTag = (await createRes.json()) as { id: number };
+        const newTag = await safeParseJson<{ id: number }>(createRes, "WordPress tag create");
         tagIds.push(newTag.id);
       }
     } catch {

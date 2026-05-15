@@ -8,6 +8,7 @@
  */
 
 import { ENV } from "./env";
+import { safeParseJson } from "server/fetchUtils";
 
 // ============================================================================
 // Configuration
@@ -86,7 +87,7 @@ export async function makeRequest<T = unknown>(
     );
   }
 
-  return (await response.json()) as T;
+  return safeParseJson<T>(response, "Google Maps API");
 }
 
 // ============================================================================

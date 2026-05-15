@@ -2,6 +2,7 @@
 // Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
 
 import { ENV } from './_core/env';
+import { safeParseJson } from './fetchUtils';
 
 type StorageConfig = { baseUrl: string; apiKey: string };
 
@@ -38,7 +39,8 @@ async function buildDownloadUrl(
     method: "GET",
     headers: buildAuthHeaders(apiKey),
   });
-  return (await response.json()).url;
+  const data = await safeParseJson<{ url: string }>(response, "Storage download URL");
+  return data.url;
 }
 
 function ensureTrailingSlash(value: string): string {
@@ -82,14 +84,8 @@ export async function storagePut(
     body: formData,
   });
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(
-      `Storage upload failed (${response.status} ${response.statusText}): ${message}`
-    );
-  }
-  const url = (await response.json()).url;
-  return { key, url };
+  const uploadResult = await safeParseJson<{ url: string }>(response, "Storage upload");
+  return { key, url: uploadResult.url };
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {

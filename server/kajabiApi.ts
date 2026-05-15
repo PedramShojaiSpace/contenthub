@@ -4,6 +4,8 @@
  * Credentials are injected from environment variables (KAJABI_CLIENT_ID, KAJABI_CLIENT_SECRET).
  */
 
+import { safeParseJson } from "./fetchUtils";
+
 const KAJABI_API_BASE = "https://api.kajabi.com/v1";
 const KAJABI_TOKEN_URL = "https://api.kajabi.com/v1/oauth/token";
 
@@ -37,10 +39,10 @@ async function getAccessToken(): Promise<string> {
     throw new Error(`Kajabi token request failed (${res.status}): ${text}`);
   }
 
-  const data = (await res.json()) as {
+  const data = await safeParseJson<{
     access_token: string;
     expires_in: number;
-  };
+  }>(res, "Kajabi token request");
   cachedToken = {
     token: data.access_token,
     expiresAt: now + data.expires_in * 1000,
@@ -77,7 +79,7 @@ async function resolveTagId(tagName: string): Promise<string> {
   }
 
   type KajabiTagItem = { id: string; attributes: { name: string } };
-  const searchData = (await searchRes.json()) as { data: KajabiTagItem[] };
+  const searchData = await safeParseJson<{ data: KajabiTagItem[] }>(searchRes, "Kajabi listContactTags");
 
   // Find exact match (filter[name_cont] is a contains filter, not exact)
   const exactMatch = searchData.data.find(
@@ -110,7 +112,7 @@ async function resolveTagId(tagName: string): Promise<string> {
     throw new Error(`Kajabi createContactTag failed (${createRes.status}): ${text}`);
   }
 
-  const createData = (await createRes.json()) as { data: { id: string } };
+  const createData = await safeParseJson<{ data: { id: string } }>(createRes, "Kajabi createContactTag");
   tagIdCache[tagName] = createData.data.id;
   return createData.data.id;
 }
@@ -145,7 +147,7 @@ export async function kajabiCreateContact(params: {
     throw new Error(`Kajabi createContact failed (${res.status}): ${text}`);
   }
 
-  const data = (await res.json()) as { id: string; email: string };
+  const data = await safeParseJson<{ id: string; email: string }>(res, "Kajabi createContact");
   return data;
 }
 

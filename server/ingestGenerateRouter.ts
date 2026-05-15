@@ -13,6 +13,7 @@ import { getDb } from "./db";
 import { ingestReports, contentItems, scripts } from "../drizzle/schema";
 import { sql, desc, eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 import { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign } from "./ctaRouter";
 
 // ── Voice prompts ─────────────────────────────────────────────────────────────
@@ -198,7 +199,7 @@ ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructi
       // 4. Generate all 7 content types in parallel (Facebook + Instagram separately)
       const [linkedinResult, xResult, facebookResult, instagramResult, youtubeResult, blogResult, emailResult] = await Promise.all([
         // LinkedIn
-        invokeLLM({
+        wrapLLM(() => invokeLLM({
           messages: [
             { role: "system", content: LINKEDIN_VOICE },
             {
@@ -206,9 +207,9 @@ ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructi
               content: `Write a LinkedIn post based on this research:\n\n${researchContext}\n\nEnd the post with this CTA (naturally woven in, not bolted on):\n${ctaLine(linkedinCtaUrl)}`,
             },
           ],
-        }),
+        })),
         // X / Twitter
-        invokeLLM({
+        wrapLLM(() => invokeLLM({
           messages: [
             { role: "system", content: X_VOICE },
             {
@@ -216,9 +217,9 @@ ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructi
               content: `Write an X post based on this research:\n\n${researchContext}\n\nIf character budget allows, end with: ${xCtaUrl || cta.ctaText}`,
             },
           ],
-        }),
+        })),
         // Facebook
-        invokeLLM({
+        wrapLLM(() => invokeLLM({
           messages: [
             { role: "system", content: FACEBOOK_VOICE },
             {
@@ -226,9 +227,9 @@ ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructi
               content: `Write a Facebook post based on this research:\n\n${researchContext}\n\nEnd the post with this CTA (warm, conversational):\n${ctaLine(metaCtaUrl)}`,
             },
           ],
-        }),
+        })),
         // Instagram
-        invokeLLM({
+        wrapLLM(() => invokeLLM({
           messages: [
             { role: "system", content: INSTAGRAM_VOICE },
             {
@@ -236,9 +237,9 @@ ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructi
               content: `Write an Instagram caption based on this research:\n\n${researchContext}\n\nEnd with a brief CTA:\n${ctaLine(metaCtaUrl)}`,
             },
           ],
-        }),
+        })),
         // YouTube description + spoken hook
-        invokeLLM({
+        wrapLLM(() => invokeLLM({
           messages: [
             { role: "system", content: YOUTUBE_VOICE },
             {
@@ -246,9 +247,9 @@ ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructi
               content: `Write a YouTube video description and spoken hook based on this research:\n\n${researchContext}\n\nInclude this CTA in the description:\n${cta.ctaText} ${youtubeCtaUrl}`,
             },
           ],
-        }),
+        })),
         // Blog
-        invokeLLM({
+        wrapLLM(() => invokeLLM({
           messages: [
             {
               role: "system",
@@ -270,9 +271,9 @@ HASHTAGS: None — this is a blog post.`,
               content: `Write a blog post based on this research:\n\n${researchContext}\n\nEnd the post with this CTA paragraph (natural, non-pushy):\n${cta.ctaText} ${blogCtaUrl}`,
             },
           ],
-        }),
+        })),
         // Email Newsletter
-        invokeLLM({
+        wrapLLM(() => invokeLLM({
           messages: [
             { role: "system", content: EMAIL_VOICE },
             {
@@ -280,7 +281,7 @@ HASHTAGS: None — this is a blog post.`,
               content: `Write a weekly email newsletter based on this research:\n\n${researchContext}\n\nInclude this CTA naturally in the email:\n${cta.ctaText} ${emailCtaUrl}`,
             },
           ],
-        }),
+        })),
       ]);
 
       const extractText = (result: any): string =>
@@ -433,12 +434,12 @@ SCRIPT REQUIREMENTS:
 
 Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Write the full teleprompter script for: "${input.reportTitle}"\n\nYouTube description context:\n${input.youtubeDescription.slice(0, 2000)}` },
         ],
-      });
+      }));
 
       const rawContent = response?.choices?.[0]?.message?.content;
       const scriptBody: string = typeof rawContent === "string" ? rawContent : "Script generation failed.";

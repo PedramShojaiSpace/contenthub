@@ -6,6 +6,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { personas } from "../drizzle/schema";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 import { eq, asc } from "drizzle-orm";
 
 export const personasRouter = router({
@@ -76,7 +77,7 @@ export const personasRouter = router({
       const persona = results[0];
       if (!persona) throw new Error("Persona not found");
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           {
             role: "system",
@@ -100,7 +101,7 @@ Return ONLY the CTA text, no explanation.`,
             content: `Write a CTA for this ${input.platform} post targeting ${persona.name}:\n\n${input.contentText.slice(0, 600)}`,
           },
         ],
-      });
+      }));
 
       const rawContent = response.choices[0]?.message?.content;
       const ctaText = typeof rawContent === "string" ? rawContent : "";

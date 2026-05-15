@@ -13,6 +13,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { landingPages } from "../drizzle/schema";
@@ -417,7 +418,7 @@ export const landingPagesRouter = router({
       );
 
       // Call LLM
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -425,7 +426,7 @@ export const landingPagesRouter = router({
             content: `Write the landing page copy for ${input.personaName} targeting the ${offerLabel} offer. Content angle: ${input.contentAngle}`,
           },
         ],
-      });
+      }));
 
       const rawContent = response.choices?.[0]?.message?.content;
       const copyBody = typeof rawContent === "string" ? rawContent : "";
@@ -574,12 +575,12 @@ Rules:
 - Do NOT add any meta-commentary or labels
 - Return ONLY the rewritten landing page copy in clean Markdown`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: variantPrompt },
           { role: "user", content: `Rewrite with the ${input.variantAngle} angle.` },
         ],
-      });
+      }));
 
       const rawContent = response.choices?.[0]?.message?.content;
       const variantCopy = typeof rawContent === "string" ? rawContent : "";

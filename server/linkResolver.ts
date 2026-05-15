@@ -9,6 +9,7 @@
  */
 
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 
 // Regex that matches the placeholder format used in the blog prompt
 const OUTBOUND_PLACEHOLDER_RE = /\[Outbound Link:\s*([^\]]+)\]/gi;
@@ -26,7 +27,7 @@ interface ResolvedLink {
  */
 async function resolveUrlViaLLM(sourceDescription: string): Promise<string | null> {
   try {
-    const response = await invokeLLM({
+    const response = await wrapLLM(() => invokeLLM({
       messages: [
         {
           role: "system",
@@ -42,11 +43,12 @@ RULES:
         {
           role: "user",
           content: `Find the real URL for this source: "${sourceDescription}"`,
-        },
+          },
       ],
-    });
+    }));
 
-    const raw = (String(response.choices?.[0]?.message?.content ?? "")).trim();
+    const content = response.choices?.[0]?.message?.content;
+    const raw = (typeof content === "string" ? content : "").trim();
     if (!raw || raw === "UNKNOWN" || !raw.startsWith("http")) {
       return null;
     }

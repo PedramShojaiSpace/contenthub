@@ -19,6 +19,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { fetchAllTopics, fetchBingNewsRSS, fetchPubMedArticles, TOPIC_CLUSTERS } from "./newsfeed";
 import { generateCommentary, generateXVersion } from "./newsfeedCommentary";
 import { getBufferProfiles, pushToBuffer } from "./buffer";
+import { wrapLLM } from "./llmUtils";
 
 export const newsfeedRouter = router({
   // ── List articles ──────────────────────────────────────────────────────────
@@ -92,7 +93,7 @@ export const newsfeedRouter = router({
         await Promise.allSettled(
           batch.map(async (article) => {
             try {
-              const commentary = await generateCommentary(article);
+              const commentary = await wrapLLM(() => generateCommentary(article));
               await database.insert(newsfeedArticles).values({
                 title: article.title.slice(0, 512),
                 source: (article.source ?? "").slice(0, 255),
@@ -187,7 +188,7 @@ export const newsfeedRouter = router({
 
       if (!article) throw new Error("Article not found");
 
-      const commentary = await generateCommentary({
+      const commentary = await wrapLLM(() => generateCommentary({
         title: article.title,
         url: article.url,
         source: article.source ?? "",
@@ -195,10 +196,10 @@ export const newsfeedRouter = router({
         imageUrl: article.imageUrl ?? undefined,
         topic: article.topic ?? "integrative_medicine",
         fetchedAt: article.fetchedAt,
-      });
+      }));
 
       // Also regenerate the X version so it stays in sync
-      const xVersion = await generateXVersion(commentary, article.url);
+      const xVersion = await wrapLLM(() => generateXVersion(commentary, article.url));
 
       await database
         .update(newsfeedArticles)
@@ -296,7 +297,7 @@ export const newsfeedRouter = router({
           // Generate or reuse cached X version
           let xText = article.xVersion;
           if (!xText) {
-            xText = await generateXVersion(article.commentary, article.url);
+            xText = await wrapLLM(() => generateXVersion(article.commentary!, article.url));
             await database
               .update(newsfeedArticles)
               .set({ xVersion: xText })
@@ -352,7 +353,7 @@ export const newsfeedRouter = router({
 
       if (article.xVersion) return { xVersion: article.xVersion };
 
-      const xVersion = await generateXVersion(article.commentary, article.url);
+      const xVersion = await wrapLLM(() => generateXVersion(article.commentary!, article.url));
       await database
         .update(newsfeedArticles)
         .set({ xVersion })

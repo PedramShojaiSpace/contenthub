@@ -25,6 +25,7 @@ import {
 } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ Return a JSON object:
   "cta": "cta script text"
 }`;
 
-  const response = await invokeLLM({
+  const response = await wrapLLM(() => invokeLLM({
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -116,7 +117,7 @@ Return a JSON object:
         },
       },
     },
-  });
+  }));
 
   const raw = response?.choices?.[0]?.message?.content ?? "{}";
   const parsed: GeneratedScripts = typeof raw === "string" ? JSON.parse(raw) : raw;

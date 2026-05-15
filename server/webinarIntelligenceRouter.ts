@@ -10,6 +10,7 @@ import {
 } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 
 // ─── Webinar Intelligence Router ──────────────────────────────────────────────
 // Stores and processes attendee survey data (pre-registration + post-webinar)
@@ -121,7 +122,7 @@ Extract the following in JSON format:
 
 Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, questions, language, summary`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -149,7 +150,7 @@ Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, q
             },
           },
         },
-      });
+      }));
 
       const rawContent = response.choices?.[0]?.message?.content;
       const rawContentStr = typeof rawContent === "string" ? rawContent : null;
@@ -501,7 +502,7 @@ AI Summary: ${intel.aiSummary ?? "(no summary)"}
 
 Synthesize these into an updated cumulative avatar profile. Return ONLY valid JSON.`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
@@ -532,7 +533,7 @@ Synthesize these into an updated cumulative avatar profile. Return ONLY valid JS
             },
           },
         },
-      });
+      }));
 
       const rawContent = response.choices?.[0]?.message?.content;
       const synthesized = typeof rawContent === "string" ? JSON.parse(rawContent) : rawContent;
@@ -709,7 +710,7 @@ Format your response as:
 ## 🗣️ Exact Phrases to Use
 (Pull 8–10 exact phrases from the survey language and show where in the webinar to use each one)`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -717,7 +718,7 @@ Format your response as:
             content: `Rewrite the webinar outline for "${session.topic}" based on the real audience intelligence from ${intel.responseCount ?? 0} survey respondents.`,
           },
         ],
-      });
+      }));
 
       const rawContent = response.choices?.[0]?.message?.content;
       const revisedOutline = typeof rawContent === "string" ? rawContent : "";

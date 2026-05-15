@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import { llmProjects, llmAssets } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 
 // ─── Asset type labels for prompts ──────────────────────────────────────────
 const ASSET_TYPE_LABELS: Record<string, string> = {
@@ -277,7 +278,7 @@ export const llmProjectsRouter = router({
         .map((t) => `- ${t.toUpperCase()}: ${ASSET_TYPE_LABELS[t]}`)
         .join("\n");
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           {
             role: "system",
@@ -354,7 +355,7 @@ Generate a comprehensive, prioritized production queue that covers every angle o
             },
           },
         },
-      });
+      }));
 
       const rawContent = response.choices[0]?.message?.content;
       const raw = typeof rawContent === "string" ? rawContent : "{}";

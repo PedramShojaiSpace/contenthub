@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 
@@ -175,7 +176,7 @@ Analyze the responses and return a JSON object with these exact keys:
 - personaInsights: 2-3 paragraph narrative describing who these respondents are, what they're struggling with, what they want, and how Pedram's message resonates with them
 - summary: 1 paragraph executive summary of the audience intelligence`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -213,7 +214,7 @@ Analyze the responses and return a JSON object with these exact keys:
             },
           },
         },
-      });
+      }));
 
       const raw = response.choices?.[0]?.message?.content;
       const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -328,7 +329,7 @@ Your task: Segment these responses across the 8 Urban Monk audience personas. Fo
 
 Return a JSON array of 8 persona segment objects.`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -368,7 +369,7 @@ Return a JSON array of 8 persona segment objects.`;
             },
           },
         },
-      });
+      }));
 
       const raw = response.choices?.[0]?.message?.content;
       const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;

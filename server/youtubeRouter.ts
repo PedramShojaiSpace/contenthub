@@ -1,6 +1,7 @@
 import { Supadata } from "@supadata/js";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 
@@ -207,7 +208,7 @@ A single sentence summarizing how Pedram's video will be different and better.
 
 Be specific, actionable, and grounded in Pedram's actual voice and positioning. Do not be generic.`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           {
             role: "system",
@@ -215,7 +216,7 @@ Be specific, actionable, and grounded in Pedram's actual voice and positioning. 
           },
           { role: "user", content: prompt },
         ],
-      });
+      }));
 
       const brief = response.choices?.[0]?.message?.content ?? "";
 
@@ -251,12 +252,12 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
 • [Point 4]
 • [Point 5]`;
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           { role: "system", content: "You are a precise content analyst who produces concise, specific video summaries." },
           { role: "user", content: prompt },
         ],
-      });
+      }));
 
       const outline = response.choices?.[0]?.message?.content ?? "";
       return { outline: typeof outline === "string" ? outline : String(outline) };

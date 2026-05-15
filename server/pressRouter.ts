@@ -9,6 +9,7 @@ import { getDb } from "./db";
 import { pressHits, PressHit } from "../drizzle/schema";
 import { desc, like, sql, and, eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
+import { wrapLLM } from "./llmUtils";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -239,7 +240,7 @@ export const pressRouter = router({
 
       const topicFocus = input.focus ? `Focus this bio on the topic: "${input.focus}".` : "";
 
-      const response = await invokeLLM({
+      const response = await wrapLLM(() => invokeLLM({
         messages: [
           {
             role: "system",
@@ -267,7 +268,7 @@ Requirements:
 - Make it feel earned and specific, not generic`,
           },
         ],
-      });
+      }));
 
       const snippet = response.choices[0]?.message?.content || "";
       return { snippet, outletList, totalHits: all.length };
@@ -290,7 +291,7 @@ Requirements:
     const sOutlets = Array.from(seenS).join(", ");
     const aOutlets = Array.from(seenA).join(", ");
 
-    const response = await invokeLLM({
+    const response = await wrapLLM(() => invokeLLM({
       messages: [
         {
           role: "system",
@@ -320,7 +321,7 @@ Write:
 4. A list of 10 authoritative search queries this person should rank for`,
         },
       ],
-    });
+    }));
 
     const content = response.choices[0]?.message?.content || "";
     return {

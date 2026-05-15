@@ -7,10 +7,10 @@ import { generateImage } from "./_core/imageGeneration";
 import { invokeLLM, type InvokeParams } from "./_core/llm";
 
 // Wrapper that converts RATE_LIMIT / SERVICE_UNAVAILABLE errors from invokeLLM into user-friendly TRPCErrors.
-// Automatically retries up to 3 times on transient 503/502/504 errors with exponential backoff.
+// Automatically retries up to 5 times on transient 503/502/504 errors with exponential backoff.
 async function safeLLM(params: InvokeParams, _retryCount = 0): Promise<Awaited<ReturnType<typeof invokeLLM>>> {
-  const MAX_RETRIES = 3;
-  const BASE_DELAY_MS = 2000; // 2s, 4s, 8s
+  const MAX_RETRIES = 5;
+  const BASE_DELAY_MS = 1000; // 1s, 2s, 4s, 8s, 16s
   try {
     return await invokeLLM(params);
   } catch (err: unknown) {

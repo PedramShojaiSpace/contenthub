@@ -265,8 +265,8 @@ const normalizeResponseFormat = ({
   };
 };
 
-const INVOKE_LLM_MAX_RETRIES = 3;
-const INVOKE_LLM_BASE_DELAY_MS = 2000; // 2s → 4s → 8s
+const INVOKE_LLM_MAX_RETRIES = 5;
+const INVOKE_LLM_BASE_DELAY_MS = 1000; // 1s → 2s → 4s → 8s → 16s
 
 export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<InvokeResult> {
   assertApiKey();

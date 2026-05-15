@@ -1,0 +1,53 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [
+    "db",
+    "server",
+    "user"
+  ],
+  "dev_command": "pnpm run dev",
+  "env_vars": {
+    "DATABASE_URL": "mysql://2Xox4WBe4KrUPbP.bb54cdcee2e7:6uhKZ0LQV0VgXDC6S23B@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/iUgsiz76NwfDUVHZHV7CyJ?ssl={\"rejectUnauthorized\":true}"
+  },
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
+    "access_key_id": "ASIAZV3A2ECZD3IEFPGS",
+    "secret_access_key": "XuBlssleFZXPSpUX2NUWWIH/YWHt8KnESvn1poM0",
+    "session_token": "IQoJb3JpZ2luX2VjELT//////////wEaCXVzLWVhc3QtMSJHMEUCIQDLpGsQWbLCB59XKUdmBYuQobU60ySInK31f6hct5BR7AIgTwkTfU7ySSRI4So3NqnX4TzkclAympvr7PKJ0YseUmIq9QMIfRAEGgw2NjUzODYwOTg4NjYiDDrCN5sf0ducKFI07SrSAw/n/bwMJJboh+KyMRSfPVHKq3m1Bpt+061/VtsnBXF+/sfl8A63/we1q+mZG0l7bhVOpuTMB/GYUTdAfyav/kX21U/F8mIMlJAY/xDLTQ01i44ICsbvjRnVpz0U9mPM1PCkEb7n2XQ/WEca6qYTdozp0VxJiin9kTlefrg9smuMmqD1da5A0/D3UwLwWtelFUX9d1FfFh62GQbQeyJbpb/s1v2ppbmr3kaMNjqGEnEsTmim+ngbfGrK/IN2VGJK2cZW318X0O+Doh/VaGJSiiZXqn21fFLcD/6UR/IhpD4JGhHlgKsNaKT7gIRU9zIDCjU/iKRFpOBk8MCeSD/6Pv0uRkmZ//T6Uy841CieEKyoS6L7TD5aFFjdszHk8Q5RtDLkgpI55W9zGt2g+dv1aKygR9TQHcNT1oXJZLn7aDeka71qR+ik6h3KC8reCyLGdGFUVJD6VyDQrwxxPbc7YrOB9VeW5Rfcjludwz/L9VVbbTUkxoGlJWw43vjFICZFJd1Ot/wnEyGg6kwHVlbinIohR4dlJ8UMoYIjZGQj0u8noBit61gpu8VpZWSrkWJ0WYJonqJg1RN9+Wh7l4JC0SvrF2gwXbAfPKzkcisRvUdkjnMwuO6d0AY6nQG5GM7+uNAEV12C15Elw735MhJyQNHXdwR1PcTXge1TfOYFdca8PIIqsjzszokdXDPIzrrApB98ZqDaEj5ASNzQja68+8AnjQKA+zSiNtjR+pcIljU31L1jNk4toqNvn8vYlCih/isbjcsBz6boCjxz8SpRcvNpJhKitHcOhOrFh628pVyiQkrjXQm3hKWDCoQ08kD7kq7lDiLZZEiK",
+    "expiration": "2026-05-16T07:42:48.000Z"
+  },
+  "name": "lights-on-optin",
+  "path": "/home/ubuntu/lights-on-optin",
+  "port": 3000,
+  "secrets": {
+    "BUFFER_ACCESS_TOKEN": "poKz3ynLtuvgotw0sWkHiFyGDFbXZPDtX8_qO9Y48y3",
+    "BUILT_IN_FORGE_API_KEY": "5AVCyfY2SWPYSp6AmjFoZL",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "GAMMA_API_KEY": "sk-gamma-xVJyxS6NKqNCDAh9z7Pqf5QNojKxWirVyXoYaFVFjgg",
+    "GOOGLE_DRIVE_CLIENT_ID": "877945805124-l9e6l0pop2mgpvlg4qpta5l3vjphuo8i.apps.googleusercontent.com",
+    "GOOGLE_DRIVE_CLIENT_SECRET": "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",
+    "INGEST_SECRET": "dfagsdfghs993452345",
+    "JWT_SECRET": "E2xam9M3MycoArzU2yxxKG",
+    "KAJABI_CLIENT_ID": "TkDLsin2ArdkV9FDXR3UX4a5",
+    "KAJABI_CLIENT_SECRET": "rUsNFzp2kuG3JdnYAzAefrxJ",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Pedram Shojai",
+    "OWNER_OPEN_ID": "6Efk5Rs3uA46PG9TgoeUmf",
+    "SUPADATA_API_KEY": "sd_6a7ed1d5513cf44dee12d7edd468578b",
+    "TYPEFORM_API_KEY": "tfp_HhhBqn3jf8hWm2fE8UfnRh6NUuMYaCxZxaht5BJpMiv1_3pYNYiC35kAcpA",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "e055d124-bf62-49a5-af69-62d22b51804a",
+    "VITE_APP_ID": "iUgsiz76NwfDUVHZHV7CyJ",
+    "VITE_APP_LOGO": "https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663158996687/STCioZiqBCXByfeK.png",
+    "VITE_APP_TITLE": "Urban Monk Content Hub",
+    "VITE_FRONTEND_FORGE_API_KEY": "j9WHH9XYnrAjwzV4gR6JxV",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im",
+    "WORDPRESS_APP_PASSWORD": "v5qRVSp7IIAea7qNNYoPuS8y",
+    "WORDPRESS_URL": "https://theurbanmonk.com",
+    "WORDPRESS_USERNAME": "pedram@theurbanmonk.com"
+  },
+  "template_id": "web-db-user",
+  "test_command": "pnpm test"
+}

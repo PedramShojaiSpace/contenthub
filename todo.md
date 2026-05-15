@@ -2427,3 +2427,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add automatic retry with exponential backoff (3 retries: 2s, 4s, 8s) directly in invokeLLM so all callers benefit
 - [x] Add SERVICE_UNAVAILABLE handling in safeLLM to surface clean user-facing TRPCError after retries exhausted
 - [x] Fix covers blog generation and all other LLM-powered features (LinkedIn, Twitter, YouTube, etc.)
+
+## v191 — Upload 500 Gateway Error Fix
+
+- [x] Detect transient 500/502/503/504 HTTP errors in forge storage upload (makeForgeUploadRequest)
+- [x] Detect HTML error body responses (200 OK with <html> body) from storage gateway
+- [x] Add automatic retry with exponential backoff (3 retries: 3s, 6s, 12s) in uploadBufferToForge
+- [x] Add automatic retry with exponential backoff (3 retries: 3s, 6s, 12s) in uploadFileToForge
+- [x] Surface clean user-facing error after retries exhausted: "The storage service is temporarily unavailable — please try again"
+- [x] Fix covers both chunk upload and finalize (assembled file) upload paths

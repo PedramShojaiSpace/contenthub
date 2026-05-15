@@ -72,8 +72,12 @@ function randomSuffix() {
 
 // ── Forge storage helpers ─────────────────────────────────────────────────────
 
+const FORGE_UPLOAD_MAX_RETRIES = 3;
+const FORGE_UPLOAD_BASE_DELAY_MS = 3000; // 3s → 6s → 12s
+
 /**
  * Upload a Buffer to forge storage using multipart/form-data.
+ * Retries up to FORGE_UPLOAD_MAX_RETRIES times on transient 5xx / HTML gateway errors.
  * Returns the CDN URL.
  */
 async function uploadBufferToForge(
@@ -86,18 +90,33 @@ async function uploadBufferToForge(
   const serverKey = ENV.forgeApiKey;
   if (!baseUrl || !serverKey) throw new Error("Storage proxy credentials missing");
 
-  const form = new FormData();
-  form.append("file", data, {
-    filename,
-    contentType: "application/octet-stream",
-    knownLength: data.length,
-  });
+  for (let attempt = 0; attempt <= FORGE_UPLOAD_MAX_RETRIES; attempt++) {
+    // Rebuild FormData each attempt (streams can only be piped once)
+    const form = new FormData();
+    form.append("file", data, {
+      filename,
+      contentType: "application/octet-stream",
+      knownLength: data.length,
+    });
 
-  return makeForgeUploadRequest(form, s3Key, baseUrl, serverKey, timeoutMs);
+    const result = await makeForgeUploadRequest(form, s3Key, baseUrl, serverKey, timeoutMs);
+    if ("url" in result) return result.url;
+
+    // Transient error — wait and retry
+    if (attempt < FORGE_UPLOAD_MAX_RETRIES) {
+      const delay = FORGE_UPLOAD_BASE_DELAY_MS * Math.pow(2, attempt);
+      console.warn(`[ForgeUpload] Transient ${result.statusCode} on buffer upload — retrying in ${delay}ms (attempt ${attempt + 1}/${FORGE_UPLOAD_MAX_RETRIES})`);
+      await new Promise((r) => setTimeout(r, delay));
+    } else {
+      throw new Error(`Storage upload failed after ${FORGE_UPLOAD_MAX_RETRIES} retries (${result.statusCode}). The storage service is temporarily unavailable — please try again.`);
+    }
+  }
+  throw new Error("Storage upload failed: unexpected retry loop exit");
 }
 
 /**
  * Upload a file from disk to forge storage using multipart/form-data.
+ * Retries up to FORGE_UPLOAD_MAX_RETRIES times on transient 5xx / HTML gateway errors.
  * Returns the CDN URL.
  */
 async function uploadFileToForge(
@@ -110,14 +129,41 @@ async function uploadFileToForge(
   const serverKey = ENV.forgeApiKey;
   if (!baseUrl || !serverKey) throw new Error("Storage proxy credentials missing");
 
-  const form = new FormData();
-  form.append("file", fs.createReadStream(filePath), {
-    filename,
-    contentType: "video/mp4",
-    knownLength: fs.statSync(filePath).size,
-  });
+  const fileSize = fs.statSync(filePath).size;
 
-  return makeForgeUploadRequest(form, s3Key, baseUrl, serverKey, timeoutMs);
+  for (let attempt = 0; attempt <= FORGE_UPLOAD_MAX_RETRIES; attempt++) {
+    // Rebuild FormData each attempt (ReadStream can only be consumed once)
+    const form = new FormData();
+    form.append("file", fs.createReadStream(filePath), {
+      filename,
+      contentType: "video/mp4",
+      knownLength: fileSize,
+    });
+
+    const result = await makeForgeUploadRequest(form, s3Key, baseUrl, serverKey, timeoutMs);
+    if ("url" in result) return result.url;
+
+    // Transient error — wait and retry
+    if (attempt < FORGE_UPLOAD_MAX_RETRIES) {
+      const delay = FORGE_UPLOAD_BASE_DELAY_MS * Math.pow(2, attempt);
+      console.warn(`[ForgeUpload] Transient ${result.statusCode} on file upload — retrying in ${delay}ms (attempt ${attempt + 1}/${FORGE_UPLOAD_MAX_RETRIES})`);
+      await new Promise((r) => setTimeout(r, delay));
+    } else {
+      throw new Error(`Storage upload failed after ${FORGE_UPLOAD_MAX_RETRIES} retries (${result.statusCode}). The storage service is temporarily unavailable — please try again.`);
+    }
+  }
+  throw new Error("Storage upload failed: unexpected retry loop exit");
+}
+
+/**
+ * Returns true for transient gateway errors that are safe to retry.
+ */
+function isTransientStorageError(statusCode: number | undefined, body: string): boolean {
+  if (!statusCode) return false;
+  if (statusCode === 500 || statusCode === 502 || statusCode === 503 || statusCode === 504) return true;
+  // Some gateways return 200 with an HTML error body
+  if (body.trimStart().startsWith("<")) return true;
+  return false;
 }
 
 function makeForgeUploadRequest(
@@ -126,13 +172,13 @@ function makeForgeUploadRequest(
   baseUrl: string,
   serverKey: string,
   timeoutMs: number
-): Promise<string> {
+): Promise<{ url: string } | { transient: true; statusCode: number }> {
   const uploadPath = `/v1/storage/upload?path=${encodeURIComponent(s3Key)}`;
   const url = new URL(baseUrl + uploadPath);
   const isHttps = url.protocol === "https:";
   const transport = isHttps ? https : http;
 
-  return new Promise<string>((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Storage upload timed out after ${timeoutMs / 1000}s`));
     }, timeoutMs);
@@ -155,17 +201,20 @@ function makeForgeUploadRequest(
         res.on("data", (d) => (body += d));
         res.on("end", () => {
           clearTimeout(timer);
-          if (res.statusCode === 200) {
+          if (res.statusCode === 200 && !body.trimStart().startsWith("<")) {
             try {
               const data = JSON.parse(body);
               if (data?.url) {
-                resolve(data.url);
+                resolve({ url: data.url });
               } else {
                 reject(new Error(`Storage proxy did not return a URL: ${body.slice(0, 200)}`));
               }
             } catch {
               reject(new Error(`Storage proxy response parse error: ${body.slice(0, 200)}`));
             }
+          } else if (isTransientStorageError(res.statusCode, body)) {
+            // Signal transient error to caller so it can rebuild FormData and retry
+            resolve({ transient: true, statusCode: res.statusCode ?? 500 });
           } else {
             reject(new Error(`Storage upload failed (${res.statusCode}): ${body.slice(0, 200)}`));
           }

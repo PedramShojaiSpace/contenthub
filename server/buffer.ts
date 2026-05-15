@@ -28,12 +28,18 @@ function getAccessToken(): string {
   return process.env.BUFFER_ACCESS_TOKEN ?? "";
 }
 
+const BUFFER_GQL_MAX_RETRIES = 3;
+const BUFFER_GQL_BASE_DELAY_MS = 2000; // 2s → 4s → 8s
+
 /**
  * Execute a GraphQL query/mutation against the Buffer API.
+ * Reads the response as text first to detect plain-text 5xx errors (e.g. "Service Unavailable")
+ * before attempting JSON.parse. Retries automatically on transient 502/503/504 responses.
  */
 async function bufferGql<T>(
   query: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
+  _retryCount = 0
 ): Promise<{ data?: T; errors?: Array<{ message: string }> }> {
   const token = getAccessToken();
   // DEBUG: log the exact mutation being sent so we can diagnose link preview issues
@@ -46,7 +52,50 @@ async function bufferGql<T>(
     },
     body: JSON.stringify({ query, variables }),
   });
-  const json = await res.json() as { data?: T; errors?: Array<{ message: string }> };
+
+  // Read raw body first so we can inspect it before parsing
+  const rawBody = await res.text();
+
+  // Detect transient server errors by HTTP status (502, 503, 504)
+  if (res.status === 502 || res.status === 503 || res.status === 504) {
+    if (_retryCount < BUFFER_GQL_MAX_RETRIES) {
+      const delay = BUFFER_GQL_BASE_DELAY_MS * Math.pow(2, _retryCount);
+      console.warn(`[Buffer GQL] ${res.status} transient error — retrying in ${delay}ms (attempt ${_retryCount + 1}/${BUFFER_GQL_MAX_RETRIES})`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return bufferGql<T>(query, variables, _retryCount + 1);
+    }
+    throw new Error(`Buffer API is temporarily unavailable (${res.status}). Please try again in a moment.`);
+  }
+
+  // Detect plain-text service unavailable on HTTP 200 (some proxies do this)
+  const trimmed = rawBody.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    const lower = trimmed.toLowerCase();
+    if (
+      lower.includes("service unavailable") ||
+      lower.includes("bad gateway") ||
+      lower.includes("gateway timeout") ||
+      lower.includes("temporarily unavailable")
+    ) {
+      if (_retryCount < BUFFER_GQL_MAX_RETRIES) {
+        const delay = BUFFER_GQL_BASE_DELAY_MS * Math.pow(2, _retryCount);
+        console.warn(`[Buffer GQL] Plain-text service unavailable — retrying in ${delay}ms (attempt ${_retryCount + 1}/${BUFFER_GQL_MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return bufferGql<T>(query, variables, _retryCount + 1);
+      }
+      throw new Error(`Buffer API is temporarily unavailable. Please try again in a moment. (raw: ${trimmed.slice(0, 80)})`);
+    }
+    // Any other non-JSON response from Buffer
+    throw new Error(`Buffer API returned unexpected response (${res.status}): ${trimmed.slice(0, 200)}`);
+  }
+
+  let json: { data?: T; errors?: Array<{ message: string }> };
+  try {
+    json = JSON.parse(trimmed) as { data?: T; errors?: Array<{ message: string }> };
+  } catch {
+    throw new Error(`Buffer API response JSON parse failed: ${trimmed.slice(0, 200)}`);
+  }
+
   // DEBUG: log the raw response so we can see errors or unexpected shapes
   console.log("[Buffer GQL] Response:", JSON.stringify(json, null, 2));
   return json;

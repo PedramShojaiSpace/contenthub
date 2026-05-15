@@ -1,0 +1,1 @@
+ALTER TABLE `video_variant_jobs` ADD `aspectRatio` enum('9:16','16:9','1:1') DEFAULT '9:16' NOT NULL;

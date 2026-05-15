@@ -2401,3 +2401,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Build POST /api/drive/export/:jobId endpoint: upload all done variant MP4s to a shared Drive folder
 - [x] Add "Export to Google Drive" button in Video Variants UI with progress/status feedback
 - [x] Show Drive folder link after export completes so editor can access directly
+
+## v188 — Video Variant Factory: Aspect Ratio Selector + Re-stitch + Editor Notes
+
+- [ ] Add aspectRatio column to video_variant_jobs table (enum: 9:16 | 16:9 | 1:1, default 9:16)
+- [ ] Add aspect ratio selector UI in job creation section (radio/toggle: Vertical 9:16, Horizontal 16:9, Square 1:1)
+- [ ] Wire aspectRatio into FFmpeg filter chain: 1080x1920 (9:16), 1920x1080 (16:9), 1080x1080 (1:1)
+- [ ] Add retryVariant tRPC procedure: reset single variant to pending and re-trigger stitch
+- [ ] Add Re-stitch button on each failed variant row in Output Variants panel
+- [ ] Add editor notes textarea in Output Variants panel (shown when Drive is authorized)
+- [ ] Pass editor notes to Drive export endpoint and save as NOTES.txt in the Drive folder

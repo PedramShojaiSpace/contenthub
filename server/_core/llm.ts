@@ -299,10 +299,14 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
-  }
+  // Default max_tokens — callers can override via maxTokens/max_tokens param.
+  // 8192 is sufficient for full blog posts and avoids gateway timeouts that
+  // occurred with the previous 32768 value on the Cloud Run infrastructure.
+  const callerMaxTokens = params.maxTokens ?? params.max_tokens;
+  payload.max_tokens = callerMaxTokens ?? 8192;
+  // NOTE: The 'thinking' parameter was removed — it caused intermittent
+  // 'Service Unavailable' gateway errors on the Forge API proxy.
+
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,

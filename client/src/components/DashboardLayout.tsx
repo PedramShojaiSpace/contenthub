@@ -51,6 +51,8 @@ import {
   Newspaper,
   Clapperboard,
   MessageSquare,
+  BookOpen,
+  FileText,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -66,6 +68,8 @@ const topNavItems = [
   { icon: Video, label: "Video Production", path: "/video-production" },
   { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
   { icon: MessageSquare, label: "ManyChat Wizard", path: "/manychat-wizard" },
+  { icon: BookOpen, label: "Book Library", path: "/book-library" },
+  { icon: FileText, label: "E-Book Generator", path: "/ebook-generator" },
   { icon: Film, label: "Script Library", path: "/scripts" },
   { icon: Image, label: "Asset Library", path: "/assets" },
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },

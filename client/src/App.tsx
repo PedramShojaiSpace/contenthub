@@ -33,6 +33,8 @@ const ViralStudio = lazy(() => import("./pages/ViralStudio"));
 const VideoVariantFactory = lazy(() => import("./pages/VideoVariantFactory"));
 const VideoProductionSession = lazy(() => import("./pages/VideoProductionSession"));
 const ManyChatWizard = lazy(() => import("./pages/ManyChatWizard"));
+const BookLibrary = lazy(() => import("./pages/BookLibrary"));
+const EBookGenerator = lazy(() => import("./pages/EBookGenerator"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -73,6 +75,8 @@ function Router() {
         <Route path={"/video-variants"} component={VideoVariantFactory} />
         <Route path={"/video-production"} component={VideoProductionSession} />
         <Route path={"/manychat-wizard"} component={ManyChatWizard} />
+        <Route path={"/book-library"} component={BookLibrary} />
+        <Route path={"/ebook-generator"} component={EBookGenerator} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

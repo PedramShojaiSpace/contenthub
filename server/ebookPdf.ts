@@ -1,17 +1,19 @@
 /**
  * ebookPdf.ts — Branded PDF generation for Urban Monk e-books
  *
- * Uses puppeteer-core + system Chromium to render a rich HTML template to PDF.
- * The template includes:
- *   - Cover page with book title, author, and brand styling
- *   - Table of contents
- *   - Each chapter with its content (Markdown → HTML via marked)
- *   - Per-chapter CTA block injected at the end of each chapter
- *   - Back cover with Academy CTA
+ * Uses WeasyPrint (system-installed Python PDF renderer) via child_process.
+ * WeasyPrint renders the same rich HTML template as before — cover page, TOC,
+ * chapters with CTAs, back cover — without requiring a headless browser.
  */
 
-import puppeteer from "puppeteer-core";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { writeFile, readFile, unlink } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
 import { marked } from "marked";
+
+const execFileAsync = promisify(execFile);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,7 +23,7 @@ export interface PdfChapter {
   content: string; // Markdown
   ctaText?: string | null;
   ctaUrl?: string | null;
-  ctaLabel?: string | null; // button label
+  ctaLabel?: string | null;
 }
 
 export interface PdfCtaBlock {
@@ -37,7 +39,7 @@ export interface EbookPdfOptions {
   topic?: string;
   targetPersona?: string | null;
   chapters: PdfChapter[];
-  globalCta?: PdfCtaBlock | null; // shown on back cover
+  globalCta?: PdfCtaBlock | null;
   funnelStage?: string | null;
 }
 
@@ -90,7 +92,7 @@ function buildHtml(opts: EbookPdfOptions): string {
       (ch) =>
         `<div class="toc-row">
           <span class="toc-num">${ch.chapterNumber}</span>
-          <span class="toc-title">${escapeHtml(ch.title)}</span>
+          <span class="toc-entry">${escapeHtml(ch.title)}</span>
         </div>`
     )
     .join("\n");
@@ -117,27 +119,33 @@ function buildHtml(opts: EbookPdfOptions): string {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(title)}</title>
   <style>
-    /* ── Reset & Base ── */
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    @page chapter {
+      size: A4;
+      margin: 72pt 80pt 60pt 80pt;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 11pt; }
     body {
-      font-family: 'Georgia', 'Times New Roman', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       color: #1a1a1a;
       background: #fff;
       line-height: 1.75;
     }
 
-    /* ── Page Break Utility ── */
     .page-break { page-break-before: always; }
 
     /* ── Cover Page ── */
     .cover {
-      width: 100%;
-      min-height: 100vh;
-      background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      width: 210mm;
+      height: 297mm;
+      background: #1a1a2e;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -147,12 +155,6 @@ function buildHtml(opts: EbookPdfOptions): string {
       position: relative;
       page-break-after: always;
     }
-    .cover::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 60% 40%, rgba(212,175,55,0.12) 0%, transparent 70%);
-    }
     .cover-logo {
       width: 72px;
       height: 72px;
@@ -161,13 +163,11 @@ function buildHtml(opts: EbookPdfOptions): string {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'Georgia', serif;
+      font-family: Georgia, serif;
       font-size: 22pt;
       font-weight: bold;
       color: #d4af37;
-      margin-bottom: 40px;
-      position: relative;
-      z-index: 1;
+      margin: 0 auto 40px;
     }
     .cover-eyebrow {
       font-size: 9pt;
@@ -175,49 +175,39 @@ function buildHtml(opts: EbookPdfOptions): string {
       text-transform: uppercase;
       color: rgba(212,175,55,0.8);
       margin-bottom: 20px;
-      position: relative;
-      z-index: 1;
     }
     .cover-title {
-      font-size: 30pt;
+      font-size: 28pt;
       font-weight: bold;
       color: #ffffff;
       line-height: 1.2;
       margin-bottom: 20px;
-      position: relative;
-      z-index: 1;
-      max-width: 600px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
     }
     .cover-divider {
       width: 60px;
       height: 2px;
       background: #d4af37;
       margin: 24px auto;
-      position: relative;
-      z-index: 1;
     }
     .cover-subtitle {
       font-size: 13pt;
       color: rgba(255,255,255,0.75);
       font-style: italic;
       margin-bottom: 48px;
-      max-width: 480px;
-      position: relative;
-      z-index: 1;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
     }
     .cover-author {
       font-size: 11pt;
       color: rgba(212,175,55,0.9);
       letter-spacing: 0.1em;
-      position: relative;
-      z-index: 1;
     }
     .cover-footer {
-      position: absolute;
-      bottom: 40px;
-      left: 0;
-      right: 0;
-      text-align: center;
+      margin-top: 60px;
       font-size: 8pt;
       color: rgba(255,255,255,0.3);
       letter-spacing: 0.15em;
@@ -256,15 +246,11 @@ function buildHtml(opts: EbookPdfOptions): string {
       color: #c4a020;
       font-weight: bold;
       min-width: 24px;
-      font-family: 'Georgia', serif;
     }
-    .toc-title {
+    .toc-entry {
       font-size: 11pt;
       color: #1a1a2e;
       font-style: italic;
-      border: none;
-      padding: 0;
-      margin: 0;
     }
 
     /* ── Chapter ── */
@@ -291,7 +277,7 @@ function buildHtml(opts: EbookPdfOptions): string {
       line-height: 1.2;
     }
 
-    /* ── Chapter Body (Markdown output) ── */
+    /* ── Chapter Body ── */
     .chapter-body h1, .chapter-body h2, .chapter-body h3 {
       color: #1a1a2e;
       margin-top: 28px;
@@ -307,9 +293,7 @@ function buildHtml(opts: EbookPdfOptions): string {
     .chapter-body ul, .chapter-body ol {
       margin: 12px 0 16px 28px;
     }
-    .chapter-body li {
-      margin-bottom: 6px;
-    }
+    .chapter-body li { margin-bottom: 6px; }
     .chapter-body blockquote {
       margin: 20px 0;
       padding: 16px 24px;
@@ -327,11 +311,9 @@ function buildHtml(opts: EbookPdfOptions): string {
     }
 
     /* ── Chapter CTA ── */
-    .chapter-cta {
-      margin-top: 40px;
-    }
+    .chapter-cta { margin-top: 40px; }
     .chapter-cta-inner {
-      background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+      background: #1a1a2e;
       border-radius: 8px;
       padding: 28px 32px;
       text-align: center;
@@ -357,9 +339,9 @@ function buildHtml(opts: EbookPdfOptions): string {
 
     /* ── Back Cover ── */
     .back-cover {
-      width: 100%;
-      min-height: 100vh;
-      background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      width: 210mm;
+      height: 297mm;
+      background: #1a1a2e;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -368,6 +350,7 @@ function buildHtml(opts: EbookPdfOptions): string {
     .back-cover-inner {
       text-align: center;
       max-width: 520px;
+      margin: 0 auto;
     }
     .back-logo {
       width: 64px;
@@ -377,7 +360,7 @@ function buildHtml(opts: EbookPdfOptions): string {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'Georgia', serif;
+      font-family: Georgia, serif;
       font-size: 20pt;
       font-weight: bold;
       color: #d4af37;
@@ -414,11 +397,6 @@ function buildHtml(opts: EbookPdfOptions): string {
       letter-spacing: 0.1em;
       margin-top: 16px;
     }
-
-    /* ── Print ── */
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
   </style>
 </head>
 <body>
@@ -431,7 +409,7 @@ function buildHtml(opts: EbookPdfOptions): string {
     <div class="cover-divider"></div>
     ${subtitle ? `<p class="cover-subtitle">${escapeHtml(subtitle)}</p>` : ""}
     <p class="cover-author">${escapeHtml(author)}</p>
-    <div class="cover-footer">theurbanmonk.com · Urban Monk Academy</div>
+    <p class="cover-footer">theurbanmonk.com · Urban Monk Academy</p>
   </div>
 
   <!-- Table of Contents -->
@@ -451,37 +429,31 @@ function buildHtml(opts: EbookPdfOptions): string {
 </html>`;
 }
 
-// ─── PDF Generation ───────────────────────────────────────────────────────────
+// ─── PDF Generation via WeasyPrint ───────────────────────────────────────────
 
 export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
   const html = buildHtml(opts);
 
-  const browser = await puppeteer.launch({
-    executablePath: "/usr/bin/chromium",
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--font-render-hinting=none",
-    ],
-  });
+  // Write HTML to a temp file
+  const suffix = Math.random().toString(36).substring(2, 8);
+  const htmlPath = join(tmpdir(), `ebook-${suffix}.html`);
+  const pdfPath = join(tmpdir(), `ebook-${suffix}.pdf`);
 
   try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "load" });
+    await writeFile(htmlPath, html, "utf8");
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "0", right: "0", bottom: "0", left: "0" },
-      displayHeaderFooter: false,
+    // Run WeasyPrint: weasyprint <input.html> <output.pdf>
+    await execFileAsync("weasyprint", [htmlPath, pdfPath], {
+      timeout: 120_000, // 2 minutes max
+      env: { ...process.env, HOME: "/tmp" }, // WeasyPrint needs HOME for font cache
     });
 
-    return Buffer.from(pdfBuffer);
+    const pdfBuffer = await readFile(pdfPath);
+    return pdfBuffer;
   } finally {
-    await browser.close();
+    // Clean up temp files (ignore errors)
+    unlink(htmlPath).catch(() => {});
+    unlink(pdfPath).catch(() => {});
   }
 }
 

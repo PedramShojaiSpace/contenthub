@@ -2558,3 +2558,28 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add range slider (0–10, amber accent) in filter bar with live label ("All scores" / "8+")
 - [x] Add ✕ reset button that appears when minScore > 0
 - [x] Empty state shows hint to lower score floor when no snippets match
+
+## v-ebook-source-upload — Ebook Generator Source Document Upload
+- [ ] Find current ebook generator page and router
+- [ ] Add sourceDocumentUrl + sourceDocumentText + sourceDocumentName columns to ebook_projects (or equivalent) schema
+- [ ] Add /api/upload-ebook-source Express endpoint (accepts PDF/TXT/DOCX/MD, extracts text, stores in S3)
+- [ ] Add saveEbookSource tRPC procedure to persist extracted text + S3 URL
+- [ ] Build SourceDocumentPanel UI: drag-and-drop file upload zone + narrative textarea
+- [ ] Show uploaded filename + word count badge once document is loaded
+- [ ] Allow replacing the source document with a new upload
+- [ ] Update ebook generation AI prompt to inject source document text + user narrative as primary context
+- [ ] TypeScript clean, all tests passing
+
+## v-ebook-source-upload — Ebook Source Document Upload
+- [x] Add sourceDocumentName, sourceDocumentS3Url, sourceDocumentText, sourceNarrative columns to ebooks schema
+- [x] Run db:push to migrate new columns
+- [x] Add /api/ebook/upload-source endpoint (PDF/TXT/MD, 20MB, text extraction, S3 upload)
+- [x] Add saveEbookSource and updateEbookNarrative tRPC procedures to ebookRouter
+- [x] Update generateEbook procedure to accept sourceDocumentText, sourceDocumentName, sourceDocumentS3Url, sourceNarrative
+- [x] Add buildSourceContext() helper that injects source document + narrative into AI prompts
+- [x] Update generateChapterOutline() to use source document as primary content foundation
+- [x] Update generateChapterContent() to draw directly from source document material
+- [x] Add source document upload panel to GenerateEbookDialog (file drop zone + narrative textarea)
+- [x] File drop zone supports PDF, TXT, MD up to 20MB with word count display
+- [x] Narrative textarea for author direction on top of the document
+- [x] TypeScript clean (0 new errors)

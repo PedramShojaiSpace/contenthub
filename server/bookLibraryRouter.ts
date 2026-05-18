@@ -10,6 +10,18 @@ import {
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { parseLLMJson } from "./llmUtils";
+
+// Map any platform string the LLM might return to a valid snippetPlatformEnum value
+const VALID_SNIPPET_PLATFORMS = new Set(["instagram", "linkedin", "twitter", "facebook", "all"]);
+function sanitizePlatform(raw: string | null | undefined): "instagram" | "linkedin" | "twitter" | "facebook" | "all" {
+  if (!raw) return "all";
+  const lower = raw.toLowerCase().trim();
+  if (lower === "x" || lower === "twitter" || lower === "x/twitter") return "twitter";
+  if (lower === "meta" || lower === "facebook") return "facebook";
+  if (lower.startsWith("instagram")) return "instagram";
+  if (VALID_SNIPPET_PLATFORMS.has(lower)) return lower as "instagram" | "linkedin" | "twitter" | "facebook" | "all";
+  return "all";
+}
 import { pushToBuffer, getBufferProfiles } from "./buffer";
 import { compositeCard, compositeAllPlatformCards } from "./titleCardCompositor";
 
@@ -365,7 +377,7 @@ export const bookLibraryRouter = router({
               userId: ctx.user.id,
               passageText: s.passageText,
               theme: s.theme,
-              platform: (s.platform as "instagram" | "linkedin" | "twitter" | "facebook" | "all") ?? "instagram",
+              platform: sanitizePlatform(s.platform),
               chapter: s.chapter,
               qualityScore: s.qualityScore ?? null,
               shareabilityType: s.shareabilityType ?? null,
@@ -520,7 +532,7 @@ export const bookLibraryRouter = router({
               userId: ctx.user.id,
               passageText: s.passageText,
               theme: s.theme,
-              platform: (s.platform as "instagram" | "linkedin" | "twitter" | "facebook" | "all") ?? "instagram",
+              platform: sanitizePlatform(s.platform),
               chapter: s.chapter,
               qualityScore: s.qualityScore ?? null,
               shareabilityType: s.shareabilityType ?? null,
@@ -530,10 +542,11 @@ export const bookLibraryRouter = router({
           );
           snippetCount = snippets.length;
         }
-      } catch (err) {
-        console.error("[bookLibrary] re-extraction failed:", err);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[bookLibrary] re-extraction failed:", msg, err);
         await db.update(uploadedBooks).set({ status: "failed" }).where(eq(uploadedBooks.id, input.bookId));
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Re-extraction failed. Please try again." });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Re-extraction failed: ${msg}` });
       }
 
       await db.update(uploadedBooks).set({ status: "ready" }).where(eq(uploadedBooks.id, input.bookId));

@@ -2436,3 +2436,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add automatic retry with exponential backoff (3 retries: 3s, 6s, 12s) in uploadFileToForge
 - [x] Surface clean user-facing error after retries exhausted: "The storage service is temporarily unavailable — please try again"
 - [x] Fix covers both chunk upload and finalize (assembled file) upload paths
+
+## v192 — Book Library & E-Book Generator
+- [x] Add uploaded_books, book_snippets, ebooks, ebook_chapters tables to schema
+- [x] Build bookLibraryRouter: upload PDF, extract voice profile, extract snippets, generate title cards
+- [x] Build ebookRouter: generate full e-books in Dr. Shojai's voice, chapter editing, cover image, export
+- [x] Add PDF upload endpoint (/api/books/upload) with multer + pdf-parse v2 (PDFParse class)
+- [x] Register bookLibraryRouter and ebookRouter in appRouter
+- [x] Add BookLibrary and EBookGenerator pages with full UI
+- [x] Add Book Library and E-Book Generator nav entries to DashboardLayout
+- [x] Add routes /book-library and /ebook-generator in App.tsx
+- [x] Fix all TypeScript errors in new files (getDb pattern, Set iteration, field names, imports)
+- [x] Push DB schema — all 4 new tables verified in migration

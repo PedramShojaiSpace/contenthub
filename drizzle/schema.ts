@@ -1063,3 +1063,136 @@ export const userCredentials = mysqlTable("user_credentials", {
 });
 export type UserCredentials = typeof userCredentials.$inferSelect;
 export type InsertUserCredentials = typeof userCredentials.$inferInsert;
+
+// ─── Book Library ─────────────────────────────────────────────────────────────
+
+export const uploadedBookStatusEnum = mysqlEnum("uploadedBookStatus", [
+  "uploading",
+  "processing",
+  "ready",
+  "failed",
+]);
+
+export const uploadedBooks = mysqlTable("uploaded_books", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  author: varchar("author", { length: 255 }).default("Dr. Pedram Shojai"),
+  s3Key: text("s3Key"),
+  s3Url: text("s3Url"),
+  // Full extracted text from the PDF (may be very large)
+  extractedText: longtext("extractedText"),
+  // JSON: tone, vocabulary, sentence patterns, themes, opening/closing patterns
+  voiceProfileJson: longtext("voiceProfileJson"),
+  pageCount: int("pageCount"),
+  wordCount: int("wordCount"),
+  status: uploadedBookStatusEnum.notNull().default("uploading"),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UploadedBook = typeof uploadedBooks.$inferSelect;
+export type InsertUploadedBook = typeof uploadedBooks.$inferInsert;
+
+// ─── Book Snippets ────────────────────────────────────────────────────────────
+
+export const snippetPlatformEnum = mysqlEnum("snippetPlatform", [
+  "instagram",
+  "linkedin",
+  "twitter",
+  "facebook",
+  "all",
+]);
+
+export const titleCardStatusEnum = mysqlEnum("titleCardStatus", [
+  "pending",
+  "generating",
+  "ready",
+  "failed",
+]);
+
+export const bookSnippets = mysqlTable("book_snippets", {
+  id: int("id").autoincrement().primaryKey(),
+  bookId: int("bookId").notNull(),
+  userId: int("userId").notNull(),
+  passageText: text("passageText").notNull(),
+  pageNumber: int("pageNumber"),
+  chapter: varchar("chapter", { length: 255 }),
+  theme: varchar("theme", { length: 128 }),
+  platform: snippetPlatformEnum.default("instagram"),
+  titleCardUrl: text("titleCardUrl"),
+  titleCardStatus: titleCardStatusEnum.default("pending"),
+  savedToKanban: boolean("savedToKanban").default(false),
+  contentItemId: int("contentItemId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BookSnippet = typeof bookSnippets.$inferSelect;
+export type InsertBookSnippet = typeof bookSnippets.$inferInsert;
+
+// ─── E-Books ──────────────────────────────────────────────────────────────────
+
+export const ebookStatusEnum = mysqlEnum("ebookStatus", [
+  "outline",
+  "drafting",
+  "complete",
+  "failed",
+]);
+
+export const ebookFunnelStageEnum = mysqlEnum("ebookFunnelStage", [
+  "awareness",
+  "consideration",
+  "conversion",
+]);
+
+export const ebooks = mysqlTable("ebooks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  topic: text("topic").notNull(),
+  targetPersona: text("targetPersona"),
+  chapterCount: int("chapterCount").default(8),
+  wordCountTarget: int("wordCountTarget").default(5000),
+  status: ebookStatusEnum.notNull().default("outline"),
+  // JSON array of {chapterNumber, title, summary}
+  outlineJson: longtext("outlineJson"),
+  // Full markdown content of the complete e-book
+  fullContent: longtext("fullContent"),
+  // Generated PDF
+  pdfS3Key: text("pdfS3Key"),
+  pdfS3Url: text("pdfS3Url"),
+  // Integration links
+  ctaBlockId: int("ctaBlockId"),
+  landingPageId: int("landingPageId"),
+  webinarSessionId: int("webinarSessionId"),
+  funnelStage: ebookFunnelStageEnum.default("awareness"),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Ebook = typeof ebooks.$inferSelect;
+export type InsertEbook = typeof ebooks.$inferInsert;
+
+// ─── E-Book Chapters ──────────────────────────────────────────────────────────
+
+export const ebookChapterStatusEnum = mysqlEnum("ebookChapterStatus", [
+  "pending",
+  "generating",
+  "complete",
+  "failed",
+]);
+
+export const ebookChapters = mysqlTable("ebook_chapters", {
+  id: int("id").autoincrement().primaryKey(),
+  ebookId: int("ebookId").notNull(),
+  chapterNumber: int("chapterNumber").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  summary: text("summary"),
+  content: longtext("content"),
+  wordCount: int("wordCount"),
+  status: ebookChapterStatusEnum.notNull().default("pending"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EbookChapter = typeof ebookChapters.$inferSelect;
+export type InsertEbookChapter = typeof ebookChapters.$inferInsert;

@@ -11,6 +11,9 @@ import { startWeeklyDigestCron } from "../digest";
 import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
+import multer from "multer";
+import { PDFParse } from "pdf-parse";
+import { storagePut } from "../storage";
 import { runStitchingJob } from "../videoVariantRouter";
 import { videoVariants } from "../../drizzle/schema";
 import { getDriveAuthUrl, exchangeCodeForTokens, exportVariantsToDrive, isDriveAuthorized } from "../googleDrive";
@@ -233,6 +236,62 @@ async function startServer() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[Drive Export] Error:`, msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
+  // ── Book PDF upload endpoints ────────────────────────────────────────────────
+  // POST /api/books/upload — accepts PDF + bookId, extracts text, uploads to S3
+  const pdfUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+  app.post("/api/books/upload", pdfUpload.single("pdf"), async (req: any, res: any) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "No PDF file provided" });
+      if (file.mimetype !== "application/pdf" && !file.originalname.endsWith(".pdf")) {
+        return res.status(400).json({ error: "Only PDF files are accepted" });
+      }
+
+      // Extract text from PDF
+      let text = "";
+      let pageCount = 0;
+      try {
+        const parser = new PDFParse({ data: file.buffer });
+        const parsed = await parser.getText();
+        text = parsed.text ?? "";
+        pageCount = parsed.total ?? 0;
+      } catch (parseErr) {
+        console.error("[books/upload] PDF parse error:", parseErr);
+        text = "";
+        pageCount = 0;
+      }
+
+      // Upload PDF to S3
+      const suffix = Math.random().toString(36).substring(2, 8);
+      const s3Key = `books/${user.id}/${suffix}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+      const { url: s3Url } = await storagePut(s3Key, file.buffer, "application/pdf");
+
+      return res.json({ s3Key, s3Url, text, pageCount });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[books/upload] Error:", msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
+  // POST /api/books/extract-pdf — extract text only (no S3 upload)
+  app.post("/api/books/extract-pdf", pdfUpload.single("pdf"), async (req: any, res: any) => {
+    try {
+      await sdk.authenticateRequest(req);
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "No PDF file provided" });
+
+      const parser = new PDFParse({ data: file.buffer });
+      const parsed = await parser.getText();
+      return res.json({ text: parsed.text ?? "", pageCount: parsed.total ?? 0 });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       return res.status(500).json({ error: msg });
     }
   });

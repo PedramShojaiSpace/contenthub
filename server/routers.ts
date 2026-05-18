@@ -95,6 +95,8 @@ import { newsfeedRouter } from "./newsfeedRouter";
 import { viralStudioRouter } from "./viralStudioRouter";
 import { videoVariantRouter } from "./videoVariantRouter";
 import { videoSessionRouter } from "./videoSessionRouter";
+import { bookLibraryRouter } from "./bookLibraryRouter";
+import { ebookRouter } from "./ebookRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls } from "./urlScrubber";
@@ -348,6 +350,8 @@ const DEFAULT_IMAGE_STYLE = PLATFORM_IMAGE_STYLES.all;
 
 export const appRouter = router({
   system: systemRouter,
+  bookLibrary: bookLibraryRouter,
+  ebook: ebookRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

@@ -80,45 +80,136 @@ async function extractVoiceProfile(text: string): Promise<object> {
   return parseLLMJson(contentStr, "voice profile") as object;
 }
 
-// ─── Snippet Extraction ───────────────────────────────────────────────────────
+// ─── Snippet Extraction (Two-Stage Quality Pipeline) ─────────────────────────
 
-const SNIPPET_EXTRACTION_PROMPT = `You are a social media content strategist for Dr. Pedram Shojai (The Urban Monk).
-Extract 20-30 quote-worthy passages from this book excerpt that would make powerful social media posts.
+// STAGE 1: Social strategist extracts raw candidate quotes — no quality bar yet,
+// just finds passages that COULD be compelling if they pass the editorial filter.
+const STAGE1_EXTRACTION_PROMPT = `You are a senior social media strategist who has built audiences of millions for thought leaders.
+Your job: scan this book excerpt and pull out every passage that has the RAW POTENTIAL to stop a scroll.
 
-For each passage, identify:
-- The exact quote (verbatim from the text, 1-4 sentences max, under 280 characters preferred)
-- The theme (one of: energy, mindfulness, gut-health, sleep, consciousness, longevity, stress, nutrition, movement, spirituality, productivity, relationships)
-- Best platform (instagram, linkedin, twitter, facebook, or all)
-- Approximate page/section context
+A passage has raw potential if it meets ANY of these criteria:
+- It contains a surprising, counterintuitive, or provocative idea
+- It names a specific enemy (stress, toxins, bad sleep, modern life) in a vivid way
+- It gives a concrete, actionable instruction or reframe
+- It captures a universal human feeling in an unusually precise way
+- It contains a memorable metaphor or image
+- It makes a bold claim backed by the author's expertise
 
-Return a JSON array of objects with fields: passageText, theme, platform, chapter`;
+DO NOT include:
+- Chapter headings, transitions, or structural text
+- Passages that are incomplete thoughts or mid-sentence fragments
+- Generic motivational filler ("You can do it!", "Believe in yourself")
+- Pure narrative without a transferable insight
+
+Extract 15-25 raw candidates. Return verbatim text only — do NOT paraphrase or clean up.
+Return JSON array with fields: passageText, theme, chapter`;
+
+// STAGE 2: Editorial judge scores and rejects — only 7+ scores survive.
+const STAGE2_EDITORIAL_PROMPT = `You are a ruthless editorial director at a top wellness media brand.
+You have seen thousands of social media quote cards. You know what gets shared and saved — and what gets ignored.
+
+For each candidate quote, score it 1-10 on SOCIAL MEDIA IMPACT using these criteria:
+
+10 — Instant save. People will screenshot this. Specific, surprising, emotionally resonant.
+8-9 — Strong share. Clear insight, memorable phrasing, stands alone without context.
+6-7 — Decent but generic. Could work with a great image. Borderline.
+4-5 — Weak. Vague, cliché, or requires too much context to land.
+1-3 — Reject. Generic self-help noise, incomplete thought, or meaningless without the book.
+
+Also classify each as: "share-worthy" (people share it to look smart/caring), "save-worthy" (people save it for personal use), or "both".
+
+Only return quotes with score >= 7. Be strict — it is better to return 5 great quotes than 20 mediocre ones.
+Fix any obvious typos in the passageText (repeated words, OCR errors) but do NOT rephrase.
+
+Return JSON array with fields: passageText, theme, platform, chapter, qualityScore (int), shareabilityType (string)`;
+
+type RawCandidate = { passageText: string; theme: string; chapter: string };
+type ScoredSnippet = { passageText: string; theme: string; platform: string; chapter: string; qualityScore: number; shareabilityType: string };
 
 async function extractSnippets(
   text: string,
   bookTitle: string
-): Promise<Array<{ passageText: string; theme: string; platform: string; chapter: string }>> {
+): Promise<ScoredSnippet[]> {
   const chunkSize = 8000;
   const chunks: string[] = [];
-  for (let i = 0; i < Math.min(text.length, 40000); i += chunkSize) {
+  // Process up to 64k chars (roughly a full book) in 8k chunks
+  for (let i = 0; i < Math.min(text.length, 64000); i += chunkSize) {
     chunks.push(text.substring(i, i + chunkSize));
   }
 
-  const allSnippets: Array<{ passageText: string; theme: string; platform: string; chapter: string }> = [];
+  // STAGE 1: Extract raw candidates from all chunks in parallel
+  const stage1Results = await Promise.allSettled(
+    chunks.map(async (chunk, idx) => {
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: STAGE1_EXTRACTION_PROMPT },
+          { role: "user", content: `Book: "${bookTitle}" (section ${idx + 1} of ${chunks.length})\n\n${chunk}` },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "candidates",
+            strict: false,
+            schema: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  passageText: { type: "string" },
+                  theme: { type: "string" },
+                  chapter: { type: "string" },
+                },
+                required: ["passageText", "theme", "chapter"],
+              },
+            },
+          },
+        },
+      });
+      const content = result.choices?.[0]?.message?.content ?? "[]";
+      const contentStr = typeof content === "string" ? content : JSON.stringify(content);
+      const parsed = parseLLMJson(contentStr, "candidates");
+      return Array.isArray(parsed) ? (parsed as RawCandidate[]) : [];
+    })
+  );
 
-  for (const chunk of chunks.slice(0, 4)) {
+  // Collect all raw candidates, deduplicate by first 80 chars
+  const allCandidates: RawCandidate[] = [];
+  const seen = new Set<string>();
+  for (const result of stage1Results) {
+    if (result.status === "fulfilled") {
+      for (const c of result.value) {
+        const key = c.passageText.substring(0, 80).toLowerCase().trim();
+        if (!seen.has(key) && c.passageText.length > 30) {
+          seen.add(key);
+          allCandidates.push(c);
+        }
+      }
+    }
+  }
+
+  console.log(`[bookLibrary] Stage 1: ${allCandidates.length} raw candidates extracted from "${bookTitle}"`);
+
+  if (allCandidates.length === 0) return [];
+
+  // STAGE 2: Editorial scoring — process in batches of 20
+  const batchSize = 20;
+  const approvedSnippets: ScoredSnippet[] = [];
+
+  for (let i = 0; i < allCandidates.length; i += batchSize) {
+    const batch = allCandidates.slice(i, i + batchSize);
     try {
       const result = await invokeLLM({
         messages: [
-          { role: "system", content: SNIPPET_EXTRACTION_PROMPT },
+          { role: "system", content: STAGE2_EDITORIAL_PROMPT },
           {
             role: "user",
-            content: `Book: "${bookTitle}"\n\nExcerpt:\n\n${chunk}`,
+            content: `Book: "${bookTitle}" — Score these ${batch.length} candidate quotes:\n\n${batch.map((c, j) => `[${j + 1}] ${c.passageText}`).join("\n\n")}`,
           },
         ],
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "snippets",
+            name: "scored_snippets",
             strict: false,
             schema: {
               type: "array",
@@ -129,8 +220,10 @@ async function extractSnippets(
                   theme: { type: "string" },
                   platform: { type: "string" },
                   chapter: { type: "string" },
+                  qualityScore: { type: "integer" },
+                  shareabilityType: { type: "string" },
                 },
-                required: ["passageText", "theme", "platform", "chapter"],
+                required: ["passageText", "theme", "platform", "chapter", "qualityScore", "shareabilityType"],
               },
             },
           },
@@ -139,22 +232,19 @@ async function extractSnippets(
 
       const content = result.choices?.[0]?.message?.content ?? "[]";
       const contentStr = typeof content === "string" ? content : JSON.stringify(content);
-      const snippets = parseLLMJson(contentStr, "snippets");
-      if (Array.isArray(snippets)) {
-        allSnippets.push(...(snippets as Array<{ passageText: string; theme: string; platform: string; chapter: string }>));
+      const scored = parseLLMJson(contentStr, "scored_snippets");
+      if (Array.isArray(scored)) {
+        // Only keep quotes that scored 7 or higher
+        const approved = (scored as ScoredSnippet[]).filter((s) => (s.qualityScore ?? 0) >= 7);
+        approvedSnippets.push(...approved);
       }
     } catch (err) {
-      console.error("[bookLibrary] snippet extraction chunk error:", err);
+      console.error("[bookLibrary] Stage 2 editorial scoring error:", err);
     }
   }
 
-  const seen = new Set<string>();
-  return allSnippets.filter((s) => {
-    const key = s.passageText.substring(0, 60);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  console.log(`[bookLibrary] Stage 2: ${approvedSnippets.length} snippets approved (score ≥7) from "${bookTitle}"`);
+  return approvedSnippets;
 }
 
 // ─── Title Card Generation ────────────────────────────────────────────────────
@@ -290,6 +380,8 @@ export const bookLibraryRouter = router({
               theme: s.theme,
               platform: (s.platform as "instagram" | "linkedin" | "twitter" | "facebook" | "all") ?? "instagram",
               chapter: s.chapter,
+              qualityScore: s.qualityScore ?? null,
+              shareabilityType: s.shareabilityType ?? null,
               titleCardStatus: "pending" as const,
               savedToKanban: false,
             }))
@@ -407,6 +499,58 @@ export const bookLibraryRouter = router({
         .delete(bookSnippets)
         .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
       return { success: true };
+    }),
+
+  reExtractSnippets: protectedProcedure
+    .input(z.object({ bookId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Verify ownership
+      const [book] = await db
+        .select()
+        .from(uploadedBooks)
+        .where(and(eq(uploadedBooks.id, input.bookId), eq(uploadedBooks.userId, ctx.user.id)));
+      if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
+      if (!book.extractedText) throw new TRPCError({ code: "BAD_REQUEST", message: "Book text not available. Please re-upload the PDF." });
+
+      // Purge all existing snippets for this book
+      await db.delete(bookSnippets).where(eq(bookSnippets.bookId, input.bookId));
+      console.log(`[bookLibrary] Purged old snippets for book ${input.bookId} "${book.title}"`);
+
+      // Mark book as processing
+      await db.update(uploadedBooks).set({ status: "processing" }).where(eq(uploadedBooks.id, input.bookId));
+
+      // Run the two-stage quality pipeline
+      let snippetCount = 0;
+      try {
+        const snippets = await extractSnippets(book.extractedText, book.title);
+        if (snippets.length > 0) {
+          await db.insert(bookSnippets).values(
+            snippets.map((s) => ({
+              bookId: input.bookId,
+              userId: ctx.user.id,
+              passageText: s.passageText,
+              theme: s.theme,
+              platform: (s.platform as "instagram" | "linkedin" | "twitter" | "facebook" | "all") ?? "instagram",
+              chapter: s.chapter,
+              qualityScore: s.qualityScore ?? null,
+              shareabilityType: s.shareabilityType ?? null,
+              titleCardStatus: "pending" as const,
+              savedToKanban: false,
+            }))
+          );
+          snippetCount = snippets.length;
+        }
+      } catch (err) {
+        console.error("[bookLibrary] re-extraction failed:", err);
+        await db.update(uploadedBooks).set({ status: "failed" }).where(eq(uploadedBooks.id, input.bookId));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Re-extraction failed. Please try again." });
+      }
+
+      await db.update(uploadedBooks).set({ status: "ready" }).where(eq(uploadedBooks.id, input.bookId));
+      return { success: true, snippetCount };
     }),
 
   getMasterVoiceProfile: protectedProcedure.query(async ({ ctx }) => {

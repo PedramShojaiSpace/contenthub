@@ -42,8 +42,12 @@ import {
   ExternalLink,
   FileDown,
   Zap,
+  Upload,
+  FileUp,
+  FileSearch,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
+import { useRef } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,6 +104,39 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
   const [landingPageId, setLandingPageId] = useState<string>("");
   const [webinarId, setWebinarId] = useState<string>("");
 
+  // Source document state
+  const [sourceFile, setSourceFile] = useState<{ name: string; text: string; s3Url: string; wordCount: number } | null>(null);
+  const [sourceNarrative, setSourceNarrative] = useState("");
+  const [uploadingSource, setUploadingSource] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSourceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingSource(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/ebook/upload-source", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Upload failed" }));
+        throw new Error(err.error ?? "Upload failed");
+      }
+      const data = await res.json();
+      setSourceFile({ name: file.name, text: data.text, s3Url: data.s3Url, wordCount: data.wordCount });
+      toast.success(`Uploaded "${file.name}" — ${data.wordCount.toLocaleString()} words extracted`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingSource(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const { data: linkables } = trpc.ebook.getLinkableItems.useQuery();
   const generateEbook = trpc.ebook.generateEbook.useMutation({
     onSuccess: (result) => {
@@ -109,6 +146,8 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
       setOpen(false);
       setTitle("");
       setTopic("");
+      setSourceFile(null);
+      setSourceNarrative("");
       onSuccess();
     },
     onError: (err) => toast.error(err.message),
@@ -127,6 +166,13 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
       ctaBlockId: ctaLinkId ? parseInt(ctaLinkId) : undefined,
       landingPageId: landingPageId ? parseInt(landingPageId) : undefined,
       webinarSessionId: webinarId ? parseInt(webinarId) : undefined,
+      // Source document (if uploaded)
+      ...(sourceFile ? {
+        sourceDocumentText: sourceFile.text,
+        sourceDocumentName: sourceFile.name,
+        sourceDocumentS3Url: sourceFile.s3Url,
+      } : {}),
+      ...(sourceNarrative.trim() ? { sourceNarrative: sourceNarrative.trim() } : {}),
     });
   };
 
@@ -185,6 +231,78 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Source Document Upload */}
+          <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <FileSearch className="w-4 h-4 text-primary" />
+              Source Document (optional)
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Upload a webinar transcript, talk notes, outline, or any document. The AI will use it as the primary foundation for the e-book instead of generating from scratch.
+            </p>
+
+            {/* File drop zone */}
+            {!sourceFile ? (
+              <div
+                className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploadingSource ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Uploading and extracting text...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <FileUp className="w-6 h-6 text-muted-foreground" />
+                    <p className="text-sm font-medium">Drop a file or click to browse</p>
+                    <p className="text-xs text-muted-foreground">PDF, TXT, or MD — up to 20 MB</p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,.md,.text"
+                  className="hidden"
+                  onChange={handleSourceFileUpload}
+                  disabled={uploadingSource || generateEbook.isPending}
+                />
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-lg p-3">
+                <FileText className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{sourceFile.name}</p>
+                  <p className="text-xs text-muted-foreground">{sourceFile.wordCount.toLocaleString()} words extracted</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => setSourceFile(null)}
+                  disabled={generateEbook.isPending}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            )}
+
+            {/* Author narrative */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">
+                Your narrative / direction
+              </Label>
+              <Textarea
+                placeholder="Tell the AI what angle to take, what to emphasize, what to leave out, or any additional context not in the document..."
+                value={sourceNarrative}
+                onChange={(e) => setSourceNarrative(e.target.value)}
+                rows={3}
+                className="text-sm"
+                disabled={generateEbook.isPending}
+              />
+            </div>
           </div>
 
           {/* CTA Linking */}

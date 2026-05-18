@@ -1206,6 +1206,12 @@ export const ebooks = mysqlTable("ebooks", {
   webinarSessionId: int("webinarSessionId"),
   funnelStage: ebookFunnelStageEnum.default("awareness"),
   errorMessage: text("errorMessage"),
+  // Source document (webinar transcript, talk notes, outline)
+  sourceDocumentName: varchar("sourceDocumentName", { length: 255 }),
+  sourceDocumentS3Url: text("sourceDocumentS3Url"),
+  sourceDocumentText: longtext("sourceDocumentText"),
+  // User narrative / additional context on top of the source document
+  sourceNarrative: text("sourceNarrative"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -93,12 +93,49 @@ Write EXACTLY in this voice. Do not break character. Do not add disclaimers or m
 
 // ─── Chapter Generation ───────────────────────────────────────────────────────
 
+/**
+ * Builds the source context block injected into AI prompts when a source document is present.
+ * Truncates to ~12,000 words to stay within context limits.
+ */
+function buildSourceContext(sourceDocumentText?: string, sourceNarrative?: string): string {
+  if (!sourceDocumentText && !sourceNarrative) return "";
+
+  const parts: string[] = [];
+
+  if (sourceNarrative?.trim()) {
+    parts.push(`
+=== AUTHOR'S NARRATIVE & DIRECTION ===
+${sourceNarrative.trim()}
+=== END NARRATIVE ===`);
+  }
+
+  if (sourceDocumentText?.trim()) {
+    // Truncate to ~12,000 words to stay within LLM context limits
+    const words = sourceDocumentText.trim().split(/\s+/);
+    const truncated = words.length > 12000
+      ? words.slice(0, 12000).join(" ") + "\n\n[...document truncated for context limit...]"
+      : sourceDocumentText.trim();
+    parts.push(`
+=== SOURCE DOCUMENT (use this as the primary content foundation) ===
+${truncated}
+=== END SOURCE DOCUMENT ===`);
+  }
+
+  return parts.join("\n") + "\n\n";
+}
+
 async function generateChapterOutline(
   topic: string,
   targetAudience: string,
   chapterCount: number,
-  voiceSystemPrompt: string
+  voiceSystemPrompt: string,
+  sourceDocumentText?: string,
+  sourceNarrative?: string
 ): Promise<Array<{ number: number; title: string; summary: string }>> {
+
+  // Build source context block if a document was uploaded
+  const sourceContext = buildSourceContext(sourceDocumentText, sourceNarrative);
+
   const result = await invokeLLM({
     messages: [
       { role: "system", content: voiceSystemPrompt },
@@ -109,13 +146,13 @@ async function generateChapterOutline(
 Target audience: ${targetAudience}
 Number of chapters: ${chapterCount}
 Author: Dr. Pedram Shojai (The Urban Monk)
-
+${sourceContext}
 Return a JSON array with ${chapterCount} chapters, each with:
 - number (1-${chapterCount})
 - title (compelling, specific chapter title)
 - summary (2-3 sentences describing what this chapter covers and its key takeaway)
 
-The e-book should have a clear narrative arc: problem → understanding → transformation → action.
+${sourceDocumentText ? "IMPORTANT: The chapter outline MUST be grounded in the source document provided above. Extract the key ideas, stories, and insights from that material and structure them into a compelling arc." : "The e-book should have a clear narrative arc: problem → understanding → transformation → action."}
 Make it practical, transformative, and grounded in both science and wisdom.`,
       },
     ],
@@ -156,11 +193,16 @@ async function generateChapterContent(
   topic: string,
   targetAudience: string,
   voiceSystemPrompt: string,
-  ctaText?: string | null
+  ctaText?: string | null,
+  sourceDocumentText?: string,
+  sourceNarrative?: string
 ): Promise<string> {
   const ctaInstruction = ctaText
     ? `\n\nEnd this chapter with a natural, compelling call-to-action that flows organically from the content: "${ctaText}"`
     : "";
+
+  // Build source context block if a document was uploaded
+  const sourceContext = buildSourceContext(sourceDocumentText, sourceNarrative);
 
   const result = await invokeLLM({
     messages: [
@@ -172,11 +214,10 @@ async function generateChapterContent(
 E-book topic: ${topic}
 Target audience: ${targetAudience}
 Chapter summary: ${chapterSummary}
-
-Requirements:
+${sourceContext}Requirements:
 - Write 600-900 words of substantive, valuable content
 - Open with a hook that draws the reader in immediately
-- Include at least one concrete story, example, or case study
+${sourceDocumentText ? "- IMPORTANT: Draw directly from the source document above. Use specific ideas, stories, examples, and insights from that material. Do not invent content that contradicts the source." : "- Include at least one concrete story, example, or case study"}
 - Provide 2-3 actionable insights or practices
 - Use subheadings to break up the content (use ## for subheadings)
 - End with a transition to the next chapter's theme (or a powerful closing if this is the last chapter)
@@ -236,6 +277,11 @@ export const ebookRouter = router({
         ctaBlockId: z.number().optional(),
         landingPageId: z.number().optional(),
         webinarSessionId: z.number().optional(),
+        // Source document fields (optional — if provided, AI uses them as primary context)
+        sourceDocumentText: z.string().optional(),
+        sourceDocumentName: z.string().optional(),
+        sourceDocumentS3Url: z.string().optional(),
+        sourceNarrative: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -254,6 +300,11 @@ export const ebookRouter = router({
           landingPageId: input.landingPageId,
           webinarSessionId: input.webinarSessionId,
           status: "drafting",
+          // Persist source document if provided
+          ...(input.sourceDocumentName ? { sourceDocumentName: input.sourceDocumentName } : {}),
+          ...(input.sourceDocumentS3Url ? { sourceDocumentS3Url: input.sourceDocumentS3Url } : {}),
+          ...(input.sourceDocumentText ? { sourceDocumentText: input.sourceDocumentText } : {}),
+          ...(input.sourceNarrative ? { sourceNarrative: input.sourceNarrative } : {}),
         })
         .$returningId();
 
@@ -288,7 +339,9 @@ export const ebookRouter = router({
           input.topic,
           input.targetAudience,
           input.chapterCount,
-          voiceSystemPrompt
+          voiceSystemPrompt,
+          input.sourceDocumentText,
+          input.sourceNarrative
         );
 
         await db
@@ -306,7 +359,9 @@ export const ebookRouter = router({
             input.topic,
             input.targetAudience,
             voiceSystemPrompt,
-            isLastChapter ? ctaText : null
+            isLastChapter ? ctaText : null,
+            input.sourceDocumentText,
+            input.sourceNarrative
           );
 
           const wordCount = content.split(/\s+/).length;
@@ -728,6 +783,55 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
         .where(eq(ebooks.id, input.ebookId));
 
       return { pdfUrl, s3Key };
+    }),
+
+  // ── Save source document after upload ─────────────────────────────────────
+  saveEbookSource: protectedProcedure
+    .input(
+      z.object({
+        ebookId: z.number(),
+        sourceDocumentName: z.string(),
+        sourceDocumentS3Url: z.string(),
+        sourceDocumentText: z.string(),
+        sourceNarrative: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [ebook] = await db
+        .select({ userId: ebooks.userId })
+        .from(ebooks)
+        .where(and(eq(ebooks.id, input.ebookId), eq(ebooks.userId, ctx.user.id)));
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
+      await db
+        .update(ebooks)
+        .set({
+          sourceDocumentName: input.sourceDocumentName,
+          sourceDocumentS3Url: input.sourceDocumentS3Url,
+          sourceDocumentText: input.sourceDocumentText,
+          ...(input.sourceNarrative !== undefined ? { sourceNarrative: input.sourceNarrative } : {}),
+        })
+        .where(eq(ebooks.id, input.ebookId));
+      return { success: true };
+    }),
+
+  // ── Update narrative only (no re-upload needed) ──────────────────────────
+  updateEbookNarrative: protectedProcedure
+    .input(z.object({ ebookId: z.number(), sourceNarrative: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [ebook] = await db
+        .select({ userId: ebooks.userId })
+        .from(ebooks)
+        .where(and(eq(ebooks.id, input.ebookId), eq(ebooks.userId, ctx.user.id)));
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
+      await db
+        .update(ebooks)
+        .set({ sourceNarrative: input.sourceNarrative })
+        .where(eq(ebooks.id, input.ebookId));
+      return { success: true };
     }),
 
   getLinkableItems: protectedProcedure.query(async () => {

@@ -316,6 +316,47 @@ async function startServer() {
     }
   });
 
+  // POST /api/ebook/upload-source — accepts PDF/TXT/MD document as ebook source,
+  // extracts text, uploads to S3, returns { s3Url, text, fileName, wordCount }
+  const ebookSourceUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+  app.post("/api/ebook/upload-source", ebookSourceUpload.single("file"), async (req: any, res: any) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "No file provided" });
+
+      const mime = file.mimetype;
+      const name = file.originalname ?? "source";
+      let extractedText = "";
+
+      if (mime === "application/pdf" || name.endsWith(".pdf")) {
+        try {
+          const parser = new PDFParse({ data: file.buffer });
+          const parsed = await parser.getText();
+          extractedText = parsed.text ?? "";
+        } catch (e) {
+          extractedText = "";
+        }
+      } else {
+        // TXT, MD, DOCX-as-text — treat buffer as UTF-8 text
+        extractedText = file.buffer.toString("utf-8");
+      }
+
+      // Upload original file to S3
+      const suffix = Date.now() + "-" + Math.random().toString(36).substring(2, 6);
+      const safeFileName = name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const s3Key = `ebook-sources/${user.id}/${suffix}-${safeFileName}`;
+      const { url: s3Url } = await storagePut(s3Key, file.buffer, mime || "application/octet-stream");
+
+      const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
+      return res.json({ s3Url, text: extractedText, fileName: name, wordCount });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[ebook/upload-source] Error:", msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

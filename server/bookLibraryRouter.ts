@@ -995,6 +995,89 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
       return { success: true, generated, results };
     }),
 
+  // ─── Get AI background for client-side card compositor ───────────────────────
+  // Step 1: server generates the background image only (no text in prompt).
+  // The browser composites real CSS text on top using TitleCardRenderer.
+  getCardBackground: protectedProcedure
+    .input(z.object({
+      snippetId: z.number(),
+      mood: z.enum(["forest_dark", "stone_gray", "ink_black", "warm_amber"]).default("forest_dark"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select({ id: bookSnippets.id })
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+
+      const MOOD_BG_PROMPTS: Record<string, string> = {
+        forest_dark: "Abstract square background texture for a premium wellness brand. Dark forest green and deep charcoal tones, subtle organic texture like aged leather or moss, soft vignette edges, no text, no people, no objects, no symbols. Minimalist and sophisticated.",
+        stone_gray:  "Abstract square background texture for a premium mindfulness brand. Cool stone gray and slate tones, subtle concrete or granite texture, soft vignette edges, no text, no people, no objects, no symbols. Minimalist and sophisticated.",
+        ink_black:   "Abstract square background texture for a luxury brand. Deep black and near-black tones, subtle paper or linen texture, very dark, soft vignette edges, no text, no people, no objects, no symbols. Minimalist and elegant.",
+        warm_amber:  "Abstract square background texture for a warm wellness brand. Rich amber, burnt sienna, and deep ochre tones, subtle aged parchment or warm wood texture, soft vignette edges, no text, no people, no objects, no symbols. Warm and sophisticated.",
+      };
+
+      const { generateImage } = await import("./_core/imageGeneration");
+      const prompt = MOOD_BG_PROMPTS[input.mood] ?? MOOD_BG_PROMPTS["forest_dark"];
+      try {
+        const { url } = await generateImage({ prompt });
+        return { backgroundUrl: url ?? null };
+      } catch (err) {
+        console.error("[getCardBackground] generateImage failed:", err);
+        return { backgroundUrl: null };
+      }
+    }),
+
+  // ─── Save card URLs after client-side rendering ──────────────────────────────
+  // Step 2: browser uploads rendered PNGs to S3 via /api/upload-card,
+  // then calls this to persist the URLs in the DB.
+  saveCardUrls: protectedProcedure
+    .input(z.object({
+      snippetId: z.number(),
+      urls: z.object({
+        linkedin:        z.string().nullable().optional(),
+        x:               z.string().nullable().optional(),
+        meta:            z.string().nullable().optional(),
+        instagram_feed:  z.string().nullable().optional(),
+        instagram_reel:  z.string().nullable().optional(),
+        instagram_story: z.string().nullable().optional(),
+      }),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select({ id: bookSnippets.id })
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+
+      const { urls } = input;
+      const setObj: Record<string, string | null> = {};
+      if (urls.linkedin        != null) setObj["titleCardLinkedinUrl"]       = urls.linkedin;
+      if (urls.x               != null) setObj["titleCardXUrl"]              = urls.x;
+      if (urls.meta            != null) setObj["titleCardMetaUrl"]           = urls.meta;
+      if (urls.instagram_feed  != null) setObj["titleCardInstagramFeedUrl"]  = urls.instagram_feed;
+      if (urls.instagram_reel  != null) setObj["titleCardInstagramReelUrl"]  = urls.instagram_reel;
+      if (urls.instagram_story != null) setObj["titleCardInstagramStoryUrl"] = urls.instagram_story;
+
+      const defaultUrl = urls.linkedin ?? urls.x ?? urls.meta ?? urls.instagram_feed ?? null;
+      if (defaultUrl) setObj["titleCardUrl"] = defaultUrl;
+      setObj["titleCardStatus"] = "ready";
+
+      if (Object.keys(setObj).length > 0) {
+        await db
+          .update(bookSnippets)
+          .set(setObj as Partial<typeof bookSnippets.$inferInsert>)
+          .where(eq(bookSnippets.id, input.snippetId));
+      }
+
+      const generated = Object.values(urls).filter(Boolean).length;
+      return { success: true, generated };
+    }),
+
   // ─── Update snippet card style preferences (mood + font size) ───────────────
   updateSnippetStyle: protectedProcedure
     .input(z.object({

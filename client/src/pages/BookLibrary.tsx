@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { generateAllCards } from "@/components/TitleCardRenderer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -757,23 +758,66 @@ function SnippetCard({
   const [showPanel, setShowPanel] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string>(snippet.cardMood ?? "forest_dark");
   const [selectedFontSize, setSelectedFontSize] = useState<string>(snippet.cardFontSize ?? "medium");
+  const [isClientGenerating, setIsClientGenerating] = useState(false);
+  const [clientProgress, setClientProgress] = useState<{ done: number; total: number } | null>(null);
   const utils = trpc.useUtils();
 
   const updateStyle = trpc.bookLibrary.updateSnippetStyle.useMutation({
     onSuccess: () => utils.bookLibrary.getBook.invalidate({ bookId }),
   });
 
-  const generateAllCards = trpc.bookLibrary.generateAllPlatformCards.useMutation({
-    onSuccess: (res) => {
-      toast.success(`Generated ${res.generated}/6 platform cards!`);
+  const getCardBackground = trpc.bookLibrary.getCardBackground.useMutation();
+  const saveCardUrls = trpc.bookLibrary.saveCardUrls.useMutation();
+
+  const handleGenerateAllCards = useCallback(async () => {
+    setIsClientGenerating(true);
+    setClientProgress({ done: 0, total: 6 });
+    try {
+      // Step 1: Get AI background from server
+      const { backgroundUrl } = await getCardBackground.mutateAsync({
+        snippetId: snippet.id,
+        mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber",
+      });
+
+      // Step 2: Render all 6 platform cards in the browser and upload to S3
+      const urls = await generateAllCards({
+        quoteText: snippet.passageText,
+        authorName: "Dr. Pedram Shojai",
+        bookTitle: snippet.theme ?? "The Urban Monk",
+        brandName: "The Urban Monk",
+        backgroundUrl: backgroundUrl ?? null,
+        mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber",
+        fontSize: selectedFontSize as "large" | "medium" | "small",
+        onProgress: (done, total) => setClientProgress({ done, total }),
+      });
+
+      // Step 3: Persist the URLs in the DB
+      const result = await saveCardUrls.mutateAsync({
+        snippetId: snippet.id,
+        urls: {
+          linkedin:        urls.linkedin        ?? null,
+          x:               urls.x               ?? null,
+          meta:            urls.meta            ?? null,
+          instagram_feed:  urls.instagram_feed  ?? null,
+          instagram_reel:  urls.instagram_reel  ?? null,
+          instagram_story: urls.instagram_story ?? null,
+        },
+      });
+
+      toast.success(`Generated ${result.generated}/6 platform cards!`);
       utils.bookLibrary.getBook.invalidate({ bookId });
-    },
-    onError: (err) => toast.error(err.message),
-  });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Card generation failed";
+      toast.error(msg);
+    } finally {
+      setIsClientGenerating(false);
+      setClientProgress(null);
+    }
+  }, [snippet.id, snippet.passageText, snippet.theme, selectedMood, selectedFontSize, bookId]);
 
   const hasCopy = snippet.linkedinCopy || snippet.xCopy || snippet.metaCopy;
   const hasAnyCard = snippet.titleCardUrl || snippet.titleCardLinkedinUrl || snippet.titleCardXUrl;
-  const isGenerating = generating || snippet.titleCardStatus === "generating" || generateAllCards.isPending;
+  const isGenerating = generating || snippet.titleCardStatus === "generating" || isClientGenerating;
 
   // Per-platform published state map
   const publishedMap: Record<string, boolean> = {
@@ -913,7 +957,7 @@ function SnippetCard({
                 variant="outline"
                 size="sm"
                 className="flex-1 gap-1.5 text-xs"
-                onClick={() => generateAllCards.mutate({ snippetId: snippet.id, mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber", fontSize: selectedFontSize as "large" | "medium" | "small" })}
+                onClick={handleGenerateAllCards}
                 disabled={isGenerating}
               >
                 {isGenerating ? (
@@ -921,7 +965,11 @@ function SnippetCard({
                 ) : (
                   <ImageIcon className="w-3 h-3" />
                 )}
-                {isGenerating ? "Generating all..." : "Generate All Cards"}
+                {isClientGenerating && clientProgress
+                  ? `${clientProgress.done}/${clientProgress.total} cards...`
+                  : isGenerating
+                  ? "Generating..."
+                  : "Generate All Cards"}
               </Button>
             ) : (
               <>
@@ -939,10 +987,14 @@ function SnippetCard({
                   size="sm"
                   className="gap-1 text-xs px-2"
                   title="Regenerate all platform cards with current style"
-                  onClick={() => generateAllCards.mutate({ snippetId: snippet.id, mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber", fontSize: selectedFontSize as "large" | "medium" | "small" })}
+                  onClick={handleGenerateAllCards}
                   disabled={isGenerating}
                 >
-                  {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                  {isClientGenerating && clientProgress
+                    ? <span className="text-xs">{clientProgress.done}/{clientProgress.total}</span>
+                    : isGenerating
+                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                    : <RotateCcw className="w-3 h-3" />}
                 </Button>
               </>
             )}

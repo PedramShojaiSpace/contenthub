@@ -2521,3 +2521,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Pass mood and fontSize through regenerateTitleCard and generateAllPlatformCards
 - [x] Add mood selector and font size toggle to SnippetCard UI
 - [x] Mood/fontSize preferences saved per-snippet and persist across regenerations
+
+## v-client-compositor — Client-Side Title Card Compositor (No Puppeteer)
+- [x] Build TitleCardRenderer.tsx: pure Canvas API compositor in the browser (no Puppeteer, no headless browser)
+- [x] Server generates AI background image only via getCardBackground procedure (no text in prompt)
+- [x] Browser renders all 6 platform sizes using Canvas drawImage + fillText (zero AI text rendering = zero typos)
+- [x] Browser uploads each PNG to S3 via /api/upload-card endpoint
+- [x] Browser calls saveCardUrls procedure to persist all 6 URLs in DB
+- [x] Add getCardBackground procedure to bookLibraryRouter (Step 1 of new flow)
+- [x] Add saveCardUrls procedure to bookLibraryRouter (Step 2 of new flow)
+- [x] Add /api/upload-card Express endpoint to server/_core/index.ts
+- [x] Update BookLibrary.tsx SnippetCard to use handleGenerateAllCards (new flow) instead of generateAllPlatformCards (old Puppeteer flow)
+- [x] Show live progress counter (e.g. "2/6 cards...") during client-side rendering
+- [x] TypeScript: 0 new errors (37 pre-existing errors in typeformRouter/viralStudioRouter/webinarIntelligenceRouter unchanged)
+- [x] All 338 tests passing

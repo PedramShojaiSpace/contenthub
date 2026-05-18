@@ -39,6 +39,9 @@ import {
   RefreshCw,
   AlertCircle,
   Clock,
+  ExternalLink,
+  FileDown,
+  Zap,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 
@@ -53,7 +56,11 @@ interface Ebook {
   targetPersona: string | null;
   status: EbookStatus;
   pdfS3Url: string | null;
+  coverImageUrl: string | null;
   wordCountTarget: number | null;
+  ctaBlockId: number | null;
+  landingPageId: number | null;
+  webinarSessionId: number | null;
   createdAt: Date;
 }
 
@@ -63,6 +70,9 @@ interface Chapter {
   title: string;
   content: string | null;
   wordCount: number | null;
+  ctaText: string | null;
+  ctaUrl: string | null;
+  ctaLabel: string | null;
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -445,14 +455,45 @@ function EbookViewer({
     },
     onError: (err) => toast.error(err.message),
   });
+  const [showCtaPanel, setShowCtaPanel] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
+
   const updateChapter = trpc.ebook.updateChapter.useMutation({
     onSuccess: () => utils.ebook.getEbook.invalidate({ ebookId }),
   });
   const regenerateChapter = trpc.ebook.regenerateChapter.useMutation({
-    onSuccess: (result) => {
+    onSuccess: () => {
       utils.ebook.getEbook.invalidate({ ebookId });
     },
   });
+  const setChapterCta = trpc.ebook.setChapterCta.useMutation({
+    onSuccess: () => {
+      utils.ebook.getEbook.invalidate({ ebookId });
+      toast.success("CTA saved to chapter");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const injectCtaToAll = trpc.ebook.injectCtaToAllChapters.useMutation({
+    onSuccess: (res) => {
+      utils.ebook.getEbook.invalidate({ ebookId });
+      toast.success(`CTA injected into ${res.updatedCount} chapters`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const exportPdf = trpc.ebook.exportPdf.useMutation({
+    onSuccess: (res) => {
+      utils.ebook.getEbook.invalidate({ ebookId });
+      // Open PDF in new tab
+      window.open(res.pdfUrl, "_blank");
+      toast.success("PDF generated! Opening in new tab...");
+      setPdfExporting(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setPdfExporting(false);
+    },
+  });
+  const { data: linkables } = trpc.ebook.getLinkableItems.useQuery();
 
   const handleDownload = () => {
     if (!exportData) return;
@@ -463,6 +504,11 @@ function EbookViewer({
     a.download = `${exportData.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.md`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportPdf = async () => {
+    setPdfExporting(true);
+    exportPdf.mutate({ ebookId });
   };
 
   if (isLoading) {
@@ -493,8 +539,8 @@ function EbookViewer({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          {!ebook.pdfS3Url && (
+        <div className="flex gap-2 flex-wrap">
+          {!ebook.coverImageUrl && (
             <Button
               variant="outline"
               size="sm"
@@ -514,24 +560,74 @@ function EbookViewer({
             variant="outline"
             size="sm"
             className="gap-1.5"
+            onClick={() => setShowCtaPanel(!showCtaPanel)}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            {showCtaPanel ? "Hide CTA Panel" : "Manage CTAs"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
             onClick={handleDownload}
             disabled={!exportData}
           >
             <Download className="w-3.5 h-3.5" />
-            Download
+            .md
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+            onClick={handleExportPdf}
+            disabled={pdfExporting || exportPdf.isPending}
+          >
+            {pdfExporting || exportPdf.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileDown className="w-3.5 h-3.5" />
+            )}
+            Export PDF
           </Button>
         </div>
       </div>
 
+      {/* CTA Management Panel */}
+      {showCtaPanel && (
+        <CtaManagementPanel
+          ebook={ebook}
+          chapters={chapters}
+          linkables={linkables ?? { ctas: [], landingPages: [], webinars: [] }}
+          onSetChapterCta={(chapterId, ctaText, ctaUrl, ctaLabel) =>
+            setChapterCta.mutate({ chapterId, ctaText, ctaUrl, ctaLabel })
+          }
+          onInjectAll={(ctaText, ctaUrl, ctaLabel) =>
+            injectCtaToAll.mutate({ ebookId, ctaText, ctaUrl: ctaUrl ?? undefined, ctaLabel: ctaLabel ?? undefined })
+          }
+          isPending={setChapterCta.isPending || injectCtaToAll.isPending}
+        />
+      )}
+
       <div className="grid grid-cols-12 gap-6">
         {/* Sidebar: Chapter list */}
         <div className="col-span-3 space-y-1">
-          {ebook.pdfS3Url && (
+          {ebook.coverImageUrl && (
             <img
-              src={ebook.pdfS3Url}
+              src={ebook.coverImageUrl}
               alt="E-book cover"
               className="w-full rounded-lg mb-4 shadow-md"
             />
+          )}
+          {ebook.pdfS3Url && (
+            <a
+              href={ebook.pdfS3Url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium mb-3"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              Download PDF
+              <ExternalLink className="w-3 h-3" />
+            </a>
           )}
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Chapters
@@ -603,6 +699,225 @@ function EbookViewer({
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── CTA Management Panel ───────────────────────────────────────────────────
+
+interface LinkableItem { id: number; text?: string | null; url?: string | null; title?: string | null; }
+interface Linkables { ctas: LinkableItem[]; landingPages: LinkableItem[]; webinars: LinkableItem[]; }
+
+function CtaManagementPanel({
+  ebook,
+  chapters,
+  linkables,
+  onSetChapterCta,
+  onInjectAll,
+  isPending,
+}: {
+  ebook: Ebook;
+  chapters: Chapter[];
+  linkables: Linkables;
+  onSetChapterCta: (chapterId: number, ctaText: string | null, ctaUrl: string | null, ctaLabel: string | null) => void;
+  onInjectAll: (ctaText: string, ctaUrl: string | null, ctaLabel: string | null) => void;
+  isPending: boolean;
+}) {
+  const [globalCtaText, setGlobalCtaText] = useState(
+    "Ready to transform your health? Join Dr. Pedram Shojai at the Urban Monk Academy and get access to the full curriculum, live coaching, and a community of high-performers."
+  );
+  const [globalCtaUrl, setGlobalCtaUrl] = useState("https://theurbanmonk.com/academy");
+  const [globalCtaLabel, setGlobalCtaLabel] = useState("Join the Urban Monk Academy →");
+  const [selectedChapterId, setSelectedChapterId] = useState<number | null>(null);
+  const [chapterCtaText, setChapterCtaText] = useState("");
+  const [chapterCtaUrl, setChapterCtaUrl] = useState("");
+  const [chapterCtaLabel, setChapterCtaLabel] = useState("");
+
+  const selectedChapter = chapters.find((c) => c.id === selectedChapterId);
+
+  const handleSelectChapter = (ch: Chapter) => {
+    setSelectedChapterId(ch.id);
+    setChapterCtaText(ch.ctaText ?? "");
+    setChapterCtaUrl(ch.ctaUrl ?? "");
+    setChapterCtaLabel(ch.ctaLabel ?? "");
+  };
+
+  const handleSelectCta = (ctaId: string) => {
+    const cta = linkables.ctas.find((c) => String(c.id) === ctaId);
+    if (cta) {
+      setGlobalCtaText(cta.text ?? "");
+      setGlobalCtaUrl(cta.url ?? "");
+    }
+  };
+
+  const handleSelectLandingPage = (lpId: string) => {
+    const lp = linkables.landingPages.find((l) => String(l.id) === lpId);
+    if (lp) {
+      setGlobalCtaLabel(`Explore ${lp.title} →`);
+    }
+  };
+
+  return (
+    <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/20">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-600" />
+          CTA & Funnel Integration
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Global CTA */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Global CTA (injected into all chapters)</p>
+            {linkables.ctas.length > 0 && (
+              <Select onValueChange={handleSelectCta}>
+                <SelectTrigger className="w-48 h-7 text-xs">
+                  <SelectValue placeholder="Load from CTA block..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {linkables.ctas.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.text?.substring(0, 40)}...
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <Textarea
+            value={globalCtaText}
+            onChange={(e) => setGlobalCtaText(e.target.value)}
+            rows={3}
+            placeholder="CTA text shown at the end of each chapter..."
+            className="text-sm"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">URL</Label>
+              <Input
+                value={globalCtaUrl}
+                onChange={(e) => setGlobalCtaUrl(e.target.value)}
+                placeholder="https://theurbanmonk.com/academy"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Button Label</Label>
+              <Input
+                value={globalCtaLabel}
+                onChange={(e) => setGlobalCtaLabel(e.target.value)}
+                placeholder="Join the Academy →"
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+          {linkables.landingPages.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-xs shrink-0">Link to landing page:</Label>
+              <Select onValueChange={handleSelectLandingPage}>
+                <SelectTrigger className="h-7 text-xs flex-1">
+                  <SelectValue placeholder="Select landing page..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {linkables.landingPages.map((lp) => (
+                    <SelectItem key={lp.id} value={String(lp.id)}>
+                      {lp.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <Button
+            size="sm"
+            className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+            onClick={() => onInjectAll(globalCtaText, globalCtaUrl || null, globalCtaLabel || null)}
+            disabled={isPending || !globalCtaText.trim()}
+          >
+            {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+            Inject CTA into All Chapters
+          </Button>
+        </div>
+
+        {/* Per-chapter CTA */}
+        <div className="border-t pt-4 space-y-3">
+          <p className="text-sm font-medium">Per-Chapter CTA Override</p>
+          <p className="text-xs text-muted-foreground">Select a chapter to set a custom CTA that overrides the global one.</p>
+          <div className="flex flex-wrap gap-1.5">
+            {chapters.map((ch) => (
+              <button
+                key={ch.id}
+                onClick={() => handleSelectChapter(ch)}
+                className={`px-2.5 py-1 rounded text-xs transition-colors ${
+                  selectedChapterId === ch.id
+                    ? "bg-primary text-primary-foreground"
+                    : ch.ctaText
+                    ? "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Ch.{ch.chapterNumber}
+                {ch.ctaText && <span className="ml-1 text-amber-600">●</span>}
+              </button>
+            ))}
+          </div>
+          {selectedChapter && (
+            <div className="space-y-3 p-3 border rounded-lg bg-background">
+              <p className="text-xs font-medium text-muted-foreground">Chapter {selectedChapter.chapterNumber}: {selectedChapter.title}</p>
+              <Textarea
+                value={chapterCtaText}
+                onChange={(e) => setChapterCtaText(e.target.value)}
+                rows={2}
+                placeholder="Custom CTA text for this chapter (leave blank to use global CTA)..."
+                className="text-sm"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={chapterCtaUrl}
+                  onChange={(e) => setChapterCtaUrl(e.target.value)}
+                  placeholder="URL"
+                  className="h-8 text-sm"
+                />
+                <Input
+                  value={chapterCtaLabel}
+                  onChange={(e) => setChapterCtaLabel(e.target.value)}
+                  placeholder="Button label"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() =>
+                    onSetChapterCta(
+                      selectedChapter.id,
+                      chapterCtaText || null,
+                      chapterCtaUrl || null,
+                      chapterCtaLabel || null
+                    )
+                  }
+                  disabled={isPending}
+                >
+                  {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  Save Chapter CTA
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    onSetChapterCta(selectedChapter.id, null, null, null)
+                  }
+                  disabled={isPending}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

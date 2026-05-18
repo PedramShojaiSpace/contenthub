@@ -442,10 +442,11 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
   try {
     await writeFile(htmlPath, html, "utf8");
 
-    // Run WeasyPrint: weasyprint <input.html> <output.pdf>
-    await execFileAsync("weasyprint", [htmlPath, pdfPath], {
+    // Run WeasyPrint using absolute path to avoid PATH issues in production
+    const weasyPrintBin = "/usr/local/bin/weasyprint";
+    await execFileAsync(weasyPrintBin, [htmlPath, pdfPath], {
       timeout: 120_000, // 2 minutes max
-      env: { ...process.env, HOME: "/tmp" }, // WeasyPrint needs HOME for font cache
+      env: { ...process.env, HOME: "/tmp", PATH: "/usr/local/bin:/usr/bin:/bin" }, // explicit PATH
     });
 
     const pdfBuffer = await readFile(pdfPath);

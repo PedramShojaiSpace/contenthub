@@ -186,6 +186,21 @@ Make it practical, transformative, and grounded in both science and wisdom.`,
   return outline as Array<{ number: number; title: string; summary: string }>;
 }
 
+// Length presets: target word counts and max tokens
+const LENGTH_PRESETS: Record<string, { label: string; minWords: number; maxWords: number; maxTokens: number }> = {
+  concise:   { label: "Concise",   minWords: 500,  maxWords: 700,  maxTokens: 1200 },
+  standard:  { label: "Standard",  minWords: 800,  maxWords: 1100, maxTokens: 2000 },
+  expansive: { label: "Expansive", minWords: 1200, maxWords: 1600, maxTokens: 3000 },
+  immersive: { label: "Immersive", minWords: 1700, maxWords: 2200, maxTokens: 4000 },
+};
+
+// Prose style instructions
+const PROSE_STYLE_INSTRUCTIONS: Record<string, string> = {
+  direct: "Write in a direct, punchy style. Short paragraphs (2-4 sentences). Crisp sentences. Get to the point fast. Use bold statements and clear takeaways.",
+  narrative: "Write in a warm, story-driven style. Open each section with a brief story or scene. Let ideas unfold naturally through anecdote and metaphor before delivering the insight. Longer, flowing paragraphs.",
+  academic: "Write in a thorough, evidence-based style. Explain the science and research behind each concept. Use precise language. Include nuance and caveats. Longer paragraphs with layered reasoning.",
+};
+
 async function generateChapterContent(
   chapterNumber: number,
   chapterTitle: string,
@@ -195,11 +210,23 @@ async function generateChapterContent(
   voiceSystemPrompt: string,
   ctaText?: string | null,
   sourceDocumentText?: string,
-  sourceNarrative?: string
+  sourceNarrative?: string,
+  lengthPreset?: string,
+  proseStyle?: string,
+  isLastChapter?: boolean
 ): Promise<string> {
-  const ctaInstruction = ctaText
-    ? `\n\nEnd this chapter with a natural, compelling call-to-action that flows organically from the content: "${ctaText}"`
-    : "";
+  const preset = LENGTH_PRESETS[lengthPreset ?? "standard"] ?? LENGTH_PRESETS.standard;
+  const proseInstruction = PROSE_STYLE_INSTRUCTIONS[proseStyle ?? "narrative"] ?? PROSE_STYLE_INSTRUCTIONS.narrative;
+
+  // CTA injection — last chapter gets a strong closing CTA; earlier chapters get a lighter mid-chapter nudge
+  let ctaInstruction = "";
+  if (ctaText) {
+    if (isLastChapter) {
+      ctaInstruction = `\n\nFINAL CHAPTER CTA (required): End this chapter with a compelling, heartfelt call-to-action that flows naturally from the content. Use this message: "${ctaText}". Make it feel like a natural conclusion, not an advertisement.`;
+    } else {
+      ctaInstruction = `\n\nMID-CHAPTER CTA (required): Near the end of this chapter, weave in a brief, organic reference to the next step. Use this message: "${ctaText}". Keep it to 2-3 sentences and make it feel like a natural part of the narrative, not a hard sell.`;
+    }
+  }
 
   // Build source context block if a document was uploaded
   const sourceContext = buildSourceContext(sourceDocumentText, sourceNarrative);
@@ -214,19 +241,21 @@ async function generateChapterContent(
 E-book topic: ${topic}
 Target audience: ${targetAudience}
 Chapter summary: ${chapterSummary}
-${sourceContext}Requirements:
-- Write 600-900 words of substantive, valuable content
+${sourceContext}PROSE STYLE: ${proseInstruction}
+
+Requirements:
+- Write ${preset.minWords}–${preset.maxWords} words of substantive, valuable content
 - Open with a hook that draws the reader in immediately
 ${sourceDocumentText ? "- IMPORTANT: Draw directly from the source document above. Use specific ideas, stories, examples, and insights from that material. Do not invent content that contradicts the source." : "- Include at least one concrete story, example, or case study"}
 - Provide 2-3 actionable insights or practices
 - Use subheadings to break up the content (use ## for subheadings)
-- End with a transition to the next chapter's theme (or a powerful closing if this is the last chapter)
+- ${isLastChapter ? "End with a powerful, memorable closing" : "End with a natural transition to the next chapter's theme"}
 - Write in Markdown format${ctaInstruction}
 
 Write the full chapter content now:`,
       },
     ],
-    maxTokens: 2000,
+    maxTokens: preset.maxTokens,
   });
 
   const content = result.choices?.[0]?.message?.content ?? "";
@@ -282,6 +311,9 @@ export const ebookRouter = router({
         sourceDocumentName: z.string().optional(),
         sourceDocumentS3Url: z.string().optional(),
         sourceNarrative: z.string().optional(),
+        // Length and prose style
+        lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
+        proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -359,9 +391,12 @@ export const ebookRouter = router({
             input.topic,
             input.targetAudience,
             voiceSystemPrompt,
-            isLastChapter ? ctaText : null,
+            ctaText, // pass CTA to ALL chapters — function handles last vs mid-chapter framing
             input.sourceDocumentText,
-            input.sourceNarrative
+            input.sourceNarrative,
+            input.lengthPreset,
+            input.proseStyle,
+            isLastChapter
           );
 
           const wordCount = content.split(/\s+/).length;

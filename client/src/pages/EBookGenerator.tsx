@@ -104,6 +104,10 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
   const [landingPageId, setLandingPageId] = useState<string>("");
   const [webinarId, setWebinarId] = useState<string>("");
 
+  // Length and prose style
+  const [lengthPreset, setLengthPreset] = useState<"concise" | "standard" | "expansive" | "immersive">("standard");
+  const [proseStyle, setProseStyle] = useState<"direct" | "narrative" | "academic">("narrative");
+
   // Source document state
   const [sourceFile, setSourceFile] = useState<{ name: string; text: string; s3Url: string; wordCount: number } | null>(null);
   const [sourceNarrative, setSourceNarrative] = useState("");
@@ -173,6 +177,8 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
         sourceDocumentS3Url: sourceFile.s3Url,
       } : {}),
       ...(sourceNarrative.trim() ? { sourceNarrative: sourceNarrative.trim() } : {}),
+      lengthPreset,
+      proseStyle,
     });
   };
 
@@ -231,6 +237,77 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Length & Prose Style */}
+          <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Zap className="w-4 h-4 text-primary" />
+              Length &amp; Prose Style
+            </div>
+
+            {/* Length slider */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Chapter Length</Label>
+                <span className="text-xs font-medium text-primary">
+                  {lengthPreset === "concise" && "Concise · 500–700 words"}
+                  {lengthPreset === "standard" && "Standard · 800–1,100 words"}
+                  {lengthPreset === "expansive" && "Expansive · 1,200–1,600 words"}
+                  {lengthPreset === "immersive" && "Immersive · 1,700–2,200 words"}
+                </span>
+              </div>
+              <div className="flex gap-1">
+                {(["concise", "standard", "expansive", "immersive"] as const).map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setLengthPreset(preset)}
+                    disabled={generateEbook.isPending}
+                    className={`flex-1 py-1.5 text-xs rounded border transition-colors capitalize ${
+                      lengthPreset === preset
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:border-primary/50 text-muted-foreground"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {lengthPreset === "concise" && "Tight, punchy chapters. Great for lead magnets and quick reads."}
+                {lengthPreset === "standard" && "Balanced depth. The default for most e-books."}
+                {lengthPreset === "expansive" && "Rich, detailed chapters. Suitable for premium guides."}
+                {lengthPreset === "immersive" && "Deep-dive chapters. Best for comprehensive books and courses."}
+              </p>
+            </div>
+
+            {/* Prose style */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Prose Style</Label>
+              <div className="flex gap-1">
+                {([
+                  { key: "direct", label: "Direct", desc: "Punchy, short paragraphs" },
+                  { key: "narrative", label: "Narrative", desc: "Story-driven, flowing" },
+                  { key: "academic", label: "Academic", desc: "Evidence-based, thorough" },
+                ] as const).map(({ key, label, desc }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setProseStyle(key)}
+                    disabled={generateEbook.isPending}
+                    className={`flex-1 py-1.5 px-1 text-xs rounded border transition-colors ${
+                      proseStyle === key
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:border-primary/50 text-muted-foreground"
+                    }`}
+                  >
+                    <div className="font-medium">{label}</div>
+                    <div className="opacity-70 text-[10px] leading-tight mt-0.5">{desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Source Document Upload */}

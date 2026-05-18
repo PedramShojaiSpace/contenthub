@@ -2583,3 +2583,24 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] File drop zone supports PDF, TXT, MD up to 20MB with word count display
 - [x] Narrative textarea for author direction on top of the document
 - [x] TypeScript clean (0 new errors)
+
+## v-ebook-fixes — CTA Fix, Length Slider, PDF Download Fix
+- [ ] Fix CTA not appearing in generated chapters (audit ctaText injection in generateChapterContent)
+- [ ] Add Deep Sleep webinar CTA wiring (ensure webinar CTA text flows through to last chapter)
+- [ ] Add length/prose style parameter: concise (600w) → standard (900w) → expansive (1400w) → immersive (2000w)
+- [ ] Add prose style selector: punchy/direct vs narrative/story-driven vs academic/detailed
+- [ ] Add length+prose slider to GenerateEbookDialog UI
+- [ ] Fix PDF download: replace Puppeteer (broken, no Chromium) with markdown-pdf or WeasyPrint
+- [ ] Test PDF download end-to-end
+
+## v-ebook-fixes — CTA Fix, Length/Prose Slider, PDF Download Fix (COMPLETE)
+- [x] Fix CTA injection: was only injecting into last chapter; now all chapters get CTA (last = strong close, others = organic mid-chapter nudge)
+- [x] Add LENGTH_PRESETS: Concise (500-700w), Standard (800-1100w), Expansive (1200-1600w), Immersive (1700-2200w)
+- [x] Add PROSE_STYLE_INSTRUCTIONS: Direct (punchy), Narrative (story-driven), Academic (evidence-based)
+- [x] Add lengthPreset and proseStyle to generateEbook input schema
+- [x] Pass lengthPreset, proseStyle, isLastChapter to generateChapterContent
+- [x] Replace Puppeteer PDF renderer with WeasyPrint (system-installed, confirmed working)
+- [x] ebookPdf.ts: write HTML to temp file, run weasyprint CLI, read output PDF, clean up temp files
+- [x] Add Length & Prose Style panel to GenerateEbookDialog UI (4-button length selector + 3-button prose style selector)
+- [x] Pass lengthPreset and proseStyle from UI to generateEbook mutation
+- [x] TypeScript clean (0 new errors), WeasyPrint confirmed working in sandbox

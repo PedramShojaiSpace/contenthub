@@ -428,6 +428,13 @@
       "when": 1779122308668,
       "tag": "0060_first_bug",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1779122933014,
+      "tag": "0061_nostalgic_zuras",
+      "breakpoints": true
     }
   ]
 }

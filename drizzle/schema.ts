@@ -1126,10 +1126,16 @@ export const bookSnippets = mysqlTable("book_snippets", {
   titleCardLinkedinUrl: text("titleCardLinkedinUrl"),
   titleCardXUrl: text("titleCardXUrl"),
   titleCardMetaUrl: text("titleCardMetaUrl"),
+  // Platform-specific title card variants (Instagram formats)
+  titleCardInstagramFeedUrl: text("titleCardInstagramFeedUrl"),   // 1:1 1080x1080
+  titleCardInstagramReelUrl: text("titleCardInstagramReelUrl"),   // 9:16 1080x1920
+  titleCardInstagramStoryUrl: text("titleCardInstagramStoryUrl"), // 9:16 1080x1920
   // AI-generated social copy per platform
   linkedinCopy: text("linkedinCopy"),
   xCopy: text("xCopy"),
   metaCopy: text("metaCopy"),
+  instagramCopy: text("instagramCopy"),    // Instagram feed caption
+  instagramReelCopy: text("instagramReelCopy"),  // Reels caption (shorter, hook-first)
   hashtags: text("hashtags"),           // JSON array of hashtag strings
   ctaText: varchar("ctaText", { length: 512 }),
   // Buffer push tracking

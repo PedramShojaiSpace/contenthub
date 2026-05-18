@@ -1122,6 +1122,19 @@ export const bookSnippets = mysqlTable("book_snippets", {
   platform: snippetPlatformEnum.default("instagram"),
   titleCardUrl: text("titleCardUrl"),
   titleCardStatus: titleCardStatusEnum.default("pending"),
+  // Platform-specific title card variants
+  titleCardLinkedinUrl: text("titleCardLinkedinUrl"),
+  titleCardXUrl: text("titleCardXUrl"),
+  titleCardMetaUrl: text("titleCardMetaUrl"),
+  // AI-generated social copy per platform
+  linkedinCopy: text("linkedinCopy"),
+  xCopy: text("xCopy"),
+  metaCopy: text("metaCopy"),
+  hashtags: text("hashtags"),           // JSON array of hashtag strings
+  ctaText: varchar("ctaText", { length: 512 }),
+  // Buffer push tracking
+  bufferSentAt: timestamp("bufferSentAt"),
+  bufferLastResult: text("bufferLastResult"),  // JSON: { platform, success, bufferId, error }
   savedToKanban: boolean("savedToKanban").default(false),
   contentItemId: int("contentItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

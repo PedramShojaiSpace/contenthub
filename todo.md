@@ -2494,3 +2494,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Quality score badge (amber for 9-10, green for 7-8) on SnippetCard
 - [x] Shareability type badge (share-worthy / save-worthy / both) on SnippetCard
 - [x] Regenerate Image already uses correctedQuote from inline quote editor
+
+## v-queue-fix — Image Generation at Snippet Level + Buffer Dequeue Fix
+- [x] Move image generation to snippet/quote level: "Generate All Cards" button creates all 6 platform images in one click
+- [x] Add per-platform published tracking columns (publishedLinkedinAt, publishedXAt, publishedMetaAt, publishedInstagramFeedAt, publishedInstagramReelAt, publishedInstagramStoryAt)
+- [x] Fix Buffer dequeue: pushSnippetToBuffer now sets the correct platform-specific publishedXxxAt timestamp
+- [x] Lock Push to Buffer button when platform already published — prevents redundant re-publishing
+- [x] Show published state banner in social panel with publish date
+- [x] Show per-platform colored dots on snippet card thumbnail (LinkedIn=blue, X=sky, Meta=indigo, Instagram=pink)
+- [x] Add RotateCcw regenerate button on snippet cards that already have cards
+- [x] Review & Publish button shows count of published platforms (e.g. "Review (2/6 published)")

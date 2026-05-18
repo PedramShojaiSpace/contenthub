@@ -98,6 +98,12 @@ interface Snippet {
   savedToKanban: boolean | null;
   qualityScore: number | null;
   shareabilityType: string | null;
+  publishedLinkedinAt: Date | null;
+  publishedXAt: Date | null;
+  publishedMetaAt: Date | null;
+  publishedInstagramFeedAt: Date | null;
+  publishedInstagramReelAt: Date | null;
+  publishedInstagramStoryAt: Date | null;
 }
 
 interface BufferChannel {
@@ -364,12 +370,27 @@ function SnippetSocialPanel({
   const charCount = currentCopy.length;
   const overLimit = charCount > current.charLimit;
 
+  // Per-platform published state — used to lock the Push button and show status
+  const platformPublishedAt: Record<SocialPlatform, Date | null> = {
+    linkedin: snippet.publishedLinkedinAt ?? null,
+    x: snippet.publishedXAt ?? null,
+    meta: snippet.publishedMetaAt ?? null,
+    instagram_feed: snippet.publishedInstagramFeedAt ?? null,
+    instagram_reel: snippet.publishedInstagramReelAt ?? null,
+    instagram_story: snippet.publishedInstagramStoryAt ?? null,
+  };
+  const isCurrentPlatformPublished = !!platformPublishedAt[activePlatform];
+
   const handleStartEdit = () => {
     setEditedCopy(current.copy ?? "");
     setEditingCopy(true);
   };
 
   const handlePush = () => {
+    if (isCurrentPlatformPublished) {
+      toast.error(`Already published to ${current.label}. Use Buffer to reschedule if needed.`);
+      return;
+    }
     if (selectedChannels.length === 0) {
       toast.error("Select at least one Buffer channel");
       return;
@@ -643,6 +664,17 @@ function SnippetSocialPanel({
                           <Send className="w-3 h-3" />
                           Push to Buffer
                         </p>
+                        {/* Published state banner — prevents double-posting */}
+                        {platform === activePlatform && isCurrentPlatformPublished && (
+                          <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                              Already published to {cfg.label} on{" "}
+                              {platformPublishedAt[platform as SocialPlatform]?.toLocaleDateString()}.
+                              To re-post, manage it directly in Buffer.
+                            </p>
+                          </div>
+                        )}
                         {platformChannels.length === 0 ? (
                           <p className="text-xs text-muted-foreground">
                             No {cfg.label} channels connected in Buffer.
@@ -650,7 +682,7 @@ function SnippetSocialPanel({
                         ) : (
                           <div className="space-y-1.5">
                             {platformChannels.map((ch: BufferChannel) => (
-                              <label key={ch.id} className="flex items-center gap-2 cursor-pointer">
+                              <label key={ch.id} className={`flex items-center gap-2 cursor-pointer ${platform === activePlatform && isCurrentPlatformPublished ? "opacity-50 pointer-events-none" : ""}`}>
                                 <input
                                   type="checkbox"
                                   checked={selectedChannels.includes(ch.id)}
@@ -675,15 +707,22 @@ function SnippetSocialPanel({
                                 pushToBuffer.isPending ||
                                 selectedChannels.length === 0 ||
                                 !platformCopy ||
-                                overLimit
+                                overLimit ||
+                                (platform === activePlatform && isCurrentPlatformPublished)
                               }
                             >
                               {pushToBuffer.isPending ? (
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : platform === activePlatform && isCurrentPlatformPublished ? (
+                                <CheckCircle2 className="w-3.5 h-3.5" />
                               ) : (
                                 <Send className="w-3.5 h-3.5" />
                               )}
-                              {pushToBuffer.isPending ? "Pushing..." : `Push to Buffer (${selectedChannels.length})`}
+                              {pushToBuffer.isPending
+                                ? "Pushing..."
+                                : platform === activePlatform && isCurrentPlatformPublished
+                                ? "Published ✓"
+                                : `Push to Buffer (${selectedChannels.length})`}
                             </Button>
                           </div>
                         )}
@@ -714,22 +753,36 @@ function SnippetCard({
   generating: boolean;
 }) {
   const [showPanel, setShowPanel] = useState(false);
+  const utils = trpc.useUtils();
 
-  const platformColors: Record<string, string> = {
-    instagram: "bg-pink-500/10 text-pink-400 border-pink-500/20",
-    linkedin: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    twitter: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-    facebook: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-    all: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  };
+  const generateAllCards = trpc.bookLibrary.generateAllPlatformCards.useMutation({
+    onSuccess: (res) => {
+      toast.success(`Generated ${res.generated}/6 platform cards!`);
+      utils.bookLibrary.getBook.invalidate({ bookId });
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const hasCopy = snippet.linkedinCopy || snippet.xCopy || snippet.metaCopy;
+  const hasAnyCard = snippet.titleCardUrl || snippet.titleCardLinkedinUrl || snippet.titleCardXUrl;
+  const isGenerating = generating || snippet.titleCardStatus === "generating" || generateAllCards.isPending;
+
+  // Per-platform published state map
+  const publishedMap: Record<string, boolean> = {
+    linkedin: !!snippet.publishedLinkedinAt,
+    x: !!snippet.publishedXAt,
+    meta: !!snippet.publishedMetaAt,
+    instagram_feed: !!snippet.publishedInstagramFeedAt,
+    instagram_reel: !!snippet.publishedInstagramReelAt,
+    instagram_story: !!snippet.publishedInstagramStoryAt,
+  };
+  const publishedCount = Object.values(publishedMap).filter(Boolean).length;
 
   return (
     <>
       <Card className="group hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setShowPanel(true)}>
         <CardContent className="p-4 space-y-3">
-          {/* Title card preview */}
+          {/* Title card preview — shows default (meta/square) card or placeholder */}
           {snippet.titleCardUrl ? (
             <div className="relative rounded-md overflow-hidden aspect-square bg-muted">
               <img
@@ -737,9 +790,15 @@ function SnippetCard({
                 alt="Title card"
                 className="w-full h-full object-cover"
               />
-              {snippet.bufferSentAt && (
-                <div className="absolute top-2 left-2 bg-emerald-600/90 rounded-full p-1" title="Pushed to Buffer">
-                  <CheckCircle2 className="w-3 h-3 text-white" />
+              {/* Published platform dots */}
+              {publishedCount > 0 && (
+                <div className="absolute top-2 left-2 flex gap-1">
+                  {publishedMap.linkedin && <div className="w-2 h-2 rounded-full bg-blue-500" title="Published to LinkedIn" />}
+                  {publishedMap.x && <div className="w-2 h-2 rounded-full bg-sky-400" title="Published to X" />}
+                  {publishedMap.meta && <div className="w-2 h-2 rounded-full bg-indigo-400" title="Published to Meta" />}
+                  {(publishedMap.instagram_feed || publishedMap.instagram_reel || publishedMap.instagram_story) && (
+                    <div className="w-2 h-2 rounded-full bg-pink-500" title="Published to Instagram" />
+                  )}
                 </div>
               )}
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -802,33 +861,45 @@ function SnippetCard({
             )}
           </div>
 
-          {/* Actions */}
+          {/* Actions — Generate All Cards at snippet level, then Review & Publish */}
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-            {snippet.titleCardStatus !== "ready" ? (
+            {!hasAnyCard ? (
               <Button
                 variant="outline"
                 size="sm"
                 className="flex-1 gap-1.5 text-xs"
-                onClick={() => onGenerateCard(snippet.id)}
-                disabled={generating || snippet.titleCardStatus === "generating"}
+                onClick={() => generateAllCards.mutate({ snippetId: snippet.id })}
+                disabled={isGenerating}
               >
-                {snippet.titleCardStatus === "generating" || generating ? (
+                {isGenerating ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
                   <ImageIcon className="w-3 h-3" />
                 )}
-                {snippet.titleCardStatus === "generating" || generating ? "Generating..." : "Make Card"}
+                {isGenerating ? "Generating all..." : "Generate All Cards"}
               </Button>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 gap-1.5 text-xs"
-                onClick={() => setShowPanel(true)}
-              >
-                <Send className="w-3 h-3" />
-                Publish
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
+                  onClick={() => setShowPanel(true)}
+                >
+                  <Send className="w-3 h-3" />
+                  {publishedCount > 0 ? `Review (${publishedCount}/6 published)` : "Review & Publish"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-xs px-2"
+                  title="Regenerate all platform cards"
+                  onClick={() => generateAllCards.mutate({ snippetId: snippet.id })}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                </Button>
+              </>
             )}
           </div>
         </CardContent>

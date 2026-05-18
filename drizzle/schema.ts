@@ -1141,6 +1141,13 @@ export const bookSnippets = mysqlTable("book_snippets", {
   // Buffer push tracking
   bufferSentAt: timestamp("bufferSentAt"),
   bufferLastResult: text("bufferLastResult"),  // JSON: { platform, success, bufferId, error }
+  // Per-platform publish tracking (prevents redundant re-publishing)
+  publishedLinkedinAt: timestamp("publishedLinkedinAt"),
+  publishedXAt: timestamp("publishedXAt"),
+  publishedMetaAt: timestamp("publishedMetaAt"),
+  publishedInstagramFeedAt: timestamp("publishedInstagramFeedAt"),
+  publishedInstagramReelAt: timestamp("publishedInstagramReelAt"),
+  publishedInstagramStoryAt: timestamp("publishedInstagramStoryAt"),
   savedToKanban: boolean("savedToKanban").default(false),
   qualityScore: int("qualityScore"),          // 1-10 from editorial filter; only >=7 are kept
   shareabilityType: varchar("shareabilityType", { length: 64 }),  // "share-worthy" | "save-worthy" | "both"

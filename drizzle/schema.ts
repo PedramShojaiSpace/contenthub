@@ -1142,6 +1142,8 @@ export const bookSnippets = mysqlTable("book_snippets", {
   bufferSentAt: timestamp("bufferSentAt"),
   bufferLastResult: text("bufferLastResult"),  // JSON: { platform, success, bufferId, error }
   savedToKanban: boolean("savedToKanban").default(false),
+  qualityScore: int("qualityScore"),          // 1-10 from editorial filter; only >=7 are kept
+  shareabilityType: varchar("shareabilityType", { length: 64 }),  // "share-worthy" | "save-worthy" | "both"
   contentItemId: int("contentItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

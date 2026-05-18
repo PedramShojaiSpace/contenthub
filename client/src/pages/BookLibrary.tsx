@@ -50,6 +50,9 @@ import {
   X,
   Zap,
   ExternalLink,
+  AlertTriangle,
+  Star,
+  RotateCcw,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -93,6 +96,8 @@ interface Snippet {
   ctaText: string | null;
   bufferSentAt: Date | null;
   savedToKanban: boolean | null;
+  qualityScore: number | null;
+  shareabilityType: string | null;
 }
 
 interface BufferChannel {
@@ -768,6 +773,27 @@ function SnippetCard({
                 {snippet.theme}
               </Badge>
             )}
+            {snippet.qualityScore != null && (
+              <Badge
+                variant="outline"
+                className={`text-xs gap-1 ${
+                  snippet.qualityScore >= 9
+                    ? "text-amber-500 border-amber-500/30 bg-amber-500/10"
+                    : snippet.qualityScore >= 7
+                    ? "text-emerald-500 border-emerald-500/30"
+                    : "text-muted-foreground"
+                }`}
+                title={`Quality score: ${snippet.qualityScore}/10`}
+              >
+                <Star className="w-2.5 h-2.5" />
+                {snippet.qualityScore}/10
+              </Badge>
+            )}
+            {snippet.shareabilityType && (
+              <Badge variant="outline" className="text-xs capitalize text-violet-400 border-violet-500/30">
+                {snippet.shareabilityType}
+              </Badge>
+            )}
             {hasCopy && (
               <Badge variant="outline" className="text-xs gap-1 text-emerald-600 border-emerald-500/30">
                 <Sparkles className="w-2.5 h-2.5" />
@@ -831,6 +857,7 @@ function BookDetailPanel({
   const [themeFilter, setThemeFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [generatingId, setGeneratingId] = useState<number | null>(null);
+  const [confirmReExtract, setConfirmReExtract] = useState(false);
 
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.bookLibrary.getBook.useQuery({ bookId });
@@ -841,6 +868,17 @@ function BookDetailPanel({
     onSuccess: (result) => {
       toast.success(`Generated ${result.generated} title cards`);
       utils.bookLibrary.getBook.invalidate({ bookId });
+    },
+  });
+  const reExtract = trpc.bookLibrary.reExtractSnippets.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Re-extraction complete! ${result.snippetCount} quality snippets found.`);
+      utils.bookLibrary.getBook.invalidate({ bookId });
+      setConfirmReExtract(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setConfirmReExtract(false);
     },
   });
 
@@ -896,7 +934,7 @@ function BookDetailPanel({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {pendingCount > 0 && (
             <Button
               variant="outline"
@@ -912,6 +950,42 @@ function BookDetailPanel({
               )}
               Generate All Cards ({pendingCount})
             </Button>
+          )}
+          {/* Re-extract: purge old snippets and run the two-stage quality pipeline */}
+          {!confirmReExtract ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+              onClick={() => setConfirmReExtract(true)}
+              disabled={reExtract.isPending}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Re-extract Snippets
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="text-xs text-amber-400">This will delete all {snippets.length} existing snippets and re-run the quality pipeline.</span>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-6 text-xs px-2"
+                onClick={() => reExtract.mutate({ bookId })}
+                disabled={reExtract.isPending}
+              >
+                {reExtract.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-xs px-2"
+                onClick={() => setConfirmReExtract(false)}
+                disabled={reExtract.isPending}
+              >
+                Cancel
+              </Button>
+            </div>
           )}
         </div>
       </div>

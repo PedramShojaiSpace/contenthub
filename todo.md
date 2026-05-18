@@ -2482,3 +2482,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] CTA sent as Buffer firstComment for all Instagram formats (link in bio)
 - [x] Channel filter shows only Instagram channels for IG tabs
 - [x] Per-platform char limit counter (300 for Reels, 2200 for Feed/Story)
+
+## v_quality — Two-Stage Snippet Quality Pipeline
+- [x] Replaced single-pass extraction with Stage 1 (social strategist) + Stage 2 (editorial judge >=7/10)
+- [x] Stage 1 processes all book chunks in parallel (up to 64k chars)
+- [x] Stage 2 scores and rejects low-quality quotes, fixes OCR typos
+- [x] Added qualityScore and shareabilityType columns to book_snippets
+- [x] processBook now saves qualityScore and shareabilityType per snippet
+- [x] Added reExtractSnippets procedure (purge + re-run quality pipeline on existing text)
+- [x] Re-extract Snippets button in BookDetailPanel with confirmation dialog
+- [x] Quality score badge (amber for 9-10, green for 7-8) on SnippetCard
+- [x] Shareability type badge (share-worthy / save-worthy / both) on SnippetCard
+- [x] Regenerate Image already uses correctedQuote from inline quote editor

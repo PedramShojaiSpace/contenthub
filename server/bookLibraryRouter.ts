@@ -483,7 +483,7 @@ export const bookLibraryRouter = router({
     .input(z.object({
       snippetId: z.number(),
       correctedText: z.string().optional(), // caller can pass a corrected quote
-      platform: z.enum(["square", "linkedin", "x", "meta"]).default("square"),
+      platform: z.enum(["square", "linkedin", "x", "meta", "instagram_feed", "instagram_reel", "instagram_story"]).default("square"),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -514,6 +514,9 @@ export const bookLibraryRouter = router({
         linkedin: "Landscape 1.91:1 format (1200×627px) — ideal for LinkedIn",
         x: "Landscape 16:9 format (1600×900px) — ideal for X/Twitter",
         meta: "Square 1:1 format (1080×1080px) — ideal for Facebook/Instagram",
+        instagram_feed: "Square 1:1 format (1080×1080px) — Instagram feed post",
+        instagram_reel: "Vertical 9:16 format (1080×1920px) — Instagram Reel or Story cover",
+        instagram_story: "Vertical 9:16 format (1080×1920px) — Instagram Story",
       };
       const dimNote = platformDimensions[input.platform] ?? platformDimensions.square;
 
@@ -539,6 +542,12 @@ Style: Dark earthy background (deep forest green or rich charcoal), elegant seri
           platformFields = { titleCardXUrl: url, titleCardStatus: "ready" };
         } else if (input.platform === "meta") {
           platformFields = { titleCardMetaUrl: url, titleCardStatus: "ready" };
+        } else if (input.platform === "instagram_feed") {
+          platformFields = { titleCardInstagramFeedUrl: url, titleCardStatus: "ready" };
+        } else if (input.platform === "instagram_reel") {
+          platformFields = { titleCardInstagramReelUrl: url, titleCardStatus: "ready" };
+        } else if (input.platform === "instagram_story") {
+          platformFields = { titleCardInstagramStoryUrl: url, titleCardStatus: "ready" };
         } else {
           platformFields = { titleCardUrl: url, titleCardStatus: "ready" };
         }
@@ -579,16 +588,18 @@ Style: Dark earthy background (deep forest green or rich charcoal), elegant seri
 
 "${snippet.passageText}"
 
-Generate copy for THREE platforms. Return a JSON object with exactly these fields:
+Generate copy for FIVE platforms. Return a JSON object with exactly these fields:
 {
   "linkedin": "LinkedIn post (1300-1500 chars). Start with a hook line, 2-3 short paragraphs expanding on the quote's insight, end with a CTA to join the Urban Monk Academy. Professional but personal tone. Include 3-5 relevant hashtags at the end.",
   "x": "X/Twitter post (200-260 chars MAXIMUM — this is a hard limit). Punchy, thought-provoking. Include 2-3 hashtags. No URLs.",
-  "meta": "Facebook/Instagram caption (800-1200 chars). Conversational, story-driven, emotionally resonant. Start with the quote or a hook. End with a question to drive comments + CTA to the Academy. Include 5-8 hashtags.",
-  "hashtags": ["array of 8-12 hashtags relevant to this snippet's theme, without the # symbol"],
+  "meta": "Facebook caption (800-1200 chars). Conversational, story-driven, emotionally resonant. Start with the quote or a hook. End with a question to drive comments + CTA to the Academy. Include 5-8 hashtags.",
+  "instagram": "Instagram feed caption (800-1200 chars). Visual-first, aspirational, emotionally resonant. Start with a bold hook line or the quote itself. Use line breaks for readability. End with 'Link in bio to join the Urban Monk Academy.' Include 10-15 hashtags at the end on their own line.",
+  "instagramReel": "Instagram Reels caption (150-300 chars). Ultra-punchy hook in the first line (this shows before 'more'). 1-2 sentences max. End with 'Link in bio.' Include 3-5 hashtags.",
+  "hashtags": ["array of 12-15 hashtags relevant to this snippet's theme, without the # symbol"],
   "ctaText": "Short CTA sentence (max 100 chars) pointing to the Academy, e.g. 'Join the Urban Monk Academy → theurbanmonk.com/academy'"
 }
 
-IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
+IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The instagramReel caption MUST be under 300 characters.`;
 
       const response = await invokeLLM({
         messages: [
@@ -606,10 +617,12 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
                 linkedin: { type: "string" },
                 x: { type: "string" },
                 meta: { type: "string" },
+                instagram: { type: "string" },
+                instagramReel: { type: "string" },
                 hashtags: { type: "array", items: { type: "string" } },
                 ctaText: { type: "string" },
               },
-              required: ["linkedin", "x", "meta", "hashtags", "ctaText"],
+              required: ["linkedin", "x", "meta", "instagram", "instagramReel", "hashtags", "ctaText"],
               additionalProperties: false,
             },
           },
@@ -618,7 +631,7 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
 
       const rawContent = response?.choices?.[0]?.message?.content;
       const raw = typeof rawContent === "string" ? rawContent : "{}";
-      let parsed: { linkedin: string; x: string; meta: string; hashtags: string[]; ctaText: string };
+      let parsed: { linkedin: string; x: string; meta: string; instagram: string; instagramReel: string; hashtags: string[]; ctaText: string };
       try {
         parsed = JSON.parse(raw);
       } catch {
@@ -636,6 +649,8 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
           linkedinCopy: parsed.linkedin,
           xCopy: parsed.x,
           metaCopy: parsed.meta,
+          instagramCopy: parsed.instagram,
+          instagramReelCopy: parsed.instagramReel,
           hashtags: JSON.stringify(parsed.hashtags),
           ctaText: parsed.ctaText,
         })
@@ -645,6 +660,8 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
         linkedin: parsed.linkedin,
         x: parsed.x,
         meta: parsed.meta,
+        instagram: parsed.instagram,
+        instagramReel: parsed.instagramReel,
         hashtags: parsed.hashtags,
         ctaText: parsed.ctaText,
       };
@@ -665,7 +682,7 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
   pushSnippetToBuffer: protectedProcedure
     .input(z.object({
       snippetId: z.number(),
-      platform: z.enum(["linkedin", "x", "meta"]),
+      platform: z.enum(["linkedin", "x", "meta", "instagram_feed", "instagram_reel", "instagram_story"]),
       channelIds: z.array(z.string()).min(1),
       copyOverride: z.string().optional(), // user-edited copy
       scheduledAt: z.number().optional(),  // UTC ms timestamp
@@ -684,6 +701,9 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
       if (!copy) {
         if (input.platform === "linkedin") copy = snippet.linkedinCopy ?? undefined;
         else if (input.platform === "x") copy = snippet.xCopy ?? undefined;
+        else if (input.platform === "instagram_feed") copy = snippet.instagramCopy ?? undefined;
+        else if (input.platform === "instagram_reel") copy = snippet.instagramReelCopy ?? undefined;
+        else if (input.platform === "instagram_story") copy = snippet.instagramCopy ?? undefined;
         else copy = snippet.metaCopy ?? undefined;
       }
       if (!copy) {
@@ -692,17 +712,39 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
 
       // Determine which image to use
       let imageUrl: string | undefined;
-      if (input.platform === "linkedin") imageUrl = snippet.titleCardLinkedinUrl ?? snippet.titleCardUrl ?? undefined;
-      else if (input.platform === "x") imageUrl = snippet.titleCardXUrl ?? snippet.titleCardUrl ?? undefined;
-      else imageUrl = snippet.titleCardMetaUrl ?? snippet.titleCardUrl ?? undefined;
+      if (input.platform === "linkedin") {
+        imageUrl = snippet.titleCardLinkedinUrl ?? snippet.titleCardUrl ?? undefined;
+      } else if (input.platform === "x") {
+        imageUrl = snippet.titleCardXUrl ?? snippet.titleCardUrl ?? undefined;
+      } else if (input.platform === "instagram_feed") {
+        imageUrl = snippet.titleCardInstagramFeedUrl ?? snippet.titleCardUrl ?? undefined;
+      } else if (input.platform === "instagram_reel") {
+        imageUrl = snippet.titleCardInstagramReelUrl ?? snippet.titleCardUrl ?? undefined;
+      } else if (input.platform === "instagram_story") {
+        imageUrl = snippet.titleCardInstagramStoryUrl ?? snippet.titleCardUrl ?? undefined;
+      } else {
+        imageUrl = snippet.titleCardMetaUrl ?? snippet.titleCardUrl ?? undefined;
+      }
+
+      // Map platform to Buffer metaPostType for Instagram
+      const metaPostType = input.platform === "instagram_reel" ? "reel"
+        : input.platform === "instagram_story" ? "story"
+        : "post";
+
+      // Map platform to Buffer platform string
+      const bufferPlatform = input.platform.startsWith("instagram") ? "instagram"
+        : input.platform === "x" ? "x"
+        : input.platform;
 
       const result = await pushToBuffer({
         text: copy,
         profileIds: input.channelIds,
         imageUrl,
-        platform: input.platform,
+        platform: bufferPlatform,
+        metaPostType,
         scheduledAt: input.scheduledAt,
         ctaUrl: snippet.ctaText ? "https://theurbanmonk.com/academy" : undefined,
+        channelServiceMap: Object.fromEntries(input.channelIds.map((id) => [id, input.platform.startsWith("instagram") ? "instagram" : input.platform])),
       });
 
       // Record the push result

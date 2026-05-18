@@ -42,6 +42,9 @@ import {
   Linkedin,
   Twitter,
   Facebook,
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore — deprecated but still available
+  Instagram,
   Edit3,
   Check,
   X,
@@ -53,7 +56,7 @@ import {
 
 type BookStatus = "uploading" | "processing" | "ready" | "failed";
 type TitleCardStatus = "pending" | "generating" | "ready" | "failed";
-type SocialPlatform = "linkedin" | "x" | "meta";
+type SocialPlatform = "linkedin" | "x" | "meta" | "instagram_feed" | "instagram_reel" | "instagram_story";
 
 interface Book {
   id: number;
@@ -78,9 +81,14 @@ interface Snippet {
   titleCardXUrl: string | null;
   titleCardMetaUrl: string | null;
   titleCardStatus: TitleCardStatus | null;
+  titleCardInstagramFeedUrl: string | null;
+  titleCardInstagramReelUrl: string | null;
+  titleCardInstagramStoryUrl: string | null;
   linkedinCopy: string | null;
   xCopy: string | null;
   metaCopy: string | null;
+  instagramCopy: string | null;
+  instagramReelCopy: string | null;
   hashtags: string | null;
   ctaText: string | null;
   bufferSentAt: Date | null;
@@ -292,6 +300,7 @@ function SnippetSocialPanel({
       color: "text-blue-500",
       charLimit: 3000,
       imageFormat: "1200×627",
+      aspectClass: "aspect-video",
     },
     x: {
       label: "X / Twitter",
@@ -301,6 +310,7 @@ function SnippetSocialPanel({
       color: "text-sky-400",
       charLimit: 280,
       imageFormat: "1600×900",
+      aspectClass: "aspect-video",
     },
     meta: {
       label: "Meta",
@@ -310,13 +320,44 @@ function SnippetSocialPanel({
       color: "text-indigo-400",
       charLimit: 2200,
       imageFormat: "1080×1080",
+      aspectClass: "aspect-square",
+    },
+    instagram_feed: {
+      label: "IG Feed",
+      icon: Instagram,
+      copy: snippet.instagramCopy,
+      imageUrl: snippet.titleCardInstagramFeedUrl ?? snippet.titleCardUrl,
+      color: "text-pink-500",
+      charLimit: 2200,
+      imageFormat: "1080×1080",
+      aspectClass: "aspect-square",
+    },
+    instagram_reel: {
+      label: "IG Reel",
+      icon: Instagram,
+      copy: snippet.instagramReelCopy,
+      imageUrl: snippet.titleCardInstagramReelUrl ?? snippet.titleCardUrl,
+      color: "text-fuchsia-500",
+      charLimit: 300,
+      imageFormat: "1080×1920",
+      aspectClass: "aspect-[9/16] max-h-64",
+    },
+    instagram_story: {
+      label: "IG Story",
+      icon: Instagram,
+      copy: snippet.instagramCopy,
+      imageUrl: snippet.titleCardInstagramStoryUrl ?? snippet.titleCardUrl,
+      color: "text-rose-500",
+      charLimit: 2200,
+      imageFormat: "1080×1920",
+      aspectClass: "aspect-[9/16] max-h-64",
     },
   };
 
   const current = platformConfig[activePlatform];
   const currentCopy = editingCopy ? editedCopy : (current.copy ?? "");
   const charCount = currentCopy.length;
-  const overLimit = activePlatform === "x" && charCount > 280;
+  const overLimit = charCount > current.charLimit;
 
   const handleStartEdit = () => {
     setEditedCopy(current.copy ?? "");
@@ -340,7 +381,10 @@ function SnippetSocialPanel({
   const platformChannels = (channels ?? []).filter((c: BufferChannel) => {
     if (activePlatform === "linkedin") return c.service?.toLowerCase() === "linkedin";
     if (activePlatform === "x") return c.service?.toLowerCase() === "twitter" || c.service?.toLowerCase() === "x";
-    if (activePlatform === "meta") return c.service?.toLowerCase() === "facebook" || c.service?.toLowerCase() === "instagram";
+    if (activePlatform === "meta") return c.service?.toLowerCase() === "facebook";
+    if (activePlatform === "instagram_feed" || activePlatform === "instagram_reel" || activePlatform === "instagram_story") {
+      return c.service?.toLowerCase() === "instagram";
+    }
     return true;
   });
 
@@ -436,22 +480,34 @@ function SnippetSocialPanel({
 
           {/* Platform Tabs */}
           <Tabs value={activePlatform} onValueChange={(v) => { setActivePlatform(v as SocialPlatform); setEditingCopy(false); }}>
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="linkedin" className="gap-1.5">
-                <Linkedin className="w-3.5 h-3.5" />
-                LinkedIn
+            <TabsList className="grid grid-cols-6 w-full">
+              <TabsTrigger value="linkedin" className="gap-1 text-xs px-1.5">
+                <Linkedin className="w-3 h-3 shrink-0" />
+                <span className="hidden sm:inline">LinkedIn</span>
               </TabsTrigger>
-              <TabsTrigger value="x" className="gap-1.5">
-                <Twitter className="w-3.5 h-3.5" />
-                X / Twitter
+              <TabsTrigger value="x" className="gap-1 text-xs px-1.5">
+                <Twitter className="w-3 h-3 shrink-0" />
+                <span className="hidden sm:inline">X</span>
               </TabsTrigger>
-              <TabsTrigger value="meta" className="gap-1.5">
-                <Facebook className="w-3.5 h-3.5" />
-                Meta
+              <TabsTrigger value="meta" className="gap-1 text-xs px-1.5">
+                <Facebook className="w-3 h-3 shrink-0" />
+                <span className="hidden sm:inline">Meta</span>
+              </TabsTrigger>
+              <TabsTrigger value="instagram_feed" className="gap-1 text-xs px-1.5">
+                <Instagram className="w-3 h-3 shrink-0" />
+                <span className="hidden sm:inline">Feed</span>
+              </TabsTrigger>
+              <TabsTrigger value="instagram_reel" className="gap-1 text-xs px-1.5">
+                <Instagram className="w-3 h-3 shrink-0" />
+                <span className="hidden sm:inline">Reel</span>
+              </TabsTrigger>
+              <TabsTrigger value="instagram_story" className="gap-1 text-xs px-1.5">
+                <Instagram className="w-3 h-3 shrink-0" />
+                <span className="hidden sm:inline">Story</span>
               </TabsTrigger>
             </TabsList>
 
-            {(["linkedin", "x", "meta"] as SocialPlatform[]).map((platform) => {
+            {(["linkedin", "x", "meta", "instagram_feed", "instagram_reel", "instagram_story"] as SocialPlatform[]).map((platform) => {
               const cfg = platformConfig[platform];
               const platformCopy = platform === activePlatform && editingCopy ? editedCopy : (cfg.copy ?? "");
               return (
@@ -477,7 +533,7 @@ function SnippetSocialPanel({
                         )}
                       </div>
                       {cfg.imageUrl ? (
-                        <div className={`rounded-lg overflow-hidden bg-muted ${platform === "linkedin" || platform === "x" ? "aspect-video" : "aspect-square"}`}>
+                        <div className={`rounded-lg overflow-hidden bg-muted ${cfg.aspectClass}`}>
                           <img
                             src={cfg.imageUrl}
                             alt={`${cfg.label} title card`}
@@ -485,7 +541,7 @@ function SnippetSocialPanel({
                           />
                         </div>
                       ) : (
-                        <div className={`rounded-lg bg-muted/50 flex flex-col items-center justify-center gap-2 ${platform === "linkedin" || platform === "x" ? "aspect-video" : "aspect-square"}`}>
+                        <div className={`rounded-lg bg-muted/50 flex flex-col items-center justify-center gap-2 ${cfg.aspectClass}`}>
                           <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
                           <p className="text-xs text-muted-foreground text-center px-2">
                             No image yet.<br />Click "Regenerate Image"
@@ -535,8 +591,8 @@ function SnippetSocialPanel({
                               className="text-sm font-mono"
                             />
                             <div className={`text-xs text-right ${overLimit ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                              {charCount}{platform === "x" && ` / 280`}
-                              {overLimit && " — over X limit!"}
+                              {charCount} / {cfg.charLimit}
+                              {overLimit && " — over limit!"}
                             </div>
                           </div>
                         ) : (
@@ -567,7 +623,12 @@ function SnippetSocialPanel({
                       {snippet.ctaText && (
                         <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
                           <Zap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <p className="text-xs text-amber-800 dark:text-amber-300">{snippet.ctaText}</p>
+                          <p className="text-xs text-amber-800 dark:text-amber-300">
+                            {snippet.ctaText}
+                            {(platform === "instagram_feed" || platform === "instagram_reel" || platform === "instagram_story") && (
+                              <span className="ml-1 text-amber-600/70">(sent as first comment — link in bio)</span>
+                            )}
+                          </p>
                         </div>
                       )}
 

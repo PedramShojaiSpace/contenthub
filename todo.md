@@ -2470,3 +2470,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Push to Buffer integration with channel selection per platform
 - [x] Add SnippetSocialPanel modal with platform tabs, copy editor, image preview
 - [x] DB migration: add titleCardLinkedinUrl, titleCardXUrl, titleCardMetaUrl, linkedinCopy, xCopy, metaCopy, hashtags, ctaText, bufferSentAt to book_snippets
+
+## v194 — Instagram Channel Integration
+- [x] Add Instagram Feed tab (1080×1080, feed caption with 10-15 hashtags)
+- [x] Add Instagram Reel tab (1080×1920 vertical, punchy hook-first caption under 300 chars)
+- [x] Add Instagram Story tab (1080×1920 vertical, same caption as feed)
+- [x] Add instagramCopy and instagramReelCopy fields to bookSnippets schema
+- [x] Add titleCardInstagramFeedUrl, titleCardInstagramReelUrl, titleCardInstagramStoryUrl columns
+- [x] Update generateSocialCopy to produce instagram + instagramReel copy
+- [x] Update pushSnippetToBuffer to use metaPostType (post/reel/story) for Instagram
+- [x] CTA sent as Buffer firstComment for all Instagram formats (link in bio)
+- [x] Channel filter shows only Instagram channels for IG tabs
+- [x] Per-platform char limit counter (300 for Reels, 2200 for Feed/Story)

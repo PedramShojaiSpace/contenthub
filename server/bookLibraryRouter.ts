@@ -891,18 +891,101 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
         channelServiceMap: Object.fromEntries(input.channelIds.map((id) => [id, input.platform.startsWith("instagram") ? "instagram" : input.platform])),
       });
 
-      // Record the push result
-      await db
-        .update(bookSnippets)
-        .set({
-          bufferSentAt: result.success ? new Date() : snippet.bufferSentAt,
+            // Record the push result — set per-platform published timestamp to prevent re-publishing
+      if (result.success) {
+        const platformPublishedField: Partial<typeof bookSnippets.$inferInsert> = {
+          bufferSentAt: new Date(),
           bufferLastResult: JSON.stringify({ platform: input.platform, ...result }),
-        })
-        .where(eq(bookSnippets.id, input.snippetId));
-
-      if (!result.success) {
+        };
+        if (input.platform === "linkedin") platformPublishedField.publishedLinkedinAt = new Date();
+        else if (input.platform === "x") platformPublishedField.publishedXAt = new Date();
+        else if (input.platform === "meta") platformPublishedField.publishedMetaAt = new Date();
+        else if (input.platform === "instagram_feed") platformPublishedField.publishedInstagramFeedAt = new Date();
+        else if (input.platform === "instagram_reel") platformPublishedField.publishedInstagramReelAt = new Date();
+        else if (input.platform === "instagram_story") platformPublishedField.publishedInstagramStoryAt = new Date();
+        await db
+          .update(bookSnippets)
+          .set(platformPublishedField)
+          .where(eq(bookSnippets.id, input.snippetId));
+      } else {
+        await db
+          .update(bookSnippets)
+          .set({ bufferLastResult: JSON.stringify({ platform: input.platform, ...result }) })
+          .where(eq(bookSnippets.id, input.snippetId));
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error ?? "Buffer push failed" });
       }
       return { success: true, bufferId: result.bufferId };
+    }),
+
+  // ─── Generate all 6 platform title cards for a snippet in one call ──────────
+  generateAllPlatformCards: protectedProcedure
+    .input(z.object({
+      snippetId: z.number(),
+      correctedText: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select()
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+      const [book] = await db
+        .select({ title: uploadedBooks.title })
+        .from(uploadedBooks)
+        .where(eq(uploadedBooks.id, snippet.bookId));
+      const bookTitle = book?.title ?? "The Urban Monk";
+      const quoteText = input.correctedText ?? snippet.passageText;
+      // Optionally save corrected text
+      if (input.correctedText && input.correctedText !== snippet.passageText) {
+        await db
+          .update(bookSnippets)
+          .set({ passageText: input.correctedText })
+          .where(eq(bookSnippets.id, input.snippetId));
+      }
+      await db
+        .update(bookSnippets)
+        .set({ titleCardStatus: "generating" })
+        .where(eq(bookSnippets.id, input.snippetId));
+      const basePrompt = (dimNote: string) =>
+        `Create a professional social media quote card for The Urban Monk brand.
+Quote: "${quoteText}"
+Author: Dr. Pedram Shojai
+Book: ${bookTitle}
+Format: ${dimNote}
+Style: Dark earthy background (deep forest green or rich charcoal), elegant serif typography for the quote in white/cream, small "- Dr. Pedram Shojai" attribution in gold/amber below the quote, "The Urban Monk" branding subtly at the bottom in gold small caps, minimalist and sophisticated. No busy backgrounds, no stock photos of people. The quote text must be rendered EXACTLY as provided — no repeated words, no typos.`;
+      const platforms = [
+        { key: "linkedin", dim: "Landscape 1.91:1 format (1200×627px) — LinkedIn", field: "titleCardLinkedinUrl" },
+        { key: "x", dim: "Landscape 16:9 format (1600×900px) — X/Twitter", field: "titleCardXUrl" },
+        { key: "meta", dim: "Square 1:1 format (1080×1080px) — Facebook/Meta", field: "titleCardMetaUrl" },
+        { key: "instagram_feed", dim: "Square 1:1 format (1080×1080px) — Instagram feed", field: "titleCardInstagramFeedUrl" },
+        { key: "instagram_reel", dim: "Vertical 9:16 format (1080×1920px) — Instagram Reel cover", field: "titleCardInstagramReelUrl" },
+        { key: "instagram_story", dim: "Vertical 9:16 format (1080×1920px) — Instagram Story", field: "titleCardInstagramStoryUrl" },
+      ];
+      const results: Record<string, string | null> = {};
+      // Generate all 6 platform cards in parallel
+      await Promise.all(
+        platforms.map(async (p) => {
+          try {
+            const { url } = await generateImage({ prompt: basePrompt(p.dim) });
+            results[p.field] = url ?? null;
+          } catch {
+            results[p.field] = null;
+          }
+        })
+      );
+      // Also set the default titleCardUrl to the square/meta version
+      const defaultUrl = results["titleCardMetaUrl"] ?? results["titleCardInstagramFeedUrl"] ?? null;
+      await db
+        .update(bookSnippets)
+        .set({
+          ...results,
+          titleCardUrl: defaultUrl,
+          titleCardStatus: "ready",
+        } as Partial<typeof bookSnippets.$inferInsert>)
+        .where(eq(bookSnippets.id, input.snippetId));
+      const generated = Object.values(results).filter(Boolean).length;
+      return { success: true, generated, results };
     }),
 });

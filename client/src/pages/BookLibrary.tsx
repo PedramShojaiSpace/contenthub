@@ -1067,6 +1067,7 @@ function BookDetailPanel({
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("score_desc");
   const [showHidden, setShowHidden] = useState(false);
+  const [minScore, setMinScore] = useState<number>(0);
   const [generatingId, setGeneratingId] = useState<number | null>(null);
   const [confirmReExtract, setConfirmReExtract] = useState(false);
 
@@ -1132,6 +1133,7 @@ function BookDetailPanel({
       if (showHidden && !s.softRejected) return false;
       if (themeFilter !== "all" && s.theme !== themeFilter) return false;
       if (platformFilter !== "all" && s.platform !== platformFilter) return false;
+      if (minScore > 0 && (s.qualityScore ?? 0) < minScore) return false;
       return true;
     })
     .sort((a, b) => {
@@ -1270,6 +1272,32 @@ function BookDetailPanel({
             </SelectContent>
           </Select>
         </div>
+        {/* Minimum quality score slider */}
+        <div className="flex items-center gap-2">
+          <Star className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            {minScore === 0 ? "All scores" : `${minScore}+`}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={10}
+            step={1}
+            value={minScore}
+            onChange={(e) => setMinScore(Number(e.target.value))}
+            className="w-24 accent-amber-500 cursor-pointer"
+            title={`Minimum quality score: ${minScore === 0 ? "show all" : minScore + "+"}`}
+          />
+          {minScore > 0 && (
+            <button
+              onClick={() => setMinScore(0)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              title="Reset score filter"
+            >
+              ✕
+            </button>
+          )}
+        </div>
         {/* Show/hide rejected snippets */}
         <Button
           variant={showHidden ? "secondary" : "ghost"}
@@ -1294,6 +1322,11 @@ function BookDetailPanel({
         <div className="text-center py-16 text-muted-foreground">
           <Quote className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p>{showHidden ? "No hidden snippets" : "No snippets match your filters"}</p>
+          {!showHidden && minScore > 0 && (
+            <p className="text-sm mt-1 text-amber-500">
+              Score floor is set to {minScore}+. Try lowering it to see more snippets.
+            </p>
+          )}
           {showHidden && hiddenCount === 0 && (
             <p className="text-sm mt-1">Use the thumbs-down button on any snippet to hide it here.</p>
           )}

@@ -2511,3 +2511,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Compositor generates ONE shared background then composites all 6 platform sizes from it (faster + visually consistent)
 - [x] Playfair Display serif typography, gold attribution, brand name in small caps — matches Urban Monk aesthetic
 - [x] Fallback to solid dark background if AI background generation fails (still typo-free)
+
+## v-mood — Background Mood Selector + Font Size + Book Title on Cards
+- [x] Add 4 mood styles (Forest Dark, Stone Gray, Ink Black, Warm Amber) to titleCardCompositor
+- [x] Add 3 font sizes (Large, Medium, Small) to compositor with scale multipliers
+- [x] Book title always shown on every card below author attribution
+- [x] Add cardMood and cardFontSize columns to bookSnippets schema
+- [x] Add updateSnippetStyle procedure to bookLibraryRouter
+- [x] Pass mood and fontSize through regenerateTitleCard and generateAllPlatformCards
+- [x] Add mood selector and font size toggle to SnippetCard UI
+- [x] Mood/fontSize preferences saved per-snippet and persist across regenerations

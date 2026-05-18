@@ -104,6 +104,8 @@ interface Snippet {
   publishedInstagramFeedAt: Date | null;
   publishedInstagramReelAt: Date | null;
   publishedInstagramStoryAt: Date | null;
+  cardMood: string | null;
+  cardFontSize: string | null;
 }
 
 interface BufferChannel {
@@ -753,7 +755,13 @@ function SnippetCard({
   generating: boolean;
 }) {
   const [showPanel, setShowPanel] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<string>(snippet.cardMood ?? "forest_dark");
+  const [selectedFontSize, setSelectedFontSize] = useState<string>(snippet.cardFontSize ?? "medium");
   const utils = trpc.useUtils();
+
+  const updateStyle = trpc.bookLibrary.updateSnippetStyle.useMutation({
+    onSuccess: () => utils.bookLibrary.getBook.invalidate({ bookId }),
+  });
 
   const generateAllCards = trpc.bookLibrary.generateAllPlatformCards.useMutation({
     onSuccess: (res) => {
@@ -861,6 +869,43 @@ function SnippetCard({
             )}
           </div>
 
+          {/* Style selectors — mood and font size */}
+          <div className="flex gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+            <Select
+              value={selectedMood}
+              onValueChange={(v) => {
+                setSelectedMood(v);
+                updateStyle.mutate({ snippetId: snippet.id, mood: v as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber" });
+              }}
+            >
+              <SelectTrigger className="h-6 text-xs w-[110px] px-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="forest_dark">🌲 Forest Dark</SelectItem>
+                <SelectItem value="stone_gray">🪨 Stone Gray</SelectItem>
+                <SelectItem value="ink_black">🖤 Ink Black</SelectItem>
+                <SelectItem value="warm_amber">🔥 Warm Amber</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={selectedFontSize}
+              onValueChange={(v) => {
+                setSelectedFontSize(v);
+                updateStyle.mutate({ snippetId: snippet.id, fontSize: v as "large" | "medium" | "small" });
+              }}
+            >
+              <SelectTrigger className="h-6 text-xs w-[80px] px-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="large">Large</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="small">Small</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Actions — Generate All Cards at snippet level, then Review & Publish */}
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             {!hasAnyCard ? (
@@ -868,7 +913,7 @@ function SnippetCard({
                 variant="outline"
                 size="sm"
                 className="flex-1 gap-1.5 text-xs"
-                onClick={() => generateAllCards.mutate({ snippetId: snippet.id })}
+                onClick={() => generateAllCards.mutate({ snippetId: snippet.id, mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber", fontSize: selectedFontSize as "large" | "medium" | "small" })}
                 disabled={isGenerating}
               >
                 {isGenerating ? (
@@ -893,8 +938,8 @@ function SnippetCard({
                   variant="ghost"
                   size="sm"
                   className="gap-1 text-xs px-2"
-                  title="Regenerate all platform cards"
-                  onClick={() => generateAllCards.mutate({ snippetId: snippet.id })}
+                  title="Regenerate all platform cards with current style"
+                  onClick={() => generateAllCards.mutate({ snippetId: snippet.id, mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber", fontSize: selectedFontSize as "large" | "medium" | "small" })}
                   disabled={isGenerating}
                 >
                   {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}

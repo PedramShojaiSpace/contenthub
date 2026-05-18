@@ -1151,6 +1151,9 @@ export const bookSnippets = mysqlTable("book_snippets", {
   savedToKanban: boolean("savedToKanban").default(false),
   qualityScore: int("qualityScore"),          // 1-10 from editorial filter; only >=7 are kept
   shareabilityType: varchar("shareabilityType", { length: 64 }),  // "share-worthy" | "save-worthy" | "both"
+  // Card style preferences (stored per-snippet, applied at generation time)
+  cardMood: varchar("cardMood", { length: 32 }).default("forest_dark"),  // forest_dark | stone_gray | ink_black | warm_amber
+  cardFontSize: varchar("cardFontSize", { length: 16 }).default("medium"),  // large | medium | small
   contentItemId: int("contentItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -301,7 +301,7 @@ export async function compositeCard(opts: {
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
   try {
     browser = await puppeteer.launch({
-      executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium-browser",
+      executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",

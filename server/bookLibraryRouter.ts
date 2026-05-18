@@ -126,6 +126,38 @@ Return JSON array with fields: passageText, theme, platform, chapter, qualitySco
 type RawCandidate = { passageText: string; theme: string; chapter: string };
 type ScoredSnippet = { passageText: string; theme: string; platform: string; chapter: string; qualityScore: number; shareabilityType: string };
 
+// Safely extract an array from LLM output — NEVER throws, returns [] on any failure
+function safeParseArray<T>(raw: string | null | undefined, label: string): T[] {
+  const str = String(raw ?? "").trim();
+  if (!str || str.startsWith("<!DOCTYPE") || str.startsWith("<html") || str.toLowerCase().includes("service unavailable")) {
+    console.warn(`[bookLibrary] ${label}: received empty or HTML response from LLM`);
+    return [];
+  }
+  // Strip markdown code fences
+  const cleaned = str.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    // Try to extract a JSON array substring
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (match) {
+      try { parsed = JSON.parse(match[0]); } catch { return []; }
+    } else {
+      console.warn(`[bookLibrary] ${label}: failed to parse JSON, skipping`);
+      return [];
+    }
+  }
+  if (Array.isArray(parsed)) return parsed as T[];
+  // Unwrap if the model returned an object wrapping the array
+  if (parsed && typeof parsed === "object") {
+    for (const v of Object.values(parsed as Record<string, unknown>)) {
+      if (Array.isArray(v)) return v as T[];
+    }
+  }
+  return [];
+}
+
 async function extractSnippets(
   text: string,
   bookTitle: string
@@ -140,35 +172,20 @@ async function extractSnippets(
   // STAGE 1: Extract raw candidates from all chunks in parallel
   const stage1Results = await Promise.allSettled(
     chunks.map(async (chunk, idx) => {
-      const result = await invokeLLM({
-        messages: [
-          { role: "system", content: STAGE1_EXTRACTION_PROMPT },
-          { role: "user", content: `Book: "${bookTitle}" (section ${idx + 1} of ${chunks.length})\n\n${chunk}` },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "candidates",
-            strict: false,
-            schema: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  passageText: { type: "string" },
-                  theme: { type: "string" },
-                  chapter: { type: "string" },
-                },
-                required: ["passageText", "theme", "chapter"],
-              },
-            },
-          },
-        },
-      });
-      const content = result.choices?.[0]?.message?.content ?? "[]";
-      const contentStr = typeof content === "string" ? content : JSON.stringify(content);
-      const parsed = parseLLMJson(contentStr, "candidates");
-      return Array.isArray(parsed) ? (parsed as RawCandidate[]) : [];
+      try {
+        const result = await invokeLLM({
+          messages: [
+            { role: "system", content: STAGE1_EXTRACTION_PROMPT },
+            { role: "user", content: `Book: "${bookTitle}" (section ${idx + 1} of ${chunks.length})\n\n${chunk}` },
+          ],
+        });
+        const content = result.choices?.[0]?.message?.content ?? "[]";
+        const contentStr = typeof content === "string" ? content : JSON.stringify(content);
+        return safeParseArray<RawCandidate>(contentStr, `stage1 chunk ${idx + 1}`);
+      } catch (err) {
+        console.error(`[bookLibrary] Stage 1 chunk ${idx + 1} error:`, err);
+        return [];
+      }
     })
   );
 
@@ -178,6 +195,7 @@ async function extractSnippets(
   for (const result of stage1Results) {
     if (result.status === "fulfilled") {
       for (const c of result.value) {
+        if (!c?.passageText) continue;
         const key = c.passageText.substring(0, 80).toLowerCase().trim();
         if (!seen.has(key) && c.passageText.length > 30) {
           seen.add(key);
@@ -189,7 +207,10 @@ async function extractSnippets(
 
   console.log(`[bookLibrary] Stage 1: ${allCandidates.length} raw candidates extracted from "${bookTitle}"`);
 
-  if (allCandidates.length === 0) return [];
+  if (allCandidates.length === 0) {
+    console.warn(`[bookLibrary] Stage 1 returned 0 candidates for "${bookTitle}" — check book text quality`);
+    return [];
+  }
 
   // STAGE 2: Editorial scoring — process in batches of 20
   const batchSize = 20;
@@ -206,40 +227,17 @@ async function extractSnippets(
             content: `Book: "${bookTitle}" — Score these ${batch.length} candidate quotes:\n\n${batch.map((c, j) => `[${j + 1}] ${c.passageText}`).join("\n\n")}`,
           },
         ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "scored_snippets",
-            strict: false,
-            schema: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  passageText: { type: "string" },
-                  theme: { type: "string" },
-                  platform: { type: "string" },
-                  chapter: { type: "string" },
-                  qualityScore: { type: "integer" },
-                  shareabilityType: { type: "string" },
-                },
-                required: ["passageText", "theme", "platform", "chapter", "qualityScore", "shareabilityType"],
-              },
-            },
-          },
-        },
       });
 
       const content = result.choices?.[0]?.message?.content ?? "[]";
       const contentStr = typeof content === "string" ? content : JSON.stringify(content);
-      const scored = parseLLMJson(contentStr, "scored_snippets");
-      if (Array.isArray(scored)) {
-        // Only keep quotes that scored 7 or higher
-        const approved = (scored as ScoredSnippet[]).filter((s) => (s.qualityScore ?? 0) >= 7);
-        approvedSnippets.push(...approved);
-      }
+      const scored = safeParseArray<ScoredSnippet>(contentStr, `stage2 batch ${Math.floor(i / batchSize) + 1}`);
+      // Only keep quotes that scored 7 or higher
+      const approved = scored.filter((s) => s?.passageText && (s.qualityScore ?? 0) >= 7);
+      approvedSnippets.push(...approved);
     } catch (err) {
-      console.error("[bookLibrary] Stage 2 editorial scoring error:", err);
+      console.error(`[bookLibrary] Stage 2 batch ${Math.floor(i / batchSize) + 1} error:`, err);
+      // Don't throw — continue processing other batches
     }
   }
 

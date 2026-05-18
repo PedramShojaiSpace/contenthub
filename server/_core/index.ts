@@ -296,6 +296,26 @@ async function startServer() {
     }
   });
 
+  // POST /api/upload-card — accepts PNG blob from client-side canvas renderer,
+  // uploads it to S3, returns public URL. Used by TitleCardRenderer.tsx.
+  const cardUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+  app.post("/api/upload-card", cardUpload.single("file"), async (req: any, res: any) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "No file provided" });
+      const platform = (req.body?.platform as string) ?? "unknown";
+      const suffix = Date.now() + "-" + Math.random().toString(36).substring(2, 6);
+      const key = `title-cards/${user.id}/${platform}-${suffix}.png`;
+      const { url } = await storagePut(key, file.buffer, "image/png");
+      return res.json({ url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[upload-card] Error:", msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

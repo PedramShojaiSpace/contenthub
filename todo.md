@@ -2504,3 +2504,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Show per-platform colored dots on snippet card thumbnail (LinkedIn=blue, X=sky, Meta=indigo, Instagram=pink)
 - [x] Add RotateCcw regenerate button on snippet cards that already have cards
 - [x] Review & Publish button shows count of published platforms (e.g. "Review (2/6 published)")
+
+## v-compositor — Hybrid Title Card Generation (Zero Typos)
+- [x] Build titleCardCompositor.ts: AI generates background-only image, Puppeteer composites real CSS text on top
+- [x] Replace all three generateImage calls in bookLibraryRouter with compositor (generateTitleCardImage, regenerateTitleCard, generateAllPlatformCards)
+- [x] Compositor generates ONE shared background then composites all 6 platform sizes from it (faster + visually consistent)
+- [x] Playfair Display serif typography, gold attribution, brand name in small caps — matches Urban Monk aesthetic
+- [x] Fallback to solid dark background if AI background generation fails (still typo-free)

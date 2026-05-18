@@ -9,9 +9,9 @@ import {
 } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
-import { generateImage } from "./_core/imageGeneration";
 import { parseLLMJson } from "./llmUtils";
 import { pushToBuffer, getBufferProfiles } from "./buffer";
+import { compositeCard, compositeAllPlatformCards } from "./titleCardCompositor";
 
 // ─── Voice Profile Extraction ─────────────────────────────────────────────────
 
@@ -250,24 +250,13 @@ async function extractSnippets(
 // ─── Title Card Generation ────────────────────────────────────────────────────
 
 async function generateTitleCardImage(snippet: BookSnippet, bookTitle: string): Promise<string | null> {
-  try {
-    const prompt = `Create a professional social media quote card for The Urban Monk brand.
-Quote: "${snippet.passageText}"
-Author: Dr. Pedram Shojai
-Book: ${bookTitle}
-
-Style: Dark earthy background (deep forest green or charcoal), elegant serif typography for the quote in white/cream, 
-small "- Dr. Pedram Shojai" attribution in gold/amber below the quote, 
-"The Urban Monk" branding subtly at the bottom, 
-minimalist and sophisticated, suitable for Instagram.
-Square format (1:1 ratio). No busy backgrounds, no stock photos of people.`;
-
-    const { url } = await generateImage({ prompt });
-    return url ?? null;
-  } catch (err) {
-    console.error("[bookLibrary] title card generation error:", err);
-    return null;
-  }
+  // Use the hybrid compositor: AI background + real CSS text (no AI text rendering = no typos)
+  return compositeCard({
+    quoteText: snippet.passageText,
+    bookTitle,
+    snippetId: snippet.id,
+    platform: "meta", // default square format
+  });
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -652,33 +641,19 @@ export const bookLibraryRouter = router({
           .where(eq(bookSnippets.id, input.snippetId));
       }
 
-      // Determine dimensions based on platform
-      const platformDimensions: Record<string, string> = {
-        square: "Square 1:1 format (1080×1080px) — ideal for Instagram/Meta",
-        linkedin: "Landscape 1.91:1 format (1200×627px) — ideal for LinkedIn",
-        x: "Landscape 16:9 format (1600×900px) — ideal for X/Twitter",
-        meta: "Square 1:1 format (1080×1080px) — ideal for Facebook/Instagram",
-        instagram_feed: "Square 1:1 format (1080×1080px) — Instagram feed post",
-        instagram_reel: "Vertical 9:16 format (1080×1920px) — Instagram Reel or Story cover",
-        instagram_story: "Vertical 9:16 format (1080×1920px) — Instagram Story",
-      };
-      const dimNote = platformDimensions[input.platform] ?? platformDimensions.square;
-
       await db
         .update(bookSnippets)
         .set({ titleCardStatus: "generating" })
         .where(eq(bookSnippets.id, input.snippetId));
-
-      const prompt = `Create a professional social media quote card for The Urban Monk brand.
-Quote: "${quoteText}"
-Author: Dr. Pedram Shojai
-Book: ${bookTitle}
-Format: ${dimNote}
-Style: Dark earthy background (deep forest green or rich charcoal), elegant serif typography for the quote in white/cream, small "- Dr. Pedram Shojai" attribution in gold/amber below the quote, "The Urban Monk" branding subtly at the bottom in gold small caps, minimalist and sophisticated. No busy backgrounds, no stock photos of people. The quote text must be rendered EXACTLY as provided — no repeated words, no typos.`;
-
       try {
-        const { url } = await generateImage({ prompt });
-        if (!url) throw new Error("No URL returned");
+        // Use hybrid compositor: AI background + real CSS text (zero typos)
+        const url = await compositeCard({
+          quoteText,
+          bookTitle,
+          snippetId: input.snippetId,
+          platform: input.platform,
+        });
+        if (!url) throw new Error("Compositor returned no URL");
         let platformFields: Partial<typeof bookSnippets.$inferInsert>;
         if (input.platform === "linkedin") {
           platformFields = { titleCardLinkedinUrl: url, titleCardStatus: "ready" };
@@ -705,7 +680,7 @@ Style: Dark earthy background (deep forest green or rich charcoal), elegant seri
           .update(bookSnippets)
           .set({ titleCardStatus: "failed" })
           .where(eq(bookSnippets.id, input.snippetId));
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Image generation failed: ${err}` });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Card generation failed: ${err}` });
       }
     }),
 
@@ -948,34 +923,30 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
         .update(bookSnippets)
         .set({ titleCardStatus: "generating" })
         .where(eq(bookSnippets.id, input.snippetId));
-      const basePrompt = (dimNote: string) =>
-        `Create a professional social media quote card for The Urban Monk brand.
-Quote: "${quoteText}"
-Author: Dr. Pedram Shojai
-Book: ${bookTitle}
-Format: ${dimNote}
-Style: Dark earthy background (deep forest green or rich charcoal), elegant serif typography for the quote in white/cream, small "- Dr. Pedram Shojai" attribution in gold/amber below the quote, "The Urban Monk" branding subtly at the bottom in gold small caps, minimalist and sophisticated. No busy backgrounds, no stock photos of people. The quote text must be rendered EXACTLY as provided — no repeated words, no typos.`;
-      const platforms = [
-        { key: "linkedin", dim: "Landscape 1.91:1 format (1200×627px) — LinkedIn", field: "titleCardLinkedinUrl" },
-        { key: "x", dim: "Landscape 16:9 format (1600×900px) — X/Twitter", field: "titleCardXUrl" },
-        { key: "meta", dim: "Square 1:1 format (1080×1080px) — Facebook/Meta", field: "titleCardMetaUrl" },
-        { key: "instagram_feed", dim: "Square 1:1 format (1080×1080px) — Instagram feed", field: "titleCardInstagramFeedUrl" },
-        { key: "instagram_reel", dim: "Vertical 9:16 format (1080×1920px) — Instagram Reel cover", field: "titleCardInstagramReelUrl" },
-        { key: "instagram_story", dim: "Vertical 9:16 format (1080×1920px) — Instagram Story", field: "titleCardInstagramStoryUrl" },
-      ];
+
+      // Use the hybrid compositor: generates ONE AI background, then composites
+      // real CSS text on top for all 6 platform sizes — zero AI text rendering = zero typos
+      const compositeResults = await compositeAllPlatformCards({
+        quoteText,
+        bookTitle,
+        snippetId: input.snippetId,
+      });
+
+      // Map compositor platform keys to DB field names
+      const fieldMap: Record<string, string> = {
+        linkedin:        "titleCardLinkedinUrl",
+        x:               "titleCardXUrl",
+        meta:            "titleCardMetaUrl",
+        instagram_feed:  "titleCardInstagramFeedUrl",
+        instagram_reel:  "titleCardInstagramReelUrl",
+        instagram_story: "titleCardInstagramStoryUrl",
+      };
       const results: Record<string, string | null> = {};
-      // Generate all 6 platform cards in parallel
-      await Promise.all(
-        platforms.map(async (p) => {
-          try {
-            const { url } = await generateImage({ prompt: basePrompt(p.dim) });
-            results[p.field] = url ?? null;
-          } catch {
-            results[p.field] = null;
-          }
-        })
-      );
-      // Also set the default titleCardUrl to the square/meta version
+      for (const [platform, url] of Object.entries(compositeResults)) {
+        const field = fieldMap[platform];
+        if (field) results[field] = url;
+      }
+
       const defaultUrl = results["titleCardMetaUrl"] ?? results["titleCardInstagramFeedUrl"] ?? null;
       await db
         .update(bookSnippets)

@@ -8,33 +8,89 @@
  *
  * This completely eliminates AI text-rendering typos because the quote is
  * rendered as real CSS typography, not painted by the image model.
+ *
+ * Supports 4 mood styles and 3 font sizes.
  */
-
 import puppeteer from "puppeteer-core";
 import { storagePut } from "./storage";
 import { generateImage } from "./_core/imageGeneration";
 
 // ─── Platform dimensions ──────────────────────────────────────────────────────
 export const PLATFORM_DIMS: Record<string, { w: number; h: number; label: string }> = {
-  linkedin:        { w: 1200, h:  627, label: "LinkedIn"       },
-  x:               { w: 1600, h:  900, label: "X / Twitter"    },
-  meta:            { w: 1080, h: 1080, label: "Facebook / Meta" },
-  instagram_feed:  { w: 1080, h: 1080, label: "Instagram Feed" },
-  instagram_reel:  { w: 1080, h: 1920, label: "Instagram Reel" },
+  linkedin:        { w: 1200, h:  627, label: "LinkedIn"        },
+  x:               { w: 1600, h:  900, label: "X / Twitter"     },
+  meta:            { w: 1080, h: 1080, label: "Facebook / Meta"  },
+  instagram_feed:  { w: 1080, h: 1080, label: "Instagram Feed"  },
+  instagram_reel:  { w: 1080, h: 1920, label: "Instagram Reel"  },
   instagram_story: { w: 1080, h: 1920, label: "Instagram Story" },
 };
 
-// ─── Background prompt (NO text instructions) ─────────────────────────────────
-function backgroundPrompt(w: number, h: number): string {
-  const ratio = w > h ? "landscape" : w === h ? "square" : "portrait";
-  return (
-    `Abstract ${ratio} background texture for a premium wellness brand. ` +
-    `Dark forest green and deep charcoal tones, subtle organic texture like aged leather or stone, ` +
-    `soft vignette edges, no text, no people, no objects, no symbols. ` +
-    `Minimalist and sophisticated. Suitable as a backdrop for white serif typography. ` +
-    `${w}×${h}px.`
-  );
+// ─── Mood definitions ─────────────────────────────────────────────────────────
+export type CardMood = "forest_dark" | "stone_gray" | "ink_black" | "warm_amber";
+export type CardFontSize = "large" | "medium" | "small";
+
+interface MoodConfig {
+  bgPrompt: (ratio: string) => string;
+  fallbackBg: string;       // CSS background for when AI fails
+  overlayGradient: string;  // CSS gradient for the dark overlay
+  quoteColor: string;       // Quote text color
+  accentColor: string;      // Gold/accent color for attribution + lines
+  brandColor: string;       // Brand name color
 }
+
+const MOODS: Record<CardMood, MoodConfig> = {
+  forest_dark: {
+    bgPrompt: (ratio) =>
+      `Abstract ${ratio} background texture for a premium wellness brand. ` +
+      `Dark forest green and deep charcoal tones, subtle organic texture like aged leather or moss, ` +
+      `soft vignette edges, no text, no people, no objects, no symbols. Minimalist and sophisticated.`,
+    fallbackBg: "#1a2a1a",
+    overlayGradient: "linear-gradient(to bottom, rgba(10,20,10,0.45) 0%, rgba(10,20,10,0.60) 50%, rgba(10,20,10,0.72) 100%)",
+    quoteColor: "#f5f0e8",
+    accentColor: "#d4af37",
+    brandColor: "rgba(212,175,55,0.80)",
+  },
+  stone_gray: {
+    bgPrompt: (ratio) =>
+      `Abstract ${ratio} background texture for a premium mindfulness brand. ` +
+      `Cool stone gray and slate tones, subtle concrete or granite texture, ` +
+      `soft vignette edges, no text, no people, no objects, no symbols. Minimalist and sophisticated.`,
+    fallbackBg: "#2a2a2a",
+    overlayGradient: "linear-gradient(to bottom, rgba(20,20,20,0.40) 0%, rgba(20,20,20,0.58) 50%, rgba(20,20,20,0.70) 100%)",
+    quoteColor: "#f0f0f0",
+    accentColor: "#c8c8c8",
+    brandColor: "rgba(200,200,200,0.75)",
+  },
+  ink_black: {
+    bgPrompt: (ratio) =>
+      `Abstract ${ratio} background texture for a luxury brand. ` +
+      `Deep black and near-black tones, subtle paper or linen texture, very dark, ` +
+      `soft vignette edges, no text, no people, no objects, no symbols. Minimalist and elegant.`,
+    fallbackBg: "#0a0a0a",
+    overlayGradient: "linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.78) 100%)",
+    quoteColor: "#f8f4ee",
+    accentColor: "#e8c96a",
+    brandColor: "rgba(232,201,106,0.85)",
+  },
+  warm_amber: {
+    bgPrompt: (ratio) =>
+      `Abstract ${ratio} background texture for a warm wellness brand. ` +
+      `Rich amber, burnt sienna, and deep ochre tones, subtle aged parchment or warm wood texture, ` +
+      `soft vignette edges, no text, no people, no objects, no symbols. Warm and sophisticated.`,
+    fallbackBg: "#2a1a08",
+    overlayGradient: "linear-gradient(to bottom, rgba(20,10,0,0.42) 0%, rgba(20,10,0,0.58) 50%, rgba(20,10,0,0.70) 100%)",
+    quoteColor: "#fdf6e3",
+    accentColor: "#e8a030",
+    brandColor: "rgba(232,160,48,0.85)",
+  },
+};
+
+// ─── Font size multipliers ────────────────────────────────────────────────────
+const FONT_SCALE: Record<CardFontSize, number> = {
+  large:  1.22,
+  medium: 1.00,
+  small:  0.80,
+};
 
 // ─── HTML template ────────────────────────────────────────────────────────────
 function buildHtml(opts: {
@@ -45,18 +101,26 @@ function buildHtml(opts: {
   backgroundUrl: string;
   w: number;
   h: number;
+  mood: CardMood;
+  fontSize: CardFontSize;
 }): string {
-  const { quoteText, authorName, bookTitle, brandName, backgroundUrl, w, h } = opts;
+  const { quoteText, authorName, bookTitle, brandName, backgroundUrl, w, h, mood, fontSize } = opts;
+  const m = MOODS[mood];
+  const scale = FONT_SCALE[fontSize];
 
-  // Scale font sizes relative to the card width
-  const quoteFontSize  = Math.round(w * 0.042);   // ~45px at 1080w
-  const attrFontSize   = Math.round(w * 0.022);   // ~24px
-  const brandFontSize  = Math.round(w * 0.020);   // ~22px
-  const padding        = Math.round(w * 0.085);   // ~92px
+  // Base font sizes relative to card width, then scaled
+  const quoteFontSize = Math.round(w * 0.042 * scale);
+  const attrFontSize  = Math.round(w * 0.022 * scale);
+  const brandFontSize = Math.round(w * 0.020);
+  const padding       = Math.round(w * 0.085);
 
   // Escape HTML entities
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const bgStyle = backgroundUrl
+    ? `background-image: url("${backgroundUrl}"); background-size: cover; background-position: center;`
+    : `background: ${m.fallbackBg};`;
 
   return `<!DOCTYPE html>
 <html>
@@ -64,17 +128,14 @@ function buildHtml(opts: {
 <meta charset="utf-8">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400&display=swap');
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
     width: ${w}px;
     height: ${h}px;
     overflow: hidden;
     font-family: 'Playfair Display', Georgia, serif;
-    background: #1a2a1a;
+    background: ${m.fallbackBg};
   }
-
   .card {
     position: relative;
     width: ${w}px;
@@ -85,92 +146,68 @@ function buildHtml(opts: {
     justify-content: center;
     padding: ${padding}px;
   }
-
-  /* Background image */
   .bg {
     position: absolute;
     inset: 0;
-    background-image: url("${backgroundUrl}");
-    background-size: cover;
-    background-position: center;
+    ${bgStyle}
   }
-
-  /* Dark overlay to ensure text readability */
   .overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      to bottom,
-      rgba(10, 20, 10, 0.45) 0%,
-      rgba(10, 20, 10, 0.60) 50%,
-      rgba(10, 20, 10, 0.70) 100%
-    );
+    background: ${m.overlayGradient};
   }
-
-  /* Decorative top/bottom accent lines */
   .accent-top, .accent-bottom {
     position: absolute;
     left: ${padding}px;
     right: ${padding}px;
     height: 1px;
-    background: linear-gradient(to right, transparent, rgba(212,175,55,0.6), transparent);
+    background: linear-gradient(to right, transparent, ${m.accentColor}99, transparent);
   }
   .accent-top    { top: ${Math.round(h * 0.08)}px; }
   .accent-bottom { bottom: ${Math.round(h * 0.08)}px; }
-
-  /* Content wrapper */
   .content {
     position: relative;
     z-index: 10;
     text-align: center;
     max-width: ${w - padding * 2}px;
   }
-
-  /* Opening quote mark */
   .open-quote {
     font-family: 'Playfair Display', serif;
     font-size: ${Math.round(quoteFontSize * 3.2)}px;
     line-height: 0.6;
-    color: rgba(212,175,55,0.55);
+    color: ${m.accentColor}88;
     display: block;
     margin-bottom: ${Math.round(h * 0.02)}px;
     font-style: normal;
   }
-
-  /* Quote text */
   .quote {
     font-family: 'Playfair Display', serif;
     font-size: ${quoteFontSize}px;
     font-weight: 400;
     font-style: italic;
-    color: #f5f0e8;
+    color: ${m.quoteColor};
     line-height: 1.55;
     letter-spacing: 0.01em;
     text-shadow: 0 2px 12px rgba(0,0,0,0.6);
     margin-bottom: ${Math.round(h * 0.04)}px;
   }
-
-  /* Attribution */
   .attribution {
     font-family: 'Lato', sans-serif;
     font-size: ${attrFontSize}px;
     font-weight: 300;
-    color: #d4af37;
+    color: ${m.accentColor};
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    margin-bottom: ${Math.round(h * 0.012)}px;
+    margin-bottom: ${Math.round(h * 0.010)}px;
   }
-
   .book-title {
     font-family: 'Lato', sans-serif;
-    font-size: ${Math.round(attrFontSize * 0.85)}px;
+    font-size: ${Math.round(attrFontSize * 0.82)}px;
     font-weight: 300;
-    color: rgba(212,175,55,0.65);
+    color: ${m.accentColor}aa;
     letter-spacing: 0.06em;
     font-style: italic;
   }
-
-  /* Brand name at bottom */
   .brand {
     position: absolute;
     bottom: ${Math.round(h * 0.055)}px;
@@ -182,7 +219,7 @@ function buildHtml(opts: {
     font-weight: 400;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(212,175,55,0.80);
+    color: ${m.brandColor};
     z-index: 10;
   }
 </style>
@@ -193,14 +230,12 @@ function buildHtml(opts: {
     <div class="overlay"></div>
     <div class="accent-top"></div>
     <div class="accent-bottom"></div>
-
     <div class="content">
       <span class="open-quote">&ldquo;</span>
       <p class="quote">${esc(quoteText)}</p>
       <p class="attribution">&mdash; ${esc(authorName)}</p>
-      ${bookTitle ? `<p class="book-title">${esc(bookTitle)}</p>` : ""}
+      <p class="book-title">${esc(bookTitle)}</p>
     </div>
-
     <div class="brand">${esc(brandName)}</div>
   </div>
 </body>
@@ -215,6 +250,8 @@ export async function compositeCard(opts: {
   brandName?: string;
   platform: string;
   snippetId: number;
+  mood?: CardMood;
+  fontSize?: CardFontSize;
   /** Optional: reuse an already-generated background URL to avoid re-generating */
   existingBackgroundUrl?: string;
 }): Promise<string | null> {
@@ -225,21 +262,24 @@ export async function compositeCard(opts: {
     brandName = "The Urban Monk",
     platform,
     snippetId,
+    mood = "forest_dark",
+    fontSize = "medium",
     existingBackgroundUrl,
   } = opts;
 
   const dim = PLATFORM_DIMS[platform] ?? PLATFORM_DIMS["meta"];
   const { w, h } = dim;
+  const ratio = w > h ? "landscape" : w === h ? "square" : "portrait";
 
-  // Step 1: Get background image (reuse if provided, otherwise generate)
+  // Step 1: Get background image
   let backgroundUrl = existingBackgroundUrl ?? null;
   if (!backgroundUrl) {
     try {
-      const result = await generateImage({ prompt: backgroundPrompt(w, h) });
+      const prompt = MOODS[mood].bgPrompt(ratio) + ` ${w}×${h}px.`;
+      const result = await generateImage({ prompt });
       backgroundUrl = result.url ?? null;
     } catch (err) {
       console.error(`[compositor] background generation failed for ${platform}:`, err);
-      // Fall back to a solid dark color — still typo-free
       backgroundUrl = null;
     }
   }
@@ -248,11 +288,13 @@ export async function compositeCard(opts: {
   const html = buildHtml({
     quoteText,
     authorName,
-    bookTitle,
+    bookTitle: bookTitle || "The Urban Monk",
     brandName,
     backgroundUrl: backgroundUrl ?? "",
     w,
     h,
+    mood,
+    fontSize,
   });
 
   // Step 3: Render with Puppeteer
@@ -280,7 +322,7 @@ export async function compositeCard(opts: {
     const screenshotBuffer = await page.screenshot({ type: "png" });
 
     // Step 4: Upload to S3
-    const key = `title-cards/${snippetId}-${platform}-${Date.now()}.png`;
+    const key = `title-cards/${snippetId}-${platform}-${mood}-${Date.now()}.png`;
     const { url: s3Url } = await storagePut(key, screenshotBuffer as Buffer, "image/png");
     return s3Url;
   } catch (err) {
@@ -302,14 +344,18 @@ export async function compositeAllPlatformCards(opts: {
   bookTitle?: string;
   brandName?: string;
   snippetId: number;
+  mood?: CardMood;
+  fontSize?: CardFontSize;
 }): Promise<Record<string, string | null>> {
+  const { mood = "forest_dark", fontSize = "medium" } = opts;
   const platforms = Object.keys(PLATFORM_DIMS);
   const results: Record<string, string | null> = {};
 
   // Generate a single square background first (reused for all platforms)
   let sharedBackground: string | null = null;
   try {
-    const result = await generateImage({ prompt: backgroundPrompt(1080, 1080) });
+    const prompt = MOODS[mood].bgPrompt("square") + ` 1080×1080px.`;
+    const result = await generateImage({ prompt });
     sharedBackground = result.url ?? null;
   } catch {
     sharedBackground = null;
@@ -321,6 +367,8 @@ export async function compositeAllPlatformCards(opts: {
       const url = await compositeCard({
         ...opts,
         platform,
+        mood,
+        fontSize,
         existingBackgroundUrl: sharedBackground ?? undefined,
       });
       results[platform] = url;

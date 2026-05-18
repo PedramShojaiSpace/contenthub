@@ -617,6 +617,8 @@ export const bookLibraryRouter = router({
       snippetId: z.number(),
       correctedText: z.string().optional(), // caller can pass a corrected quote
       platform: z.enum(["square", "linkedin", "x", "meta", "instagram_feed", "instagram_reel", "instagram_story"]).default("square"),
+      mood: z.enum(["forest_dark", "stone_gray", "ink_black", "warm_amber"]).optional(),
+      fontSize: z.enum(["large", "medium", "small"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -646,12 +648,24 @@ export const bookLibraryRouter = router({
         .set({ titleCardStatus: "generating" })
         .where(eq(bookSnippets.id, input.snippetId));
       try {
+        // Save mood/fontSize preferences if provided
+        if (input.mood || input.fontSize) {
+          await db
+            .update(bookSnippets)
+            .set({
+              ...(input.mood ? { cardMood: input.mood } : {}),
+              ...(input.fontSize ? { cardFontSize: input.fontSize } : {}),
+            })
+            .where(eq(bookSnippets.id, input.snippetId));
+        }
         // Use hybrid compositor: AI background + real CSS text (zero typos)
         const url = await compositeCard({
           quoteText,
           bookTitle,
           snippetId: input.snippetId,
           platform: input.platform,
+          mood: (input.mood ?? snippet.cardMood ?? "forest_dark") as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber",
+          fontSize: (input.fontSize ?? snippet.cardFontSize ?? "medium") as "large" | "medium" | "small",
         });
         if (!url) throw new Error("Compositor returned no URL");
         let platformFields: Partial<typeof bookSnippets.$inferInsert>;
@@ -897,6 +911,8 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
     .input(z.object({
       snippetId: z.number(),
       correctedText: z.string().optional(),
+      mood: z.enum(["forest_dark", "stone_gray", "ink_black", "warm_amber"]).optional(),
+      fontSize: z.enum(["large", "medium", "small"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -919,17 +935,25 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
           .set({ passageText: input.correctedText })
           .where(eq(bookSnippets.id, input.snippetId));
       }
+      // Save mood/fontSize preferences if provided
+      const moodToUse = (input.mood ?? snippet.cardMood ?? "forest_dark") as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber";
+      const fontSizeToUse = (input.fontSize ?? snippet.cardFontSize ?? "medium") as "large" | "medium" | "small";
       await db
         .update(bookSnippets)
-        .set({ titleCardStatus: "generating" })
+        .set({
+          titleCardStatus: "generating",
+          cardMood: moodToUse,
+          cardFontSize: fontSizeToUse,
+        })
         .where(eq(bookSnippets.id, input.snippetId));
-
       // Use the hybrid compositor: generates ONE AI background, then composites
       // real CSS text on top for all 6 platform sizes — zero AI text rendering = zero typos
       const compositeResults = await compositeAllPlatformCards({
         quoteText,
         bookTitle,
         snippetId: input.snippetId,
+        mood: moodToUse,
+        fontSize: fontSizeToUse,
       });
 
       // Map compositor platform keys to DB field names
@@ -958,5 +982,30 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
         .where(eq(bookSnippets.id, input.snippetId));
       const generated = Object.values(results).filter(Boolean).length;
       return { success: true, generated, results };
+    }),
+
+  // ─── Update snippet card style preferences (mood + font size) ───────────────
+  updateSnippetStyle: protectedProcedure
+    .input(z.object({
+      snippetId: z.number(),
+      mood: z.enum(["forest_dark", "stone_gray", "ink_black", "warm_amber"]).optional(),
+      fontSize: z.enum(["large", "medium", "small"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select({ id: bookSnippets.id })
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+      await db
+        .update(bookSnippets)
+        .set({
+          ...(input.mood     ? { cardMood:     input.mood     } : {}),
+          ...(input.fontSize ? { cardFontSize: input.fontSize } : {}),
+        })
+        .where(eq(bookSnippets.id, input.snippetId));
+      return { success: true };
     }),
 });

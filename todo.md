@@ -2604,3 +2604,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Length & Prose Style panel to GenerateEbookDialog UI (4-button length selector + 3-button prose style selector)
 - [x] Pass lengthPreset and proseStyle from UI to generateEbook mutation
 - [x] TypeScript clean (0 new errors), WeasyPrint confirmed working in sandbox
+
+## v-ebook-quality-pdf — Chapter Quality Overhaul + PDF Fix (COMPLETE)
+- [x] Fix WeasyPrint ENOENT: use absolute path /usr/local/bin/weasyprint in execFileAsync call
+- [x] Add explicit PATH env to WeasyPrint call to prevent runtime PATH issues
+- [x] Increase maxTokens for all length presets: Concise 2000, Standard 3000, Expansive 4500, Immersive 6000
+- [x] Increase word count targets: Concise 600-900, Standard 1000-1400, Expansive 1500-2000, Immersive 2000-2800
+- [x] Rewrite chapter outline prompt: demand specific, non-generic titles; rich 3-5 sentence summaries; narrative arc requirement; counterintuitive insights
+- [x] Rewrite chapter content prompt: 8 explicit requirements including opening hook, depth mandates (story + science + ancient wisdom + surprise), 2-4 subheadings, 2-3 actionable protocols, voice consistency, bridge closing
+- [x] Source document mode: prompt explicitly instructs AI to draw directly from source, quote/paraphrase specific insights, treat source as field notes
+- [x] No-source mode: requires story/case study + specific science + ancient wisdom reference + counterintuitive insight per chapter

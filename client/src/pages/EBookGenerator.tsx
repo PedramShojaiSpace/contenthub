@@ -196,12 +196,12 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             {linkables?.ctas && linkables.ctas.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">CTA Block</Label>
-                <Select value={ctaLinkId} onValueChange={setCtaLinkId} disabled={generateEbook.isPending}>
+                <Select value={ctaLinkId || "none"} onValueChange={(v) => setCtaLinkId(v === "none" ? "" : v)} disabled={generateEbook.isPending}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="Select a CTA..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {linkables.ctas.map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>
                         {c.text}
@@ -214,12 +214,12 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             {linkables?.landingPages && linkables.landingPages.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Landing Page</Label>
-                <Select value={landingPageId} onValueChange={setLandingPageId} disabled={generateEbook.isPending}>
+                <Select value={landingPageId || "none"} onValueChange={(v) => setLandingPageId(v === "none" ? "" : v)} disabled={generateEbook.isPending}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="Select a landing page..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {linkables.landingPages.map((lp) => (
                       <SelectItem key={lp.id} value={String(lp.id)}>
                         {lp.title}
@@ -232,12 +232,12 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             {linkables?.webinars && linkables.webinars.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Webinar</Label>
-                <Select value={webinarId} onValueChange={setWebinarId} disabled={generateEbook.isPending}>
+                <Select value={webinarId || "none"} onValueChange={(v) => setWebinarId(v === "none" ? "" : v)} disabled={generateEbook.isPending}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="Select a webinar..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {linkables.webinars.map((w) => (
                       <SelectItem key={w.id} value={String(w.id)}>
                         {w.title}

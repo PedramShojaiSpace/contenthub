@@ -1161,6 +1161,8 @@ export const ebooks = mysqlTable("ebooks", {
   // Generated PDF
   pdfS3Key: text("pdfS3Key"),
   pdfS3Url: text("pdfS3Url"),
+  // Cover image (AI-generated)
+  coverImageUrl: text("coverImageUrl"),
   // Integration links
   ctaBlockId: int("ctaBlockId"),
   landingPageId: int("landingPageId"),
@@ -1191,6 +1193,10 @@ export const ebookChapters = mysqlTable("ebook_chapters", {
   content: longtext("content"),
   wordCount: int("wordCount"),
   status: ebookChapterStatusEnum.notNull().default("pending"),
+  // Per-chapter CTA (overrides ebook-level CTA if set)
+  ctaText: text("ctaText"),
+  ctaUrl: varchar("ctaUrl", { length: 512 }),
+  ctaLabel: varchar("ctaLabel", { length: 128 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -414,6 +414,13 @@
       "when": 1779111957747,
       "tag": "0058_lying_dorian_gray",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1779114895397,
+      "tag": "0059_clumsy_doctor_faustus",
+      "breakpoints": true
     }
   ]
 }

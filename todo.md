@@ -2448,3 +2448,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add routes /book-library and /ebook-generator in App.tsx
 - [x] Fix all TypeScript errors in new files (getDb pattern, Set iteration, field names, imports)
 - [x] Push DB schema — all 4 new tables verified in migration
+
+## v193 — CTA/Funnel Integration & PDF Export
+- [x] Add ctaText, ctaUrl, ctaLabel columns to ebook_chapters table
+- [x] Add coverImageUrl column to ebooks table
+- [x] Build branded PDF generation (ebookPdf.ts) with puppeteer-core + Chromium
+- [x] Add setChapterCta procedure to ebookRouter
+- [x] Add setEbookCta procedure to ebookRouter
+- [x] Add injectCtaToAllChapters procedure to ebookRouter
+- [x] Add exportPdf procedure to ebookRouter (generates PDF, uploads to S3)
+- [x] Fix generateCoverImage to save to coverImageUrl instead of pdfS3Url
+- [x] Add CtaManagementPanel component to EBookGenerator.tsx
+- [x] Add Export PDF button to EbookViewer header
+- [x] Add PDF download link in chapter sidebar
+- [x] Run db:push migration (0059_clumsy_doctor_faustus.sql)

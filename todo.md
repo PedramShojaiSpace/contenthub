@@ -2535,3 +2535,19 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Show live progress counter (e.g. "2/6 cards...") during client-side rendering
 - [x] TypeScript: 0 new errors (37 pre-existing errors in typeformRouter/viralStudioRouter/webinarIntelligenceRouter unchanged)
 - [x] All 338 tests passing
+
+## v-sort-reject — Sort by Quality Score + Soft Reject
+- [x] Add softRejected boolean column to bookSnippets schema
+- [x] Run db:push after schema change
+- [x] Add softRejectSnippet procedure (toggle softRejected on/off)
+- [x] Add sort dropdown to snippet grid (Highest Score, Lowest Score, Newest, Oldest)
+- [x] Add thumbs-down button to each SnippetCard (soft reject / un-reject)
+- [x] Filter out softRejected snippets by default; add "Show hidden (N)" toggle
+- [x] Soft-rejected cards show muted style when visible in hidden view
+- [x] TypeScript clean, all tests passing
+
+## v-book-title-fix — Fix Book Title on Generated Cards
+- [x] Fix: cards were showing snippet.theme (e.g. "Time Management") instead of real book title
+- [x] getCardBackground now returns bookTitle from DB alongside backgroundUrl
+- [x] BookLibrary.tsx uses serverBookTitle from getCardBackground response as authoritative source
+- [x] bookTitle prop passed from BookDetailPanel (book.title) to SnippetCard as fallback

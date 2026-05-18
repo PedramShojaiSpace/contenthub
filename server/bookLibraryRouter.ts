@@ -1007,10 +1007,17 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const [snippet] = await db
-        .select({ id: bookSnippets.id })
+        .select({ id: bookSnippets.id, bookId: bookSnippets.bookId })
         .from(bookSnippets)
         .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
       if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+
+      // Fetch the real book title so the client compositor can display it correctly
+      const [book] = await db
+        .select({ title: uploadedBooks.title })
+        .from(uploadedBooks)
+        .where(eq(uploadedBooks.id, snippet.bookId));
+      const bookTitle = book?.title ?? "The Urban Monk";
 
       const MOOD_BG_PROMPTS: Record<string, string> = {
         forest_dark: "Abstract square background texture for a premium wellness brand. Dark forest green and deep charcoal tones, subtle organic texture like aged leather or moss, soft vignette edges, no text, no people, no objects, no symbols. Minimalist and sophisticated.",
@@ -1023,10 +1030,10 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
       const prompt = MOOD_BG_PROMPTS[input.mood] ?? MOOD_BG_PROMPTS["forest_dark"];
       try {
         const { url } = await generateImage({ prompt });
-        return { backgroundUrl: url ?? null };
+        return { backgroundUrl: url ?? null, bookTitle };
       } catch (err) {
         console.error("[getCardBackground] generateImage failed:", err);
-        return { backgroundUrl: null };
+        return { backgroundUrl: null, bookTitle };
       }
     }),
 
@@ -1099,6 +1106,29 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
           ...(input.mood     ? { cardMood:     input.mood     } : {}),
           ...(input.fontSize ? { cardFontSize: input.fontSize } : {}),
         })
+        .where(eq(bookSnippets.id, input.snippetId));
+      return { success: true };
+    }),
+
+  // ─── Soft-reject (hide) or un-reject a snippet ──────────────────────────────────
+  // Sets softRejected=true to hide from the grid without deleting.
+  // Calling again with softRejected=false restores it.
+  softRejectSnippet: protectedProcedure
+    .input(z.object({
+      snippetId: z.number(),
+      softRejected: z.boolean(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select({ id: bookSnippets.id })
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+      await db
+        .update(bookSnippets)
+        .set({ softRejected: input.softRejected })
         .where(eq(bookSnippets.id, input.snippetId));
       return { success: true };
     }),

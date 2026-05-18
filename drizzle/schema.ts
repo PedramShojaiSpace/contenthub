@@ -106,6 +106,7 @@ export type InsertPlatformStrategy = typeof platformStrategies.$inferInsert;
 
 export const generatedImages = mysqlTable("generated_images", {
   id: int("id").autoincrement().primaryKey(),
+  softRejected: boolean("softRejected").default(false),  // Hidden from grid but not deleted
   contentItemId: int("contentItemId"),
   platform: platformEnum.default("linkedin"),
   imageUrl: text("imageUrl").notNull(),
@@ -152,6 +153,7 @@ export const researchQueries = mysqlTable("research_queries", {
   topicTags: text("topicTags"),           // JSON array of tag strings
   gapScore: int("gapScore").default(0),   // 0-10: higher = bigger opportunity
   urbanMonkMentioned: int("urbanMonkMentioned").default(0), // 0 or 1
+  softRejected: boolean("softRejected").default(false),  // Hidden from grid but not deleted
   contentItemId: int("contentItemId"),    // linked when content is created from this gap
   status: mysqlEnum("queryStatus", ["unused", "in_progress", "published"]).default("unused"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -660,6 +662,7 @@ export const llmAssets = mysqlTable("llm_assets", {
   semanticKeywords: text("semanticKeywords"), // JSON: string[] related keywords
   priority: llmAssetPriorityEnum.notNull().default("medium"),
   status: llmAssetStatusEnum.notNull().default("queued"),
+  softRejected: boolean("softRejected").default(false),  // Hidden from grid but not deleted
   contentItemId: int("contentItemId"),   // FK → content_items.id once produced
   notes: text("notes"),
   publishedUrl: varchar("publishedUrl", { length: 1024 }), // Live URL once published
@@ -751,6 +754,7 @@ export const ingestReports = mysqlTable("ingest_reports", {
   generatedContent: longtext("generatedContent"),
   pubmedCitations: text("pubmedCitations"),                      // JSON: PubmedCitation[]
   tags: text("tags"),                                            // JSON: string[]
+  softRejected: boolean("softRejected").default(false),  // Hidden from grid but not deleted
   contentItemId: int("contentItemId"),                           // FK → contentItems.id (set after item created)
   pushedAt: timestamp("pushedAt").defaultNow().notNull(),
   originalCreatedAt: timestamp("originalCreatedAt"),             // createdAt from the payload
@@ -794,6 +798,7 @@ export const newsfeedArticles = mysqlTable("newsfeed_articles", {
   // Status workflow: pending → approved | dismissed
   status: mysqlEnum("newsfeedStatus", ["pending", "approved", "dismissed"]).notNull().default("pending"),
   // FK → content_items.id — set when article is approved and a LinkedIn card is created
+  softRejected: boolean("softRejected").default(false),  // Hidden from grid but not deleted
   contentItemId: int("contentItemId"),
   fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
   approvedAt: timestamp("approvedAt"),
@@ -1154,6 +1159,7 @@ export const bookSnippets = mysqlTable("book_snippets", {
   // Card style preferences (stored per-snippet, applied at generation time)
   cardMood: varchar("cardMood", { length: 32 }).default("forest_dark"),  // forest_dark | stone_gray | ink_black | warm_amber
   cardFontSize: varchar("cardFontSize", { length: 16 }).default("medium"),  // large | medium | small
+  softRejected: boolean("softRejected").default(false),  // Hidden from grid but not deleted
   contentItemId: int("contentItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

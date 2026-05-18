@@ -54,6 +54,10 @@ import {
   AlertTriangle,
   Star,
   RotateCcw,
+  ThumbsDown,
+  EyeOff,
+  Eye,
+  ArrowUpDown,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -107,6 +111,8 @@ interface Snippet {
   publishedInstagramStoryAt: Date | null;
   cardMood: string | null;
   cardFontSize: string | null;
+  softRejected: boolean | null;
+  createdAt: Date;
 }
 
 interface BufferChannel {
@@ -747,13 +753,19 @@ function SnippetSocialPanel({
 function SnippetCard({
   snippet,
   bookId,
+  bookTitle,
   onGenerateCard,
   generating,
+  onSoftReject,
+  isHiddenView,
 }: {
   snippet: Snippet;
   bookId: number;
+  bookTitle: string;
   onGenerateCard: (id: number) => void;
   generating: boolean;
+  onSoftReject: (id: number, rejected: boolean) => void;
+  isHiddenView: boolean;
 }) {
   const [showPanel, setShowPanel] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string>(snippet.cardMood ?? "forest_dark");
@@ -773,17 +785,18 @@ function SnippetCard({
     setIsClientGenerating(true);
     setClientProgress({ done: 0, total: 6 });
     try {
-      // Step 1: Get AI background from server
-      const { backgroundUrl } = await getCardBackground.mutateAsync({
+      // Step 1: Get AI background from server (also returns the real book title)
+      const { backgroundUrl, bookTitle: serverBookTitle } = await getCardBackground.mutateAsync({
         snippetId: snippet.id,
         mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber",
       });
 
       // Step 2: Render all 6 platform cards in the browser and upload to S3
+      // Use server-returned bookTitle as authoritative source (fallback to prop)
       const urls = await generateAllCards({
         quoteText: snippet.passageText,
         authorName: "Dr. Pedram Shojai",
-        bookTitle: snippet.theme ?? "The Urban Monk",
+        bookTitle: serverBookTitle ?? bookTitle,
         brandName: "The Urban Monk",
         backgroundUrl: backgroundUrl ?? null,
         mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber",
@@ -832,7 +845,12 @@ function SnippetCard({
 
   return (
     <>
-      <Card className="group hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setShowPanel(true)}>
+      <Card
+        className={`group hover:border-primary/30 transition-colors cursor-pointer ${
+          snippet.softRejected ? "opacity-60 border-dashed" : ""
+        }`}
+        onClick={() => !isHiddenView && setShowPanel(true)}
+      >
         <CardContent className="p-4 space-y-3">
           {/* Title card preview — shows default (meta/square) card or placeholder */}
           {snippet.titleCardUrl ? (
@@ -854,16 +872,18 @@ function SnippetCard({
                 </div>
               )}
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <a
-                  href={snippet.titleCardUrl}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-black/60 rounded-full p-1.5"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Download className="w-3 h-3 text-white" />
-                </a>
+                {!isHiddenView && (
+                  <a
+                    href={snippet.titleCardUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-black/60 rounded-full p-1.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Download className="w-3 h-3 text-white" />
+                  </a>
+                )}
               </div>
             </div>
           ) : (
@@ -999,6 +1019,27 @@ function SnippetCard({
               </>
             )}
           </div>
+
+          {/* Soft-reject / restore button */}
+          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-6 gap-1 text-xs px-2 ${
+                snippet.softRejected
+                  ? "text-emerald-600 hover:text-emerald-700"
+                  : "text-muted-foreground hover:text-destructive"
+              }`}
+              title={snippet.softRejected ? "Restore snippet" : "Hide snippet (soft reject)"}
+              onClick={() => onSoftReject(snippet.id, !snippet.softRejected)}
+            >
+              {snippet.softRejected ? (
+                <><Eye className="w-3 h-3" /> Restore</>
+              ) : (
+                <><ThumbsDown className="w-3 h-3" /> Hide</>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -1024,6 +1065,8 @@ function BookDetailPanel({
 }) {
   const [themeFilter, setThemeFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<string>("score_desc");
+  const [showHidden, setShowHidden] = useState(false);
   const [generatingId, setGeneratingId] = useState<number | null>(null);
   const [confirmReExtract, setConfirmReExtract] = useState(false);
 
@@ -1038,6 +1081,11 @@ function BookDetailPanel({
       utils.bookLibrary.getBook.invalidate({ bookId });
     },
   });
+  const softReject = trpc.bookLibrary.softRejectSnippet.useMutation({
+    onSuccess: () => utils.bookLibrary.getBook.invalidate({ bookId }),
+    onError: (err) => toast.error(err.message),
+  });
+
   const reExtract = trpc.bookLibrary.reExtractSnippets.useMutation({
     onSuccess: (result) => {
       toast.success(`Re-extraction complete! ${result.snippetCount} quality snippets found.`);
@@ -1076,11 +1124,30 @@ function BookDetailPanel({
 
   const allThemes = snippets.map((s) => s.theme).filter(Boolean) as string[];
   const themes = allThemes.filter((v, i, a) => a.indexOf(v) === i);
-  const filteredSnippets = snippets.filter((s) => {
-    if (themeFilter !== "all" && s.theme !== themeFilter) return false;
-    if (platformFilter !== "all" && s.platform !== platformFilter) return false;
-    return true;
-  });
+  const hiddenCount = snippets.filter((s) => s.softRejected).length;
+
+  const filteredSnippets = snippets
+    .filter((s) => {
+      if (!showHidden && s.softRejected) return false;
+      if (showHidden && !s.softRejected) return false;
+      if (themeFilter !== "all" && s.theme !== themeFilter) return false;
+      if (platformFilter !== "all" && s.platform !== platformFilter) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortOrder) {
+        case "score_desc":
+          return (b.qualityScore ?? 0) - (a.qualityScore ?? 0);
+        case "score_asc":
+          return (a.qualityScore ?? 0) - (b.qualityScore ?? 0);
+        case "newest":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "oldest":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        default:
+          return 0;
+      }
+    });
 
   const pendingCount = snippets.filter((s) => s.titleCardStatus === "pending").length;
   const readyCount = snippets.filter((s) => s.titleCardStatus === "ready").length;
@@ -1158,8 +1225,8 @@ function BookDetailPanel({
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      {/* Filters + Sort */}
+      <div className="flex gap-3 flex-wrap items-center">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
           <Select value={themeFilter} onValueChange={setThemeFilter}>
@@ -1188,7 +1255,36 @@ function BookDetailPanel({
             <SelectItem value="facebook">Facebook</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground self-center">
+        {/* Sort order */}
+        <div className="flex items-center gap-2">
+          <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="w-44 h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="score_desc">Highest Score First</SelectItem>
+              <SelectItem value="score_asc">Lowest Score First</SelectItem>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Show/hide rejected snippets */}
+        <Button
+          variant={showHidden ? "secondary" : "ghost"}
+          size="sm"
+          className="h-8 gap-1.5 text-sm"
+          onClick={() => setShowHidden((v) => !v)}
+        >
+          {showHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+          {showHidden
+            ? `Showing ${hiddenCount} hidden`
+            : hiddenCount > 0
+            ? `Hidden (${hiddenCount})`
+            : "No hidden"}
+        </Button>
+        <span className="text-sm text-muted-foreground self-center ml-auto">
           {filteredSnippets.length} snippets
         </span>
       </div>
@@ -1197,7 +1293,10 @@ function BookDetailPanel({
       {filteredSnippets.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Quote className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p>No snippets match your filters</p>
+          <p>{showHidden ? "No hidden snippets" : "No snippets match your filters"}</p>
+          {showHidden && hiddenCount === 0 && (
+            <p className="text-sm mt-1">Use the thumbs-down button on any snippet to hide it here.</p>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -1206,8 +1305,11 @@ function BookDetailPanel({
               key={snippet.id}
               snippet={snippet as Snippet}
               bookId={bookId}
+              bookTitle={book.title}
               onGenerateCard={handleGenerateCard}
               generating={generatingId === snippet.id}
+              onSoftReject={(id, rejected) => softReject.mutate({ snippetId: id, softRejected: rejected })}
+              isHiddenView={showHidden}
             />
           ))}
         </div>

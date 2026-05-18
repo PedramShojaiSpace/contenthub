@@ -2462,3 +2462,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Export PDF button to EbookViewer header
 - [x] Add PDF download link in chapter sidebar
 - [x] Run db:push migration (0059_clumsy_doctor_faustus.sql)
+
+## v193 — Book Snippet Social Publishing
+- [x] Add Regenerate Image button per snippet (with typo correction support)
+- [x] Add platform-specific title card variants (LinkedIn 1200x627, X 1600x900, Meta 1080x1080)
+- [x] Add AI social copy generator (LinkedIn, X, Meta) with hashtags and CTA
+- [x] Add Push to Buffer integration with channel selection per platform
+- [x] Add SnippetSocialPanel modal with platform tabs, copy editor, image preview
+- [x] DB migration: add titleCardLinkedinUrl, titleCardXUrl, titleCardMetaUrl, linkedinCopy, xCopy, metaCopy, hashtags, ctaText, bufferSentAt to book_snippets

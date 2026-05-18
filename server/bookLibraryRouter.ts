@@ -11,6 +11,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { parseLLMJson } from "./llmUtils";
+import { pushToBuffer, getBufferProfiles } from "./buffer";
 
 // ─── Voice Profile Extraction ─────────────────────────────────────────────────
 
@@ -475,5 +476,247 @@ export const bookLibraryRouter = router({
         .from(bookSnippets)
         .where(and(...conditions))
         .orderBy(desc(bookSnippets.createdAt));
+    }),
+
+  // ─── Regenerate Title Card (fixes typos, regenerates image) ─────────────────
+  regenerateTitleCard: protectedProcedure
+    .input(z.object({
+      snippetId: z.number(),
+      correctedText: z.string().optional(), // caller can pass a corrected quote
+      platform: z.enum(["square", "linkedin", "x", "meta"]).default("square"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select()
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+      const [book] = await db
+        .select({ title: uploadedBooks.title })
+        .from(uploadedBooks)
+        .where(eq(uploadedBooks.id, snippet.bookId));
+      const bookTitle = book?.title ?? "The Urban Monk";
+      const quoteText = input.correctedText ?? snippet.passageText;
+
+      // If corrected text provided, update the snippet text first
+      if (input.correctedText && input.correctedText !== snippet.passageText) {
+        await db
+          .update(bookSnippets)
+          .set({ passageText: input.correctedText })
+          .where(eq(bookSnippets.id, input.snippetId));
+      }
+
+      // Determine dimensions based on platform
+      const platformDimensions: Record<string, string> = {
+        square: "Square 1:1 format (1080×1080px) — ideal for Instagram/Meta",
+        linkedin: "Landscape 1.91:1 format (1200×627px) — ideal for LinkedIn",
+        x: "Landscape 16:9 format (1600×900px) — ideal for X/Twitter",
+        meta: "Square 1:1 format (1080×1080px) — ideal for Facebook/Instagram",
+      };
+      const dimNote = platformDimensions[input.platform] ?? platformDimensions.square;
+
+      await db
+        .update(bookSnippets)
+        .set({ titleCardStatus: "generating" })
+        .where(eq(bookSnippets.id, input.snippetId));
+
+      const prompt = `Create a professional social media quote card for The Urban Monk brand.
+Quote: "${quoteText}"
+Author: Dr. Pedram Shojai
+Book: ${bookTitle}
+Format: ${dimNote}
+Style: Dark earthy background (deep forest green or rich charcoal), elegant serif typography for the quote in white/cream, small "- Dr. Pedram Shojai" attribution in gold/amber below the quote, "The Urban Monk" branding subtly at the bottom in gold small caps, minimalist and sophisticated. No busy backgrounds, no stock photos of people. The quote text must be rendered EXACTLY as provided — no repeated words, no typos.`;
+
+      try {
+        const { url } = await generateImage({ prompt });
+        if (!url) throw new Error("No URL returned");
+        let platformFields: Partial<typeof bookSnippets.$inferInsert>;
+        if (input.platform === "linkedin") {
+          platformFields = { titleCardLinkedinUrl: url, titleCardStatus: "ready" };
+        } else if (input.platform === "x") {
+          platformFields = { titleCardXUrl: url, titleCardStatus: "ready" };
+        } else if (input.platform === "meta") {
+          platformFields = { titleCardMetaUrl: url, titleCardStatus: "ready" };
+        } else {
+          platformFields = { titleCardUrl: url, titleCardStatus: "ready" };
+        }
+        await db
+          .update(bookSnippets)
+          .set(platformFields)
+          .where(eq(bookSnippets.id, input.snippetId));
+        return { success: true, titleCardUrl: url, platform: input.platform };
+      } catch (err) {
+        await db
+          .update(bookSnippets)
+          .set({ titleCardStatus: "failed" })
+          .where(eq(bookSnippets.id, input.snippetId));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Image generation failed: ${err}` });
+      }
+    }),
+
+  // ─── Generate Social Copy + Hashtags for all 3 platforms ────────────────────
+  generateSocialCopy: protectedProcedure
+    .input(z.object({ snippetId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select()
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+      const [book] = await db
+        .select({ title: uploadedBooks.title })
+        .from(uploadedBooks)
+        .where(eq(uploadedBooks.id, snippet.bookId));
+      const bookTitle = book?.title ?? "The Urban Monk";
+
+      const systemPrompt = `You are the social media voice of Dr. Pedram Shojai, author and founder of The Urban Monk Academy. You write compelling, authentic social posts that drive people to join the Academy at https://theurbanmonk.com/academy ($297/year). Dr. Shojai's voice is: direct, spiritual but practical, science-backed, urgent yet compassionate. He speaks to high-performers who feel burned out and want to reclaim their energy, focus, and purpose.`;
+
+      const userPrompt = `Write social media copy for this quote from "${bookTitle}" by Dr. Pedram Shojai:
+
+"${snippet.passageText}"
+
+Generate copy for THREE platforms. Return a JSON object with exactly these fields:
+{
+  "linkedin": "LinkedIn post (1300-1500 chars). Start with a hook line, 2-3 short paragraphs expanding on the quote's insight, end with a CTA to join the Urban Monk Academy. Professional but personal tone. Include 3-5 relevant hashtags at the end.",
+  "x": "X/Twitter post (200-260 chars MAXIMUM — this is a hard limit). Punchy, thought-provoking. Include 2-3 hashtags. No URLs.",
+  "meta": "Facebook/Instagram caption (800-1200 chars). Conversational, story-driven, emotionally resonant. Start with the quote or a hook. End with a question to drive comments + CTA to the Academy. Include 5-8 hashtags.",
+  "hashtags": ["array of 8-12 hashtags relevant to this snippet's theme, without the # symbol"],
+  "ctaText": "Short CTA sentence (max 100 chars) pointing to the Academy, e.g. 'Join the Urban Monk Academy → theurbanmonk.com/academy'"
+}
+
+IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "social_copy",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                linkedin: { type: "string" },
+                x: { type: "string" },
+                meta: { type: "string" },
+                hashtags: { type: "array", items: { type: "string" } },
+                ctaText: { type: "string" },
+              },
+              required: ["linkedin", "x", "meta", "hashtags", "ctaText"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const rawContent = response?.choices?.[0]?.message?.content;
+      const raw = typeof rawContent === "string" ? rawContent : "{}";
+      let parsed: { linkedin: string; x: string; meta: string; hashtags: string[]; ctaText: string };
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse social copy from AI" });
+      }
+
+      // Enforce X character limit
+      if (parsed.x.length > 280) {
+        parsed.x = parsed.x.substring(0, 277) + "...";
+      }
+
+      await db
+        .update(bookSnippets)
+        .set({
+          linkedinCopy: parsed.linkedin,
+          xCopy: parsed.x,
+          metaCopy: parsed.meta,
+          hashtags: JSON.stringify(parsed.hashtags),
+          ctaText: parsed.ctaText,
+        })
+        .where(eq(bookSnippets.id, input.snippetId));
+
+      return {
+        linkedin: parsed.linkedin,
+        x: parsed.x,
+        meta: parsed.meta,
+        hashtags: parsed.hashtags,
+        ctaText: parsed.ctaText,
+      };
+    }),
+
+  // ─── Get Buffer channels ─────────────────────────────────────────────────────
+  getBufferChannels: protectedProcedure.query(async () => {
+    try {
+      const profiles = await getBufferProfiles();
+      return profiles;
+    } catch (err) {
+      console.error("[bookLibrary] getBufferChannels error:", err);
+      return [];
+    }
+  }),
+
+  // ─── Push snippet to Buffer ──────────────────────────────────────────────────
+  pushSnippetToBuffer: protectedProcedure
+    .input(z.object({
+      snippetId: z.number(),
+      platform: z.enum(["linkedin", "x", "meta"]),
+      channelIds: z.array(z.string()).min(1),
+      copyOverride: z.string().optional(), // user-edited copy
+      scheduledAt: z.number().optional(),  // UTC ms timestamp
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select()
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+
+      // Determine which copy to use
+      let copy = input.copyOverride;
+      if (!copy) {
+        if (input.platform === "linkedin") copy = snippet.linkedinCopy ?? undefined;
+        else if (input.platform === "x") copy = snippet.xCopy ?? undefined;
+        else copy = snippet.metaCopy ?? undefined;
+      }
+      if (!copy) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `No copy available for ${input.platform}. Generate social copy first.` });
+      }
+
+      // Determine which image to use
+      let imageUrl: string | undefined;
+      if (input.platform === "linkedin") imageUrl = snippet.titleCardLinkedinUrl ?? snippet.titleCardUrl ?? undefined;
+      else if (input.platform === "x") imageUrl = snippet.titleCardXUrl ?? snippet.titleCardUrl ?? undefined;
+      else imageUrl = snippet.titleCardMetaUrl ?? snippet.titleCardUrl ?? undefined;
+
+      const result = await pushToBuffer({
+        text: copy,
+        profileIds: input.channelIds,
+        imageUrl,
+        platform: input.platform,
+        scheduledAt: input.scheduledAt,
+        ctaUrl: snippet.ctaText ? "https://theurbanmonk.com/academy" : undefined,
+      });
+
+      // Record the push result
+      await db
+        .update(bookSnippets)
+        .set({
+          bufferSentAt: result.success ? new Date() : snippet.bufferSentAt,
+          bufferLastResult: JSON.stringify({ platform: input.platform, ...result }),
+        })
+        .where(eq(bookSnippets.id, input.snippetId));
+
+      if (!result.success) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error ?? "Buffer push failed" });
+      }
+      return { success: true, bufferId: result.bufferId };
     }),
 });

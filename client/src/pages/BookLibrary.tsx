@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -34,12 +36,24 @@ import {
   Filter,
   Wand2,
   Quote,
+  RefreshCw,
+  Send,
+  Hash,
+  Linkedin,
+  Twitter,
+  Facebook,
+  Edit3,
+  Check,
+  X,
+  Zap,
+  ExternalLink,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type BookStatus = "uploading" | "processing" | "ready" | "failed";
 type TitleCardStatus = "pending" | "generating" | "ready" | "failed";
+type SocialPlatform = "linkedin" | "x" | "meta";
 
 interface Book {
   id: number;
@@ -60,8 +74,24 @@ interface Snippet {
   platform: string | null;
   chapter: string | null;
   titleCardUrl: string | null;
+  titleCardLinkedinUrl: string | null;
+  titleCardXUrl: string | null;
+  titleCardMetaUrl: string | null;
   titleCardStatus: TitleCardStatus | null;
+  linkedinCopy: string | null;
+  xCopy: string | null;
+  metaCopy: string | null;
+  hashtags: string | null;
+  ctaText: string | null;
+  bufferSentAt: Date | null;
   savedToKanban: boolean | null;
+}
+
+interface BufferChannel {
+  id: string;
+  platform: string;
+  name: string;
+  service: string;
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -69,89 +99,55 @@ interface Snippet {
 function StatusBadge({ status }: { status: BookStatus }) {
   const map: Record<BookStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     uploading: { label: "Uploading", variant: "secondary" },
-    processing: { label: "Processing", variant: "secondary" },
+    processing: { label: "Processing...", variant: "secondary" },
     ready: { label: "Ready", variant: "default" },
     failed: { label: "Failed", variant: "destructive" },
   };
-  const { label, variant } = map[status] ?? { label: status, variant: "outline" };
+  const { label, variant } = map[status] ?? { label: status, variant: "outline" as const };
   return <Badge variant={variant}>{label}</Badge>;
 }
 
-// ─── PDF Upload + Text Extraction ─────────────────────────────────────────────
-
-async function extractTextFromPdf(file: File): Promise<{ text: string; pageCount: number }> {
-  // Use pdf-parse via a FormData upload to the server
-  // We'll send the file to a dedicated upload endpoint
-  const formData = new FormData();
-  formData.append("pdf", file);
-
-  const response = await fetch("/api/books/extract-pdf", {
-    method: "POST",
-    body: formData,
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error("PDF extraction failed");
-  }
-
-  const data = await response.json();
-  return { text: data.text, pageCount: data.pageCount };
-}
-
-// ─── Upload Book Dialog ───────────────────────────────────────────────────────
+// ─── Upload Book Dialog ────────────────────────────────────────────────────────
 
 function UploadBookDialog({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState<string>("");
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const createBook = trpc.bookLibrary.createBook.useMutation();
   const processBook = trpc.bookLibrary.processBook.useMutation();
 
   const handleUpload = async () => {
-    if (!title.trim() || !file) {
-      toast.error("Please enter a title and select a PDF file");
+    if (!file || !title.trim()) {
+      toast.error("Please provide a title and select a PDF file");
       return;
     }
-
     setUploading(true);
     try {
-      // Step 1: Create book record
-      setProgress("Creating book record...");
+      // Step 1: Create book record in DB
       const { bookId } = await createBook.mutateAsync({ title: title.trim() });
-
-      // Step 2: Upload PDF to server and extract text
-      setProgress("Uploading PDF and extracting text...");
+      // Step 2: Upload PDF to S3 via server endpoint
       const formData = new FormData();
       formData.append("pdf", file);
-      formData.append("bookId", String(bookId));
-
-      const uploadResp = await fetch("/api/books/upload", {
+      const res = await fetch("/api/books/upload", {
         method: "POST",
         body: formData,
         credentials: "include",
       });
-
-      if (!uploadResp.ok) {
-        throw new Error("PDF upload failed");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Upload failed" }));
+        throw new Error(err.error ?? "Upload failed");
       }
-
-      const uploadData = await uploadResp.json();
-
+      const { s3Key, s3Url, text, pageCount } = await res.json();
       // Step 3: Process book (voice profile + snippets)
-      setProgress("Extracting voice profile and quotes (this takes ~30 seconds)...");
       const result = await processBook.mutateAsync({
         bookId,
-        s3Key: uploadData.s3Key,
-        s3Url: uploadData.s3Url,
-        extractedText: uploadData.text,
-        pageCount: uploadData.pageCount,
+        s3Key,
+        s3Url,
+        extractedText: text,
+        pageCount,
       });
-
       toast.success(
         `"${title}" processed! Extracted ${result.snippetCount} quote-worthy snippets.`
       );
@@ -164,7 +160,6 @@ function UploadBookDialog({ onSuccess }: { onSuccess: () => void }) {
       toast.error(msg);
     } finally {
       setUploading(false);
-      setProgress("");
     }
   };
 
@@ -173,75 +168,62 @@ function UploadBookDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Upload className="w-4 h-4" />
-          Upload Book PDF
+          Upload Book
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Upload a Book</DialogTitle>
+          <DialogTitle>Upload a Book PDF</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="space-y-2">
-            <Label htmlFor="book-title">Book Title</Label>
+          <div>
+            <Label>Book Title</Label>
             <Input
-              id="book-title"
-              placeholder="e.g. The Urban Monk"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={uploading}
+              placeholder="e.g. The Urban Monk"
+              className="mt-1"
             />
           </div>
-          <div className="space-y-2">
+          <div>
             <Label>PDF File</Label>
-            <div
-              className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => fileRef.current?.click()}
-            >
-              {file ? (
-                <div className="flex items-center justify-center gap-2 text-sm">
-                  <BookOpen className="w-4 h-4 text-primary" />
-                  <span className="font-medium">{file.name}</span>
-                  <span className="text-muted-foreground">
-                    ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                  </span>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Click to select a PDF file
-                  </p>
-                </div>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-            </div>
+            <Input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="mt-1"
+            />
+            {file && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)
+              </p>
+            )}
           </div>
-          {progress && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
-              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-              {progress}
+          {uploading && (
+            <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium">Processing your book...</p>
+                <p className="text-muted-foreground text-xs mt-0.5">
+                  Extracting text, building voice profile, and finding quote-worthy snippets. This takes 1-3 minutes.
+                </p>
+              </div>
             </div>
           )}
           <Button
-            className="w-full"
+            className="w-full gap-2"
             onClick={handleUpload}
-            disabled={uploading || !title.trim() || !file}
+            disabled={uploading || !file || !title.trim()}
           >
             {uploading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Processing...
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Upload & Extract Quotes
+                <Sparkles className="w-4 h-4" />
+                Upload & Process
               </>
             )}
           </Button>
@@ -251,17 +233,422 @@ function UploadBookDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+// ─── Snippet Social Panel ─────────────────────────────────────────────────────
+// Full-featured panel: platform tabs, image preview, copy editor, Buffer push
+
+function SnippetSocialPanel({
+  snippet,
+  bookId,
+  onClose,
+}: {
+  snippet: Snippet;
+  bookId: number;
+  onClose: () => void;
+}) {
+  const utils = trpc.useUtils();
+  const [activePlatform, setActivePlatform] = useState<SocialPlatform>("linkedin");
+  const [editingCopy, setEditingCopy] = useState(false);
+  const [editedCopy, setEditedCopy] = useState("");
+  const [editingQuote, setEditingQuote] = useState(false);
+  const [correctedQuote, setCorrectedQuote] = useState(snippet.passageText);
+  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+
+  const { data: channels } = trpc.bookLibrary.getBufferChannels.useQuery();
+
+  const regenerate = trpc.bookLibrary.regenerateTitleCard.useMutation({
+    onSuccess: (res) => {
+      utils.bookLibrary.getBook.invalidate({ bookId });
+      toast.success(`${res.platform} title card regenerated!`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const generateCopy = trpc.bookLibrary.generateSocialCopy.useMutation({
+    onSuccess: () => {
+      utils.bookLibrary.getBook.invalidate({ bookId });
+      toast.success("Social copy generated for all platforms!");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const pushToBuffer = trpc.bookLibrary.pushSnippetToBuffer.useMutation({
+    onSuccess: (res) => {
+      utils.bookLibrary.getBook.invalidate({ bookId });
+      toast.success(`Pushed to Buffer! ID: ${res.bufferId ?? "queued"}`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const hashtags: string[] = (() => {
+    try { return JSON.parse(snippet.hashtags ?? "[]"); } catch { return []; }
+  })();
+
+  const platformConfig = {
+    linkedin: {
+      label: "LinkedIn",
+      icon: Linkedin,
+      copy: snippet.linkedinCopy,
+      imageUrl: snippet.titleCardLinkedinUrl ?? snippet.titleCardUrl,
+      color: "text-blue-500",
+      charLimit: 3000,
+      imageFormat: "1200×627",
+    },
+    x: {
+      label: "X / Twitter",
+      icon: Twitter,
+      copy: snippet.xCopy,
+      imageUrl: snippet.titleCardXUrl ?? snippet.titleCardUrl,
+      color: "text-sky-400",
+      charLimit: 280,
+      imageFormat: "1600×900",
+    },
+    meta: {
+      label: "Meta",
+      icon: Facebook,
+      copy: snippet.metaCopy,
+      imageUrl: snippet.titleCardMetaUrl ?? snippet.titleCardUrl,
+      color: "text-indigo-400",
+      charLimit: 2200,
+      imageFormat: "1080×1080",
+    },
+  };
+
+  const current = platformConfig[activePlatform];
+  const currentCopy = editingCopy ? editedCopy : (current.copy ?? "");
+  const charCount = currentCopy.length;
+  const overLimit = activePlatform === "x" && charCount > 280;
+
+  const handleStartEdit = () => {
+    setEditedCopy(current.copy ?? "");
+    setEditingCopy(true);
+  };
+
+  const handlePush = () => {
+    if (selectedChannels.length === 0) {
+      toast.error("Select at least one Buffer channel");
+      return;
+    }
+    pushToBuffer.mutate({
+      snippetId: snippet.id,
+      platform: activePlatform,
+      channelIds: selectedChannels,
+      copyOverride: editingCopy ? editedCopy : undefined,
+    });
+  };
+
+  // Filter channels by active platform
+  const platformChannels = (channels ?? []).filter((c: BufferChannel) => {
+    if (activePlatform === "linkedin") return c.service?.toLowerCase() === "linkedin";
+    if (activePlatform === "x") return c.service?.toLowerCase() === "twitter" || c.service?.toLowerCase() === "x";
+    if (activePlatform === "meta") return c.service?.toLowerCase() === "facebook" || c.service?.toLowerCase() === "instagram";
+    return true;
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-background border rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-5 border-b">
+          <div className="flex-1 pr-4">
+            {editingQuote ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={correctedQuote}
+                  onChange={(e) => setCorrectedQuote(e.target.value)}
+                  rows={3}
+                  className="text-sm font-medium italic"
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => setEditingQuote(false)} className="gap-1.5">
+                    <Check className="w-3.5 h-3.5" />
+                    Done
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setCorrectedQuote(snippet.passageText); setEditingQuote(false); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <p className="text-sm italic text-foreground/80 leading-relaxed flex-1">
+                  "{correctedQuote}"
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="shrink-0 h-6 w-6 p-0"
+                  onClick={() => setEditingQuote(true)}
+                  title="Fix typos in quote"
+                >
+                  <Edit3 className="w-3 h-3" />
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {snippet.theme && <span className="capitalize">{snippet.theme}</span>}
+              {snippet.chapter && <span> · {snippet.chapter}</span>}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Action bar */}
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => generateCopy.mutate({ snippetId: snippet.id })}
+              disabled={generateCopy.isPending}
+            >
+              {generateCopy.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              {snippet.linkedinCopy ? "Regenerate Copy" : "Generate Copy + Hashtags"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => regenerate.mutate({
+                snippetId: snippet.id,
+                correctedText: correctedQuote !== snippet.passageText ? correctedQuote : undefined,
+                platform: activePlatform === "x" ? "x" : activePlatform,
+              })}
+              disabled={regenerate.isPending}
+            >
+              {regenerate.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              Regenerate Image
+            </Button>
+          </div>
+
+          {/* Platform Tabs */}
+          <Tabs value={activePlatform} onValueChange={(v) => { setActivePlatform(v as SocialPlatform); setEditingCopy(false); }}>
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger value="linkedin" className="gap-1.5">
+                <Linkedin className="w-3.5 h-3.5" />
+                LinkedIn
+              </TabsTrigger>
+              <TabsTrigger value="x" className="gap-1.5">
+                <Twitter className="w-3.5 h-3.5" />
+                X / Twitter
+              </TabsTrigger>
+              <TabsTrigger value="meta" className="gap-1.5">
+                <Facebook className="w-3.5 h-3.5" />
+                Meta
+              </TabsTrigger>
+            </TabsList>
+
+            {(["linkedin", "x", "meta"] as SocialPlatform[]).map((platform) => {
+              const cfg = platformConfig[platform];
+              const platformCopy = platform === activePlatform && editingCopy ? editedCopy : (cfg.copy ?? "");
+              return (
+                <TabsContent key={platform} value={platform} className="mt-4">
+                  <div className="grid grid-cols-5 gap-5">
+                    {/* Image preview */}
+                    <div className="col-span-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Image · {cfg.imageFormat}
+                        </p>
+                        {cfg.imageUrl && (
+                          <a
+                            href={cfg.imageUrl}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <Download className="w-3 h-3" />
+                            Save
+                          </a>
+                        )}
+                      </div>
+                      {cfg.imageUrl ? (
+                        <div className={`rounded-lg overflow-hidden bg-muted ${platform === "linkedin" || platform === "x" ? "aspect-video" : "aspect-square"}`}>
+                          <img
+                            src={cfg.imageUrl}
+                            alt={`${cfg.label} title card`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className={`rounded-lg bg-muted/50 flex flex-col items-center justify-center gap-2 ${platform === "linkedin" || platform === "x" ? "aspect-video" : "aspect-square"}`}>
+                          <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+                          <p className="text-xs text-muted-foreground text-center px-2">
+                            No image yet.<br />Click "Regenerate Image"
+                          </p>
+                        </div>
+                      )}
+                      {snippet.bufferSentAt && (
+                        <p className="text-xs text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Pushed {new Date(snippet.bufferSentAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Copy editor */}
+                    <div className="col-span-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Post Copy
+                        </p>
+                        {platformCopy && !editingCopy && (
+                          <Button size="sm" variant="ghost" className="h-6 gap-1 text-xs" onClick={handleStartEdit}>
+                            <Edit3 className="w-3 h-3" />
+                            Edit
+                          </Button>
+                        )}
+                        {editingCopy && (
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" className="h-6 gap-1 text-xs" onClick={() => setEditingCopy(false)}>
+                              <Check className="w-3 h-3" />
+                              Done
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 gap-1 text-xs text-muted-foreground" onClick={() => { setEditingCopy(false); }}>
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {platformCopy ? (
+                        editingCopy ? (
+                          <div className="space-y-1.5">
+                            <Textarea
+                              value={editedCopy}
+                              onChange={(e) => setEditedCopy(e.target.value)}
+                              rows={platform === "linkedin" ? 10 : 6}
+                              className="text-sm font-mono"
+                            />
+                            <div className={`text-xs text-right ${overLimit ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                              {charCount}{platform === "x" && ` / 280`}
+                              {overLimit && " — over X limit!"}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-muted/30 rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+                            {platformCopy}
+                          </div>
+                        )
+                      ) : (
+                        <div className="bg-muted/20 rounded-lg p-4 text-center text-sm text-muted-foreground border border-dashed">
+                          <Sparkles className="w-5 h-5 mx-auto mb-2 opacity-40" />
+                          Click "Generate Copy + Hashtags" to create platform-optimized post copy
+                        </div>
+                      )}
+
+                      {/* Hashtags */}
+                      {hashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          <Hash className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                          {hashtags.slice(0, 8).map((tag) => (
+                            <span key={tag} className="text-xs text-primary/80 bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* CTA */}
+                      {snippet.ctaText && (
+                        <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                          <Zap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <p className="text-xs text-amber-800 dark:text-amber-300">{snippet.ctaText}</p>
+                        </div>
+                      )}
+
+                      {/* Buffer channels + push */}
+                      <div className="border-t pt-3 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                          <Send className="w-3 h-3" />
+                          Push to Buffer
+                        </p>
+                        {platformChannels.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            No {cfg.label} channels connected in Buffer.
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {platformChannels.map((ch: BufferChannel) => (
+                              <label key={ch.id} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedChannels.includes(ch.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedChannels((prev) => [...prev, ch.id]);
+                                    } else {
+                                      setSelectedChannels((prev) => prev.filter((id) => id !== ch.id));
+                                    }
+                                  }}
+                                  className="rounded"
+                                />
+                                <span className="text-sm">{ch.name}</span>
+                                <span className="text-xs text-muted-foreground capitalize">({ch.service})</span>
+                              </label>
+                            ))}
+                            <Button
+                              size="sm"
+                              className="gap-1.5 mt-2 bg-[#3d5a80] hover:bg-[#2e4461] text-white"
+                              onClick={handlePush}
+                              disabled={
+                                pushToBuffer.isPending ||
+                                selectedChannels.length === 0 ||
+                                !platformCopy ||
+                                overLimit
+                              }
+                            >
+                              {pushToBuffer.isPending ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Send className="w-3.5 h-3.5" />
+                              )}
+                              {pushToBuffer.isPending ? "Pushing..." : `Push to Buffer (${selectedChannels.length})`}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              );
+            })}
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Snippet Card ─────────────────────────────────────────────────────────────
 
 function SnippetCard({
   snippet,
+  bookId,
   onGenerateCard,
   generating,
 }: {
   snippet: Snippet;
+  bookId: number;
   onGenerateCard: (id: number) => void;
   generating: boolean;
 }) {
+  const [showPanel, setShowPanel] = useState(false);
+
   const platformColors: Record<string, string> = {
     instagram: "bg-pink-500/10 text-pink-400 border-pink-500/20",
     linkedin: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -270,86 +657,104 @@ function SnippetCard({
     all: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   };
 
+  const hasCopy = snippet.linkedinCopy || snippet.xCopy || snippet.metaCopy;
+
   return (
-    <Card className="group hover:border-primary/30 transition-colors">
-      <CardContent className="p-4 space-y-3">
-        {/* Title card preview */}
-        {snippet.titleCardUrl ? (
-          <div className="relative rounded-md overflow-hidden aspect-square bg-muted">
-            <img
-              src={snippet.titleCardUrl}
-              alt="Title card"
-              className="w-full h-full object-cover"
-            />
-            <a
-              href={snippet.titleCardUrl}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Download className="w-3 h-3 text-white" />
-            </a>
-          </div>
-        ) : (
-          <div className="aspect-square bg-muted/50 rounded-md flex items-center justify-center">
-            <Quote className="w-8 h-8 text-muted-foreground/30" />
-          </div>
-        )}
-
-        {/* Quote text */}
-        <p className="text-sm leading-relaxed line-clamp-4 text-foreground/90 italic">
-          "{snippet.passageText}"
-        </p>
-
-        {/* Meta */}
-        <div className="flex flex-wrap gap-1.5">
-          {snippet.theme && (
-            <Badge variant="outline" className="text-xs capitalize">
-              {snippet.theme}
-            </Badge>
-          )}
-          {snippet.platform && (
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
-                platformColors[snippet.platform] ?? "bg-muted text-muted-foreground"
-              }`}
-            >
-              {snippet.platform}
-            </span>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          {snippet.titleCardStatus === "ready" ? (
-            <Button variant="outline" size="sm" className="flex-1 gap-1.5" asChild>
-              <a href={snippet.titleCardUrl!} download target="_blank" rel="noopener noreferrer">
-                <Download className="w-3 h-3" />
-                Download
-              </a>
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1.5"
-              onClick={() => onGenerateCard(snippet.id)}
-              disabled={generating || snippet.titleCardStatus === "generating"}
-            >
-              {snippet.titleCardStatus === "generating" || generating ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <ImageIcon className="w-3 h-3" />
+    <>
+      <Card className="group hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setShowPanel(true)}>
+        <CardContent className="p-4 space-y-3">
+          {/* Title card preview */}
+          {snippet.titleCardUrl ? (
+            <div className="relative rounded-md overflow-hidden aspect-square bg-muted">
+              <img
+                src={snippet.titleCardUrl}
+                alt="Title card"
+                className="w-full h-full object-cover"
+              />
+              {snippet.bufferSentAt && (
+                <div className="absolute top-2 left-2 bg-emerald-600/90 rounded-full p-1" title="Pushed to Buffer">
+                  <CheckCircle2 className="w-3 h-3 text-white" />
+                </div>
               )}
-              {snippet.titleCardStatus === "generating" || generating
-                ? "Generating..."
-                : "Make Card"}
-            </Button>
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a
+                  href={snippet.titleCardUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-black/60 rounded-full p-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Download className="w-3 h-3 text-white" />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="aspect-square bg-muted/50 rounded-md flex items-center justify-center">
+              <Quote className="w-8 h-8 text-muted-foreground/30" />
+            </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Quote text */}
+          <p className="text-sm leading-relaxed line-clamp-3 text-foreground/90 italic">
+            "{snippet.passageText}"
+          </p>
+
+          {/* Meta */}
+          <div className="flex flex-wrap gap-1.5">
+            {snippet.theme && (
+              <Badge variant="outline" className="text-xs capitalize">
+                {snippet.theme}
+              </Badge>
+            )}
+            {hasCopy && (
+              <Badge variant="outline" className="text-xs gap-1 text-emerald-600 border-emerald-500/30">
+                <Sparkles className="w-2.5 h-2.5" />
+                Copy ready
+              </Badge>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            {snippet.titleCardStatus !== "ready" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5 text-xs"
+                onClick={() => onGenerateCard(snippet.id)}
+                disabled={generating || snippet.titleCardStatus === "generating"}
+              >
+                {snippet.titleCardStatus === "generating" || generating ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-3 h-3" />
+                )}
+                {snippet.titleCardStatus === "generating" || generating ? "Generating..." : "Make Card"}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5 text-xs"
+                onClick={() => setShowPanel(true)}
+              >
+                <Send className="w-3 h-3" />
+                Publish
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {showPanel && (
+        <SnippetSocialPanel
+          snippet={snippet}
+          bookId={bookId}
+          onClose={() => setShowPanel(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -412,6 +817,7 @@ function BookDetailPanel({
 
   const pendingCount = snippets.filter((s) => s.titleCardStatus === "pending").length;
   const readyCount = snippets.filter((s) => s.titleCardStatus === "ready").length;
+  const publishedCount = snippets.filter((s) => s.bufferSentAt).length;
 
   return (
     <div className="space-y-6">
@@ -425,7 +831,7 @@ function BookDetailPanel({
             <h2 className="text-xl font-semibold">{book.title}</h2>
             <p className="text-sm text-muted-foreground">
               {book.wordCount?.toLocaleString()} words · {snippets.length} snippets ·{" "}
-              {readyCount} title cards ready
+              {readyCount} cards ready · {publishedCount} pushed to Buffer
             </p>
           </div>
         </div>
@@ -495,7 +901,8 @@ function BookDetailPanel({
           {filteredSnippets.map((snippet) => (
             <SnippetCard
               key={snippet.id}
-              snippet={snippet}
+              snippet={snippet as Snippet}
+              bookId={bookId}
               onGenerateCard={handleGenerateCard}
               generating={generatingId === snippet.id}
             />
@@ -530,177 +937,101 @@ export default function BookLibrary() {
 
   if (selectedBookId) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <BookDetailPanel
-            bookId={selectedBookId}
-            onBack={() => setSelectedBookId(null)}
-          />
-        </div>
-      </div>
+      <BookDetailPanel
+        bookId={selectedBookId}
+        onBack={() => setSelectedBookId(null)}
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <BookOpen className="w-8 h-8 text-primary" />
-              Book Library
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Upload your published books to extract quote cards and learn your voice
-            </p>
-          </div>
-          <UploadBookDialog
-            onSuccess={() => utils.bookLibrary.listBooks.invalidate()}
-          />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Book Library</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Upload your books to extract quote cards and generate social media content
+          </p>
         </div>
+        <UploadBookDialog onSuccess={() => utils.bookLibrary.listBooks.invalidate()} />
+      </div>
 
-        {/* Stats bar */}
-        {books && books.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4 flex items-center gap-3">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="text-2xl font-bold">{books.length}</p>
-                  <p className="text-xs text-muted-foreground">Books uploaded</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                <div>
-                  <p className="text-2xl font-bold">
-                    {books.filter((b) => b.status === "ready").length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Ready for use</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-3">
-                <Quote className="w-5 h-5 text-amber-500" />
-                <div>
-                  <p className="text-2xl font-bold">
-                    {books
-                      .filter((b) => b.status === "ready")
-                      .reduce((acc, b) => acc + (b.wordCount ?? 0), 0)
-                      .toLocaleString()}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Total words indexed</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Book List */}
-        {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : books && books.length === 0 ? (
-          <div className="text-center py-24 space-y-4">
-            <BookOpen className="w-16 h-16 mx-auto text-muted-foreground/30" />
-            <div>
-              <h3 className="text-lg font-medium">No books yet</h3>
-              <p className="text-muted-foreground text-sm mt-1">
-                Upload your first book PDF to start extracting quote cards and building your voice profile
-              </p>
-            </div>
-            <UploadBookDialog
-              onSuccess={() => utils.bookLibrary.listBooks.invalidate()}
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {books?.map((book) => (
-              <Card
-                key={book.id}
-                className="group hover:border-primary/30 transition-colors cursor-pointer"
-                onClick={() => book.status === "ready" && setSelectedBookId(book.id)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-base truncate">{book.title}</CardTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {book.author ?? "Dr. Pedram Shojai"}
-                      </p>
+      {/* Books grid */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : !books || books.length === 0 ? (
+        <div className="text-center py-24 text-muted-foreground">
+          <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
+          <p className="font-medium">No books yet</p>
+          <p className="text-sm mt-1">Upload a PDF to extract quote-worthy snippets</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {books.map((book) => (
+            <Card
+              key={book.id}
+              className="hover:border-primary/30 transition-colors cursor-pointer group"
+              onClick={() => book.status === "ready" && setSelectedBookId(book.id)}
+            >
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <BookOpen className="w-5 h-5 text-primary" />
                     </div>
-                    <StatusBadge status={book.status} />
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex gap-3">
-                      {book.pageCount && <span>{book.pageCount} pages</span>}
-                      {book.wordCount && (
-                        <span>{book.wordCount.toLocaleString()} words</span>
+                    <div>
+                      <h3 className="font-semibold leading-tight">{book.title}</h3>
+                      {book.author && (
+                        <p className="text-xs text-muted-foreground">{book.author}</p>
                       )}
                     </div>
-                    {book.status === "ready" && (
-                      <div className="flex items-center gap-1 text-primary text-xs font-medium">
-                        View snippets
-                        <ChevronRight className="w-3 h-3" />
-                      </div>
-                    )}
-                    {(book.status === "uploading" || book.status === "processing") && (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    )}
                   </div>
-                  {book.status === "failed" && (
-                    <div className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      Processing failed — try uploading again
-                    </div>
-                  )}
-                  {/* Delete button */}
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-muted-foreground hover:text-destructive gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(book.id, book.title);
-                      }}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                  <StatusBadge status={book.status as BookStatus} />
+                </div>
 
-        {/* Voice Profile Info */}
-        {books && books.filter((b) => b.status === "ready").length > 0 && (
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="p-5 flex items-start gap-4">
-              <Sparkles className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-sm">Voice Profile Active</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Your voice profile has been extracted from{" "}
-                  {books.filter((b) => b.status === "ready").length} book
-                  {books.filter((b) => b.status === "ready").length !== 1 ? "s" : ""}. 
-                  The E-Book Generator will use this profile to write in your exact voice. 
-                  Upload more books to strengthen the profile.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  {book.wordCount && <span>{book.wordCount.toLocaleString()} words</span>}
+                  {book.pageCount && <span>{book.pageCount} pages</span>}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  {book.status === "ready" ? (
+                    <div className="flex items-center gap-1 text-primary text-sm font-medium">
+                      View Snippets
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </div>
+                  ) : book.status === "processing" ? (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Processing...
+                    </div>
+                  ) : book.status === "failed" ? (
+                    <div className="flex items-center gap-1.5 text-xs text-destructive">
+                      <AlertCircle className="w-3 h-3" />
+                      Processing failed
+                    </div>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-destructive gap-1 ml-auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(book.id, book.title);
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

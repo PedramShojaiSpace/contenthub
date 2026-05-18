@@ -2551,3 +2551,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] getCardBackground now returns bookTitle from DB alongside backgroundUrl
 - [x] BookLibrary.tsx uses serverBookTitle from getCardBackground response as authoritative source
 - [x] bookTitle prop passed from BookDetailPanel (book.title) to SnippetCard as fallback
+
+## v-score-floor — Quality Score Floor Slider
+- [x] Add minScore state (0 = all) to BookDetailPanel
+- [x] Add minScore filter to filteredSnippets chain (skip snippets below floor)
+- [x] Add range slider (0–10, amber accent) in filter bar with live label ("All scores" / "8+")
+- [x] Add ✕ reset button that appears when minScore > 0
+- [x] Empty state shows hint to lower score floor when no snippets match

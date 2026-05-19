@@ -13,6 +13,7 @@ import {
 } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { invokeClaude } from "./claudeLLM";
 import { generateImage } from "./_core/imageGeneration";
 import { parseLLMJson, wrapLLM } from "./llmUtils";
 import { storagePut } from "./storage";
@@ -241,12 +242,7 @@ async function generateChapterContent(
   // Build source context block if a document was uploaded
   const sourceContext = buildSourceContext(sourceDocumentText, sourceNarrative);
 
-  const result = await wrapLLM(() => invokeLLM({
-    messages: [
-      { role: "system", content: voiceSystemPrompt },
-      {
-        role: "user",
-        content: `Write Chapter ${chapterNumber} of a premium e-book by Dr. Pedram Shojai (The Urban Monk).
+  const userPrompt = `Write Chapter ${chapterNumber} of a premium e-book by Dr. Pedram Shojai (The Urban Monk).
 
 TITLE: "${chapterTitle}"
 TOPIC: ${topic} | READER: ${targetAudience}
@@ -266,14 +262,16 @@ ${sourceDocumentText
 - ${isLastChapter ? "Close with a powerful paragraph that crystallizes the book's core transformation." : "Close with a bridge to the next chapter — a question or tension that pulls the reader forward."}
 - Clean Markdown, ## subheadings, prose paragraphs (no bullet lists except for protocol steps)${ctaInstruction}
 
-Start directly with the opening hook:`,
-      },
-    ],
-    maxTokens: preset.maxTokens,
-  }));
+Start directly with the opening hook:`;
 
-  const content = result.choices?.[0]?.message?.content ?? "";
-  return typeof content === "string" ? content : JSON.stringify(content);
+  // Use Claude directly for chapter prose — significantly better narrative quality than Gemini Flash
+  const content = await invokeClaude({
+    systemPrompt: voiceSystemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+    maxTokens: preset.maxTokens,
+  });
+
+  return content;
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────

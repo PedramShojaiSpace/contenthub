@@ -2748,3 +2748,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Build ebookDocx.ts generator — inline in ebookRouter exportDocx procedure (cover, chapters, headings, bullets, page breaks)
 - [x] Add exportDocx tRPC procedure in ebookRouter
 - [x] Add "Export DOCX" (.docx) button in EbookViewer alongside the PDF export button
+
+## v-claude-writing — Anthropic Claude for Ebook Chapter Prose
+
+- [x] Add ANTHROPIC_API_KEY secret
+- [x] Install @anthropic-ai/sdk npm package (v0.97.1)
+- [x] Build server/claudeLLM.ts helper (direct Anthropic API, claude-sonnet-4-5, with retry logic)
+- [x] Wire claudeLLM into generateChapterContent in ebookRouter (prose only)
+- [x] Keep invokeLLM (Gemini Flash) for outline generation and JSON extraction

@@ -2620,3 +2620,25 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix: removed snippet.theme from useCallback dep array, added bookTitle
 - [x] Fix: added non-empty string guard on serverBookTitle before using it
 - [x] resolvedBookTitle = serverBookTitle (non-empty) ?? bookTitle (non-empty) ?? "The Urban Monk"
+
+## v-ebook-streaming — Chapter-by-Chapter Generation, Regenerate Chapter, DOCX Export
+- [ ] Refactor generateEbook into: createEbookDraft (outline only) + generateNextChapter (one chapter at a time)
+- [ ] Add regenerateChapter procedure to re-run a single chapter
+- [ ] Update EBookGenerator UI to call generateNextChapter in a loop with live progress bar
+- [ ] Show per-chapter status (pending / generating / complete / failed) during generation
+- [ ] Add "Regenerate" button on each chapter in the ebook detail view
+- [ ] Install docx npm package
+- [ ] Add DOCX export using docx package server-side
+- [ ] Add "Download as Word (.docx)" button in ebook detail view alongside PDF button
+- [ ] TypeScript clean, all tests passing
+
+## v-ebook-streaming — Chapter-by-Chapter Generation + DOCX Export (COMPLETE)
+- [x] Add createEbookDraft procedure (outline only, returns ebookId + outline array)
+- [x] Add generateChapter procedure (generates one chapter by number, uses full quality prompt)
+- [x] Add exportDocx procedure (builds .docx using docx npm package, uploads to S3)
+- [x] Install docx npm package
+- [x] Replace GenerateEbookDialog single-mutation flow with createDraft + chapter loop
+- [x] Add live progress bar (Building outline... → Chapter N of M...)
+- [x] Show failed chapter numbers inline with recovery message
+- [x] Add .docx export button to EbookViewer header alongside PDF
+- [x] Fix all TypeScript errors (generateEbook.isPending → isGenerating)

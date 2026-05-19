@@ -141,45 +141,85 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
     }
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState<"idle" | "outline" | "chapters">("idle");
+  const [chaptersCompleted, setChaptersCompleted] = useState(0);
+  const [totalChapters, setTotalChapters] = useState(0);
+  const [failedChapters, setFailedChapters] = useState<number[]>([]);
+
   const { data: linkables } = trpc.ebook.getLinkableItems.useQuery();
-  const generateEbook = trpc.ebook.generateEbook.useMutation({
-    onSuccess: (result) => {
-      toast.success(
-        `E-book generated! ${result.chapterCount} chapters, ${result.wordCount?.toLocaleString()} words.`
-      );
+  const createDraft = trpc.ebook.createEbookDraft.useMutation();
+  const generateChapterMutation = trpc.ebook.generateChapter.useMutation();
+
+  const handleGenerate = async () => {
+    if (!title.trim() || !topic.trim()) {
+      toast.error("Please enter a title and topic");
+      return;
+    }
+    setIsGenerating(true);
+    setGenerationStep("outline");
+    setChaptersCompleted(0);
+    setFailedChapters([]);
+    try {
+      // Step 1: Create draft (outline only)
+      const draft = await createDraft.mutateAsync({
+        title: title.trim(),
+        topic: topic.trim(),
+        targetAudience: audience,
+        chapterCount: parseInt(chapterCount),
+        ctaBlockId: ctaLinkId ? parseInt(ctaLinkId) : undefined,
+        landingPageId: landingPageId ? parseInt(landingPageId) : undefined,
+        webinarSessionId: webinarId ? parseInt(webinarId) : undefined,
+        ...(sourceFile ? {
+          sourceDocumentText: sourceFile.text,
+          sourceDocumentName: sourceFile.name,
+          sourceDocumentS3Url: sourceFile.s3Url,
+        } : {}),
+        ...(sourceNarrative.trim() ? { sourceNarrative: sourceNarrative.trim() } : {}),
+        lengthPreset,
+        proseStyle,
+      });
+
+      setGenerationStep("chapters");
+      setTotalChapters(draft.outline.length);
+
+      // Step 2: Generate each chapter sequentially
+      const failed: number[] = [];
+      for (const chapter of draft.outline) {
+        try {
+          await generateChapterMutation.mutateAsync({
+            ebookId: draft.ebookId,
+            chapterNumber: chapter.number,
+            lengthPreset: draft.lengthPreset,
+            proseStyle: draft.proseStyle,
+          });
+          setChaptersCompleted((n) => n + 1);
+        } catch {
+          failed.push(chapter.number);
+          setFailedChapters([...failed]);
+          setChaptersCompleted((n) => n + 1);
+        }
+      }
+
+      if (failed.length === 0) {
+        toast.success(`E-book complete! ${draft.outline.length} chapters generated.`);
+      } else {
+        toast.warning(`Done with ${failed.length} chapter(s) failed. You can regenerate them individually.`);
+      }
+
       setOpen(false);
       setTitle("");
       setTopic("");
       setSourceFile(null);
       setSourceNarrative("");
+      setGenerationStep("idle");
       onSuccess();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const handleGenerate = () => {
-    if (!title.trim() || !topic.trim()) {
-      toast.error("Please enter a title and topic");
-      return;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setIsGenerating(false);
+      setGenerationStep("idle");
     }
-    generateEbook.mutate({
-      title: title.trim(),
-      topic: topic.trim(),
-      targetAudience: audience,
-      chapterCount: parseInt(chapterCount),
-      ctaBlockId: ctaLinkId ? parseInt(ctaLinkId) : undefined,
-      landingPageId: landingPageId ? parseInt(landingPageId) : undefined,
-      webinarSessionId: webinarId ? parseInt(webinarId) : undefined,
-      // Source document (if uploaded)
-      ...(sourceFile ? {
-        sourceDocumentText: sourceFile.text,
-        sourceDocumentName: sourceFile.name,
-        sourceDocumentS3Url: sourceFile.s3Url,
-      } : {}),
-      ...(sourceNarrative.trim() ? { sourceNarrative: sourceNarrative.trim() } : {}),
-      lengthPreset,
-      proseStyle,
-    });
   };
 
   return (
@@ -201,7 +241,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
               placeholder="e.g. The 5-Day Energy Reset"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={generateEbook.isPending}
+              disabled={isGenerating}
             />
           </div>
           <div className="space-y-2">
@@ -211,7 +251,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               rows={3}
-              disabled={generateEbook.isPending}
+              disabled={isGenerating}
             />
           </div>
           <div className="space-y-2">
@@ -220,12 +260,12 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
               placeholder="e.g. busy professionals over 40 struggling with fatigue"
               value={audience}
               onChange={(e) => setAudience(e.target.value)}
-              disabled={generateEbook.isPending}
+              disabled={isGenerating}
             />
           </div>
           <div className="space-y-2">
             <Label>Number of Chapters</Label>
-            <Select value={chapterCount} onValueChange={setChapterCount} disabled={generateEbook.isPending}>
+            <Select value={chapterCount} onValueChange={setChapterCount} disabled={isGenerating}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -263,7 +303,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                     key={preset}
                     type="button"
                     onClick={() => setLengthPreset(preset)}
-                    disabled={generateEbook.isPending}
+                    disabled={isGenerating}
                     className={`flex-1 py-1.5 text-xs rounded border transition-colors capitalize ${
                       lengthPreset === preset
                         ? "bg-primary text-primary-foreground border-primary"
@@ -295,7 +335,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                     key={key}
                     type="button"
                     onClick={() => setProseStyle(key)}
-                    disabled={generateEbook.isPending}
+                    disabled={isGenerating}
                     className={`flex-1 py-1.5 px-1 text-xs rounded border transition-colors ${
                       proseStyle === key
                         ? "bg-primary text-primary-foreground border-primary"
@@ -344,7 +384,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                   accept=".pdf,.txt,.md,.text"
                   className="hidden"
                   onChange={handleSourceFileUpload}
-                  disabled={uploadingSource || generateEbook.isPending}
+                  disabled={uploadingSource || isGenerating}
                 />
               </div>
             ) : (
@@ -359,7 +399,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                   size="icon"
                   className="h-6 w-6 shrink-0"
                   onClick={() => setSourceFile(null)}
-                  disabled={generateEbook.isPending}
+                  disabled={isGenerating}
                 >
                   <X className="w-3 h-3" />
                 </Button>
@@ -377,7 +417,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                 onChange={(e) => setSourceNarrative(e.target.value)}
                 rows={3}
                 className="text-sm"
-                disabled={generateEbook.isPending}
+                disabled={isGenerating}
               />
             </div>
           </div>
@@ -391,7 +431,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             {linkables?.ctas && linkables.ctas.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">CTA Block</Label>
-                <Select value={ctaLinkId || "none"} onValueChange={(v) => setCtaLinkId(v === "none" ? "" : v)} disabled={generateEbook.isPending}>
+                <Select value={ctaLinkId || "none"} onValueChange={(v) => setCtaLinkId(v === "none" ? "" : v)} disabled={isGenerating}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="Select a CTA..." />
                   </SelectTrigger>
@@ -409,7 +449,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             {linkables?.landingPages && linkables.landingPages.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Landing Page</Label>
-                <Select value={landingPageId || "none"} onValueChange={(v) => setLandingPageId(v === "none" ? "" : v)} disabled={generateEbook.isPending}>
+                <Select value={landingPageId || "none"} onValueChange={(v) => setLandingPageId(v === "none" ? "" : v)} disabled={isGenerating}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="Select a landing page..." />
                   </SelectTrigger>
@@ -427,7 +467,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             {linkables?.webinars && linkables.webinars.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Webinar</Label>
-                <Select value={webinarId || "none"} onValueChange={(v) => setWebinarId(v === "none" ? "" : v)} disabled={generateEbook.isPending}>
+                <Select value={webinarId || "none"} onValueChange={(v) => setWebinarId(v === "none" ? "" : v)} disabled={isGenerating}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="Select a webinar..." />
                   </SelectTrigger>
@@ -444,27 +484,44 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             )}
           </div>
 
-          {generateEbook.isPending && (
-            <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-lg p-3">
-              <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium">Generating your e-book...</p>
-                <p className="text-muted-foreground text-xs mt-0.5">
-                  Writing chapters in your voice. This takes 1-3 minutes.
-                </p>
+          {isGenerating && (
+            <div className="space-y-3 bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                {generationStep === "outline" && "Building chapter outline..."}
+                {generationStep === "chapters" && `Writing chapter ${Math.min(chaptersCompleted + 1, totalChapters)} of ${totalChapters}...`}
               </div>
+              {generationStep === "chapters" && totalChapters > 0 && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{chaptersCompleted} of {totalChapters} chapters complete</span>
+                    <span>{Math.round((chaptersCompleted / totalChapters) * 100)}%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-500"
+                      style={{ width: `${(chaptersCompleted / totalChapters) * 100}%` }}
+                    />
+                  </div>
+                  {failedChapters.length > 0 && (
+                    <p className="text-xs text-destructive">
+                      Chapter(s) {failedChapters.join(", ")} failed — you can regenerate them after.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           <Button
             className="w-full gap-2"
             onClick={handleGenerate}
-            disabled={generateEbook.isPending || !title.trim() || !topic.trim()}
+            disabled={isGenerating || !title.trim() || !topic.trim()}
           >
-            {generateEbook.isPending ? (
+            {isGenerating ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Generating...
+                {generationStep === "outline" ? "Building outline..." : `Chapter ${Math.min(chaptersCompleted + 1, totalChapters || 1)} of ${totalChapters || "?"}`}
               </>
             ) : (
               <>
@@ -688,6 +745,22 @@ function EbookViewer({
       setPdfExporting(false);
     },
   });
+  const [docxExporting, setDocxExporting] = useState(false);
+  const exportDocx = trpc.ebook.exportDocx.useMutation({
+    onSuccess: (res) => {
+      window.open(res.docxUrl, "_blank");
+      toast.success("Word document ready! Opening download...");
+      setDocxExporting(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setDocxExporting(false);
+    },
+  });
+  const handleExportDocx = () => {
+    setDocxExporting(true);
+    exportDocx.mutate({ ebookId });
+  };
   const { data: linkables } = trpc.ebook.getLinkableItems.useQuery();
 
   const handleDownload = () => {
@@ -769,6 +842,20 @@ function EbookViewer({
           >
             <Download className="w-3.5 h-3.5" />
             .md
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={handleExportDocx}
+            disabled={docxExporting || exportDocx.isPending}
+          >
+            {docxExporting || exportDocx.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileDown className="w-3.5 h-3.5" />
+            )}
+            .docx
           </Button>
           <Button
             size="sm"

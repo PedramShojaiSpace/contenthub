@@ -872,6 +872,299 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
       return { success: true };
     }),
 
+  // ── Create draft (outline only) — client drives chapter generation loop ──
+  createEbookDraft: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().min(1),
+        topic: z.string().min(1),
+        targetAudience: z.string().default("health-conscious adults seeking transformation"),
+        chapterCount: z.number().min(3).max(12).default(7),
+        ctaBlockId: z.number().optional(),
+        landingPageId: z.number().optional(),
+        webinarSessionId: z.number().optional(),
+        sourceDocumentText: z.string().optional(),
+        sourceDocumentName: z.string().optional(),
+        sourceDocumentS3Url: z.string().optional(),
+        sourceNarrative: z.string().optional(),
+        lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
+        proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [ebookRecord] = await db
+        .insert(ebooks)
+        .values({
+          userId: ctx.user.id,
+          title: input.title,
+          topic: input.topic,
+          targetPersona: input.targetAudience,
+          chapterCount: input.chapterCount,
+          ctaBlockId: input.ctaBlockId,
+          landingPageId: input.landingPageId,
+          webinarSessionId: input.webinarSessionId,
+          status: "drafting",
+          ...(input.sourceDocumentName ? { sourceDocumentName: input.sourceDocumentName } : {}),
+          ...(input.sourceDocumentS3Url ? { sourceDocumentS3Url: input.sourceDocumentS3Url } : {}),
+          ...(input.sourceDocumentText ? { sourceDocumentText: input.sourceDocumentText } : {}),
+          ...(input.sourceNarrative ? { sourceNarrative: input.sourceNarrative } : {}),
+        })
+        .$returningId();
+
+      const ebookId = ebookRecord.id;
+
+      try {
+        const voiceProfile = await getMasterVoiceProfile(ctx.user.id);
+        const voiceSystemPrompt = buildVoiceSystemPrompt(voiceProfile);
+
+        const outline = await generateChapterOutline(
+          input.topic,
+          input.targetAudience,
+          input.chapterCount,
+          voiceSystemPrompt,
+          input.sourceDocumentText,
+          input.sourceNarrative
+        );
+
+        await db
+          .update(ebooks)
+          .set({ outlineJson: JSON.stringify(outline) })
+          .where(eq(ebooks.id, ebookId));
+
+        return {
+          ebookId,
+          outline,
+          lengthPreset: input.lengthPreset,
+          proseStyle: input.proseStyle,
+        };
+      } catch (err) {
+        await db
+          .update(ebooks)
+          .set({ status: "failed", errorMessage: err instanceof Error ? err.message : String(err) })
+          .where(eq(ebooks.id, ebookId));
+        throw err;
+      }
+    }),
+
+  // ── Generate a single chapter (client calls this in a loop) ──────────────
+  generateChapter: protectedProcedure
+    .input(
+      z.object({
+        ebookId: z.number(),
+        chapterNumber: z.number(),
+        lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
+        proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [ebook] = await db
+        .select()
+        .from(ebooks)
+        .where(and(eq(ebooks.id, input.ebookId), eq(ebooks.userId, ctx.user.id)));
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
+
+      const outline: Array<{ number: number; title: string; summary: string }> =
+        ebook.outlineJson ? JSON.parse(ebook.outlineJson) : [];
+      const chapterMeta = outline.find((c) => c.number === input.chapterNumber);
+      if (!chapterMeta) throw new TRPCError({ code: "NOT_FOUND", message: "Chapter not in outline" });
+
+      const voiceProfile = await getMasterVoiceProfile(ctx.user.id);
+      const voiceSystemPrompt = buildVoiceSystemPrompt(voiceProfile);
+
+      // Resolve CTA text
+      let ctaText: string | null = null;
+      if (ebook.ctaBlockId) {
+        const [cta] = await db
+          .select({ ctaText: ctaBlocks.ctaText, url: ctaBlocks.url })
+          .from(ctaBlocks)
+          .where(eq(ctaBlocks.id, ebook.ctaBlockId));
+        if (cta) ctaText = `${cta.ctaText}${cta.url ? " → " + cta.url : ""}`;
+      } else if (ebook.landingPageId) {
+        ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+      } else if (ebook.webinarSessionId) {
+        const [webinar] = await db
+          .select({ topic: webinarSessions.topic })
+          .from(webinarSessions)
+          .where(eq(webinarSessions.id, ebook.webinarSessionId));
+        if (webinar) ctaText = `Join our free training: ${webinar.topic}`;
+      }
+
+      const isLastChapter = input.chapterNumber === outline.length;
+
+      const content = await generateChapterContent(
+        chapterMeta.number,
+        chapterMeta.title,
+        chapterMeta.summary,
+        ebook.topic,
+        ebook.targetPersona ?? "health-conscious adults",
+        voiceSystemPrompt,
+        ctaText,
+        ebook.sourceDocumentText ?? undefined,
+        ebook.sourceNarrative ?? undefined,
+        input.lengthPreset,
+        input.proseStyle,
+        isLastChapter
+      );
+
+      const wordCount = content.split(/\s+/).length;
+
+      // Upsert chapter (delete existing if any, then insert)
+      await db.delete(ebookChapters).where(
+        and(eq(ebookChapters.ebookId, input.ebookId), eq(ebookChapters.chapterNumber, input.chapterNumber))
+      );
+      await db.insert(ebookChapters).values({
+        ebookId: input.ebookId,
+        chapterNumber: chapterMeta.number,
+        title: chapterMeta.title,
+        summary: chapterMeta.summary,
+        content,
+        wordCount,
+        status: "complete",
+      });
+
+      // Check if all chapters are done; if so, mark ebook complete
+      const allChapters = await db
+        .select()
+        .from(ebookChapters)
+        .where(eq(ebookChapters.ebookId, input.ebookId))
+        .orderBy(ebookChapters.chapterNumber);
+
+      if (allChapters.length >= outline.length) {
+        const fullContent = allChapters
+          .map((c) => `# Chapter ${c.chapterNumber}: ${c.title}\n\n${c.content ?? ""}`)
+          .join("\n\n---\n\n");
+        const totalWordCount = allChapters.reduce((sum, c) => sum + (c.wordCount ?? 0), 0);
+        await db
+          .update(ebooks)
+          .set({ status: "complete", fullContent, wordCountTarget: totalWordCount })
+          .where(eq(ebooks.id, input.ebookId));
+      }
+
+      return { chapterNumber: input.chapterNumber, title: chapterMeta.title, content, wordCount };
+    }),
+
+  // ── Export as DOCX ──────────────────────────────────────────────────────
+  exportDocx: protectedProcedure
+    .input(z.object({ ebookId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [ebook] = await db
+        .select()
+        .from(ebooks)
+        .where(and(eq(ebooks.id, input.ebookId), eq(ebooks.userId, ctx.user.id)));
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
+
+      const chapters = await db
+        .select()
+        .from(ebookChapters)
+        .where(eq(ebookChapters.ebookId, input.ebookId))
+        .orderBy(ebookChapters.chapterNumber);
+
+      const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak } = await import("docx");
+
+      const docChildren: InstanceType<typeof Paragraph>[] = [];
+
+      // Title page
+      docChildren.push(
+        new Paragraph({
+          text: ebook.title,
+          heading: HeadingLevel.TITLE,
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "By Dr. Pedram Shojai, OMD", italics: true, size: 28 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 200 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "The Urban Monk", italics: true, size: 24 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 800 },
+        }),
+        new Paragraph({ children: [new PageBreak()] })
+      );
+
+      // Chapters
+      for (const chapter of chapters) {
+        docChildren.push(
+          new Paragraph({
+            text: `Chapter ${chapter.chapterNumber}: ${chapter.title}`,
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 400, after: 200 },
+          })
+        );
+
+        // Convert markdown-ish content to paragraphs
+        const lines = (chapter.content ?? "").split("\n");
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            docChildren.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+          } else if (trimmed.startsWith("## ")) {
+            docChildren.push(
+              new Paragraph({
+                text: trimmed.replace(/^## /, ""),
+                heading: HeadingLevel.HEADING_2,
+                spacing: { before: 300, after: 150 },
+              })
+            );
+          } else if (trimmed.startsWith("# ")) {
+            docChildren.push(
+              new Paragraph({
+                text: trimmed.replace(/^# /, ""),
+                heading: HeadingLevel.HEADING_2,
+                spacing: { before: 300, after: 150 },
+              })
+            );
+          } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+            docChildren.push(
+              new Paragraph({
+                text: trimmed.replace(/^[-*] /, ""),
+                bullet: { level: 0 },
+                spacing: { after: 80 },
+              })
+            );
+          } else {
+            // Strip basic markdown bold/italic
+            const cleaned = trimmed.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").replace(/^---$/, "");
+            if (cleaned) {
+              docChildren.push(
+                new Paragraph({
+                  text: cleaned,
+                  spacing: { after: 120 },
+                })
+              );
+            }
+          }
+        }
+
+        // Page break after each chapter
+        docChildren.push(new Paragraph({ children: [new PageBreak()] }));
+      }
+
+      const doc = new Document({ sections: [{ children: docChildren }] });
+      const buffer = await Packer.toBuffer(doc);
+
+      const suffix = Math.random().toString(36).substring(2, 8);
+      const s3Key = `ebooks/${ctx.user.id}/${input.ebookId}-${suffix}.docx`;
+      const { url: docxUrl } = await storagePut(
+        s3Key,
+        buffer,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      );
+
+      return { docxUrl, filename: `${ebook.title.replace(/[^a-z0-9]/gi, "_")}.docx` };
+    }),
+
   getLinkableItems: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return { ctas: [], landingPages: [], webinars: [] };

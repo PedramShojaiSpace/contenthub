@@ -153,35 +153,45 @@ ${sourceDocumentText
 - Summaries: 3-5 sentences naming exact concepts, protocols, and transformation delivered.
 - Avoid generic wellness clichés. Each chapter needs at least one surprising insight.
 
-Return a JSON array with ${chapterCount} objects: { number, title, summary }`,
+Return JSON in this exact format: { "chapters": [ { "number": 1, "title": "...", "summary": "..." }, ... ] }`,
       },
     ],
     response_format: {
       type: "json_schema",
       json_schema: {
         name: "chapter_outline",
-        strict: false,
+        strict: true,
         schema: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              number: { type: "integer" },
-              title: { type: "string" },
-              summary: { type: "string" },
+          type: "object",
+          properties: {
+            chapters: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  number: { type: "integer" },
+                  title: { type: "string" },
+                  summary: { type: "string" },
+                },
+                required: ["number", "title", "summary"],
+                additionalProperties: false,
+              },
             },
-            required: ["number", "title", "summary"],
           },
+          required: ["chapters"],
+          additionalProperties: false,
         },
       },
     },
   }));
 
-  const content = result.choices?.[0]?.message?.content ?? "[]";
+  const content = result.choices?.[0]?.message?.content ?? "{}";
   const contentStr = typeof content === "string" ? content : JSON.stringify(content);
-  const outline = parseLLMJson(contentStr, "chapter outline");
-  if (!Array.isArray(outline)) {
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate chapter outline" });
+  const parsed = parseLLMJson(contentStr, "chapter outline");
+  // Support both { chapters: [...] } wrapper and bare array
+  const outline = Array.isArray(parsed) ? parsed : (parsed as Record<string, unknown>)?.chapters;
+  if (!Array.isArray(outline) || outline.length === 0) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate chapter outline — LLM returned unexpected format" });
   }
   return outline as Array<{ number: number; title: string; summary: string }>;
 }

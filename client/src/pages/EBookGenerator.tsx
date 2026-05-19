@@ -239,8 +239,15 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
       onSuccess();
     } catch (err) {
       console.error("[handleGenerate] caught error:", err);
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error(msg || "Generation failed — check browser console for details");
+      // Extract the most useful error message from tRPC or plain errors
+      let msg = "Generation failed";
+      if (err && typeof err === "object") {
+        const e = err as Record<string, unknown>;
+        msg = (e.message as string) ||
+              (e.data as Record<string, unknown>)?.message as string ||
+              JSON.stringify(err);
+      }
+      toast.error(msg, { duration: 8000 });
     } finally {
       setIsGenerating(false);
       setGenerationStep("idle");
@@ -255,7 +262,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
           Generate New E-Book
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Generate E-Book in Your Voice</DialogTitle>
         </DialogHeader>

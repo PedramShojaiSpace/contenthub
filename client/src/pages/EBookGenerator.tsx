@@ -161,6 +161,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
   const [chaptersCompleted, setChaptersCompleted] = useState(0);
   const [totalChapters, setTotalChapters] = useState(0);
   const [failedChapters, setFailedChapters] = useState<number[]>([]);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const { data: linkables } = trpc.ebook.getLinkableItems.useQuery();
   const createDraft = trpc.ebook.createEbookDraft.useMutation({
@@ -247,6 +248,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
               (e.data as Record<string, unknown>)?.message as string ||
               JSON.stringify(err);
       }
+      setLastError(msg);
       toast.error(msg, { duration: 8000 });
     } finally {
       setIsGenerating(false);
@@ -254,8 +256,21 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
     }
   };
 
+  // Reset all state when dialog closes so button is never stuck
+  const handleOpenChange = (val: boolean) => {
+    if (!val) {
+      setIsGenerating(false);
+      setGenerationStep("idle");
+      setChaptersCompleted(0);
+      setTotalChapters(0);
+      setFailedChapters([]);
+      setLastError(null);
+    }
+    setOpen(val);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Sparkles className="w-4 h-4" />
@@ -557,6 +572,13 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {lastError && (
+            <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{lastError}</span>
             </div>
           )}
 

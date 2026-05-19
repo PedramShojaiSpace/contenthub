@@ -287,7 +287,7 @@ export const redditRouter = router({
               score: p.score,
               numComments: p.num_comments,
               upvoteRatio: p.upvote_ratio,
-              permalink: `https://reddit.com${p.permalink}`,
+              permalink: p.permalink.startsWith('http') ? p.permalink : `https://reddit.com${p.permalink}`,
               author: p.author,
               createdUtc: Math.floor(p.created_utc),
             });

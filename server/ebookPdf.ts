@@ -1,19 +1,13 @@
 /**
  * ebookPdf.ts — Branded PDF generation for Urban Monk e-books
  *
- * Uses WeasyPrint (system-installed Python PDF renderer) via child_process.
- * WeasyPrint renders the same rich HTML template as before — cover page, TOC,
- * chapters with CTAs, back cover — without requiring a headless browser.
+ * Uses puppeteer-core + @sparticuz/chromium for serverless-compatible
+ * headless Chromium PDF rendering. No system binaries required.
  */
 
-import { execFile } from "child_process";
-import { promisify } from "util";
-import { writeFile, readFile, unlink } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import { marked } from "marked";
-
-const execFileAsync = promisify(execFile);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -121,15 +115,6 @@ function buildHtml(opts: EbookPdfOptions): string {
   <meta charset="UTF-8" />
   <title>${escapeHtml(title)}</title>
   <style>
-    @page {
-      size: A4;
-      margin: 0;
-    }
-    @page chapter {
-      size: A4;
-      margin: 72pt 80pt 60pt 80pt;
-    }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 11pt; }
     body {
@@ -143,8 +128,8 @@ function buildHtml(opts: EbookPdfOptions): string {
 
     /* ── Cover Page ── */
     .cover {
-      width: 210mm;
-      height: 297mm;
+      width: 100%;
+      min-height: 100vh;
       background: #1a1a2e;
       display: flex;
       flex-direction: column;
@@ -168,6 +153,8 @@ function buildHtml(opts: EbookPdfOptions): string {
       font-weight: bold;
       color: #d4af37;
       margin: 0 auto 40px;
+      line-height: 72px;
+      text-align: center;
     }
     .cover-eyebrow {
       font-size: 9pt;
@@ -339,8 +326,8 @@ function buildHtml(opts: EbookPdfOptions): string {
 
     /* ── Back Cover ── */
     .back-cover {
-      width: 210mm;
-      height: 297mm;
+      width: 100%;
+      min-height: 100vh;
       background: #1a1a2e;
       display: flex;
       align-items: center;
@@ -365,6 +352,8 @@ function buildHtml(opts: EbookPdfOptions): string {
       font-weight: bold;
       color: #d4af37;
       margin: 0 auto 32px;
+      line-height: 64px;
+      text-align: center;
     }
     .back-cover-title {
       font-size: 24pt;
@@ -429,32 +418,33 @@ function buildHtml(opts: EbookPdfOptions): string {
 </html>`;
 }
 
-// ─── PDF Generation via WeasyPrint ───────────────────────────────────────────
+// ─── PDF Generation via Puppeteer + Chromium ─────────────────────────────────
 
 export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
   const html = buildHtml(opts);
 
-  // Write HTML to a temp file
-  const suffix = Math.random().toString(36).substring(2, 8);
-  const htmlPath = join(tmpdir(), `ebook-${suffix}.html`);
-  const pdfPath = join(tmpdir(), `ebook-${suffix}.pdf`);
+  // Get the Chromium executable path (works in both local and serverless)
+  const executablePath = await chromium.executablePath();
+
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath,
+    headless: true,
+  });
 
   try {
-    await writeFile(htmlPath, html, "utf8");
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "load" });
 
-    // Run WeasyPrint using absolute path to avoid PATH issues in production
-    const weasyPrintBin = "/usr/local/bin/weasyprint";
-    await execFileAsync(weasyPrintBin, [htmlPath, pdfPath], {
-      timeout: 120_000, // 2 minutes max
-      env: { ...process.env, HOME: "/tmp", PATH: "/usr/local/bin:/usr/bin:/bin" }, // explicit PATH
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: "0", right: "0", bottom: "0", left: "0" },
     });
 
-    const pdfBuffer = await readFile(pdfPath);
-    return pdfBuffer;
+    return Buffer.from(pdfBuffer);
   } finally {
-    // Clean up temp files (ignore errors)
-    unlink(htmlPath).catch(() => {});
-    unlink(pdfPath).catch(() => {});
+    await browser.close();
   }
 }
 

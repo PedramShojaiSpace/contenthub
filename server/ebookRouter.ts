@@ -13,7 +13,7 @@ import {
 } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
-import { invokeClaude } from "./claudeLLM";
+import { invokeClaude, invokeClaudeJson } from "./claudeLLM";
 import { generateImage } from "./_core/imageGeneration";
 import { parseLLMJson, wrapLLM } from "./llmUtils";
 import { storagePut } from "./storage";
@@ -138,12 +138,7 @@ async function generateChapterOutline(
   // Build source context block if a document was uploaded
   const sourceContext = buildSourceContext(sourceDocumentText, sourceNarrative);
 
-  const result = await wrapLLM(() => invokeLLM({
-    messages: [
-      { role: "system", content: voiceSystemPrompt },
-      {
-        role: "user",
-        content: `Create a ${chapterCount}-chapter outline for a premium e-book by Dr. Pedram Shojai (The Urban Monk).
+  const userPrompt = `Create a ${chapterCount}-chapter outline for a premium e-book by Dr. Pedram Shojai (The Urban Monk).
 
 TOPIC: "${topic}" | AUDIENCE: ${targetAudience}
 
@@ -153,42 +148,18 @@ ${sourceDocumentText
   : `- Arc: reader's pain → understanding WHY → transformation framework → practical protocols → integration. Specific titles (e.g. "The 2 AM Wake-Up: What Your Liver Is Trying to Tell You" not "The Power of Sleep"). Ground in ancient wisdom (TCM/Ayurveda/Taoist) AND modern science.`}
 - Summaries: 3-5 sentences naming exact concepts, protocols, and transformation delivered.
 - Avoid generic wellness clichés. Each chapter needs at least one surprising insight.
+- Chapter titles must be vivid, specific, and intriguing — never generic (e.g. NOT "The Power of Sleep", YES "The 2 AM Wake-Up: What Your Liver Is Trying to Tell You").
 
-Return JSON in this exact format: { "chapters": [ { "number": 1, "title": "...", "summary": "..." }, ... ] }`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "chapter_outline",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            chapters: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  number: { type: "integer" },
-                  title: { type: "string" },
-                  summary: { type: "string" },
-                },
-                required: ["number", "title", "summary"],
-                additionalProperties: false,
-              },
-            },
-          },
-          required: ["chapters"],
-          additionalProperties: false,
-        },
-      },
-    },
-  }));
+Return ONLY valid JSON in this exact format, no commentary:
+{ "chapters": [ { "number": 1, "title": "...", "summary": "..." }, ... ] }`;
 
-  const content = result.choices?.[0]?.message?.content ?? "{}";
-  const contentStr = typeof content === "string" ? content : JSON.stringify(content);
-  const parsed = parseLLMJson(contentStr, "chapter outline");
+  // Use Claude Haiku for outline — fast, cheap, and produces more distinctive chapter titles than Gemini Flash
+  const rawJson = await invokeClaudeJson({
+    systemPrompt: voiceSystemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const parsed = parseLLMJson(rawJson, "chapter outline");
   // Support both { chapters: [...] } wrapper and bare array
   const outline = Array.isArray(parsed) ? parsed : (parsed as Record<string, unknown>)?.chapters;
   if (!Array.isArray(outline) || outline.length === 0) {

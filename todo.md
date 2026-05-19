@@ -2673,3 +2673,18 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Combined word count shown in panel header
 - [x] All source docs concatenated with document labels before being sent to AI
 - [x] TypeScript clean (0 errors in changed files)
+
+## v-ebook-advanced — Chapter Version History, Broadcast Enhancement, Cover Image
+
+- [x] Add ebookChapterVersions table to schema (chapterId, versionNumber, content, wordCount, trigger, createdAt)
+- [x] Run db:push after schema change
+- [x] Add getChapterVersions and restoreChapterVersion procedures to ebookRouter
+- [x] Auto-save version before every regenerateChapter call (in regenerateChapter procedure)
+- [x] Add generateCoverImage procedure (AI image generation from title + topic, saves to coverImageUrl)
+- [x] Add coverImageUrl column to ebooks table; run db:push
+- [x] Add "Apply to all chapters" checkbox in ChapterEnhancementPanel with amber styling
+- [x] Chapter version history UI: collapsible panel per chapter, version list with timestamps and word count, restore button
+- [x] Cover image display in EbookViewer sidebar (shown when coverImageUrl is set)
+- [x] "Generate Cover" button in EbookViewer header (shown when no cover exists)
+- [x] EbookViewer onRegenerate handles applyToAll: loops through all chapters sequentially
+- [x] TypeScript clean (0 errors in ebook files)

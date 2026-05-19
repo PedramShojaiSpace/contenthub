@@ -20,11 +20,13 @@ export interface EnhancementDoc {
 interface ChapterEnhancementPanelProps {
   chapterId: number;
   chapterTitle: string;
+  isLastChapter?: boolean;
   onRegenerate: (opts: {
     enhancementInstructions: string;
     enhancementDocs: EnhancementDoc[];
     lengthPreset: string;
     proseStyle: string;
+    applyToAll: boolean;
   }) => Promise<void>;
   isRegenerating: boolean;
 }
@@ -34,6 +36,7 @@ const MAX_DOC_BYTES = 5 * 1024 * 1024; // 5 MB per doc
 export default function ChapterEnhancementPanel({
   chapterId,
   chapterTitle,
+  isLastChapter,
   onRegenerate,
   isRegenerating,
 }: ChapterEnhancementPanelProps) {
@@ -42,6 +45,7 @@ export default function ChapterEnhancementPanel({
   const [docs, setDocs] = useState<EnhancementDoc[]>([]);
   const [lengthPreset, setLengthPreset] = useState("standard");
   const [proseStyle, setProseStyle] = useState("narrative");
+  const [applyToAll, setApplyToAll] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,7 +101,7 @@ export default function ChapterEnhancementPanel({
       toast.error("Add enhancement instructions or upload at least one document.");
       return;
     }
-    await onRegenerate({ enhancementInstructions: instructions, enhancementDocs: docs, lengthPreset, proseStyle });
+    await onRegenerate({ enhancementInstructions: instructions, enhancementDocs: docs, lengthPreset, proseStyle, applyToAll });
   };
 
   return (
@@ -220,6 +224,26 @@ export default function ChapterEnhancementPanel({
                   <SelectItem value="academic">Academic &amp; Evidence-based</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Apply to all chapters checkbox */}
+          <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-md">
+            <input
+              type="checkbox"
+              id={`apply-all-${chapterId}`}
+              checked={applyToAll}
+              onChange={(e) => setApplyToAll(e.target.checked)}
+              disabled={isRegenerating}
+              className="mt-0.5 h-4 w-4 accent-amber-500"
+            />
+            <div>
+              <label htmlFor={`apply-all-${chapterId}`} className="text-sm font-medium cursor-pointer">
+                Apply to all chapters
+              </label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Broadcast these instructions to every chapter in the ebook — they will be rewritten sequentially.
+              </p>
             </div>
           </div>
 

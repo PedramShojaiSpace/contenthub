@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RedditSubreddit, RedditPost } from "../../../drizzle/schema";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,6 +114,8 @@ function PostCard({
     isAnalyzed: boolean;
     isFlagged: boolean;
     isDismissed: boolean;
+    isCommented: boolean;
+    commentedAt: Date | null;
     createdUtc: number | null;
   };
   onRefresh: () => void;
@@ -122,6 +125,7 @@ function PostCard({
   const [draftText, setDraftText] = useState(post.aiDraftComment ?? "");
   const [customInstructions, setCustomInstructions] = useState("");
   const [copied, setCopied] = useState(false);
+  const [, navigate] = useLocation();
 
   const analyzeMutation = trpc.reddit.analyzePost.useMutation({
     onSuccess: () => { toast.success("Analysis complete"); onRefresh(); },
@@ -133,6 +137,11 @@ function PostCard({
   const dismissMutation = trpc.reddit.dismissPost.useMutation({
     onSuccess: () => onRefresh(),
   });
+  const commentedMutation = trpc.reddit.markCommented.useMutation({
+    onSuccess: () => onRefresh(),
+    onError: (e) => toast.error(e.message),
+  });
+
   const regenerateMutation = trpc.reddit.regenerateDraft.useMutation({
     onSuccess: (data) => {
       setDraftText(data.draft);
@@ -385,6 +394,33 @@ function PostCard({
 
           <Button
             size="sm"
+            variant={post.isCommented ? "default" : "outline"}
+            className={`h-7 text-[10px] gap-1 ${
+              post.isCommented
+                ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
+                : ""
+            }`}
+            disabled={commentedMutation.isPending}
+            onClick={() =>
+              commentedMutation.mutate({ postId: post.id, isCommented: !post.isCommented })
+            }
+          >
+            <CheckCheck className="w-3 h-3" />
+            {post.isCommented ? "Commented" : "Mark Commented"}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[10px] gap-1 text-primary border-primary/30 hover:bg-primary/10"
+            onClick={() => navigate(`/command-center?title=${encodeURIComponent(post.title)}&source=reddit&subreddit=${post.subreddit}`)}
+          >
+            <Zap className="w-3 h-3" />
+            Create Content
+          </Button>
+
+          <Button
+            size="sm"
             variant="ghost"
             className="h-7 text-[10px] gap-1 text-muted-foreground hover:text-destructive ml-auto"
             onClick={() => dismissMutation.mutate({ postId: post.id })}
@@ -573,6 +609,7 @@ export default function RedditIntelligence() {
 
   const { data: latestDigest, refetch: refetchDigest } = trpc.reddit.getLatestDigest.useQuery();
   const { data: allDigests } = trpc.reddit.getDigests.useQuery();
+  const { data: commentedPosts, refetch: refetchCommented } = trpc.reddit.getCommentedPosts.useQuery();
 
   const generateDigestMutation = trpc.reddit.generateTrendDigest.useMutation({
     onSuccess: (d) => {
@@ -700,6 +737,15 @@ export default function RedditIntelligence() {
           <TabsTrigger value="digest" className="gap-1">
             <Sparkles className="w-3.5 h-3.5" />
             Trend Digest
+          </TabsTrigger>
+          <TabsTrigger value="log" className="gap-1">
+            <CheckCheck className="w-3.5 h-3.5" />
+            Engagement Log
+            {(commentedPosts?.length ?? 0) > 0 && (
+              <Badge className="ml-1.5 h-4 text-[10px] bg-green-600 text-white">
+                {commentedPosts!.length}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -889,6 +935,85 @@ export default function RedditIntelligence() {
                 </p>
               </CardContent>
             </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Engagement Log tab ── */}
+        <TabsContent value="log" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold">Engagement Log</h2>
+              <p className="text-sm text-muted-foreground">
+                All threads you've marked as commented — your Reddit engagement history.
+              </p>
+            </div>
+          </div>
+
+          {(commentedPosts?.length ?? 0) === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-16 text-center">
+                <CheckCheck className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-muted-foreground font-medium">No engagement recorded yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  When you click "Mark Commented" on a thread, it will appear here.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {(commentedPosts ?? []).map((post: RedditPost) => (
+                <Card key={post.id} className="border-green-200 bg-green-50/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] font-mono ${categoryColor(post.category)}`}
+                          >
+                            r/{post.subreddit}
+                          </Badge>
+                          <Badge className="text-[10px] bg-green-600 text-white">
+                            <CheckCheck className="w-2.5 h-2.5 mr-1" />
+                            Commented
+                          </Badge>
+                          {post.commentedAt && (
+                            <span className="text-[10px] text-muted-foreground ml-auto">
+                              {new Date(post.commentedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                        <a
+                          href={post.permalink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-sm leading-snug text-primary hover:underline transition-colors line-clamp-2"
+                        >
+                          {post.title}
+                        </a>
+                        {post.aiDraftComment && (
+                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 italic">
+                            Draft: {post.aiDraftComment}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <a
+                          href={post.permalink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1">
+                            <ExternalLink className="w-3 h-3" />
+                            View
+                          </Button>
+                        </a>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>

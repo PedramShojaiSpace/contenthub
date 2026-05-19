@@ -1301,6 +1301,8 @@ export const redditPosts = mysqlTable("reddit_posts", {
   isAnalyzed: boolean("isAnalyzed").notNull().default(false),
   isDismissed: boolean("isDismissed").notNull().default(false),
   isFlagged: boolean("isFlagged").notNull().default(false), // flagged for engagement
+  isCommented: boolean("isCommented").notNull().default(false), // marked as engaged/commented
+  commentedAt: timestamp("commentedAt"), // when the user marked it as commented
 });
 export type RedditPost = typeof redditPosts.$inferSelect;
 

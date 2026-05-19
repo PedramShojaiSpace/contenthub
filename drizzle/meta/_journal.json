@@ -491,6 +491,13 @@
       "when": 1779212989465,
       "tag": "0069_lame_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "5",
+      "when": 1779219346863,
+      "tag": "0070_chief_punisher",
+      "breakpoints": true
     }
   ]
 }

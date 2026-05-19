@@ -411,6 +411,35 @@ export const redditRouter = router({
       return { ok: true };
     }),
 
+  // Mark a post as commented/engaged
+  markCommented: protectedProcedure
+    .input(z.object({ postId: z.number(), isCommented: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db
+        .update(redditPosts)
+        .set({
+          isCommented: input.isCommented,
+          commentedAt: input.isCommented ? new Date() : null,
+        })
+        .where(eq(redditPosts.id, input.postId));
+      return { ok: true };
+    }),
+
+  // Get all commented posts (engagement log)
+  getCommentedPosts: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      return db
+        .select()
+        .from(redditPosts)
+        .where(eq(redditPosts.isCommented, true))
+        .orderBy(desc(redditPosts.commentedAt))
+        .limit(100);
+    }),
+
   // Dismiss a post
   dismissPost: protectedProcedure
     .input(z.object({ postId: z.number() }))

@@ -2729,3 +2729,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add onError callbacks to createEbookDraft and generateChapter mutations for console logging
 - [x] Improve catch block in handleGenerate to always show a toast with the actual error message
 - [x] Add keepAliveTimeout (620s) and headersTimeout (630s) to HTTP server to prevent LB cutoffs during long LLM calls
+
+## v-reddit-engage — Content Bridge, Engagement Tracking, New Subreddits
+
+- [x] Add isCommented and commentedAt columns to reddit_posts schema; run db:push
+- [x] Add markCommented and getCommentedPosts tRPC procedures in redditRouter
+- [x] Add "Mark Commented" toggle button on post cards (green when active)
+- [x] Add Engagement Log tab showing all commented posts with timestamps and View links
+- [x] Add "Create Content" button on post cards that navigates to Command Center with pre-filled title
+- [x] Add 5 new subreddits: r/taoism, r/SIBO, r/GutHealth, r/sleephackers, r/Qigong

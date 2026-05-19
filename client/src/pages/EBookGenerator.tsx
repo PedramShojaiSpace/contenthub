@@ -78,6 +78,7 @@ interface Chapter {
   title: string;
   content: string | null;
   wordCount: number | null;
+  status: "pending" | "generating" | "complete" | "failed";
   ctaText: string | null;
   ctaUrl: string | null;
   ctaLabel: string | null;
@@ -907,6 +908,27 @@ function EbookViewer({
       setPdfExporting(false);
     },
   });
+  const [retrying, setRetrying] = useState(false);
+  const retryFailedChapters = trpc.ebook.retryFailedChapters.useMutation({
+    onSuccess: (res) => {
+      utils.ebook.getEbook.invalidate({ ebookId });
+      if (res.failedCount === 0) {
+        toast.success(`All ${res.succeededCount} failed chapter${res.succeededCount !== 1 ? "s" : ""} regenerated successfully!`);
+      } else {
+        toast.warning(`${res.succeededCount} chapter${res.succeededCount !== 1 ? "s" : ""} recovered, ${res.failedCount} still failed.`);
+      }
+      setRetrying(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setRetrying(false);
+    },
+  });
+  const handleRetryFailed = () => {
+    setRetrying(true);
+    retryFailedChapters.mutate({ ebookId });
+  };
+
   const [docxExporting, setDocxExporting] = useState(false);
   const exportDocx = trpc.ebook.exportDocx.useMutation({
     onSuccess: (res) => {
@@ -953,6 +975,7 @@ function EbookViewer({
 
   const { ebook, chapters } = data;
   const currentChapter = chapters[activeChapter];
+  const failedChapterCount = chapters.filter((c) => c.status === "failed").length;
 
   return (
     <div className="space-y-6">
@@ -966,10 +989,31 @@ function EbookViewer({
             <h2 className="text-xl font-semibold">{ebook.title}</h2>
             <p className="text-sm text-muted-foreground">
               {chapters.length} chapters · ~{ebook.wordCountTarget?.toLocaleString()} words
+              {failedChapterCount > 0 && (
+                <span className="ml-2 text-destructive font-medium">
+                  · {failedChapterCount} chapter{failedChapterCount !== 1 ? "s" : ""} failed
+                </span>
+              )}
             </p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {failedChapterCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
+              onClick={handleRetryFailed}
+              disabled={retrying || retryFailedChapters.isPending}
+            >
+              {retrying || retryFailedChapters.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              Retry Failed ({failedChapterCount})
+            </Button>
+          )}
           {!ebook.coverImageUrl && (
             <Button
               variant="outline"
@@ -1408,17 +1452,6 @@ export default function EBookGenerator() {
   const deleteEbook = trpc.ebook.deleteEbook.useMutation({
     onSuccess: () => utils.ebook.listEbooks.invalidate(),
   });
-  const testInsert = trpc.ebook.testEbookInsert.useMutation({
-    onSuccess: (res) => {
-      if (res.ok) {
-        toast.success(`DB insert OK (id=${res.insertedId}) — database is working correctly`);
-      } else {
-        toast.error(`DB insert FAILED: ${res.error}`);
-      }
-    },
-    onError: (err) => toast.error(`Procedure error: ${err.message}`),
-  });
-
   const readyBooks = books?.filter((b) => b.status === "ready") ?? [];
 
   const handleDelete = async (ebookId: number, title: string) => {
@@ -1460,16 +1493,6 @@ export default function EBookGenerator() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => testInsert.mutate()}
-              disabled={testInsert.isPending}
-              className="text-xs text-muted-foreground"
-            >
-              {testInsert.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-              Test DB
-            </Button>
             <GenerateEbookDialog onSuccess={() => utils.ebook.listEbooks.invalidate()} />
           </div>
         </div>

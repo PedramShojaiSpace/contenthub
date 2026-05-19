@@ -1317,6 +1317,135 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
       return { docxUrl, filename: `${ebook.title.replace(/[^a-z0-9]/gi, "_")}.docx` };
     }),
 
+  // ── Retry all failed chapters for an ebook ─────────────────────────────────────────
+  retryFailedChapters: protectedProcedure
+    .input(
+      z.object({
+        ebookId: z.number(),
+        lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
+        proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [ebook] = await db
+        .select()
+        .from(ebooks)
+        .where(and(eq(ebooks.id, input.ebookId), eq(ebooks.userId, ctx.user.id)));
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
+
+      // Find all chapters with status 'failed' or no content (pending/generating that stalled)
+      const failedChapters = await db
+        .select()
+        .from(ebookChapters)
+        .where(
+          and(
+            eq(ebookChapters.ebookId, input.ebookId),
+            eq(ebookChapters.status, "failed")
+          )
+        )
+        .orderBy(ebookChapters.chapterNumber);
+
+      if (failedChapters.length === 0) {
+        return { retriedCount: 0, succeededCount: 0, failedCount: 0 };
+      }
+
+      const voiceProfile = await getMasterVoiceProfile(ctx.user.id);
+      const voiceSystemPrompt = buildVoiceSystemPrompt(voiceProfile);
+
+      // Resolve CTA text
+      let ctaText: string | null = null;
+      if (ebook.ctaBlockId) {
+        const [cta] = await db
+          .select({ ctaText: ctaBlocks.ctaText, url: ctaBlocks.url })
+          .from(ctaBlocks)
+          .where(eq(ctaBlocks.id, ebook.ctaBlockId));
+        if (cta) ctaText = `${cta.ctaText}${cta.url ? " → " + cta.url : ""}`;
+      } else if (ebook.landingPageId) {
+        ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+      } else if (ebook.webinarSessionId) {
+        const [webinar] = await db
+          .select({ topic: webinarSessions.topic })
+          .from(webinarSessions)
+          .where(eq(webinarSessions.id, ebook.webinarSessionId));
+        if (webinar) ctaText = `Join our free training: ${webinar.topic}`;
+      }
+
+      const outline: Array<{ number: number; title: string; summary: string }> =
+        ebook.outlineJson ? JSON.parse(ebook.outlineJson) : [];
+
+      let succeededCount = 0;
+      let failedCount = 0;
+
+      for (const chapter of failedChapters) {
+        const chapterMeta = outline.find((c) => c.number === chapter.chapterNumber);
+        if (!chapterMeta) { failedCount++; continue; }
+
+        const isLastChapter = chapter.chapterNumber === outline.length;
+
+        try {
+          // Mark as generating
+          await db
+            .update(ebookChapters)
+            .set({ status: "generating" })
+            .where(eq(ebookChapters.id, chapter.id));
+
+          const content = await generateChapterContent(
+            chapterMeta.number,
+            chapterMeta.title,
+            chapterMeta.summary,
+            ebook.topic,
+            ebook.targetPersona ?? "health-conscious adults",
+            voiceSystemPrompt,
+            ctaText,
+            ebook.sourceDocumentText ?? undefined,
+            ebook.sourceNarrative ?? undefined,
+            input.lengthPreset,
+            input.proseStyle,
+            isLastChapter
+          );
+
+          const wordCount = content.split(/\s+/).length;
+
+          await db
+            .update(ebookChapters)
+            .set({ content, wordCount, status: "complete" })
+            .where(eq(ebookChapters.id, chapter.id));
+
+          succeededCount++;
+        } catch {
+          await db
+            .update(ebookChapters)
+            .set({ status: "failed" })
+            .where(eq(ebookChapters.id, chapter.id));
+          failedCount++;
+        }
+      }
+
+      // If all chapters are now complete, mark ebook as complete
+      const allChapters = await db
+        .select()
+        .from(ebookChapters)
+        .where(eq(ebookChapters.ebookId, input.ebookId))
+        .orderBy(ebookChapters.chapterNumber);
+
+      const anyFailed = allChapters.some((c) => c.status === "failed" || c.status === "pending" || c.status === "generating");
+      if (!anyFailed && allChapters.length > 0) {
+        const fullContent = allChapters
+          .map((c) => `# Chapter ${c.chapterNumber}: ${c.title}\n\n${c.content ?? ""}`)
+          .join("\n\n---\n\n");
+        const totalWordCount = allChapters.reduce((sum, c) => sum + (c.wordCount ?? 0), 0);
+        await db
+          .update(ebooks)
+          .set({ status: "complete", fullContent, wordCountTarget: totalWordCount })
+          .where(eq(ebooks.id, input.ebookId));
+      }
+
+      return { retriedCount: failedChapters.length, succeededCount, failedCount };
+    }),
+
   getLinkableItems: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return { ctas: [], landingPages: [], webinars: [] };
@@ -1330,27 +1459,4 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
     return { ctas: ctaList, landingPages: lpList, webinars: webinarList };
   }),
 
-  // ── Debug: test minimal DB insert without LLM ──────────────────────────────
-  testEbookInsert: protectedProcedure.mutation(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return { ok: false, error: "DB unavailable" };
-    try {
-      const [row] = await db
-        .insert(ebooks)
-        .values({
-          userId: ctx.user.id,
-          title: "[DEBUG TEST] Delete me",
-          topic: "debug",
-          status: "failed",
-        })
-        .$returningId();
-      // Clean up immediately
-      await db.delete(ebooks).where(eq(ebooks.id, row.id));
-      return { ok: true, insertedId: row.id, error: null };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[testEbookInsert] DB insert failed:", msg);
-      return { ok: false, error: msg };
-    }
-  }),
 });

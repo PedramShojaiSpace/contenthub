@@ -2738,3 +2738,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Engagement Log tab showing all commented posts with timestamps and View links
 - [x] Add "Create Content" button on post cards that navigates to Command Center with pre-filled title
 - [x] Add 5 new subreddits: r/taoism, r/SIBO, r/GutHealth, r/sleephackers, r/Qigong
+
+## v-ebook-polish — Debug Cleanup, Retry Failed Chapters, DOCX Export
+
+- [x] Remove Test DB debug button from E-Book Generator header
+- [x] Add retryFailedChapters tRPC procedure in ebookRouter
+- [x] Add "Retry Failed Chapters" button in EbookViewer when any chapter has status "failed"
+- [x] Install docx npm package (already present as v9.6.1)
+- [x] Build ebookDocx.ts generator — inline in ebookRouter exportDocx procedure (cover, chapters, headings, bullets, page breaks)
+- [x] Add exportDocx tRPC procedure in ebookRouter
+- [x] Add "Export DOCX" (.docx) button in EbookViewer alongside the PDF export button

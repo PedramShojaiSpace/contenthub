@@ -2721,3 +2721,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add generateTrendDigest, getDigests, getLatestDigest procedures to redditRouter
 - [x] Add Trend Digest tab to RedditIntelligence UI (topic chips, markdown briefing, previous digests)
 - [ ] Register nightly heartbeat cron via manus-heartbeat CLI (requires deploy first — see instructions below)
+
+## v-ebook-bugfix — Generate Button Fix
+
+- [x] Fix syntax error: missing closing paren on wrapLLM() call in generateChapterOutline (caused silent server crash on generate)
+- [x] Wrap generateChapterContent invokeLLM call with wrapLLM for retry/error handling
+- [x] Add onError callbacks to createEbookDraft and generateChapter mutations for console logging
+- [x] Improve catch block in handleGenerate to always show a toast with the actual error message
+- [x] Add keepAliveTimeout (620s) and headersTimeout (630s) to HTTP server to prevent LB cutoffs during long LLM calls

@@ -46,6 +46,13 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  // Extend server timeouts so long LLM calls (ebook generation, analysis) are not cut
+  // off by the Cloud Run load balancer. Cloud Run's default request timeout is 3600s;
+  // Node's default keepAliveTimeout (5s) is shorter than the LB's idle timeout (600s),
+  // causing spurious 502s on long-running requests.
+  server.keepAliveTimeout = 620_000; // 620 seconds
+  server.headersTimeout  = 630_000; // must be > keepAliveTimeout
+
   // ── Video upload MUST be registered BEFORE body parsers ──────────────────────
   // express.json() / urlencoded() will consume the request stream if they run
   // first on a multipart request, causing multer to fail mid-upload.

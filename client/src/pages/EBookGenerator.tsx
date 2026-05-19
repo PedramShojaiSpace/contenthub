@@ -163,8 +163,16 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
   const [failedChapters, setFailedChapters] = useState<number[]>([]);
 
   const { data: linkables } = trpc.ebook.getLinkableItems.useQuery();
-  const createDraft = trpc.ebook.createEbookDraft.useMutation();
-  const generateChapterMutation = trpc.ebook.generateChapter.useMutation();
+  const createDraft = trpc.ebook.createEbookDraft.useMutation({
+    onError: (err) => {
+      console.error("[createEbookDraft] error:", err);
+    },
+  });
+  const generateChapterMutation = trpc.ebook.generateChapter.useMutation({
+    onError: (err) => {
+      console.error("[generateChapter] error:", err);
+    },
+  });
 
   const handleGenerate = async () => {
     if (!title.trim() || !topic.trim()) {
@@ -230,7 +238,9 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
       setGenerationStep("idle");
       onSuccess();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Generation failed");
+      console.error("[handleGenerate] caught error:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || "Generation failed — check browser console for details");
     } finally {
       setIsGenerating(false);
       setGenerationStep("idle");

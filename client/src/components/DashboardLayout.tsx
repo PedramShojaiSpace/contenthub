@@ -53,6 +53,7 @@ import {
   MessageSquare,
   BookOpen,
   FileText,
+  Hash,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -88,6 +89,7 @@ const strategyPaths = new Set(strategyItems.map((i) => i.path));
 
 // Intelligence sub-items (grouped under collapsible parent)
 const intelligenceItems = [
+  { icon: Hash, label: "Reddit Intel", path: "/reddit-intelligence" },
   { icon: FlaskConical, label: "Research", path: "/research" },
   { icon: ClipboardList, label: "Typeform", path: "/typeform" },
   { icon: Award, label: "Press", path: "/press" },

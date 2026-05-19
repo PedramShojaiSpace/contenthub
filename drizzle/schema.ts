@@ -1263,3 +1263,43 @@ export const ebookChapterVersions = mysqlTable("ebook_chapter_versions", {
 });
 export type EbookChapterVersion = typeof ebookChapterVersions.$inferSelect;
 export type InsertEbookChapterVersion = typeof ebookChapterVersions.$inferInsert;
+
+// ─── Reddit Intelligence ──────────────────────────────────────────────────────
+
+// Tracked subreddits with their topic category
+export const redditSubreddits = mysqlTable("reddit_subreddits", {
+  id: int("id").autoincrement().primaryKey(),
+  subreddit: varchar("subreddit", { length: 128 }).notNull().unique(),
+  category: varchar("category", { length: 64 }).notNull().default("general"),
+  // e.g. "meditation", "biohacking", "longevity", "stress", "supplements", "yoga"
+  isActive: boolean("isActive").notNull().default(true),
+  lastFetchedAt: timestamp("lastFetchedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RedditSubreddit = typeof redditSubreddits.$inferSelect;
+
+// Cached Reddit posts (refreshed on demand or on schedule)
+export const redditPosts = mysqlTable("reddit_posts", {
+  id: int("id").autoincrement().primaryKey(),
+  redditId: varchar("redditId", { length: 32 }).notNull().unique(),
+  subreddit: varchar("subreddit", { length: 128 }).notNull(),
+  category: varchar("category", { length: 64 }).notNull().default("general"),
+  title: varchar("title", { length: 512 }).notNull(),
+  selftext: text("selftext"),
+  score: int("score").notNull().default(0),
+  numComments: int("numComments").notNull().default(0),
+  upvoteRatio: float("upvoteRatio"),
+  permalink: varchar("permalink", { length: 512 }).notNull(),
+  author: varchar("author", { length: 128 }),
+  createdUtc: bigint("createdUtc", { mode: "number" }),
+  fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
+  // AI analysis fields
+  engagementScore: int("engagementScore"), // 1-10 relevance × velocity score
+  aiSummary: text("aiSummary"),            // 1-sentence summary of the thread
+  aiRecommendation: text("aiRecommendation"), // Dr. Shojai's suggested angle
+  aiDraftComment: text("aiDraftComment"),  // Draft comment in his voice
+  isAnalyzed: boolean("isAnalyzed").notNull().default(false),
+  isDismissed: boolean("isDismissed").notNull().default(false),
+  isFlagged: boolean("isFlagged").notNull().default(false), // flagged for engagement
+});
+export type RedditPost = typeof redditPosts.$inferSelect;

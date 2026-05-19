@@ -35,6 +35,7 @@ const VideoProductionSession = lazy(() => import("./pages/VideoProductionSession
 const ManyChatWizard = lazy(() => import("./pages/ManyChatWizard"));
 const BookLibrary = lazy(() => import("./pages/BookLibrary"));
 const EBookGenerator = lazy(() => import("./pages/EBookGenerator"));
+const RedditIntelligence = lazy(() => import("./pages/RedditIntelligence"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -77,6 +78,7 @@ function Router() {
         <Route path={"/manychat-wizard"} component={ManyChatWizard} />
         <Route path={"/book-library"} component={BookLibrary} />
         <Route path={"/ebook-generator"} component={EBookGenerator} />
+        <Route path={"/reddit-intelligence"} component={RedditIntelligence} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

@@ -14,7 +14,7 @@ import {
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
-import { parseLLMJson } from "./llmUtils";
+import { parseLLMJson, wrapLLM } from "./llmUtils";
 import { storagePut } from "./storage";
 import { generateEbookPdf } from "./ebookPdf";
 
@@ -137,7 +137,7 @@ async function generateChapterOutline(
   // Build source context block if a document was uploaded
   const sourceContext = buildSourceContext(sourceDocumentText, sourceNarrative);
 
-  const result = await invokeLLM({
+  const result = await wrapLLM(() => invokeLLM({
     messages: [
       { role: "system", content: voiceSystemPrompt },
       {
@@ -175,7 +175,7 @@ Return a JSON array with ${chapterCount} objects: { number, title, summary }`,
         },
       },
     },
-  });
+  }));
 
   const content = result.choices?.[0]?.message?.content ?? "[]";
   const contentStr = typeof content === "string" ? content : JSON.stringify(content);
@@ -231,7 +231,7 @@ async function generateChapterContent(
   // Build source context block if a document was uploaded
   const sourceContext = buildSourceContext(sourceDocumentText, sourceNarrative);
 
-  const result = await invokeLLM({
+  const result = await wrapLLM(() => invokeLLM({
     messages: [
       { role: "system", content: voiceSystemPrompt },
       {
@@ -260,7 +260,7 @@ Start directly with the opening hook:`,
       },
     ],
     maxTokens: preset.maxTokens,
-  });
+  }));
 
   const content = result.choices?.[0]?.message?.content ?? "";
   return typeof content === "string" ? content : JSON.stringify(content);

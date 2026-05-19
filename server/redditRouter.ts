@@ -4,14 +4,9 @@ import { getDb } from "./db";
 import { redditSubreddits, redditPosts } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
+import { callDataApi } from "./_core/dataApi";
 
-// ─── Reddit HTTP helper ───────────────────────────────────────────────────────
-
-const REDDIT_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (compatible; UrbanMonkContentHub/1.0; +https://theurbanmonk.com)",
-  Accept: "application/json",
-};
+// ─── Reddit fetch via Manus Data API (bypasses datacenter IP blocks) ─────────
 
 interface RedditRawPost {
   id: string;
@@ -26,15 +21,56 @@ interface RedditRawPost {
   created_utc: number;
 }
 
+interface DataApiPost {
+  data?: {
+    id?: string;
+    subreddit?: string;
+    title?: string;
+    selftext?: string;
+    score?: number;
+    num_comments?: number;
+    upvote_ratio?: number;
+    permalink?: string;
+    author?: string;
+    created_utc?: number;
+  };
+}
+
+interface DataApiResponse {
+  posts?: DataApiPost[];
+  success?: boolean;
+}
+
 async function fetchRedditHot(
   subreddit: string,
   limit = 25
 ): Promise<RedditRawPost[]> {
-  const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=${limit}&raw_json=1`;
-  const res = await fetch(url, { headers: REDDIT_HEADERS });
-  if (!res.ok) return [];
-  const data = (await res.json()) as { data?: { children?: { data: RedditRawPost }[] } };
-  return (data?.data?.children ?? []).map((c) => c.data);
+  try {
+    const result = await callDataApi("Reddit/AccessAPI", {
+      query: { subreddit, limit: String(limit) },
+    }) as DataApiResponse;
+
+    if (!result?.posts?.length) return [];
+
+    return result.posts
+      .map((p) => p.data)
+      .filter((d): d is NonNullable<typeof d> => !!d && !!d.id && !!d.title)
+      .map((d) => ({
+        id: d.id!,
+        subreddit: d.subreddit ?? subreddit,
+        title: d.title!,
+        selftext: d.selftext ?? "",
+        score: d.score ?? 0,
+        num_comments: d.num_comments ?? 0,
+        upvote_ratio: d.upvote_ratio ?? 1,
+        permalink: d.permalink ?? "",
+        author: d.author ?? "[deleted]",
+        created_utc: d.created_utc ?? Math.floor(Date.now() / 1000),
+      }));
+  } catch (err) {
+    console.error(`[Reddit] fetchRedditHot(${subreddit}) failed:`, err);
+    return [];
+  }
 }
 
 // ─── Default subreddits for Urban Monk topics ────────────────────────────────

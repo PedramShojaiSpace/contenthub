@@ -109,37 +109,48 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
   const [lengthPreset, setLengthPreset] = useState<"concise" | "standard" | "expansive" | "immersive">("standard");
   const [proseStyle, setProseStyle] = useState<"direct" | "narrative" | "academic">("narrative");
 
-  // Source document state
-  const [sourceFile, setSourceFile] = useState<{ name: string; text: string; s3Url: string; wordCount: number } | null>(null);
+  // Source documents state (multiple files)
+  type SourceDoc = { name: string; text: string; s3Url: string; wordCount: number };
+  const [sourceDocs, setSourceDocs] = useState<SourceDoc[]>([]);
   const [sourceNarrative, setSourceNarrative] = useState("");
   const [uploadingSource, setUploadingSource] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSourceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
     setUploadingSource(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/ebook/upload-source", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Upload failed" }));
-        throw new Error(err.error ?? "Upload failed");
+    let successCount = 0;
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/ebook/upload-source", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Upload failed" }));
+          toast.error(`"${file.name}": ${err.error ?? "Upload failed"}`);
+          continue;
+        }
+        const data = await res.json();
+        setSourceDocs((prev) => [...prev, { name: file.name, text: data.text, s3Url: data.s3Url, wordCount: data.wordCount }]);
+        successCount++;
+      } catch (err) {
+        toast.error(`"${file.name}": ${err instanceof Error ? err.message : "Upload failed"}`);
       }
-      const data = await res.json();
-      setSourceFile({ name: file.name, text: data.text, s3Url: data.s3Url, wordCount: data.wordCount });
-      toast.success(`Uploaded "${file.name}" — ${data.wordCount.toLocaleString()} words extracted`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploadingSource(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+    if (successCount > 0) {
+      toast.success(`${successCount} file${successCount > 1 ? "s" : ""} uploaded successfully`);
+    }
+    setUploadingSource(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeSourceDoc = (index: number) => {
+    setSourceDocs((prev) => prev.filter((_, i) => i !== index));
   };
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -171,10 +182,10 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
         ctaBlockId: ctaLinkId ? parseInt(ctaLinkId) : undefined,
         landingPageId: landingPageId ? parseInt(landingPageId) : undefined,
         webinarSessionId: webinarId ? parseInt(webinarId) : undefined,
-        ...(sourceFile ? {
-          sourceDocumentText: sourceFile.text,
-          sourceDocumentName: sourceFile.name,
-          sourceDocumentS3Url: sourceFile.s3Url,
+        ...(sourceDocs.length > 0 ? {
+          sourceDocumentText: sourceDocs.map((d, i) => `--- Document ${i + 1}: ${d.name} ---\n${d.text}`).join("\n\n"),
+          sourceDocumentName: sourceDocs.map((d) => d.name).join(", "),
+          sourceDocumentS3Url: sourceDocs[0].s3Url,
         } : {}),
         ...(sourceNarrative.trim() ? { sourceNarrative: sourceNarrative.trim() } : {}),
         lengthPreset,
@@ -211,7 +222,7 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
       setOpen(false);
       setTitle("");
       setTopic("");
-      setSourceFile(null);
+      setSourceDocs([]);
       setSourceNarrative("");
       setGenerationStep("idle");
       onSuccess();
@@ -351,61 +362,76 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             </div>
           </div>
 
-          {/* Source Document Upload */}
+          {/* Source Documents Upload */}
           <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <FileSearch className="w-4 h-4 text-primary" />
-              Source Document (optional)
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <FileSearch className="w-4 h-4 text-primary" />
+                Source Documents (optional)
+              </div>
+              {sourceDocs.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {sourceDocs.length} file{sourceDocs.length > 1 ? "s" : ""} — {sourceDocs.reduce((s, d) => s + d.wordCount, 0).toLocaleString()} words total
+                </span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Upload a webinar transcript, talk notes, outline, or any document. The AI will use it as the primary foundation for the e-book instead of generating from scratch.
+              Upload one or more webinar transcripts, talk notes, outlines, or reference documents. The AI will use them as the primary foundation for the e-book.
             </p>
 
-            {/* File drop zone */}
-            {!sourceFile ? (
-              <div
-                className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {uploadingSource ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Uploading and extracting text...</p>
+            {/* Uploaded files list */}
+            {sourceDocs.length > 0 && (
+              <div className="space-y-2">
+                {sourceDocs.map((doc, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-lg p-2.5">
+                    <FileText className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{doc.name}</p>
+                      <p className="text-xs text-muted-foreground">{doc.wordCount.toLocaleString()} words</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={() => removeSourceDoc(i)}
+                      disabled={isGenerating}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <FileUp className="w-6 h-6 text-muted-foreground" />
-                    <p className="text-sm font-medium">Drop a file or click to browse</p>
-                    <p className="text-xs text-muted-foreground">PDF, TXT, or MD — up to 20 MB</p>
-                  </div>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.txt,.md,.text"
-                  className="hidden"
-                  onChange={handleSourceFileUpload}
-                  disabled={uploadingSource || isGenerating}
-                />
-              </div>
-            ) : (
-              <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-lg p-3">
-                <FileText className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{sourceFile.name}</p>
-                  <p className="text-xs text-muted-foreground">{sourceFile.wordCount.toLocaleString()} words extracted</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0"
-                  onClick={() => setSourceFile(null)}
-                  disabled={isGenerating}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
+                ))}
               </div>
             )}
+
+            {/* Add more files drop zone */}
+            <div
+              className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+              onClick={() => !uploadingSource && !isGenerating && fileInputRef.current?.click()}
+            >
+              {uploadingSource ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Uploading and extracting text...</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <FileUp className="w-6 h-6 text-muted-foreground" />
+                  <p className="text-sm font-medium">
+                    {sourceDocs.length === 0 ? "Drop files or click to browse" : "Add more files"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, or MD — up to 20 MB each — multiple files supported</p>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.md,.text"
+                multiple
+                className="hidden"
+                onChange={handleSourceFileUpload}
+                disabled={uploadingSource || isGenerating}
+              />
+            </div>
 
             {/* Author narrative */}
             <div className="space-y-1">

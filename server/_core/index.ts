@@ -13,6 +13,7 @@ import { handleNewsfeedRefresh } from "../newsfeedScheduled";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
+import mammoth from "mammoth";
 import { storagePut } from "../storage";
 import { runStitchingJob } from "../videoVariantRouter";
 import { videoVariants } from "../../drizzle/schema";
@@ -337,8 +338,18 @@ async function startServer() {
         } catch (e) {
           extractedText = "";
         }
+      } else if (
+        mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        name.endsWith(".docx")
+      ) {
+        try {
+          const result = await mammoth.extractRawText({ buffer: file.buffer });
+          extractedText = result.value ?? "";
+        } catch (e) {
+          extractedText = "";
+        }
       } else {
-        // TXT, MD, DOCX-as-text — treat buffer as UTF-8 text
+        // TXT, MD — treat buffer as UTF-8 text
         extractedText = file.buffer.toString("utf-8");
       }
 
@@ -378,8 +389,18 @@ async function startServer() {
         } catch (e) {
           extractedText = "";
         }
+      } else if (
+        mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        name.endsWith(".docx")
+      ) {
+        try {
+          const result = await mammoth.extractRawText({ buffer: file.buffer });
+          extractedText = result.value ?? "";
+        } catch (e) {
+          extractedText = "";
+        }
       } else {
-        // TXT, MD, DOCX-as-text — treat buffer as UTF-8 text
+        // TXT, MD — treat buffer as UTF-8 text
         extractedText = file.buffer.toString("utf-8");
       }
 

@@ -2614,3 +2614,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Rewrite chapter content prompt: 8 explicit requirements including opening hook, depth mandates (story + science + ancient wisdom + surprise), 2-4 subheadings, 2-3 actionable protocols, voice consistency, bridge closing
 - [x] Source document mode: prompt explicitly instructs AI to draw directly from source, quote/paraphrase specific insights, treat source as field notes
 - [x] No-source mode: requires story/case study + specific science + ancient wisdom reference + counterintuitive insight per chapter
+
+## v-book-title-stale-closure-fix
+- [x] Root cause: original compositor (c6c281f) used snippet.theme as bookTitle
+- [x] Fix: removed snippet.theme from useCallback dep array, added bookTitle
+- [x] Fix: added non-empty string guard on serverBookTitle before using it
+- [x] resolvedBookTitle = serverBookTitle (non-empty) ?? bookTitle (non-empty) ?? "The Urban Monk"

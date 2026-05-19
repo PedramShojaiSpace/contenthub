@@ -525,6 +525,15 @@ export default function RedditIntelligence() {
     onError: (e) => toast.error(e.message),
   });
 
+  const debugFetchMutation = trpc.reddit.debugFetch.useMutation({
+    onSuccess: (d) => {
+      const summary = d.results.map((r) => `${r.method}: ${r.status} (${r.postCount} posts)${r.error ? ` — ${r.error}` : ""}`).join("\n");
+      toast.success(`Debug results for r/${d.subreddit}:\n${summary}`, { duration: 15000 });
+      console.log("[Reddit Debug]", d);
+    },
+    onError: (e) => toast.error(`Debug failed: ${e.message}`),
+  });
+
   const batchAnalyzeMutation = trpc.reddit.batchAnalyze.useMutation({
     onSuccess: (d) => {
       toast.success(`Analyzed ${d.analyzed} posts`);
@@ -577,6 +586,16 @@ export default function RedditIntelligence() {
               className={`w-4 h-4 ${refreshMutation.isPending ? "animate-spin" : ""}`}
             />
             {refreshMutation.isPending ? "Fetching…" : "Refresh Feed"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1 text-xs opacity-60 hover:opacity-100"
+            disabled={debugFetchMutation.isPending}
+            onClick={() => debugFetchMutation.mutate({ subreddit: "ibs" })}
+            title="Test Reddit fetch from server — check browser console for full results"
+          >
+            {debugFetchMutation.isPending ? "Testing…" : "Debug Fetch"}
           </Button>
           {unanalyzedCount > 0 && (
             <Button

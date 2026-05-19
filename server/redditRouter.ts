@@ -4,9 +4,7 @@ import { getDb } from "./db";
 import { redditSubreddits, redditPosts } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
-import { callDataApi } from "./_core/dataApi";
-
-// ─── Reddit fetch via Manus Data API (bypasses datacenter IP blocks) ─────────
+// ─── Reddit fetch helpers ────────────────────────────────────────────────────
 
 interface RedditRawPost {
   id: string;
@@ -21,56 +19,102 @@ interface RedditRawPost {
   created_utc: number;
 }
 
-interface DataApiPost {
-  data?: {
-    id?: string;
-    subreddit?: string;
-    title?: string;
-    selftext?: string;
-    score?: number;
-    num_comments?: number;
-    upvote_ratio?: number;
-    permalink?: string;
-    author?: string;
-    created_utc?: number;
-  };
-}
-
-interface DataApiResponse {
-  posts?: DataApiPost[];
-  success?: boolean;
-}
+// User agents that Reddit accepts from server-side / script contexts
+const REDDIT_USER_AGENTS = [
+  "script:urbanmonk-content-hub:v1.0 (by /u/urbanmonk_admin)",
+  "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+];
 
 async function fetchRedditHot(
   subreddit: string,
   limit = 25
 ): Promise<RedditRawPost[]> {
-  try {
-    const result = await callDataApi("Reddit/AccessAPI", {
-      query: { subreddit, limit: String(limit) },
-    }) as DataApiResponse;
-
-    if (!result?.posts?.length) return [];
-
-    return result.posts
-      .map((p) => p.data)
-      .filter((d): d is NonNullable<typeof d> => !!d && !!d.id && !!d.title)
-      .map((d) => ({
-        id: d.id!,
-        subreddit: d.subreddit ?? subreddit,
-        title: d.title!,
-        selftext: d.selftext ?? "",
-        score: d.score ?? 0,
-        num_comments: d.num_comments ?? 0,
-        upvote_ratio: d.upvote_ratio ?? 1,
-        permalink: d.permalink ?? "",
-        author: d.author ?? "[deleted]",
-        created_utc: d.created_utc ?? Math.floor(Date.now() / 1000),
-      }));
-  } catch (err) {
-    console.error(`[Reddit] fetchRedditHot(${subreddit}) failed:`, err);
-    return [];
+  // Try JSON endpoint with multiple user agents
+  for (const ua of REDDIT_USER_AGENTS) {
+    try {
+      const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=${limit}&raw_json=1`;
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": ua,
+          "Accept": "application/json",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+      });
+      if (!res.ok) {
+        console.warn(`[Reddit] ${subreddit} JSON attempt failed (${res.status}) with UA: ${ua.slice(0, 40)}`);
+        continue;
+      }
+      const data = await res.json() as { data?: { children?: { data: RedditRawPost }[] } };
+      const posts = (data?.data?.children ?? []).map((c) => c.data);
+      if (posts.length > 0) {
+        console.log(`[Reddit] ${subreddit}: fetched ${posts.length} posts via JSON`);
+        return posts;
+      }
+    } catch (err) {
+      console.warn(`[Reddit] ${subreddit} JSON error:`, err);
+    }
   }
+
+  // Fallback: parse RSS feed (more permissive with server IPs)
+  try {
+    const rssUrl = `https://www.reddit.com/r/${subreddit}/hot.rss?limit=${limit}`;
+    const rssRes = await fetch(rssUrl, {
+      headers: {
+        "User-Agent": "script:urbanmonk-content-hub:v1.0",
+        "Accept": "application/rss+xml, application/xml",
+      },
+    });
+    if (rssRes.ok) {
+      const xml = await rssRes.text();
+      // Extract entries from Atom RSS
+      const entries: RedditRawPost[] = [];
+      const entryRegex = /<entry>([\/\s\S]*?)<\/entry>/g;
+      let match;
+      let idx = 0;
+      while ((match = entryRegex.exec(xml)) !== null && idx < limit) {
+        const entry = match[1];
+        const titleMatch = entry.match(/<title[^>]*><!\[CDATA\[([^\]]+)\]\]><\/title>/) ||
+                           entry.match(/<title[^>]*>([^<]+)<\/title>/);
+        const linkMatch = entry.match(/<link[^>]*href="([^"]+)"/);
+        const idMatch = entry.match(/<id>([^<]+)<\/id>/);
+        const authorMatch = entry.match(/<name>([^<]+)<\/name>/);
+        const updatedMatch = entry.match(/<updated>([^<]+)<\/updated>/);
+
+        if (titleMatch && idMatch) {
+          // Extract reddit post ID from the URL or id field
+          const idUrl = idMatch[1];
+          const postIdMatch = idUrl.match(/comments\/([a-z0-9]+)/);
+          const postId = postIdMatch ? postIdMatch[1] : `rss_${idx}`;
+          const permalink = linkMatch ? linkMatch[1] : `https://reddit.com/r/${subreddit}`;
+          const createdAt = updatedMatch ? Math.floor(new Date(updatedMatch[1]).getTime() / 1000) : Math.floor(Date.now() / 1000);
+
+          entries.push({
+            id: postId,
+            subreddit,
+            title: titleMatch[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'),
+            selftext: "",
+            score: 0,
+            num_comments: 0,
+            upvote_ratio: 1,
+            permalink,
+            author: authorMatch ? authorMatch[1] : "[unknown]",
+            created_utc: createdAt,
+          });
+          idx++;
+        }
+      }
+      if (entries.length > 0) {
+        console.log(`[Reddit] ${subreddit}: fetched ${entries.length} posts via RSS fallback`);
+        return entries;
+      }
+    }
+  } catch (rssErr) {
+    console.warn(`[Reddit] ${subreddit} RSS fallback error:`, rssErr);
+  }
+
+  console.error(`[Reddit] ${subreddit}: all fetch methods failed`);
+  return [];
 }
 
 // ─── Default subreddits for Urban Monk topics ────────────────────────────────
@@ -425,6 +469,51 @@ Return only the comment text, no quotes or labels.`;
         .where(eq(redditPosts.id, input.postId));
 
       return { draft };
+    }),
+
+  // Debug: test Reddit fetch from server and return raw status
+  debugFetch: protectedProcedure
+    .input(z.object({ subreddit: z.string().default("ibs") }))
+    .mutation(async ({ input }) => {
+      const results: { method: string; status: string; postCount: number; error?: string }[] = [];
+
+      // Test each user agent with JSON
+      const userAgents = [
+        "script:urbanmonk-content-hub:v1.0 (by /u/urbanmonk_admin)",
+        "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+      ];
+      for (const ua of userAgents) {
+        try {
+          const url = `https://www.reddit.com/r/${input.subreddit}/hot.json?limit=5&raw_json=1`;
+          const res = await fetch(url, { headers: { "User-Agent": ua, "Accept": "application/json" } });
+          const body = await res.text();
+          let postCount = 0;
+          try {
+            const data = JSON.parse(body) as { data?: { children?: unknown[] } };
+            postCount = data?.data?.children?.length ?? 0;
+          } catch { /* ignore */ }
+          results.push({ method: `JSON:${ua.slice(0, 30)}`, status: `${res.status}`, postCount });
+        } catch (e) {
+          results.push({ method: `JSON:${ua.slice(0, 30)}`, status: "ERROR", postCount: 0, error: String(e) });
+        }
+      }
+
+      // Test RSS
+      try {
+        const rssUrl = `https://www.reddit.com/r/${input.subreddit}/hot.rss?limit=5`;
+        const rssRes = await fetch(rssUrl, { headers: { "User-Agent": "script:urbanmonk-content-hub:v1.0", "Accept": "application/rss+xml" } });
+        const xml = await rssRes.text();
+        const entryCount = (xml.match(/<entry>/g) ?? []).length;
+        results.push({ method: "RSS", status: `${rssRes.status}`, postCount: entryCount });
+      } catch (e) {
+        results.push({ method: "RSS", status: "ERROR", postCount: 0, error: String(e) });
+      }
+
+      // Also run the actual fetchRedditHot
+      const posts = await fetchRedditHot(input.subreddit, 5);
+      results.push({ method: "fetchRedditHot()", status: "OK", postCount: posts.length });
+
+      return { results, subreddit: input.subreddit };
     }),
 
   // Get stats summary

@@ -110,10 +110,10 @@ ${sourceNarrative.trim()}
   }
 
   if (sourceDocumentText?.trim()) {
-    // Truncate to ~12,000 words to stay within LLM context limits
+    // Truncate to ~6,000 words to stay within LLM context limits and avoid gateway timeouts
     const words = sourceDocumentText.trim().split(/\s+/);
-    const truncated = words.length > 12000
-      ? words.slice(0, 12000).join(" ") + "\n\n[...document truncated for context limit...]"
+    const truncated = words.length > 6000
+      ? words.slice(0, 6000).join(" ") + "\n\n[...document truncated for context limit...]"
       : sourceDocumentText.trim();
     parts.push(`
 === SOURCE DOCUMENT (use this as the primary content foundation) ===
@@ -141,28 +141,18 @@ async function generateChapterOutline(
       { role: "system", content: voiceSystemPrompt },
       {
         role: "user",
-        content: `You are creating the chapter outline for a premium e-book titled around: "${topic}"
+        content: `Create a ${chapterCount}-chapter outline for a premium e-book by Dr. Pedram Shojai (The Urban Monk).
 
-Author: Dr. Pedram Shojai (The Urban Monk) — Doctor of Oriental Medicine, filmmaker, bestselling author, wellness teacher
-Target audience: ${targetAudience}
-Number of chapters: ${chapterCount}
+TOPIC: "${topic}" | AUDIENCE: ${targetAudience}
 
-${sourceContext}OUTLINE REQUIREMENTS:
+${sourceContext}REQUIREMENTS:
 ${sourceDocumentText
-  ? `- The outline MUST be built directly from the source document above. Extract the specific ideas, stories, frameworks, protocols, and insights from that material.
-- Every chapter title and summary must reference concrete content from the source — not generic wellness topics.
-- Preserve the author's specific terminology, frameworks, and unique perspectives found in the source.`
-  : `- Create a powerful narrative arc: open with the reader's pain/struggle → deepen their understanding of WHY → introduce the transformation framework → deliver practical protocols → close with integration and identity shift.
-- Each chapter must have a distinct, non-generic angle. Avoid vague titles like "The Power of Sleep" — use specific, intriguing titles like "The 2 AM Wake-Up: What Your Liver Is Trying to Tell You."
-- Ground every chapter in both ancient wisdom (TCM, Ayurveda, Taoist medicine) AND modern science (neuroscience, functional medicine, chronobiology).`}
-- Chapter summaries must be RICH and SPECIFIC — 3-5 sentences each, naming the exact concepts, protocols, stories, or science covered.
-- The arc should feel like a complete journey: the reader should feel different at the end than they did at the beginning.
-- Avoid generic wellness clichés. Every chapter should contain at least one surprising insight or counterintuitive truth.
+  ? `- Build the outline directly from the source document. Extract specific ideas, stories, frameworks, and protocols from that material. Every chapter must reference concrete content from the source.`
+  : `- Arc: reader's pain → understanding WHY → transformation framework → practical protocols → integration. Specific titles (e.g. "The 2 AM Wake-Up: What Your Liver Is Trying to Tell You" not "The Power of Sleep"). Ground in ancient wisdom (TCM/Ayurveda/Taoist) AND modern science.`}
+- Summaries: 3-5 sentences naming exact concepts, protocols, and transformation delivered.
+- Avoid generic wellness clichés. Each chapter needs at least one surprising insight.
 
-Return a JSON array with ${chapterCount} chapters, each with:
-- number (1-${chapterCount})
-- title (specific, compelling — NOT generic)
-- summary (3-5 rich sentences describing the exact content, key concepts, and transformation this chapter delivers)`,
+Return a JSON array with ${chapterCount} objects: { number, title, summary }`,
       },
     ],
     response_format: {
@@ -197,10 +187,10 @@ Return a JSON array with ${chapterCount} chapters, each with:
 
 // Length presets: target word counts and max tokens
 const LENGTH_PRESETS: Record<string, { label: string; minWords: number; maxWords: number; maxTokens: number }> = {
-  concise:   { label: "Concise",   minWords: 600,  maxWords: 900,  maxTokens: 2000 },
-  standard:  { label: "Standard",  minWords: 1000, maxWords: 1400, maxTokens: 3000 },
-  expansive: { label: "Expansive", minWords: 1500, maxWords: 2000, maxTokens: 4500 },
-  immersive: { label: "Immersive", minWords: 2000, maxWords: 2800, maxTokens: 6000 },
+  concise:   { label: "Concise",   minWords: 600,  maxWords: 900,  maxTokens: 1500 },
+  standard:  { label: "Standard",  minWords: 1000, maxWords: 1400, maxTokens: 2500 },
+  expansive: { label: "Expansive", minWords: 1500, maxWords: 2000, maxTokens: 3500 },
+  immersive: { label: "Immersive", minWords: 1800, maxWords: 2400, maxTokens: 4096 },
 };
 
 // Prose style instructions
@@ -245,44 +235,27 @@ async function generateChapterContent(
       { role: "system", content: voiceSystemPrompt },
       {
         role: "user",
-        content: `You are writing Chapter ${chapterNumber} of a premium e-book by Dr. Pedram Shojai (The Urban Monk).
+        content: `Write Chapter ${chapterNumber} of a premium e-book by Dr. Pedram Shojai (The Urban Monk).
 
-CHAPTER TITLE: "${chapterTitle}"
-E-BOOK TOPIC: ${topic}
-TARGET READER: ${targetAudience}
-CHAPTER BLUEPRINT: ${chapterSummary}
+TITLE: "${chapterTitle}"
+TOPIC: ${topic} | READER: ${targetAudience}
+BLUEPRINT: ${chapterSummary}
 
-${sourceContext}PROSE STYLE DIRECTIVE: ${proseInstruction}
+${sourceContext}STYLE: ${proseInstruction}
 
-WRITING REQUIREMENTS — follow every one of these:
-
-1. WORD COUNT: Write ${preset.minWords}–${preset.maxWords} words of substantive, dense, valuable content. Do NOT pad with summaries or repetition. Every paragraph must earn its place.
-
-2. OPENING HOOK: Start with a vivid scene, a surprising statistic, a provocative question, or a brief personal story that immediately creates tension or curiosity. Do NOT open with "In this chapter" or any meta-commentary.
-
-3. DEPTH OF CONTENT:
+REQUIREMENTS:
+- ${preset.minWords}–${preset.maxWords} words of dense, valuable content
+- Open with a hook (scene/statistic/question) — NOT "In this chapter..."
 ${sourceDocumentText
-  ? `   - Draw DIRECTLY from the source document provided. Use the specific ideas, frameworks, stories, protocols, and language from that material.
-   - Quote or paraphrase specific insights from the source. Do not invent content that contradicts or ignores the source.
-   - The source document is the PRIMARY content foundation — treat it like field notes or a transcript that you are transforming into polished prose.`
-  : `   - Include at least ONE concrete story or case study (real or illustrative) that makes the concept tangible.
-   - Include at least ONE specific scientific finding, study, or mechanism that explains WHY this matters.
-   - Include at least ONE ancient wisdom reference (TCM, Taoist medicine, Ayurveda, or traditional practice) that bridges the science.
-   - Include at least ONE surprising or counterintuitive insight that the reader would not have expected.`}
+  ? `- Draw directly from the source document. Quote/paraphrase specific insights. Do not invent content that contradicts the source.`
+  : `- Include: one story/case study, one scientific finding, one ancient wisdom reference (TCM/Ayurveda/Taoist), one counterintuitive insight`}
+- 2-4 subheadings (## format), each developing a distinct idea
+- 2-3 specific actionable protocols the reader can actually do
+- Dr. Shojai's voice: warm, direct, authoritative, blending science + ancient wisdom, speaks directly to "you"
+- ${isLastChapter ? "Close with a powerful paragraph that crystallizes the book's core transformation." : "Close with a bridge to the next chapter — a question or tension that pulls the reader forward."}
+- Clean Markdown, ## subheadings, prose paragraphs (no bullet lists except for protocol steps)${ctaInstruction}
 
-4. STRUCTURE: Use 2-4 subheadings (## format) to organize the chapter into clear sections. Each section should develop a distinct idea, not just repeat the main point.
-
-5. ACTIONABLE CONTENT: Include 2-3 specific, concrete practices, protocols, or exercises the reader can implement. Make them specific enough to actually do (not vague advice like "reduce stress").
-
-6. VOICE: Write in Dr. Pedram Shojai's voice throughout — warm, direct, authoritative, blending science and ancient wisdom. Use "you" to speak directly to the reader. Use metaphors from nature, energy, and traditional medicine.
-
-7. CLOSING: ${isLastChapter
-  ? "End with a powerful, memorable closing paragraph that crystallizes the book's core transformation and leaves the reader feeling changed."
-  : "End with a brief paragraph that creates a natural bridge to the next chapter's theme — a question, a tension, or a preview that makes the reader want to continue."}
-
-8. FORMAT: Write in clean Markdown. Use ## for subheadings. No bullet-point lists for the main content (prose only). Short bullet lists are acceptable only for protocol steps or practices.${ctaInstruction}
-
-Begin writing Chapter ${chapterNumber} now. Do not include a chapter number header — start directly with the opening hook:`,
+Start directly with the opening hook:`,
       },
     ],
     maxTokens: preset.maxTokens,

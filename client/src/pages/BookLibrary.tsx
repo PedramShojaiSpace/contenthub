@@ -793,10 +793,14 @@ function SnippetCard({
 
       // Step 2: Render all 6 platform cards in the browser and upload to S3
       // Use server-returned bookTitle as authoritative source (fallback to prop)
+      // Guard: only use serverBookTitle if it's a non-empty string
+      const resolvedBookTitle = (serverBookTitle && serverBookTitle.trim().length > 0)
+        ? serverBookTitle
+        : (bookTitle && bookTitle.trim().length > 0 ? bookTitle : "The Urban Monk");
       const urls = await generateAllCards({
         quoteText: snippet.passageText,
         authorName: "Dr. Pedram Shojai",
-        bookTitle: serverBookTitle ?? bookTitle,
+        bookTitle: resolvedBookTitle,
         brandName: "The Urban Monk",
         backgroundUrl: backgroundUrl ?? null,
         mood: selectedMood as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber",
@@ -826,7 +830,7 @@ function SnippetCard({
       setIsClientGenerating(false);
       setClientProgress(null);
     }
-  }, [snippet.id, snippet.passageText, snippet.theme, selectedMood, selectedFontSize, bookId]);
+  }, [snippet.id, snippet.passageText, bookTitle, selectedMood, selectedFontSize, bookId]);
 
   const hasCopy = snippet.linkedinCopy || snippet.xCopy || snippet.metaCopy;
   const hasAnyCard = snippet.titleCardUrl || snippet.titleCardLinkedinUrl || snippet.titleCardXUrl;

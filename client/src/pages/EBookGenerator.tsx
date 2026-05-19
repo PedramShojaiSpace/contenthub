@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { useRef } from "react";
+import ChapterEnhancementPanel, { type EnhancementDoc } from "@/components/ChapterEnhancementPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -547,7 +548,13 @@ function ChapterEditor({
   chapter: Chapter;
   ebookTopic: string;
   onSave: (id: number, content: string, title: string) => Promise<void>;
-  onRegenerate: (id: number, instructions?: string) => Promise<void>;
+  onRegenerate: (id: number, opts?: {
+    instructions?: string;
+    enhancementInstructions?: string;
+    enhancementDocs?: EnhancementDoc[];
+    lengthPreset?: string;
+    proseStyle?: string;
+  }) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(chapter.content ?? "");
@@ -570,11 +577,17 @@ function ChapterEditor({
     }
   };
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = async (opts?: {
+    instructions?: string;
+    enhancementInstructions?: string;
+    enhancementDocs?: EnhancementDoc[];
+    lengthPreset?: string;
+    proseStyle?: string;
+  }) => {
     setRegenerating(true);
     setShowRegenDialog(false);
     try {
-      await onRegenerate(chapter.id, regenInstructions || undefined);
+      await onRegenerate(chapter.id, opts ?? { instructions: regenInstructions || undefined });
       setRegenInstructions("");
       toast.success("Chapter regenerated");
     } catch {
@@ -654,7 +667,7 @@ function ChapterEditor({
             className="text-sm"
           />
           <div className="flex gap-2">
-            <Button size="sm" onClick={handleRegenerate} className="gap-1.5">
+            <Button size="sm" onClick={() => handleRegenerate()} className="gap-1.5">
               <Wand2 className="w-3.5 h-3.5" />
               Rewrite Chapter
             </Button>
@@ -682,6 +695,21 @@ function ChapterEditor({
       <div className="text-xs text-muted-foreground">
         {chapter.wordCount?.toLocaleString()} words
       </div>
+
+      {/* Enhancement panel */}
+      <ChapterEnhancementPanel
+        chapterId={chapter.id}
+        chapterTitle={chapter.title}
+        onRegenerate={async (opts) => {
+          await handleRegenerate({
+            enhancementInstructions: opts.enhancementInstructions,
+            enhancementDocs: opts.enhancementDocs,
+            lengthPreset: opts.lengthPreset,
+            proseStyle: opts.proseStyle,
+          });
+        }}
+        isRegenerating={regenerating}
+      />
     </div>
   );
 }
@@ -941,10 +969,14 @@ function EbookViewer({
                   onSave={async (id, content, title) => {
                     await updateChapter.mutateAsync({ chapterId: id, content, title });
                   }}
-                  onRegenerate={async (id, instructions) => {
-                    const result = await regenerateChapter.mutateAsync({
+                  onRegenerate={async (id, opts) => {
+                    await regenerateChapter.mutateAsync({
                       chapterId: id,
-                      instructions,
+                      instructions: opts?.instructions,
+                      enhancementInstructions: opts?.enhancementInstructions,
+                      enhancementDocs: opts?.enhancementDocs,
+                      lengthPreset: opts?.lengthPreset as "concise" | "standard" | "expansive" | "immersive" | undefined,
+                      proseStyle: opts?.proseStyle as "direct" | "narrative" | "academic" | undefined,
                     });
                   }}
                 />

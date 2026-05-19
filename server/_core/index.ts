@@ -357,6 +357,41 @@ async function startServer() {
     }
   });
 
+  // POST /api/ebook/upload-enhancement-doc — accepts PDF/TXT/MD document for chapter enhancement,
+  // extracts text, returns { text, fileName, wordCount }
+  const ebookEnhancementUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+  app.post("/api/ebook/upload-enhancement-doc", ebookEnhancementUpload.single("file"), async (req: any, res: any) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "No file provided" });
+
+      const mime = file.mimetype;
+      const name = file.originalname ?? "doc";
+      let extractedText = "";
+
+      if (mime === "application/pdf" || name.endsWith(".pdf")) {
+        try {
+          const parser = new PDFParse({ data: file.buffer });
+          const parsed = await parser.getText();
+          extractedText = parsed.text ?? "";
+        } catch (e) {
+          extractedText = "";
+        }
+      } else {
+        // TXT, MD, DOCX-as-text — treat buffer as UTF-8 text
+        extractedText = file.buffer.toString("utf-8");
+      }
+
+      const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
+      return res.json({ text: extractedText, fileName: name, wordCount });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[ebook/upload-enhancement-doc] Error:", msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

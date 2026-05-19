@@ -56,6 +56,25 @@ const CATEGORIES = [
   { value: "general", label: "General" },
 ];
 
+const CATEGORY_COLORS: Record<string, string> = {
+  meditation:   "bg-amber-100 text-amber-800 border-amber-300",
+  biohacking:   "bg-cyan-100 text-cyan-800 border-cyan-300",
+  supplements:  "bg-purple-100 text-purple-800 border-purple-300",
+  movement:     "bg-lime-100 text-lime-800 border-lime-300",
+  recovery:     "bg-indigo-100 text-indigo-800 border-indigo-300",
+  sleep:        "bg-indigo-100 text-indigo-800 border-indigo-300",
+  stress:       "bg-rose-100 text-rose-800 border-rose-300",
+  productivity: "bg-sky-100 text-sky-800 border-sky-300",
+  nutrition:    "bg-green-100 text-green-800 border-green-300",
+  "gut-health": "bg-green-100 text-green-800 border-green-300",
+  tcm:          "bg-orange-100 text-orange-800 border-orange-300",
+  general:      "bg-muted text-muted-foreground border-border",
+};
+
+function categoryColor(cat: string) {
+  return CATEGORY_COLORS[cat] ?? "bg-muted text-muted-foreground border-border";
+}
+
 function scoreColor(score: number | null) {
   if (!score) return "bg-muted text-muted-foreground";
   if (score >= 8) return "bg-green-100 text-green-800 border-green-200";
@@ -148,7 +167,10 @@ function PostCard({
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <Badge variant="outline" className="text-[10px] font-mono">
+              <Badge
+                variant="outline"
+                className={`text-[10px] font-mono ${categoryColor(post.category)}`}
+              >
                 r/{post.subreddit}
               </Badge>
               {post.isAnalyzed && post.engagementScore !== null && (
@@ -345,6 +367,21 @@ function PostCard({
             )}
             {post.isFlagged ? "Flagged" : "Flag"}
           </Button>
+
+          {post.isAnalyzed && post.aiDraftComment && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[10px] gap-1"
+              onClick={copyDraft}
+            >
+              {copied ? (
+                <><CheckCheck className="w-3 h-3 text-green-600" /> Copied!</>
+              ) : (
+                <><Copy className="w-3 h-3" /> Copy Draft</>
+              )}
+            </Button>
+          )}
 
           <Button
             size="sm"

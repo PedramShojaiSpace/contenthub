@@ -119,7 +119,6 @@ type ContentItem = {
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
-  { key: "idea", label: "Idea", color: "bg-muted/50 border-border" },
   { key: "pending_approval", label: "Pending Approval", color: "bg-amber-950/30 border-amber-700/30" },
   { key: "drafting", label: "Drafting", color: "bg-blue-950/30 border-blue-800/30" },
   { key: "review", label: "Review", color: "bg-yellow-950/30 border-yellow-800/30" },
@@ -963,8 +962,8 @@ function DraggableCard({
               className="flex-1 h-6 text-[10px] border-red-500/40 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-500 gap-1"
               onClick={(e) => {
                 e.stopPropagation();
-                onStatusChange(item.id, "idea");
-                toast.info("Rejected — moved back to Idea");
+                onStatusChange(item.id, "drafting");
+                toast.info("Rejected — moved back to Drafting");
               }}
             >
               <X className="h-2.5 w-2.5" />
@@ -1631,7 +1630,7 @@ export default function CommandCenter() {
       toast.error("Please enter a title.");
       return;
     }
-    createMutation.mutate({ title: newTitle, rawIdea: newIdea, platform: newPlatform, status: "idea" });
+    createMutation.mutate({ title: newTitle, rawIdea: newIdea, platform: newPlatform, status: "drafting" });
   };
 
   const handleStatusChange = (id: number, status: Status) => {

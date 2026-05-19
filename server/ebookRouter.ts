@@ -1329,4 +1329,28 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
 
     return { ctas: ctaList, landingPages: lpList, webinars: webinarList };
   }),
+
+  // ── Debug: test minimal DB insert without LLM ──────────────────────────────
+  testEbookInsert: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { ok: false, error: "DB unavailable" };
+    try {
+      const [row] = await db
+        .insert(ebooks)
+        .values({
+          userId: ctx.user.id,
+          title: "[DEBUG TEST] Delete me",
+          topic: "debug",
+          status: "failed",
+        })
+        .$returningId();
+      // Clean up immediately
+      await db.delete(ebooks).where(eq(ebooks.id, row.id));
+      return { ok: true, insertedId: row.id, error: null };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[testEbookInsert] DB insert failed:", msg);
+      return { ok: false, error: msg };
+    }
+  }),
 });

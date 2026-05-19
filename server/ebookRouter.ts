@@ -465,6 +465,8 @@ export const ebookRouter = router({
       z.object({
         chapterId: z.number(),
         instructions: z.string().optional(),
+        // Style note: a short one-line author direction for this specific regeneration
+        styleNotes: z.string().optional(),
         // Enhancement: free-text directions from the author
         enhancementInstructions: z.string().optional(),
         // Enhancement: array of {name, text} documents to reference
@@ -524,9 +526,10 @@ export const ebookRouter = router({
         }).join("\n\n");
       }
 
-      // Combine legacy instructions + new enhancement instructions
+      // Combine all instruction sources: legacy, style notes, and enhancement instructions
       const allInstructions = [
         input.instructions,
+        input.styleNotes ? `STYLE NOTE (apply precisely): ${input.styleNotes}` : null,
         input.enhancementInstructions,
       ].filter(Boolean).join("\n");
 
@@ -555,16 +558,12 @@ REQUIREMENTS:
         concise: 1500, standard: 2500, expansive: 3500, immersive: 4096,
       };
 
-      const result = await invokeLLM({
-        messages: [
-          { role: "system", content: voiceSystemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+      // Use Claude Sonnet for chapter regeneration — same model as initial generation
+      const content = await invokeClaude({
+        systemPrompt: voiceSystemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
         maxTokens: maxTokensMap[lengthPreset],
       });
-
-      const rawContent = result.choices?.[0]?.message?.content ?? chapter.content ?? "";
-      const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       const wordCount = content.split(/\s+/).length;
 
       // Auto-save current content as a version before overwriting
@@ -1413,6 +1412,164 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
       }
 
       return { retriedCount: failedChapters.length, succeededCount, failedCount };
+    }),
+
+  // ── Preview outline before committing to full chapter generation ──────────
+  previewOutline: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().min(1),
+        topic: z.string().min(1),
+        targetAudience: z.string().default("health-conscious adults seeking transformation"),
+        chapterCount: z.number().min(3).max(12).default(7),
+        sourceDocumentText: z.string().optional(),
+        sourceNarrative: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const voiceProfile = await getMasterVoiceProfile(ctx.user.id);
+      const voiceSystemPrompt = buildVoiceSystemPrompt(voiceProfile);
+
+      const outline = await generateChapterOutline(
+        input.topic,
+        input.targetAudience,
+        input.chapterCount,
+        voiceSystemPrompt,
+        input.sourceDocumentText,
+        input.sourceNarrative
+      );
+
+      return { outline };
+    }),
+
+  // ── Generate ebook from a user-approved (possibly edited) outline ───────────
+  generateFromApprovedOutline: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().min(1),
+        topic: z.string().min(1),
+        targetAudience: z.string().default("health-conscious adults seeking transformation"),
+        // The approved (and possibly user-edited) outline
+        outline: z.array(
+          z.object({
+            number: z.number(),
+            title: z.string(),
+            summary: z.string(),
+          })
+        ),
+        ctaBlockId: z.number().optional(),
+        landingPageId: z.number().optional(),
+        webinarSessionId: z.number().optional(),
+        sourceDocumentText: z.string().optional(),
+        sourceDocumentName: z.string().optional(),
+        sourceDocumentS3Url: z.string().optional(),
+        sourceNarrative: z.string().optional(),
+        lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
+        proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [ebookRecord] = await db
+        .insert(ebooks)
+        .values({
+          userId: ctx.user.id,
+          title: input.title,
+          topic: input.topic,
+          targetPersona: input.targetAudience,
+          chapterCount: input.outline.length,
+          ctaBlockId: input.ctaBlockId,
+          landingPageId: input.landingPageId,
+          webinarSessionId: input.webinarSessionId,
+          status: "drafting",
+          outlineJson: JSON.stringify(input.outline),
+          ...(input.sourceDocumentName ? { sourceDocumentName: input.sourceDocumentName } : {}),
+          ...(input.sourceDocumentS3Url ? { sourceDocumentS3Url: input.sourceDocumentS3Url } : {}),
+          ...(input.sourceDocumentText ? { sourceDocumentText: input.sourceDocumentText } : {}),
+          ...(input.sourceNarrative ? { sourceNarrative: input.sourceNarrative } : {}),
+        })
+        .$returningId();
+
+      const ebookId = ebookRecord.id;
+
+      try {
+        const voiceProfile = await getMasterVoiceProfile(ctx.user.id);
+        const voiceSystemPrompt = buildVoiceSystemPrompt(voiceProfile);
+
+        let ctaText: string | null = null;
+        if (input.ctaBlockId) {
+          const [cta] = await db
+            .select({ ctaText: ctaBlocks.ctaText, url: ctaBlocks.url })
+            .from(ctaBlocks)
+            .where(eq(ctaBlocks.id, input.ctaBlockId));
+          if (cta) ctaText = `${cta.ctaText}${cta.url ? " \u2192 " + cta.url : ""}`;
+        } else if (input.landingPageId) {
+          ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+        } else if (input.webinarSessionId) {
+          const [webinar] = await db
+            .select({ topic: webinarSessions.topic })
+            .from(webinarSessions)
+            .where(eq(webinarSessions.id, input.webinarSessionId));
+          if (webinar) ctaText = `Join our free training: ${webinar.topic}`;
+        }
+
+        let totalWordCount = 0;
+        for (const chapter of input.outline) {
+          const isLastChapter = chapter.number === input.outline.length;
+          const content = await generateChapterContent(
+            chapter.number,
+            chapter.title,
+            chapter.summary,
+            input.topic,
+            input.targetAudience,
+            voiceSystemPrompt,
+            ctaText,
+            input.sourceDocumentText,
+            input.sourceNarrative,
+            input.lengthPreset,
+            input.proseStyle,
+            isLastChapter
+          );
+
+          const wordCount = content.split(/\s+/).length;
+          totalWordCount += wordCount;
+
+          await db.insert(ebookChapters).values({
+            ebookId,
+            chapterNumber: chapter.number,
+            title: chapter.title,
+            summary: chapter.summary,
+            content,
+            wordCount,
+            status: "complete",
+          });
+        }
+
+        const allChapters = await db
+          .select()
+          .from(ebookChapters)
+          .where(eq(ebookChapters.ebookId, ebookId))
+          .orderBy(ebookChapters.chapterNumber);
+
+        const fullContent = allChapters
+          .map((c) => `# Chapter ${c.chapterNumber}: ${c.title}\n\n${c.content ?? ""}`)
+          .join("\n\n---\n\n");
+
+        await db
+          .update(ebooks)
+          .set({ status: "complete", fullContent, wordCountTarget: totalWordCount })
+          .where(eq(ebooks.id, ebookId));
+
+        return { ebookId, wordCount: totalWordCount, chapterCount: input.outline.length };
+      } catch (err) {
+        await db
+          .update(ebooks)
+          .set({ status: "failed", errorMessage: err instanceof Error ? err.message : String(err) })
+          .where(eq(ebooks.id, ebookId));
+        throw err;
+      }
     }),
 
   getLinkableItems: protectedProcedure.query(async () => {

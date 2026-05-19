@@ -164,7 +164,15 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
   const [failedChapters, setFailedChapters] = useState<number[]>([]);
   const [lastError, setLastError] = useState<string | null>(null);
 
+  // Outline preview state
+  type OutlineChapter = { number: number; title: string; summary: string };
+  const [outlinePreview, setOutlinePreview] = useState<OutlineChapter[] | null>(null);
+  const [editableOutline, setEditableOutline] = useState<OutlineChapter[]>([]);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
   const { data: linkables } = trpc.ebook.getLinkableItems.useQuery();
+  const previewOutlineMutation = trpc.ebook.previewOutline.useMutation();
+  const generateFromApprovedOutline = trpc.ebook.generateFromApprovedOutline.useMutation();
   const createDraft = trpc.ebook.createEbookDraft.useMutation({
     onError: (err) => {
       console.error("[createEbookDraft] error:", err);
@@ -175,6 +183,81 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
       console.error("[generateChapter] error:", err);
     },
   });
+
+  const handlePreviewOutline = async () => {
+    if (!title.trim() || !topic.trim()) {
+      toast.error("Please enter a title and topic");
+      return;
+    }
+    setIsPreviewing(true);
+    setLastError(null);
+    try {
+      const result = await previewOutlineMutation.mutateAsync({
+        title: title.trim(),
+        topic: topic.trim(),
+        targetAudience: audience,
+        chapterCount: parseInt(chapterCount),
+        ...(sourceDocs.length > 0 ? {
+          sourceDocumentText: sourceDocs.map((d, i) => `--- Document ${i + 1}: ${d.name} ---\n${d.text}`).join("\n\n"),
+        } : {}),
+        ...(sourceNarrative.trim() ? { sourceNarrative: sourceNarrative.trim() } : {}),
+      });
+      setOutlinePreview(result.outline);
+      setEditableOutline(result.outline.map((c) => ({ ...c })));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to generate outline";
+      setLastError(msg);
+      toast.error(msg);
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const handleApproveOutline = async () => {
+    if (!editableOutline.length) return;
+    setIsGenerating(true);
+    setGenerationStep("chapters");
+    setChaptersCompleted(0);
+    setTotalChapters(editableOutline.length);
+    setFailedChapters([]);
+    setLastError(null);
+    try {
+      const result = await generateFromApprovedOutline.mutateAsync({
+        title: title.trim(),
+        topic: topic.trim(),
+        targetAudience: audience,
+        outline: editableOutline,
+        ctaBlockId: ctaLinkId ? parseInt(ctaLinkId) : undefined,
+        landingPageId: landingPageId ? parseInt(landingPageId) : undefined,
+        webinarSessionId: webinarId ? parseInt(webinarId) : undefined,
+        ...(sourceDocs.length > 0 ? {
+          sourceDocumentText: sourceDocs.map((d, i) => `--- Document ${i + 1}: ${d.name} ---\n${d.text}`).join("\n\n"),
+          sourceDocumentName: sourceDocs.map((d) => d.name).join(", "),
+          sourceDocumentS3Url: sourceDocs[0].s3Url,
+        } : {}),
+        ...(sourceNarrative.trim() ? { sourceNarrative: sourceNarrative.trim() } : {}),
+        lengthPreset,
+        proseStyle,
+      });
+      toast.success(`E-book complete! ${result.chapterCount} chapters generated.`);
+      setOpen(false);
+      setTitle("");
+      setTopic("");
+      setSourceDocs([]);
+      setSourceNarrative("");
+      setOutlinePreview(null);
+      setEditableOutline([]);
+      setGenerationStep("idle");
+      onSuccess();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Generation failed";
+      setLastError(msg);
+      toast.error(msg, { duration: 8000 });
+    } finally {
+      setIsGenerating(false);
+      setGenerationStep("idle");
+    }
+  };
 
   const handleGenerate = async () => {
     if (!title.trim() || !topic.trim()) {
@@ -266,6 +349,9 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
       setTotalChapters(0);
       setFailedChapters([]);
       setLastError(null);
+      setOutlinePreview(null);
+      setEditableOutline([]);
+      setIsPreviewing(false);
     }
     setOpen(val);
   };
@@ -583,23 +669,115 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
             </div>
           )}
 
-          <Button
-            className="w-full gap-2"
-            onClick={handleGenerate}
-            disabled={isGenerating || !title.trim() || !topic.trim()}
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {generationStep === "outline" ? "Building outline..." : `Chapter ${Math.min(chaptersCompleted + 1, totalChapters || 1)} of ${totalChapters || "?"}`}
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-4 h-4" />
-                Generate E-Book
-              </>
-            )}
-          </Button>
+          {/* ── Step 1: Preview Outline ── */}
+          {!outlinePreview && !isGenerating && (
+            <Button
+              className="w-full gap-2"
+              onClick={handlePreviewOutline}
+              disabled={isPreviewing || !title.trim() || !topic.trim()}
+            >
+              {isPreviewing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating outline with Claude...
+                </>
+              ) : (
+                <>
+                  <BookOpen className="w-4 h-4" />
+                  Preview Outline First
+                </>
+              )}
+            </Button>
+          )}
+
+          {/* ── Step 2: Editable Outline Preview ── */}
+          {outlinePreview && !isGenerating && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  Claude's Outline — Review &amp; Edit
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs gap-1 text-muted-foreground"
+                  onClick={() => {
+                    setOutlinePreview(null);
+                    setEditableOutline([]);
+                  }}
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Regenerate outline
+                </Button>
+              </div>
+              <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                {editableOutline.map((chapter, idx) => (
+                  <div key={chapter.number} className="border rounded-lg p-3 bg-muted/20 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-muted-foreground w-5 shrink-0">{chapter.number}.</span>
+                      <Input
+                        value={chapter.title}
+                        onChange={(e) => {
+                          const updated = [...editableOutline];
+                          updated[idx] = { ...updated[idx], title: e.target.value };
+                          setEditableOutline(updated);
+                        }}
+                        className="text-sm font-medium h-7 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:border-b focus-visible:border-primary rounded-none"
+                        placeholder="Chapter title..."
+                      />
+                    </div>
+                    <Textarea
+                      value={chapter.summary}
+                      onChange={(e) => {
+                        const updated = [...editableOutline];
+                        updated[idx] = { ...updated[idx], summary: e.target.value };
+                        setEditableOutline(updated);
+                      }}
+                      rows={2}
+                      className="text-xs text-muted-foreground border-0 bg-transparent px-0 resize-none focus-visible:ring-0 focus-visible:border-b focus-visible:border-primary rounded-none"
+                      placeholder="Chapter summary..."
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Edit any title or summary above, then approve to start writing. Claude Sonnet will write each chapter using this exact outline.
+              </p>
+              <Button
+                className="w-full gap-2"
+                onClick={handleApproveOutline}
+                disabled={isGenerating || editableOutline.length === 0}
+              >
+                <Sparkles className="w-4 h-4" />
+                Approve &amp; Write All Chapters
+              </Button>
+            </div>
+          )}
+
+          {/* ── Generation progress ── */}
+          {isGenerating && (
+            <div className="space-y-3 bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                {generationStep === "chapters" && `Writing chapter ${Math.min(chaptersCompleted + 1, totalChapters)} of ${totalChapters}...`}
+              </div>
+              {generationStep === "chapters" && totalChapters > 0 && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{chaptersCompleted} of {totalChapters} chapters complete</span>
+                    <span>{Math.round((chaptersCompleted / totalChapters) * 100)}%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-500"
+                      style={{ width: `${(chaptersCompleted / totalChapters) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -619,6 +797,7 @@ function ChapterEditor({
   onSave: (id: number, content: string, title: string) => Promise<void>;
   onRegenerate: (id: number, opts?: {
     instructions?: string;
+    styleNotes?: string;
     enhancementInstructions?: string;
     enhancementDocs?: EnhancementDoc[];
     lengthPreset?: string;
@@ -633,6 +812,7 @@ function ChapterEditor({
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [regenInstructions, setRegenInstructions] = useState("");
+  const [regenStyleNotes, setRegenStyleNotes] = useState("");
   const [showRegenDialog, setShowRegenDialog] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
 
@@ -672,8 +852,12 @@ function ChapterEditor({
     setRegenerating(true);
     setShowRegenDialog(false);
     try {
-      await onRegenerate(chapter.id, opts ?? { instructions: regenInstructions || undefined });
+      await onRegenerate(chapter.id, opts ?? {
+        instructions: regenInstructions || undefined,
+        styleNotes: regenStyleNotes || undefined,
+      });
       setRegenInstructions("");
+      setRegenStyleNotes("");
       if (!opts?.applyToAll) toast.success("Chapter regenerated");
     } catch {
       toast.error("Failed to regenerate chapter");
@@ -743,14 +927,36 @@ function ChapterEditor({
       {/* Regen dialog */}
       {showRegenDialog && (
         <div className="border rounded-lg p-3 bg-muted/30 space-y-3">
-          <p className="text-sm font-medium">Rewrite instructions (optional)</p>
-          <Textarea
-            placeholder="e.g. Make it more personal with a story, focus more on practical steps..."
-            value={regenInstructions}
-            onChange={(e) => setRegenInstructions(e.target.value)}
-            rows={2}
-            className="text-sm"
-          />
+          <p className="text-sm font-medium">Rewrite this chapter</p>
+
+          {/* Style note — quick one-liner for this specific rewrite */}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground flex items-center gap-1">
+              <Zap className="w-3 h-3" />
+              Style note
+              <span className="ml-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">sent directly to Claude</span>
+            </Label>
+            <Input
+              placeholder='e.g. "Open with a patient story" or "Make it more personal, less clinical"'
+              value={regenStyleNotes}
+              onChange={(e) => setRegenStyleNotes(e.target.value)}
+              className="text-sm h-8"
+            />
+            <p className="text-[10px] text-muted-foreground">A short, specific direction Claude will apply precisely. Use this for tone, structure, or opening style.</p>
+          </div>
+
+          {/* General instructions */}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Additional instructions (optional)</Label>
+            <Textarea
+              placeholder="e.g. Focus more on practical steps, add a specific protocol the reader can try today..."
+              value={regenInstructions}
+              onChange={(e) => setRegenInstructions(e.target.value)}
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+
           <div className="flex gap-2">
             <Button size="sm" onClick={() => handleRegenerate()} className="gap-1.5">
               <Wand2 className="w-3.5 h-3.5" />
@@ -1158,6 +1364,7 @@ function EbookViewer({
                           await regenerateChapter.mutateAsync({
                             chapterId: ch.id,
                             instructions: opts.instructions,
+                            styleNotes: opts.styleNotes,
                             enhancementInstructions: opts.enhancementInstructions,
                             enhancementDocs: opts.enhancementDocs,
                             lengthPreset: opts.lengthPreset as "concise" | "standard" | "expansive" | "immersive" | undefined,
@@ -1178,6 +1385,7 @@ function EbookViewer({
                       await regenerateChapter.mutateAsync({
                         chapterId: id,
                         instructions: opts?.instructions,
+                        styleNotes: opts?.styleNotes,
                         enhancementInstructions: opts?.enhancementInstructions,
                         enhancementDocs: opts?.enhancementDocs,
                         lengthPreset: opts?.lengthPreset as "concise" | "standard" | "expansive" | "immersive" | undefined,

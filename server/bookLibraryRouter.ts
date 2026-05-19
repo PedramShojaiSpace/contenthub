@@ -9,6 +9,7 @@ import {
 } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { invokeClaudeJson } from "./claudeLLM";
 import { parseLLMJson } from "./llmUtils";
 
 // Map any platform string the LLM might return to a valid snippetPlatformEnum value
@@ -46,50 +47,22 @@ Return a JSON object with these exact fields:
 
 async function extractVoiceProfile(text: string): Promise<object> {
   const third = Math.floor(text.length / 3);
+  // Sample beginning, middle, and end of the book for a representative voice profile
   const sample = [
     text.substring(0, 2000),
     text.substring(third, third + 2000),
     text.substring(text.length - 2000),
   ].join("\n\n---\n\n");
 
-  const result = await invokeLLM({
-    messages: [
-      { role: "system", content: VOICE_PROFILE_PROMPT },
-      { role: "user", content: `Book excerpt:\n\n${sample}` },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "voice_profile",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            tone: { type: "array", items: { type: "string" } },
-            sentenceStyle: { type: "string" },
-            vocabulary: { type: "array", items: { type: "string" } },
-            themes: { type: "array", items: { type: "string" } },
-            openingPatterns: { type: "array", items: { type: "string" } },
-            closingPatterns: { type: "array", items: { type: "string" } },
-            metaphorStyle: { type: "string" },
-            authorityMarkers: { type: "array", items: { type: "string" } },
-            callToActionStyle: { type: "string" },
-            paragraphRhythm: { type: "string" },
-          },
-          required: [
-            "tone", "sentenceStyle", "vocabulary", "themes",
-            "openingPatterns", "closingPatterns", "metaphorStyle",
-            "authorityMarkers", "callToActionStyle", "paragraphRhythm",
-          ],
-          additionalProperties: false,
-        },
-      },
-    },
+  // Use Claude Haiku for voice profile extraction — better literary analysis than Gemini Flash,
+  // and fast/cheap enough to run on every book upload without meaningful cost impact.
+  const rawJson = await invokeClaudeJson({
+    systemPrompt: VOICE_PROFILE_PROMPT + "\n\nReturn ONLY valid JSON matching the schema above. No commentary, no markdown fences.",
+    messages: [{ role: "user", content: `Book excerpt:\n\n${sample}` }],
+    maxTokens: 2048,
   });
 
-  const content = result.choices?.[0]?.message?.content ?? "{}";
-  const contentStr = typeof content === "string" ? content : JSON.stringify(content);
-  return parseLLMJson(contentStr, "voice profile") as object;
+  return parseLLMJson(rawJson, "voice profile") as object;
 }
 
 // ─── Snippet Extraction (Two-Stage Quality Pipeline) ─────────────────────────

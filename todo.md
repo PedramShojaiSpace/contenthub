@@ -2764,3 +2764,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Replace Gemini Flash invokeLLM call in generateChapterOutline with invokeClaudeJson
 - [x] Strengthen outline prompt: add explicit rule against generic chapter titles
 - [x] All 340 tests pass (including both Sonnet and Haiku live API tests)
+
+## v-ebook-quality — Three Ebook Quality Improvements
+
+- [x] Switch voice profile extraction to Claude Haiku 4.5 (invokeClaudeJson) in bookLibraryRouter
+- [x] Add previewOutline tRPC procedure that generates outline without writing chapters
+- [x] Add generateFromApprovedOutline tRPC procedure (takes user-edited outline, writes chapters)
+- [x] Build inline outline preview in GenerateEbookDialog — editable chapter titles/summaries, Approve + Regenerate buttons
+- [x] Wire outline preview into the "Generate E-Book" flow (Preview Outline First → edit → Approve & Write All Chapters)
+- [x] Add styleNotes field to regenerateChapter tRPC procedure (injected as STYLE NOTE to Claude)
+- [x] Add Style note input field to chapter Rewrite dialog in EbookViewer UI

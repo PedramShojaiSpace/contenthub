@@ -172,7 +172,7 @@ function PostCard({
               href={post.permalink}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-sm leading-snug hover:text-primary transition-colors line-clamp-2"
+              className="font-medium text-sm leading-snug text-primary hover:underline transition-colors line-clamp-2"
             >
               {post.title}
             </a>
@@ -193,10 +193,10 @@ function PostCard({
             href={post.permalink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:text-primary ml-auto"
+            className="flex items-center gap-1.5 ml-auto text-xs font-medium text-primary hover:underline"
           >
-            <ExternalLink className="w-3 h-3" />
-            Open thread
+            <ExternalLink className="w-3.5 h-3.5" />
+            View on Reddit
           </a>
         </div>
 

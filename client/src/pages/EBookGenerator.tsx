@@ -1386,6 +1386,16 @@ export default function EBookGenerator() {
   const deleteEbook = trpc.ebook.deleteEbook.useMutation({
     onSuccess: () => utils.ebook.listEbooks.invalidate(),
   });
+  const testInsert = trpc.ebook.testEbookInsert.useMutation({
+    onSuccess: (res) => {
+      if (res.ok) {
+        toast.success(`DB insert OK (id=${res.insertedId}) — database is working correctly`);
+      } else {
+        toast.error(`DB insert FAILED: ${res.error}`);
+      }
+    },
+    onError: (err) => toast.error(`Procedure error: ${err.message}`),
+  });
 
   const readyBooks = books?.filter((b) => b.status === "ready") ?? [];
 
@@ -1427,7 +1437,19 @@ export default function EBookGenerator() {
               Generate full e-books in your voice, connected to your funnels
             </p>
           </div>
-          <GenerateEbookDialog onSuccess={() => utils.ebook.listEbooks.invalidate()} />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testInsert.mutate()}
+              disabled={testInsert.isPending}
+              className="text-xs text-muted-foreground"
+            >
+              {testInsert.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+              Test DB
+            </Button>
+            <GenerateEbookDialog onSuccess={() => utils.ebook.listEbooks.invalidate()} />
+          </div>
         </div>
 
         {/* Voice profile warning */}

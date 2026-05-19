@@ -2660,3 +2660,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Wire ChapterEnhancementPanel into ChapterEditor below chapter content
 - [x] Update EbookViewer onRegenerate callback to pass all enhancement opts
 - [x] TypeScript clean (0 errors in changed files)
+
+## v-ebook-multi-source — Multiple Source Documents + DOCX Support (COMPLETE)
+- [x] Install mammoth npm package for DOCX text extraction
+- [x] Update /api/ebook/upload-source to parse .docx files via mammoth (not just PDF/TXT/MD)
+- [x] Update /api/ebook/upload-enhancement-doc to also parse .docx files
+- [x] Replace single sourceFile state with sourceDocs array in GenerateEbookDialog
+- [x] Multi-file input (multiple attribute) — select several files at once
+- [x] Per-file upload loop with individual success/error toasts
+- [x] Uploaded files list with file name, word count, and individual remove button
+- [x] "Add more files" drop zone persists after first upload
+- [x] Combined word count shown in panel header
+- [x] All source docs concatenated with document labels before being sent to AI
+- [x] TypeScript clean (0 errors in changed files)

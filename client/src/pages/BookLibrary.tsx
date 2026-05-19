@@ -792,11 +792,11 @@ function SnippetCard({
       });
 
       // Step 2: Render all 6 platform cards in the browser and upload to S3
-      // Use server-returned bookTitle as authoritative source (fallback to prop)
-      // Guard: only use serverBookTitle if it's a non-empty string
-      const resolvedBookTitle = (serverBookTitle && serverBookTitle.trim().length > 0)
-        ? serverBookTitle
-        : (bookTitle && bookTitle.trim().length > 0 ? bookTitle : "The Urban Monk");
+      // bookTitle prop comes directly from book.title (already in React state) — most reliable source.
+      // serverBookTitle is a secondary confirmation; we prefer the prop since it's always available.
+      const resolvedBookTitle = (bookTitle && bookTitle.trim().length > 0)
+        ? bookTitle
+        : (serverBookTitle && serverBookTitle.trim().length > 0 ? serverBookTitle : "The Urban Monk");
       const urls = await generateAllCards({
         quoteText: snippet.passageText,
         authorName: "Dr. Pedram Shojai",

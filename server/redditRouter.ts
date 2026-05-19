@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { redditSubreddits, redditPosts } from "../drizzle/schema";
+import { redditSubreddits, redditPosts, redditTrendDigests } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 // ─── Reddit fetch helpers ────────────────────────────────────────────────────
@@ -515,6 +515,145 @@ Return only the comment text, no quotes or labels.`;
 
       return { results, subreddit: input.subreddit };
     }),
+
+  // ─── Trend Digest ─────────────────────────────────────────────────────────
+
+  // Generate a weekly trend digest from the last 7 days of analyzed posts
+  generateTrendDigest: protectedProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+
+    // Get the Monday of the current week (UTC)
+    const now = new Date();
+    const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ...
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(now);
+    monday.setUTCDate(now.getUTCDate() - daysToMonday);
+    monday.setUTCHours(0, 0, 0, 0);
+    const weekStart = monday.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Fetch analyzed posts from the last 14 days (broader window for better clustering)
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 14);
+    const cutoffTs = Math.floor(cutoff.getTime() / 1000);
+
+    const posts = await db
+      .select()
+      .from(redditPosts)
+      .where(
+        and(
+          eq(redditPosts.isAnalyzed, true),
+          eq(redditPosts.isDismissed, false),
+          sql`${redditPosts.createdUtc} >= ${cutoffTs}`
+        )
+      )
+      .orderBy(desc(redditPosts.engagementScore))
+      .limit(60);
+
+    if (posts.length === 0) throw new Error("No analyzed posts found in the last 14 days. Run Refresh Feed and Analyze first.");
+
+    // Build a compact summary of posts for the AI
+    const postSummaries = posts.map((p, i) =>
+      `${i + 1}. [r/${p.subreddit}] Score:${p.engagementScore ?? 0} — "${p.title.slice(0, 100)}"`
+    ).join("\n");
+
+    const uniqueSubreddits = Array.from(new Set(posts.map((p) => p.subreddit)));
+
+    const prompt = `You are the editorial AI for Dr. Pedram Shojai (The Urban Monk), an expert in integrative medicine, Taoist philosophy, biohacking, meditation, gut health, sleep, and longevity.
+
+Analyze the following ${posts.length} Reddit threads from the past 2 weeks across ${uniqueSubreddits.length} subreddits and produce a weekly trend briefing.
+
+POSTS:
+${postSummaries}
+
+SUBREDDITS COVERED: ${uniqueSubreddits.join(", ")}
+
+Respond with ONLY valid JSON (no markdown, no code fences):
+{
+  "topTopics": [
+    {
+      "topic": "<theme name, e.g. 'Gut-Brain Axis'>",
+      "count": <number of posts related to this theme>,
+      "subreddits": ["<subreddit1>", "<subreddit2>"],
+      "sampleTitles": ["<title1>", "<title2>"]
+    }
+  ],
+  "briefing": "<A 300-400 word markdown briefing written for Dr. Shojai. Use ## headings for each top theme. For each theme: describe what's trending, why it matters to his audience, and one specific engagement angle he should take this week. End with a 'This Week's Priority' section naming the single highest-leverage thread or theme to engage with first.>"
+}`;
+
+    const res = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
+    const content = res.choices?.[0]?.message?.content;
+    if (typeof content !== "string") throw new Error("LLM returned no content");
+
+    const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    let parsed: { topTopics: unknown[]; briefing: string };
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      throw new Error("LLM returned invalid JSON: " + cleaned.slice(0, 200));
+    }
+
+    // Upsert — replace existing digest for this week if it exists
+    const existing = await db
+      .select({ id: redditTrendDigests.id })
+      .from(redditTrendDigests)
+      .where(eq(redditTrendDigests.weekStart, weekStart))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(redditTrendDigests)
+        .set({
+          briefing: parsed.briefing,
+          topTopics: JSON.stringify(parsed.topTopics),
+          postsAnalyzed: posts.length,
+          subredditsScanned: uniqueSubreddits.length,
+          generatedAt: new Date(),
+        })
+        .where(eq(redditTrendDigests.weekStart, weekStart));
+    } else {
+      await db.insert(redditTrendDigests).values({
+        weekStart,
+        briefing: parsed.briefing,
+        topTopics: JSON.stringify(parsed.topTopics),
+        postsAnalyzed: posts.length,
+        subredditsScanned: uniqueSubreddits.length,
+      });
+    }
+
+    return { weekStart, postsAnalyzed: posts.length, subredditsScanned: uniqueSubreddits.length };
+  }),
+
+  // Get all trend digests (most recent first)
+  getDigests: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+    const digests = await db
+      .select()
+      .from(redditTrendDigests)
+      .orderBy(desc(redditTrendDigests.generatedAt))
+      .limit(12);
+    return digests.map((d) => ({
+      ...d,
+      topTopics: (() => { try { return JSON.parse(d.topTopics); } catch { return []; } })()
+    }));
+  }),
+
+  // Get the latest digest
+  getLatestDigest: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+    const [digest] = await db
+      .select()
+      .from(redditTrendDigests)
+      .orderBy(desc(redditTrendDigests.generatedAt))
+      .limit(1);
+    if (!digest) return null;
+    return {
+      ...digest,
+      topTopics: (() => { try { return JSON.parse(digest.topTopics); } catch { return []; } })()
+    };
+  }),
 
   // Get stats summary
   getStats: protectedProcedure.query(async () => {

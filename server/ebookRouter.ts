@@ -485,6 +485,16 @@ export const ebookRouter = router({
       z.object({
         chapterId: z.number(),
         instructions: z.string().optional(),
+        // Enhancement: free-text directions from the author
+        enhancementInstructions: z.string().optional(),
+        // Enhancement: array of {name, text} documents to reference
+        enhancementDocs: z.array(z.object({
+          name: z.string(),
+          text: z.string(),
+        })).optional(),
+        // Optional length/prose overrides
+        lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).optional(),
+        proseStyle: z.enum(["direct", "narrative", "academic"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -508,21 +518,69 @@ export const ebookRouter = router({
       const voiceProfile = await getMasterVoiceProfile(ctx.user.id);
       const voiceSystemPrompt = buildVoiceSystemPrompt(voiceProfile);
 
-      const result = await invokeLLM({
-        messages: [
-          { role: "system", content: voiceSystemPrompt },
-          {
-            role: "user",
-            content: `Rewrite Chapter ${chapter.chapterNumber}: "${chapter.title}"
+      // Build word count target from preset
+      const lengthPreset = input.lengthPreset ?? "standard";
+      const wordRanges: Record<string, string> = {
+        concise: "500–700", standard: "800–1,100",
+        expansive: "1,200–1,600", immersive: "1,700–2,200",
+      };
+      const wordRange = wordRanges[lengthPreset];
+
+      // Build prose style instruction
+      const proseStyle = input.proseStyle ?? "narrative";
+      const proseInstructions: Record<string, string> = {
+        direct: "Use short punchy paragraphs, active voice, minimal subordinate clauses.",
+        narrative: "Use flowing, story-driven prose with vivid scenes and smooth transitions.",
+        academic: "Use evidence-based language, cite reasoning clearly, structured argumentation.",
+      };
+      const proseInstruction = proseInstructions[proseStyle];
+
+      // Build enhancement docs context
+      let enhancementContext = "";
+      if (input.enhancementDocs && input.enhancementDocs.length > 0) {
+        enhancementContext = input.enhancementDocs.map((doc, i) => {
+          const excerpt = doc.text.split(/\s+/).slice(0, 1500).join(" ");
+          return `--- REFERENCE DOCUMENT ${i + 1}: ${doc.name} ---\n${excerpt}\n---`;
+        }).join("\n\n");
+      }
+
+      // Combine legacy instructions + new enhancement instructions
+      const allInstructions = [
+        input.instructions,
+        input.enhancementInstructions,
+      ].filter(Boolean).join("\n");
+
+      const userPrompt = `You are rewriting Chapter ${chapter.chapterNumber}: "${chapter.title}" of the e-book "${ebook.title}".
 
 E-book topic: ${ebook.topic}
 Target audience: ${ebook.targetPersona ?? "health-conscious adults"}
-${input.instructions ? `Special instructions: ${input.instructions}` : ""}
+Chapter length target: ${wordRange} words
+Prose style: ${proseInstruction}
 
-Write 600-900 words in Markdown format. Include subheadings, a hook opening, concrete examples, and actionable insights.`,
-          },
+${allInstructions ? `AUTHOR DIRECTIONS — apply these precisely:\n${allInstructions}\n` : ""}
+${enhancementContext ? `\nREFERENCE MATERIAL — draw on these documents for facts, examples, and depth:\n${enhancementContext}\n` : ""}
+
+Current chapter content (rewrite and improve this):
+${chapter.content ?? "(no content yet)"}
+
+REQUIREMENTS:
+- Open with a compelling hook (story, statistic, or provocative question — never "In this chapter")
+- Use 2–4 subheadings (## level)
+- Include at least one specific story or real-world example
+- Include at least one actionable protocol or exercise the reader can do today
+- End with a transition sentence or brief CTA${chapter.ctaText ? `: ${chapter.ctaText}` : ""}
+- Output clean Markdown only — no meta-commentary, no "Here is the rewritten chapter" preamble`;
+
+      const maxTokensMap: Record<string, number> = {
+        concise: 1500, standard: 2500, expansive: 3500, immersive: 4096,
+      };
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: voiceSystemPrompt },
+          { role: "user", content: userPrompt },
         ],
-        maxTokens: 2000,
+        maxTokens: maxTokensMap[lengthPreset],
       });
 
       const rawContent = result.choices?.[0]?.message?.content ?? chapter.content ?? "";

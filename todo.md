@@ -2642,3 +2642,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Show failed chapter numbers inline with recovery message
 - [x] Add .docx export button to EbookViewer header alongside PDF
 - [x] Fix all TypeScript errors (generateEbook.isPending → isGenerating)
+
+## v-chapter-enhance — Chapter Enhancement Panel (AI Instructions + Multi-Doc Upload)
+- [ ] Update regenerateChapter procedure to accept enhancementInstructions and enhancementDocs[]
+- [ ] Add /api/ebook/upload-enhancement-doc endpoint (same pattern as upload-source)
+- [ ] Build ChapterEnhancementPanel component: instruction textarea + multi-doc upload list
+- [ ] Wire ChapterEnhancementPanel into ChapterEditor below the chapter content
+- [ ] Show uploaded doc names with remove buttons
+- [ ] Pass all enhancement data to regenerateChapter mutation
+- [ ] AI prompt incorporates instructions + doc excerpts before rewriting chapter
+- [ ] TypeScript clean, tests passing
+
+## v-chapter-enhance — Chapter Enhancement Panel (COMPLETE)
+- [x] Update regenerateChapter procedure to accept enhancementInstructions and enhancementDocs array
+- [x] Build ChapterEnhancementPanel component with collapsible panel, instruction textarea, multi-doc upload
+- [x] Add /api/ebook/upload-enhancement-doc endpoint for per-doc text extraction (5 MB limit)
+- [x] Wire ChapterEnhancementPanel into ChapterEditor below chapter content
+- [x] Update EbookViewer onRegenerate callback to pass all enhancement opts
+- [x] TypeScript clean (0 errors in changed files)

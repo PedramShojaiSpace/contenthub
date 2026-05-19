@@ -5,6 +5,7 @@ import { getDb } from "./db";
 import {
   ebooks,
   ebookChapters,
+  ebookChapterVersions,
   uploadedBooks,
   ctaBlocks,
   landingPages,
@@ -587,12 +588,95 @@ REQUIREMENTS:
       const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       const wordCount = content.split(/\s+/).length;
 
+      // Auto-save current content as a version before overwriting
+      if (chapter.content) {
+        const existingVersions = await db
+          .select({ versionNumber: ebookChapterVersions.versionNumber })
+          .from(ebookChapterVersions)
+          .where(eq(ebookChapterVersions.chapterId, input.chapterId))
+          .orderBy(desc(ebookChapterVersions.versionNumber))
+          .limit(1);
+        const nextVersion = (existingVersions[0]?.versionNumber ?? 0) + 1;
+        await db.insert(ebookChapterVersions).values({
+          chapterId: input.chapterId,
+          ebookId: chapter.ebookId,
+          chapterNumber: chapter.chapterNumber,
+          versionNumber: nextVersion,
+          title: chapter.title,
+          content: chapter.content,
+          wordCount: chapter.wordCount ?? 0,
+          trigger: input.enhancementInstructions ? "enhance" : "regenerate",
+        });
+      }
+
       await db
         .update(ebookChapters)
         .set({ content, wordCount })
         .where(eq(ebookChapters.id, input.chapterId));
 
       return { content, wordCount };
+    }),
+
+  getChapterVersions: protectedProcedure
+    .input(z.object({ chapterId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      // Verify ownership
+      const [chapter] = await db.select({ ebookId: ebookChapters.ebookId }).from(ebookChapters).where(eq(ebookChapters.id, input.chapterId));
+      if (!chapter) return [];
+      const [ebook] = await db.select({ userId: ebooks.userId }).from(ebooks).where(eq(ebooks.id, chapter.ebookId));
+      if (ebook?.userId !== ctx.user.id) return [];
+
+      return db
+        .select()
+        .from(ebookChapterVersions)
+        .where(eq(ebookChapterVersions.chapterId, input.chapterId))
+        .orderBy(desc(ebookChapterVersions.versionNumber));
+    }),
+
+  restoreChapterVersion: protectedProcedure
+    .input(z.object({ versionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [version] = await db.select().from(ebookChapterVersions).where(eq(ebookChapterVersions.id, input.versionId));
+      if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "Version not found" });
+
+      // Verify ownership
+      const [ebook] = await db.select({ userId: ebooks.userId }).from(ebooks).where(eq(ebooks.id, version.ebookId));
+      if (ebook?.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+
+      // Save current content as a new version before restoring
+      const [currentChapter] = await db.select().from(ebookChapters).where(eq(ebookChapters.id, version.chapterId));
+      if (currentChapter?.content) {
+        const existingVersions = await db
+          .select({ versionNumber: ebookChapterVersions.versionNumber })
+          .from(ebookChapterVersions)
+          .where(eq(ebookChapterVersions.chapterId, version.chapterId))
+          .orderBy(desc(ebookChapterVersions.versionNumber))
+          .limit(1);
+        const nextVersion = (existingVersions[0]?.versionNumber ?? 0) + 1;
+        await db.insert(ebookChapterVersions).values({
+          chapterId: version.chapterId,
+          ebookId: version.ebookId,
+          chapterNumber: version.chapterNumber,
+          versionNumber: nextVersion,
+          title: currentChapter.title,
+          content: currentChapter.content,
+          wordCount: currentChapter.wordCount ?? 0,
+          trigger: "restore",
+        });
+      }
+
+      // Restore the selected version
+      await db
+        .update(ebookChapters)
+        .set({ content: version.content, wordCount: version.wordCount ?? 0 })
+        .where(eq(ebookChapters.id, version.chapterId));
+
+      return { content: version.content, wordCount: version.wordCount };
     }),
 
   generateCoverImage: protectedProcedure
@@ -617,7 +701,7 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
 
       await db
         .update(ebooks)
-        .set({ pdfS3Url: url })
+        .set({ coverImageUrl: url })
         .where(eq(ebooks.id, input.ebookId));
 
       return { coverImageUrl: url };

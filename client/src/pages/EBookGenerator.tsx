@@ -27,6 +27,7 @@ import {
   BookOpen,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   Download,
   Trash2,
   Loader2,
@@ -45,6 +46,8 @@ import {
   Upload,
   FileUp,
   FileSearch,
+  History,
+  RotateCcw,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { useRef } from "react";
@@ -580,7 +583,9 @@ function ChapterEditor({
     enhancementDocs?: EnhancementDoc[];
     lengthPreset?: string;
     proseStyle?: string;
+    applyToAll?: boolean;
   }) => Promise<void>;
+  isLastChapter?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(chapter.content ?? "");
@@ -589,6 +594,19 @@ function ChapterEditor({
   const [regenerating, setRegenerating] = useState(false);
   const [regenInstructions, setRegenInstructions] = useState("");
   const [showRegenDialog, setShowRegenDialog] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+
+  const versionsQuery = trpc.ebook.getChapterVersions.useQuery(
+    { chapterId: chapter.id },
+    { enabled: showVersionHistory }
+  );
+  const restoreVersion = trpc.ebook.restoreChapterVersion.useMutation({
+    onSuccess: () => {
+      toast.success("Chapter restored to selected version");
+      setShowVersionHistory(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const handleSave = async () => {
     setSaving(true);
@@ -609,13 +627,14 @@ function ChapterEditor({
     enhancementDocs?: EnhancementDoc[];
     lengthPreset?: string;
     proseStyle?: string;
+    applyToAll?: boolean;
   }) => {
     setRegenerating(true);
     setShowRegenDialog(false);
     try {
       await onRegenerate(chapter.id, opts ?? { instructions: regenInstructions || undefined });
       setRegenInstructions("");
-      toast.success("Chapter regenerated");
+      if (!opts?.applyToAll) toast.success("Chapter regenerated");
     } catch {
       toast.error("Failed to regenerate chapter");
     } finally {
@@ -732,10 +751,60 @@ function ChapterEditor({
             enhancementDocs: opts.enhancementDocs,
             lengthPreset: opts.lengthPreset,
             proseStyle: opts.proseStyle,
+            applyToAll: opts.applyToAll,
           });
         }}
         isRegenerating={regenerating}
       />
+
+      {/* Version history */}
+      <div className="border border-border rounded-lg overflow-hidden mt-4">
+        <button
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/40 transition-colors"
+          onClick={() => setShowVersionHistory((v) => !v)}
+        >
+          <span className="flex items-center gap-2">
+            <History className="w-4 h-4 text-muted-foreground" />
+            Version History
+          </span>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showVersionHistory ? "rotate-180" : ""}`} />
+        </button>
+        {showVersionHistory && (
+          <div className="px-4 pb-4 space-y-2 border-t border-border">
+            {versionsQuery.isLoading && (
+              <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading versions…
+              </div>
+            )}
+            {versionsQuery.data && versionsQuery.data.length === 0 && (
+              <p className="text-sm text-muted-foreground py-3">No saved versions yet. Versions are auto-saved before each rewrite.</p>
+            )}
+            {versionsQuery.data?.map((v, idx) => (
+              <div key={v.id} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium">
+                    Version {versionsQuery.data!.length - idx}
+                    <span className="ml-2 text-muted-foreground font-normal capitalize">{v.trigger}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {v.wordCount?.toLocaleString() ?? "?"} words &middot; {new Date(v.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 text-xs gap-1"
+                  disabled={restoreVersion.isPending}
+                  onClick={() => restoreVersion.mutate({ versionId: v.id })}
+                >
+                  {restoreVersion.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                  Restore
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -992,18 +1061,46 @@ function EbookViewer({
                 <ChapterEditor
                   chapter={currentChapter}
                   ebookTopic={ebook.topic}
+                  isLastChapter={activeChapter === chapters.length - 1}
                   onSave={async (id, content, title) => {
                     await updateChapter.mutateAsync({ chapterId: id, content, title });
                   }}
                   onRegenerate={async (id, opts) => {
-                    await regenerateChapter.mutateAsync({
-                      chapterId: id,
-                      instructions: opts?.instructions,
-                      enhancementInstructions: opts?.enhancementInstructions,
-                      enhancementDocs: opts?.enhancementDocs,
-                      lengthPreset: opts?.lengthPreset as "concise" | "standard" | "expansive" | "immersive" | undefined,
-                      proseStyle: opts?.proseStyle as "direct" | "narrative" | "academic" | undefined,
-                    });
+                    if (opts?.applyToAll) {
+                      // Broadcast enhancement to all chapters sequentially
+                      let successCount = 0;
+                      let failCount = 0;
+                      for (const ch of chapters) {
+                        try {
+                          await regenerateChapter.mutateAsync({
+                            chapterId: ch.id,
+                            instructions: opts.instructions,
+                            enhancementInstructions: opts.enhancementInstructions,
+                            enhancementDocs: opts.enhancementDocs,
+                            lengthPreset: opts.lengthPreset as "concise" | "standard" | "expansive" | "immersive" | undefined,
+                            proseStyle: opts.proseStyle as "direct" | "narrative" | "academic" | undefined,
+                          });
+                          successCount++;
+                        } catch {
+                          failCount++;
+                        }
+                      }
+                      utils.ebook.getEbook.invalidate({ ebookId });
+                      if (failCount === 0) {
+                        toast.success(`All ${successCount} chapters rewritten successfully!`);
+                      } else {
+                        toast.warning(`${successCount} chapters rewritten, ${failCount} failed.`);
+                      }
+                    } else {
+                      await regenerateChapter.mutateAsync({
+                        chapterId: id,
+                        instructions: opts?.instructions,
+                        enhancementInstructions: opts?.enhancementInstructions,
+                        enhancementDocs: opts?.enhancementDocs,
+                        lengthPreset: opts?.lengthPreset as "concise" | "standard" | "expansive" | "immersive" | undefined,
+                        proseStyle: opts?.proseStyle as "direct" | "narrative" | "academic" | undefined,
+                      });
+                    }
                   }}
                 />
               </CardContent>

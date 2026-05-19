@@ -470,6 +470,13 @@
       "when": 1779137309582,
       "tag": "0066_harsh_captain_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "5",
+      "when": 1779205308573,
+      "tag": "0067_bizarre_kingpin",
+      "breakpoints": true
     }
   ]
 }

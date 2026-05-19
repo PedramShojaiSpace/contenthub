@@ -1245,3 +1245,21 @@ export const ebookChapters = mysqlTable("ebook_chapters", {
 });
 export type EbookChapter = typeof ebookChapters.$inferSelect;
 export type InsertEbookChapter = typeof ebookChapters.$inferInsert;
+
+// ─── E-Book Chapter Versions ──────────────────────────────────────────────────
+
+export const ebookChapterVersions = mysqlTable("ebook_chapter_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  chapterId: int("chapterId").notNull(),
+  ebookId: int("ebookId").notNull(),
+  chapterNumber: int("chapterNumber").notNull(),
+  versionNumber: int("versionNumber").notNull().default(1),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: longtext("content").notNull(),
+  wordCount: int("wordCount"),
+  // What triggered this version (initial, regenerate, enhance)
+  trigger: varchar("trigger", { length: 64 }).default("regenerate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EbookChapterVersion = typeof ebookChapterVersions.$inferSelect;
+export type InsertEbookChapterVersion = typeof ebookChapterVersions.$inferInsert;

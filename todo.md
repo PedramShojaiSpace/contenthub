@@ -2756,3 +2756,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Build server/claudeLLM.ts helper (direct Anthropic API, claude-sonnet-4-5, with retry logic)
 - [x] Wire claudeLLM into generateChapterContent in ebookRouter (prose only)
 - [x] Keep invokeLLM (Gemini Flash) for outline generation and JSON extraction
+
+## v-claude-outline — Claude Haiku 4.5 for Outline Generation
+
+- [x] Update claudeLLM.ts: add invokeClaudeJson helper using claude-haiku-4-5
+- [x] Fix model ID (claude-haiku-3-5 → claude-haiku-4-5) — confirmed against Anthropic docs
+- [x] Replace Gemini Flash invokeLLM call in generateChapterOutline with invokeClaudeJson
+- [x] Strengthen outline prompt: add explicit rule against generic chapter titles
+- [x] All 340 tests pass (including both Sonnet and Haiku live API tests)

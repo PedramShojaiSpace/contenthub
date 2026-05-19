@@ -1,16 +1,21 @@
 /**
  * claudeLLM.ts
  *
- * Direct Anthropic Claude integration for high-quality long-form prose generation.
- * Used exclusively for ebook chapter writing where narrative quality matters most.
- * Structured JSON tasks (outlines, voice profiles, etc.) continue to use invokeLLM (Gemini Flash).
+ * Direct Anthropic Claude integration for ebook generation.
+ *
+ * Two exported functions:
+ *   - invokeClaude        → claude-sonnet-4-5  (chapter prose, long-form narrative)
+ *   - invokeClaudeJson    → claude-haiku-3-5   (outline generation, fast + cheap JSON)
+ *
+ * Gemini Flash (invokeLLM) is retained for all other structured tasks in the app.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { ENV } from "./_core/env";
 
-// Best model for long-form creative/narrative prose
-const CLAUDE_MODEL = "claude-sonnet-4-5";
+// Models
+const CLAUDE_SONNET = "claude-sonnet-4-5";   // Long-form prose
+const CLAUDE_HAIKU  = "claude-haiku-4-5";    // Fast structured JSON (outlines)
 
 // Max retries for transient errors
 const MAX_RETRIES = 3;
@@ -25,13 +30,13 @@ export interface ClaudeParams {
   systemPrompt: string;
   messages: ClaudeMessage[];
   maxTokens?: number;
+  model?: string; // override model if needed
 }
 
-/**
- * Call Claude directly via the Anthropic SDK for prose generation.
- * Returns the full text response as a string.
- */
-export async function invokeClaude(
+// ─── Core caller ─────────────────────────────────────────────────────────────
+
+async function callClaude(
+  model: string,
   params: ClaudeParams,
   _retryCount = 0
 ): Promise<string> {
@@ -46,13 +51,12 @@ export async function invokeClaude(
 
   try {
     const response = await client.messages.create({
-      model: CLAUDE_MODEL,
+      model: params.model ?? model,
       max_tokens: params.maxTokens ?? 8192,
       system: params.systemPrompt,
       messages: params.messages,
     });
 
-    // Extract text from the response
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
       throw new Error("Claude returned no text content in response");
@@ -60,7 +64,6 @@ export async function invokeClaude(
 
     return textBlock.text;
   } catch (err) {
-    // Retry on transient Anthropic errors (overload, server errors)
     if (err instanceof Anthropic.APIError) {
       const isTransient =
         err.status === 529 || // overloaded
@@ -72,10 +75,10 @@ export async function invokeClaude(
       if (isTransient && _retryCount < MAX_RETRIES) {
         const delay = BASE_DELAY_MS * Math.pow(2, _retryCount);
         console.warn(
-          `[invokeClaude] ${err.status} transient error — retrying in ${delay}ms (attempt ${_retryCount + 1}/${MAX_RETRIES})`
+          `[callClaude:${model}] ${err.status} transient error — retrying in ${delay}ms (attempt ${_retryCount + 1}/${MAX_RETRIES})`
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
-        return invokeClaude(params, _retryCount + 1);
+        return callClaude(model, params, _retryCount + 1);
       }
 
       if (err.status === 401) {
@@ -93,4 +96,23 @@ export async function invokeClaude(
 
     throw err;
   }
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * invokeClaude — claude-sonnet-4-5
+ * Use for long-form chapter prose where narrative quality is paramount.
+ */
+export async function invokeClaude(params: ClaudeParams): Promise<string> {
+  return callClaude(CLAUDE_SONNET, params);
+}
+
+/**
+ * invokeClaudeJson — claude-haiku-3-5
+ * Use for fast, structured JSON tasks like outline generation.
+ * Returns the raw text response; caller is responsible for JSON.parse.
+ */
+export async function invokeClaudeJson(params: ClaudeParams): Promise<string> {
+  return callClaude(CLAUDE_HAIKU, { ...params, maxTokens: params.maxTokens ?? 2048 });
 }

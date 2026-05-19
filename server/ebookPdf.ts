@@ -1,20 +1,19 @@
 /**
  * ebookPdf.ts — Branded PDF generation for Urban Monk e-books
  *
- * Uses puppeteer-core + @sparticuz/chromium for serverless-compatible
- * headless Chromium PDF rendering. No system binaries required.
+ * Uses PDFKit — a pure Node.js PDF library with zero system dependencies.
+ * Generates a branded ebook with cover page, table of contents, chapters,
+ * and a back cover CTA. No external binaries or shared libraries required.
  */
 
-import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
-import { marked } from "marked";
+import PDFDocument from "pdfkit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PdfChapter {
   chapterNumber: number;
   title: string;
-  content: string; // Markdown
+  content: string; // Markdown (stripped to plain text for PDF)
   ctaText?: string | null;
   ctaUrl?: string | null;
   ctaLabel?: string | null;
@@ -37,9 +36,95 @@ export interface EbookPdfOptions {
   funnelStage?: string | null;
 }
 
-// ─── HTML Template ────────────────────────────────────────────────────────────
+// ─── Color Palette ────────────────────────────────────────────────────────────
 
-function buildHtml(opts: EbookPdfOptions): string {
+const DARK_NAVY = "#1a1a2e";
+const GOLD = "#d4af37";
+const GOLD_LIGHT = "#f0e6c0";
+const WHITE = "#ffffff";
+const BODY_TEXT = "#1a1a1a";
+const MUTED = "#6b6b6b";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Strip Markdown syntax to plain text for PDF rendering */
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/#{1,6}\s+/g, "") // headings
+    .replace(/\*\*(.+?)\*\*/g, "$1") // bold
+    .replace(/\*(.+?)\*/g, "$1") // italic
+    .replace(/__(.+?)__/g, "$1") // bold alt
+    .replace(/_(.+?)_/g, "$1") // italic alt
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links
+    .replace(/`{1,3}[^`]*`{1,3}/g, "") // code
+    .replace(/^[-*+]\s+/gm, "• ") // unordered list
+    .replace(/^\d+\.\s+/gm, "") // ordered list
+    .replace(/^>\s+/gm, "") // blockquotes
+    .replace(/---+/g, "") // hr
+    .replace(/\n{3,}/g, "\n\n") // collapse extra newlines
+    .trim();
+}
+
+/** Parse markdown into segments: heading, bullet, or paragraph */
+interface TextSegment {
+  type: "h2" | "h3" | "bullet" | "blockquote" | "paragraph" | "hr";
+  text: string;
+}
+
+function parseMarkdown(md: string): TextSegment[] {
+  const segments: TextSegment[] = [];
+  const lines = md.split("\n");
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trimEnd();
+
+    if (!line.trim()) {
+      i++;
+      continue;
+    }
+
+    if (/^#{1,2}\s+/.test(line)) {
+      segments.push({ type: "h2", text: line.replace(/^#{1,2}\s+/, "").trim() });
+    } else if (/^###\s+/.test(line)) {
+      segments.push({ type: "h3", text: line.replace(/^###\s+/, "").trim() });
+    } else if (/^[-*+]\s+/.test(line)) {
+      segments.push({ type: "bullet", text: line.replace(/^[-*+]\s+/, "").trim() });
+    } else if (/^\d+\.\s+/.test(line)) {
+      segments.push({ type: "bullet", text: line.replace(/^\d+\.\s+/, "").trim() });
+    } else if (/^>\s+/.test(line)) {
+      segments.push({ type: "blockquote", text: line.replace(/^>\s+/, "").trim() });
+    } else if (/^---+$/.test(line.trim())) {
+      segments.push({ type: "hr", text: "" });
+    } else {
+      // Accumulate paragraph lines
+      const paraLines: string[] = [line];
+      while (i + 1 < lines.length && lines[i + 1].trim() !== "" && !/^[#>*\-\d]/.test(lines[i + 1])) {
+        i++;
+        paraLines.push(lines[i].trimEnd());
+      }
+      segments.push({ type: "paragraph", text: paraLines.join(" ").trim() });
+    }
+    i++;
+  }
+
+  return segments;
+}
+
+/** Clean inline markdown from a string */
+function cleanInline(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/_(.+?)_/g, "$1")
+    .replace(/`(.+?)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+}
+
+// ─── PDF Generation ───────────────────────────────────────────────────────────
+
+export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
   const {
     title,
     subtitle,
@@ -48,413 +133,366 @@ function buildHtml(opts: EbookPdfOptions): string {
     globalCta,
   } = opts;
 
-  // Convert each chapter's Markdown to HTML
-  const chaptersHtml = chapters
-    .map((ch) => {
-      const contentHtml = marked.parse(ch.content || "") as string;
-
-      const ctaHtml =
-        ch.ctaText
-          ? `
-        <div class="chapter-cta">
-          <div class="chapter-cta-inner">
-            <p class="chapter-cta-text">${escapeHtml(ch.ctaText)}</p>
-            ${
-              ch.ctaUrl
-                ? `<a class="chapter-cta-btn" href="${escapeHtml(ch.ctaUrl)}">${escapeHtml(ch.ctaLabel || "Learn More →")}</a>`
-                : ""
-            }
-          </div>
-        </div>`
-          : "";
-
-      return `
-      <div class="chapter page-break">
-        <div class="chapter-header">
-          <span class="chapter-label">Chapter ${ch.chapterNumber}</span>
-          <h2 class="chapter-title">${escapeHtml(ch.title)}</h2>
-        </div>
-        <div class="chapter-body">${contentHtml}</div>
-        ${ctaHtml}
-      </div>`;
-    })
-    .join("\n");
-
-  // Table of contents
-  const tocHtml = chapters
-    .map(
-      (ch) =>
-        `<div class="toc-row">
-          <span class="toc-num">${ch.chapterNumber}</span>
-          <span class="toc-entry">${escapeHtml(ch.title)}</span>
-        </div>`
-    )
-    .join("\n");
-
-  // Back cover CTA
-  const backCoverHtml = globalCta
-    ? `
-    <div class="back-cover page-break">
-      <div class="back-cover-inner">
-        <div class="back-logo">UM</div>
-        <h2 class="back-cover-title">Ready to Go Deeper?</h2>
-        <p class="back-cover-text">${escapeHtml(globalCta.text)}</p>
-        ${
-          globalCta.url
-            ? `<a class="back-cover-btn" href="${escapeHtml(globalCta.url)}">${escapeHtml(globalCta.label || "Join the Urban Monk Academy →")}</a>`
-            : ""
-        }
-        <p class="back-cover-author">— ${escapeHtml(author)}</p>
-      </div>
-    </div>`
-    : "";
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { font-size: 11pt; }
-    body {
-      font-family: Georgia, 'Times New Roman', serif;
-      color: #1a1a1a;
-      background: #fff;
-      line-height: 1.75;
-    }
-
-    .page-break { page-break-before: always; }
-
-    /* ── Cover Page ── */
-    .cover {
-      width: 100%;
-      min-height: 100vh;
-      background: #1a1a2e;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 80px 60px;
-      text-align: center;
-      position: relative;
-      page-break-after: always;
-    }
-    .cover-logo {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      border: 2px solid rgba(212,175,55,0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: Georgia, serif;
-      font-size: 22pt;
-      font-weight: bold;
-      color: #d4af37;
-      margin: 0 auto 40px;
-      line-height: 72px;
-      text-align: center;
-    }
-    .cover-eyebrow {
-      font-size: 9pt;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: rgba(212,175,55,0.8);
-      margin-bottom: 20px;
-    }
-    .cover-title {
-      font-size: 28pt;
-      font-weight: bold;
-      color: #ffffff;
-      line-height: 1.2;
-      margin-bottom: 20px;
-      max-width: 500px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .cover-divider {
-      width: 60px;
-      height: 2px;
-      background: #d4af37;
-      margin: 24px auto;
-    }
-    .cover-subtitle {
-      font-size: 13pt;
-      color: rgba(255,255,255,0.75);
-      font-style: italic;
-      margin-bottom: 48px;
-      max-width: 420px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .cover-author {
-      font-size: 11pt;
-      color: rgba(212,175,55,0.9);
-      letter-spacing: 0.1em;
-    }
-    .cover-footer {
-      margin-top: 60px;
-      font-size: 8pt;
-      color: rgba(255,255,255,0.3);
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-    }
-
-    /* ── Table of Contents ── */
-    .toc {
-      padding: 80px 80px 60px;
-      page-break-after: always;
-    }
-    .toc-heading {
-      font-size: 10pt;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: #c4a020;
-      margin-bottom: 8px;
-    }
-    .toc-title {
-      font-size: 22pt;
-      font-weight: bold;
-      color: #1a1a2e;
-      margin-bottom: 40px;
-      padding-bottom: 16px;
-      border-bottom: 2px solid #f0e6c0;
-    }
-    .toc-row {
-      display: flex;
-      align-items: baseline;
-      gap: 16px;
-      padding: 10px 0;
-      border-bottom: 1px solid #f5f0e8;
-    }
-    .toc-num {
-      font-size: 9pt;
-      color: #c4a020;
-      font-weight: bold;
-      min-width: 24px;
-    }
-    .toc-entry {
-      font-size: 11pt;
-      color: #1a1a2e;
-      font-style: italic;
-    }
-
-    /* ── Chapter ── */
-    .chapter {
-      padding: 72px 80px 60px;
-    }
-    .chapter-header {
-      margin-bottom: 36px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #f0e6c0;
-    }
-    .chapter-label {
-      display: block;
-      font-size: 8.5pt;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: #c4a020;
-      margin-bottom: 8px;
-    }
-    .chapter-title {
-      font-size: 22pt;
-      font-weight: bold;
-      color: #1a1a2e;
-      line-height: 1.2;
-    }
-
-    /* ── Chapter Body ── */
-    .chapter-body h1, .chapter-body h2, .chapter-body h3 {
-      color: #1a1a2e;
-      margin-top: 28px;
-      margin-bottom: 12px;
-      line-height: 1.3;
-    }
-    .chapter-body h2 { font-size: 15pt; }
-    .chapter-body h3 { font-size: 12pt; }
-    .chapter-body p {
-      margin-bottom: 14px;
-      text-align: justify;
-    }
-    .chapter-body ul, .chapter-body ol {
-      margin: 12px 0 16px 28px;
-    }
-    .chapter-body li { margin-bottom: 6px; }
-    .chapter-body blockquote {
-      margin: 20px 0;
-      padding: 16px 24px;
-      border-left: 4px solid #d4af37;
-      background: #fdf8ec;
-      font-style: italic;
-      color: #3a3a3a;
-    }
-    .chapter-body strong { color: #1a1a2e; }
-    .chapter-body em { color: #4a4a4a; }
-    .chapter-body hr {
-      border: none;
-      border-top: 1px solid #e8dfc8;
-      margin: 24px 0;
-    }
-
-    /* ── Chapter CTA ── */
-    .chapter-cta { margin-top: 40px; }
-    .chapter-cta-inner {
-      background: #1a1a2e;
-      border-radius: 8px;
-      padding: 28px 32px;
-      text-align: center;
-    }
-    .chapter-cta-text {
-      color: rgba(255,255,255,0.9);
-      font-size: 11pt;
-      line-height: 1.6;
-      margin-bottom: 16px;
-      font-style: italic;
-    }
-    .chapter-cta-btn {
-      display: inline-block;
-      background: #d4af37;
-      color: #1a1a2e;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 10pt;
-      letter-spacing: 0.05em;
-      padding: 10px 28px;
-      border-radius: 4px;
-    }
-
-    /* ── Back Cover ── */
-    .back-cover {
-      width: 100%;
-      min-height: 100vh;
-      background: #1a1a2e;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 80px 60px;
-    }
-    .back-cover-inner {
-      text-align: center;
-      max-width: 520px;
-      margin: 0 auto;
-    }
-    .back-logo {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      border: 2px solid rgba(212,175,55,0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: Georgia, serif;
-      font-size: 20pt;
-      font-weight: bold;
-      color: #d4af37;
-      margin: 0 auto 32px;
-      line-height: 64px;
-      text-align: center;
-    }
-    .back-cover-title {
-      font-size: 24pt;
-      font-weight: bold;
-      color: #ffffff;
-      margin-bottom: 20px;
-    }
-    .back-cover-text {
-      font-size: 12pt;
-      color: rgba(255,255,255,0.8);
-      line-height: 1.7;
-      margin-bottom: 32px;
-      font-style: italic;
-    }
-    .back-cover-btn {
-      display: inline-block;
-      background: #d4af37;
-      color: #1a1a2e;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 11pt;
-      letter-spacing: 0.05em;
-      padding: 14px 36px;
-      border-radius: 4px;
-      margin-bottom: 32px;
-    }
-    .back-cover-author {
-      font-size: 10pt;
-      color: rgba(212,175,55,0.7);
-      letter-spacing: 0.1em;
-      margin-top: 16px;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Cover Page -->
-  <div class="cover">
-    <div class="cover-logo">UM</div>
-    <p class="cover-eyebrow">The Urban Monk · Dr. Pedram Shojai</p>
-    <h1 class="cover-title">${escapeHtml(title)}</h1>
-    <div class="cover-divider"></div>
-    ${subtitle ? `<p class="cover-subtitle">${escapeHtml(subtitle)}</p>` : ""}
-    <p class="cover-author">${escapeHtml(author)}</p>
-    <p class="cover-footer">theurbanmonk.com · Urban Monk Academy</p>
-  </div>
-
-  <!-- Table of Contents -->
-  <div class="toc">
-    <p class="toc-heading">Contents</p>
-    <h2 class="toc-title">Table of Contents</h2>
-    ${tocHtml}
-  </div>
-
-  <!-- Chapters -->
-  ${chaptersHtml}
-
-  <!-- Back Cover -->
-  ${backCoverHtml}
-
-</body>
-</html>`;
-}
-
-// ─── PDF Generation via Puppeteer + Chromium ─────────────────────────────────
-
-export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
-  const html = buildHtml(opts);
-
-  // Get the Chromium executable path (works in both local and serverless)
-  const executablePath = await chromium.executablePath();
-
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath,
-    headless: true,
-  });
-
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "load" });
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: "A4",
+      margins: { top: 72, bottom: 60, left: 80, right: 80 },
+      info: {
+        Title: title,
+        Author: author,
+        Subject: opts.topic || title,
+        Creator: "Urban Monk Content Hub",
+      },
     });
 
-    return Buffer.from(pdfBuffer);
-  } finally {
-    await browser.close();
-  }
-}
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
+    const contentWidth = pageWidth - 160; // left + right margins
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    // ── Cover Page ────────────────────────────────────────────────────────────
+    // Dark navy background
+    doc.rect(0, 0, pageWidth, pageHeight).fill(DARK_NAVY);
+
+    // Gold circle logo
+    const logoX = pageWidth / 2;
+    const logoY = 160;
+    doc.circle(logoX, logoY, 36).stroke(GOLD);
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(18)
+      .fillColor(GOLD)
+      .text("UM", logoX - 13, logoY - 11);
+
+    // Eyebrow text
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor(GOLD)
+      .text("THE URBAN MONK  ·  DR. PEDRAM SHOJAI", 0, logoY + 52, {
+        align: "center",
+        characterSpacing: 1.5,
+      });
+
+    // Title
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(28)
+      .fillColor(WHITE)
+      .text(title, 60, logoY + 90, {
+        align: "center",
+        width: pageWidth - 120,
+        lineGap: 6,
+      });
+
+    // Gold divider line
+    const titleBottom = doc.y + 20;
+    doc
+      .moveTo(pageWidth / 2 - 30, titleBottom)
+      .lineTo(pageWidth / 2 + 30, titleBottom)
+      .strokeColor(GOLD)
+      .lineWidth(1.5)
+      .stroke();
+
+    // Subtitle
+    if (subtitle) {
+      doc
+        .font("Helvetica-Oblique")
+        .fontSize(13)
+        .fillColor("rgba(255,255,255,0.75)")
+        .fillOpacity(0.75)
+        .text(subtitle, 60, titleBottom + 20, {
+          align: "center",
+          width: pageWidth - 120,
+        });
+    }
+
+    // Author
+    doc.fillOpacity(1);
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .fillColor(GOLD)
+      .text(author, 0, pageHeight - 160, { align: "center" });
+
+    // Footer
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor(WHITE)
+      .fillOpacity(0.3)
+      .text("THEURBANMONK.COM  ·  URBAN MONK ACADEMY", 0, pageHeight - 120, {
+        align: "center",
+        characterSpacing: 1,
+      });
+
+    doc.fillOpacity(1);
+
+    // ── Table of Contents ─────────────────────────────────────────────────────
+    doc.addPage();
+
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor(GOLD)
+      .text("CONTENTS", 80, 80, { characterSpacing: 2 });
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(22)
+      .fillColor(DARK_NAVY)
+      .text("Table of Contents", 80, 100);
+
+    doc
+      .moveTo(80, doc.y + 12)
+      .lineTo(pageWidth - 80, doc.y + 12)
+      .strokeColor(GOLD_LIGHT)
+      .lineWidth(1.5)
+      .stroke();
+
+    let tocY = doc.y + 28;
+    chapters.forEach((ch) => {
+      doc
+        .font("Helvetica")
+        .fontSize(9)
+        .fillColor(GOLD)
+        .text(`${ch.chapterNumber}`, 80, tocY, { width: 24 });
+
+      doc
+        .font("Helvetica-Oblique")
+        .fontSize(11)
+        .fillColor(DARK_NAVY)
+        .text(ch.title, 110, tocY, { width: contentWidth - 30 });
+
+      tocY = doc.y + 4;
+
+      doc
+        .moveTo(80, tocY)
+        .lineTo(pageWidth - 80, tocY)
+        .strokeColor(GOLD_LIGHT)
+        .lineWidth(0.5)
+        .stroke();
+
+      tocY += 8;
+    });
+
+    // ── Chapters ──────────────────────────────────────────────────────────────
+    chapters.forEach((ch) => {
+      doc.addPage();
+
+      // Chapter label
+      doc
+        .font("Helvetica")
+        .fontSize(8.5)
+        .fillColor(GOLD)
+        .text(`CHAPTER ${ch.chapterNumber}`, 80, 72, { characterSpacing: 2 });
+
+      // Chapter title
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(22)
+        .fillColor(DARK_NAVY)
+        .text(ch.title, 80, 90, { width: contentWidth });
+
+      // Divider
+      doc
+        .moveTo(80, doc.y + 12)
+        .lineTo(pageWidth - 80, doc.y + 12)
+        .strokeColor(GOLD_LIGHT)
+        .lineWidth(1.5)
+        .stroke();
+
+      doc.moveDown(1.5);
+
+      // Chapter body — parse markdown into segments
+      const segments = parseMarkdown(ch.content || "");
+
+      segments.forEach((seg) => {
+        if (doc.y > pageHeight - 120) {
+          doc.addPage();
+        }
+
+        const cleanText = cleanInline(seg.text);
+
+        switch (seg.type) {
+          case "h2":
+            doc.moveDown(0.5);
+            doc
+              .font("Helvetica-Bold")
+              .fontSize(15)
+              .fillColor(DARK_NAVY)
+              .text(cleanText, 80, doc.y, { width: contentWidth });
+            doc.moveDown(0.3);
+            break;
+
+          case "h3":
+            doc.moveDown(0.4);
+            doc
+              .font("Helvetica-Bold")
+              .fontSize(12)
+              .fillColor(DARK_NAVY)
+              .text(cleanText, 80, doc.y, { width: contentWidth });
+            doc.moveDown(0.2);
+            break;
+
+          case "bullet":
+            doc
+              .font("Helvetica")
+              .fontSize(11)
+              .fillColor(BODY_TEXT)
+              .text(`• ${cleanText}`, 88, doc.y, {
+                width: contentWidth - 8,
+                lineGap: 3,
+              });
+            doc.moveDown(0.2);
+            break;
+
+          case "blockquote":
+            doc.moveDown(0.3);
+            // Gold left bar
+            doc
+              .rect(80, doc.y, 3, 40)
+              .fill(GOLD);
+            doc
+              .font("Helvetica-Oblique")
+              .fontSize(11)
+              .fillColor("#3a3a3a")
+              .text(cleanText, 92, doc.y - 40, {
+                width: contentWidth - 12,
+                lineGap: 3,
+              });
+            doc.moveDown(0.5);
+            break;
+
+          case "hr":
+            doc.moveDown(0.5);
+            doc
+              .moveTo(80, doc.y)
+              .lineTo(pageWidth - 80, doc.y)
+              .strokeColor(GOLD_LIGHT)
+              .lineWidth(0.5)
+              .stroke();
+            doc.moveDown(0.5);
+            break;
+
+          case "paragraph":
+          default:
+            doc
+              .font("Helvetica")
+              .fontSize(11)
+              .fillColor(BODY_TEXT)
+              .text(cleanText, 80, doc.y, {
+                width: contentWidth,
+                align: "justify",
+                lineGap: 3,
+              });
+            doc.moveDown(0.6);
+            break;
+        }
+      });
+
+      // Chapter CTA box
+      if (ch.ctaText) {
+        if (doc.y > pageHeight - 180) doc.addPage();
+        doc.moveDown(1);
+
+        const ctaBoxY = doc.y;
+        const ctaBoxHeight = ch.ctaUrl ? 90 : 70;
+        doc.rect(80, ctaBoxY, contentWidth, ctaBoxHeight).fill(DARK_NAVY);
+
+        doc
+          .font("Helvetica-Oblique")
+          .fontSize(11)
+          .fillColor(WHITE)
+          .fillOpacity(0.9)
+          .text(ch.ctaText, 100, ctaBoxY + 16, {
+            width: contentWidth - 40,
+            align: "center",
+          });
+
+        if (ch.ctaUrl) {
+          doc
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .fillColor(GOLD)
+            .text(ch.ctaLabel || "Learn More →", 100, doc.y + 8, {
+              width: contentWidth - 40,
+              align: "center",
+              link: ch.ctaUrl,
+            });
+        }
+
+        doc.fillOpacity(1);
+      }
+    });
+
+    // ── Back Cover ────────────────────────────────────────────────────────────
+    if (globalCta) {
+      doc.addPage();
+      doc.rect(0, 0, pageWidth, pageHeight).fill(DARK_NAVY);
+
+      // Gold circle logo
+      const bcLogoX = pageWidth / 2;
+      const bcLogoY = pageHeight / 2 - 140;
+      doc.circle(bcLogoX, bcLogoY, 32).stroke(GOLD);
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(16)
+        .fillColor(GOLD)
+        .text("UM", bcLogoX - 11, bcLogoY - 10);
+
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(24)
+        .fillColor(WHITE)
+        .text("Ready to Go Deeper?", 60, bcLogoY + 50, {
+          align: "center",
+          width: pageWidth - 120,
+        });
+
+      doc
+        .font("Helvetica-Oblique")
+        .fontSize(12)
+        .fillColor(WHITE)
+        .fillOpacity(0.8)
+        .text(globalCta.text, 80, doc.y + 16, {
+          align: "center",
+          width: pageWidth - 160,
+          lineGap: 4,
+        });
+
+      if (globalCta.url) {
+        doc.fillOpacity(1);
+        const btnY = doc.y + 20;
+        const btnLabel = globalCta.label || "Join the Urban Monk Academy →";
+        const btnW = 280;
+        const btnX = (pageWidth - btnW) / 2;
+        doc.rect(btnX, btnY, btnW, 36).fill(GOLD);
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(11)
+          .fillColor(DARK_NAVY)
+          .text(btnLabel, btnX, btnY + 11, {
+            width: btnW,
+            align: "center",
+            link: globalCta.url,
+          });
+      }
+
+      doc.fillOpacity(0.7);
+      doc
+        .font("Helvetica")
+        .fontSize(10)
+        .fillColor(GOLD)
+        .text(`— ${author}`, 0, doc.y + 24, { align: "center" });
+
+      doc.fillOpacity(1);
+    }
+
+    doc.end();
+  });
 }

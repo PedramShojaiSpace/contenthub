@@ -1190,7 +1190,7 @@ export const ebooks = mysqlTable("ebooks", {
   targetPersona: text("targetPersona"),
   chapterCount: int("chapterCount").default(8),
   wordCountTarget: int("wordCountTarget").default(5000),
-  status: ebookStatusEnum.notNull().default("outline"),
+  status: mysqlEnum("ebookStatus", ["outline", "drafting", "complete", "failed"]).notNull().default("outline"),
   // JSON array of {chapterNumber, title, summary}
   outlineJson: longtext("outlineJson"),
   // Full markdown content of the complete e-book
@@ -1204,7 +1204,7 @@ export const ebooks = mysqlTable("ebooks", {
   ctaBlockId: int("ctaBlockId"),
   landingPageId: int("landingPageId"),
   webinarSessionId: int("webinarSessionId"),
-  funnelStage: ebookFunnelStageEnum.default("awareness"),
+  funnelStage: mysqlEnum("ebookFunnelStage", ["awareness", "consideration", "conversion"]).default("awareness"),
   errorMessage: text("errorMessage"),
   // Source document (webinar transcript, talk notes, outline)
   sourceDocumentName: varchar("sourceDocumentName", { length: 255 }),

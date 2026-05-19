@@ -413,6 +413,10 @@ async function startServer() {
     }
   });
 
+  // Reddit nightly refresh + analyze — called by Manus Heartbeat at 7:00 AM UTC
+  const { handleRedditNightly } = await import("../redditScheduled");
+  app.post("/api/scheduled/reddit-nightly", handleRedditNightly);
+
   // tRPC API
   app.use(
     "/api/trpc",

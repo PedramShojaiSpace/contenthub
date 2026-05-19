@@ -534,6 +534,17 @@ export default function RedditIntelligence() {
     onError: (e) => toast.error(`Debug failed: ${e.message}`),
   });
 
+  const { data: latestDigest, refetch: refetchDigest } = trpc.reddit.getLatestDigest.useQuery();
+  const { data: allDigests } = trpc.reddit.getDigests.useQuery();
+
+  const generateDigestMutation = trpc.reddit.generateTrendDigest.useMutation({
+    onSuccess: (d) => {
+      toast.success(`Trend digest generated for week of ${d.weekStart} — ${d.postsAnalyzed} posts analyzed across ${d.subredditsScanned} subreddits`);
+      refetchDigest();
+    },
+    onError: (e) => toast.error(`Digest failed: ${e.message}`),
+  });
+
   const batchAnalyzeMutation = trpc.reddit.batchAnalyze.useMutation({
     onSuccess: (d) => {
       toast.success(`Analyzed ${d.analyzed} posts`);
@@ -649,6 +660,10 @@ export default function RedditIntelligence() {
             ) : null}
           </TabsTrigger>
           <TabsTrigger value="subreddits">Manage Subreddits</TabsTrigger>
+          <TabsTrigger value="digest" className="gap-1">
+            <Sparkles className="w-3.5 h-3.5" />
+            Trend Digest
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Feed tab ── */}
@@ -741,6 +756,103 @@ export default function RedditIntelligence() {
               <SubredditManager />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ── Trend Digest tab ── */}
+        <TabsContent value="digest" className="mt-4 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Weekly Trend Digest</h2>
+              <p className="text-sm text-muted-foreground">
+                AI-generated briefing clustering the most-discussed topics across all your subreddits.
+              </p>
+            </div>
+            <Button
+              onClick={() => generateDigestMutation.mutate()}
+              disabled={generateDigestMutation.isPending}
+              className="gap-2"
+            >
+              <Sparkles className={`w-4 h-4 ${generateDigestMutation.isPending ? "animate-pulse" : ""}`} />
+              {generateDigestMutation.isPending ? "Generating…" : "Generate This Week's Digest"}
+            </Button>
+          </div>
+
+          {/* Latest digest */}
+          {latestDigest ? (
+            <div className="space-y-4">
+              {/* Meta bar */}
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <Badge variant="outline" className="text-xs">
+                  Week of {latestDigest.weekStart}
+                </Badge>
+                <span>{latestDigest.postsAnalyzed} posts analyzed</span>
+                <span>·</span>
+                <span>{latestDigest.subredditsScanned} subreddits</span>
+                <span>·</span>
+                <span>Generated {new Date(latestDigest.generatedAt).toLocaleDateString()}</span>
+              </div>
+
+              {/* Top topics chips */}
+              {Array.isArray(latestDigest.topTopics) && latestDigest.topTopics.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {(latestDigest.topTopics as { topic: string; count: number; subreddits: string[] }[]).map((t, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm"
+                    >
+                      <span className="font-medium text-primary">{t.topic}</span>
+                      <span className="text-muted-foreground text-xs">({t.count})</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Briefing */}
+              <Card>
+                <CardContent className="pt-5">
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    {latestDigest.briefing.split("\n").map((line, i) => {
+                      if (line.startsWith("## ")) return <h2 key={i} className="text-base font-semibold mt-4 mb-1">{line.slice(3)}</h2>;
+                      if (line.startsWith("### ")) return <h3 key={i} className="text-sm font-semibold mt-3 mb-1">{line.slice(4)}</h3>;
+                      if (line.startsWith("**") && line.endsWith("**")) return <p key={i} className="font-semibold">{line.slice(2, -2)}</p>;
+                      if (line.trim() === "") return <div key={i} className="h-2" />;
+                      return <p key={i} className="text-sm leading-relaxed">{line}</p>;
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Previous digests */}
+              {allDigests && allDigests.length > 1 && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Previous Digests</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {allDigests.slice(1).map((d) => (
+                      <Badge
+                        key={d.id}
+                        variant="outline"
+                        className="cursor-pointer hover:bg-muted text-xs"
+                        title={`${d.postsAnalyzed} posts · ${d.subredditsScanned} subreddits`}
+                      >
+                        Week of {d.weekStart}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="py-16 text-center">
+                <Sparkles className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-muted-foreground font-medium">No digest generated yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  First refresh your feed and analyze some posts, then click "Generate This Week's Digest" above.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

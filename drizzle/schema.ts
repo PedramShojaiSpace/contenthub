@@ -1,4 +1,4 @@
-import { bigint, boolean, double, float, int, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, date, double, float, int, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -1303,3 +1303,15 @@ export const redditPosts = mysqlTable("reddit_posts", {
   isFlagged: boolean("isFlagged").notNull().default(false), // flagged for engagement
 });
 export type RedditPost = typeof redditPosts.$inferSelect;
+
+// Weekly Reddit trend digest — AI-generated briefing of trending topics
+export const redditTrendDigests = mysqlTable("reddit_trend_digests", {
+  id: int("id").autoincrement().primaryKey(),
+  weekStart: varchar("weekStart", { length: 10 }).notNull(), // Monday of the week (YYYY-MM-DD)
+  briefing: text("briefing").notNull(),              // Full AI-generated markdown briefing
+  topTopics: text("topTopics").notNull(),            // JSON array of { topic, count, subreddits[], sampleTitles[] }
+  postsAnalyzed: int("postsAnalyzed").notNull().default(0),
+  subredditsScanned: int("subredditsScanned").notNull().default(0),
+  generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+});
+export type RedditTrendDigest = typeof redditTrendDigests.$inferSelect;

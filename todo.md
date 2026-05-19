@@ -2709,3 +2709,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add "Reddit Intel" to Intelligence sidebar group in DashboardLayout
 - [x] Register /reddit-intelligence route in App.tsx
 - [x] TypeScript clean (0 errors in reddit files)
+
+## v-reddit-schedule — Nightly Heartbeat & Weekly Trend Digest
+
+- [x] Create redditScheduled.ts handler (POST /api/scheduled/reddit-nightly)
+- [x] Handler: refresh all active subreddits, insert new posts, update scores
+- [x] Handler: batch-analyze top 5 unanalyzed posts by reddit score
+- [x] Mount /api/scheduled/reddit-nightly in server/_core/index.ts
+- [x] Add redditTrendDigests table to schema.ts (weekStart, briefing, topTopics JSON, postsAnalyzed, subredditsScanned, generatedAt)
+- [x] Run db:push for redditTrendDigests table
+- [x] Add generateTrendDigest, getDigests, getLatestDigest procedures to redditRouter
+- [x] Add Trend Digest tab to RedditIntelligence UI (topic chips, markdown briefing, previous digests)
+- [ ] Register nightly heartbeat cron via manus-heartbeat CLI (requires deploy first — see instructions below)

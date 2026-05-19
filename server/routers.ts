@@ -97,6 +97,7 @@ import { videoVariantRouter } from "./videoVariantRouter";
 import { videoSessionRouter } from "./videoSessionRouter";
 import { bookLibraryRouter } from "./bookLibraryRouter";
 import { ebookRouter } from "./ebookRouter";
+import { redditRouter } from "./redditRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls } from "./urlScrubber";
@@ -352,6 +353,7 @@ export const appRouter = router({
   system: systemRouter,
   bookLibrary: bookLibraryRouter,
   ebook: ebookRouter,
+  reddit: redditRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

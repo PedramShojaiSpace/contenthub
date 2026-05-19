@@ -2688,3 +2688,24 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] "Generate Cover" button in EbookViewer header (shown when no cover exists)
 - [x] EbookViewer onRegenerate handles applyToAll: loops through all chapters sequentially
 - [x] TypeScript clean (0 errors in ebook files)
+
+## v-reddit-intelligence — Reddit Intelligence Module (COMPLETE)
+
+- [x] Add reddit_subreddits table (subreddit, category, isActive, lastFetchedAt)
+- [x] Add reddit_posts table (redditId, subreddit, category, title, selftext, score, numComments, permalink, engagementScore, aiSummary, aiRecommendation, aiDraftComment, isAnalyzed, isFlagged, isDismissed)
+- [x] Run db:push after schema changes
+- [x] Build redditRouter with: seedDefaults, listSubreddits, addSubreddit, toggleSubreddit, removeSubreddit, refreshFeed, getFeed, analyzePost, batchAnalyze, flagPost, dismissPost, regenerateDraft, getStats
+- [x] Reddit public JSON API fetcher (no API key required, uses .json endpoints)
+- [x] AI analysis: engagementScore 1-10, aiSummary, aiRecommendation, aiDraftComment in Dr. Shojai's voice
+- [x] Register reddit router in appRouter
+- [x] Build RedditIntelligence.tsx page with Thread Feed, Flagged, and Manage Subreddits tabs
+- [x] Stats bar: total threads, analyzed, high value (7+), flagged
+- [x] Per-post card: score, comments, AI summary, engagement score badge, "your angle" recommendation
+- [x] Expand/collapse per card to show full AI analysis + draft comment
+- [x] Draft comment editor with copy button and custom-instructions regenerate
+- [x] Flag / Dismiss actions per post
+- [x] Batch Analyze button (top 10 unanalyzed by score)
+- [x] Subreddit manager: add, toggle active/inactive, remove, load defaults (18 pre-seeded)
+- [x] Add "Reddit Intel" to Intelligence sidebar group in DashboardLayout
+- [x] Register /reddit-intelligence route in App.tsx
+- [x] TypeScript clean (0 errors in reddit files)

@@ -500,6 +500,9 @@ export const ebookRouter = router({
       const voiceProfile = await getMasterVoiceProfile(ctx.user.id);
       const voiceSystemPrompt = buildVoiceSystemPrompt(voiceProfile);
 
+      // Fall back to the chapter's persisted styleNote if no override was passed
+      const effectiveStyleNotes = input.styleNotes ?? chapter.styleNote ?? undefined;
+
       // Build word count target from preset
       const lengthPreset = input.lengthPreset ?? "standard";
       const wordRanges: Record<string, string> = {
@@ -529,7 +532,7 @@ export const ebookRouter = router({
       // Combine all instruction sources: legacy, style notes, and enhancement instructions
       const allInstructions = [
         input.instructions,
-        input.styleNotes ? `STYLE NOTE (apply precisely): ${input.styleNotes}` : null,
+        effectiveStyleNotes ? `STYLE NOTE (apply precisely): ${effectiveStyleNotes}` : null,
         input.enhancementInstructions,
       ].filter(Boolean).join("\n");
 
@@ -655,6 +658,29 @@ REQUIREMENTS:
         .where(eq(ebookChapters.id, version.chapterId));
 
       return { content: version.content, wordCount: version.wordCount };
+    }),
+
+  updateChapterStyleNote: protectedProcedure
+    .input(z.object({
+      chapterId: z.number(),
+      styleNote: z.string().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [chapter] = await db.select({ ebookId: ebookChapters.ebookId }).from(ebookChapters).where(eq(ebookChapters.id, input.chapterId));
+      if (!chapter) throw new TRPCError({ code: "NOT_FOUND", message: "Chapter not found" });
+
+      const [ebook] = await db.select({ userId: ebooks.userId }).from(ebooks).where(eq(ebooks.id, chapter.ebookId));
+      if (ebook?.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+
+      await db
+        .update(ebookChapters)
+        .set({ styleNote: input.styleNote })
+        .where(eq(ebookChapters.id, input.chapterId));
+
+      return { ok: true };
     }),
 
   generateCoverImage: protectedProcedure

@@ -1,0 +1,1 @@
+ALTER TABLE `ebook_chapters` ADD `styleNote` text;

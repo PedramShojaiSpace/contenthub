@@ -1191,6 +1191,8 @@ export const ebooks = mysqlTable("ebooks", {
   chapterCount: int("chapterCount").default(8),
   wordCountTarget: int("wordCountTarget").default(5000),
   status: mysqlEnum("ebookStatus", ["outline", "drafting", "complete", "failed"]).notNull().default("outline"),
+  // Global default style note — seeded into each chapter's styleNote on creation
+  defaultStyleNote: text("defaultStyleNote"),
   // JSON array of {chapterNumber, title, summary}
   outlineJson: longtext("outlineJson"),
   // Full markdown content of the complete e-book

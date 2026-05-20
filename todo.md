@@ -2789,3 +2789,18 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Wire ChapterStyleNoteField into EbookViewer sidebar (updates on chapter switch)
 - [x] Add small dot indicator on chapter nav button when styleNote is set
 - [x] Pre-fill regenStyleNotes in ChapterEditor from chapter.styleNote
+
+## v-ebook-viewer-ux — Outline Regen, Default Style Note, Word Count Progress
+
+- [x] Add defaultStyleNote column to ebooks table in schema.ts
+- [x] Run pnpm db:push to migrate (migration 0072_funny_aaron_stack.sql)
+- [x] Add defaultStyleNote textarea to GenerateEbookDialog form (optional, labeled, with placeholder)
+- [x] Update generateEbook procedure to accept defaultStyleNote and seed chapter styleNotes on creation
+- [x] Update generateFromApprovedOutline procedure to seed chapter styleNotes from defaultStyleNote input
+- [x] Add updateEbookOutline tRPC procedure (updates outlineJson + chapter titles/summaries)
+- [x] Add Regenerate Outline button in EbookViewer sidebar (calls previewOutline)
+- [x] Wire Regenerate Outline to show editable modal with per-chapter title/summary inputs
+- [x] Apply approved outline changes to existing ebook via updateEbookOutline (outlineJson + chapter rows)
+- [x] Add chapter word count progress bar in sidebar below each chapter nav button
+- [x] Progress bar compares chapter.wordCount vs (ebook.wordCountTarget / chapters.length)
+- [x] Color coding: red < 50%, amber 50–80%, green ≥ 80%; shows word count label

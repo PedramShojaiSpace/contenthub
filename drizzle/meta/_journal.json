@@ -505,6 +505,13 @@
       "when": 1779236226328,
       "tag": "0071_magical_blindfold",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1779236580789,
+      "tag": "0072_funny_aaron_stack",
+      "breakpoints": true
     }
   ]
 }

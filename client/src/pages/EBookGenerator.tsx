@@ -362,6 +362,9 @@ function GenerateEbookDialog({
         ...(defaultStyleNote.trim() ? { defaultStyleNote: defaultStyleNote.trim() } : {}),
         lengthPreset,
         proseStyle,
+        // Connection tracking: pass source IDs from cross-module feed
+        ...(prefillData?.webinarSessionId ? { sourceWebinarId: prefillData.webinarSessionId } : {}),
+        ...(prefillData?.landingPageId ? { sourceLandingPageId: prefillData.landingPageId } : {}),
       });
       toast.success(`E-book complete! ${result.chapterCount} chapters generated.`);
       setOpen(false);
@@ -411,6 +414,9 @@ function GenerateEbookDialog({
         ...(sourceNarrative.trim() ? { sourceNarrative: sourceNarrative.trim() } : {}),
         lengthPreset,
         proseStyle,
+        // Connection tracking: pass source IDs from cross-module feed
+        ...(prefillData?.webinarSessionId ? { sourceWebinarId: prefillData.webinarSessionId } : {}),
+        ...(prefillData?.landingPageId ? { sourceLandingPageId: prefillData.landingPageId } : {}),
       });
 
       setGenerationStep("chapters");
@@ -1330,6 +1336,27 @@ function EbookViewer({
     },
   });
   const [retrying, setRetrying] = useState(false);
+  const [regeneratingAll, setRegeneratingAll] = useState(false);
+  const regenerateAllChapters = trpc.ebook.regenerateAllChapters.useMutation({
+    onSuccess: (res) => {
+      utils.ebook.getEbook.invalidate({ ebookId });
+      if (res.failedCount === 0) {
+        toast.success(`All ${res.succeededCount} chapters regenerated with the latest voice profile!`);
+      } else {
+        toast.warning(`${res.succeededCount} chapters regenerated, ${res.failedCount} failed.`);
+      }
+      setRegeneratingAll(false);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setRegeneratingAll(false);
+    },
+  });
+  const handleRegenerateAll = () => {
+    if (!window.confirm(`Regenerate all ${data?.chapters.length ?? 0} chapters? This will overwrite all existing chapter content.`)) return;
+    setRegeneratingAll(true);
+    regenerateAllChapters.mutate({ ebookId });
+  };
   const retryFailedChapters = trpc.ebook.retryFailedChapters.useMutation({
     onSuccess: (res) => {
       utils.ebook.getEbook.invalidate({ ebookId });
@@ -1425,7 +1452,7 @@ function EbookViewer({
               size="sm"
               className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
               onClick={handleRetryFailed}
-              disabled={retrying || retryFailedChapters.isPending}
+              disabled={retrying || retryFailedChapters.isPending || regeneratingAll || regenerateAllChapters.isPending}
             >
               {retrying || retryFailedChapters.isPending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1435,6 +1462,21 @@ function EbookViewer({
               Retry Failed ({failedChapterCount})
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleRegenerateAll}
+            disabled={regeneratingAll || regenerateAllChapters.isPending || retrying || retryFailedChapters.isPending}
+            title="Rewrite all chapters with the current voice profile and style notes"
+          >
+            {regeneratingAll || regenerateAllChapters.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" />
+            )}
+            {regeneratingAll || regenerateAllChapters.isPending ? "Regenerating..." : "Regenerate All"}
+          </Button>
           {!ebook.coverImageUrl && (
             <Button
               variant="outline"

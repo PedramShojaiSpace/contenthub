@@ -195,7 +195,8 @@ async function generateChapterContent(
   sourceNarrative?: string,
   lengthPreset?: string,
   proseStyle?: string,
-  isLastChapter?: boolean
+  isLastChapter?: boolean,
+  styleNote?: string
 ): Promise<string> {
   const preset = LENGTH_PRESETS[lengthPreset ?? "standard"] ?? LENGTH_PRESETS.standard;
   const proseInstruction = PROSE_STYLE_INSTRUCTIONS[proseStyle ?? "narrative"] ?? PROSE_STYLE_INSTRUCTIONS.narrative;
@@ -231,7 +232,7 @@ ${sourceDocumentText
 - 2-3 specific actionable protocols the reader can actually do
 - Dr. Shojai's voice: warm, direct, authoritative, blending science + ancient wisdom, speaks directly to "you"
 - ${isLastChapter ? "Close with a powerful paragraph that crystallizes the book's core transformation." : "Close with a bridge to the next chapter — a question or tension that pulls the reader forward."}
-- Clean Markdown, ## subheadings, prose paragraphs (no bullet lists except for protocol steps)${ctaInstruction}
+- Clean Markdown, ## subheadings, prose paragraphs (no bullet lists except for protocol steps)${ctaInstruction}${styleNote ? `\n\nAUTHOR DIRECTION: ${styleNote}` : ""}
 
 Start directly with the opening hook:`;
 
@@ -289,6 +290,10 @@ export const ebookRouter = router({
         ctaBlockId: z.number().optional(),
         landingPageId: z.number().optional(),
         webinarSessionId: z.number().optional(),
+        // Cross-module connection tracking — which item spawned this ebook
+        sourceWebinarId: z.number().optional(),
+        sourceEbookId: z.number().optional(),
+        sourceLandingPageId: z.number().optional(),
         // Source document fields (optional — if provided, AI uses them as primary context)
         sourceDocumentText: z.string().optional(),
         sourceDocumentName: z.string().optional(),
@@ -316,6 +321,10 @@ export const ebookRouter = router({
           ctaBlockId: input.ctaBlockId,
           landingPageId: input.landingPageId,
           webinarSessionId: input.webinarSessionId,
+          // Connection tracking FKs
+          ...(input.sourceWebinarId ? { sourceWebinarId: input.sourceWebinarId } : {}),
+          ...(input.sourceEbookId ? { sourceEbookId: input.sourceEbookId } : {}),
+          ...(input.sourceLandingPageId ? { sourceLandingPageId: input.sourceLandingPageId } : {}),
           status: "drafting",
           // Persist source document if provided
           ...(input.sourceDocumentName ? { sourceDocumentName: input.sourceDocumentName } : {}),
@@ -1039,6 +1048,10 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
         sourceNarrative: z.string().optional(),
         lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
         proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
+        // Cross-module connection tracking
+        sourceWebinarId: z.number().optional(),
+        sourceEbookId: z.number().optional(),
+        sourceLandingPageId: z.number().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1061,6 +1074,10 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
           ...(input.sourceDocumentS3Url ? { sourceDocumentS3Url: input.sourceDocumentS3Url } : {}),
           ...(input.sourceDocumentText ? { sourceDocumentText: input.sourceDocumentText } : {}),
           ...(input.sourceNarrative ? { sourceNarrative: input.sourceNarrative } : {}),
+          // Connection tracking FKs
+          ...(input.sourceWebinarId ? { sourceWebinarId: input.sourceWebinarId } : {}),
+          ...(input.sourceEbookId ? { sourceEbookId: input.sourceEbookId } : {}),
+          ...(input.sourceLandingPageId ? { sourceLandingPageId: input.sourceLandingPageId } : {}),
         })
         .$returningId();
 
@@ -1444,6 +1461,151 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
       return { retriedCount: failedChapters.length, succeededCount, failedCount };
     }),
 
+  // ── Regenerate ALL chapters (full rewrite with current voice profile) ────────
+  regenerateAllChapters: protectedProcedure
+    .input(
+      z.object({
+        ebookId: z.number(),
+        lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
+        proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [ebook] = await db
+        .select()
+        .from(ebooks)
+        .where(and(eq(ebooks.id, input.ebookId), eq(ebooks.userId, ctx.user.id)));
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
+
+      // Fetch all chapters
+      const allChapters = await db
+        .select()
+        .from(ebookChapters)
+        .where(eq(ebookChapters.ebookId, input.ebookId))
+        .orderBy(ebookChapters.chapterNumber);
+
+      if (allChapters.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No chapters found for this e-book" });
+      }
+
+      const voiceProfile = await getMasterVoiceProfile(ctx.user.id);
+      const voiceSystemPrompt = buildVoiceSystemPrompt(voiceProfile);
+
+      // Resolve CTA text (same logic as retryFailedChapters)
+      let ctaText: string | null = null;
+      if (ebook.ctaBlockId) {
+        const [cta] = await db
+          .select({ ctaText: ctaBlocks.ctaText, url: ctaBlocks.url })
+          .from(ctaBlocks)
+          .where(eq(ctaBlocks.id, ebook.ctaBlockId));
+        if (cta) ctaText = `${cta.ctaText}${cta.url ? " → " + cta.url : ""}`;
+      } else if (ebook.landingPageId) {
+        ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+      } else if (ebook.webinarSessionId) {
+        const [webinar] = await db
+          .select({ topic: webinarSessions.topic })
+          .from(webinarSessions)
+          .where(eq(webinarSessions.id, ebook.webinarSessionId));
+        if (webinar) ctaText = `Join our free training: ${webinar.topic}`;
+      }
+
+      const outline: Array<{ number: number; title: string; summary: string }> =
+        ebook.outlineJson ? JSON.parse(ebook.outlineJson) : [];
+
+      // Mark ebook as drafting
+      await db
+        .update(ebooks)
+        .set({ status: "drafting" })
+        .where(eq(ebooks.id, input.ebookId));
+
+      let succeededCount = 0;
+      let failedCount = 0;
+
+      for (const chapter of allChapters) {
+        const chapterMeta = outline.find((c) => c.number === chapter.chapterNumber);
+        if (!chapterMeta) { failedCount++; continue; }
+
+        const isLastChapter = chapter.chapterNumber === allChapters.length;
+
+        // Use per-chapter style note if available, otherwise ebook default
+        const styleNote = chapter.styleNote ?? ebook.defaultStyleNote ?? undefined;
+
+        try {
+          await db
+            .update(ebookChapters)
+            .set({ status: "generating" })
+            .where(eq(ebookChapters.id, chapter.id));
+
+          const content = await generateChapterContent(
+            chapterMeta.number,
+            chapterMeta.title,
+            chapterMeta.summary,
+            ebook.topic,
+            ebook.targetPersona ?? "health-conscious adults",
+            voiceSystemPrompt,
+            ctaText,
+            ebook.sourceDocumentText ?? undefined,
+            ebook.sourceNarrative ?? undefined,
+            input.lengthPreset,
+            input.proseStyle,
+            isLastChapter,
+            styleNote
+          );
+
+          const wordCount = content.split(/\s+/).length;
+
+          await db
+            .update(ebookChapters)
+            .set({ content, wordCount, status: "complete" })
+            .where(eq(ebookChapters.id, chapter.id));
+
+          succeededCount++;
+        } catch {
+          await db
+            .update(ebookChapters)
+            .set({ status: "failed" })
+            .where(eq(ebookChapters.id, chapter.id));
+          failedCount++;
+        }
+      }
+
+      // Update ebook status and full content
+      const refreshedChapters = await db
+        .select()
+        .from(ebookChapters)
+        .where(eq(ebookChapters.ebookId, input.ebookId))
+        .orderBy(ebookChapters.chapterNumber);
+
+      const anyFailed = refreshedChapters.some(
+        (c) => c.status === "failed" || c.status === "pending" || c.status === "generating"
+      );
+
+      if (!anyFailed && refreshedChapters.length > 0) {
+        const fullContent = refreshedChapters
+          .map((c) => `# Chapter ${c.chapterNumber}: ${c.title}\n\n${c.content ?? ""}`)
+          .join("\n\n---\n\n");
+        const totalWordCount = refreshedChapters.reduce((sum, c) => sum + (c.wordCount ?? 0), 0);
+        await db
+          .update(ebooks)
+          .set({ status: "complete", fullContent, wordCountTarget: totalWordCount })
+          .where(eq(ebooks.id, input.ebookId));
+      } else {
+        await db
+          .update(ebooks)
+          .set({ status: "failed" })
+          .where(eq(ebooks.id, input.ebookId));
+      }
+
+      return {
+        totalChapters: allChapters.length,
+        succeededCount,
+        failedCount,
+      };
+    }),
+
   // ── Preview outline before committing to full chapter generation ──────────
   previewOutline: protectedProcedure
     .input(
@@ -1490,6 +1652,10 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
         ctaBlockId: z.number().optional(),
         landingPageId: z.number().optional(),
         webinarSessionId: z.number().optional(),
+        // Cross-module connection tracking — which item spawned this ebook
+        sourceWebinarId: z.number().optional(),
+        sourceEbookId: z.number().optional(),
+        sourceLandingPageId: z.number().optional(),
         sourceDocumentText: z.string().optional(),
         sourceDocumentName: z.string().optional(),
         sourceDocumentS3Url: z.string().optional(),
@@ -1515,6 +1681,10 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
           ctaBlockId: input.ctaBlockId,
           landingPageId: input.landingPageId,
           webinarSessionId: input.webinarSessionId,
+          // Connection tracking FKs
+          ...(input.sourceWebinarId ? { sourceWebinarId: input.sourceWebinarId } : {}),
+          ...(input.sourceEbookId ? { sourceEbookId: input.sourceEbookId } : {}),
+          ...(input.sourceLandingPageId ? { sourceLandingPageId: input.sourceLandingPageId } : {}),
           status: "drafting",
           outlineJson: JSON.stringify(input.outline),
           ...(input.sourceDocumentName ? { sourceDocumentName: input.sourceDocumentName } : {}),

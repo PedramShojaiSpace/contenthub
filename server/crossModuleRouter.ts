@@ -310,6 +310,10 @@ export const crossModuleRouter = router({
           status: landingPages.status,
           gammaUrl: landingPages.gammaUrl,
           createdAt: landingPages.createdAt,
+          // Connection tracking FKs
+          sourceWebinarId: landingPages.sourceWebinarId,
+          sourceEbookId: landingPages.sourceEbookId,
+          sourceLandingPageId: landingPages.sourceLandingPageId,
         })
         .from(landingPages)
         .orderBy(desc(landingPages.createdAt))
@@ -324,6 +328,10 @@ export const crossModuleRouter = router({
           targetPersona: ebooks.targetPersona,
           pdfS3Url: ebooks.pdfS3Url,
           createdAt: ebooks.createdAt,
+          // Connection tracking FKs
+          sourceWebinarId: ebooks.sourceWebinarId,
+          sourceEbookId: ebooks.sourceEbookId,
+          sourceLandingPageId: ebooks.sourceLandingPageId,
         })
         .from(ebooks)
         .where(eq(ebooks.userId, ctx.user.id))

@@ -179,6 +179,10 @@ async function createLandingPage(data: {
   offerCustomLabel?: string | null;
   contentAngle?: string | null;
   copyBody?: string | null;
+  // Cross-module connection tracking
+  sourceWebinarId?: number | null;
+  sourceEbookId?: number | null;
+  sourceLandingPageId?: number | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -191,6 +195,10 @@ async function createLandingPage(data: {
     contentAngle: data.contentAngle ?? null,
     copyBody: data.copyBody ?? null,
     status: "draft",
+    // Connection tracking FKs
+    ...(data.sourceWebinarId ? { sourceWebinarId: data.sourceWebinarId } : {}),
+    ...(data.sourceEbookId ? { sourceEbookId: data.sourceEbookId } : {}),
+    ...(data.sourceLandingPageId ? { sourceLandingPageId: data.sourceLandingPageId } : {}),
   });
   return result;
 }
@@ -355,6 +363,10 @@ export const landingPagesRouter = router({
         offer: z.enum(["upstream_bundle", "upstream_course", "explorer_tier", "lights_on_webinar", "deep_sleep_webinar", "homesick_screening", "interconnected_screening", "kbmo_testing", "gateway_health", "custom"]),
         offerCustomLabel: z.string().optional(),
         contentAngle: z.string().min(1, "Please describe the key message or angle for this page"),
+        // Cross-module connection tracking
+        sourceWebinarId: z.number().optional(),
+        sourceEbookId: z.number().optional(),
+        sourceLandingPageId: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -451,6 +463,10 @@ export const landingPagesRouter = router({
         offerCustomLabel: input.offerCustomLabel,
         contentAngle: input.contentAngle,
         copyBody,
+        // Connection tracking FKs from cross-module feed
+        sourceWebinarId: input.sourceWebinarId,
+        sourceEbookId: input.sourceEbookId,
+        sourceLandingPageId: input.sourceLandingPageId,
       });
 
       return {
@@ -594,7 +610,7 @@ Rules:
         ? titleLine.replace(/^#+\s*/, "").trim().slice(0, 200)
         : `${page.title} (${input.variantAngle} variant)`;
 
-      // Save as a new draft page
+      // Save as a new draft page (track source page for pipeline)
       const result = await createLandingPage({
         title: variantTitle,
         personaId: page.personaId,
@@ -603,6 +619,7 @@ Rules:
         offerCustomLabel: page.offerCustomLabel,
         contentAngle: `${page.contentAngle} [${input.variantAngle} variant]`,
         copyBody: variantCopy,
+        sourceLandingPageId: input.id,
       });
 
       return {

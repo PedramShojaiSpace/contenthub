@@ -2842,3 +2842,29 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add prefill confirmation banner with undo to LandingPageGenerator (prefillLabel state, GitFork icon)
 - [x] Add prefill confirmation banner with undo to WebinarBuilder (prefillLabel state, GitFork icon)
 - [x] Replace toast.success prefill notifications with persistent banner + undo button in all three modules
+
+## v-connection-tracking — FK-Based Pipeline Connections, Filter Bar, Regenerate All Chapters
+- [x] Add sourceWebinarId, sourceEbookId, sourceLandingPageId FK columns to ebooks table in schema.ts
+- [x] Add sourceWebinarId, sourceEbookId, sourceLandingPageId FK columns to landingPages table in schema.ts
+- [x] Run pnpm db:push to migrate (migration 0073)
+- [x] Update getPipelineView in crossModuleRouter to return source FK columns for ebooks and landingPages
+- [x] Update generateEbook procedure input schema to accept sourceWebinarId/sourceEbookId/sourceLandingPageId
+- [x] Update generateFromApprovedOutline procedure input schema to accept source FK fields
+- [x] Update createEbookDraft procedure input schema to accept source FK fields and pass to DB insert
+- [x] Update createLandingPage helper function to accept and pass source FK fields to DB insert
+- [x] Update generateCopy procedure input schema in landingPagesRouter to accept source FK fields
+- [x] Update generateVariant to track sourceLandingPageId (variant tracks its source page)
+- [x] Wire source IDs from URL query params into createDraft mutation call in EBookGenerator.tsx
+- [x] Wire source IDs from URL query params into generateFromApprovedOutline mutation call in EBookGenerator.tsx
+- [x] Wire source IDs from URL query params into generateCopy mutation call in LandingPageGenerator.tsx
+- [x] Rewrite ContentPipeline.tsx with real FK-based connection badges (LinkedBadge component)
+- [x] ContentPipeline: show "linked from Webinar: <topic>" badge on ebooks that have sourceWebinarId
+- [x] ContentPipeline: show "linked from E-Book: <title>" and "linked from Webinar: <topic>" badges on landing pages
+- [x] ContentPipeline: show "Variant of #N" badge on landing pages with sourceLandingPageId
+- [x] ContentPipeline: highlight linked item cards with primary border (vs default border for unlinked)
+- [x] ContentPipeline: add FilterBar component with All / Complete / Drafting / Linked / Unlinked filters
+- [x] ContentPipeline: add "linked items" count to summary stats row
+- [x] Add styleNote parameter to generateChapterContent function signature
+- [x] Add regenerateAllChapters tRPC procedure in ebookRouter (rewrites all chapters, respects per-chapter styleNote)
+- [x] Add regenerateAllChapters mutation and "Regenerate All" button to EbookViewer header
+- [x] Regenerate All: shows confirmation dialog before overwriting, disables Retry Failed during operation

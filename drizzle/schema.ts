@@ -330,6 +330,10 @@ export const landingPages = mysqlTable("landing_pages", {
   offerCustomLabel: varchar("offerCustomLabel", { length: 255 }),
   // The content angle / key message (user-entered)
   contentAngle: text("contentAngle"),
+  // Cross-module connection tracking — which item spawned this landing page
+  sourceWebinarId: int("sourceWebinarId"),
+  sourceEbookId: int("sourceEbookId"),
+  sourceLandingPageId: int("sourceLandingPageId"),
   // AI-generated copy (full landing page copy in Markdown)
   copyBody: text("copyBody"),
   // Gamma generation tracking
@@ -1206,6 +1210,10 @@ export const ebooks = mysqlTable("ebooks", {
   ctaBlockId: int("ctaBlockId"),
   landingPageId: int("landingPageId"),
   webinarSessionId: int("webinarSessionId"),
+  // Cross-module connection tracking — which item spawned this ebook
+  sourceWebinarId: int("sourceWebinarId"),
+  sourceEbookId: int("sourceEbookId"),
+  sourceLandingPageId: int("sourceLandingPageId"),
   funnelStage: mysqlEnum("ebookFunnelStage", ["awareness", "consideration", "conversion"]).default("awareness"),
   errorMessage: text("errorMessage"),
   // Source document (webinar transcript, talk notes, outline)

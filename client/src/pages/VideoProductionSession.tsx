@@ -440,6 +440,14 @@ function NewSessionForm({ onCreated }: { onCreated: (id: number) => void }) {
   const [name, setName] = useState("");
   const [idea, setIdea] = useState("");
   const [platform, setPlatform] = useState<Platform>("instagram");
+  const [ctaKeyword, setCtaKeyword] = useState<"UPSTREAM" | "LIGHTSON" | "TEST" | "SLEEP" | "">("UPSTREAM");
+
+  const CTA_KEYWORD_OPTIONS = [
+    { value: "UPSTREAM", label: "UPSTREAM — Upstream Program" },
+    { value: "LIGHTSON", label: "LIGHTSON — Lights On Program" },
+    { value: "TEST",     label: "TEST — Gateway to Health Test" },
+    { value: "SLEEP",    label: "SLEEP — Restorative Sleep Masterclass" },
+  ] as const;
 
   const createMutation = trpc.videoSession.createSession.useMutation();
   const generateMutation = trpc.videoSession.generateScripts.useMutation();
@@ -450,7 +458,12 @@ function NewSessionForm({ onCreated }: { onCreated: (id: number) => void }) {
       return;
     }
     try {
-      const { sessionId } = await createMutation.mutateAsync({ sessionName: name.trim(), idea: idea.trim(), platform });
+      const { sessionId } = await createMutation.mutateAsync({
+        sessionName: name.trim(),
+        idea: idea.trim(),
+        platform,
+        ctaKeyword: ctaKeyword || undefined,
+      });
       toast.info("Generating 5 hooks + body + CTA — this takes about 15 seconds…");
       await generateMutation.mutateAsync({ sessionId });
       toast.success("Scripts generated! Review and approve below.");
@@ -500,6 +513,21 @@ function NewSessionForm({ onCreated }: { onCreated: (id: number) => void }) {
             <SelectContent className="bg-card border-border">
               {(Object.entries(PLATFORM_LABELS) as [Platform, string][]).map(([k, v]) => (
                 <SelectItem key={k} value={k} className="text-foreground">{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-foreground/70 text-sm font-medium mb-1.5 block">ManyChat Keyword (CTA)</label>
+          <p className="text-xs text-muted-foreground mb-2">The CTA will tell viewers to comment this keyword — ManyChat DMs them the link automatically. Never says the URL out loud.</p>
+          <Select value={ctaKeyword} onValueChange={(v) => setCtaKeyword(v as typeof ctaKeyword)}>
+            <SelectTrigger className="bg-background border-border text-foreground">
+              <SelectValue placeholder="Select a keyword..." />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border">
+              {CTA_KEYWORD_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-foreground">{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -630,6 +658,11 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
           <Badge variant="outline" className="border-border text-muted-foreground text-xs">
             {PLATFORM_LABELS[session.platform]}
           </Badge>
+          {session.ctaKeyword && (
+            <Badge className="bg-primary/10 text-primary border border-primary/20 text-xs font-mono">
+              #{session.ctaKeyword}
+            </Badge>
+          )}
           <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
             {approvedCount}/{scripts.length} approved
           </Badge>

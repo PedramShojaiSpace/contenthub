@@ -54,9 +54,17 @@ interface GeneratedScripts {
   cta: string;
 }
 
+const CTA_KEYWORD_MAP: Record<string, { keyword: string; programName: string }> = {
+  UPSTREAM: { keyword: "UPSTREAM", programName: "Upstream" },
+  LIGHTSON: { keyword: "LIGHTSON", programName: "Lights On" },
+  TEST:     { keyword: "TEST",     programName: "the Gateway to Health Test" },
+  SLEEP:    { keyword: "SLEEP",    programName: "the Restorative Sleep Masterclass" },
+};
+
 async function generateScriptsFromIdea(
   idea: string,
-  platform: string
+  platform: string,
+  ctaKeyword?: string | null
 ): Promise<GeneratedScripts> {
   const platformGuide: Record<string, string> = {
     tiktok:    "TikTok (15-60 sec, fast-paced, Gen-Z energy, trending audio hooks)",
@@ -81,7 +89,7 @@ Generate a complete video script package for split-testing hooks:
   Hook 4: Pain Point (name the exact frustration the viewer feels right now)
   Hook 5: Bold Promise (a direct, credible outcome statement)
 - 1 BODY (main content, 60-180 seconds when spoken, delivers on the hook's promise, teaches one clear insight)
-- 1 CTA (15-30 seconds, drives the viewer to the most relevant program — Upstream at upstream.theurbanmonk.com, Lights On at lightson.theurbanmonk.com, the Gateway to Health test at gth.theurbanmonk.com, or the Restorative Sleep Masterclass at theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay — match the CTA to the video topic; keep it warm and non-pushy)
+- 1 CTA (15-30 seconds spoken word — CRITICAL RULE: NEVER mention a URL or website address. This is a ManyChat keyword-reply flow. The viewer must comment a keyword in the comments to receive the link via DM. ${ctaKeyword && CTA_KEYWORD_MAP[ctaKeyword] ? `The keyword for this video is "${CTA_KEYWORD_MAP[ctaKeyword].keyword}" and the program is ${CTA_KEYWORD_MAP[ctaKeyword].programName}. The CTA must instruct the viewer to comment "${CTA_KEYWORD_MAP[ctaKeyword].keyword}" below and they will receive the link in their DMs. Example: "If you want to learn more about ${CTA_KEYWORD_MAP[ctaKeyword].programName}, just comment ${CTA_KEYWORD_MAP[ctaKeyword].keyword} below and I'll send you the link directly."` : `Tell the viewer to comment a relevant word (e.g., "UPSTREAM", "LIGHTSON", "TEST", or "SLEEP") in the comments and they will receive the link in their DMs. Match the keyword to the video topic. Never say the URL.`} Keep it warm, conversational, and non-pushy.)
 
 All scripts must be written as SPOKEN WORD — no stage directions, no labels, no markdown.
 Write exactly as Dr. Shojai would say it into a camera.`;
@@ -228,6 +236,7 @@ export const videoSessionRouter = router({
         sessionName: z.string().min(1).max(255),
         idea: z.string().min(1),
         platform: z.enum(["tiktok", "instagram", "youtube", "linkedin", "x", "meta"]).default("instagram"),
+        ctaKeyword: z.enum(["UPSTREAM", "LIGHTSON", "TEST", "SLEEP"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -238,6 +247,7 @@ export const videoSessionRouter = router({
         sessionName: input.sessionName,
         idea: input.idea,
         platform: input.platform,
+        ctaKeyword: input.ctaKeyword ?? null,
         status: "scripting",
       });
       return { sessionId: (result as { insertId: number }).insertId };
@@ -251,7 +261,7 @@ export const videoSessionRouter = router({
       if (!db) throw new Error("DB unavailable");
       await db.delete(sessionScripts).where(eq(sessionScripts.sessionId, input.sessionId));
 
-      const generated = await generateScriptsFromIdea(session.idea, session.platform);
+      const generated = await generateScriptsFromIdea(session.idea, session.platform, session.ctaKeyword);
 
       const toInsert = [
         ...generated.hooks.map((text, i) => ({

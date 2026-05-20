@@ -1004,6 +1004,8 @@ export const videoProductionSessions = mysqlTable("video_production_sessions", {
   status: mysqlEnum("vps_status", ["scripting", "ready_to_record", "uploading", "stitching", "done"])
     .default("scripting")
     .notNull(),
+  // ManyChat keyword for CTA (UPSTREAM, LIGHTSON, TEST, SLEEP)
+  ctaKeyword: varchar("ctaKeyword", { length: 50 }),
   // optional link to a video_variant_jobs row created in the splice phase
   variantJobId: int("variantJobId"),
   createdAt: timestamp("vps_createdAt").defaultNow().notNull(),

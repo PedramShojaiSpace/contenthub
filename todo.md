@@ -2804,3 +2804,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add chapter word count progress bar in sidebar below each chapter nav button
 - [x] Progress bar compares chapter.wordCount vs (ebook.wordCountTarget / chapters.length)
 - [x] Color coding: red < 50%, amber 50–80%, green ≥ 80%; shows word count label
+
+## v-cross-module — Webinar × Landing Page × E-Book Integration
+
+- [x] Build crossModuleRouter with 6 feed payload procedures (all 6 directions: webinarToEbook, webinarToLandingPage, landingPageToEbook, landingPageToWebinar, ebookToLandingPage, ebookToWebinar)
+- [x] Register crossModuleRouter in routers.ts
+- [x] WebinarBuilder: "Create E-Book" and "Create Landing Page" buttons in sidebar (step 4 panel)
+- [x] LandingPageGenerator: "E-Book" (BookOpen) and "Webinar" (Video) buttons per page card in history view
+- [x] EBookGenerator: "Landing Page" and "Webinar" buttons per ebook card in the ebook list
+- [x] Wire URL query params (?from=webinar&id=X, ?from=landingPage&id=X, ?from=ebook&id=X) to auto-fill destination forms
+- [x] EBookGenerator: PrefillData interface + useEffect to read query params and pre-fill GenerateEbookDialog
+- [x] LandingPageGenerator: useEffect to read query params and pre-fill contentAngle, offer, customOfferLabel
+- [x] WebinarBuilder: useEffect to read query params and pre-fill topic and CTA
+- [x] Fix buildIntelligenceSummary field names to match actual webinarIntelligence schema columns
+- [x] Add defaultStyleNote to generateEbook input schema (was missing, causing TS error)

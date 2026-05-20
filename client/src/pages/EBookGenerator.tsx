@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,9 @@ import {
   FileSearch,
   History,
   RotateCcw,
+  ArrowUpRight,
+  LayoutTemplate,
+  Video,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { useRef } from "react";
@@ -178,8 +182,33 @@ function EbookStatusBadge({ status }: { status: EbookStatus }) {
 
 // ─── Generate E-Book Dialog ───────────────────────────────────────────────────
 
-function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
-  const [open, setOpen] = useState(false);
+interface PrefillData {
+  title?: string;
+  topic?: string;
+  audience?: string;
+  sourceNarrative?: string;
+  webinarSessionId?: number;
+  landingPageId?: number;
+  fromLabel?: string;
+}
+
+function GenerateEbookDialog({
+  onSuccess,
+  prefillData,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: {
+  onSuccess: () => void;
+  prefillData?: PrefillData;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (controlledOnOpenChange) controlledOnOpenChange(v);
+    else setInternalOpen(v);
+  };
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [audience, setAudience] = useState("health-conscious adults seeking transformation");
@@ -250,6 +279,18 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
   const [outlinePreview, setOutlinePreview] = useState<OutlineChapter[] | null>(null);
   const [editableOutline, setEditableOutline] = useState<OutlineChapter[]>([]);
   const [isPreviewing, setIsPreviewing] = useState(false);
+
+  // Apply prefill data when dialog opens from another module
+  useEffect(() => {
+    if (open && prefillData) {
+      if (prefillData.title) setTitle(prefillData.title);
+      if (prefillData.topic) setTopic(prefillData.topic);
+      if (prefillData.audience) setAudience(prefillData.audience);
+      if (prefillData.sourceNarrative) setSourceNarrative(prefillData.sourceNarrative);
+      if (prefillData.webinarSessionId) setWebinarId(String(prefillData.webinarSessionId));
+      if (prefillData.landingPageId) setLandingPageId(String(prefillData.landingPageId));
+    }
+  }, [open, prefillData]);
 
   const { data: linkables } = trpc.ebook.getLinkableItems.useQuery();
   const previewOutlineMutation = trpc.ebook.previewOutline.useMutation();
@@ -1251,6 +1292,7 @@ function EbookViewer({
     if (!data) return;
     setRegenOutlineLoading(true);
     previewOutline.mutate({
+      title: data.ebook.title,
       topic: data.ebook.topic,
       targetAudience: data.ebook.targetPersona ?? "health-conscious adults seeking transformation",
       chapterCount: data.chapters.length,
@@ -1987,7 +2029,63 @@ function CtaManagementPanel({
 
 export default function EBookGenerator() {
   const [selectedEbookId, setSelectedEbookId] = useState<number | null>(null);
+  const [prefillDialogOpen, setPrefillDialogOpen] = useState(false);
+  const [prefillData, setPrefillData] = useState<{
+    title?: string;
+    topic?: string;
+    audience?: string;
+    sourceNarrative?: string;
+    webinarSessionId?: number;
+    landingPageId?: number;
+    fromLabel?: string;
+  } | null>(null);
+  const [location] = useLocation();
   const utils = trpc.useUtils();
+
+  // Read cross-module query params on mount and fetch pre-fill data
+  const urlParams = new URLSearchParams(window.location.search);
+  const fromModule = urlParams.get("from");
+  const fromId = urlParams.get("id") ? Number(urlParams.get("id")) : null;
+
+  const { data: webinarFeed } = trpc.crossModule.webinarToEbook.useQuery(
+    { webinarSessionId: fromId! },
+    { enabled: fromModule === "webinar" && fromId !== null }
+  );
+  const { data: landingPageFeed } = trpc.crossModule.landingPageToEbook.useQuery(
+    { landingPageId: fromId! },
+    { enabled: fromModule === "landingPage" && fromId !== null }
+  );
+
+  useEffect(() => {
+    if (fromModule === "webinar" && webinarFeed) {
+      setPrefillData({
+        title: webinarFeed.title,
+        topic: webinarFeed.webinarTopic,
+        audience: webinarFeed.targetAudience,
+        sourceNarrative: webinarFeed.sourceNarrative,
+        webinarSessionId: webinarFeed.webinarSessionId,
+        fromLabel: `Webinar: "${webinarFeed.webinarTopic}"`,
+      });
+      setPrefillDialogOpen(true);
+      // Clean up URL params
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [fromModule, webinarFeed]);
+
+  useEffect(() => {
+    if (fromModule === "landingPage" && landingPageFeed) {
+      setPrefillData({
+        title: landingPageFeed.title,
+        topic: landingPageFeed.topic,
+        audience: landingPageFeed.targetAudience,
+        sourceNarrative: landingPageFeed.sourceNarrative,
+        landingPageId: landingPageFeed.landingPageId,
+        fromLabel: `Landing Page: "${landingPageFeed.pageTitle}"`,
+      });
+      setPrefillDialogOpen(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [fromModule, landingPageFeed]);
 
   const { data: ebooks, isLoading } = trpc.ebook.listEbooks.useQuery();
   const { data: books } = trpc.bookLibrary.listBooks.useQuery();
@@ -2035,7 +2133,15 @@ export default function EBookGenerator() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <GenerateEbookDialog onSuccess={() => utils.ebook.listEbooks.invalidate()} />
+            <GenerateEbookDialog
+              onSuccess={() => utils.ebook.listEbooks.invalidate()}
+              prefillData={prefillData ?? undefined}
+              open={prefillDialogOpen}
+              onOpenChange={(o) => {
+                setPrefillDialogOpen(o);
+                if (!o) setPrefillData(null);
+              }}
+            />
           </div>
         </div>
 
@@ -2155,6 +2261,39 @@ export default function EBookGenerator() {
                       Delete
                     </Button>
                   </div>
+                  {/* Cross-module feed buttons */}
+                  {ebook.status === "complete" && (
+                    <div className="flex gap-1.5 pt-1 border-t border-border/30">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1 flex-1 text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `/landing-pages?from=ebook&id=${ebook.id}`;
+                        }}
+                        title="Create a landing page using this e-book as a lead magnet"
+                      >
+                        <LayoutTemplate className="w-3 h-3" />
+                        Landing Page
+                        <ArrowUpRight className="w-2.5 h-2.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1 flex-1 text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `/webinar-builder?from=ebook&id=${ebook.id}`;
+                        }}
+                        title="Create a webinar from this e-book's topic"
+                      >
+                        <Video className="w-3 h-3" />
+                        Webinar
+                        <ArrowUpRight className="w-2.5 h-2.5" />
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

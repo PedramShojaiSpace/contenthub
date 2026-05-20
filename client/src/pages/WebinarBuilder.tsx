@@ -43,8 +43,12 @@ import {
   Zap,
   Play,
   ClipboardList,
+  ArrowUpRight,
+  BookOpen,
+  LayoutTemplate,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
@@ -219,6 +223,22 @@ export default function WebinarBuilder() {
   const thankYouPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const thankYouPollAttemptsRef = useRef(0);
 
+  const [, navigate] = useLocation();
+
+  // Cross-module pre-fill from URL params
+  const urlParams = new URLSearchParams(window.location.search);
+  const fromModule = urlParams.get("from");
+  const fromId = urlParams.get("id") ? Number(urlParams.get("id")) : null;
+
+  const { data: ebookFeed } = trpc.crossModule.ebookToWebinar.useQuery(
+    { ebookId: fromId! },
+    { enabled: fromModule === "ebook" && fromId !== null }
+  );
+  const { data: landingPageFeed } = trpc.crossModule.landingPageToWebinar.useQuery(
+    { landingPageId: fromId! },
+    { enabled: fromModule === "landingPage" && fromId !== null }
+  );
+
   // Queries
   const { data: sessions = [], refetch: refetchSessions } = trpc.webinar.list.useQuery();
   const { data: personas = [] } = trpc.personas.list.useQuery();
@@ -384,6 +404,26 @@ export default function WebinarBuilder() {
   const updateMutation = trpc.webinar.update.useMutation({
     onSuccess: () => refetchSessions(),
   });
+
+  // ─── Cross-module prefill ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (fromModule === "ebook" && ebookFeed) {
+      setTopic(ebookFeed.topic);
+      setCta(ebookFeed.cta);
+      toast.success(`Pre-filled from e-book: "${ebookFeed.ebookTitle}"`, { duration: 4000 });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [fromModule, ebookFeed]);
+
+  useEffect(() => {
+    if (fromModule === "landingPage" && landingPageFeed) {
+      setTopic(landingPageFeed.topic);
+      setCta(landingPageFeed.cta);
+      toast.success(`Pre-filled from landing page: "${landingPageFeed.pageTitle}"`, { duration: 4000 });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [fromModule, landingPageFeed]);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -1482,6 +1522,38 @@ export default function WebinarBuilder() {
               </div>
             )}
           </div>
+
+          {/* Cross-module feed panel */}
+          {activeWebinarId && completedSteps.size > 0 && (
+            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+              <h3 className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
+                Send to...
+              </h3>
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Use this webinar's topic, outline, and audience to pre-fill another tool.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-xs gap-2 bg-background"
+                onClick={() => navigate(`/ebook-generator?from=webinar&id=${activeWebinarId}`)}
+              >
+                <BookOpen className="h-3.5 w-3.5 text-primary" />
+                Create E-Book from this Webinar
+                <ArrowUpRight className="h-3 w-3 ml-auto text-muted-foreground" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-xs gap-2 bg-background"
+                onClick={() => navigate(`/landing-pages?from=webinar&id=${activeWebinarId}`)}
+              >
+                <LayoutTemplate className="h-3.5 w-3.5 text-primary" />
+                Create Landing Page from this Webinar
+                <ArrowUpRight className="h-3 w-3 ml-auto text-muted-foreground" />
+              </Button>
+            </div>
+          )}
 
           {/* Main wizard */}
           <div className="p-6 rounded-xl border border-border/50 bg-card">

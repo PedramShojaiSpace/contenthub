@@ -297,6 +297,8 @@ export const ebookRouter = router({
         // Length and prose style
         lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
         proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
+        // Global default style note — seeded into every chapter's styleNote on creation
+        defaultStyleNote: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

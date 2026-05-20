@@ -52,6 +52,7 @@ import {
   TrendingUp,
   Users,
   X,
+  Video,
   Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -425,6 +426,20 @@ function useGammaPoll(
 export default function LandingPageGenerator() {
   const [, navigate] = useLocation();
 
+  // Cross-module pre-fill from URL params
+  const urlParams = new URLSearchParams(window.location.search);
+  const fromModule = urlParams.get("from");
+  const fromId = urlParams.get("id") ? Number(urlParams.get("id")) : null;
+
+  const { data: webinarFeed } = trpc.crossModule.webinarToLandingPage.useQuery(
+    { webinarSessionId: fromId! },
+    { enabled: fromModule === "webinar" && fromId !== null }
+  );
+  const { data: ebookFeed } = trpc.crossModule.ebookToLandingPage.useQuery(
+    { ebookId: fromId! },
+    { enabled: fromModule === "ebook" && fromId !== null }
+  );
+
   // Step state
   const [step, setStep] = useState<"configure" | "preview" | "history">("configure");
 
@@ -484,6 +499,26 @@ export default function LandingPageGenerator() {
       refetchPages();
     }
   );
+
+  // Apply cross-module prefill data when feed arrives
+  useEffect(() => {
+    if (fromModule === "webinar" && webinarFeed) {
+      setContentAngle(webinarFeed.contentAngle);
+      setSelectedOffer("lights_on_webinar");
+      toast.success(`Pre-filled from webinar: "${webinarFeed.webinarTopic}"`, { duration: 4000 });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [fromModule, webinarFeed]);
+
+  useEffect(() => {
+    if (fromModule === "ebook" && ebookFeed) {
+      setContentAngle(ebookFeed.contentAngle);
+      setSelectedOffer("custom");
+      setCustomOfferLabel(ebookFeed.offerCustomLabel ?? `Free E-Book: ${ebookFeed.ebookTitle}`);
+      toast.success(`Pre-filled from e-book: "${ebookFeed.ebookTitle}"`, { duration: 4000 });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [fromModule, ebookFeed]);
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
 
@@ -1438,6 +1473,26 @@ export default function LandingPageGenerator() {
                             >
                               <Eye className="h-3.5 w-3.5 mr-1" />
                               Open
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/ebook-generator?from=landingPage&id=${page.id}`)}
+                              className="border-[oklch(0.88_0.02_80)] text-[oklch(0.45_0.08_280)] hover:bg-[oklch(0.95_0.03_280)] text-xs"
+                              title="Create an e-book using this landing page's offer and audience"
+                            >
+                              <BookOpen className="h-3.5 w-3.5 mr-1" />
+                              E-Book
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/webinar-builder?from=landingPage&id=${page.id}`)}
+                              className="border-[oklch(0.88_0.02_80)] text-[oklch(0.45_0.08_30)] hover:bg-[oklch(0.95_0.03_30)] text-xs"
+                              title="Create a webinar from this landing page's offer and audience"
+                            >
+                              <Video className="h-3.5 w-3.5 mr-1" />
+                              Webinar
                             </Button>
                             <Button
                               variant="outline"

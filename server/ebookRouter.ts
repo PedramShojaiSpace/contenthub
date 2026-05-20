@@ -393,6 +393,8 @@ export const ebookRouter = router({
             content,
             wordCount,
             status: "complete",
+            // Seed the global default style note into each chapter
+            ...(input.defaultStyleNote ? { styleNote: input.defaultStyleNote } : {}),
           });
         }
 
@@ -1492,6 +1494,8 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
         sourceNarrative: z.string().optional(),
         lengthPreset: z.enum(["concise", "standard", "expansive", "immersive"]).default("standard"),
         proseStyle: z.enum(["direct", "narrative", "academic"]).default("narrative"),
+        // Global default style note — seeded into every chapter's styleNote on creation
+        defaultStyleNote: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1515,6 +1519,7 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
           ...(input.sourceDocumentS3Url ? { sourceDocumentS3Url: input.sourceDocumentS3Url } : {}),
           ...(input.sourceDocumentText ? { sourceDocumentText: input.sourceDocumentText } : {}),
           ...(input.sourceNarrative ? { sourceNarrative: input.sourceNarrative } : {}),
+          ...(input.defaultStyleNote ? { defaultStyleNote: input.defaultStyleNote } : {}),
         })
         .$returningId();
 
@@ -1570,6 +1575,8 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
             content,
             wordCount,
             status: "complete",
+            // Seed the global default style note into each chapter
+            ...(input.defaultStyleNote ? { styleNote: input.defaultStyleNote } : {}),
           });
         }
 
@@ -1596,6 +1603,53 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
           .where(eq(ebooks.id, ebookId));
         throw err;
       }
+    }),
+
+  // Update the stored outline (chapter titles + summaries) for an existing ebook
+  updateEbookOutline: protectedProcedure
+    .input(
+      z.object({
+        ebookId: z.number(),
+        outline: z.array(
+          z.object({
+            number: z.number(),
+            title: z.string(),
+            summary: z.string(),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [ebook] = await db
+        .select({ userId: ebooks.userId })
+        .from(ebooks)
+        .where(eq(ebooks.id, input.ebookId));
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
+      if (ebook.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+
+      // Update the stored outline JSON
+      await db
+        .update(ebooks)
+        .set({ outlineJson: JSON.stringify(input.outline) })
+        .where(eq(ebooks.id, input.ebookId));
+
+      // Update chapter titles and summaries to match the new outline
+      for (const ch of input.outline) {
+        await db
+          .update(ebookChapters)
+          .set({ title: ch.title, summary: ch.summary })
+          .where(
+            and(
+              eq(ebookChapters.ebookId, input.ebookId),
+              eq(ebookChapters.chapterNumber, ch.number)
+            )
+          );
+      }
+
+      return { success: true, updatedChapters: input.outline.length };
     }),
 
   getLinkableItems: protectedProcedure.query(async () => {

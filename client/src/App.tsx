@@ -39,6 +39,7 @@ const RedditIntelligence = lazy(() => import("./pages/RedditIntelligence"));
 const ContentPipeline = lazy(() => import("./pages/ContentPipeline"));
 const PodcastProduction = lazy(() => import("./pages/PodcastProduction"));
 const PodcastEpisodeViewer = lazy(() => import("./pages/PodcastEpisodeViewer"));
+const GuestIntakeForm = lazy(() => import("./pages/GuestIntakeForm"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -85,6 +86,7 @@ function Router() {
         <Route path={"/content-pipeline"} component={ContentPipeline} />
         <Route path={"/podcast-production"} component={PodcastProduction} />
         <Route path={"/podcast-production/:id"} component={PodcastEpisodeViewer} />
+        <Route path={"/podcast-intake/:token"} component={GuestIntakeForm} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

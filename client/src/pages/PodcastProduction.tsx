@@ -25,6 +25,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Copy,
+  Link2,
   Loader2,
   Mic,
   Plus,
@@ -45,6 +47,8 @@ type Episode = {
   guestCompany?: string | null;
   episodeNumber?: number | null;
   status: "pending" | "generating" | "complete" | "failed";
+  intakeStatus?: "not_sent" | "sent" | "submitted" | null;
+  intakeToken?: string | null;
   createdAt: Date;
 };
 
@@ -291,12 +295,21 @@ function EpisodeCard({
   episode,
   onClick,
   onDelete,
+  onShareLink,
 }: {
   episode: Episode;
   onClick: () => void;
   onDelete: () => void;
+  onShareLink: () => void;
 }) {
   const guestLabel = [episode.guestRole, episode.guestCompany].filter(Boolean).join(" · ");
+
+  const intakeBadge =
+    episode.intakeStatus === "submitted"
+      ? { label: "Form submitted", className: "bg-green-100 text-green-700 border-green-200" }
+      : episode.intakeStatus === "sent"
+      ? { label: "Link sent", className: "bg-blue-100 text-blue-700 border-blue-200" }
+      : null;
 
   return (
     <Card
@@ -321,24 +334,41 @@ function EpisodeCard({
               {guestLabel && (
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">{guestLabel}</p>
               )}
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <StatusBadge status={episode.status} />
+                {intakeBadge && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${intakeBadge.className}`}>
+                    {intakeBadge.label}
+                  </span>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {new Date(episode.createdAt).toLocaleDateString()}
                 </span>
               </div>
             </div>
           </div>
-          <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            title="Delete episode"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShareLink();
+              }}
+              title="Get guest intake link"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              title="Delete episode"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -361,6 +391,25 @@ export default function PodcastProduction() {
     onError: (err) => toast.error(err.message),
   });
 
+  const generateIntakeLink = trpc.podcast.generateIntakeLink.useMutation({
+    onSuccess: (data) => {
+      utils.podcast.getEpisodes.invalidate();
+      navigator.clipboard.writeText(data.url).then(() => {
+        toast.success("Intake link copied to clipboard!", {
+          description: data.url,
+          duration: 5000,
+        });
+      }).catch(() => {
+        // Fallback: show the URL in a toast so user can copy manually
+        toast.info("Intake link generated", {
+          description: data.url,
+          duration: 10000,
+        });
+      });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   function handleCreated(id: number) {
     navigate(`/podcast-production/${id}`);
   }
@@ -368,6 +417,10 @@ export default function PodcastProduction() {
   function handleDelete(id: number, name: string) {
     if (!confirm(`Delete episode prep for "${name}"? This cannot be undone.`)) return;
     deleteEpisode.mutate({ id });
+  }
+
+  function handleShareLink(id: number) {
+    generateIntakeLink.mutate({ id, origin: window.location.origin });
   }
 
   const completeCount = episodes?.filter((e) => e.status === "complete").length ?? 0;
@@ -435,6 +488,7 @@ export default function PodcastProduction() {
               episode={episode as Episode}
               onClick={() => navigate(`/podcast-production/${episode.id}`)}
               onDelete={() => handleDelete(episode.id, episode.guestName)}
+              onShareLink={() => handleShareLink(episode.id)}
             />
           ))}
         </div>

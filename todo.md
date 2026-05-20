@@ -2908,3 +2908,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add "Share Intake Form" button to PodcastEpisodeViewer header
 - [x] Register /podcast-intake/:token route in App.tsx
 - [x] Write vitest tests for new intake procedures (8 new tests, 358 total passing)
+
+## Podcast Enhancements (v2)
+- [ ] Add "Send via Email" mailto button to episode cards (PodcastProduction) with pre-drafted intro paragraph
+- [ ] Add "Send via Email" mailto button to PodcastEpisodeViewer header
+- [ ] Wire notifyOwner in submitIntakeForm so owner gets in-app alert when guest submits
+- [ ] Add generateShowNotes procedure to podcastRouter (200-word summary, 3 key takeaways, CTA)
+- [ ] Add showNotes field to podcast_episodes schema and run db:push
+- [ ] Add "Generate Show Notes" button and rendered output tab in PodcastEpisodeViewer
+- [ ] Write vitest tests for generateShowNotes and notifyOwner wiring
+
+## Podcast Enhancements v2 (May 2026)
+- [x] Add Mail icon and "Send Intake Form" mailto button to PodcastProduction episode cards
+- [x] Add "Send Intake Form" mailto button to PodcastEpisodeViewer header (alongside Copy Link)
+- [x] Wire notifyOwner in submitIntakeForm — owner gets in-app alert when guest submits
+- [x] Add showNotes column to podcast_episodes schema (migration 0076)
+- [x] Add generateShowNotes procedure to podcastRouter (200-word summary, 3 takeaways, CTA)
+- [x] Add Show Notes tab to PodcastEpisodeViewer with Generate/Regenerate/Copy buttons
+- [x] Write vitest tests: notifyOwner call verification + 4 generateShowNotes tests (363 total passing)

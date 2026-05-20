@@ -1380,6 +1380,9 @@ export const podcastEpisodes = mysqlTable("podcast_episodes", {
   // Optional episode number for display
   episodeNumber: int("episodeNumber"),
 
+  // Show notes — generated separately from the BINGE report
+  showNotes: text("showNotes"),
+
   // Guest intake form — public shareable link
   intakeToken: varchar("intakeToken", { length: 64 }).unique(),   // UUID v4, used in the public URL
   intakeSubmittedAt: timestamp("intakeSubmittedAt"),               // set when guest submits the form

@@ -28,6 +28,7 @@ import {
   Copy,
   Link2,
   Loader2,
+  Mail,
   Mic,
   Plus,
   Radio,
@@ -296,11 +297,13 @@ function EpisodeCard({
   onClick,
   onDelete,
   onShareLink,
+  onEmailLink,
 }: {
   episode: Episode;
   onClick: () => void;
   onDelete: () => void;
   onShareLink: () => void;
+  onEmailLink: () => void;
 }) {
   const guestLabel = [episode.guestRole, episode.guestCompany].filter(Boolean).join(" · ");
 
@@ -352,9 +355,19 @@ function EpisodeCard({
               className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary"
               onClick={(e) => {
                 e.stopPropagation();
+                onEmailLink();
+              }}
+              title="Send intake form via email"
+            >
+              <Mail className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary"
+              onClick={(e) => {
+                e.stopPropagation();
                 onShareLink();
               }}
-              title="Get guest intake link"
+              title="Copy intake link to clipboard"
             >
               <Link2 className="w-3.5 h-3.5" />
             </button>
@@ -423,6 +436,35 @@ export default function PodcastProduction() {
     generateIntakeLink.mutate({ id, origin: window.location.origin });
   }
 
+  function handleEmailLink(episode: Episode) {
+    // First ensure we have a token by generating the link, then open mailto
+    generateIntakeLink.mutate(
+      { id: episode.id, origin: window.location.origin },
+      {
+        onSuccess: (data) => {
+          const guestLabel = episode.guestName +
+            (episode.guestRole ? `, ${episode.guestRole}` : "") +
+            (episode.guestCompany ? ` at ${episode.guestCompany}` : "");
+          const subject = encodeURIComponent(
+            `Podcast Guest Intake Form — The Urban Monk Podcast`
+          );
+          const body = encodeURIComponent(
+            `Hi ${episode.guestName.split(" ")[0]},\n\n` +
+            `We're looking forward to having you on The Urban Monk Podcast! ` +
+            `To help us prepare the best possible conversation, please take a few minutes to fill out our guest intake form:\n\n` +
+            `${data.url}\n\n` +
+            `The form asks for a brief bio, any topics you'd like to explore, and background context that will help Dr. Pedram Shojai craft a deeply tailored interview.\n\n` +
+            `If you have any questions, just reply to this email.\n\n` +
+            `Thank you — we can't wait to record with you!\n\n` +
+            `Warm regards,\n` +
+            `The Urban Monk Productions Team`
+          );
+          window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
+        },
+      }
+    );
+  }
+
   const completeCount = episodes?.filter((e) => e.status === "complete").length ?? 0;
   const pendingCount = episodes?.filter((e) => e.status !== "complete").length ?? 0;
 
@@ -489,6 +531,7 @@ export default function PodcastProduction() {
               onClick={() => navigate(`/podcast-production/${episode.id}`)}
               onDelete={() => handleDelete(episode.id, episode.guestName)}
               onShareLink={() => handleShareLink(episode.id)}
+              onEmailLink={() => handleEmailLink(episode as Episode)}
             />
           ))}
         </div>

@@ -2938,3 +2938,5 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Confirmed 20 DashboardLayout pages have sidebar nav
 - [x] Confirmed ContentPipeline, EBookGenerator, PodcastProduction, PodcastEpisodeViewer, IngestInbox, ManyChatWizard, RedditIntelligence already had back navigation
 - [x] Verified podcast intake form flow end-to-end
+
+- [x] Fix Export Teleprompter DOCX button missing: regenerateCta now auto-approves new CTA; Export DOCX button added directly to Ready to Record callout (no longer depends on allApproved)

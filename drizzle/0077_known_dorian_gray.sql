@@ -1,0 +1,1 @@
+ALTER TABLE `video_production_sessions` ADD `ctaKeyword` varchar(50);

@@ -92,6 +92,10 @@ vi.mock("./db", () => ({
   getDb: vi.fn(),
 }));
 
+vi.mock("./_core/notification", () => ({
+  notifyOwner: vi.fn().mockResolvedValue(true),
+}));
+
 vi.mock("./_core/llm", () => ({
   invokeLLM: vi.fn().mockResolvedValue({
     choices: [
@@ -414,6 +418,102 @@ describe("podcastRouter", () => {
           backgroundText: "Short",
         })
       ).rejects.toThrow();
+    });
+
+    it("calls notifyOwner when a guest submits the intake form", async () => {
+      const episodeWithToken = {
+        ...mockEpisode,
+        intakeToken: "notify-test-token",
+        intakeStatus: "sent" as const,
+        intakeSubmittedAt: null,
+      };
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([episodeWithToken as typeof mockEpisode]));
+
+      const { notifyOwner } = await import("./_core/notification");
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller({} as TrpcContext);
+
+      await caller.podcast.submitIntakeForm({
+        token: "notify-test-token",
+        guestName: "Dr. Mark Hyman",
+        backgroundText: "Detailed bio with more than ten characters here.",
+      });
+
+      // notifyOwner is called asynchronously (fire-and-forget), so we check it was invoked
+      // Allow a tick for the async call to be registered
+      await new Promise((r) => setTimeout(r, 10));
+      expect(notifyOwner).toHaveBeenCalledOnce();
+      const callArgs = (notifyOwner as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(callArgs.title).toContain("Intake form submitted");
+      expect(callArgs.title).toContain("Dr. Mark Hyman");
+    });
+  });
+
+  describe("podcast.generateShowNotes", () => {
+    it("returns showNotes string from LLM response", async () => {
+      const completedEpisode = {
+        ...mockEpisode,
+        status: "complete" as const,
+        reportMarkdown: "## 1. GUEST DOSSIER\nDossier content.\n## 2. THE BIG PAIN\nPain content.",
+      };
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([completedEpisode]));
+
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller(createAuthContext());
+
+      const result = await caller.podcast.generateShowNotes({ episodeId: 1 });
+
+      expect(result.showNotes).toBeDefined();
+      expect(typeof result.showNotes).toBe("string");
+      expect(result.showNotes.length).toBeGreaterThan(0);
+    });
+
+    it("throws BAD_REQUEST when the episode has no report yet", async () => {
+      // mockEpisode has status 'pending' and no reportMarkdown
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller(createAuthContext());
+
+      await expect(
+        caller.podcast.generateShowNotes({ episodeId: 1 })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
+    it("throws NOT_FOUND when episode does not belong to user", async () => {
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([]));
+
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller(createAuthContext());
+
+      await expect(
+        caller.podcast.generateShowNotes({ episodeId: 9999 })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("calls invokeLLM with a prompt referencing the guest name and show notes sections", async () => {
+      const completedEpisode = {
+        ...mockEpisode,
+        status: "complete" as const,
+        reportMarkdown: "## 1. GUEST DOSSIER\nDossier content.",
+      };
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([completedEpisode]));
+
+      const { invokeLLM } = await import("./_core/llm");
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller(createAuthContext());
+
+      await caller.podcast.generateShowNotes({ episodeId: 1 });
+
+      expect(invokeLLM).toHaveBeenCalledOnce();
+      const callArgs = (invokeLLM as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const userMsg = callArgs.messages.find((m: { role: string }) => m.role === "user");
+      expect(userMsg.content).toContain("Episode Summary");
+      expect(userMsg.content).toContain("Key Takeaways");
+      expect(userMsg.content).toContain("Connect & Go Deeper");
+      expect(userMsg.content).toContain("Dr. Mark Hyman");
     });
   });
 });

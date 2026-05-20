@@ -1,0 +1,1 @@
+ALTER TABLE `podcast_episodes` ADD `showNotes` text;

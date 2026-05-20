@@ -17,6 +17,7 @@ import { getDb } from "./db";
 import { podcastEpisodes } from "../drizzle/schema";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { notifyOwner } from "./_core/notification";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -519,6 +520,22 @@ export const podcastRouter = router({
         .where(eq(podcastEpisodes.intakeToken, input.token));
 
       if (updated) {
+        // Notify the owner that a guest has submitted their intake form
+        notifyOwner({
+          title: `🎙️ Intake form submitted: ${updated.guestName}`,
+          content: [
+            `**Guest:** ${updated.guestName}${updated.guestRole ? ` — ${updated.guestRole}` : ""}${updated.guestCompany ? ` at ${updated.guestCompany}` : ""}`,
+            `**Episode:** ${updated.showName ?? "The Urban Monk Podcast"}`,
+            updated.whyNow ? `**Why now:** ${updated.whyNow}` : "",
+            ``,
+            `The BINGE research report is now generating in the background.`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        }).catch(() => {
+          // Notification failure is non-critical — swallow silently
+        });
+
         // Fire-and-forget: generate the report in the background
         (async () => {
           try {
@@ -579,5 +596,94 @@ export const podcastRouter = router({
       }
 
       return { success: true, message: "Thank you! Your information has been submitted. We'll be in touch soon." };
+    }),
+
+  /**
+   * generateShowNotes
+   * Generates a concise, paste-ready show notes block for a completed episode:
+   *   - 200-word summary paragraph
+   *   - 3 key takeaways (bullet points)
+   *   - CTA paragraph pointing to the Urban Monk Academy
+   * Saves the result to the showNotes column.
+   */
+  generateShowNotes: protectedProcedure
+    .input(z.object({ episodeId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [episode] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(and(eq(podcastEpisodes.id, input.episodeId), eq(podcastEpisodes.userId, ctx.user.id)));
+
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found." });
+
+      if (episode.status !== "complete" || !episode.reportMarkdown) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Generate the BINGE report first before creating show notes.",
+        });
+      }
+
+      const guestLabel = [episode.guestName, episode.guestRole, episode.guestCompany]
+        .filter(Boolean)
+        .join(", ");
+
+      const prompt = [
+        `You are writing show notes for a podcast episode of The Urban Monk Podcast, hosted by Dr. Pedram Shojai, OMD.`,
+        ``,
+        `Guest: ${guestLabel}`,
+        episode.whyNow ? `Why this guest, why now: ${episode.whyNow}` : "",
+        ``,
+        `Here is the full BINGE-framework research report for this episode:`,
+        `---`,
+        episode.reportMarkdown,
+        `---`,
+        ``,
+        `Using the report above, write show notes in this exact structure:`,
+        ``,
+        `## Episode Summary`,
+        `Write a compelling 200-word summary paragraph in Pedram's warm, direct, wisdom-forward voice. `,
+        `Highlight the guest's expertise, the core problem they solve, and 1-2 surprising insights from the conversation.`,
+        `No bullet points in this section — flowing prose only.`,
+        ``,
+        `## Key Takeaways`,
+        `List exactly 3 key takeaways as concise, actionable bullet points. Each should be a complete sentence.`,
+        `Format as:`,
+        `- [Takeaway 1]`,
+        `- [Takeaway 2]`,
+        `- [Takeaway 3]`,
+        ``,
+        `## Connect & Go Deeper`,
+        `Write a 2-3 sentence CTA paragraph inviting listeners to join the Urban Monk Academy at theurbanmonk.com/academy `,
+        `for deeper teachings, community, and tools to apply what they learned in this episode.`,
+        `Keep it warm and genuine — not salesy.`,
+        ``,
+        `Output ONLY the three sections above with their ## headers. No preamble, no meta-commentary.`,
+      ]
+        .filter((l) => l !== undefined)
+        .join("\n");
+
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert podcast producer and copywriter. You write show notes that are engaging, specific, and conversion-focused without being pushy.",
+          },
+          { role: "user", content: prompt },
+        ],
+      });
+
+      const rawContent = response?.choices?.[0]?.message?.content ?? "";
+      const showNotes: string = typeof rawContent === "string" ? rawContent : "";
+
+      await db
+        .update(podcastEpisodes)
+        .set({ showNotes })
+        .where(eq(podcastEpisodes.id, input.episodeId));
+
+      return { showNotes };
     }),
 });

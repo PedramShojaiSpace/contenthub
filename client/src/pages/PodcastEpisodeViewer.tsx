@@ -29,6 +29,7 @@ import {
   FileText,
   Link2,
   Loader2,
+  Mail,
   MessageSquare,
   Mic,
   RefreshCw,
@@ -143,6 +144,14 @@ export default function PodcastEpisodeViewer() {
     onError: (err) => toast.error(`Generation failed: ${err.message}`),
   });
 
+  const generateShowNotes = trpc.podcast.generateShowNotes.useMutation({
+    onSuccess: () => {
+      utils.podcast.getEpisode.invalidate({ id: episodeId });
+      toast.success("Show notes generated!");
+    },
+    onError: (err) => toast.error(`Show notes failed: ${err.message}`),
+  });
+
   const generateIntakeLink = trpc.podcast.generateIntakeLink.useMutation({
     onSuccess: (data) => {
       utils.podcast.getEpisode.invalidate({ id: episodeId });
@@ -224,6 +233,44 @@ export default function PodcastEpisodeViewer() {
             size="sm"
             className="gap-2"
             disabled={generateIntakeLink.isPending}
+            onClick={() =>
+              generateIntakeLink.mutate(
+                { id: episodeId, origin: window.location.origin },
+                {
+                  onSuccess: (data) => {
+                    const firstName = episode.guestName.split(" ")[0];
+                    const subject = encodeURIComponent(
+                      `Podcast Guest Intake Form — The Urban Monk Podcast`
+                    );
+                    const body = encodeURIComponent(
+                      `Hi ${firstName},\n\n` +
+                      `We're looking forward to having you on The Urban Monk Podcast! ` +
+                      `To help us prepare the best possible conversation, please take a few minutes to fill out our guest intake form:\n\n` +
+                      `${data.url}\n\n` +
+                      `The form asks for a brief bio, any topics you'd like to explore, and background context that will help Dr. Pedram Shojai craft a deeply tailored interview.\n\n` +
+                      `If you have any questions, just reply to this email.\n\n` +
+                      `Thank you — we can't wait to record with you!\n\n` +
+                      `Warm regards,\n` +
+                      `The Urban Monk Productions Team`
+                    );
+                    window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
+                  },
+                }
+              )
+            }
+          >
+            {generateIntakeLink.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Mail className="w-4 h-4" />
+            )}
+            Send Intake Form
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={generateIntakeLink.isPending}
             onClick={() => generateIntakeLink.mutate({ id: episodeId, origin: window.location.origin })}
           >
             {generateIntakeLink.isPending ? (
@@ -231,7 +278,7 @@ export default function PodcastEpisodeViewer() {
             ) : (
               <Link2 className="w-4 h-4" />
             )}
-            Share Intake Form
+            Copy Link
           </Button>
           <Button
             variant="outline"
@@ -349,6 +396,10 @@ export default function PodcastEpisodeViewer() {
             <TabsTrigger value="soundbites" className="gap-1.5 text-xs sm:text-sm">
               <Volume2 className="w-3.5 h-3.5" />
               Soundbites
+            </TabsTrigger>
+            <TabsTrigger value="shownotes" className="gap-1.5 text-xs sm:text-sm">
+              <MessageSquare className="w-3.5 h-3.5" />
+              Show Notes
             </TabsTrigger>
             <TabsTrigger value="full" className="gap-1.5 text-xs sm:text-sm">
               <FileText className="w-3.5 h-3.5" />
@@ -470,6 +521,84 @@ export default function PodcastEpisodeViewer() {
                   <h2 className="font-semibold text-base">Full Report</h2>
                 </div>
                 <SectionContent markdown={episode.reportMarkdown ?? ""} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── Show Notes ──────────────────────────────────────────── */}
+          <TabsContent value="shownotes">
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                    <h2 className="font-semibold text-base">Show Notes</h2>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {episode.showNotes && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => {
+                          navigator.clipboard.writeText(episode.showNotes ?? "").then(() =>
+                            toast.success("Show notes copied to clipboard!")
+                          );
+                        }}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Copy
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      className="gap-2"
+                      disabled={generateShowNotes.isPending}
+                      onClick={() => {
+                        if (
+                          episode.showNotes &&
+                          !confirm("Regenerate show notes? The existing version will be overwritten.")
+                        )
+                          return;
+                        generateShowNotes.mutate({ episodeId });
+                      }}
+                    >
+                      {generateShowNotes.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Zap className="w-3.5 h-3.5" />
+                      )}
+                      {episode.showNotes ? "Regenerate Show Notes" : "Generate Show Notes"}
+                    </Button>
+                  </div>
+                </div>
+
+                {generateShowNotes.isPending ? (
+                  <div className="py-12 text-center">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+                    <p className="text-muted-foreground text-sm">
+                      Claude is writing your show notes… typically 15–30 seconds.
+                    </p>
+                  </div>
+                ) : episode.showNotes ? (
+                  <SectionContent markdown={episode.showNotes} />
+                ) : (
+                  <div className="py-12 text-center">
+                    <MessageSquare className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
+                    <p className="text-muted-foreground text-sm mb-4">
+                      Generate paste-ready show notes — a 200-word summary, 3 key takeaways, and a CTA
+                      paragraph for your podcast host’s description field.
+                    </p>
+                    <Button
+                      onClick={() => generateShowNotes.mutate({ episodeId })}
+                      disabled={generateShowNotes.isPending}
+                      className="gap-2"
+                    >
+                      <Zap className="w-4 h-4" />
+                      Generate Show Notes
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

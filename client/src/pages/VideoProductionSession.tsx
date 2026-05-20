@@ -53,6 +53,7 @@ import {
   Video,
   Clock,
   ArrowRight,
+  ArrowLeft,
   Copy,
   MessageSquare,
   Link2,
@@ -871,6 +872,10 @@ export default function VideoProductionSession() {
         {/* Page header */}
         {view === "list" && (
           <div className="mb-8">
+            <a href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Hub
+            </a>
             <div className="flex items-start justify-between gap-4 mb-2">
               <div>
                 <h1 className="text-3xl font-bold text-foreground">Video Production Studio</h1>

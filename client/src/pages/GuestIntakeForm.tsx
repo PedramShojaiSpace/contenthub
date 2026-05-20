@@ -365,6 +365,16 @@ export default function GuestIntakeForm() {
           </CardContent>
         </Card>
       </main>
+      <footer className="text-center py-6">
+        <a
+          href="https://theurbanmonk.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
+        >
+          theurbanmonk.com
+        </a>
+      </footer>
     </div>
   );
 }

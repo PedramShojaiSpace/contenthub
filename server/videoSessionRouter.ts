@@ -417,13 +417,14 @@ export const videoSessionRouter = router({
           eq(sessionScripts.scriptType, "cta")
         ));
 
-      // Insert the fresh CTA
+      // Insert the fresh CTA — auto-approved since the user explicitly requested regeneration
       await db.insert(sessionScripts).values({
         sessionId: input.sessionId,
         scriptType: "cta",
         scriptOrder: 0,
         scriptText: generated.cta,
-        approved: false,
+        approved: true,
+        approvedAt: new Date(),
       });
 
       return { ok: true };

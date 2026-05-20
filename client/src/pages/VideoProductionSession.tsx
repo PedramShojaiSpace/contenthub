@@ -718,22 +718,31 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
       )}
 
       {/* Next step callout */}
-      {allApproved && session.status === "ready_to_record" && (
+      {session.status === "ready_to_record" && (
         <div className="bg-amber-50 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
           <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1">
             <p className="text-amber-700 font-semibold text-sm">Ready to Record</p>
             <p className="text-amber-600/80 text-sm mt-1">
-              Export the DOCX above for your teleprompter app, record your clips, then come back to the{" "}
+              Export the DOCX for your teleprompter app, record your clips, then come back to the{" "}
               <strong>Video Variants</strong> page to upload and stitch them into final variants.
             </p>
-            <Button
-              size="sm"
-              className="mt-3 bg-amber-600 hover:bg-amber-700 text-white h-8"
-              onClick={() => window.location.href = `/video-variants?session=${encodeURIComponent(session.sessionName)}`}
-            >
-              <ArrowRight className="w-3 h-3 mr-1" /> Go to Video Variants →
-            </Button>
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <Button
+                size="sm"
+                className="bg-sky-600 hover:bg-sky-700 text-white h-8"
+                onClick={handleExportDocx}
+              >
+                <Download className="w-3 h-3 mr-1" /> Export Teleprompter DOCX
+              </Button>
+              <Button
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white h-8"
+                onClick={() => window.location.href = `/video-variants?session=${encodeURIComponent(session.sessionName)}`}
+              >
+                <ArrowRight className="w-3 h-3 mr-1" /> Go to Video Variants →
+              </Button>
+            </div>
           </div>
         </div>
       )}

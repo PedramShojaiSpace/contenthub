@@ -106,6 +106,9 @@ const TOPIC_CTAS: Record<string, string> = {
   consciousness: "If you're curious about the deeper nature of mind, awareness, and what it means to be fully awake — not just alive — the Lights On program is where that inquiry goes deep. lightson.theurbanmonk.com",
   enlightenment: "If you're ready to move beyond information and into genuine transformation — the kind that changes how you see everything — the Lights On program is where that path begins. lightson.theurbanmonk.com",
   metaphysics: "If you want to explore the big questions — what reality actually is, what mind truly is, and how to live from that understanding — the Lights On program is the place for that conversation. lightson.theurbanmonk.com",
+  stress_physiology: "If you're ready to understand what chronic stress is actually doing to your hormones, your gut, and your brain — and build a real protocol to reverse it — the Upstream program is where that work happens. upstream.theurbanmonk.com",
+  biohacking: "If you want to go beyond the gadgets and build a data-driven, clinically grounded approach to optimizing your biology, start with the Gateway to Health test. It tells you exactly where to focus. gth.theurbanmonk.com",
+  ancient_practices: "If you're ready to take these ancient practices off the page and into your daily life — with the science to back them up — the Lights On program is where that integration happens. lightson.theurbanmonk.com",
 };
 
 // ─── Commentary Generator ─────────────────────────────────────────────────────

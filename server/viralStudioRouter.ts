@@ -216,6 +216,7 @@ export const generateScript = protectedProcedure
       cta: z.string().optional(), // e.g. "Comment MONK to get the free guide"
       socialSeoKeywords: z.array(z.string()).optional(),
       targetPersona: z.string().optional(),
+      targetProgram: z.enum(["lightson", "upstream", "gateway", "sleep", "none"]).optional(),
     })
   )
   .mutation(async ({ input }) => {
@@ -230,6 +231,15 @@ export const generateScript = protectedProcedure
     const ctaContext = input.cta
       ? `\nDM Automation CTA: "${input.cta}" — this MUST be the final line of the script, spoken naturally.`
       : "";
+    const PROGRAM_CTA_MAP: Record<string, string> = {
+      lightson: "Lights On program — visit lightson.theurbanmonk.com",
+      upstream: "Upstream program — visit upstream.theurbanmonk.com",
+      gateway: "Gateway to Health test — visit gth.theurbanmonk.com",
+      sleep: "Restorative Sleep Masterclass — visit theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay",
+    };
+    const programContext = input.targetProgram && input.targetProgram !== "none" && PROGRAM_CTA_MAP[input.targetProgram]
+      ? `\nTarget program for this video: ${PROGRAM_CTA_MAP[input.targetProgram]}. The CTA section MUST reference this program and URL naturally — do not just append a URL, weave it into the call to action as Pedram would say it.`
+      : "";
 
     const platformNotes = {
       tiktok: "TikTok: fast-paced, conversational, direct to camera. No pauses. Hook in first 2 seconds.",
@@ -243,7 +253,7 @@ export const generateScript = protectedProcedure
 Topic: "${input.topic}"
 Hook (first line — use exactly): "${input.hook}"
 Platform: ${platformNotes}
-Target length: ~${wordCount} words (~${input.targetLengthSeconds} seconds spoken)${personaContext}${keywordContext}${ctaContext}
+Target length: ~${wordCount} words (~${input.targetLengthSeconds} seconds spoken)${personaContext}${keywordContext}${ctaContext}${programContext}
 
 Write a complete, ready-to-film video script using this EXACT structure:
 

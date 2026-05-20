@@ -23,6 +23,14 @@ const PLATFORMS = [
   { value: "linkedin", label: "LinkedIn Video (90s)" },
 ];
 
+const PROGRAMS = [
+  { value: "none", label: "No specific program", url: "", color: "text-muted-foreground" },
+  { value: "lightson", label: "Lights On", url: "lightson.theurbanmonk.com", color: "text-amber-700" },
+  { value: "upstream", label: "Upstream", url: "upstream.theurbanmonk.com", color: "text-blue-700" },
+  { value: "gateway", label: "Gateway to Health Test", url: "gth.theurbanmonk.com", color: "text-green-700" },
+  { value: "sleep", label: "Sleep Masterclass", url: "theacademy.theurbanmonk.com/...", color: "text-indigo-700" },
+];
+
 const LENGTHS = [
   { value: 30, label: "30 seconds" },
   { value: 60, label: "60 seconds" },
@@ -237,6 +245,7 @@ function BatchQueuePanel({
   cta,
   seoKeywords,
   persona,
+  targetProgram,
   onClearBatch,
   onCopy,
   autoStart,
@@ -248,6 +257,7 @@ function BatchQueuePanel({
   cta: string;
   seoKeywords: string;
   persona?: string;
+  targetProgram?: string;
   onClearBatch: () => void;
   onCopy: (text: string) => void;
   autoStart?: boolean;
@@ -341,6 +351,11 @@ function BatchQueuePanel({
       const safePlatform: ValidPlatform = (validPlatforms as readonly string[]).includes(platform)
         ? (platform as ValidPlatform)
         : "tiktok";
+      const validPrograms = ["lightson", "upstream", "gateway", "sleep"] as const;
+      type ValidProgram = typeof validPrograms[number];
+      const safeProgram: ValidProgram | undefined = targetProgram && (validPrograms as readonly string[]).includes(targetProgram)
+        ? (targetProgram as ValidProgram)
+        : undefined;
       const result = await generateMutation.mutateAsync({
         topic: topic.trim(),
         hook: item.hook,
@@ -349,6 +364,7 @@ function BatchQueuePanel({
         cta: cta || undefined,
         socialSeoKeywords: seoKeywords ? seoKeywords.split(",").map(k => k.trim()).filter(Boolean) : undefined,
         targetPersona: persona || undefined,
+        targetProgram: safeProgram,
       });
       setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "done", result: result as unknown as ScriptResult } : q));
       setExpandedIndex(index);
@@ -578,6 +594,7 @@ export default function ScriptGenerator() {
   const [cta, setCta] = useState("Comment 'MONK' below and I'll send you the full guide");
   const [seoKeywords, setSeoKeywords] = useState("");
   const [persona, setPersona] = useState(prefillBatchPersona);
+  const [targetProgram, setTargetProgram] = useState<"lightson" | "upstream" | "gateway" | "sleep" | "none">("none");
   const [result, setResult] = useState<ScriptResult | null>(null);
   const [prefillBanner, setPrefillBanner] = useState(!!prefillHook && !prefillBatchRaw);
   const [topFrameworkBanner, setTopFrameworkBanner] = useState(!!prefillFramework);
@@ -663,6 +680,7 @@ export default function ScriptGenerator() {
       cta: cta || undefined,
       socialSeoKeywords: seoKeywords ? seoKeywords.split(",").map(k => k.trim()).filter(Boolean) : undefined,
       targetPersona: persona || undefined,
+      targetProgram: targetProgram !== "none" ? targetProgram : undefined,
     });
   };
 
@@ -855,6 +873,27 @@ export default function ScriptGenerator() {
             />
           </div>
 
+          {/* Target Program dropdown */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Target Program <span className="text-muted-foreground font-normal">(sets the CTA URL in the script)</span></Label>
+            <Select value={targetProgram} onValueChange={(v) => setTargetProgram(v as typeof targetProgram)}>
+              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PROGRAMS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    <span className={p.color}>{p.label}</span>
+                    {p.url && <span className="ml-2 text-[10px] text-muted-foreground">{p.url}</span>}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {targetProgram !== "none" && (
+              <p className="text-[11px] text-muted-foreground">
+                The CTA section will direct viewers to <strong>{PROGRAMS.find(p => p.value === targetProgram)?.url}</strong>
+              </p>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Social SEO Keywords <span className="text-muted-foreground font-normal">(comma-separated)</span></Label>
             <Input
@@ -960,6 +999,7 @@ export default function ScriptGenerator() {
           cta={cta}
           seoKeywords={seoKeywords}
           persona={persona}
+          targetProgram={targetProgram}
           onClearBatch={() => setBatchItems(null)}
           onCopy={handleCopy}
           autoStart={!!(prefillBatchRaw && (prefillBatchTopic || prefillTopic))}

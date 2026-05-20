@@ -99,6 +99,7 @@ import { bookLibraryRouter } from "./bookLibraryRouter";
 import { ebookRouter } from "./ebookRouter";
 import { crossModuleRouter } from "./crossModuleRouter";
 import { redditRouter } from "./redditRouter";
+import { podcastRouter } from "./podcastRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls } from "./urlScrubber";
@@ -356,6 +357,7 @@ export const appRouter = router({
   ebook: ebookRouter,
   crossModule: crossModuleRouter,
   reddit: redditRouter,
+  podcast: podcastRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

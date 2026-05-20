@@ -37,6 +37,8 @@ const BookLibrary = lazy(() => import("./pages/BookLibrary"));
 const EBookGenerator = lazy(() => import("./pages/EBookGenerator"));
 const RedditIntelligence = lazy(() => import("./pages/RedditIntelligence"));
 const ContentPipeline = lazy(() => import("./pages/ContentPipeline"));
+const PodcastProduction = lazy(() => import("./pages/PodcastProduction"));
+const PodcastEpisodeViewer = lazy(() => import("./pages/PodcastEpisodeViewer"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -81,6 +83,8 @@ function Router() {
         <Route path={"/ebook-generator"} component={EBookGenerator} />
         <Route path={"/reddit-intelligence"} component={RedditIntelligence} />
         <Route path={"/content-pipeline"} component={ContentPipeline} />
+        <Route path={"/podcast-production"} component={PodcastProduction} />
+        <Route path={"/podcast-production/:id"} component={PodcastEpisodeViewer} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

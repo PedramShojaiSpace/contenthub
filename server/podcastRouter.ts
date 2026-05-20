@@ -1,0 +1,396 @@
+/**
+ * podcastRouter.ts
+ *
+ * Handles all Podcast Production operations:
+ *  - createEpisode   — save guest intake form
+ *  - generateReport  — call Claude with the BINGE-framework prompt and store sections
+ *  - getEpisodes     — list all episodes for the current user
+ *  - getEpisode      — get a single episode by ID
+ *  - updateEpisode   — update intake fields (before report is generated)
+ *  - deleteEpisode   — remove an episode
+ */
+
+import { TRPCError } from "@trpc/server";
+import { desc, eq, and } from "drizzle-orm";
+import { z } from "zod";
+import { getDb } from "./db";
+import { podcastEpisodes } from "../drizzle/schema";
+import { protectedProcedure, router } from "./_core/trpc";
+import { invokeLLM } from "./_core/llm";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Build the full BINGE-framework prompt for Claude.
+ * Mirrors the user's base prompt exactly, filling in the episode context fields.
+ */
+function buildBingePrompt(params: {
+  guestName: string;
+  guestRole?: string | null;
+  guestCompany?: string | null;
+  whyNow?: string | null;
+  backgroundUrls?: string | null;
+  backgroundText?: string | null;
+  episodeLengthMin: number;
+  showName: string;
+  showDescription?: string | null;
+  audienceDescription?: string | null;
+}): string {
+  const guestLabel = [params.guestName, params.guestRole, params.guestCompany]
+    .filter(Boolean)
+    .join(", ");
+
+  const showLine = params.showDescription
+    ? `${params.showName} — ${params.showDescription}`
+    : params.showName;
+
+  const audienceLine =
+    params.audienceDescription ||
+    "Health-conscious adults seeking practical wisdom on longevity, mindfulness, and peak performance.";
+
+  const backgroundSection =
+    [
+      params.backgroundUrls
+        ? `Background URLs to research:\n${params.backgroundUrls}`
+        : null,
+      params.backgroundText
+        ? `Additional background / bio notes:\n${params.backgroundText}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n") || "No additional background provided — please conduct thorough web research.";
+
+  return `You are my podcast producer and lead researcher. We record guest interviews. My #1 priority is walking in genuinely well-researched, and every episode must be structured using the BINGE framework (below) so the show has a consistent, compelling arc.
+
+THE BINGE FRAMEWORK (Evolved Podcasting) — the spine of every episode:
+  B — Bring attention to a big pain or challenge the guest is addressing
+  I — Insert an emotional, hook-worthy story
+  N — Name the pain again (sharpen it, make the listener feel it)
+  G — Give them a way forward through the conversation
+  E — Empower them to take action
+
+EPISODE CONTEXT
+- Show: ${showLine}
+- Audience: ${audienceLine}
+- Episode length: ${params.episodeLengthMin} min
+- Guest: ${guestLabel}
+${params.whyNow ? `- Why this guest, why now: ${params.whyNow}` : ""}
+
+BACKGROUND RESEARCH MATERIAL
+${backgroundSection}
+
+DELIVER IN THIS ORDER — use these EXACT section headers (they are parsed programmatically):
+
+## 1. GUEST DOSSIER
+   - Background & career arc: how they actually got here, not the bio-blurb
+   - Their best/most important work, with specifics
+   - Strong opinions & beliefs they're known for (quote where possible)
+   - Recurring stories they reuse elsewhere — so I can avoid the tired ones and push for fresh territory
+   - Recent activity: last 6-12 months — launches, posts, news, changes
+   - Contrarian / surprising / under-covered angles about them
+   - 3 things most interviewers MISS or never ask them about
+   - Any sensitivities to handle with care
+   - Source links for everything, and flag what I should fact-check
+
+## 2. THE BIG PAIN (B)
+   Name the single biggest pain or challenge this guest helps solve. One sentence. This is what the whole episode orbits.
+
+## 3. THE THROUGH-LINE
+   One sentence: what this episode is really about — the idea a listener repeats to a friend afterward.
+
+## 4. INTERVIEW OUTLINE — mapped to BINGE
+   - Cold open / hook
+   - B — Bring attention to the big pain: how we open the problem, why it matters to the listener right now
+   - I — Insert the story: the emotional, hook-worthy story to draw out of the guest (name the specific story from the dossier to aim for)
+   - N — Name the pain again: how we re-sharpen the stakes mid-episode so the listener feels the cost of NOT solving it
+   - G — Give the way forward: the guest's framework / solution / steps — the meat of the value
+   - E — Empower action: the concrete next step the listener takes today
+   - Closing thought + call to action
+
+## 5. QUESTION BANK (ranked best to worst), tagged by BINGE stage
+   12-15 questions: warm openers, the meat, 3-4 "go deeper" follow-ups tied to the dossier, and 1-2 bold questions only someone who did the research could ask. Tag each question with its BINGE letter (B/I/N/G/E).
+
+## 6. SOUNDBITE SETUPS
+   3 moments most likely to produce a clip-worthy answer — ideally one from the "I" story and one from the "E" empowerment moment.
+
+Do real research — don't guess or generalize. Be specific, cite sources, and flag anything I should verify.`;
+}
+
+/**
+ * Parse the Claude response into named sections using the numbered headers.
+ */
+function parseSections(markdown: string): {
+  dossier: string;
+  bigPain: string;
+  throughLine: string;
+  outline: string;
+  questionBank: string;
+  soundbites: string;
+} {
+  const sectionMap: Record<string, string> = {};
+  const sectionOrder = [
+    { key: "dossier", pattern: /##\s*1\.\s*GUEST DOSSIER/i },
+    { key: "bigPain", pattern: /##\s*2\.\s*THE BIG PAIN/i },
+    { key: "throughLine", pattern: /##\s*3\.\s*THE THROUGH-LINE/i },
+    { key: "outline", pattern: /##\s*4\.\s*INTERVIEW OUTLINE/i },
+    { key: "questionBank", pattern: /##\s*5\.\s*QUESTION BANK/i },
+    { key: "soundbites", pattern: /##\s*6\.\s*SOUNDBITE SETUPS/i },
+  ];
+
+  // Split on any ## N. header
+  const lines = markdown.split("\n");
+  let currentKey: string | null = null;
+  let currentLines: string[] = [];
+
+  for (const line of lines) {
+    let matched = false;
+    for (const { key, pattern } of sectionOrder) {
+      if (pattern.test(line)) {
+        if (currentKey) sectionMap[currentKey] = currentLines.join("\n").trim();
+        currentKey = key;
+        currentLines = [line];
+        matched = true;
+        break;
+      }
+    }
+    if (!matched && currentKey) {
+      currentLines.push(line);
+    }
+  }
+  if (currentKey) sectionMap[currentKey] = currentLines.join("\n").trim();
+
+  return {
+    dossier: sectionMap["dossier"] ?? "",
+    bigPain: sectionMap["bigPain"] ?? "",
+    throughLine: sectionMap["throughLine"] ?? "",
+    outline: sectionMap["outline"] ?? "",
+    questionBank: sectionMap["questionBank"] ?? "",
+    soundbites: sectionMap["soundbites"] ?? "",
+  };
+}
+
+// ─── Router ───────────────────────────────────────────────────────────────────
+
+export const podcastRouter = router({
+  /** Create a new episode record from the intake form (no generation yet). */
+  createEpisode: protectedProcedure
+    .input(
+      z.object({
+        guestName: z.string().min(1),
+        guestRole: z.string().optional(),
+        guestCompany: z.string().optional(),
+        whyNow: z.string().optional(),
+        backgroundUrls: z.string().optional(),
+        backgroundText: z.string().optional(),
+        episodeLengthMin: z.number().min(10).max(180).default(45),
+        showName: z.string().default("The Urban Monk Podcast"),
+        showDescription: z.string().optional(),
+        audienceDescription: z.string().optional(),
+        episodeNumber: z.number().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [result] = await db.insert(podcastEpisodes).values({
+        userId: ctx.user.id,
+        guestName: input.guestName,
+        guestRole: input.guestRole ?? null,
+        guestCompany: input.guestCompany ?? null,
+        whyNow: input.whyNow ?? null,
+        backgroundUrls: input.backgroundUrls ?? null,
+        backgroundText: input.backgroundText ?? null,
+        episodeLengthMin: input.episodeLengthMin,
+        showName: input.showName,
+        showDescription: input.showDescription ?? null,
+        audienceDescription: input.audienceDescription ?? null,
+        episodeNumber: input.episodeNumber ?? null,
+        status: "pending",
+      });
+
+      const insertId = (result as unknown as { insertId: number }).insertId;
+      const [episode] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(eq(podcastEpisodes.id, insertId));
+
+      return episode;
+    }),
+
+  /** Generate the full BINGE-framework research report using Claude. */
+  generateReport: protectedProcedure
+    .input(z.object({ episodeId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [episode] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(and(eq(podcastEpisodes.id, input.episodeId), eq(podcastEpisodes.userId, ctx.user.id)));
+
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+
+      // Mark as generating
+      await db
+        .update(podcastEpisodes)
+        .set({ status: "generating", errorMessage: null })
+        .where(eq(podcastEpisodes.id, input.episodeId));
+
+      try {
+        const prompt = buildBingePrompt({
+          guestName: episode.guestName,
+          guestRole: episode.guestRole,
+          guestCompany: episode.guestCompany,
+          whyNow: episode.whyNow,
+          backgroundUrls: episode.backgroundUrls,
+          backgroundText: episode.backgroundText,
+          episodeLengthMin: episode.episodeLengthMin ?? 45,
+          showName: episode.showName ?? "The Urban Monk Podcast",
+          showDescription: episode.showDescription,
+          audienceDescription: episode.audienceDescription,
+        });
+
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an expert podcast producer and researcher. You produce thorough, specific, well-sourced research reports. Never generalize — always be specific with names, dates, quotes, and sources.",
+            },
+            { role: "user", content: prompt },
+          ],
+        });
+
+        const rawContent = response?.choices?.[0]?.message?.content ?? "";
+        const reportMarkdown: string = typeof rawContent === "string" ? rawContent : "";
+
+        const sections = parseSections(reportMarkdown);
+
+        await db
+          .update(podcastEpisodes)
+          .set({
+            status: "complete",
+            reportMarkdown,
+            sectionDossier: sections.dossier,
+            sectionBigPain: sections.bigPain,
+            sectionThroughLine: sections.throughLine,
+            sectionOutline: sections.outline,
+            sectionQuestionBank: sections.questionBank,
+            sectionSoundbites: sections.soundbites,
+            errorMessage: null,
+          })
+          .where(eq(podcastEpisodes.id, input.episodeId));
+
+        const [updated] = await db
+          .select()
+          .from(podcastEpisodes)
+          .where(eq(podcastEpisodes.id, input.episodeId));
+
+        return updated;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        await db
+          .update(podcastEpisodes)
+          .set({ status: "failed", errorMessage: message })
+          .where(eq(podcastEpisodes.id, input.episodeId));
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Report generation failed: ${message}`,
+        });
+      }
+    }),
+
+  /** List all episodes for the current user, newest first. */
+  getEpisodes: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    return db
+      .select()
+      .from(podcastEpisodes)
+      .where(eq(podcastEpisodes.userId, ctx.user.id))
+      .orderBy(desc(podcastEpisodes.createdAt));
+  }),
+
+  /** Get a single episode by ID (must belong to current user). */
+  getEpisode: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [episode] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(and(eq(podcastEpisodes.id, input.id), eq(podcastEpisodes.userId, ctx.user.id)));
+
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      return episode;
+    }),
+
+  /** Update intake fields (only allowed when status is pending or failed). */
+  updateEpisode: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        guestName: z.string().min(1).optional(),
+        guestRole: z.string().optional(),
+        guestCompany: z.string().optional(),
+        whyNow: z.string().optional(),
+        backgroundUrls: z.string().optional(),
+        backgroundText: z.string().optional(),
+        episodeLengthMin: z.number().min(10).max(180).optional(),
+        showName: z.string().optional(),
+        showDescription: z.string().optional(),
+        audienceDescription: z.string().optional(),
+        episodeNumber: z.number().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const { id, ...fields } = input;
+      const updateData: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(fields)) {
+        if (v !== undefined) updateData[k] = v;
+      }
+      // Reset to pending so report can be regenerated with new data
+      updateData.status = "pending";
+      updateData.reportMarkdown = null;
+      updateData.sectionDossier = null;
+      updateData.sectionBigPain = null;
+      updateData.sectionThroughLine = null;
+      updateData.sectionOutline = null;
+      updateData.sectionQuestionBank = null;
+      updateData.sectionSoundbites = null;
+
+      await db
+        .update(podcastEpisodes)
+        .set(updateData)
+        .where(and(eq(podcastEpisodes.id, id), eq(podcastEpisodes.userId, ctx.user.id)));
+
+      const [updated] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(eq(podcastEpisodes.id, id));
+
+      return updated;
+    }),
+
+  /** Delete an episode. */
+  deleteEpisode: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      await db
+        .delete(podcastEpisodes)
+        .where(and(eq(podcastEpisodes.id, input.id), eq(podcastEpisodes.userId, ctx.user.id)));
+
+      return { success: true };
+    }),
+});

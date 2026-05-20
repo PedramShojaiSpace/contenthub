@@ -1329,3 +1329,60 @@ export const redditTrendDigests = mysqlTable("reddit_trend_digests", {
   generatedAt: timestamp("generatedAt").defaultNow().notNull(),
 });
 export type RedditTrendDigest = typeof redditTrendDigests.$inferSelect;
+
+// ─── Podcast Production ───────────────────────────────────────────────────────
+
+/**
+ * One podcast episode prep session.
+ * The user enters guest details and any background context; Claude generates
+ * a full BINGE-framework research report (dossier + outline + question bank).
+ */
+export const podcastEpisodeStatusEnum = mysqlEnum("podcastEpisodeStatus", [
+  "pending",    // intake saved, report not yet generated
+  "generating", // Claude is working
+  "complete",   // report ready
+  "failed",     // generation error
+]);
+
+export const podcastEpisodes = mysqlTable("podcast_episodes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+
+  // Guest intake fields
+  guestName: varchar("guestName", { length: 255 }).notNull(),
+  guestRole: varchar("guestRole", { length: 255 }),         // e.g. "Author & Longevity Coach"
+  guestCompany: varchar("guestCompany", { length: 255 }),
+  whyNow: text("whyNow"),                                    // "why this guest, why now"
+  backgroundUrls: text("backgroundUrls"),                    // newline-separated list of URLs
+  backgroundText: text("backgroundText"),                    // pasted bio / notes / transcripts
+  episodeLengthMin: int("episodeLengthMin").default(45),
+
+  // Show context (pre-filled defaults, overridable per episode)
+  showName: varchar("showName", { length: 255 }).default("The Urban Monk Podcast"),
+  showDescription: text("showDescription"),
+  audienceDescription: text("audienceDescription"),
+
+  // Generated BINGE report (full markdown)
+  reportMarkdown: longtext("reportMarkdown"),
+
+  // Parsed sections stored as JSON strings for fast tab rendering
+  sectionDossier: longtext("sectionDossier"),
+  sectionBigPain: text("sectionBigPain"),
+  sectionThroughLine: text("sectionThroughLine"),
+  sectionOutline: longtext("sectionOutline"),
+  sectionQuestionBank: longtext("sectionQuestionBank"),
+  sectionSoundbites: text("sectionSoundbites"),
+
+  // Status & error tracking
+  status: podcastEpisodeStatusEnum.notNull().default("pending"),
+  errorMessage: text("errorMessage"),
+
+  // Optional episode number for display
+  episodeNumber: int("episodeNumber"),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PodcastEpisode = typeof podcastEpisodes.$inferSelect;
+export type InsertPodcastEpisode = typeof podcastEpisodes.$inferInsert;

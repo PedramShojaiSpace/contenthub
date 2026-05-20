@@ -15,7 +15,7 @@ import { desc, eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { podcastEpisodes } from "../drizzle/schema";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -392,5 +392,192 @@ export const podcastRouter = router({
         .where(and(eq(podcastEpisodes.id, input.id), eq(podcastEpisodes.userId, ctx.user.id)));
 
       return { success: true };
+    }),
+
+  /**
+   * Generate (or regenerate) a unique intake token for an episode and return
+   * the shareable URL. The token is a UUID v4 stored on the episode row.
+   */
+  generateIntakeLink: protectedProcedure
+    .input(z.object({ id: z.number(), origin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Verify ownership
+      const [episode] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(and(eq(podcastEpisodes.id, input.id), eq(podcastEpisodes.userId, ctx.user.id)));
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+
+      // Reuse existing token or generate a new UUID v4
+      const token = episode.intakeToken ?? crypto.randomUUID();
+
+      await db
+        .update(podcastEpisodes)
+        .set({ intakeToken: token, intakeStatus: "sent" })
+        .where(eq(podcastEpisodes.id, input.id));
+
+      const url = `${input.origin}/podcast-intake/${token}`;
+      return { token, url };
+    }),
+
+  /**
+   * Public — fetch the intake form data by token (no auth required).
+   * Returns only the fields the guest needs to see/fill in.
+   */
+  getIntakeForm: publicProcedure
+    .input(z.object({ token: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [episode] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(eq(podcastEpisodes.intakeToken, input.token));
+
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Intake form not found. Please check the link and try again." });
+
+      // Return only the fields needed for the public form — never expose userId or report data
+      return {
+        id: episode.id,
+        guestName: episode.guestName,
+        guestRole: episode.guestRole,
+        guestCompany: episode.guestCompany,
+        showName: episode.showName,
+        showDescription: episode.showDescription,
+        episodeLengthMin: episode.episodeLengthMin,
+        intakeStatus: episode.intakeStatus,
+        intakeSubmittedAt: episode.intakeSubmittedAt,
+      };
+    }),
+
+  /**
+   * Public — submit the guest intake form by token (no auth required).
+   * Saves the guest-provided data, marks the form submitted, and triggers
+   * async BINGE report generation in the background.
+   */
+  submitIntakeForm: publicProcedure
+    .input(
+      z.object({
+        token: z.string().min(1),
+        guestName: z.string().min(1, "Your name is required"),
+        guestRole: z.string().optional(),
+        guestCompany: z.string().optional(),
+        whyNow: z.string().optional(),
+        backgroundUrls: z.string().optional(),
+        backgroundText: z.string().min(10, "Please provide at least a brief bio or background"),
+        episodeLengthMin: z.number().min(10).max(180).optional(),
+        showDescription: z.string().optional(),
+        audienceDescription: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [episode] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(eq(podcastEpisodes.intakeToken, input.token));
+
+      if (!episode) throw new TRPCError({ code: "NOT_FOUND", message: "Intake form not found." });
+
+      if (episode.intakeStatus === "submitted") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This intake form has already been submitted." });
+      }
+
+      const { token: _token, ...fields } = input;
+
+      // Save guest data and mark submitted
+      await db
+        .update(podcastEpisodes)
+        .set({
+          ...fields,
+          intakeStatus: "submitted",
+          intakeSubmittedAt: new Date(),
+          status: "pending",
+          // Clear any previous report so it regenerates fresh
+          reportMarkdown: null,
+          sectionDossier: null,
+          sectionBigPain: null,
+          sectionThroughLine: null,
+          sectionOutline: null,
+          sectionQuestionBank: null,
+          sectionSoundbites: null,
+          errorMessage: null,
+        })
+        .where(eq(podcastEpisodes.intakeToken, input.token));
+
+      // Kick off BINGE report generation asynchronously (fire-and-forget)
+      // We re-fetch the updated episode to pass full context to the generator
+      const [updated] = await db
+        .select()
+        .from(podcastEpisodes)
+        .where(eq(podcastEpisodes.intakeToken, input.token));
+
+      if (updated) {
+        // Fire-and-forget: generate the report in the background
+        (async () => {
+          try {
+            await db
+              .update(podcastEpisodes)
+              .set({ status: "generating" })
+              .where(eq(podcastEpisodes.id, updated.id));
+
+            const prompt = buildBingePrompt({
+              guestName: updated.guestName,
+              guestRole: updated.guestRole,
+              guestCompany: updated.guestCompany,
+              whyNow: updated.whyNow,
+              backgroundUrls: updated.backgroundUrls,
+              backgroundText: updated.backgroundText,
+              episodeLengthMin: updated.episodeLengthMin ?? 45,
+              showName: updated.showName ?? "The Urban Monk Podcast",
+              showDescription: updated.showDescription,
+              audienceDescription: updated.audienceDescription,
+            });
+
+            const response = await invokeLLM({
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are an expert podcast producer and researcher. You produce thorough, specific, well-sourced research reports. Never generalize — always be specific with names, dates, quotes, and sources.",
+                },
+                { role: "user", content: prompt },
+              ],
+            });
+
+            const rawContent = response?.choices?.[0]?.message?.content ?? "";
+            const reportMarkdown: string = typeof rawContent === "string" ? rawContent : "";
+            const sections = parseSections(reportMarkdown);
+
+            await db
+              .update(podcastEpisodes)
+              .set({
+                status: "complete",
+                reportMarkdown,
+                sectionDossier: sections.dossier,
+                sectionBigPain: sections.bigPain,
+                sectionThroughLine: sections.throughLine,
+                sectionOutline: sections.outline,
+                sectionQuestionBank: sections.questionBank,
+                sectionSoundbites: sections.soundbites,
+                errorMessage: null,
+              })
+              .where(eq(podcastEpisodes.id, updated.id));
+          } catch (err) {
+            await db
+              .update(podcastEpisodes)
+              .set({ status: "failed", errorMessage: String(err) })
+              .where(eq(podcastEpisodes.id, updated.id));
+          }
+        })();
+      }
+
+      return { success: true, message: "Thank you! Your information has been submitted. We'll be in touch soon." };
     }),
 });

@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  Link2,
   Loader2,
   MessageSquare,
   Mic,
@@ -142,6 +143,21 @@ export default function PodcastEpisodeViewer() {
     onError: (err) => toast.error(`Generation failed: ${err.message}`),
   });
 
+  const generateIntakeLink = trpc.podcast.generateIntakeLink.useMutation({
+    onSuccess: (data) => {
+      utils.podcast.getEpisode.invalidate({ id: episodeId });
+      navigator.clipboard.writeText(data.url).then(() => {
+        toast.success("Intake link copied to clipboard!", {
+          description: data.url,
+          duration: 5000,
+        });
+      }).catch(() => {
+        toast.info("Intake link generated", { description: data.url, duration: 10000 });
+      });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   if (isLoading) {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-4">
@@ -203,6 +219,20 @@ export default function PodcastEpisodeViewer() {
         </div>
 
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={generateIntakeLink.isPending}
+            onClick={() => generateIntakeLink.mutate({ id: episodeId, origin: window.location.origin })}
+          >
+            {generateIntakeLink.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Link2 className="w-4 h-4" />
+            )}
+            Share Intake Form
+          </Button>
           <Button
             variant="outline"
             size="sm"

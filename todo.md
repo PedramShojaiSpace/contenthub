@@ -2896,3 +2896,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Register /podcast-production and /podcast-production/:id routes in App.tsx
 - [x] Add Podcast Production to DashboardLayout sidebar nav
 - [x] Write vitest tests for podcastRouter
+
+## Guest Intake Form (Public URL per Episode)
+- [x] Add intakeToken (unique UUID), intakeSubmittedAt, intakeStatus fields to podcastEpisodes schema
+- [x] Run pnpm db:push to migrate schema
+- [x] Add getIntakeForm (public, by token) procedure to podcastRouter
+- [x] Add submitIntakeForm (public, by token) procedure — saves guest answers and triggers generateReport
+- [x] Add generateIntakeLink procedure (protected) — returns the shareable URL
+- [x] Build GuestIntakeForm.tsx public page at /podcast-intake/:token (no auth required)
+- [x] Add "Share Intake Form" button to PodcastProduction episode cards
+- [x] Add "Share Intake Form" button to PodcastEpisodeViewer header
+- [x] Register /podcast-intake/:token route in App.tsx
+- [x] Write vitest tests for new intake procedures (8 new tests, 358 total passing)

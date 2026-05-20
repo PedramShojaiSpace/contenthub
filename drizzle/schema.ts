@@ -1380,6 +1380,11 @@ export const podcastEpisodes = mysqlTable("podcast_episodes", {
   // Optional episode number for display
   episodeNumber: int("episodeNumber"),
 
+  // Guest intake form — public shareable link
+  intakeToken: varchar("intakeToken", { length: 64 }).unique(),   // UUID v4, used in the public URL
+  intakeSubmittedAt: timestamp("intakeSubmittedAt"),               // set when guest submits the form
+  intakeStatus: mysqlEnum("intakeStatus", ["not_sent", "sent", "submitted"]).default("not_sent"),
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

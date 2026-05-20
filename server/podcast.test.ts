@@ -274,4 +274,146 @@ describe("podcastRouter", () => {
       expect(result).toBeDefined();
     });
   });
+
+  describe("podcast.generateIntakeLink", () => {
+    it("returns a token and URL containing the token", async () => {
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller(createAuthContext());
+
+      const result = await caller.podcast.generateIntakeLink({
+        id: 1,
+        origin: "https://content.theurbanmonk.com",
+      });
+
+      expect(result.token).toBeDefined();
+      expect(typeof result.token).toBe("string");
+      expect(result.url).toContain("/podcast-intake/");
+      expect(result.url).toContain(result.token);
+    });
+
+    it("reuses an existing token if the episode already has one", async () => {
+      const episodeWithToken = { ...mockEpisode, intakeToken: "existing-token-abc" };
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([episodeWithToken as typeof mockEpisode]));
+
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller(createAuthContext());
+
+      const result = await caller.podcast.generateIntakeLink({
+        id: 1,
+        origin: "https://content.theurbanmonk.com",
+      });
+
+      expect(result.token).toBe("existing-token-abc");
+    });
+
+    it("throws NOT_FOUND when episode does not belong to user", async () => {
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([]));
+
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller(createAuthContext());
+
+      await expect(
+        caller.podcast.generateIntakeLink({ id: 9999, origin: "https://example.com" })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+  });
+
+  describe("podcast.getIntakeForm (public)", () => {
+    it("returns safe public fields for a valid token", async () => {
+      const episodeWithToken = {
+        ...mockEpisode,
+        intakeToken: "valid-token-xyz",
+        intakeStatus: "sent" as const,
+        intakeSubmittedAt: null,
+      };
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([episodeWithToken as typeof mockEpisode]));
+
+      const { appRouter } = await import("./routers");
+      // Public procedure — no auth context needed
+      const caller = appRouter.createCaller({} as TrpcContext);
+
+      const result = await caller.podcast.getIntakeForm({ token: "valid-token-xyz" });
+
+      expect(result.guestName).toBe("Dr. Mark Hyman");
+      expect(result.intakeStatus).toBe("sent");
+      // Must NOT expose userId or report data
+      expect((result as Record<string, unknown>).userId).toBeUndefined();
+      expect((result as Record<string, unknown>).reportMarkdown).toBeUndefined();
+    });
+
+    it("throws NOT_FOUND for an invalid token", async () => {
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([]));
+
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller({} as TrpcContext);
+
+      await expect(
+        caller.podcast.getIntakeForm({ token: "bad-token" })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+  });
+
+  describe("podcast.submitIntakeForm (public)", () => {
+    it("returns success message on valid submission", async () => {
+      const episodeWithToken = {
+        ...mockEpisode,
+        intakeToken: "submit-token-abc",
+        intakeStatus: "sent" as const,
+        intakeSubmittedAt: null,
+      };
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([episodeWithToken as typeof mockEpisode]));
+
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller({} as TrpcContext);
+
+      const result = await caller.podcast.submitIntakeForm({
+        token: "submit-token-abc",
+        guestName: "Dr. Mark Hyman",
+        backgroundText: "Detailed bio with more than ten characters here.",
+      });
+
+      expect(result.success).toBe(true);
+      expect(typeof result.message).toBe("string");
+    });
+
+    it("throws BAD_REQUEST when form is already submitted", async () => {
+      const submittedEpisode = {
+        ...mockEpisode,
+        intakeToken: "already-done-token",
+        intakeStatus: "submitted" as const,
+        intakeSubmittedAt: new Date(),
+      };
+      const { getDb } = await import("./db");
+      (getDb as ReturnType<typeof vi.fn>).mockResolvedValue(buildMockDb([submittedEpisode as typeof mockEpisode]));
+
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller({} as TrpcContext);
+
+      await expect(
+        caller.podcast.submitIntakeForm({
+          token: "already-done-token",
+          guestName: "Dr. Mark Hyman",
+          backgroundText: "Some background text here.",
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
+    it("rejects backgroundText shorter than 10 characters", async () => {
+      const { appRouter } = await import("./routers");
+      const caller = appRouter.createCaller({} as TrpcContext);
+
+      await expect(
+        caller.podcast.submitIntakeForm({
+          token: "any-token",
+          guestName: "Test",
+          backgroundText: "Short",
+        })
+      ).rejects.toThrow();
+    });
+  });
 });

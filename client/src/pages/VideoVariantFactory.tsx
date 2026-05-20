@@ -24,7 +24,7 @@ import {
   CheckCircle2, Clock, AlertCircle, Loader2, Plus,
   Clapperboard, Zap, History, ChevronDown, ChevronUp,
   FileVideo, RefreshCw, FlaskConical, FolderDown,
-  Share2, Megaphone, Send, ExternalLink
+  Share2, Megaphone, Send, ExternalLink, ArrowLeft
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -615,6 +615,11 @@ export default function VideoVariantFactory() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6 space-y-6">
+      {/* Back nav */}
+      <a href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Hub
+      </a>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

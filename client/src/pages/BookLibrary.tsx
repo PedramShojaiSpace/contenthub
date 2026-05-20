@@ -32,6 +32,7 @@ import {
   Image as ImageIcon,
   ChevronRight,
   Loader2,
+  ArrowLeft,
   CheckCircle2,
   AlertCircle,
   Filter,
@@ -1390,11 +1391,17 @@ export default function BookLibrary() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Book Library</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Upload your books to extract quote cards and generate social media content
-          </p>
+        <div className="flex items-center gap-3">
+          <a href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Hub
+          </a>
+          <div>
+            <h1 className="text-2xl font-semibold">Book Library</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Upload your books to extract quote cards and generate social media content
+            </p>
+          </div>
         </div>
         <UploadBookDialog onSuccess={() => utils.bookLibrary.listBooks.invalidate()} />
       </div>

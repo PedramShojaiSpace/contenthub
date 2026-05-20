@@ -2926,3 +2926,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add generateShowNotes procedure to podcastRouter (200-word summary, 3 takeaways, CTA)
 - [x] Add Show Notes tab to PodcastEpisodeViewer with Generate/Regenerate/Copy buttons
 - [x] Write vitest tests: notifyOwner call verification + 4 generateShowNotes tests (363 total passing)
+
+## Back Navigation Audit (May 20, 2026)
+- [x] Audit all 44 pages for missing back/home navigation
+- [x] Add "Back to Hub" ArrowLeft link to BookLibrary.tsx header
+- [x] Add "Back to Hub" ArrowLeft link to VideoProductionSession.tsx header
+- [x] Add "Back to Hub" ArrowLeft link to VideoVariantFactory.tsx header
+- [x] Add "Back to Hub" ArrowLeft link to WordPressSetup.tsx header
+- [x] Add theurbanmonk.com footer link to GuestIntakeForm.tsx (public page)
+- [x] Confirmed viral sub-pages (AnalyticsDashboard, DMPlaybook, PerformanceSignal, ViralTopics) covered by ViralStudio tab nav
+- [x] Confirmed 20 DashboardLayout pages have sidebar nav
+- [x] Confirmed ContentPipeline, EBookGenerator, PodcastProduction, PodcastEpisodeViewer, IngestInbox, ManyChatWizard, RedditIntelligence already had back navigation
+- [x] Verified podcast intake form flow end-to-end

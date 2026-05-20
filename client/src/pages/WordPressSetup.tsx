@@ -12,6 +12,7 @@ import {
   Code2,
   ChevronDown,
   ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -119,6 +120,11 @@ export default function WordPressSetup() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
+      {/* Back nav */}
+      <a href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Hub
+      </a>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">

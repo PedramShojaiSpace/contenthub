@@ -13,11 +13,11 @@ function getTypeformHeaders() {
   return { Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
 }
 
-async function typeformGet(path: string) {
+async function typeformGet(path: string): Promise<any> {
   const res = await fetch(`${TYPEFORM_BASE}${path}`, {
     headers: getTypeformHeaders(),
   });
-  return safeParseJson(res, "Typeform API");
+  return safeParseJson<any>(res, "Typeform API");
 }
 
 // Flatten a Typeform response item into readable Q&A pairs
@@ -214,7 +214,7 @@ Analyze the responses and return a JSON object with these exact keys:
       }));
 
       const raw = response.choices?.[0]?.message?.content;
-      const parsed = parseLLMJson(typeof raw === "string" ? raw : JSON.stringify(raw), "audience analysis");
+      const parsed = parseLLMJson<any>(typeof raw === "string" ? raw : JSON.stringify(raw), "audience analysis");
 
       return {
         ...parsed,
@@ -369,7 +369,7 @@ Return a JSON array of 8 persona segment objects.`;
       }));
 
       const raw = response.choices?.[0]?.message?.content;
-      const parsed = parseLLMJson(typeof raw === "string" ? raw : JSON.stringify(raw), "persona segmentation");
+      const parsed = parseLLMJson<any>(typeof raw === "string" ? raw : JSON.stringify(raw), "persona segmentation");
 
       // Auto-enrich all matching personas in DB
       const db = await getDb();

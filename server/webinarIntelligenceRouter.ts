@@ -128,7 +128,7 @@ Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, q
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Here are the ${surveyTypeLabel} responses (${record.responseCount} respondents):\n\n${record.rawResponses.slice(0, 12000)}`,
+            content: `Here are the ${surveyTypeLabel} responses (${record.responseCount} respondents):\n\n${(record.rawResponses ?? "").slice(0, 12000)}`,
           },
         ],
         response_format: {
@@ -240,7 +240,7 @@ Return ONLY valid JSON with these exact keys: themes, painPoints, motivations, q
       }> = [];
       let pageToken: string | null = null;
       do {
-        const url = `https://api.typeform.com/forms/${input.typeformId}/responses?page_size=200${
+        const url: string = `https://api.typeform.com/forms/${input.typeformId}/responses?page_size=200${
           pageToken ? `&before=${pageToken}` : ""
         }`;
         const respRes = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
@@ -535,7 +535,7 @@ Synthesize these into an updated cumulative avatar profile. Return ONLY valid JS
       }));
 
       const rawContent = response.choices?.[0]?.message?.content;
-      const synthesized = parseLLMJson(typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent), "avatar synthesis");
+      const synthesized = parseLLMJson<any>(typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent), "avatar synthesis");
 
       // Update the avatar profile with synthesized intelligence
       await db

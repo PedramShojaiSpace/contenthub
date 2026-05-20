@@ -2868,3 +2868,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add regenerateAllChapters tRPC procedure in ebookRouter (rewrites all chapters, respects per-chapter styleNote)
 - [x] Add regenerateAllChapters mutation and "Regenerate All" button to EbookViewer header
 - [x] Regenerate All: shows confirmation dialog before overwriting, disables Retry Failed during operation
+
+## Full Codebase Audit (May 20 2026)
+- [x] TypeScript full compile — 37 pre-existing errors found across typeformRouter, viralStudioRouter, webinarIntelligenceRouter (zero errors in recently added files)
+- [x] Fix typeformGet return type to Promise<any> so all callers resolve correctly
+- [x] Fix parseLLMJson calls in typeformRouter (2 spread-type errors) to use <any> type parameter
+- [x] Fix parseLLMJson calls in viralStudioRouter (2 unknown-type errors) to use <any> type parameter
+- [x] Fix rawResponses possibly-null access in webinarIntelligenceRouter.ts (line 131)
+- [x] Fix implicit-any url variable in webinarIntelligenceRouter.ts do-while loop (line 243)
+- [x] Fix parseLLMJson synthesized unknown-type error in webinarIntelligenceRouter.ts (line 538)
+- [x] TypeScript recheck — EXIT:0, zero errors across all 40+ server files and all client pages
+- [x] Database schema sync — pnpm db:push confirms no pending migrations
+- [x] All routes in App.tsx verified against pages directory — all 33 pages registered
+- [x] DashboardLayout sidebar nav items verified — all paths match App.tsx routes
+- [x] All routers verified as registered in appRouter (server/routers.ts)
+- [x] Full vitest run — 340 tests across 32 test files, all passing (EXIT:0)
+- [x] Browser smoke test — ContentPipeline renders with filter bar and feed arrows (no console errors)
+- [x] Browser smoke test — EBookGenerator renders with Generate New E-Book button (no console errors)
+- [x] Browser smoke test — auth gate working correctly on protected pages

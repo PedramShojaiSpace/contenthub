@@ -172,7 +172,7 @@ Return a JSON object with this exact structure:
     });
 
     const content = response.choices[0].message.content;
-    const parsed = parseLLMJson(typeof content === "string" ? content : JSON.stringify(content), "hook generation");
+    const parsed = parseLLMJson<any>(typeof content === "string" ? content : JSON.stringify(content), "hook generation");
 
     // Persist to DB
     const db = await getDb();
@@ -325,7 +325,7 @@ Return JSON:
     });
 
      const content = response.choices[0].message.content;
-    const parsed = parseLLMJson(typeof content === "string" ? content : JSON.stringify(content), "script generation");
+    const parsed = parseLLMJson<any>(typeof content === "string" ? content : JSON.stringify(content), "script generation");
     // Persist
     const db = await getDb();
     if (!db) throw new Error("DB unavailable");

@@ -1870,10 +1870,10 @@ function CtaManagementPanel({
   isPending: boolean;
 }) {
   const [globalCtaText, setGlobalCtaText] = useState(
-    "Ready to transform your health? Join Dr. Pedram Shojai at the Urban Monk Academy and get access to the full curriculum, live coaching, and a community of high-performers."
+    "Ready to go deeper? Dr. Pedram Shojai's Lights On program gives you the exact system to reclaim your energy, focus, and vitality. Visit lightson.theurbanmonk.com to get started."
   );
-  const [globalCtaUrl, setGlobalCtaUrl] = useState("https://theurbanmonk.com/academy");
-  const [globalCtaLabel, setGlobalCtaLabel] = useState("Join the Urban Monk Academy →");
+  const [globalCtaUrl, setGlobalCtaUrl] = useState("https://lightson.theurbanmonk.com/");
+  const [globalCtaLabel, setGlobalCtaLabel] = useState("Start Lights On →");
   const [selectedChapterId, setSelectedChapterId] = useState<number | null>(null);
   const [chapterCtaText, setChapterCtaText] = useState("");
   const [chapterCtaUrl, setChapterCtaUrl] = useState("");
@@ -1944,7 +1944,7 @@ function CtaManagementPanel({
               <Input
                 value={globalCtaUrl}
                 onChange={(e) => setGlobalCtaUrl(e.target.value)}
-                placeholder="https://theurbanmonk.com/academy"
+                placeholder="https://lightson.theurbanmonk.com/"
                 className="h-8 text-sm"
               />
             </div>

@@ -42,7 +42,7 @@ MESSAGING PILLARS:
 - Daily practices and rituals for energy and clarity
 - Mindfulness and meditation in a busy world
 - Gut health, sleep, and stress management
-- The Urban Monk Academy as a transformation vehicle
+- Lights On and Upstream programs as transformation vehicles
 - Personal stories of breakthrough and healing
 
 AVOID: Preachy tone, overly clinical language, anything that alienates spiritual seekers.`,
@@ -67,7 +67,7 @@ TONE: Educational, authoritative, warm. Pedram as the trusted guide. Mix of scie
 MESSAGING PILLARS:
 - Deep dives into root-cause health
 - Qi Gong, meditation, and ancient practices
-- The Urban Monk Academy as the next step
+- Lights On, Upstream, and the Gateway to Health test as the next step
 - Documentary-style storytelling
 - Expert interviews and case studies
 

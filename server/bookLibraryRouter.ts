@@ -699,7 +699,7 @@ export const bookLibraryRouter = router({
         .where(eq(uploadedBooks.id, snippet.bookId));
       const bookTitle = book?.title ?? "The Urban Monk";
 
-      const systemPrompt = `You are the social media voice of Dr. Pedram Shojai, author and founder of The Urban Monk Academy. You write compelling, authentic social posts that drive people to join the Academy at https://theurbanmonk.com/academy ($297/year). Dr. Shojai's voice is: direct, spiritual but practical, science-backed, urgent yet compassionate. He speaks to high-performers who feel burned out and want to reclaim their energy, focus, and purpose.`;
+      const systemPrompt = `You are the social media voice of Dr. Pedram Shojai, author and founder of The Urban Monk. You write compelling, authentic social posts that inspire action. Dr. Shojai's voice is: direct, spiritual but practical, science-backed, urgent yet compassionate. He speaks to high-performers who feel burned out and want to reclaim their energy, focus, and purpose. His programs include Upstream (upstream.theurbanmonk.com), Lights On (lightson.theurbanmonk.com), the Gateway to Health test (gth.theurbanmonk.com), and the Restorative Sleep Masterclass (theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay).`;
 
       const userPrompt = `Write social media copy for this quote from "${bookTitle}" by Dr. Pedram Shojai:
 
@@ -707,13 +707,13 @@ export const bookLibraryRouter = router({
 
 Generate copy for FIVE platforms. Return a JSON object with exactly these fields:
 {
-  "linkedin": "LinkedIn post (1300-1500 chars). Start with a hook line, 2-3 short paragraphs expanding on the quote's insight, end with a CTA to join the Urban Monk Academy. Professional but personal tone. Include 3-5 relevant hashtags at the end.",
+  "linkedin": "LinkedIn post (1300-1500 chars). Start with a hook line, 2-3 short paragraphs expanding on the quote's insight, end with a CTA to the most relevant program (Upstream, Lights On, Gateway to Health test, or Sleep Masterclass — match to the quote's theme). Professional but personal tone. Include 3-5 relevant hashtags at the end.",
   "x": "X/Twitter post (200-260 chars MAXIMUM — this is a hard limit). Punchy, thought-provoking. Include 2-3 hashtags. No URLs.",
-  "meta": "Facebook caption (800-1200 chars). Conversational, story-driven, emotionally resonant. Start with the quote or a hook. End with a question to drive comments + CTA to the Academy. Include 5-8 hashtags.",
-  "instagram": "Instagram feed caption (800-1200 chars). Visual-first, aspirational, emotionally resonant. Start with a bold hook line or the quote itself. Use line breaks for readability. End with 'Link in bio to join the Urban Monk Academy.' Include 10-15 hashtags at the end on their own line.",
+  "meta": "Facebook caption (800-1200 chars). Conversational, story-driven, emotionally resonant. Start with the quote or a hook. End with a question to drive comments + CTA to the most relevant program. Include 5-8 hashtags.",
+  "instagram": "Instagram feed caption (800-1200 chars). Visual-first, aspirational, emotionally resonant. Start with a bold hook line or the quote itself. Use line breaks for readability. End with 'Link in bio.' Include 10-15 hashtags at the end on their own line.",
   "instagramReel": "Instagram Reels caption (150-300 chars). Ultra-punchy hook in the first line (this shows before 'more'). 1-2 sentences max. End with 'Link in bio.' Include 3-5 hashtags.",
   "hashtags": ["array of 12-15 hashtags relevant to this snippet's theme, without the # symbol"],
-  "ctaText": "Short CTA sentence (max 100 chars) pointing to the Academy, e.g. 'Join the Urban Monk Academy → theurbanmonk.com/academy'"
+  "ctaText": "Short CTA sentence (max 100 chars) pointing to the most relevant program, e.g. 'Explore Upstream → upstream.theurbanmonk.com' or 'Start Lights On → lightson.theurbanmonk.com'"
 }
 
 IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The instagramReel caption MUST be under 300 characters.`;
@@ -860,7 +860,7 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
         platform: bufferPlatform,
         metaPostType,
         scheduledAt: input.scheduledAt,
-        ctaUrl: snippet.ctaText ? "https://theurbanmonk.com/academy" : undefined,
+        ctaUrl: snippet.ctaText ? "https://lightson.theurbanmonk.com/" : undefined,
         channelServiceMap: Object.fromEntries(input.channelIds.map((id) => [id, input.platform.startsWith("instagram") ? "instagram" : input.platform])),
       });
 

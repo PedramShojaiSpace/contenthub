@@ -97,10 +97,10 @@ STRUCTURE (invisible — do not label these):
 - First 2-3 sentences: the hook — a compelling statement of what viewers will learn and why it matters (this appears in search results)
 - 1 paragraph: expand on the key insight and what makes this video different
 - 1 paragraph: what viewers will take away / key topics covered (no bullet points — flowing prose)
-- CTA paragraph: invite them to subscribe, check out the Academy, or take the next step
+- CTA paragraph: invite them to subscribe or take the next step toward Lights On (lightson.theurbanmonk.com), Upstream (upstream.theurbanmonk.com), the Gateway to Health test (gth.theurbanmonk.com), or the Sleep Masterclass (theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay) — match the CTA to the video topic
 - 5-8 relevant hashtags at the very end
 - 150-250 words total
-CONTENT PILLARS: Gut health, sleep science, stress physiology, ancient practices, functional medicine, longevity, the Urban Monk Academy.
+CONTENT PILLARS: Gut health, sleep science, stress physiology, ancient practices, functional medicine, longevity, Lights On, Upstream.
 IMPORTANT: Also include a 2-3 sentence SPOKEN HOOK at the very top (before the description) that Pedram can say directly to camera to open the video. Label it clearly as "SPOKEN HOOK:" on its own line, then a blank line, then the description. This is the only exception to the no-labels rule.`;
 
 const EMAIL_VOICE = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a weekly email newsletter to his subscriber list of health-conscious professionals and wellness seekers.
@@ -118,7 +118,7 @@ EMAIL STRUCTURE (invisible — do not label these):
 - Closing: warm sign-off as Pedram
 - 300-500 words total
 - No hashtags, no markdown formatting, no bullet lists — flowing prose only
-CONTENT PILLARS: Gut health, sleep optimization, stress physiology, ancient practices, functional medicine, the Urban Monk Academy, personal transformation.`;
+CONTENT PILLARS: Gut health, sleep optimization, stress physiology, ancient practices, functional medicine, Lights On, Upstream, personal transformation.`;
 
 // ── Procedure ─────────────────────────────────────────────────────────────────
 

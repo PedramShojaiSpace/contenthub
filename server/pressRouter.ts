@@ -307,7 +307,7 @@ VERIFIED FACTS:
 - Doctor of Oriental Medicine (OMD)
 - Taoist Monk and Qigong Master
 - Filmmaker (Vitality, Origins, Prosperity documentaries)
-- Founder of Urban Monk Academy (subscription wellness education)
+- Founder of The Urban Monk (wellness education platform: Lights On, Upstream, Gateway to Health programs)
 - Books: The Urban Monk (2016), The Art of Stopping Time (2017), FOCUS (2020), Exhausted, Prosperity
 
 TIER-S PRESS (${tierS.length} placements): ${sOutlets}

@@ -609,7 +609,7 @@ export default function AvatarRepositoryPage() {
               <Sparkles className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-sm font-medium text-muted-foreground">No avatar profiles yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                Create a profile for each product you run webinars for (e.g. "Upstream Course", "Urban Monk Academy").
+                Create a profile for each product you run webinars for (e.g. "Upstream", "Lights On", "Gateway to Health").
                 Then merge your webinar intelligence into it after each event.
               </p>
               <Button

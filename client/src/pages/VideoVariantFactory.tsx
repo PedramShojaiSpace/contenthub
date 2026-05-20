@@ -1414,7 +1414,7 @@ export default function VideoVariantFactory() {
                           <Input
                             value={bufferCtaUrl}
                             onChange={e => setBufferCtaUrl(e.target.value)}
-                            placeholder="https://urbanmonkacademy.com/join"
+                            placeholder="https://lightson.theurbanmonk.com/"
                             className="bg-background border-border text-foreground text-sm"
                           />
                         </div>

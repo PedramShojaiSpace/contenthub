@@ -468,7 +468,7 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
       if (globalCta.url) {
         doc.fillOpacity(1);
         const btnY = doc.y + 20;
-        const btnLabel = globalCta.label || "Join the Urban Monk Academy →";
+        const btnLabel = globalCta.label || "Discover Lights On →";
         const btnW = 280;
         const btnX = (pageWidth - btnW) / 2;
         doc.rect(btnX, btnY, btnW, 36).fill(GOLD);

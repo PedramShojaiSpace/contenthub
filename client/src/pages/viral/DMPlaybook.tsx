@@ -20,7 +20,10 @@ const PLATFORMS = [
 ];
 
 const GOALS = [
-  { value: "academy_signup", label: "Urban Monk Academy Sign-up ($297/yr)" },
+  { value: "lights_on", label: "Lights On Program" },
+  { value: "upstream", label: "Upstream Program" },
+  { value: "gateway_test", label: "Gateway to Health Test" },
+  { value: "sleep_masterclass", label: "Restorative Sleep Masterclass" },
   { value: "lead_magnet", label: "Lead Magnet Download" },
   { value: "free_trial", label: "Free Trial / Demo" },
   { value: "consultation", label: "Book a Consultation" },
@@ -196,8 +199,8 @@ export default function DMPlaybook() {
     const url = kajabiUrl.trim() || undefined;
     generateMutation.mutate({
       videoTopic: videoTopic.trim(),
-      triggerKeyword: conversionGoal === "academy_signup" ? "MONK" : "LEARN",
-      leadMagnet: offerDetails.trim() || "Urban Monk Academy — $297/year membership with 200+ hours of content",
+      triggerKeyword: conversionGoal === "lights_on" ? "LIGHTSON" : conversionGoal === "upstream" ? "UPSTREAM" : conversionGoal === "gateway_test" ? "TEST" : conversionGoal === "sleep_masterclass" ? "SLEEP" : "LEARN",
+      leadMagnet: offerDetails.trim() || "Lights On — Dr. Pedram Shojai's energy & vitality program at lightson.theurbanmonk.com",
       leadMagnetUrl: url,
       platform: platform as "instagram",
     });
@@ -287,7 +290,7 @@ export default function DMPlaybook() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Offer Details <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Textarea
-                placeholder="e.g. Urban Monk Academy — $297/year, includes 200+ hours of content, live Q&As, supplement discounts..."
+                placeholder="e.g. Lights On — Dr. Pedram Shojai's energy & vitality system at lightson.theurbanmonk.com"
                 value={offerDetails}
                 onChange={(e) => setOfferDetails(e.target.value)}
                 rows={3}

@@ -146,7 +146,7 @@ POST STRUCTURE (invisible — do not label these):
 - 150-250 words
 - 5-10 relevant hashtags on their own line at the very end — always include #urbanmonk as the first hashtag
 
-CONTENT PILLARS: Daily practices, mindfulness, gut health, energy, sleep, stress, the Urban Monk Academy, personal transformation stories.`,
+CONTENT PILLARS: Daily practices, mindfulness, gut health, energy, sleep, stress, Lights On, Upstream, personal transformation stories.`,
 
     x: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) on X (Twitter). His audience is intellectually curious professionals and wellness enthusiasts.
 VOICE: Sharp, punchy, thought-provoking. Challenges conventional wisdom. Mix of bold statements and nuanced insights.
@@ -198,7 +198,7 @@ DESCRIPTION STRUCTURE (invisible — do not label these):
 - Include 5-8 relevant SEO keywords/phrases naturally in the text
 - End with: #urbanmonk #theurbanmonk and 3-5 additional relevant hashtags
 
-CONTENT PILLARS: Deep dives on gut health, sleep optimization, stress physiology, ancient practices, functional medicine, the Urban Monk Academy curriculum.`,
+CONTENT PILLARS: Deep dives on gut health, sleep optimization, stress physiology, ancient practices, functional medicine, Lights On, Upstream.`,
 
   tiktok: `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a TikTok video script. His audience is health-curious 25-45 year olds who scroll fast and need to be hooked in the first 2 seconds.
 
@@ -2983,7 +2983,7 @@ STRICT RULES:
         if (!item) throw new TRPCError({ code: 'NOT_FOUND', message: 'Content item not found' });
 
         // Resolve CTA details — fall back to stored ctaBlockLabel or defaults
-        const ctaLabel = input.ctaLabel ?? item.ctaBlockLabel ?? 'Urban Monk Academy';
+        const ctaLabel = input.ctaLabel ?? item.ctaBlockLabel ?? 'Lights On';
         const ctaText = input.ctaText ?? 'Transform your health and wellbeing with Dr. Pedram Shojai';
         const ctaUrl = input.ctaUrl ?? 'https://lightson.theurbanmonk.com/';
         const articleTopic = input.articleTopic ?? item.title ?? 'wellness and ancient wisdom';

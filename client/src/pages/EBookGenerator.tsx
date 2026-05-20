@@ -52,6 +52,7 @@ import {
   ArrowUpRight,
   LayoutTemplate,
   Video,
+  GitFork,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { useRef } from "react";
@@ -2145,6 +2146,26 @@ export default function EBookGenerator() {
           </div>
         </div>
 
+        {/* Cross-module prefill confirmation banner */}
+        {prefillData && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/8 border border-primary/20 text-sm">
+            <GitFork className="w-4 h-4 text-primary shrink-0" />
+            <span className="flex-1">
+              <span className="font-medium">Pre-filled from </span>
+              {prefillData.fromLabel ?? "another module"}
+            </span>
+            <button
+              onClick={() => {
+                setPrefillData(null);
+                setPrefillDialogOpen(false);
+                toast("Prefill cleared", { description: "Form reset to blank" });
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              Undo prefill
+            </button>
+          </div>
+        )}
         {/* Voice profile warning */}
         {readyBooks.length === 0 && (
           <Card className="border-amber-500/30 bg-amber-500/5">

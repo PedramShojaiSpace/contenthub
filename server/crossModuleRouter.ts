@@ -283,6 +283,61 @@ export const crossModuleRouter = router({
       };
     }),
 
+  // ── Pipeline View — all three modules with cross-link counts ──────────────────
+  getPipelineView: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { webinars: [], landingPages: [], ebooks: [] };
+
+    const [webinarRows, landingPageRows, ebookRows] = await Promise.all([
+      db
+        .select({
+          id: webinarSessions.id,
+          topic: webinarSessions.topic,
+          webinarDate: webinarSessions.webinarDate,
+          status: webinarSessions.status,
+          createdAt: webinarSessions.createdAt,
+        })
+        .from(webinarSessions)
+        .orderBy(desc(webinarSessions.createdAt))
+        .limit(20),
+
+      db
+        .select({
+          id: landingPages.id,
+          title: landingPages.title,
+          offer: landingPages.offer,
+          personaName: landingPages.personaName,
+          status: landingPages.status,
+          gammaUrl: landingPages.gammaUrl,
+          createdAt: landingPages.createdAt,
+        })
+        .from(landingPages)
+        .orderBy(desc(landingPages.createdAt))
+        .limit(20),
+
+      db
+        .select({
+          id: ebooks.id,
+          title: ebooks.title,
+          topic: ebooks.topic,
+          status: ebooks.status,
+          targetPersona: ebooks.targetPersona,
+          pdfS3Url: ebooks.pdfS3Url,
+          createdAt: ebooks.createdAt,
+        })
+        .from(ebooks)
+        .where(eq(ebooks.userId, ctx.user.id))
+        .orderBy(desc(ebooks.createdAt))
+        .limit(20),
+    ]);
+
+    return {
+      webinars: webinarRows,
+      landingPages: landingPageRows,
+      ebooks: ebookRows,
+    };
+  }),
+
   // ── List all sessions / pages / ebooks for picker dropdowns ─────────────────
   listWebinarSessions: protectedProcedure.query(async () => {
     const db = await getDb();

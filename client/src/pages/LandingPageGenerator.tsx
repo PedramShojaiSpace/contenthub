@@ -546,6 +546,9 @@ export default function LandingPageGenerator() {
         offer: selectedOffer as "upstream_bundle" | "upstream_course" | "explorer_tier" | "lights_on_webinar" | "deep_sleep_webinar" | "homesick_screening" | "interconnected_screening" | "kbmo_testing" | "gateway_health" | "custom",
         offerCustomLabel: selectedOffer === "custom" ? customOfferLabel : undefined,
         contentAngle: contentAngle.trim(),
+        // Connection tracking: pass source IDs from cross-module feed
+        ...(fromModule === "webinar" && fromId ? { sourceWebinarId: fromId } : {}),
+        ...(fromModule === "ebook" && fromId ? { sourceEbookId: fromId } : {}),
       });
 
       setGeneratedPageId(result.id);

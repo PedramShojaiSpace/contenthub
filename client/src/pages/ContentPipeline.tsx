@@ -5,6 +5,10 @@
  * Landing Pages) side by side with "Send to →" action buttons between them.
  * Gives an at-a-glance view of the full funnel and lets you navigate to any
  * module pre-filled from any item in one click.
+ *
+ * Connection tracking: items that were created from another module show a
+ * "linked from" badge using the real FK columns (sourceWebinarId, sourceEbookId,
+ * sourceLandingPageId) — no topic-name inference.
  */
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,11 +20,62 @@ import {
   BookOpen,
   ExternalLink,
   FileText,
+  Filter,
   GitFork,
   Globe,
+  Link2,
   Video,
 } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type WebinarRow = {
+  id: number;
+  topic: string;
+  webinarDate: string | null;
+  status: string | null;
+  createdAt: Date | null;
+};
+
+type EbookRow = {
+  id: number;
+  title: string;
+  topic: string;
+  status: string | null;
+  targetPersona: string | null;
+  pdfS3Url: string | null;
+  createdAt: Date | null;
+  sourceWebinarId: number | null;
+  sourceEbookId: number | null;
+  sourceLandingPageId: number | null;
+};
+
+type LandingPageRow = {
+  id: number;
+  title: string;
+  offer: string | null;
+  personaName: string | null;
+  status: string | null;
+  gammaUrl: string | null;
+  createdAt: Date | null;
+  sourceWebinarId: number | null;
+  sourceEbookId: number | null;
+  sourceLandingPageId: number | null;
+};
+
+// ─── Filter options ───────────────────────────────────────────────────────────
+
+type FilterOption = "all" | "complete" | "drafting" | "linked" | "unlinked";
+
+const FILTER_LABELS: Record<FilterOption, string> = {
+  all: "All",
+  complete: "Complete",
+  drafting: "Drafting",
+  linked: "Linked",
+  unlinked: "Unlinked",
+};
 
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 
@@ -36,9 +91,22 @@ function statusColor(status: string | null): string {
       return "bg-amber-100 text-amber-700 border-amber-200";
     case "scheduled":
       return "bg-blue-100 text-blue-700 border-blue-200";
+    case "failed":
+      return "bg-red-100 text-red-700 border-red-200";
     default:
       return "bg-muted text-muted-foreground border-border";
   }
+}
+
+// ─── Connection badge ─────────────────────────────────────────────────────────
+
+function LinkedBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-primary/70 bg-primary/8 border border-primary/20 rounded px-1.5 py-0.5">
+      <Link2 className="w-2.5 h-2.5" />
+      {label}
+    </span>
+  );
 }
 
 // ─── Column skeleton ──────────────────────────────────────────────────────────
@@ -72,29 +140,64 @@ function ColumnArrow({ label }: { label: string }) {
   );
 }
 
+// ─── Filter bar ───────────────────────────────────────────────────────────────
+
+function FilterBar({
+  active,
+  onChange,
+}: {
+  active: FilterOption;
+  onChange: (f: FilterOption) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+      {(Object.keys(FILTER_LABELS) as FilterOption[]).map((f) => (
+        <button
+          key={f}
+          onClick={() => onChange(f)}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+            active === f
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+          }`}
+        >
+          {FILTER_LABELS[f]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Webinar column ───────────────────────────────────────────────────────────
 
 function WebinarColumn({
   webinars,
+  filter,
 }: {
-  webinars: Array<{
-    id: number;
-    topic: string;
-    webinarDate: string | null;
-    status: string | null;
-    createdAt: Date | null;
-  }>;
+  webinars: WebinarRow[];
+  filter: FilterOption;
 }) {
   const [, navigate] = useLocation();
 
+  const filtered = webinars.filter((w) => {
+    if (filter === "all") return true;
+    if (filter === "complete") return w.status === "complete" || w.status === "published";
+    if (filter === "drafting") return w.status === "drafting" || w.status === "draft" || w.status === "building";
+    // Webinars don't have source FKs — treat them as "unlinked" for linked/unlinked filters
+    if (filter === "linked") return false;
+    if (filter === "unlinked") return true;
+    return true;
+  });
+
   return (
     <div className="flex flex-col gap-3">
-      {webinars.length === 0 && (
+      {filtered.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">
-          No webinar sessions yet.
+          {filter === "linked" ? "No linked webinars." : "No webinar sessions yet."}
         </p>
       )}
-      {webinars.map((w) => (
+      {filtered.map((w) => (
         <Card
           key={w.id}
           className="border border-border/60 hover:border-primary/30 transition-colors"
@@ -161,30 +264,45 @@ function WebinarColumn({
 
 function EBookColumn({
   ebooks,
+  webinars,
+  filter,
 }: {
-  ebooks: Array<{
-    id: number;
-    title: string;
-    topic: string;
-    status: string | null;
-    targetPersona: string | null;
-    pdfS3Url: string | null;
-    createdAt: Date | null;
-  }>;
+  ebooks: EbookRow[];
+  webinars: WebinarRow[];
+  filter: FilterOption;
 }) {
   const [, navigate] = useLocation();
 
+  const isLinked = (e: EbookRow) =>
+    e.sourceWebinarId !== null || e.sourceEbookId !== null || e.sourceLandingPageId !== null;
+
+  const filtered = ebooks.filter((e) => {
+    if (filter === "all") return true;
+    if (filter === "complete") return e.status === "complete";
+    if (filter === "drafting") return e.status === "drafting" || e.status === "draft";
+    if (filter === "linked") return isLinked(e);
+    if (filter === "unlinked") return !isLinked(e);
+    return true;
+  });
+
+  // Build a lookup map for webinar topics
+  const webinarMap = new Map(webinars.map((w) => [w.id, w.topic]));
+
   return (
     <div className="flex flex-col gap-3">
-      {ebooks.length === 0 && (
+      {filtered.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">
-          No e-books yet.
+          {filter === "linked" ? "No linked e-books." : "No e-books yet."}
         </p>
       )}
-      {ebooks.map((e) => (
+      {filtered.map((e) => (
         <Card
           key={e.id}
-          className="border border-border/60 hover:border-primary/30 transition-colors"
+          className={`border transition-colors ${
+            isLinked(e)
+              ? "border-primary/30 hover:border-primary/50"
+              : "border-border/60 hover:border-primary/30"
+          }`}
         >
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
@@ -200,11 +318,24 @@ function EBookColumn({
                 </Badge>
               )}
             </div>
-            {e.targetPersona && (
+
+            {/* Connection badges — show which source item this was fed from */}
+            {e.sourceWebinarId !== null && (
+              <LinkedBadge
+                label={
+                  webinarMap.has(e.sourceWebinarId)
+                    ? `Webinar: ${webinarMap.get(e.sourceWebinarId)!.slice(0, 30)}…`
+                    : `Webinar #${e.sourceWebinarId}`
+                }
+              />
+            )}
+
+            {e.targetPersona && !e.sourceWebinarId && (
               <p className="text-xs text-muted-foreground">
                 Audience: {e.targetPersona}
               </p>
             )}
+
             <div className="flex gap-2 flex-wrap">
               <Button
                 variant="outline"
@@ -246,30 +377,48 @@ function EBookColumn({
 
 function LandingPageColumn({
   landingPages,
+  webinars,
+  ebooks,
+  filter,
 }: {
-  landingPages: Array<{
-    id: number;
-    title: string;
-    offer: string | null;
-    personaName: string | null;
-    status: string | null;
-    gammaUrl: string | null;
-    createdAt: Date | null;
-  }>;
+  landingPages: LandingPageRow[];
+  webinars: WebinarRow[];
+  ebooks: EbookRow[];
+  filter: FilterOption;
 }) {
   const [, navigate] = useLocation();
 
+  const isLinked = (p: LandingPageRow) =>
+    p.sourceWebinarId !== null || p.sourceEbookId !== null || p.sourceLandingPageId !== null;
+
+  const filtered = landingPages.filter((p) => {
+    if (filter === "all") return true;
+    if (filter === "complete") return p.status === "published" || p.status === "complete";
+    if (filter === "drafting") return p.status === "draft" || p.status === "drafting";
+    if (filter === "linked") return isLinked(p);
+    if (filter === "unlinked") return !isLinked(p);
+    return true;
+  });
+
+  // Build lookup maps
+  const webinarMap = new Map(webinars.map((w) => [w.id, w.topic]));
+  const ebookMap = new Map(ebooks.map((e) => [e.id, e.title]));
+
   return (
     <div className="flex flex-col gap-3">
-      {landingPages.length === 0 && (
+      {filtered.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">
-          No landing pages yet.
+          {filter === "linked" ? "No linked landing pages." : "No landing pages yet."}
         </p>
       )}
-      {landingPages.map((p) => (
+      {filtered.map((p) => (
         <Card
           key={p.id}
-          className="border border-border/60 hover:border-primary/30 transition-colors"
+          className={`border transition-colors ${
+            isLinked(p)
+              ? "border-primary/30 hover:border-primary/50"
+              : "border-border/60 hover:border-primary/30"
+          }`}
         >
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
@@ -285,11 +434,38 @@ function LandingPageColumn({
                 </Badge>
               )}
             </div>
-            {p.personaName && (
+
+            {/* Connection badges */}
+            <div className="flex flex-wrap gap-1">
+              {p.sourceWebinarId !== null && (
+                <LinkedBadge
+                  label={
+                    webinarMap.has(p.sourceWebinarId)
+                      ? `Webinar: ${webinarMap.get(p.sourceWebinarId)!.slice(0, 25)}…`
+                      : `Webinar #${p.sourceWebinarId}`
+                  }
+                />
+              )}
+              {p.sourceEbookId !== null && (
+                <LinkedBadge
+                  label={
+                    ebookMap.has(p.sourceEbookId)
+                      ? `E-Book: ${ebookMap.get(p.sourceEbookId)!.slice(0, 25)}…`
+                      : `E-Book #${p.sourceEbookId}`
+                  }
+                />
+              )}
+              {p.sourceLandingPageId !== null && (
+                <LinkedBadge label={`Variant of #${p.sourceLandingPageId}`} />
+              )}
+            </div>
+
+            {p.personaName && !isLinked(p) && (
               <p className="text-xs text-muted-foreground">
                 Persona: {p.personaName}
               </p>
             )}
+
             <div className="flex gap-2 flex-wrap">
               <Button
                 variant="outline"
@@ -337,10 +513,24 @@ function LandingPageColumn({
 
 export default function ContentPipeline() {
   const { data, isLoading } = trpc.crossModule.getPipelineView.useQuery();
+  const [activeFilter, setActiveFilter] = useState<FilterOption>("all");
 
-  const webinarCount = data?.webinars.length ?? 0;
-  const ebookCount = data?.ebooks.length ?? 0;
-  const pageCount = data?.landingPages.length ?? 0;
+  const webinars = (data?.webinars ?? []) as WebinarRow[];
+  const ebooks = (data?.ebooks ?? []) as EbookRow[];
+  const landingPages = (data?.landingPages ?? []) as LandingPageRow[];
+
+  const webinarCount = webinars.length;
+  const ebookCount = ebooks.length;
+  const pageCount = landingPages.length;
+
+  // Count linked items for the "Linked" filter badge
+  const linkedEbooks = ebooks.filter(
+    (e) => e.sourceWebinarId !== null || e.sourceEbookId !== null || e.sourceLandingPageId !== null
+  ).length;
+  const linkedPages = landingPages.filter(
+    (p) => p.sourceWebinarId !== null || p.sourceEbookId !== null || p.sourceLandingPageId !== null
+  ).length;
+  const totalLinked = linkedEbooks + linkedPages;
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
@@ -358,7 +548,7 @@ export default function ContentPipeline() {
       </div>
 
       {/* Summary stats */}
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex gap-4 flex-wrap items-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Video className="w-4 h-4 text-primary" />
           <span className="font-medium text-foreground">{webinarCount}</span> webinar{webinarCount !== 1 ? "s" : ""}
@@ -371,7 +561,16 @@ export default function ContentPipeline() {
           <Globe className="w-4 h-4 text-primary" />
           <span className="font-medium text-foreground">{pageCount}</span> landing page{pageCount !== 1 ? "s" : ""}
         </div>
+        {totalLinked > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link2 className="w-4 h-4 text-primary" />
+            <span className="font-medium text-foreground">{totalLinked}</span> linked item{totalLinked !== 1 ? "s" : ""}
+          </div>
+        )}
       </div>
+
+      {/* Filter bar */}
+      <FilterBar active={activeFilter} onChange={setActiveFilter} />
 
       {/* Three-column pipeline */}
       <div className="flex gap-0 items-start overflow-x-auto pb-4">
@@ -393,7 +592,7 @@ export default function ContentPipeline() {
               {isLoading ? (
                 <ColumnSkeleton />
               ) : (
-                <WebinarColumn webinars={data?.webinars ?? []} />
+                <WebinarColumn webinars={webinars} filter={activeFilter} />
               )}
             </CardContent>
           </Card>
@@ -419,7 +618,7 @@ export default function ContentPipeline() {
               {isLoading ? (
                 <ColumnSkeleton />
               ) : (
-                <EBookColumn ebooks={data?.ebooks ?? []} />
+                <EBookColumn ebooks={ebooks} webinars={webinars} filter={activeFilter} />
               )}
             </CardContent>
           </Card>
@@ -445,7 +644,12 @@ export default function ContentPipeline() {
               {isLoading ? (
                 <ColumnSkeleton />
               ) : (
-                <LandingPageColumn landingPages={data?.landingPages ?? []} />
+                <LandingPageColumn
+                  landingPages={landingPages}
+                  webinars={webinars}
+                  ebooks={ebooks}
+                  filter={activeFilter}
+                />
               )}
             </CardContent>
           </Card>

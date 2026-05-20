@@ -54,6 +54,7 @@ import {
   BookOpen,
   FileText,
   Hash,
+  GitFork,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -76,6 +77,7 @@ const topNavItems = [
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
   { icon: Library, label: "Media Vault", path: "/media-vault" },
   { icon: Video, label: "Create Webinar", path: "/webinar" },
+  { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
 ];
 
 // Strategy sub-items (grouped under collapsible parent)

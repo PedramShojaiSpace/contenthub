@@ -54,6 +54,7 @@ import {
   X,
   Video,
   Zap,
+  GitFork,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -442,6 +443,7 @@ export default function LandingPageGenerator() {
 
   // Step state
   const [step, setStep] = useState<"configure" | "preview" | "history">("configure");
+  const [prefillLabel, setPrefillLabel] = useState<string | null>(null);
 
   // Form state
   const [selectedPersona, setSelectedPersona] = useState<(typeof PERSONAS)[0] | null>(null);
@@ -505,7 +507,7 @@ export default function LandingPageGenerator() {
     if (fromModule === "webinar" && webinarFeed) {
       setContentAngle(webinarFeed.contentAngle);
       setSelectedOffer("lights_on_webinar");
-      toast.success(`Pre-filled from webinar: "${webinarFeed.webinarTopic}"`, { duration: 4000 });
+      setPrefillLabel(`Webinar: "${webinarFeed.webinarTopic}"`);
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [fromModule, webinarFeed]);
@@ -515,7 +517,7 @@ export default function LandingPageGenerator() {
       setContentAngle(ebookFeed.contentAngle);
       setSelectedOffer("custom");
       setCustomOfferLabel(ebookFeed.offerCustomLabel ?? `Free E-Book: ${ebookFeed.ebookTitle}`);
-      toast.success(`Pre-filled from e-book: "${ebookFeed.ebookTitle}"`, { duration: 4000 });
+      setPrefillLabel(`E-Book: "${ebookFeed.ebookTitle}"`);
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [fromModule, ebookFeed]);
@@ -777,6 +779,28 @@ export default function LandingPageGenerator() {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6">
+          {/* Cross-module prefill confirmation banner */}
+          {prefillLabel && (
+            <div className="flex items-center gap-3 px-4 py-3 mb-4 rounded-lg bg-[oklch(0.65_0.12_50)]/10 border border-[oklch(0.65_0.12_50)]/20 text-sm">
+              <GitFork className="w-4 h-4 text-[oklch(0.55_0.12_50)] shrink-0" />
+              <span className="flex-1">
+                <span className="font-medium">Pre-filled from </span>
+                {prefillLabel}
+              </span>
+              <button
+                onClick={() => {
+                  setPrefillLabel(null);
+                  setContentAngle("");
+                  setSelectedOffer("upstream_bundle");
+                  setCustomOfferLabel("");
+                  toast("Prefill cleared", { description: "Form reset to blank" });
+                }}
+                className="text-xs text-[oklch(0.45_0.03_60)] hover:text-[oklch(0.25_0.03_60)] underline underline-offset-2"
+              >
+                Undo prefill
+              </button>
+            </div>
+          )}
           {/* ── CONFIGURE STEP ── */}
           {step === "configure" && (
             <div className="max-w-4xl mx-auto space-y-8">

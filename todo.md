@@ -2818,3 +2818,27 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] WebinarBuilder: useEffect to read query params and pre-fill topic and CTA
 - [x] Fix buildIntelligenceSummary field names to match actual webinarIntelligence schema columns
 - [x] Add defaultStyleNote to generateEbook input schema (was missing, causing TS error)
+
+## v-pipeline-wp — Content Pipeline Dashboard, Feed Toast, WordPress Publish
+
+- [ ] Audit blog router for WordPress publish placeholder
+- [ ] Add publishToWordPress tRPC procedure in blog router (uses WORDPRESS_URL, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD)
+- [ ] Add WordPress publish button to Blog panel UI (replaces "coming soon" placeholder)
+- [ ] Build crossModule.getPipelineView tRPC procedure (returns ebooks, webinars, landingPages with cross-links)
+- [ ] Build ContentPipeline.tsx page with three-column layout and connection arrows
+- [ ] Register /content-pipeline route in App.tsx and add to sidebar nav
+- [ ] Add feed confirmation banner (dismissible, with Undo) to EBookGenerator when arriving with ?from= params
+- [ ] Add feed confirmation banner to LandingPageGenerator when arriving with ?from= params
+- [ ] Add feed confirmation banner to WebinarBuilder when arriving with ?from= params
+
+## v-pipeline-wp — Content Pipeline Dashboard, Feed Banners, WordPress Publish
+
+- [x] WordPress direct publish from Blog panel — already fully implemented in CreationStudio.tsx (confirmed v9)
+- [x] Add getPipelineView tRPC procedure to crossModuleRouter (returns webinars, ebooks, landingPages with cross-link metadata)
+- [x] Build ContentPipeline.tsx page — three-column layout with connection arrows, status badges, and feed buttons
+- [x] Add GitFork icon import and register /content-pipeline route in App.tsx
+- [x] Add "Content Pipeline" nav item to DashboardLayout sidebar
+- [x] Add prefill confirmation banner with undo to EBookGenerator (shows when prefillData is set)
+- [x] Add prefill confirmation banner with undo to LandingPageGenerator (prefillLabel state, GitFork icon)
+- [x] Add prefill confirmation banner with undo to WebinarBuilder (prefillLabel state, GitFork icon)
+- [x] Replace toast.success prefill notifications with persistent banner + undo button in all three modules

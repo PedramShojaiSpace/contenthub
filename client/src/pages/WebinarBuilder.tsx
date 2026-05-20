@@ -46,6 +46,7 @@ import {
   ArrowUpRight,
   BookOpen,
   LayoutTemplate,
+  GitFork,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
@@ -174,6 +175,7 @@ function WebinarList({
 
 export default function WebinarBuilder() {
   const [step, setStep] = useState<Step>(1);
+  const [prefillLabel, setPrefillLabel] = useState<string | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [activeWebinarId, setActiveWebinarId] = useState<number | null>(null);
 
@@ -411,7 +413,7 @@ export default function WebinarBuilder() {
     if (fromModule === "ebook" && ebookFeed) {
       setTopic(ebookFeed.topic);
       setCta(ebookFeed.cta);
-      toast.success(`Pre-filled from e-book: "${ebookFeed.ebookTitle}"`, { duration: 4000 });
+      setPrefillLabel(`E-Book: "${ebookFeed.ebookTitle}"`);
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [fromModule, ebookFeed]);
@@ -420,7 +422,7 @@ export default function WebinarBuilder() {
     if (fromModule === "landingPage" && landingPageFeed) {
       setTopic(landingPageFeed.topic);
       setCta(landingPageFeed.cta);
-      toast.success(`Pre-filled from landing page: "${landingPageFeed.pageTitle}"`, { duration: 4000 });
+      setPrefillLabel(`Landing Page: "${landingPageFeed.pageTitle}"`);
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [fromModule, landingPageFeed]);
@@ -1459,6 +1461,27 @@ export default function WebinarBuilder() {
   return (
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto">
+        {/* Cross-module prefill confirmation banner */}
+        {prefillLabel && (
+          <div className="flex items-center gap-3 px-4 py-3 mb-4 rounded-lg bg-primary/8 border border-primary/20 text-sm">
+            <GitFork className="w-4 h-4 text-primary shrink-0" />
+            <span className="flex-1">
+              <span className="font-medium">Pre-filled from </span>
+              {prefillLabel}
+            </span>
+            <button
+              onClick={() => {
+                setPrefillLabel(null);
+                setTopic("Upstream Health: How to Find and Fix Your Root Cause");
+                setCta("Get the Upstream Bundle — $399 (test kit + course)");
+                toast("Prefill cleared", { description: "Form reset to blank" });
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              Undo prefill
+            </button>
+          </div>
+        )}
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1">

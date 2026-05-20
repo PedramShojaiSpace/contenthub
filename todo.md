@@ -2886,3 +2886,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Browser smoke test — ContentPipeline renders with filter bar and feed arrows (no console errors)
 - [x] Browser smoke test — EBookGenerator renders with Generate New E-Book button (no console errors)
 - [x] Browser smoke test — auth gate working correctly on protected pages
+
+## Podcast Production Module
+- [x] Add podcastEpisodes table to drizzle schema with guest intake fields and report storage
+- [x] Run pnpm db:push to migrate schema
+- [x] Build podcastRouter with createEpisode, generateReport, getEpisodes, getEpisode, deleteEpisode procedures
+- [x] Build PodcastProduction.tsx page with guest intake form and episode list
+- [x] Build PodcastEpisodeViewer.tsx with BINGE section tabs and rendered report
+- [x] Register /podcast-production and /podcast-production/:id routes in App.tsx
+- [x] Add Podcast Production to DashboardLayout sidebar nav
+- [x] Write vitest tests for podcastRouter

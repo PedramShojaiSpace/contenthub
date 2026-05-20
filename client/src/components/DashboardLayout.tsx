@@ -55,6 +55,7 @@ import {
   FileText,
   Hash,
   GitFork,
+  Mic,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -78,6 +79,7 @@ const topNavItems = [
   { icon: Library, label: "Media Vault", path: "/media-vault" },
   { icon: Video, label: "Create Webinar", path: "/webinar" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
+  { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
 ];
 
 // Strategy sub-items (grouped under collapsible parent)

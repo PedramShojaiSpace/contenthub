@@ -55,7 +55,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Copy,
-  MessageSquare,
   Link2,
 } from "lucide-react";
 
@@ -85,6 +84,7 @@ interface Session {
   platform: Platform;
   status: "scripting" | "ready_to_record" | "uploading" | "stitching" | "done";
   variantJobId: number | null;
+  ctaKeyword: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -332,108 +332,6 @@ function ScriptCard({
   );
 }
 
-// ─── CTA Keyword Panel ───────────────────────────────────────────────────────
-
-const KEYWORD_TEMPLATES: Record<Platform, string[]> = {
-  tiktok: ["Comment {KEYWORD} below and I'll DM it to you!", "Reply {KEYWORD} in the comments and I'll send it right over.", "Drop {KEYWORD} in the comments — I'll DM you the link."],
-  instagram: ["Comment {KEYWORD} below and I'll DM you the link!", "Reply {KEYWORD} in the comments and I'll send it to your DMs.", "Drop {KEYWORD} below — I'll DM you instantly."],
-  youtube: ["Comment {KEYWORD} below and I'll reply with the link!", "Type {KEYWORD} in the comments and I'll send you the resource.", "Leave {KEYWORD} in the comments and I'll drop the link for you."],
-  linkedin: ["Comment {KEYWORD} below and I'll send you the resource directly.", "Reply {KEYWORD} in the comments and I'll DM you the link.", "Drop {KEYWORD} in the comments — I'll send it over."],
-  x: ["Reply {KEYWORD} to this post and I'll DM you the link.", "Tweet {KEYWORD} at me and I'll send it right over.", "Reply {KEYWORD} and I'll DM you instantly."],
-  meta: ["Comment {KEYWORD} below and I'll send it to your Messenger!", "Reply {KEYWORD} in the comments — I'll DM you the link.", "Drop {KEYWORD} below and I'll message you the link."],
-};
-
-function CtaKeywordPanel({
-  platform,
-  idea,
-}: {
-  platform: Platform;
-  idea: string;
-}) {
-  // Auto-suggest a keyword from the idea (first meaningful word, uppercased)
-  const autoKeyword = idea
-    .split(/\s+/)
-    .filter((w) => w.length > 3 && !/^(the|and|for|with|that|this|from|your|have|will|what|when|how)$/i.test(w))
-    .slice(0, 1)
-    .map((w) => w.replace(/[^a-zA-Z]/g, "").toUpperCase())
-    .join("") || "FREE";
-
-  const [keyword, setKeyword] = useState(autoKeyword);
-  const [templateIdx, setTemplateIdx] = useState(0);
-  const templates = KEYWORD_TEMPLATES[platform] ?? KEYWORD_TEMPLATES.instagram;
-  const ctaCopy = templates[templateIdx].replace("{KEYWORD}", keyword || "KEYWORD");
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => toast.success("Copied to clipboard!"));
-  };
-
-  return (
-    <div className="mt-4 rounded-xl border border-sky-500/30 bg-sky-50 p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <MessageSquare className="w-4 h-4 text-sky-400" />
-        <span className="text-sky-700 text-sm font-semibold">Keyword-Reply CTA</span>
-        <span className="text-muted-foreground text-xs ml-1">— viewers comment a word to receive your link via DM</span>
-      </div>
-
-      {/* Keyword input */}
-      <div className="flex items-center gap-2">
-        <label className="text-muted-foreground text-xs w-20 shrink-0">Keyword</label>
-        <Input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-          placeholder="e.g. ENERGY"
-          className="bg-background border-border text-foreground font-mono text-sm h-8 uppercase max-w-[160px]"
-          maxLength={20}
-        />
-        <span className="text-muted-foreground text-xs">All caps, no spaces</span>
-      </div>
-
-      {/* Template selector */}
-      <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs">CTA Template</label>
-        <div className="space-y-1.5">
-          {templates.map((tpl, i) => (
-            <button
-              key={i}
-              onClick={() => setTemplateIdx(i)}
-              className={`w-full text-left text-sm px-3 py-2 rounded-lg border transition-all ${
-                templateIdx === i
-                  ? "border-sky-500/60 bg-sky-100 text-sky-800"
-                  : "border-border bg-background text-muted-foreground hover:border-sky-300 hover:text-foreground"
-              }`}
-            >
-              {tpl.replace("{KEYWORD}", keyword || "KEYWORD")}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Final CTA copy */}
-      <div className="bg-background border border-border rounded-lg p-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-muted-foreground text-xs mb-1">Your CTA copy:</p>
-          <p className="text-foreground font-medium text-sm">{ctaCopy}</p>
-        </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-muted-foreground hover:text-foreground h-7 w-7 p-0 shrink-0"
-          onClick={() => copyToClipboard(ctaCopy)}
-          title="Copy CTA text"
-        >
-          <Copy className="w-3.5 h-3.5" />
-        </Button>
-      </div>
-
-      {/* UTM hint */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link2 className="w-3 h-3" />
-        <span>Use the <strong className="text-foreground/70">UTM Code Generator</strong> in Strategy to create a trackable link for this keyword.</span>
-      </div>
-    </div>
-  );
-}
-
 // ─── New Session Form ─────────────────────────────────────────────────────────
 
 function NewSessionForm({ onCreated }: { onCreated: (id: number) => void }) {
@@ -554,6 +452,7 @@ function NewSessionForm({ onCreated }: { onCreated: (id: number) => void }) {
 function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () => void }) {
   const [teleprompterData, setTeleprompterData] = useState<{ text: string; title: string } | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [regeneratingCta, setRegeneratingCta] = useState(false);
 
   const utils = trpc.useUtils();
   const { data, isLoading, error } = trpc.videoSession.getSession.useQuery({ sessionId }, { refetchInterval: 5000 });
@@ -588,6 +487,18 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
     onError: () => {
       toast.error("Failed to regenerate scripts");
       setRegenerating(false);
+    },
+  });
+
+  const regenerateCtaMutation = trpc.videoSession.regenerateCta.useMutation({
+    onSuccess: () => {
+      utils.videoSession.getSession.invalidate({ sessionId });
+      toast.success("CTA regenerated!");
+      setRegeneratingCta(false);
+    },
+    onError: () => {
+      toast.error("Failed to regenerate CTA");
+      setRegeneratingCta(false);
     },
   });
 
@@ -771,10 +682,28 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
           {/* CTA */}
           {cta && (
             <div>
-              <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
-                Call to Action (Record Once)
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
+                  Call to Action (Record Once)
+                  {session.ctaKeyword && (
+                    <span className="font-mono text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5 text-[10px] normal-case tracking-normal">#{session.ctaKeyword}</span>
+                  )}
+                </h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-sky-400/30 text-sky-400 hover:text-sky-300 hover:border-sky-400/60 h-7 text-xs"
+                  onClick={() => {
+                    setRegeneratingCta(true);
+                    regenerateCtaMutation.mutate({ sessionId });
+                  }}
+                  disabled={regeneratingCta || regenerateCtaMutation.isPending}
+                >
+                  {regeneratingCta ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RotateCcw className="w-3 h-3 mr-1" />}
+                  Regenerate CTA
+                </Button>
+              </div>
               <ScriptCard
                 script={cta}
                 label="Call to Action"
@@ -782,7 +711,7 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
                 onEdit={(id, text) => editMutation.mutate({ scriptId: id, scriptText: text })}
                 onTeleprompter={(text, title) => setTeleprompterData({ text, title })}
               />
-              <CtaKeywordPanel platform={session.platform} idea={session.idea} />
+
             </div>
           )}
         </div>
@@ -867,6 +796,11 @@ function SessionHistory({ onSelect }: { onSelect: (id: number) => void }) {
               }`}>
                 {STATUS_STEPS.find((st) => st.key === s.status)?.label ?? s.status}
               </Badge>
+              {s.ctaKeyword && (
+                <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono hidden sm:flex">
+                  #{s.ctaKeyword}
+                </Badge>
+              )}
               <Button
                 size="sm"
                 variant="ghost"

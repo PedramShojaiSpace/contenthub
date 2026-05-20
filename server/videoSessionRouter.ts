@@ -89,7 +89,7 @@ Generate a complete video script package for split-testing hooks:
   Hook 4: Pain Point (name the exact frustration the viewer feels right now)
   Hook 5: Bold Promise (a direct, credible outcome statement)
 - 1 BODY (main content, 60-180 seconds when spoken, delivers on the hook's promise, teaches one clear insight)
-- 1 CTA (15-30 seconds spoken word — CRITICAL RULE: NEVER mention a URL or website address. This is a ManyChat keyword-reply flow. The viewer must comment a keyword in the comments to receive the link via DM. ${ctaKeyword && CTA_KEYWORD_MAP[ctaKeyword] ? `The keyword for this video is "${CTA_KEYWORD_MAP[ctaKeyword].keyword}" and the program is ${CTA_KEYWORD_MAP[ctaKeyword].programName}. The CTA must instruct the viewer to comment "${CTA_KEYWORD_MAP[ctaKeyword].keyword}" below and they will receive the link in their DMs. Example: "If you want to learn more about ${CTA_KEYWORD_MAP[ctaKeyword].programName}, just comment ${CTA_KEYWORD_MAP[ctaKeyword].keyword} below and I'll send you the link directly."` : `Tell the viewer to comment a relevant word (e.g., "UPSTREAM", "LIGHTSON", "TEST", or "SLEEP") in the comments and they will receive the link in their DMs. Match the keyword to the video topic. Never say the URL.`} Keep it warm, conversational, and non-pushy.)
+- 1 CTA (15-30 seconds spoken word — CRITICAL RULE: NEVER mention a URL or website address. NEVER invent your own keyword. This is a ManyChat keyword-reply flow. The viewer comments the keyword and receives the link via DM automatically. ${(() => { const kw = (ctaKeyword && CTA_KEYWORD_MAP[ctaKeyword]) ? CTA_KEYWORD_MAP[ctaKeyword] : CTA_KEYWORD_MAP["UPSTREAM"]; return `The keyword is "${kw.keyword}" and the program is ${kw.programName}. The CTA MUST tell the viewer to comment exactly "${kw.keyword}" below. Example: "If you want to learn more about ${kw.programName}, just comment ${kw.keyword} below and I'll send you the link directly." Use only this exact keyword — do not substitute, modify, or invent a different word.`; })()} Keep it warm, conversational, and non-pushy.)
 
 All scripts must be written as SPOKEN WORD — no stage directions, no labels, no markdown.
 Write exactly as Dr. Shojai would say it into a camera.`;
@@ -397,6 +397,35 @@ export const videoSessionRouter = router({
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
       await db.update(videoProductionSessions).set({ status: input.status, updatedAt: new Date() }).where(eq(videoProductionSessions.id, input.sessionId));
+      return { ok: true };
+    }),
+
+  regenerateCta: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getSessionOrThrow(input.sessionId, ctx.user.openId);
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+
+      // Generate a fresh CTA using the session's keyword and idea
+      const generated = await generateScriptsFromIdea(session.idea, session.platform, session.ctaKeyword);
+
+      // Delete only the existing CTA script(s) for this session
+      await db.delete(sessionScripts)
+        .where(and(
+          eq(sessionScripts.sessionId, input.sessionId),
+          eq(sessionScripts.scriptType, "cta")
+        ));
+
+      // Insert the fresh CTA
+      await db.insert(sessionScripts).values({
+        sessionId: input.sessionId,
+        scriptType: "cta",
+        scriptOrder: 0,
+        scriptText: generated.cta,
+        approved: false,
+      });
+
       return { ok: true };
     }),
 });

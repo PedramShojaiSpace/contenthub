@@ -603,7 +603,7 @@ export const podcastRouter = router({
    * Generates a concise, paste-ready show notes block for a completed episode:
    *   - 200-word summary paragraph
    *   - 3 key takeaways (bullet points)
-   *   - CTA paragraph pointing to the Urban Monk Academy
+   *   - CTA paragraph pointing to the most relevant program
    * Saves the result to the showNotes column.
    */
   generateShowNotes: protectedProcedure
@@ -656,8 +656,8 @@ export const podcastRouter = router({
         `- [Takeaway 3]`,
         ``,
         `## Connect & Go Deeper`,
-        `Write a 2-3 sentence CTA paragraph inviting listeners to join the Urban Monk Academy at theurbanmonk.com/academy `,
-        `for deeper teachings, community, and tools to apply what they learned in this episode.`,
+        `Write a 2-3 sentence CTA paragraph inviting listeners to take the next step with Dr. Pedram Shojai.`,
+        `Match the CTA to the episode topic: for gut/microbiome topics use Upstream at upstream.theurbanmonk.com; for energy/vitality/longevity topics use Lights On at lightson.theurbanmonk.com; for health assessment/testing topics use the Gateway to Health test at gth.theurbanmonk.com; for sleep topics use the Restorative Sleep Masterclass at theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay.`,
         `Keep it warm and genuine — not salesy.`,
         ``,
         `Output ONLY the three sections above with their ## headers. No preamble, no meta-commentary.`,

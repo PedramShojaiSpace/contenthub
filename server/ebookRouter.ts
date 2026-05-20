@@ -352,7 +352,7 @@ export const ebookRouter = router({
             .select({ title: landingPages.title })
             .from(landingPages)
             .where(eq(landingPages.id, input.landingPageId));
-          if (lp) ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+          if (lp) ctaText = `Learn more and take the next step at The Urban Monk`;
         } else if (input.webinarSessionId) {
           const [webinar] = await db
             .select({ topic: webinarSessions.topic })
@@ -771,7 +771,7 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
         lines.push(`## Take the Next Step`);
         lines.push(``);
         lines.push(
-          `This e-book is just the beginning. If you're ready to go deeper and transform your life with the guidance of Dr. Pedram Shojai, visit [The Urban Monk Academy](https://theurbanmonk.com) to continue your journey.`
+          `This e-book is just the beginning. If you're ready to go deeper and transform your life with the guidance of Dr. Pedram Shojai, visit [The Urban Monk](https://theurbanmonk.com) to continue your journey.`
         );
         lines.push(``);
       }
@@ -924,14 +924,14 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
           .select({ ctaText: ctaBlocks.ctaText, url: ctaBlocks.url })
           .from(ctaBlocks)
           .where(eq(ctaBlocks.id, ebook.ctaBlockId));
-        if (cta) globalCta = { text: cta.ctaText, url: cta.url, label: "Join the Urban Monk Academy" };
+        if (cta) globalCta = { text: cta.ctaText, url: cta.url, label: "Learn More →" };
       } else if (ebook.landingPageId) {
         const [lp] = await db
           .select({ title: landingPages.title, gammaUrl: landingPages.gammaUrl })
           .from(landingPages)
           .where(eq(landingPages.id, ebook.landingPageId));
         if (lp) globalCta = {
-          text: `Ready to transform your health and reclaim your energy? Discover the full program at the Urban Monk Academy.`,
+          text: `Ready to transform your health and reclaim your energy? Discover the full program at The Urban Monk.`,
           url: lp.gammaUrl ?? "https://theurbanmonk.com",
           label: `Explore ${lp.title} →`,
         };
@@ -1153,7 +1153,7 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
           .where(eq(ctaBlocks.id, ebook.ctaBlockId));
         if (cta) ctaText = `${cta.ctaText}${cta.url ? " → " + cta.url : ""}`;
       } else if (ebook.landingPageId) {
-        ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+        ctaText = `Learn more and take the next step at The Urban Monk`;
       } else if (ebook.webinarSessionId) {
         const [webinar] = await db
           .select({ topic: webinarSessions.topic })
@@ -1379,7 +1379,7 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
           .where(eq(ctaBlocks.id, ebook.ctaBlockId));
         if (cta) ctaText = `${cta.ctaText}${cta.url ? " → " + cta.url : ""}`;
       } else if (ebook.landingPageId) {
-        ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+        ctaText = `Learn more and take the next step at The Urban Monk`;
       } else if (ebook.webinarSessionId) {
         const [webinar] = await db
           .select({ topic: webinarSessions.topic })
@@ -1503,7 +1503,7 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
           .where(eq(ctaBlocks.id, ebook.ctaBlockId));
         if (cta) ctaText = `${cta.ctaText}${cta.url ? " → " + cta.url : ""}`;
       } else if (ebook.landingPageId) {
-        ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+        ctaText = `Learn more and take the next step at The Urban Monk`;
       } else if (ebook.webinarSessionId) {
         const [webinar] = await db
           .select({ topic: webinarSessions.topic })
@@ -1709,7 +1709,7 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
             .where(eq(ctaBlocks.id, input.ctaBlockId));
           if (cta) ctaText = `${cta.ctaText}${cta.url ? " \u2192 " + cta.url : ""}`;
         } else if (input.landingPageId) {
-          ctaText = `Learn more and take the next step at The Urban Monk Academy`;
+          ctaText = `Learn more and take the next step at The Urban Monk`;
         } else if (input.webinarSessionId) {
           const [webinar] = await db
             .select({ topic: webinarSessions.topic })

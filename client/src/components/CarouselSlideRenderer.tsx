@@ -480,12 +480,12 @@ async function renderCta(ctx: CanvasRenderingContext2D, slide: CarouselSlideData
   ctx.font = "700 30px 'DM Sans', system-ui, sans-serif";
   ctx.fillStyle = BRAND.yang;
   ctx.textAlign = "center";
-  ctx.fillText("go.theurbanmonk.com", SLIDE_SIZE / 2, btnY + 56);
+  ctx.fillText("lightson.theurbanmonk.com", SLIDE_SIZE / 2, btnY + 56);
 
   // "Free access" sub-label
   ctx.font = "400 26px 'DM Sans', system-ui, sans-serif";
   ctx.fillStyle = "rgba(22,21,19,0.5)";
-  ctx.fillText("Join the Urban Monk Academy", SLIDE_SIZE / 2, btnY + 120);
+  ctx.fillText("Start your Lights On journey today", SLIDE_SIZE / 2, btnY + 120);
 
   // Logo mark — bottom-right: Fire-colored logo on CTA cream section
   await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, "fire");

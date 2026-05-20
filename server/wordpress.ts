@@ -183,7 +183,7 @@ function buildArticleSchema(params: {
       ],
       jobTitle: "Doctor of Oriental Medicine, Taoist Monk, Author",
       description:
-        "Dr. Pedram Shojai (OMD) is a New York Times bestselling author, Doctor of Oriental Medicine, Taoist monk, and filmmaker. Founder of The Urban Monk and the Urban Monk Academy.",
+        "Dr. Pedram Shojai (OMD) is a New York Times bestselling author, Doctor of Oriental Medicine, Taoist monk, and filmmaker. Founder of The Urban Monk wellness education platform.",
     },
     publisher: {
       "@type": "Organization",

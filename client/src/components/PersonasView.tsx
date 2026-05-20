@@ -74,9 +74,9 @@ const PERSONA_INTELLIGENCE: Record<string, {
       "Qi Gong for burnout: ancient medicine meets modern stress",
     ],
     primaryCTA: {
-      label: "Urban Monk Academy — $297/year",
-      offer: "Urban Monk Academy membership",
-      price: "$297/year",
+      label: "Lights On — lightson.theurbanmonk.com",
+      offer: "Lights On energy & vitality program",
+      price: "lightson.theurbanmonk.com",
       icon: <BookOpen className="h-4 w-4" />,
     },
     secondaryCTA: {
@@ -111,9 +111,9 @@ const PERSONA_INTELLIGENCE: Record<string, {
       "Ancient Chinese medicine's secret to aging backwards",
     ],
     primaryCTA: {
-      label: "Urban Monk Academy — $297/year",
-      offer: "Urban Monk Academy membership",
-      price: "$297/year",
+      label: "Lights On — lightson.theurbanmonk.com",
+      offer: "Lights On energy & vitality program",
+      price: "lightson.theurbanmonk.com",
       icon: <BookOpen className="h-4 w-4" />,
     },
     secondaryCTA: {
@@ -148,9 +148,9 @@ const PERSONA_INTELLIGENCE: Record<string, {
       "Finding stillness in the noise of modern life",
     ],
     primaryCTA: {
-      label: "Urban Monk Academy — $297/year",
-      offer: "Urban Monk Academy membership",
-      price: "$297/year",
+      label: "Lights On — lightson.theurbanmonk.com",
+      offer: "Lights On energy & vitality program",
+      price: "lightson.theurbanmonk.com",
       icon: <BookOpen className="h-4 w-4" />,
     },
     secondaryCTA: {
@@ -185,9 +185,9 @@ const PERSONA_INTELLIGENCE: Record<string, {
       "Raising healthy kids starts with a healthy you",
     ],
     primaryCTA: {
-      label: "Urban Monk Academy — $297/year",
-      offer: "Urban Monk Academy membership",
-      price: "$297/year",
+      label: "Lights On — lightson.theurbanmonk.com",
+      offer: "Lights On energy & vitality program",
+      price: "lightson.theurbanmonk.com",
       icon: <BookOpen className="h-4 w-4" />,
     },
     secondaryCTA: {
@@ -222,9 +222,9 @@ const PERSONA_INTELLIGENCE: Record<string, {
       "The 5 elements framework that explains everything",
     ],
     primaryCTA: {
-      label: "Urban Monk Academy — $297/year",
-      offer: "Urban Monk Academy membership",
-      price: "$297/year",
+      label: "Lights On — lightson.theurbanmonk.com",
+      offer: "Lights On energy & vitality program",
+      price: "lightson.theurbanmonk.com",
       icon: <BookOpen className="h-4 w-4" />,
     },
     secondaryCTA: {
@@ -259,9 +259,9 @@ const PERSONA_INTELLIGENCE: Record<string, {
       "The inflammation protocol from ancient Chinese medicine",
     ],
     primaryCTA: {
-      label: "Urban Monk Academy — $297/year",
-      offer: "Urban Monk Academy membership",
-      price: "$297/year",
+      label: "Lights On — lightson.theurbanmonk.com",
+      offer: "Lights On energy & vitality program",
+      price: "lightson.theurbanmonk.com",
       icon: <BookOpen className="h-4 w-4" />,
     },
     secondaryCTA: {
@@ -296,9 +296,9 @@ const PERSONA_INTELLIGENCE: Record<string, {
       "Why the best CEOs prioritize stillness",
     ],
     primaryCTA: {
-      label: "Urban Monk Academy — $297/year",
-      offer: "Urban Monk Academy membership",
-      price: "$297/year",
+      label: "Lights On — lightson.theurbanmonk.com",
+      offer: "Lights On energy & vitality program",
+      price: "lightson.theurbanmonk.com",
       icon: <BookOpen className="h-4 w-4" />,
     },
     secondaryCTA: {
@@ -333,9 +333,9 @@ const PERSONA_INTELLIGENCE: Record<string, {
       "The Urban Monk's guide to conscious technology use",
     ],
     primaryCTA: {
-      label: "Urban Monk Academy — $297/year",
-      offer: "Urban Monk Academy membership",
-      price: "$297/year",
+      label: "Lights On — lightson.theurbanmonk.com",
+      offer: "Lights On energy & vitality program",
+      price: "lightson.theurbanmonk.com",
       icon: <BookOpen className="h-4 w-4" />,
     },
     secondaryCTA: {
@@ -456,9 +456,9 @@ export function PersonasView({ items }: { items: ContentItem[] }) {
         <div className="grid grid-cols-3 gap-3">
           {[
             {
-              label: "Urban Monk Academy",
-              price: "$297/year",
-              desc: "Primary continuity — all 8 personas are targeted here",
+              label: "Lights On Program",
+              price: "lightson.theurbanmonk.com",
+              desc: "Energy & vitality — primary entry point for most personas",
               color: "bg-primary/10 border-primary/30",
               icon: <BookOpen className="h-4 w-4 text-primary" />,
             },

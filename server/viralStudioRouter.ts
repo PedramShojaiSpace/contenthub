@@ -41,7 +41,7 @@ const PEDRAM_VOICE = `
 You are writing as Dr. Pedram Shojai, OMD — The Urban Monk.
 Voice: authoritative but warm, science-backed but accessible, direct and no-fluff.
 Audience: health-conscious adults 35-65 who want longevity, energy, clarity, and deeper meaning. This includes people on a spiritual path — seekers exploring consciousness, enlightenment, and the nature of reality — as well as those focused on physical health.
-Brand: The Urban Monk Academy ($297/year membership), supplements, books.
+Brand: The Urban Monk — programs include Upstream (upstream.theurbanmonk.com), Lights On (lightson.theurbanmonk.com), Gateway to Health test (gth.theurbanmonk.com), and the Restorative Sleep Masterclass (theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay). Also supplements and books.
 Content pillars: longevity, gut health, sleep, stress, integrative medicine, consciousness & neuroscience, enlightenment & spiritual growth, metaphysics & philosophy of mind.
 Never use corporate jargon. Speak like a wise doctor who is also a Taoist monk and lifelong student of consciousness.
 `;
@@ -666,7 +666,7 @@ export const generateDMPlaybook = protectedProcedure
       triggerKeyword: z.string().min(2).max(50), // e.g. "MONK", "SLEEP", "GUT"
       leadMagnet: z.string().min(5).max(255),    // e.g. "The Urban Monk Sleep Protocol PDF"
       leadMagnetUrl: z.string().url().optional(),
-      finalCta: z.string().optional(),           // e.g. "Join Urban Monk Academy at $297/year"
+      finalCta: z.string().optional(),           // e.g. "Join Lights On at lightson.theurbanmonk.com"
       platform: z.enum(["instagram", "tiktok", "facebook"]).default("instagram"),
     })
   )
@@ -679,7 +679,7 @@ Video Topic: "${input.videoTopic}"
 Trigger Keyword: "${input.triggerKeyword}" (viewer comments this to trigger the DM sequence)
 Lead Magnet: "${input.leadMagnet}"
 ${input.leadMagnetUrl ? `Lead Magnet URL: ${input.leadMagnetUrl}` : ""}
-${input.finalCta ? `Final CTA: "${input.finalCta}"` : "Final CTA: Join Urban Monk Academy at theurbanmonk.com/academy"}
+${input.finalCta ? `Final CTA: "${input.finalCta}"` : "Final CTA: Match the CTA to the video topic — Upstream at upstream.theurbanmonk.com for gut/microbiome topics, Lights On at lightson.theurbanmonk.com for energy/vitality topics, Gateway to Health test at gth.theurbanmonk.com for diagnostic/health assessment topics, or the Restorative Sleep Masterclass at theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay for sleep topics"}
 Platform: ${input.platform}
 
 Create:
@@ -692,7 +692,7 @@ Create:
 Rules for DM messages:
 - Message 1: Deliver the lead magnet, warm and personal, 2-3 sentences max
 - Message 2: One additional insight related to the video topic, bridge to the offer, 3-4 sentences
-- Message 3: Soft pitch for Urban Monk Academy, address one objection, include link, 4-5 sentences
+- Message 3: Soft pitch for the most relevant program (Upstream, Lights On, Gateway to Health test, or Restorative Sleep Masterclass — match to the video topic), address one objection, include the correct link, 4-5 sentences
 - All messages must feel like Pedram personally wrote them — NOT corporate
 - Use the viewer's first name placeholder: {{first_name}}
 
@@ -722,8 +722,8 @@ Return JSON:
       "delay": "48 hours",
       "subject": "Soft offer",
       "body": "Full DM text",
-      "buttonText": "Join the Academy",
-      "buttonUrl": "https://theurbanmonk.com/academy"
+      "buttonText": "Learn more",
+      "buttonUrl": "[Use the URL that matches the video topic: upstream.theurbanmonk.com | lightson.theurbanmonk.com | gth.theurbanmonk.com | theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay]"
     }
   ],
   "setupInstructions": "3-step ManyChat setup instructions for non-technical user",

@@ -3,7 +3,7 @@
  *
  * Generates a 200-350 word LinkedIn thought-leadership post for each article.
  * NOT a summary — a perspective piece that connects the research finding to
- * practical wisdom and ends with a CTA toward the Urban Monk Academy.
+ * practical wisdom and ends with a CTA toward the most relevant Urban Monk program.
  *
  * v133: Commentary always references the source article and includes the URL
  * so the LinkedIn post functions as a curated share, not a standalone opinion.
@@ -17,7 +17,7 @@ import { TOPIC_CLUSTERS } from "./newsfeed";
 
 // ─── Pedram's Voice System Prompt ─────────────────────────────────────────────
 
-const PEDRAM_VOICE_SYSTEM = `You are Dr. Pedram Shojai, OMD — a New York Times bestselling author, filmmaker, and founder of the Urban Monk Academy. You trained as a Taoist monk, studied Oriental medicine, and have spent 25 years bridging ancient wisdom with modern science.
+const PEDRAM_VOICE_SYSTEM = `You are Dr. Pedram Shojai, OMD — a New York Times bestselling author, filmmaker, and founder of The Urban Monk. You trained as a Taoist monk, studied Oriental medicine, and have spent 25 years bridging ancient wisdom with modern science.
 
 Your LinkedIn voice is:
 - Warm, authoritative, and direct — like a brilliant friend who happens to be a doctor
@@ -88,7 +88,7 @@ OPENER LIBRARY — pick the one that fits the article, or invent a new structure
 - Do NOT summarize the article — share your PERSPECTIVE and what this means for real people
 - Connect the research to a broader pattern you've observed in your clinical work or personal practice
 - Include one concrete, actionable insight they can apply today
-- End with a soft CTA that invites them into the Urban Monk Academy community
+- End with a soft CTA that invites them to take the next step with The Urban Monk. Match the CTA to the article topic: gut/microbiome topics → upstream.theurbanmonk.com; energy/vitality/longevity → lightson.theurbanmonk.com; health assessment/testing → gth.theurbanmonk.com; sleep topics → theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay. Keep it warm and genuine, never salesy.
 - Do NOT include the article URL in the post body — the URL will be appended automatically after the hashtags
 - No hashtags in the body — add 3-5 relevant hashtags at the very end on a new line
 - No emojis
@@ -97,15 +97,15 @@ OPENER LIBRARY — pick the one that fits the article, or invent a new structure
 // ─── Topic-Specific CTA Endings ───────────────────────────────────────────────
 
 const TOPIC_CTAS: Record<string, string> = {
-  integrative_medicine: "If you're ready to go beyond symptom management and understand the root causes driving your health, the Urban Monk Academy is where that conversation lives.",
-  longevity: "If you want to build a life that lasts — not just a long one, but a vital one — the Urban Monk Academy is where we do that work together.",
-  gut_health: "If you want to understand what your gut is actually telling you and how to work with it instead of against it, come find us at the Urban Monk Academy.",
-  sleep_science: "If you're ready to stop fighting your biology and start sleeping like the high performer you are, the Urban Monk Academy has the framework.",
-  mental_health: "If you're ready to build real resilience — not just cope, but actually thrive — the Urban Monk Academy is where that practice begins.",
-  cardiometabolic: "If you want to understand what your metabolic health is really telling you and how to course-correct before it becomes a crisis, the Urban Monk Academy is the place.",
-  consciousness: "If you're curious about the deeper nature of mind, awareness, and what it means to be fully awake — not just alive — the Urban Monk Academy is where that inquiry goes deep.",
-  enlightenment: "If you're ready to move beyond information and into genuine transformation — the kind that changes how you see everything — the Urban Monk Academy is where that path begins.",
-  metaphysics: "If you want to explore the big questions — what reality actually is, what mind truly is, and how to live from that understanding — the Urban Monk Academy is the place for that conversation.",
+  integrative_medicine: "If you're ready to go beyond symptom management and understand the root causes driving your health, the Lights On program is where that conversation lives. lightson.theurbanmonk.com",
+  longevity: "If you want to build a life that lasts — not just a long one, but a vital one — the Lights On program is where we do that work together. lightson.theurbanmonk.com",
+  gut_health: "If you want to understand what your gut is actually telling you and how to work with it instead of against it, come find us at Upstream. upstream.theurbanmonk.com",
+  sleep_science: "If you're ready to stop fighting your biology and start sleeping like the high performer you are, the Restorative Sleep Masterclass has the framework. theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay",
+  mental_health: "If you're ready to build real resilience — not just cope, but actually thrive — the Lights On program is where that practice begins. lightson.theurbanmonk.com",
+  cardiometabolic: "If you want to understand what your metabolic health is really telling you and how to course-correct before it becomes a crisis, start with the Gateway to Health test. gth.theurbanmonk.com",
+  consciousness: "If you're curious about the deeper nature of mind, awareness, and what it means to be fully awake — not just alive — the Lights On program is where that inquiry goes deep. lightson.theurbanmonk.com",
+  enlightenment: "If you're ready to move beyond information and into genuine transformation — the kind that changes how you see everything — the Lights On program is where that path begins. lightson.theurbanmonk.com",
+  metaphysics: "If you want to explore the big questions — what reality actually is, what mind truly is, and how to live from that understanding — the Lights On program is the place for that conversation. lightson.theurbanmonk.com",
 };
 
 // ─── Commentary Generator ─────────────────────────────────────────────────────

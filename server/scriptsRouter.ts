@@ -270,7 +270,7 @@ SLIDE 8: "The Urban Monk approach: treat the gut, support the liver, and the 2 A
 
 SLIDE 9: "This is what East-West integrative medicine looks like in practice: ancient clock theory + modern endotoxemia research = real answers."
 
-SLIDE 10 (CTA): "Want the full protocol? The Urban Monk Academy has a complete Gut Health course with Dr. Pedram Shojai, OMD. Link in bio."
+SLIDE 10 (CTA): "Want the full protocol? Dr. Pedram Shojai's Upstream program goes deep on the gut-brain connection. Visit upstream.theurbanmonk.com — link in bio."
 
 CAPTION: The 2 AM wake-up is one of the most common complaints I hear — and one of the most misunderstood. It's not insomnia. It's your liver clock telling you something is wrong upstream. Here's what's actually happening and what to do about it. Save this for the next time it happens. 🌙
 
@@ -298,7 +298,7 @@ SLIDE 8: "Dr. Pedram Shojai has spent 30 years bridging these two worlds. His ap
 
 SLIDE 9: "The result is a level of precision that neither system achieves alone. Pattern recognition from the East + biomarker testing from the West = real healing."
 
-SLIDE 10 (CTA): "This is what we teach in the Urban Monk Academy. Join 10,000+ members learning to heal from the inside out. Link in bio."
+SLIDE 10 (CTA): "Ready to turn the lights on in your life? The Lights On program gives you the exact system Dr. Pedram Shojai uses to reclaim your energy and vitality. Visit lightson.theurbanmonk.com — link in bio."
 
 CAPTION: Ancient wisdom and modern science keep arriving at the same conclusions — just from different directions. The gut barrier has been central to health in Eastern medicine for 3,000 years. Western medicine is finally catching up. Here's what both traditions agree on. 🌿
 
@@ -326,7 +326,7 @@ SLIDE 8: "The solution isn't more willpower. It's nervous system regulation: vag
 
 SLIDE 9: "Dr. Pedram Shojai has been teaching nervous system regulation for 20 years — combining Taoist practices with modern neuroscience."
 
-SLIDE 10 (CTA): "The Urban Monk Academy has a complete Nervous System Reset program. 30 days. Real results. Link in bio."
+SLIDE 10 (CTA): "Want to reset your nervous system and reclaim your sleep? Check out the Restorative Sleep Masterclass at theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay — link in bio."
 
 CAPTION: If you're exhausted but wired, calm but anxious, or just can't seem to fully relax — your nervous system is stuck in survival mode. Here are 5 signs and what to do about them. Save this. 🧠
 
@@ -354,11 +354,11 @@ SLIDE 8: "Bucket-drainers that actually work: qigong (reduces cortisol 30-40% in
 
 SLIDE 9: "This is why you can't meditate your way out of burnout if your gut is leaking LPS. You have to address the whole system."
 
-SLIDE 10 (CTA): "The Urban Monk Academy teaches the complete protocol. Join us. Link in bio."
+SLIDE 10 (CTA): "Ready to address the whole system? Start with the Gateway to Health test at gth.theurbanmonk.com — link in bio."
 
 CAPTION: Stress is not just in your head. It's a physical substance that accumulates in your body until the bucket overflows. Here's the model that changed how I think about stress — and how to actually drain the bucket. 💧
 
-#urbanmonk #cortisol #stressmanagement #burnoutrecovery #adrenalhealth #holistichealth #functionalmedicine #qigong #mindfulness #urbanmonkacademy`,
+#urbanmonk #cortisol #stressmanagement #burnoutrecovery #adrenalhealth #holistichealth #functionalmedicine #qigong #mindfulness #theurbanmonk`,
         competitorAngle: "Unique framing from the three-discovery framework — no competitor uses the cortisol bucket model",
       },
       {
@@ -382,7 +382,7 @@ SLIDE 8: "The oral microbiome is directly connected to the gut microbiome. What 
 
 SLIDE 9: "Morning tongue scraping isn't just hygiene — it removes overnight bacterial accumulation before you swallow it back into your gut."
 
-SLIDE 10 (CTA): "This is the kind of diagnostic wisdom we teach in the Urban Monk Academy. Ancient tools + modern testing = real answers. Link in bio."
+SLIDE 10 (CTA): "This is the kind of diagnostic wisdom that guides the Upstream program. Ancient tools + modern testing = real answers. Visit upstream.theurbanmonk.com — link in bio."
 
 CAPTION: Your tongue is trying to tell you something. Traditional Chinese Medicine practitioners have been reading tongues as a diagnostic tool for 3,000 years — and modern research is validating it. Here's your quick guide. 👅
 

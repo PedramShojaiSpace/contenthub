@@ -3,7 +3,7 @@
  *
  * Flow:
  *   1. Pick avatar (persona) — 8 Urban Monk personas
- *   2. Pick offer — Academy $297/yr, Retreat $1,200, Supplements, Free Guide, Custom
+ *   2. Pick offer — Upstream, Lights On, Gateway to Health Test, Sleep Masterclass, Supplements, Free Guide, Custom
  *   3. Enter content angle / key message
  *   4. Click "Generate Copy" → LLM writes full landing page copy (preview shown)
  *   5. Edit copy if needed

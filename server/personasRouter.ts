@@ -90,7 +90,7 @@ Persona aspirations: ${persona.aspirations}
 The CTA should:
 - Be 1-2 sentences maximum
 - Speak directly to this persona's deepest pain or aspiration
-- Reference the Urban Monk Academy ($297/year)
+- Reference the most relevant program: gut/microbiome content → Upstream (upstream.theurbanmonk.com), energy/vitality → Lights On (lightson.theurbanmonk.com), health testing → Gateway to Health (gth.theurbanmonk.com), sleep → Sleep Masterclass (theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay)
 - Feel personal and urgent, not generic
 - End with a clear action (link in bio, comment below, DM me, etc.)
 

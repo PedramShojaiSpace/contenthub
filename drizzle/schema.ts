@@ -1240,6 +1240,8 @@ export const ebookChapters = mysqlTable("ebook_chapters", {
   ctaText: text("ctaText"),
   ctaUrl: varchar("ctaUrl", { length: 512 }),
   ctaLabel: varchar("ctaLabel", { length: 128 }),
+  // Persistent author style note — pre-fills the Rewrite dialog Style note field
+  styleNote: text("styleNote"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

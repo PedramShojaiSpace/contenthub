@@ -2774,3 +2774,18 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Wire outline preview into the "Generate E-Book" flow (Preview Outline First → edit → Approve & Write All Chapters)
 - [x] Add styleNotes field to regenerateChapter tRPC procedure (injected as STYLE NOTE to Claude)
 - [x] Add Style note input field to chapter Rewrite dialog in EbookViewer UI
+
+## v-ebook-outline-ux — Outline & Style Note UX Improvements
+
+- [x] Add ➕ "Add chapter" button at bottom of outline preview list
+- [x] Add ✕ "Remove chapter" button per row (hidden when only 1 chapter remains); auto-renumbers
+- [x] Surface stored outline as read-only collapsible panel in EbookViewer sidebar (reads ebook.outlineJson)
+- [x] Add outlineJson field to Ebook interface in EBookGenerator.tsx
+- [x] Add styleNote column to ebookChapters table in schema.ts
+- [x] Run pnpm db:push to migrate (migration 0071_magical_blindfold.sql)
+- [x] Add updateChapterStyleNote tRPC procedure in ebookRouter
+- [x] Update regenerateChapter to fall back to chapter.styleNote when no override provided
+- [x] Add ChapterStyleNoteField component in EBookGenerator.tsx
+- [x] Wire ChapterStyleNoteField into EbookViewer sidebar (updates on chapter switch)
+- [x] Add small dot indicator on chapter nav button when styleNote is set
+- [x] Pre-fill regenStyleNotes in ChapterEditor from chapter.styleNote

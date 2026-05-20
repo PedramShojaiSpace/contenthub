@@ -69,6 +69,8 @@ interface Ebook {
   ctaBlockId: number | null;
   landingPageId: number | null;
   webinarSessionId: number | null;
+  // JSON array of {number, title, summary} from the approved outline
+  outlineJson: string | null;
   createdAt: Date;
 }
 
@@ -82,6 +84,83 @@ interface Chapter {
   ctaText: string | null;
   ctaUrl: string | null;
   ctaLabel: string | null;
+  // Persistent per-chapter author style note
+  styleNote: string | null;
+}
+
+// ─── Chapter Style Note Field ────────────────────────────────────────────────
+
+function ChapterStyleNoteField({
+  chapterId,
+  chapterTitle,
+  initialNote,
+  onSave,
+  isSaving,
+}: {
+  chapterId: number;
+  chapterTitle: string;
+  initialNote: string;
+  onSave: (note: string) => void;
+  isSaving: boolean;
+}) {
+  const [note, setNote] = useState(initialNote);
+  const [dirty, setDirty] = useState(false);
+
+  const handleChange = (val: string) => {
+    setNote(val);
+    setDirty(val !== initialNote);
+  };
+
+  const handleSave = () => {
+    onSave(note);
+    setDirty(false);
+  };
+
+  const handleClear = () => {
+    setNote("");
+    onSave("");
+    setDirty(false);
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/10">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <Zap className="w-3 h-3 text-primary" />
+          Style note
+        </p>
+        {initialNote && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+            disabled={isSaving}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <Textarea
+        value={note}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder={`Standing direction for "${chapterTitle}"...\ne.g. "Always open with a patient story"`}
+        rows={2}
+        className="text-xs resize-none"
+      />
+      <p className="text-[10px] text-muted-foreground">Saved here, auto-fills the Rewrite dialog each time.</p>
+      {dirty && (
+        <Button
+          size="sm"
+          className="w-full h-7 text-xs gap-1"
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          Save note
+        </Button>
+      )}
+    </div>
+  );
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -723,9 +802,25 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                           updated[idx] = { ...updated[idx], title: e.target.value };
                           setEditableOutline(updated);
                         }}
-                        className="text-sm font-medium h-7 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:border-b focus-visible:border-primary rounded-none"
+                        className="flex-1 text-sm font-medium h-7 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:border-b focus-visible:border-primary rounded-none"
                         placeholder="Chapter title..."
                       />
+                      {/* Remove chapter button — only show if more than 1 chapter */}
+                      {editableOutline.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = editableOutline
+                              .filter((_, i) => i !== idx)
+                              .map((c, i) => ({ ...c, number: i + 1 }));
+                            setEditableOutline(updated);
+                          }}
+                          className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                          title="Remove this chapter"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                     <Textarea
                       value={chapter.summary}
@@ -740,6 +835,22 @@ function GenerateEbookDialog({ onSuccess }: { onSuccess: () => void }) {
                     />
                   </div>
                 ))}
+                {/* Add chapter button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextNum = editableOutline.length + 1;
+                    setEditableOutline([...editableOutline, {
+                      number: nextNum,
+                      title: `Chapter ${nextNum}`,
+                      summary: "",
+                    }]);
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground hover:text-primary border border-dashed border-border hover:border-primary rounded-lg transition-colors"
+                >
+                  <span className="text-base leading-none">+</span>
+                  Add chapter
+                </button>
               </div>
               <p className="text-xs text-muted-foreground">
                 Edit any title or summary above, then approve to start writing. Claude Sonnet will write each chapter using this exact outline.
@@ -812,7 +923,8 @@ function ChapterEditor({
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [regenInstructions, setRegenInstructions] = useState("");
-  const [regenStyleNotes, setRegenStyleNotes] = useState("");
+  // Pre-fill from the chapter's persisted styleNote; user can override per-run
+  const [regenStyleNotes, setRegenStyleNotes] = useState(chapter.styleNote ?? "");
   const [showRegenDialog, setShowRegenDialog] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
 
@@ -1065,6 +1177,7 @@ function EbookViewer({
   onBack: () => void;
 }) {
   const [activeChapter, setActiveChapter] = useState(0);
+  const [showOutlinePanel, setShowOutlinePanel] = useState(false);
   const utils = trpc.useUtils();
 
   const { data, isLoading } = trpc.ebook.getEbook.useQuery({ ebookId });
@@ -1086,6 +1199,10 @@ function EbookViewer({
     onSuccess: () => {
       utils.ebook.getEbook.invalidate({ ebookId });
     },
+  });
+  const updateChapterStyleNote = trpc.ebook.updateChapterStyleNote.useMutation({
+    onSuccess: () => utils.ebook.getEbook.invalidate({ ebookId }),
+    onError: (err) => toast.error(err.message),
   });
   const setChapterCta = trpc.ebook.setChapterCta.useMutation({
     onSuccess: () => {
@@ -1302,13 +1419,13 @@ function EbookViewer({
       )}
 
       <div className="grid grid-cols-12 gap-6">
-        {/* Sidebar: Chapter list */}
-        <div className="col-span-3 space-y-1">
+        {/* Sidebar: Chapter list + Outline panel + Style notes */}
+        <div className="col-span-3 space-y-4">
           {ebook.coverImageUrl && (
             <img
               src={ebook.coverImageUrl}
               alt="E-book cover"
-              className="w-full rounded-lg mb-4 shadow-md"
+              className="w-full rounded-lg shadow-md"
             />
           )}
           {ebook.pdfS3Url && (
@@ -1316,30 +1433,86 @@ function EbookViewer({
               href={ebook.pdfS3Url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium mb-3"
+              className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium"
             >
               <FileDown className="w-3.5 h-3.5" />
               Download PDF
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Chapters
-          </p>
-          {chapters.map((chapter, idx) => (
-            <button
-              key={chapter.id}
-              onClick={() => setActiveChapter(idx)}
-              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                idx === activeChapter
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`}
-            >
-              <span className="text-xs opacity-60 mr-1.5">{chapter.chapterNumber}.</span>
-              {chapter.title}
-            </button>
-          ))}
+
+          {/* Chapter navigation */}
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Chapters
+            </p>
+            {chapters.map((chapter, idx) => (
+              <button
+                key={chapter.id}
+                onClick={() => setActiveChapter(idx)}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                  idx === activeChapter
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                <span className="text-xs opacity-60 mr-1.5">{chapter.chapterNumber}.</span>
+                {chapter.title}
+                {chapter.styleNote && (
+                  <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-primary/60 align-middle" title="Has style note" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Per-chapter style note */}
+          {currentChapter && (
+            <ChapterStyleNoteField
+              key={currentChapter.id}
+              chapterId={currentChapter.id}
+              chapterTitle={currentChapter.title}
+              initialNote={currentChapter.styleNote ?? ""}
+              onSave={(note) =>
+                updateChapterStyleNote.mutate({ chapterId: currentChapter.id, styleNote: note || null })
+              }
+              isSaving={updateChapterStyleNote.isPending}
+            />
+          )}
+
+          {/* Outline reference panel */}
+          {ebook.outlineJson && (
+            <div className="border border-border rounded-lg overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-muted/40 transition-colors"
+                onClick={() => setShowOutlinePanel((v) => !v)}
+              >
+                <span className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Original Outline
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showOutlinePanel ? "rotate-180" : ""}`} />
+              </button>
+              {showOutlinePanel && (() => {
+                let outline: Array<{ number: number; title: string; summary: string }> = [];
+                try { outline = JSON.parse(ebook.outlineJson!); } catch { /* ignore */ }
+                return (
+                  <div className="border-t border-border px-3 py-2 space-y-3 max-h-72 overflow-y-auto">
+                    {outline.map((ch) => (
+                      <div key={ch.number} className="space-y-0.5">
+                        <p className="text-xs font-medium">
+                          <span className="text-muted-foreground mr-1">{ch.number}.</span>
+                          {ch.title}
+                        </p>
+                        {ch.summary && (
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">{ch.summary}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
 
         {/* Main: Chapter content */}

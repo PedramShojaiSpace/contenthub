@@ -9,6 +9,7 @@
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,9 +54,18 @@ const MUTED = "#6b6b6b";
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
 /** Load the Urban Monk logo PNG from the bundled server assets directory.
+ *  Loads the white version for use on dark backgrounds.
  *  Falls back gracefully if the file is missing (e.g., in test environments). */
 function loadLogoBuffer(): Buffer | null {
   try {
+    // ESM-safe __dirname resolution
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    // Prefer the white version (for dark backgrounds); fall back to the standard version
+    const whiteLogoPath = path.join(__dirname, "assets", "urban-monk-logo-white.png");
+    if (fs.existsSync(whiteLogoPath)) {
+      return fs.readFileSync(whiteLogoPath);
+    }
     const logoPath = path.join(__dirname, "assets", "urban-monk-logo.png");
     if (fs.existsSync(logoPath)) {
       return fs.readFileSync(logoPath);
@@ -192,14 +202,42 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
 
     // ── AI-Generated Cover Image (Page 1, if provided) ────────────────────────
     if (coverImageBuffer && coverImageBuffer.length > 0) {
-      // Full-bleed cover image page
+      // Full-bleed cover image page — manually scale to fill the page
       doc.rect(0, 0, pageWidth, pageHeight).fill(DARK_NAVY);
       try {
-        doc.image(coverImageBuffer, 0, 0, {
-          width: pageWidth,
-          height: pageHeight,
-          cover: [pageWidth, pageHeight],
-        });
+        // Get image dimensions to compute proper scale-to-fill
+        const sizeOf = (buf: Buffer): { width: number; height: number } => {
+          // PNG: width at bytes 16-19, height at 20-23
+          if (buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+            return {
+              width: buf.readUInt32BE(16),
+              height: buf.readUInt32BE(20),
+            };
+          }
+          // JPEG: scan for SOF marker
+          let i = 2;
+          while (i < buf.length) {
+            if (buf[i] !== 0xff) break;
+            const marker = buf[i + 1];
+            if (marker >= 0xc0 && marker <= 0xc3) {
+              return {
+                height: buf.readUInt16BE(i + 5),
+                width: buf.readUInt16BE(i + 7),
+              };
+            }
+            i += 2 + buf.readUInt16BE(i + 2);
+          }
+          return { width: pageWidth, height: pageHeight };
+        };
+        const { width: imgW, height: imgH } = sizeOf(coverImageBuffer);
+        const scaleW = pageWidth / imgW;
+        const scaleH = pageHeight / imgH;
+        const scale = Math.max(scaleW, scaleH); // cover: fill entire page
+        const drawW = imgW * scale;
+        const drawH = imgH * scale;
+        const drawX = (pageWidth - drawW) / 2;
+        const drawY = (pageHeight - drawH) / 2;
+        doc.image(coverImageBuffer, drawX, drawY, { width: drawW, height: drawH });
       } catch {
         // If image embedding fails, just leave the dark background
       }
@@ -211,7 +249,8 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
     doc.rect(0, 0, pageWidth, pageHeight).fill(DARK_NAVY);
 
     // Urban Monk logo — centred, 200px wide
-    const logoTopY = 80;
+    // Start at ~18% from top so the content block sits in the upper-centre
+    const logoTopY = Math.round(pageHeight * 0.18);
     const logoBottomY = drawLogo(doc, pageWidth / 2, logoTopY, 200);
 
     // Eyebrow text
@@ -441,54 +480,83 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
       doc.addPage();
       doc.rect(0, 0, pageWidth, pageHeight).fill(DARK_NAVY);
 
-      // Urban Monk logo on back cover — smaller, 160px wide
-      const bcLogoTopY = pageHeight / 2 - 180;
-      const bcLogoBottomY = drawLogo(doc, pageWidth / 2, bcLogoTopY, 160);
+      // Anchor the logo at 30% from top — this places the full content block
+      // (logo + heading + body + button + author) roughly in the visual centre
+      const blockStartY = Math.round(pageHeight * 0.30);
 
+      // Urban Monk logo on back cover — 180px wide, centred
+      const bcLogoBottomY = drawLogo(doc, pageWidth / 2, blockStartY, 180);
+
+      // Gold divider
+      const divY = bcLogoBottomY + 20;
+      doc
+        .moveTo(pageWidth / 2 - 24, divY)
+        .lineTo(pageWidth / 2 + 24, divY)
+        .strokeColor(GOLD)
+        .lineWidth(1)
+        .stroke();
+
+      // Heading
       doc
         .font("Helvetica-Bold")
         .fontSize(24)
         .fillColor(WHITE)
-        .text("Ready to Go Deeper?", 60, bcLogoBottomY + 24, {
+        .text("Ready to Go Deeper?", 60, divY + 18, {
           align: "center",
           width: pageWidth - 120,
         });
 
+      // Body text
       doc
         .font("Helvetica-Oblique")
         .fontSize(12)
         .fillColor(WHITE)
         .fillOpacity(0.8)
-        .text(globalCta.text, 80, doc.y + 16, {
+        .text(globalCta.text, 80, doc.y + 14, {
           align: "center",
           width: pageWidth - 160,
           lineGap: 4,
         });
 
+      // CTA button
       if (globalCta.url) {
         doc.fillOpacity(1);
-        const btnY = doc.y + 20;
-        const btnLabel = globalCta.label || "Discover Lights On →";
-        const btnW = 280;
+        const btnY = doc.y + 22;
+        // Use a clean label — never use the chapter title as the button label
+        const btnLabel = "Join the Urban Monk Academy →";
+        const btnW = 300;
+        const btnH = 40;
         const btnX = (pageWidth - btnW) / 2;
-        doc.rect(btnX, btnY, btnW, 36).fill(GOLD);
+        doc.rect(btnX, btnY, btnW, btnH).fill(GOLD);
         doc
           .font("Helvetica-Bold")
           .fontSize(11)
           .fillColor(DARK_NAVY)
-          .text(btnLabel, btnX, btnY + 11, {
+          .text(btnLabel, btnX, btnY + 13, {
             width: btnW,
             align: "center",
             link: globalCta.url,
           });
       }
 
+      // Author attribution
       doc.fillOpacity(0.7);
       doc
         .font("Helvetica")
         .fontSize(10)
         .fillColor(GOLD)
-        .text(`— ${author}`, 0, doc.y + 24, { align: "center" });
+        .text(`— ${author}`, 0, doc.y + 22, { align: "center" });
+
+      // Footer
+      doc.fillOpacity(0.3);
+      doc
+        .font("Helvetica")
+        .fontSize(8)
+        .fillColor(WHITE)
+        .text("THEURBANMONK.COM  ·  URBAN MONK ACADEMY", 0, pageHeight - 60, {
+          align: "center",
+          characterSpacing: 1,
+        });
 
       doc.fillOpacity(1);
     }

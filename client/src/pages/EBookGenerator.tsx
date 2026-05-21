@@ -2135,6 +2135,34 @@ export default function EBookGenerator() {
   const deleteEbook = trpc.ebook.deleteEbook.useMutation({
     onSuccess: () => utils.ebook.listEbooks.invalidate(),
   });
+  const resetStuckEbook = trpc.ebook.resetStuckEbook.useMutation({
+    onSuccess: () => utils.ebook.listEbooks.invalidate(),
+  });
+  const retryFromList = trpc.ebook.retryFailedChapters.useMutation({
+    onSuccess: () => utils.ebook.listEbooks.invalidate(),
+  });
+  const [resumingId, setResumingId] = useState<number | null>(null);
+  const handleResume = async (e: React.MouseEvent, ebookId: number) => {
+    e.stopPropagation();
+    setResumingId(ebookId);
+    try {
+      // Step 1: reset stuck generating/pending chapters to failed
+      await resetStuckEbook.mutateAsync({ ebookId });
+      // Step 2: retry all failed chapters
+      const result = await retryFromList.mutateAsync({ ebookId });
+      if (result.succeededCount > 0) {
+        toast.success(`Resumed — ${result.succeededCount} chapter${result.succeededCount !== 1 ? "s" : ""} generated`);
+      } else if (result.failedCount > 0) {
+        toast.error(`${result.failedCount} chapter${result.failedCount !== 1 ? "s" : ""} failed again — try once more`);
+      } else {
+        toast.info("No chapters needed retrying");
+      }
+    } catch (err: any) {
+      toast.error(err.message ?? "Resume failed");
+    } finally {
+      setResumingId(null);
+    }
+  };
   const readyBooks = books?.filter((b) => b.status === "ready") ?? [];
 
   const handleDelete = async (ebookId: number, title: string) => {
@@ -2306,10 +2334,19 @@ export default function EBookGenerator() {
                       </div>
                     )}
                     {(ebook.status === "drafting" || ebook.status === "outline") && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Generating...
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        disabled={resumingId === ebook.id}
+                        onClick={(e) => handleResume(e, ebook.id)}
+                      >
+                        {resumingId === ebook.id ? (
+                          <><Loader2 className="w-3 h-3 animate-spin" />Resuming...</>
+                        ) : (
+                          <><RefreshCw className="w-3 h-3" />Resume Generation</>
+                        )}
+                      </Button>
                     )}
                     <Button
                       variant="ghost"

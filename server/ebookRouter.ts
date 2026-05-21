@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   ebooks,
@@ -1351,14 +1351,14 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
         .where(and(eq(ebooks.id, input.ebookId), eq(ebooks.userId, ctx.user.id)));
       if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
 
-      // Find all chapters with status 'failed' or no content (pending/generating that stalled)
+      // Find all chapters with status 'failed', 'generating' (stuck/timed-out), or 'pending' (never started)
       const failedChapters = await db
         .select()
         .from(ebookChapters)
         .where(
           and(
             eq(ebookChapters.ebookId, input.ebookId),
-            eq(ebookChapters.status, "failed")
+            inArray(ebookChapters.status, ["failed", "generating", "pending"])
           )
         )
         .orderBy(ebookChapters.chapterNumber);
@@ -1836,5 +1836,37 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
 
     return { ctas: ctaList, landingPages: lpList, webinars: webinarList };
   }),
+
+  /**
+   * Reset a stuck "drafting" e-book so it can be retried.
+   * Flips all "generating" chapters back to "failed" and the ebook back to "drafting".
+   * This allows retryFailedChapters to pick them up and resume generation.
+   */
+  resetStuckEbook: protectedProcedure
+    .input(z.object({ ebookId: z.number().int() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [ebook] = await db
+        .select()
+        .from(ebooks)
+        .where(and(eq(ebooks.id, input.ebookId), eq(ebooks.userId, ctx.user.id)));
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "E-book not found" });
+
+      // Reset all stuck "generating" or "pending" chapters to "failed" so retryFailedChapters can pick them up
+      await db
+        .update(ebookChapters)
+        .set({ status: "failed" })
+        .where(
+          and(
+            eq(ebookChapters.ebookId, input.ebookId),
+            inArray(ebookChapters.status, ["generating", "pending"])
+          )
+        );
+
+      // Keep ebook in "drafting" status so the retry flow works correctly
+      // (retryFailedChapters will flip it to "complete" when all chapters succeed)
+      return { ok: true };
+    }),
 
 });

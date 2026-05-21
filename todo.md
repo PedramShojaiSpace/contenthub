@@ -2940,3 +2940,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Verified podcast intake form flow end-to-end
 
 - [x] Fix Export Teleprompter DOCX button missing: regenerateCta now auto-approves new CTA; Export DOCX button added directly to Ready to Record callout (no longer depends on allApproved)
+
+- [x] Variant-to-channel routing: fetch Buffer channels grouped by platform, show per-variant channel assignment dropdowns in Video Variant Factory Buffer panel
+- [x] Update syndicateToBuffer backend to accept per-variant channelId map instead of single channelIds array
+- [x] Show channel display name and platform icon in the routing table

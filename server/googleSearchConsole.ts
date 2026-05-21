@@ -1,0 +1,251 @@
+/**
+ * Google Search Console Integration
+ * ────────────────────────────────────
+ * Provides:
+ *  1. OAuth 2.0 authorization URL generation
+ *  2. Token exchange and refresh token storage (in DB via userCredentials)
+ *  3. Search Analytics API queries: top keywords, top pages, striking-distance keywords
+ *
+ * Setup flow:
+ *  1. GOOGLE_SEARCH_CONSOLE_CLIENT_ID and GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET are in secrets
+ *  2. User visits /api/gsc/auth-url to get the authorization link
+ *  3. After authorization, callback stores refresh token in userCredentials table
+ *  4. SEO Dashboard now shows live data from Search Console
+ */
+
+import { google } from "googleapis";
+
+const REDIRECT_URI = "https://content.theurbanmonk.com/api/gsc/callback";
+
+const GSC_SCOPES = [
+  "https://www.googleapis.com/auth/webmasters.readonly",
+];
+
+function getOAuthClient() {
+  const clientId = process.env.GOOGLE_SEARCH_CONSOLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      "GOOGLE_SEARCH_CONSOLE_CLIENT_ID and GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET must be set in secrets"
+    );
+  }
+  return new google.auth.OAuth2(clientId, clientSecret, REDIRECT_URI);
+}
+
+/** Generate the one-time authorization URL the owner must visit */
+export function getGscAuthUrl(): string {
+  const oauth2Client = getOAuthClient();
+  return oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: GSC_SCOPES,
+    prompt: "consent",
+  });
+}
+
+/** Exchange authorization code for tokens */
+export async function exchangeGscCode(code: string): Promise<{
+  refreshToken: string;
+  accessToken: string;
+}> {
+  const oauth2Client = getOAuthClient();
+  const { tokens } = await oauth2Client.getToken(code);
+  if (!tokens.refresh_token) {
+    throw new Error(
+      "No refresh token returned. Try revoking access at https://myaccount.google.com/permissions and reconnecting."
+    );
+  }
+  return {
+    refreshToken: tokens.refresh_token,
+    accessToken: tokens.access_token ?? "",
+  };
+}
+
+/** Get an authenticated Search Console client using a stored refresh token */
+function getSearchConsoleClient(refreshToken: string) {
+  const oauth2Client = getOAuthClient();
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  return google.webmasters({ version: "v3", auth: oauth2Client });
+}
+
+/** Helper: get date string N days ago in YYYY-MM-DD format */
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split("T")[0];
+}
+
+export interface QueryRow {
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export interface PageRow {
+  page: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+/**
+ * Get top queries by clicks over the last 28 days
+ */
+export async function getTopQueries(
+  refreshToken: string,
+  siteUrl: string,
+  limit = 20
+): Promise<QueryRow[]> {
+  const sc = getSearchConsoleClient(refreshToken);
+  const res = await sc.searchanalytics.query({
+    siteUrl,
+    requestBody: {
+      startDate: daysAgo(28),
+      endDate: daysAgo(3), // GSC data has ~3 day lag
+      dimensions: ["query"],
+      rowLimit: limit,
+    },
+  } as any);
+  const data = (res as any).data;
+  return ((data.rows ?? []) as any[]).map((r: any) => ({
+    query: r.keys[0] ?? "",
+    clicks: r.clicks ?? 0,
+    impressions: r.impressions ?? 0,
+    ctr: r.ctr ?? 0,
+    position: r.position ?? 0,
+  }));
+}
+
+/**
+ * Get top pages by clicks over the last 28 days
+ */
+export async function getTopPages(
+  refreshToken: string,
+  siteUrl: string,
+  limit = 20
+): Promise<PageRow[]> {
+  const sc = getSearchConsoleClient(refreshToken);
+  const res = await sc.searchanalytics.query({
+    siteUrl,
+    requestBody: {
+      startDate: daysAgo(28),
+      endDate: daysAgo(3),
+      dimensions: ["page"],
+      rowLimit: limit,
+    },
+  } as any);
+  const data = (res as any).data;
+  return ((data.rows ?? []) as any[]).map((r: any) => ({
+    page: r.keys[0] ?? "",
+    clicks: r.clicks ?? 0,
+    impressions: r.impressions ?? 0,
+    ctr: r.ctr ?? 0,
+    position: r.position ?? 0,
+  }));
+}
+
+/**
+ * Get "striking distance" keywords: positions 11–20 with >100 impressions
+ * These are the fastest SEO wins — one good content update can push them to page 1
+ */
+export async function getStrikingDistanceKeywords(
+  refreshToken: string,
+  siteUrl: string,
+  limit = 30
+): Promise<QueryRow[]> {
+  const sc = getSearchConsoleClient(refreshToken);
+  const res = await sc.searchanalytics.query({
+    siteUrl,
+    requestBody: {
+      startDate: daysAgo(28),
+      endDate: daysAgo(3),
+      dimensions: ["query"],
+      rowLimit: 500, // fetch more so we can filter client-side
+    },
+  } as any);
+  const data = (res as any).data;
+  const rows = ((data.rows ?? []) as any[]).map((r: any) => ({
+    query: r.keys[0] ?? "",
+    clicks: r.clicks ?? 0,
+    impressions: r.impressions ?? 0,
+    ctr: r.ctr ?? 0,
+    position: r.position ?? 0,
+  }));
+  // Filter: positions 11–20, at least 50 impressions
+  return rows
+    .filter((r: QueryRow) => r.position >= 11 && r.position <= 20 && r.impressions >= 50)
+    .sort((a: QueryRow, b: QueryRow) => b.impressions - a.impressions)
+    .slice(0, limit);
+}
+
+/**
+ * Get week-over-week comparison: clicks and impressions for last 7 days vs prior 7 days
+ */
+export async function getWeekOverWeekSummary(
+  refreshToken: string,
+  siteUrl: string
+): Promise<{
+  thisWeekClicks: number;
+  lastWeekClicks: number;
+  thisWeekImpressions: number;
+  lastWeekImpressions: number;
+  clicksDelta: number;
+  impressionsDelta: number;
+}> {
+  const sc = getSearchConsoleClient(refreshToken);
+
+  const [thisWeekRes, lastWeekRes] = await Promise.all([
+    sc.searchanalytics.query({
+      siteUrl,
+      requestBody: {
+        startDate: daysAgo(10),
+        endDate: daysAgo(3),
+        dimensions: [],
+        rowLimit: 1,
+      },
+    } as any),
+    sc.searchanalytics.query({
+      siteUrl,
+      requestBody: {
+        startDate: daysAgo(17),
+        endDate: daysAgo(10),
+        dimensions: [],
+        rowLimit: 1,
+      },
+    } as any),
+  ]);
+
+  const thisRow = (thisWeekRes as any).data?.rows?.[0] ?? { clicks: 0, impressions: 0 };
+  const lastRow = (lastWeekRes as any).data?.rows?.[0] ?? { clicks: 0, impressions: 0 };
+
+  const thisWeekClicks = (thisRow as any).clicks ?? 0;
+  const lastWeekClicks = (lastRow as any).clicks ?? 0;
+  const thisWeekImpressions = (thisRow as any).impressions ?? 0;
+  const lastWeekImpressions = (lastRow as any).impressions ?? 0;
+
+  return {
+    thisWeekClicks,
+    lastWeekClicks,
+    thisWeekImpressions,
+    lastWeekImpressions,
+    clicksDelta: lastWeekClicks > 0
+      ? Math.round(((thisWeekClicks - lastWeekClicks) / lastWeekClicks) * 100)
+      : 0,
+    impressionsDelta: lastWeekImpressions > 0
+      ? Math.round(((thisWeekImpressions - lastWeekImpressions) / lastWeekImpressions) * 100)
+      : 0,
+  };
+}
+
+/**
+ * List all Search Console properties the authorized account has access to
+ */
+export async function listGscSites(refreshToken: string): Promise<string[]> {
+  const sc = getSearchConsoleClient(refreshToken);
+  const res = await sc.sites.list();
+  return (res.data.siteEntry ?? [])
+    .map((s: any) => s.siteUrl ?? "")
+    .filter(Boolean);
+}

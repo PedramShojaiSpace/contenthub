@@ -80,6 +80,9 @@ import {
   BookOpen,
   FlaskConical,
   Star,
+  Search,
+  TrendingDown,
+  MousePointerClick,
 } from "lucide-react";  
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -1332,6 +1335,7 @@ export default function CommandCenter() {
   const { data: cadenceData, refetch: refetchCadence } = trpc.growth.weeklyCadence.useQuery();
   // Viral Studio dashboard summary
   const { data: viralSummary } = trpc.viralStudio.getDashboardSummary.useQuery();
+  const { data: gscStatus } = trpc.gsc.status.useQuery(undefined, { retry: false });
   const seedPillarsMutation = trpc.growth.seedPillars.useMutation({ onSuccess: () => refetchCadence() });
 
   const syndicationMutation = trpc.syndication.push.useMutation({
@@ -2031,6 +2035,64 @@ export default function CommandCenter() {
                 ? `Repurpose: ${String((viralSummary as any).lastRepurposeBook).length > 28 ? String((viralSummary as any).lastRepurposeBook).slice(0, 28) + "…" : String((viralSummary as any).lastRepurposeBook)}`
                 : "Repurpose a Book or Podcast"}
             </button>
+          </div>
+
+          {/* ── SEO Dashboard Quick-Access Widget ─────────────────────────────────────────── */}
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-500/15 border border-emerald-500/25 shrink-0">
+                  <Search className="h-3.5 w-3.5 text-emerald-400" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">SEO Dashboard</span>
+              </div>
+              <button
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                onClick={() => setLocation("/seo")}
+              >
+                Open dashboard →
+              </button>
+            </div>
+            {gscStatus?.connected ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <p className="text-xs text-emerald-300 font-medium">Connected to Google Search Console</p>
+                </div>
+                {gscStatus.siteUrl && (
+                  <p className="text-[10px] text-muted-foreground truncate px-1">
+                    Property: {gscStatus.siteUrl.replace(/^(https?:\/\/)?(sc-domain:)?/, "")}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-xs font-medium text-emerald-400 hover:text-emerald-300"
+                    onClick={() => setLocation("/seo")}
+                  >
+                    <MousePointerClick className="w-3.5 h-3.5" />
+                    Top Keywords
+                  </button>
+                  <button
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border/40 bg-muted/20 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-colors text-xs font-medium text-muted-foreground hover:text-emerald-400"
+                    onClick={() => setLocation("/seo")}
+                  >
+                    <TrendingDown className="w-3.5 h-3.5" />
+                    Striking Distance
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Connect Google Search Console to see your top keywords, page rankings, and striking-distance opportunities — all free, no SEMRush needed.</p>
+                <button
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-xs font-medium text-emerald-400 hover:text-emerald-300"
+                  onClick={() => setLocation("/seo")}
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  Connect Google Search Console
+                </button>
+              </div>
+            )}
           </div>
 
            {/* ── Weekly Cadence Tracker ─────────────────────────────────────────────────────── */}

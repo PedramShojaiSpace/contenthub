@@ -1,0 +1,467 @@
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Search,
+  Globe,
+  MousePointerClick,
+  Eye,
+  Target,
+  Unlink,
+  ExternalLink,
+  AlertCircle,
+  RefreshCw,
+  Zap,
+} from "lucide-react";
+
+function StatCard({
+  label,
+  value,
+  delta,
+  icon: Icon,
+  format = "number",
+}: {
+  label: string;
+  value: number;
+  delta?: number;
+  icon: React.ElementType;
+  format?: "number" | "percent";
+}) {
+  const formatted =
+    format === "percent"
+      ? `${(value * 100).toFixed(1)}%`
+      : value >= 1000
+      ? `${(value / 1000).toFixed(1)}K`
+      : value.toString();
+
+  const deltaFormatted =
+    delta === undefined
+      ? null
+      : format === "percent"
+      ? `${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(1)}%`
+      : delta >= 0
+      ? `+${delta.toFixed(0)}`
+      : `${delta.toFixed(0)}`;
+
+  return (
+    <Card className="bg-card border-border">
+      <CardContent className="pt-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="text-3xl font-bold text-foreground mt-1">{formatted}</p>
+            {deltaFormatted && (
+              <div
+                className={`flex items-center gap-1 mt-1 text-sm ${
+                  delta! > 0 ? "text-green-500" : delta! < 0 ? "text-red-500" : "text-muted-foreground"
+                }`}
+              >
+                {delta! > 0 ? (
+                  <TrendingUp className="w-3 h-3" />
+                ) : delta! < 0 ? (
+                  <TrendingDown className="w-3 h-3" />
+                ) : (
+                  <Minus className="w-3 h-3" />
+                )}
+                <span>{deltaFormatted} vs last week</span>
+              </div>
+            )}
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Icon className="w-5 h-5 text-primary" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ConnectPanel({ onConnected }: { onConnected: () => void }) {
+  const [connecting, setConnecting] = useState(false);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const res = await fetch("/api/gsc/auth-url", { credentials: "include" });
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank", "width=600,height=700,noopener");
+        toast.info("Complete the Google authorization in the popup, then click Refresh below.");
+      } else {
+        toast.error("Failed to get authorization URL");
+      }
+    } catch {
+      toast.error("Failed to connect to Google Search Console");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center py-24 gap-6 text-center max-w-md mx-auto">
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+        <Search className="w-8 h-8 text-primary" />
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold text-foreground">Connect Google Search Console</h2>
+        <p className="text-muted-foreground mt-2">
+          See exactly which keywords are driving traffic to theurbanmonk.com, which pages rank best, and your fastest
+          opportunities to climb from page 2 to page 1.
+        </p>
+      </div>
+      <div className="flex gap-3">
+        <Button onClick={handleConnect} disabled={connecting} className="gap-2">
+          {connecting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+          Connect Google Search Console
+        </Button>
+        <Button variant="outline" onClick={onConnected} className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Already connected — Refresh
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SiteSelector({
+  currentSiteUrl,
+  onSelect,
+}: {
+  currentSiteUrl: string | null;
+  onSelect: (url: string) => void;
+}) {
+  const sitesQuery = trpc.gsc.listSites.useQuery(undefined, { retry: false });
+  const setSiteUrl = trpc.gsc.setSiteUrl.useMutation({
+    onSuccess: () => toast.success("Site updated"),
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (sitesQuery.isLoading) return <Skeleton className="h-9 w-48" />;
+  if (sitesQuery.error) return null;
+
+  const sites = sitesQuery.data?.sites ?? [];
+  if (sites.length === 0) return <p className="text-sm text-muted-foreground">No Search Console properties found.</p>;
+
+  return (
+    <Select
+      value={currentSiteUrl ?? ""}
+      onValueChange={(val) => {
+        setSiteUrl.mutate({ siteUrl: val });
+        onSelect(val);
+      }}
+    >
+      <SelectTrigger className="w-64 bg-background border-border">
+        <SelectValue placeholder="Select a property…" />
+      </SelectTrigger>
+      <SelectContent>
+        {sites.map((s) => (
+          <SelectItem key={s} value={s}>
+            {s.replace(/^(https?:\/\/)?(sc-domain:)?/, "")}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+export default function SeoDashboard() {
+  const utils = trpc.useUtils();
+  const statusQuery = trpc.gsc.status.useQuery(undefined, { retry: false });
+  const [selectedSite, setSelectedSite] = useState<string | null>(null);
+
+  const activeSite = selectedSite ?? statusQuery.data?.siteUrl ?? null;
+
+  const wowQuery = trpc.gsc.weekOverWeek.useQuery(undefined, {
+    enabled: !!statusQuery.data?.connected && !!activeSite,
+    retry: false,
+  });
+  const topQueriesQuery = trpc.gsc.topQueries.useQuery(
+    { limit: 20 },
+    { enabled: !!statusQuery.data?.connected && !!activeSite, retry: false }
+  );
+  const topPagesQuery = trpc.gsc.topPages.useQuery(
+    { limit: 20 },
+    { enabled: !!statusQuery.data?.connected && !!activeSite, retry: false }
+  );
+  const strikingQuery = trpc.gsc.strikingDistance.useQuery(undefined, {
+    enabled: !!statusQuery.data?.connected && !!activeSite,
+    retry: false,
+  });
+
+  const disconnect = trpc.gsc.disconnect.useMutation({
+    onSuccess: () => {
+      utils.gsc.status.invalidate();
+      toast.success("Google Search Console disconnected");
+    },
+  });
+
+  const handleRefresh = () => {
+    utils.gsc.status.invalidate();
+    utils.gsc.weekOverWeek.invalidate();
+    utils.gsc.topQueries.invalidate();
+    utils.gsc.topPages.invalidate();
+    utils.gsc.strikingDistance.invalidate();
+  };
+
+  if (statusQuery.isLoading) {
+    return (
+      <div className="p-8 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!statusQuery.data?.connected) {
+    return (
+      <div className="p-8">
+        <ConnectPanel onConnected={handleRefresh} />
+      </div>
+    );
+  }
+
+  const wow = wowQuery.data;
+  type QRow = { query: string; clicks: number; impressions: number; ctr: number; position: number };
+  type PRow = { page: string; clicks: number; impressions: number; ctr: number; position: number };
+  const queries: QRow[] = (topQueriesQuery.data ?? []) as QRow[];
+  const pages: PRow[] = (topPagesQuery.data ?? []) as PRow[];
+  const striking: QRow[] = (strikingQuery.data ?? []) as QRow[];
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">SEO Dashboard</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Google Search Console — last 28 days</p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <SiteSelector currentSiteUrl={activeSite} onSelect={setSelectedSite} />
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => disconnect.mutate()}
+            className="gap-2 text-muted-foreground hover:text-destructive"
+          >
+            <Unlink className="w-4 h-4" />
+            Disconnect
+          </Button>
+        </div>
+      </div>
+
+      {/* No site selected */}
+      {!activeSite && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <p className="text-sm">Select a Search Console property above to load your SEO data.</p>
+        </div>
+      )}
+
+      {/* Week-over-week summary cards */}
+      {activeSite && (
+        <>
+          {wowQuery.isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+          ) : wow ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard
+                label="Clicks (this week)"
+                value={wow.thisWeekClicks}
+                delta={wow.clicksDelta}
+                icon={MousePointerClick}
+              />
+              <StatCard
+                label="Impressions (this week)"
+                value={wow.thisWeekImpressions}
+                delta={wow.impressionsDelta}
+                icon={Eye}
+              />
+              <StatCard
+                label="Clicks last week"
+                value={wow.lastWeekClicks}
+                icon={Target}
+              />
+              <StatCard
+                label="Impressions last week"
+                value={wow.lastWeekImpressions}
+                icon={Search}
+              />
+            </div>
+          ) : null}
+
+          {/* Three data panels */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Top Queries */}
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Search className="w-4 h-4 text-primary" />
+                  Top Keywords by Clicks
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">Last 28 days</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                {topQueriesQuery.isLoading ? (
+                  <div className="p-4 space-y-2">
+                    {[...Array(8)].map((_, i) => (
+                      <Skeleton key={i} className="h-8" />
+                    ))}
+                  </div>
+                ) : queries.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground">No data available yet.</p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {queries.map((row, i) => (
+                      <div key={i} className="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-muted/30">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                          <span className="text-sm text-foreground truncate">{row.query}</span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <MousePointerClick className="w-3 h-3" />
+                            {row.clicks}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {row.impressions >= 1000 ? `${(row.impressions / 1000).toFixed(1)}K` : row.impressions}
+                          </span>
+                          <Badge variant="outline" className="text-xs px-1.5 py-0">
+                            #{row.position.toFixed(1)}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Top Pages */}
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-primary" />
+                  Top Pages by Clicks
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">Last 28 days</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                {topPagesQuery.isLoading ? (
+                  <div className="p-4 space-y-2">
+                    {[...Array(8)].map((_, i) => (
+                      <Skeleton key={i} className="h-8" />
+                    ))}
+                  </div>
+                ) : pages.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground">No data available yet.</p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {pages.map((row, i) => {
+                      const path = row.page.replace(/^https?:\/\/[^/]+/, "") || "/";
+                      return (
+                        <div key={i} className="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-muted/30">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                            <a
+                              href={row.page}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-primary hover:underline truncate flex items-center gap-1"
+                            >
+                              {path}
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <MousePointerClick className="w-3 h-3" />
+                              {row.clicks}
+                            </span>
+                            <Badge variant="outline" className="text-xs px-1.5 py-0">
+                              #{row.position.toFixed(1)}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Striking Distance */}
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-500" />
+                  Striking Distance Keywords
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Positions 11–20 with &gt;50 impressions — your fastest wins
+                </p>
+              </CardHeader>
+              <CardContent className="p-0">
+                {strikingQuery.isLoading ? (
+                  <div className="p-4 space-y-2">
+                    {[...Array(8)].map((_, i) => (
+                      <Skeleton key={i} className="h-8" />
+                    ))}
+                  </div>
+                ) : striking.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground">
+                    No striking-distance keywords found. This means you're either ranking in the top 10 already, or not
+                    yet getting impressions in positions 11–20.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {striking.map((row, i) => (
+                      <div key={i} className="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-muted/30">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                          <span className="text-sm text-foreground truncate">{row.query}</span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {row.impressions >= 1000 ? `${(row.impressions / 1000).toFixed(1)}K` : row.impressions}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400"
+                          >
+                            #{row.position.toFixed(1)}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

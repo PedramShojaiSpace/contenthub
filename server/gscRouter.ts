@@ -119,4 +119,45 @@ export const gscRouter = router({
     }
     return getStrikingDistanceKeywords(creds.gscRefreshToken!, creds.gscSiteUrl);
   }),
+
+  /**
+   * Record that a keyword was sent to Video Production or Blog Generator.
+   * Called client-side when the user clicks a "Create Content" button.
+   */
+  trackKeywordSend: protectedProcedure
+    .input(
+      z.object({
+        keyword: z.string().min(1).max(512),
+        contentType: z.enum(["video", "blog"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoContentTracker } = await import("../drizzle/schema");
+      await db.insert(seoContentTracker).values({
+        userId: ctx.user.id,
+        keyword: input.keyword.toLowerCase().trim(),
+        contentType: input.contentType,
+      });
+      return { success: true };
+    }),
+
+  /**
+   * Return the set of keywords (lowercased) that have already been sent to
+   * content generators by this user, along with their content types.
+   * Used by the SEO dashboard to render "content created" badges.
+   */
+  trackedKeywords: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const { seoContentTracker } = await import("../drizzle/schema");
+    const { eq, desc } = await import("drizzle-orm");
+    const rows = await db
+      .select()
+      .from(seoContentTracker)
+      .where(eq(seoContentTracker.userId, ctx.user.id))
+      .orderBy(desc(seoContentTracker.createdAt));
+    return rows;
+  }),
 });

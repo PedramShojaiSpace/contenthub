@@ -1399,3 +1399,19 @@ export const podcastEpisodes = mysqlTable("podcast_episodes", {
 
 export type PodcastEpisode = typeof podcastEpisodes.$inferSelect;
 export type InsertPodcastEpisode = typeof podcastEpisodes.$inferInsert;
+
+// ─── SEO Content Tracker ──────────────────────────────────────────────────────
+// Records each time a keyword is sent to Video Production or Blog Generator,
+// so the SEO dashboard can show "content created" badges.
+
+export const seoContentTypeEnum = mysqlEnum("seoContentType", ["video", "blog"]);
+
+export const seoContentTracker = mysqlTable("seo_content_tracker", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  keyword: varchar("keyword", { length: 512 }).notNull(),
+  contentType: seoContentTypeEnum.notNull(), // "video" | "blog"
+  createdAt: timestamp("sct_createdAt").defaultNow().notNull(),
+});
+export type SeoContentTracker = typeof seoContentTracker.$inferSelect;
+export type InsertSeoContentTracker = typeof seoContentTracker.$inferInsert;

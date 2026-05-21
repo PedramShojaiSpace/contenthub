@@ -249,3 +249,79 @@ export async function listGscSites(refreshToken: string): Promise<string[]> {
     .map((s: any) => s.siteUrl ?? "")
     .filter(Boolean);
 }
+
+export interface RankChangeRow {
+  query: string;
+  previousPosition: number;
+  currentPosition: number;
+  /** Positive = dropped (worse), negative = improved */
+  drop: number;
+}
+
+/**
+ * Compare keyword positions between the current 7-day window and the prior 7-day window.
+ * Returns keywords that dropped by at least `minDrop` positions, sorted by largest drop first.
+ *
+ * GSC data has a ~3-day lag, so:
+ *   current window:  days 4–10 ago
+ *   previous window: days 11–17 ago
+ */
+export async function getQueryRankChanges(
+  refreshToken: string,
+  siteUrl: string,
+  minDrop = 3,
+  limit = 50
+): Promise<RankChangeRow[]> {
+  const sc = getSearchConsoleClient(refreshToken);
+
+  const [currentRes, previousRes] = await Promise.all([
+    sc.searchanalytics.query({
+      siteUrl,
+      requestBody: {
+        startDate: daysAgo(10),
+        endDate: daysAgo(4),
+        dimensions: ["query"],
+        rowLimit: limit,
+      },
+    } as any),
+    sc.searchanalytics.query({
+      siteUrl,
+      requestBody: {
+        startDate: daysAgo(17),
+        endDate: daysAgo(11),
+        dimensions: ["query"],
+        rowLimit: limit,
+      },
+    } as any),
+  ]);
+
+  const currentRows: QueryRow[] = ((currentRes as any).data?.rows ?? []).map((r: any) => ({
+    query: r.keys[0] ?? "",
+    clicks: r.clicks ?? 0,
+    impressions: r.impressions ?? 0,
+    ctr: r.ctr ?? 0,
+    position: r.position ?? 0,
+  }));
+
+  const previousMap = new Map<string, number>();
+  for (const r of (previousRes as any).data?.rows ?? []) {
+    previousMap.set(r.keys[0] ?? "", r.position ?? 0);
+  }
+
+  const drops: RankChangeRow[] = [];
+  for (const row of currentRows) {
+    const prev = previousMap.get(row.query);
+    if (prev === undefined) continue; // new keyword, no comparison
+    const drop = row.position - prev; // positive = dropped
+    if (drop >= minDrop) {
+      drops.push({
+        query: row.query,
+        previousPosition: prev,
+        currentPosition: row.position,
+        drop,
+      });
+    }
+  }
+
+  return drops.sort((a, b) => b.drop - a.drop);
+}

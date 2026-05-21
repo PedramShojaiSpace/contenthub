@@ -20,6 +20,7 @@ import {
   getTopPages,
   getStrikingDistanceKeywords,
   getWeekOverWeekSummary,
+  getQueryRankChanges,
 } from "./googleSearchConsole";
 
 export async function gscDigestHandler(req: Request, res: Response) {
@@ -68,11 +69,12 @@ export async function gscDigestHandler(req: Request, res: Response) {
     const siteUrl = creds.gscSiteUrl;
 
     // Fetch all data in parallel
-    const [topQueries, topPages, strikingKeywords, wow] = await Promise.all([
+    const [topQueries, topPages, strikingKeywords, wow, rankChanges] = await Promise.all([
       getTopQueries(refreshToken, siteUrl, 10),
       getTopPages(refreshToken, siteUrl, 10),
       getStrikingDistanceKeywords(refreshToken, siteUrl),
       getWeekOverWeekSummary(refreshToken, siteUrl),
+      getQueryRankChanges(refreshToken, siteUrl, 3), // flag drops of 3+ positions
     ]);
 
     // Format the digest notification
@@ -126,6 +128,17 @@ ${topPagesLines}
 
 **Striking Distance Keywords (positions 11–20)**
 ${strikingLines}
+
+**⚠️ Rank-Drop Alerts (dropped 3+ positions this week)**
+${rankChanges.length === 0
+  ? "No significant drops detected this week."
+  : rankChanges
+      .slice(0, 8)
+      .map(
+        (r, i) =>
+          `${i + 1}. "${r.query}" — was #${r.previousPosition.toFixed(1)}, now #${r.currentPosition.toFixed(1)} (▼${r.drop.toFixed(1)} positions)`
+      )
+      .join("\n")}
 
 View full dashboard: https://content.theurbanmonk.com/seo
 `.trim();

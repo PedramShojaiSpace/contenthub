@@ -385,8 +385,19 @@ export default function CreationStudio() {
       sessionStorage.removeItem("gumshoe_gap_query_text");
     }
 
-    // Pick up context launched from LLM Projects queue
+    // Pick up SEO keyword launched from SEO Dashboard striking-distance panel
     const urlParams = new URLSearchParams(window.location.search);
+    const seoKeyword = urlParams.get("keyword");
+    const seoPlatform = urlParams.get("platform") as Platform | null;
+    if (seoKeyword && !urlParams.get("source")) {
+      const targetPlatform = seoPlatform ?? "blog";
+      setPlatform(targetPlatform);
+      setIdea(`Write a ${targetPlatform === "blog" ? "blog post" : "piece of content"} targeting the keyword: "${seoKeyword}"\n\nThis keyword is in striking distance (positions 11–20) on Google. The goal is to rank in the top 10 by creating authoritative, helpful content in Dr. Shojai's voice that bridges ancient wisdom with modern science.`);
+      toast.success(`SEO keyword loaded: "${seoKeyword}" — ready to generate!`);
+      window.history.replaceState({}, "", "/studio");
+    }
+
+    // Pick up context launched from LLM Projects queue
     const source = urlParams.get("source");
     if (source === "llm_project") {
       const assetType = urlParams.get("type") ?? "blog";

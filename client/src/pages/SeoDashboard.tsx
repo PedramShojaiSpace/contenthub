@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,8 @@ import {
   AlertCircle,
   RefreshCw,
   Zap,
+  PenSquare,
+  Video,
 } from "lucide-react";
 
 function StatCard({
@@ -174,6 +177,7 @@ function SiteSelector({
 
 export default function SeoDashboard() {
   const utils = trpc.useUtils();
+  const [, setLocation] = useLocation();
   const statusQuery = trpc.gsc.status.useQuery(undefined, { retry: false });
   const [selectedSite, setSelectedSite] = useState<string | null>(null);
 
@@ -436,22 +440,50 @@ export default function SeoDashboard() {
                 ) : (
                   <div className="divide-y divide-border">
                     {striking.map((row, i) => (
-                      <div key={i} className="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-muted/30">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
-                          <span className="text-sm text-foreground truncate">{row.query}</span>
+                      <div key={i} className="px-4 py-2.5 hover:bg-muted/30 transition-colors group">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                            <span className="text-sm text-foreground truncate">{row.query}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Eye className="w-3 h-3" />
+                              {row.impressions >= 1000 ? `${(row.impressions / 1000).toFixed(1)}K` : row.impressions}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-xs px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400"
+                            >
+                              #{row.position.toFixed(1)}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-3 h-3" />
-                            {row.impressions >= 1000 ? `${(row.impressions / 1000).toFixed(1)}K` : row.impressions}
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className="text-xs px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400"
+                        {/* Create content buttons — visible on hover */}
+                        <div className="flex items-center gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors"
+                            onClick={() => {
+                              const encoded = encodeURIComponent(row.query);
+                              setLocation(`/video-production?keyword=${encoded}`);
+                              toast.info(`Opening Video Production with keyword: "${row.query}"`);
+                            }}
                           >
-                            #{row.position.toFixed(1)}
-                          </Badge>
+                            <Video className="w-3 h-3" />
+                            Video Script
+                          </button>
+                          <button
+                            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
+                            onClick={() => {
+                              const encoded = encodeURIComponent(row.query);
+                              setLocation(`/studio?keyword=${encoded}&platform=blog`);
+                              toast.info(`Opening Blog Generator with keyword: "${row.query}"`);
+                            }}
+                          >
+                            <PenSquare className="w-3 h-3" />
+                            Blog Post
+                          </button>
+                          <span className="text-[10px] text-muted-foreground ml-1 italic">Create content targeting this keyword</span>
                         </div>
                       </div>
                     ))}

@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { startWeeklyDigestCron } from "../digest";
 import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
+import { gscDigestHandler } from "../gscDigestHandler";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
@@ -88,6 +89,8 @@ async function startServer() {
   app.post("/api/ingest/research-report", handleIngestResearchReport);
   // Daily newsfeed refresh — called by Manus scheduled task at 7 AM
   app.post("/api/scheduled/newsfeed-refresh", handleNewsfeedRefresh);
+  // Weekly GSC SEO digest — every Monday 09:00 UTC
+  app.post("/api/scheduled/gsc-digest", gscDigestHandler);
   // ── Stitch job endpoint ─────────────────────────────────────────────────────
   // Runs the full stitching job SYNCHRONOUSLY within an HTTP request.
   // This keeps the Cloud Run container alive (active request) for the full

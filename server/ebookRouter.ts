@@ -957,6 +957,19 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
         ctaLabel: ch.ctaLabel ?? globalCta?.label ?? null,
       }));
 
+      // Fetch AI-generated cover image if one exists
+      let coverImageBuffer: Buffer | null = null;
+      if (ebook.coverImageUrl) {
+        try {
+          const coverResp = await fetch(ebook.coverImageUrl);
+          if (coverResp.ok) {
+            const arrayBuf = await coverResp.arrayBuffer();
+            coverImageBuffer = Buffer.from(arrayBuf);
+          }
+        } catch (err) {
+          console.warn("[exportPdf] Could not fetch cover image:", err);
+        }
+      }
       // Generate PDF buffer
       const pdfBuffer = await generateEbookPdf({
         title: ebook.title,
@@ -966,6 +979,7 @@ Vertical format (2:3 ratio). Clean, modern, high-end.`;
         targetPersona: ebook.targetPersona,
         chapters: pdfChapters,
         globalCta,
+        coverImageBuffer,
       });
 
       // Upload to S3

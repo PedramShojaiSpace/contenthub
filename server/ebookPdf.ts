@@ -7,6 +7,8 @@
  */
 
 import PDFDocument from "pdfkit";
+import fs from "fs";
+import path from "path";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +36,9 @@ export interface EbookPdfOptions {
   chapters: PdfChapter[];
   globalCta?: PdfCtaBlock | null;
   funnelStage?: string | null;
+  /** Buffer of the AI-generated cover image (JPEG/PNG). When provided, it is
+   *  rendered as a full-bleed page 1 before the branded cover page. */
+  coverImageBuffer?: Buffer | null;
 }
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
@@ -44,6 +49,24 @@ const GOLD_LIGHT = "#f0e6c0";
 const WHITE = "#ffffff";
 const BODY_TEXT = "#1a1a1a";
 const MUTED = "#6b6b6b";
+
+// ─── Logo ─────────────────────────────────────────────────────────────────────
+
+/** Load the Urban Monk logo PNG from the bundled server assets directory.
+ *  Falls back gracefully if the file is missing (e.g., in test environments). */
+function loadLogoBuffer(): Buffer | null {
+  try {
+    const logoPath = path.join(__dirname, "assets", "urban-monk-logo.png");
+    if (fs.existsSync(logoPath)) {
+      return fs.readFileSync(logoPath);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+const LOGO_BUFFER = loadLogoBuffer();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,7 +87,6 @@ function stripMarkdown(md: string): string {
     .replace(/\n{3,}/g, "\n\n") // collapse extra newlines
     .trim();
 }
-
 /** Parse markdown into segments: heading, bullet, or paragraph */
 interface TextSegment {
   type: "h2" | "h3" | "bullet" | "blockquote" | "paragraph" | "hr";
@@ -72,57 +94,70 @@ interface TextSegment {
 }
 
 function parseMarkdown(md: string): TextSegment[] {
-  const segments: TextSegment[] = [];
   const lines = md.split("\n");
-  let i = 0;
+  const segments: TextSegment[] = [];
+  let paragraphLines: string[] = [];
 
-  while (i < lines.length) {
-    const line = lines[i].trimEnd();
+  const flushParagraph = () => {
+    const text = paragraphLines.join(" ").trim();
+    if (text) segments.push({ type: "paragraph", text: stripMarkdown(text) });
+    paragraphLines = [];
+  };
 
-    if (!line.trim()) {
-      i++;
-      continue;
-    }
-
-    if (/^#{1,2}\s+/.test(line)) {
-      segments.push({ type: "h2", text: line.replace(/^#{1,2}\s+/, "").trim() });
-    } else if (/^###\s+/.test(line)) {
-      segments.push({ type: "h3", text: line.replace(/^###\s+/, "").trim() });
-    } else if (/^[-*+]\s+/.test(line)) {
-      segments.push({ type: "bullet", text: line.replace(/^[-*+]\s+/, "").trim() });
-    } else if (/^\d+\.\s+/.test(line)) {
-      segments.push({ type: "bullet", text: line.replace(/^\d+\.\s+/, "").trim() });
-    } else if (/^>\s+/.test(line)) {
-      segments.push({ type: "blockquote", text: line.replace(/^>\s+/, "").trim() });
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (/^#{1,2}\s/.test(line)) {
+      flushParagraph();
+      segments.push({ type: "h2", text: line.replace(/^#{1,2}\s+/, "") });
+    } else if (/^#{3,6}\s/.test(line)) {
+      flushParagraph();
+      segments.push({ type: "h3", text: line.replace(/^#{3,6}\s+/, "") });
+    } else if (/^[-*+]\s/.test(line)) {
+      flushParagraph();
+      segments.push({ type: "bullet", text: stripMarkdown(line.replace(/^[-*+]\s+/, "")) });
+    } else if (/^\d+\.\s/.test(line)) {
+      flushParagraph();
+      segments.push({ type: "bullet", text: stripMarkdown(line.replace(/^\d+\.\s+/, "")) });
+    } else if (/^>\s/.test(line)) {
+      flushParagraph();
+      segments.push({ type: "blockquote", text: stripMarkdown(line.replace(/^>\s+/, "")) });
     } else if (/^---+$/.test(line.trim())) {
+      flushParagraph();
       segments.push({ type: "hr", text: "" });
+    } else if (line === "") {
+      flushParagraph();
     } else {
-      // Accumulate paragraph lines
-      const paraLines: string[] = [line];
-      while (i + 1 < lines.length && lines[i + 1].trim() !== "" && !/^[#>*\-\d]/.test(lines[i + 1])) {
-        i++;
-        paraLines.push(lines[i].trimEnd());
-      }
-      segments.push({ type: "paragraph", text: paraLines.join(" ").trim() });
+      paragraphLines.push(line);
     }
-    i++;
   }
-
+  flushParagraph();
   return segments;
 }
 
-/** Clean inline markdown from a string */
-function cleanInline(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/__(.+?)__/g, "$1")
-    .replace(/_(.+?)_/g, "$1")
-    .replace(/`(.+?)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+/** Draw the Urban Monk logo image (or fall back to the "UM" circle) at the given centre-x, top-y position */
+function drawLogo(
+  doc: InstanceType<typeof PDFDocument>,
+  cx: number,
+  topY: number,
+  targetWidth: number,
+): number {
+  if (LOGO_BUFFER) {
+    // The logo PNG is landscape (1639×808). Scale to targetWidth and derive height.
+    const aspectRatio = 808 / 1639;
+    const w = targetWidth;
+    const h = w * aspectRatio;
+    const x = cx - w / 2;
+    doc.image(LOGO_BUFFER, x, topY, { width: w });
+    return topY + h; // return bottom Y of the logo
+  }
+  // Fallback: draw the "UM" circle in gold
+  const r = 36;
+  doc.circle(cx, topY + r, r).stroke(GOLD);
+  doc.font("Helvetica-Bold").fontSize(18).fillColor(GOLD).text("UM", cx - 13, topY + r - 11);
+  return topY + r * 2 + 8;
 }
 
-// ─── PDF Generation ───────────────────────────────────────────────────────────
+// ─── Main Export ──────────────────────────────────────────────────────────────
 
 export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
   const {
@@ -131,6 +166,7 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
     author = "Dr. Pedram Shojai",
     chapters,
     globalCta,
+    coverImageBuffer,
   } = opts;
 
   return new Promise((resolve, reject) => {
@@ -154,26 +190,36 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
     const pageHeight = doc.page.height;
     const contentWidth = pageWidth - 160; // left + right margins
 
-    // ── Cover Page ────────────────────────────────────────────────────────────
+    // ── AI-Generated Cover Image (Page 1, if provided) ────────────────────────
+    if (coverImageBuffer && coverImageBuffer.length > 0) {
+      // Full-bleed cover image page
+      doc.rect(0, 0, pageWidth, pageHeight).fill(DARK_NAVY);
+      try {
+        doc.image(coverImageBuffer, 0, 0, {
+          width: pageWidth,
+          height: pageHeight,
+          cover: [pageWidth, pageHeight],
+        });
+      } catch {
+        // If image embedding fails, just leave the dark background
+      }
+      doc.addPage();
+    }
+
+    // ── Branded Cover Page ────────────────────────────────────────────────────
     // Dark navy background
     doc.rect(0, 0, pageWidth, pageHeight).fill(DARK_NAVY);
 
-    // Gold circle logo
-    const logoX = pageWidth / 2;
-    const logoY = 160;
-    doc.circle(logoX, logoY, 36).stroke(GOLD);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(18)
-      .fillColor(GOLD)
-      .text("UM", logoX - 13, logoY - 11);
+    // Urban Monk logo — centred, 200px wide
+    const logoTopY = 80;
+    const logoBottomY = drawLogo(doc, pageWidth / 2, logoTopY, 200);
 
     // Eyebrow text
     doc
       .font("Helvetica")
       .fontSize(8)
       .fillColor(GOLD)
-      .text("THE URBAN MONK  ·  DR. PEDRAM SHOJAI", 0, logoY + 52, {
+      .text("THE URBAN MONK  ·  DR. PEDRAM SHOJAI", 0, logoBottomY + 20, {
         align: "center",
         characterSpacing: 1.5,
       });
@@ -183,7 +229,7 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
       .font("Helvetica-Bold")
       .fontSize(28)
       .fillColor(WHITE)
-      .text(title, 60, logoY + 90, {
+      .text(title, 60, logoBottomY + 50, {
         align: "center",
         width: pageWidth - 120,
         lineGap: 6,
@@ -203,7 +249,7 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
       doc
         .font("Helvetica-Oblique")
         .fontSize(13)
-        .fillColor("rgba(255,255,255,0.75)")
+        .fillColor(WHITE)
         .fillOpacity(0.75)
         .text(subtitle, 60, titleBottom + 20, {
           align: "center",
@@ -251,181 +297,141 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
       .moveTo(80, doc.y + 12)
       .lineTo(pageWidth - 80, doc.y + 12)
       .strokeColor(GOLD_LIGHT)
-      .lineWidth(1.5)
+      .lineWidth(0.5)
       .stroke();
 
-    let tocY = doc.y + 28;
+    let tocY = doc.y + 24;
     chapters.forEach((ch) => {
       doc
         .font("Helvetica")
-        .fontSize(9)
-        .fillColor(GOLD)
-        .text(`${ch.chapterNumber}`, 80, tocY, { width: 24 });
-
-      doc
-        .font("Helvetica-Oblique")
         .fontSize(11)
-        .fillColor(DARK_NAVY)
-        .text(ch.title, 110, tocY, { width: contentWidth - 30 });
-
-      tocY = doc.y + 4;
-
-      doc
-        .moveTo(80, tocY)
-        .lineTo(pageWidth - 80, tocY)
-        .strokeColor(GOLD_LIGHT)
-        .lineWidth(0.5)
-        .stroke();
-
-      tocY += 8;
+        .fillColor(BODY_TEXT)
+        .text(`${ch.chapterNumber}. ${ch.title}`, 80, tocY, {
+          width: contentWidth - 40,
+          continued: false,
+        });
+      tocY = doc.y + 8;
     });
 
     // ── Chapters ──────────────────────────────────────────────────────────────
     chapters.forEach((ch) => {
       doc.addPage();
 
-      // Chapter label
+      // Chapter header band
+      doc.rect(0, 0, pageWidth, 8).fill(GOLD);
+
+      // Chapter number label
       doc
         .font("Helvetica")
-        .fontSize(8.5)
+        .fontSize(9)
         .fillColor(GOLD)
-        .text(`CHAPTER ${ch.chapterNumber}`, 80, 72, { characterSpacing: 2 });
+        .text(`CHAPTER ${ch.chapterNumber}`, 80, 30, { characterSpacing: 1.5 });
 
       // Chapter title
       doc
         .font("Helvetica-Bold")
         .fontSize(22)
         .fillColor(DARK_NAVY)
-        .text(ch.title, 80, 90, { width: contentWidth });
+        .text(ch.title, 80, 50, { width: contentWidth });
 
       // Divider
       doc
-        .moveTo(80, doc.y + 12)
-        .lineTo(pageWidth - 80, doc.y + 12)
+        .moveTo(80, doc.y + 10)
+        .lineTo(pageWidth - 80, doc.y + 10)
         .strokeColor(GOLD_LIGHT)
-        .lineWidth(1.5)
+        .lineWidth(0.5)
         .stroke();
 
-      doc.moveDown(1.5);
+      let y = doc.y + 20;
 
-      // Chapter body — parse markdown into segments
-      const segments = parseMarkdown(ch.content || "");
-
+      // Render markdown segments
+      const segments = parseMarkdown(ch.content);
       segments.forEach((seg) => {
-        if (doc.y > pageHeight - 120) {
+        if (y > pageHeight - 120) {
           doc.addPage();
+          doc.rect(0, 0, pageWidth, 8).fill(GOLD);
+          y = 40;
         }
-
-        const cleanText = cleanInline(seg.text);
 
         switch (seg.type) {
           case "h2":
-            doc.moveDown(0.5);
             doc
               .font("Helvetica-Bold")
-              .fontSize(15)
+              .fontSize(16)
               .fillColor(DARK_NAVY)
-              .text(cleanText, 80, doc.y, { width: contentWidth });
-            doc.moveDown(0.3);
+              .text(seg.text, 80, y, { width: contentWidth });
+            y = doc.y + 10;
             break;
-
           case "h3":
-            doc.moveDown(0.4);
             doc
               .font("Helvetica-Bold")
-              .fontSize(12)
+              .fontSize(13)
               .fillColor(DARK_NAVY)
-              .text(cleanText, 80, doc.y, { width: contentWidth });
-            doc.moveDown(0.2);
+              .text(seg.text, 80, y, { width: contentWidth });
+            y = doc.y + 8;
             break;
-
           case "bullet":
             doc
               .font("Helvetica")
               .fontSize(11)
               .fillColor(BODY_TEXT)
-              .text(`• ${cleanText}`, 88, doc.y, {
-                width: contentWidth - 8,
-                lineGap: 3,
-              });
-            doc.moveDown(0.2);
+              .text(`• ${seg.text}`, 92, y, { width: contentWidth - 12, lineGap: 2 });
+            y = doc.y + 6;
             break;
-
           case "blockquote":
-            doc.moveDown(0.3);
-            // Gold left bar
-            doc
-              .rect(80, doc.y, 3, 40)
-              .fill(GOLD);
+            doc.rect(80, y, 3, 20).fill(GOLD);
             doc
               .font("Helvetica-Oblique")
               .fontSize(11)
-              .fillColor("#3a3a3a")
-              .text(cleanText, 92, doc.y - 40, {
-                width: contentWidth - 12,
-                lineGap: 3,
-              });
-            doc.moveDown(0.5);
+              .fillColor(MUTED)
+              .text(seg.text, 92, y, { width: contentWidth - 12, lineGap: 2 });
+            y = doc.y + 10;
             break;
-
           case "hr":
-            doc.moveDown(0.5);
             doc
-              .moveTo(80, doc.y)
-              .lineTo(pageWidth - 80, doc.y)
+              .moveTo(80, y + 4)
+              .lineTo(pageWidth - 80, y + 4)
               .strokeColor(GOLD_LIGHT)
               .lineWidth(0.5)
               .stroke();
-            doc.moveDown(0.5);
+            y += 16;
             break;
-
-          case "paragraph":
           default:
             doc
               .font("Helvetica")
               .fontSize(11)
               .fillColor(BODY_TEXT)
-              .text(cleanText, 80, doc.y, {
-                width: contentWidth,
-                align: "justify",
-                lineGap: 3,
-              });
-            doc.moveDown(0.6);
-            break;
+              .text(seg.text, 80, y, { width: contentWidth, lineGap: 3 });
+            y = doc.y + 10;
         }
       });
 
-      // Chapter CTA box
-      if (ch.ctaText) {
-        if (doc.y > pageHeight - 180) doc.addPage();
-        doc.moveDown(1);
-
-        const ctaBoxY = doc.y;
-        const ctaBoxHeight = ch.ctaUrl ? 90 : 70;
-        doc.rect(80, ctaBoxY, contentWidth, ctaBoxHeight).fill(DARK_NAVY);
-
+      // Per-chapter CTA box
+      if (ch.ctaText && ch.ctaUrl) {
+        if (y > pageHeight - 160) {
+          doc.addPage();
+          doc.rect(0, 0, pageWidth, 8).fill(GOLD);
+          y = 40;
+        }
+        const boxH = 70;
+        doc.rect(80, y + 10, contentWidth, boxH).fill(GOLD_LIGHT);
         doc
-          .font("Helvetica-Oblique")
+          .font("Helvetica-Bold")
           .fontSize(11)
-          .fillColor(WHITE)
-          .fillOpacity(0.9)
-          .text(ch.ctaText, 100, ctaBoxY + 16, {
+          .fillColor(DARK_NAVY)
+          .text(ch.ctaText, 100, y + 22, {
             width: contentWidth - 40,
             align: "center",
           });
-
-        if (ch.ctaUrl) {
-          doc
-            .font("Helvetica-Bold")
-            .fontSize(10)
-            .fillColor(GOLD)
-            .text(ch.ctaLabel || "Learn More →", 100, doc.y + 8, {
-              width: contentWidth - 40,
-              align: "center",
-              link: ch.ctaUrl,
-            });
-        }
-
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(10)
+          .fillColor(GOLD)
+          .text(ch.ctaLabel || "Learn More →", 100, doc.y + 8, {
+            width: contentWidth - 40,
+            align: "center",
+            link: ch.ctaUrl,
+          });
         doc.fillOpacity(1);
       }
     });
@@ -435,21 +441,15 @@ export async function generateEbookPdf(opts: EbookPdfOptions): Promise<Buffer> {
       doc.addPage();
       doc.rect(0, 0, pageWidth, pageHeight).fill(DARK_NAVY);
 
-      // Gold circle logo
-      const bcLogoX = pageWidth / 2;
-      const bcLogoY = pageHeight / 2 - 140;
-      doc.circle(bcLogoX, bcLogoY, 32).stroke(GOLD);
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(16)
-        .fillColor(GOLD)
-        .text("UM", bcLogoX - 11, bcLogoY - 10);
+      // Urban Monk logo on back cover — smaller, 160px wide
+      const bcLogoTopY = pageHeight / 2 - 180;
+      const bcLogoBottomY = drawLogo(doc, pageWidth / 2, bcLogoTopY, 160);
 
       doc
         .font("Helvetica-Bold")
         .fontSize(24)
         .fillColor(WHITE)
-        .text("Ready to Go Deeper?", 60, bcLogoY + 50, {
+        .text("Ready to Go Deeper?", 60, bcLogoBottomY + 24, {
           align: "center",
           width: pageWidth - 120,
         });

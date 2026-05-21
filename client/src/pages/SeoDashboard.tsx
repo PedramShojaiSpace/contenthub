@@ -23,6 +23,7 @@ import {
   Zap,
   PenSquare,
   Video,
+  Pencil,
 } from "lucide-react";
 
 function StatCard({
@@ -200,6 +201,22 @@ export default function SeoDashboard() {
     retry: false,
   });
 
+  const trackedQuery = trpc.gsc.trackedKeywords.useQuery(undefined, {
+    enabled: !!statusQuery.data?.connected,
+    retry: false,
+  });
+
+  // Build a quick-lookup set: "keyword::type" -> true
+  const trackedSet = new Set(
+    (trackedQuery.data ?? []).map((r) => `${r.keyword}::${r.contentType}`)
+  );
+  const isTracked = (keyword: string, type: "video" | "blog") =>
+    trackedSet.has(`${keyword.toLowerCase().trim()}::${type}`);
+
+  const trackKeyword = trpc.gsc.trackKeywordSend.useMutation({
+    onSuccess: () => utils.gsc.trackedKeywords.invalidate(),
+  });
+
   const disconnect = trpc.gsc.disconnect.useMutation({
     onSuccess: () => {
       utils.gsc.status.invalidate();
@@ -213,6 +230,7 @@ export default function SeoDashboard() {
     utils.gsc.topQueries.invalidate();
     utils.gsc.topPages.invalidate();
     utils.gsc.strikingDistance.invalidate();
+    utils.gsc.trackedKeywords.invalidate();
   };
 
   if (statusQuery.isLoading) {
@@ -383,28 +401,51 @@ export default function SeoDashboard() {
                   <div className="divide-y divide-border">
                     {pages.map((row, i) => {
                       const path = row.page.replace(/^https?:\/\/[^/]+/, "") || "/";
+                      // Build WordPress post editor URL:
+                      // WP search by slug — open wp-admin search for this path
+                      // WORDPRESS_URL is server-only; use the known production URL directly
+                      const WP_BASE = "https://theurbanmonk.com";
+                      const slug = path.replace(/^\//, "").replace(/\/$/, "");
+                      const wpEditUrl = slug
+                        ? `${WP_BASE}/wp-admin/edit.php?s=${encodeURIComponent(slug)}&post_type=post`
+                        : `${WP_BASE}/wp-admin/`;
                       return (
-                        <div key={i} className="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-muted/30">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                        <div key={i} className="px-4 py-2.5 hover:bg-muted/30 transition-colors group">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                              <a
+                                href={row.page}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline truncate flex items-center gap-1"
+                              >
+                                {path}
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <MousePointerClick className="w-3 h-3" />
+                                {row.clicks}
+                              </span>
+                              <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                #{row.position.toFixed(1)}
+                              </Badge>
+                            </div>
+                          </div>
+                          {/* WordPress quick-edit button — visible on hover */}
+                          <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <a
-                              href={row.page}
+                              href={wpEditUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm text-primary hover:underline truncate flex items-center gap-1"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition-colors"
                             >
-                              {path}
-                              <ExternalLink className="w-3 h-3 shrink-0" />
+                              <Pencil className="w-3 h-3" />
+                              Update Content in WordPress
                             </a>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <MousePointerClick className="w-3 h-3" />
-                              {row.clicks}
-                            </span>
-                            <Badge variant="outline" className="text-xs px-1.5 py-0">
-                              #{row.position.toFixed(1)}
-                            </Badge>
+                            <span className="text-[10px] text-muted-foreground italic">Refresh this page to boost rankings</span>
                           </div>
                         </div>
                       );
@@ -459,12 +500,26 @@ export default function SeoDashboard() {
                             </Badge>
                           </div>
                         </div>
+                        {/* Content-created badges */}
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {isTracked(row.query, "video") && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-primary/15 text-primary border border-primary/25">
+                              <Video className="w-2.5 h-2.5" /> Video made
+                            </span>
+                          )}
+                          {isTracked(row.query, "blog") && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                              <PenSquare className="w-2.5 h-2.5" /> Blog made
+                            </span>
+                          )}
+                        </div>
                         {/* Create content buttons — visible on hover */}
-                        <div className="flex items-center gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors"
                             onClick={() => {
                               const encoded = encodeURIComponent(row.query);
+                              trackKeyword.mutate({ keyword: row.query, contentType: "video" });
                               setLocation(`/video-production?keyword=${encoded}`);
                               toast.info(`Opening Video Production with keyword: "${row.query}"`);
                             }}
@@ -476,6 +531,7 @@ export default function SeoDashboard() {
                             className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
                             onClick={() => {
                               const encoded = encodeURIComponent(row.query);
+                              trackKeyword.mutate({ keyword: row.query, contentType: "blog" });
                               setLocation(`/studio?keyword=${encoded}&platform=blog`);
                               toast.info(`Opening Blog Generator with keyword: "${row.query}"`);
                             }}

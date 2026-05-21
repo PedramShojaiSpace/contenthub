@@ -2954,3 +2954,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] SEO sidebar nav item: add "SEO" entry with Search icon to DashboardLayout sidebar
 - [x] Keyword-to-content pipeline: "Create Content" buttons on striking-distance rows in SeoDashboard pre-fill Video Script Generator or Blog Generator
 - [x] Weekly GSC digest heartbeat: scheduled job fetches GSC data and sends owner notification with top movers and striking-distance opportunities
+
+- [x] SEO content tracker: DB table records keyword sends to Video/Blog generators; SeoDashboard shows "content created" badges
+- [x] Keyword rank-drop alerts: weekly GSC digest flags keywords that dropped 3+ positions week-over-week
+- [x] Top-pages WordPress quick-edit: hover-reveal "Update Content" button links to WP post editor for that URL

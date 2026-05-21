@@ -781,7 +781,11 @@ export const videoVariantRouter = router({
   syndicateToBuffer: protectedProcedure
     .input(z.object({
       jobId: z.number().int(),
-      channelIds: z.array(z.string()).min(1),
+      // Legacy: send all variants to all these channels
+      channelIds: z.array(z.string()).default([]),
+      // Per-variant routing: variantId (as string key) -> channelId
+      // When provided, each variant is sent only to its assigned channel
+      variantChannelMap: z.record(z.string(), z.string()).optional(),
       caption: z.string().default(""),
       ctaUrl: z.string().optional(),
       channelServiceMap: z.record(z.string(), z.string()).optional(),
@@ -797,14 +801,44 @@ export const videoVariantRouter = router({
       if (variants.length === 0) throw new Error("No completed variants to syndicate");
 
       const { pushToBuffer } = await import("./buffer");
-      const results: { variantId: number; label: string; success: boolean; error?: string }[] = [];
+      const results: { variantId: number; label: string; channelId?: string; success: boolean; error?: string }[] = [];
       const serviceMap: Record<string, string> | undefined = input.channelServiceMap as Record<string, string> | undefined;
 
       for (const variant of variants) {
         if (!variant.s3Url) continue;
+
+        // Determine target channel(s) for this variant
+        let targetChannelIds: string[];
+        if (input.variantChannelMap) {
+          // Per-variant routing mode: each variant goes to its assigned channel only
+          const assignedChannelId = input.variantChannelMap[String(variant.id)];
+          if (!assignedChannelId) {
+            results.push({
+              variantId: variant.id,
+              label: variant.variantLabel ?? `Variant ${variant.id}`,
+              success: false,
+              error: "No channel assigned — skipped",
+            });
+            continue;
+          }
+          targetChannelIds = [assignedChannelId];
+        } else {
+          // Legacy broadcast mode
+          if (input.channelIds.length === 0) {
+            results.push({
+              variantId: variant.id,
+              label: variant.variantLabel ?? `Variant ${variant.id}`,
+              success: false,
+              error: "No channels provided",
+            });
+            continue;
+          }
+          targetChannelIds = input.channelIds;
+        }
+
         const res = await pushToBuffer({
           text: input.caption || job.jobName,
-          profileIds: input.channelIds,
+          profileIds: targetChannelIds,
           videoUrl: variant.s3Url,
           ctaUrl: input.ctaUrl,
           channelServiceMap: serviceMap,
@@ -812,6 +846,7 @@ export const videoVariantRouter = router({
         results.push({
           variantId: variant.id,
           label: variant.variantLabel ?? `Variant ${variant.id}`,
+          channelId: targetChannelIds[0],
           success: res.success,
           error: res.error,
         });

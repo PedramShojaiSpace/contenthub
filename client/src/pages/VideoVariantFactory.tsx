@@ -27,6 +27,7 @@ import {
   Share2, Megaphone, Send, ExternalLink, ArrowLeft
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -194,6 +195,8 @@ export default function VideoVariantFactory() {
   // Buffer syndication
   const [bufferCaption, setBufferCaption] = useState("");
   const [bufferCtaUrl, setBufferCtaUrl]   = useState("");
+  // Per-variant channel routing: variantId (string) -> channelId
+  const [variantChannelMap, setVariantChannelMap] = useState<Record<string, string>>({});
   // Meta Ads
   const [metaAdAccountId, setMetaAdAccountId] = useState("");
   const [metaPageId, setMetaPageId]           = useState("");
@@ -215,6 +218,10 @@ export default function VideoVariantFactory() {
   const startProcessingMutation = trpc.videoVariant.startProcessing.useMutation();
   const deleteClipMutation  = trpc.videoVariant.deleteClip.useMutation();
   const deleteJobMutation   = trpc.videoVariant.deleteJob.useMutation();
+  const { data: bufferProfiles } = trpc.syndication.getProfiles.useQuery(undefined, {
+    retry: false,
+    staleTime: 5 * 60 * 1000, // cache for 5 min
+  });
   const syndicateToBufferMutation = trpc.videoVariant.syndicateToBuffer.useMutation();
   const uploadToMetaMutation      = trpc.videoVariant.uploadToMetaAds.useMutation();
   const saveMetaCredentialsMutation = trpc.videoVariant.saveMetaCredentials.useMutation();
@@ -1402,28 +1409,112 @@ export default function VideoVariantFactory() {
 
                     {/* Buffer config panel */}
                     {outputPath === "buffer" && (
-                      <div className="p-4 rounded-xl bg-sky-500/5 border border-sky-500/20 space-y-3">
-                        <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Buffer Syndication</p>
-                        <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">Caption (applies to all variants)</label>
-                          <Textarea
-                            value={bufferCaption}
-                            onChange={e => setBufferCaption(e.target.value)}
-                            placeholder="Write your caption here… or leave blank to use the job name"
-                            className="bg-background border-border text-foreground text-sm resize-none"
-                            rows={3}
-                          />
+                      <div className="p-4 rounded-xl bg-sky-500/5 border border-sky-500/20 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Buffer Syndication</p>
+                          <span className="text-xs text-muted-foreground">{bufferProfiles?.length ?? 0} channels connected</span>
                         </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">CTA URL (optional — added as first comment on Instagram)</label>
-                          <Input
-                            value={bufferCtaUrl}
-                            onChange={e => setBufferCtaUrl(e.target.value)}
-                            placeholder="https://lightson.theurbanmonk.com/"
-                            className="bg-background border-border text-foreground text-sm"
-                          />
+
+                        {/* Caption + CTA */}
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Caption (applies to all variants)</label>
+                            <Textarea
+                              value={bufferCaption}
+                              onChange={e => setBufferCaption(e.target.value)}
+                              placeholder="Write your caption here… or leave blank to use the job name"
+                              className="bg-background border-border text-foreground text-sm resize-none"
+                              rows={3}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">CTA URL (optional — added as first comment on Instagram)</label>
+                            <Input
+                              value={bufferCtaUrl}
+                              onChange={e => setBufferCtaUrl(e.target.value)}
+                              placeholder="https://lightson.theurbanmonk.com/"
+                              className="bg-background border-border text-foreground text-sm"
+                            />
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">Channels are pulled from your Buffer connection. All {doneVariants.length} variants will be queued simultaneously.</p>
+
+                        {/* Per-variant channel routing table */}
+                        {doneVariants.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-foreground">Assign each variant to a channel</p>
+                            <p className="text-xs text-muted-foreground">Each variant will be sent only to its assigned account. Leave unassigned to skip.</p>
+                            <div className="space-y-2">
+                              {doneVariants.map((v: any) => {
+                                const assignedChannelId = variantChannelMap[String(v.id)] ?? "";
+                                const assignedChannel = bufferProfiles?.find(p => p.id === assignedChannelId);
+                                return (
+                                  <div key={v.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-background border border-border">
+                                    {/* Variant label */}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium text-foreground truncate">{v.variantLabel ?? `Variant ${v.id}`}</p>
+                                    </div>
+                                    {/* Channel selector */}
+                                    <div className="w-52 shrink-0">
+                                      {bufferProfiles && bufferProfiles.length > 0 ? (
+                                        <Select
+                                          value={assignedChannelId || "__unassigned__"}
+                                          onValueChange={(val) => {
+                                            setVariantChannelMap(prev => {
+                                              const next = { ...prev };
+                                              if (val === "__unassigned__") {
+                                                delete next[String(v.id)];
+                                              } else {
+                                                next[String(v.id)] = val;
+                                              }
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          <SelectTrigger className="h-8 text-xs bg-background border-border">
+                                            <SelectValue placeholder="— skip —" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="__unassigned__">— skip —</SelectItem>
+                                            {/* Group by platform */}
+                                            {["tiktok", "meta", "linkedin", "x", "youtube", "other"].map(platform => {
+                                              const platformChannels = bufferProfiles.filter(p => p.platform === platform);
+                                              if (platformChannels.length === 0) return null;
+                                              const platformLabel = platform === "meta" ? "Instagram / Facebook" : platform.charAt(0).toUpperCase() + platform.slice(1);
+                                              return (
+                                                <div key={platform}>
+                                                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{platformLabel}</div>
+                                                  {platformChannels.map(ch => (
+                                                    <SelectItem key={ch.id} value={ch.id}>
+                                                      {ch.name}
+                                                    </SelectItem>
+                                                  ))}
+                                                </div>
+                                              );
+                                            })}
+                                          </SelectContent>
+                                        </Select>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground italic">Loading channels…</span>
+                                      )}
+                                    </div>
+                                    {/* Status indicator */}
+                                    {assignedChannel && (
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    )}
+                                    {!assignedChannelId && (
+                                      <div className="w-4 h-4 rounded-full border-2 border-muted shrink-0" />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {Object.keys(variantChannelMap).length} of {doneVariants.length} variants assigned
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Results */}
                         {outputResults.length > 0 && (
                           <div className="space-y-1">
                             {outputResults.map((r, i) => (
@@ -1437,18 +1528,23 @@ export default function VideoVariantFactory() {
                             ))}
                           </div>
                         )}
+
                         <Button
                           className="w-full bg-sky-600 hover:bg-sky-500 text-white"
-                          disabled={syndicateToBufferMutation.isPending}
+                          disabled={syndicateToBufferMutation.isPending || Object.keys(variantChannelMap).length === 0}
                           onClick={async () => {
                             if (!activeJobId) return;
                             try {
                               setOutputResults([]);
+                              // Build channelServiceMap from bufferProfiles for correct platform handling
+                              const channelServiceMap: Record<string, string> = {};
+                              bufferProfiles?.forEach(p => { channelServiceMap[p.id] = p.service; });
                               const res = await syndicateToBufferMutation.mutateAsync({
                                 jobId: activeJobId,
-                                channelIds: [], // Buffer uses all connected channels when empty
+                                variantChannelMap,
                                 caption: bufferCaption,
                                 ctaUrl: bufferCtaUrl || undefined,
+                                channelServiceMap,
                               });
                               setOutputResults(res.results.map(r => ({ label: r.label, success: r.success, error: r.error })));
                               toast.success(`${res.successCount}/${res.totalVariants} variants sent to Buffer`);
@@ -1459,7 +1555,7 @@ export default function VideoVariantFactory() {
                         >
                           {syndicateToBufferMutation.isPending
                             ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending to Buffer…</>
-                            : <><Send className="w-4 h-4 mr-2" /> Send All {doneVariants.length} Variants to Buffer</>}
+                            : <><Send className="w-4 h-4 mr-2" /> Send {Object.keys(variantChannelMap).length} Assigned Variant{Object.keys(variantChannelMap).length !== 1 ? "s" : ""} to Buffer</>}
                         </Button>
                       </div>
                     )}

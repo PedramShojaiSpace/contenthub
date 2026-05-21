@@ -2947,4 +2947,4 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 - [x] Fix ebook stuck in "Generating..." after AI timeout: retryFailedChapters now picks up "generating" and "pending" stuck chapters; added resetStuckEbook procedure; added Resume Generation button on drafting cards
 
-- [x] Fix ebook PDF: replace generic "UM" circle logo with real Urban Monk logo (loaded from server/assets/); pass coverImageUrl to PDF generator so AI-generated cover appears as page 1; add storage proxy for /manus-storage/* paths
+- [x] Fix ebook PDF: replace generic "UM" circle logo with real Urban Monk logo (white version for dark backgrounds, loaded from server/assets/); fix cover image full-bleed rendering with proper scale-to-fill; fix back cover vertical centering; fix CTA button label (hardcoded "Join the Urban Monk Academy"); add THEURBANMONK.COM footer to back cover; add storage proxy for /manus-storage/* paths

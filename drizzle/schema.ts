@@ -1070,6 +1070,9 @@ export const userCredentials = mysqlTable("user_credentials", {
   metaAdAccountId: varchar("metaAdAccountId", { length: 128 }),
   metaPageId: varchar("metaPageId", { length: 128 }),
   metaAccessToken: text("metaAccessToken"), // long-lived token, stored as text
+  // Google Search Console
+  gscRefreshToken: text("gscRefreshToken"),
+  gscSiteUrl: varchar("gscSiteUrl", { length: 256 }),
   updatedAt: timestamp("uc_updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type UserCredentials = typeof userCredentials.$inferSelect;

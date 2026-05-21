@@ -251,6 +251,51 @@ async function startServer() {
     }
   });
 
+  // ── Google Search Console OAuth ────────────────────────────────────────────
+  // GET /api/gsc/auth-url — returns the GSC OAuth authorization URL
+  app.get("/api/gsc/auth-url", async (req, res) => {
+    try {
+      await sdk.authenticateRequest(req);
+      const { getGscAuthUrl } = await import("../googleSearchConsole");
+      const url = getGscAuthUrl();
+      return res.json({ url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(400).json({ error: msg });
+    }
+  });
+
+  // GET /api/gsc/callback — Google redirects here after authorization
+  app.get("/api/gsc/callback", async (req, res) => {
+    const code = req.query.code as string;
+    if (!code) return res.status(400).send("Missing authorization code");
+    try {
+      const { exchangeGscCode } = await import("../googleSearchConsole");
+      const { refreshToken } = await exchangeGscCode(code);
+      // Store the refresh token in the DB for the owner
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const { userCredentials } = await import("../../drizzle/schema");
+      const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, 1));
+      if (existing) {
+        await db.update(userCredentials).set({ gscRefreshToken: refreshToken }).where(eq(userCredentials.userId, 1));
+      } else {
+        await db.insert(userCredentials).values({ userId: 1, gscRefreshToken: refreshToken });
+      }
+      return res.send(`
+        <html><body style="font-family:sans-serif;padding:40px;max-width:600px">
+          <h2>\u2705 Google Search Console Connected!</h2>
+          <p>Your Search Console data is now available in the SEO Dashboard.</p>
+          <p><a href="/">&larr; Return to Content Hub</a></p>
+          <script>setTimeout(() => { window.location.href = '/'; }, 2000);</script>
+        </body></html>
+      `);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>\u274c Authorization failed</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // ── Book PDF upload endpoints ────────────────────────────────────────────────
   // POST /api/books/upload — accepts PDF + bookId, extracts text, uploads to S3
   const pdfUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });

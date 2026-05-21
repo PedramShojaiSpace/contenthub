@@ -97,6 +97,7 @@ import { videoVariantRouter } from "./videoVariantRouter";
 import { videoSessionRouter } from "./videoSessionRouter";
 import { bookLibraryRouter } from "./bookLibraryRouter";
 import { ebookRouter } from "./ebookRouter";
+import { gscRouter } from "./gscRouter";
 import { crossModuleRouter } from "./crossModuleRouter";
 import { redditRouter } from "./redditRouter";
 import { podcastRouter } from "./podcastRouter";
@@ -355,6 +356,7 @@ export const appRouter = router({
   system: systemRouter,
   bookLibrary: bookLibraryRouter,
   ebook: ebookRouter,
+  gsc: gscRouter,
   crossModule: crossModuleRouter,
   reddit: redditRouter,
   podcast: podcastRouter,

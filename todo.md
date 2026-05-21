@@ -2946,3 +2946,5 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Show channel display name and platform icon in the routing table
 
 - [x] Fix ebook stuck in "Generating..." after AI timeout: retryFailedChapters now picks up "generating" and "pending" stuck chapters; added resetStuckEbook procedure; added Resume Generation button on drafting cards
+
+- [x] Fix ebook PDF: replace generic "UM" circle logo with real Urban Monk logo (loaded from server/assets/); pass coverImageUrl to PDF generator so AI-generated cover appears as page 1; add storage proxy for /manus-storage/* paths

@@ -12,6 +12,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -334,9 +335,9 @@ function ScriptCard({
 
 // ─── New Session Form ─────────────────────────────────────────────────────────
 
-function NewSessionForm({ onCreated }: { onCreated: (id: number) => void }) {
-  const [name, setName] = useState("");
-  const [idea, setIdea] = useState("");
+function NewSessionForm({ onCreated, initialKeyword = "" }: { onCreated: (id: number) => void; initialKeyword?: string }) {
+  const [name, setName] = useState(initialKeyword ? `${initialKeyword} — Video` : "");
+  const [idea, setIdea] = useState(initialKeyword ? `Create a video targeting the keyword: "${initialKeyword}". Cover what this topic means, why it matters for health and wellbeing, and how Dr. Shojai's approach offers a unique perspective.` : "");
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [ctaKeyword, setCtaKeyword] = useState<"UPSTREAM" | "LIGHTSON" | "TEST" | "SLEEP" | "">("UPSTREAM");
 
@@ -829,7 +830,9 @@ function SessionHistory({ onSelect }: { onSelect: (id: number) => void }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function VideoProductionSession() {
-  const [view, setView] = useState<"list" | "new" | "detail">("list");
+  const search = useSearch();
+  const keywordParam = new URLSearchParams(search).get("keyword") ?? "";
+  const [view, setView] = useState<"list" | "new" | "detail">(keywordParam ? "new" : "list");
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
 
   const handleCreated = (id: number) => {
@@ -892,7 +895,7 @@ export default function VideoProductionSession() {
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground -ml-2 mb-4 h-7 text-xs" onClick={() => setView("list")}>
               <ChevronLeft className="w-3 h-3 mr-1" /> Back
             </Button>
-            <NewSessionForm onCreated={handleCreated} />
+            <NewSessionForm onCreated={handleCreated} initialKeyword={keywordParam} />
           </div>
         )}
         {view === "detail" && activeSessionId && (

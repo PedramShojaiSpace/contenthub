@@ -2950,3 +2950,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix ebook PDF: replace generic "UM" circle logo with real Urban Monk logo (white version for dark backgrounds, loaded from server/assets/); fix cover image full-bleed rendering with proper scale-to-fill; fix back cover vertical centering; fix CTA button label (hardcoded "Join the Urban Monk Academy"); add THEURBANMONK.COM footer to back cover; add storage proxy for /manus-storage/* paths
 
 - [x] Google Search Console SEO Dashboard: OAuth flow, token storage, keyword rankings, top pages, striking-distance keywords panel, week-over-week summary, CommandCenter widget
+
+- [x] SEO sidebar nav item: add "SEO" entry with Search icon to DashboardLayout sidebar
+- [x] Keyword-to-content pipeline: "Create Content" buttons on striking-distance rows in SeoDashboard pre-fill Video Script Generator or Blog Generator
+- [x] Weekly GSC digest heartbeat: scheduled job fetches GSC data and sends owner notification with top movers and striking-distance opportunities

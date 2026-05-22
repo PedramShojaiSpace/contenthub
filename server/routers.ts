@@ -848,6 +848,8 @@ Rules:
           personaId: z.number().optional(), // inject Typeform-enriched persona pain points
           utmContentOverride: z.string().optional(), // override utm_content placement type (e.g. "bio-link", "story", "inline-cta")
           ctaBlockId: z.number().optional(), // manually selected CTA block ID — overrides auto-selection by topic
+          focusKeyword: z.string().optional(),      // explicit SEO focus keyword (from Keyword Strategy tool)
+          currentPosition: z.string().optional(),   // current Google SERP position (e.g. "14.2") — enables Strike Zone mode
         })
       )
       .mutation(async ({ input }) => {
@@ -1061,8 +1063,42 @@ Rules:
         }
 
         // Step 1: Generate the full blog article as structured JSON
+        // Build Strike Zone SEO brief when a focus keyword + SERP position are provided
+        const strikeZoneBrief = (() => {
+          const kw = input.focusKeyword?.trim();
+          const pos = input.currentPosition ? parseFloat(input.currentPosition) : null;
+          if (!kw) return "";
+          const isStrikeZone = pos !== null && pos >= 11 && pos <= 30;
+          if (isStrikeZone) {
+            return `
+
+STRIKE ZONE SEO BRIEF — CRITICAL: This article is a precision ranking campaign. The focus keyword "${kw}" currently ranks at position ${pos.toFixed(1)} on Google (striking distance: positions 11–30). The mission is to move it into the top 10.
+
+SEO REQUIREMENTS FOR THIS ARTICLE:
+1. FOCUS KEYWORD: "${kw}" — use this exact phrase in: the opening paragraph (within first 100 words), at least one H2 heading, the meta description, and 3–5 times naturally throughout the body. Do NOT keyword-stuff.
+2. SEARCH INTENT: Identify whether this keyword is informational, navigational, or commercial. Match the article format to that intent exactly.
+3. COMPETITIVE DIFFERENTIATION: The top-10 results for "${kw}" are generic. This article wins by:
+   — Going deeper on the mechanism (not just the symptom)
+   — Citing Dr. Shojai’s clinical experience and Taoist framework as a unique lens
+   — Answering the PAA (People Also Ask) questions that competitors miss
+   — Providing a named, actionable protocol (not just information)
+4. E-E-A-T SIGNALS: Weave in Dr. Shojai’s credentials (OMD, Taoist monk, NYT bestselling author, clinical practice) naturally — not as a bio block, but as proof woven into the argument.
+5. FEATURED SNIPPET TARGET: Structure one section as a direct, concise answer (40–60 words) to the primary question behind the keyword. This is the featured snippet target.
+6. PAA COVERAGE: The FAQ section must include the exact PAA questions that Google shows for "${kw}" — answer each one directly and completely in 2–3 sentences.
+7. SEMANTIC DEPTH: Use related terms, synonyms, and co-occurring concepts that signal topical authority to Google’s Helpful Content system.
+
+This is not a general wellness article. It is a tactical SEO asset designed to outrank the current top-10 results for "${kw}".`;
+          } else if (kw) {
+            // Focus keyword provided but not in strike zone — still inject as SEO guidance
+            return `
+
+SEO FOCUS KEYWORD: "${kw}" — use this exact phrase in the opening paragraph, at least one H2 heading, and 3–5 times naturally throughout the body. Structure the FAQ section around the PAA questions Google shows for this keyword.`;
+          }
+          return "";
+        })();
         const userMessage = [
           `Raw idea: ${cleanIdea}`,
+          strikeZoneBrief,
           input.gapQueryText ? `\nThis article should directly answer the LLM search query: "${input.gapQueryText}"` : "",
           input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
           personaContext,

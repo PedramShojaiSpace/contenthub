@@ -1428,3 +1428,58 @@ export const competitorDomains = mysqlTable("competitor_domains", {
 });
 export type CompetitorDomain = typeof competitorDomains.$inferSelect;
 export type InsertCompetitorDomain = typeof competitorDomains.$inferInsert;
+
+// ─── Keyword Strategy: Campaigns & Targets ───────────────────────────────────
+
+/**
+ * keyword_campaigns — a topic cluster campaign (e.g. "Gut Health", "Sleep", "Stress")
+ * Each campaign has one pillar keyword and many cluster/conversion keywords.
+ */
+export const keywordCampaigns = mysqlTable("keyword_campaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("kc_user_id").notNull(),
+  name: varchar("kc_name", { length: 128 }).notNull(),
+  pillarKeyword: varchar("kc_pillar_keyword", { length: 256 }).notNull(),
+  description: text("kc_description"),
+  monetizationGoal: varchar("kc_monetization_goal", { length: 64 }).notNull().default("academy"),
+  // academy | supplements | testing | free_lead
+  status: varchar("kc_status", { length: 32 }).notNull().default("active"),
+  // active | paused | completed
+  createdAt: timestamp("kc_created_at").notNull().defaultNow(),
+  updatedAt: timestamp("kc_updated_at").notNull().defaultNow().onUpdateNow(),
+});
+
+export type KeywordCampaign = typeof keywordCampaigns.$inferSelect;
+export type InsertKeywordCampaign = typeof keywordCampaigns.$inferInsert;
+
+/**
+ * keyword_targets — individual keywords within a campaign
+ * Each target has funnel stage, monetization tag, DataForSEO volume, and content status.
+ */
+export const keywordTargets = mysqlTable("keyword_targets", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("kt_campaign_id").notNull(),
+  userId: int("kt_user_id").notNull(),
+  keyword: varchar("kt_keyword", { length: 256 }).notNull(),
+  keywordType: varchar("kt_keyword_type", { length: 32 }).notNull().default("cluster"),
+  // pillar | cluster | conversion
+  funnelStage: varchar("kt_funnel_stage", { length: 16 }).notNull().default("tofu"),
+  // tofu | mofu | bofu
+  monetizationTag: varchar("kt_monetization_tag", { length: 64 }).notNull().default("academy"),
+  // academy | supplements | testing | free_lead | affiliate
+  searchVolume: int("kt_search_volume"),
+  difficulty: int("kt_difficulty"),
+  cpc: varchar("kt_cpc", { length: 16 }),
+  currentPosition: varchar("kt_current_position", { length: 16 }),
+  contentStatus: varchar("kt_content_status", { length: 32 }).notNull().default("not_started"),
+  // not_started | briefed | in_progress | published
+  contentItemId: int("kt_content_item_id"),
+  publishedUrl: varchar("kt_published_url", { length: 512 }),
+  notes: text("kt_notes"),
+  priority: int("kt_priority").notNull().default(50),
+  createdAt: timestamp("kt_created_at").notNull().defaultNow(),
+  updatedAt: timestamp("kt_updated_at").notNull().defaultNow().onUpdateNow(),
+});
+
+export type KeywordTarget = typeof keywordTargets.$inferSelect;
+export type InsertKeywordTarget = typeof keywordTargets.$inferInsert;

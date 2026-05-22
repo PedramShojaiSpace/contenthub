@@ -2974,3 +2974,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Competitor tracking UI: add/remove competitors in CompetitiveIntelligence page, auto-load saved list
 - [x] Volume badges on striking-distance keywords: DataForSEO monthly search volume pill next to each GSC position-11-20 keyword
 - [x] Extended Monday digest: include top 5 DataForSEO keyword gaps in weekly owner notification
+
+## Keyword Strategy System
+
+- [x] keyword_campaigns and keyword_targets DB tables: topic cluster planner with funnel stages (TOFU/MOFU/BOFU), keyword types (pillar/cluster/conversion), monetization tags (academy/supplements/testing/free_lead), content status tracking
+- [x] keywordStrategyRouter: CRUD for campaigns and targets, AI cluster generation via LLM, DataForSEO volume enrichment
+- [x] KeywordStrategy page (/keyword-strategy): campaign manager, cluster planner with grouped pillar/cluster/conversion rows, content roadmap with Video/Blog creation buttons, status cycling
+- [x] Sidebar nav item "Keyword Strategy" with Target icon added to DashboardLayout

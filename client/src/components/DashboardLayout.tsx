@@ -58,6 +58,7 @@ import {
   Mic,
   Search,
   TrendingUp,
+  Target,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -84,6 +85,7 @@ const topNavItems = [
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
   { icon: Search, label: "SEO Dashboard", path: "/seo" },
   { icon: TrendingUp, label: "Competitive Intel", path: "/competitive-intelligence" },
+  { icon: Target, label: "Keyword Strategy", path: "/keyword-strategy" },
 ];
 
 // Strategy sub-items (grouped under collapsible parent)

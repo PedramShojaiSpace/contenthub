@@ -98,6 +98,7 @@ import { videoSessionRouter } from "./videoSessionRouter";
 import { bookLibraryRouter } from "./bookLibraryRouter";
 import { ebookRouter } from "./ebookRouter";
 import { gscRouter } from "./gscRouter";
+import { dataForSeoRouter } from "./dataForSeoRouter";
 import { crossModuleRouter } from "./crossModuleRouter";
 import { redditRouter } from "./redditRouter";
 import { podcastRouter } from "./podcastRouter";
@@ -357,6 +358,7 @@ export const appRouter = router({
   bookLibrary: bookLibraryRouter,
   ebook: ebookRouter,
   gsc: gscRouter,
+  dfs: dataForSeoRouter,
   crossModule: crossModuleRouter,
   reddit: redditRouter,
   podcast: podcastRouter,

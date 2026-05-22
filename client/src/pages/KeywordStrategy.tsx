@@ -532,6 +532,22 @@ export default function KeywordStrategy() {
     onError: (e) => toast.error(e.message),
   });
 
+  const [isSyncingGsc, setIsSyncingGsc] = useState(false);
+  const syncGscMut = trpc.gsc.syncPositionsToKeywordTargets.useMutation({
+    onSuccess: (data) => {
+      setIsSyncingGsc(false);
+      refetchTargets();
+      refetchCampaigns();
+      toast.success(
+        `GSC sync complete \u2014 ${data.matched}/${data.total} keywords matched (${data.gscQueriesFetched} GSC queries fetched)`
+      );
+    },
+    onError: (e) => {
+      setIsSyncingGsc(false);
+      toast.error("GSC sync failed: " + e.message);
+    },
+  });
+
   // Filter targets
   const filteredTargets = targets.filter((t) => {
     if (filterStage !== "all" && t.funnelStage !== filterStage) return false;
@@ -579,7 +595,21 @@ export default function KeywordStrategy() {
               Topic cluster campaigns — own the topics that drive Academy memberships
             </p>
           </div>
-          <NewCampaignDialog onCreated={refetchCampaigns} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setIsSyncingGsc(true);
+                syncGscMut.mutate();
+              }}
+              disabled={isSyncingGsc}
+              title="Sync GSC position data into all keyword targets"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingGsc ? "animate-spin" : ""}`} />
+              {isSyncingGsc ? "Syncing GSC..." : "Sync GSC Positions"}
+            </button>
+            <NewCampaignDialog onCreated={refetchCampaigns} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -218,6 +218,10 @@ export default function CreationStudio() {
     (enrichmentSummary as Array<{ id: number; painCount: number; isEnriched: boolean }>).map((e) => [e.id, e])
   );
 
+  // CTA destination blocks for blog CTA dropdown
+  const { data: ctaBlocksList = [] } = trpc.cta.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  const [selectedCtaBlockId, setSelectedCtaBlockId] = useState<number | null>(null);
+
   const generateContentMutation = trpc.ai.generateContent.useMutation({
     onSuccess: (data) => {
       // data is now Record<string, { text: string; imageUrl?: string }>
@@ -1037,6 +1041,7 @@ export default function CreationStudio() {
       gapQueryText: activeGapQueryText ?? undefined,
       personaId: selectedPersonaId ?? undefined,
       utmContentOverride: utmContentOverride || undefined,
+      ctaBlockId: selectedCtaBlockId ?? undefined,
     });
   };
 
@@ -1613,6 +1618,43 @@ export default function CreationStudio() {
                   placeholder='e.g. "You need 8 hours of sleep every night"'
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
+              </div>
+            )}
+
+            {/* CTA Destination Picker — blog only */}
+            {platform === "blog" && (
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">CTA Destination</Label>
+                <Select
+                  value={selectedCtaBlockId ? String(selectedCtaBlockId) : "auto"}
+                  onValueChange={(v) => setSelectedCtaBlockId(v === "auto" ? null : parseInt(v))}
+                >
+                  <SelectTrigger className="bg-background border-border text-foreground h-9 text-sm">
+                    <SelectValue placeholder="Auto-select by topic..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto-select by topic</SelectItem>
+                    {(ctaBlocksList as Array<{ id: number; label: string; url: string | null; isDefault: boolean }>).map((block) => (
+                      <SelectItem key={block.id} value={String(block.id)}>
+                        <span className="flex items-center gap-2">
+                          {block.isDefault && <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-primary/20 text-primary">DEFAULT</span>}
+                          {block.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedCtaBlockId && (() => {
+                  const block = (ctaBlocksList as Array<{ id: number; label: string; url: string | null; isDefault: boolean }>).find((b) => b.id === selectedCtaBlockId);
+                  if (!block?.url) return null;
+                  const articleSlug = idea.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim().replace(/\s+/g, "-").substring(0, 64);
+                  const previewUrl = `${block.url}${block.url.includes('?') ? '&' : '?'}utm_source=blog&utm_medium=organic-content&utm_campaign=${articleSlug}&utm_content=inline-cta`;
+                  return (
+                    <div className="text-[11px] mt-1 rounded-md px-2 py-1.5 border bg-emerald-500/5 border-emerald-500/20 text-emerald-700 font-mono break-all">
+                      {previewUrl}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

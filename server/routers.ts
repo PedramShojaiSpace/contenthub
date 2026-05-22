@@ -847,6 +847,7 @@ Rules:
           gapQueryText: z.string().optional(),
           personaId: z.number().optional(), // inject Typeform-enriched persona pain points
           utmContentOverride: z.string().optional(), // override utm_content placement type (e.g. "bio-link", "story", "inline-cta")
+          ctaBlockId: z.number().optional(), // manually selected CTA block ID — overrides auto-selection by topic
         })
       )
       .mutation(async ({ input }) => {
@@ -933,21 +934,38 @@ Rules:
         } catch (err) {
           console.warn("[Blog] Could not load avatar context:", err);
         }
-        // Load topical CTA
+        // Load topical CTA — use manually selected ctaBlockId if provided, otherwise auto-select by topic
         let blogCtaInjection = "";
         let blogCtaLabel = "Lights On (Default)";
         let blogCtaUrl = "https://lightson.theurbanmonk.com/";
         let blogCtaText = "";
         try {
           const { getCtaForTopic, appendUtmToCtaUrl, ctaLabelToCampaign, PLATFORM_UTM } = await import("./ctaRouter");
-          const cta = await getCtaForTopic(input.idea);
+          let cta: { label: string; ctaText: string; url: string | null };
+          if (input.ctaBlockId) {
+            // Manual override: load the specific CTA block by ID
+            const db = await getDb();
+            if (db) {
+              const { ctaBlocks: ctaBlocksTable } = await import("../drizzle/schema");
+              const { eq: eqCta } = await import("drizzle-orm");
+              const [block] = await db.select().from(ctaBlocksTable).where(eqCta(ctaBlocksTable.id, input.ctaBlockId));
+              cta = block ? { label: block.label, ctaText: block.ctaText, url: block.url ?? null } : await getCtaForTopic(input.idea);
+            } else {
+              cta = await getCtaForTopic(input.idea);
+            }
+          } else {
+            cta = await getCtaForTopic(input.idea);
+          }
           blogCtaLabel = cta.label;
           blogCtaText = cta.ctaText;
           const blogUtmContent = input.utmContentOverride || PLATFORM_UTM["blog"]?.content;
-          const utmUrl = appendUtmToCtaUrl(cta.url, "blog", ctaLabelToCampaign(cta.label), blogUtmContent);
+          // Build UTM URL — utm_campaign derived from article slug for per-post tracking
+          const articleSlug = cleanIdea.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim().replace(/\s+/g, "-").substring(0, 64);
+          const utmUrl = appendUtmToCtaUrl(cta.url, "blog", articleSlug, blogUtmContent);
           blogCtaUrl = utmUrl || cta.url || "https://lightson.theurbanmonk.com/";
           const urlForPrompt = blogCtaUrl;
           blogCtaInjection = `\n\n[CTA BLOCK — ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally in the Conclusion section of the blog post. Use EXACTLY this URL: ${urlForPrompt}`;
+          console.log(`[Blog] CTA: "${blogCtaLabel}" → ${blogCtaUrl} (${input.ctaBlockId ? 'manual override' : 'auto-selected'})`);
         } catch (err) {
           console.warn("[Blog] Could not load CTA:", err);
         }

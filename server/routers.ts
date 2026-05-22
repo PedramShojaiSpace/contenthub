@@ -105,7 +105,7 @@ import { podcastRouter } from "./podcastRouter";
 import { keywordStrategyRouter } from "./keywordStrategyRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
-import { scrubHallucinatedUrls } from "./urlScrubber";
+import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
@@ -1208,6 +1208,24 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
             articleBody = scrubResult.body;
             if (scrubResult.removed.length > 0) {
               console.warn(`[URLScrubber] Removed ${scrubResult.removed.length} hallucinated URL(s):`, scrubResult.removed);
+            }
+
+            // ── Resolve [INTERNAL LINK: topic] placeholders ───────────────────────
+            // After scrubbing, any remaining [INTERNAL LINK: topic] placeholders are
+            // matched against the full WP post index. Matches get a real link;
+            // unmatched placeholders are stripped to plain text so they never reach
+            // the published post as raw bracket syntax.
+            const allWpPostsForResolution = (await db2
+              .select({ title: wpiTable.title, url: wpiTable.url, excerpt: wpiTable.excerpt })
+              .from(wpiTable)
+              .limit(700)).map((p: any) => ({ title: p.title as string, url: p.url as string, excerpt: (p.excerpt ?? undefined) as string | undefined }));
+            const resolveResult = resolvePlaceholderLinks(articleBody, allWpPostsForResolution);
+            articleBody = resolveResult.body;
+            if (resolveResult.resolved.length > 0) {
+              console.log(`[LinkResolver] Resolved ${resolveResult.resolved.length} placeholder(s) to real URLs:`, resolveResult.resolved.map((r) => r.url));
+            }
+            if (resolveResult.stripped.length > 0) {
+              console.log(`[LinkResolver] Stripped ${resolveResult.stripped.length} unresolvable placeholder(s):`, resolveResult.stripped);
             }
           }
         } catch (scrubErr) {

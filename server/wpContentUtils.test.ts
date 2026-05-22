@@ -103,4 +103,49 @@ describe("markdownToWpHtml", () => {
     const html = markdownToWpHtml(md);
     expect(html).toContain('<a href="https://theurbanmonk.com">The Urban Monk</a>');
   });
+
+  it("converts Markdown AFTER an injected HTML block (CTA banner regression)", () => {
+    // This is the exact bug: a <div> CTA banner is injected into the Markdown body
+    // just before the FAQ section. Previously, marked would stop converting Markdown
+    // after the HTML block, leaving the FAQ as raw ## / ### text.
+    const ctaBanner = `<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;">\n  <a href="https://example.com">\n    <img src="https://cdn.example.com/banner.jpg" alt="CTA" />\n    <div style="color:#7c5c2e;">Transform your health today</div>\n  </a>\n</div>`;
+    const md = [
+      "## Why Sleep Matters",
+      "",
+      "Sleep is the foundation of health.",
+      "",
+      ctaBanner,
+      "",
+      "## Frequently Asked Questions",
+      "",
+      "### How much sleep do I need?",
+      "",
+      "Most adults need 7-9 hours of quality sleep per night.",
+    ].join("\n");
+
+    const html = markdownToWpHtml(md);
+
+    // Article body before the banner must be converted
+    expect(html).toContain("<h2>Why Sleep Matters</h2>");
+    expect(html).toContain("<p>Sleep is the foundation of health.</p>");
+
+    // The CTA banner HTML must pass through unchanged
+    expect(html).toContain('class="um-cta-banner"');
+
+    // CRITICAL: FAQ section AFTER the HTML block must also be converted
+    expect(html).toContain("<h2>Frequently Asked Questions</h2>");
+    expect(html).toContain("<h3>How much sleep do I need?</h3>");
+    expect(html).toContain("<p>Most adults need 7-9 hours of quality sleep per night.</p>");
+
+    // Must NOT contain raw Markdown syntax after the HTML block
+    expect(html).not.toContain("## Frequently Asked Questions");
+    expect(html).not.toContain("### How much sleep do I need?");
+  });
+
+  it("passes through a standalone HTML block without double-wrapping it", () => {
+    const html = markdownToWpHtml('<div class="um-cta-banner"><a href="#">Click</a></div>');
+    // Should not wrap the div in a <p> tag
+    expect(html).toContain('<div class="um-cta-banner">');
+    expect(html).not.toContain('<p><div');
+  });
 });

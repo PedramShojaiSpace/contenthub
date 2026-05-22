@@ -1415,3 +1415,16 @@ export const seoContentTracker = mysqlTable("seo_content_tracker", {
 });
 export type SeoContentTracker = typeof seoContentTracker.$inferSelect;
 export type InsertSeoContentTracker = typeof seoContentTracker.$inferInsert;
+
+// ─── Competitor Domains Tracking ─────────────────────────────────────────────
+// Stores the curated list of competitor domains the owner wants to monitor
+// in the Competitive Intelligence dashboard.
+export const competitorDomains = mysqlTable("competitor_domains", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  domain: varchar("domain", { length: 253 }).notNull(),
+  label: varchar("label", { length: 128 }),           // optional friendly name
+  addedAt: timestamp("cd_addedAt").defaultNow().notNull(),
+});
+export type CompetitorDomain = typeof competitorDomains.$inferSelect;
+export type InsertCompetitorDomain = typeof competitorDomains.$inferInsert;

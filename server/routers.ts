@@ -1089,10 +1089,11 @@ SEO REQUIREMENTS FOR THIS ARTICLE:
 
 This is not a general wellness article. It is a tactical SEO asset designed to outrank the current top-10 results for "${kw}".`;
           } else if (kw) {
-            // Focus keyword provided but not in strike zone — still inject as SEO guidance
+            // Focus keyword provided but NOT in confirmed strike zone (no GSC position or position outside 11–30).
+            // Inject only a minimal SEO note — do NOT frame this as a competitive ranking campaign.
             return `
 
-SEO FOCUS KEYWORD: "${kw}" — use this exact phrase in the opening paragraph, at least one H2 heading, and 3–5 times naturally throughout the body. Structure the FAQ section around the PAA questions Google shows for this keyword.`;
+SEO NOTE: The target focus keyword for this article is "${kw}". Use it naturally in the opening paragraph, at least one H2 heading, and 3–5 times throughout the body. Do not over-optimize or keyword-stuff.`;
           }
           return "";
         })();

@@ -404,9 +404,11 @@ export default function CreationStudio() {
       // Set the idea as a clean title/topic — the Strike Zone SEO brief is injected server-side
       // via focusKeyword + currentPosition inputs, NOT embedded in the idea string
       setIdea(seoKeyword);
-      // Store SEO targeting params for the generation mutation
-      if (urlFocusKeyword) setFocusKeyword(urlFocusKeyword);
-      if (urlCurrentPosition) setCurrentPosition(urlCurrentPosition);
+      // Store SEO targeting params for the generation mutation.
+      // Always reset both fields — prevents stale state from a previous keyword session
+      // where a position was set but the new keyword has no position data.
+      setFocusKeyword(urlFocusKeyword ?? "");
+      setCurrentPosition(urlCurrentPosition ?? "");
       const posNum = urlCurrentPosition ? parseFloat(urlCurrentPosition) : null;
       const isStrikeZone = posNum !== null && posNum >= 11 && posNum <= 30;
       if (isStrikeZone) {

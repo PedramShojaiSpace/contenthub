@@ -263,11 +263,22 @@ function buildFaqSchema(faqMarkdown: string): string | null {
 export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
   const { baseUrl, authHeader } = getWpAuth();
 
-  // JSON-LD schema is NOT injected into the post body — WordPress renders <script> tags
-  // inside post content as visible text with <br /> line breaks, breaking the page.
-  // Yoast SEO automatically generates Article and FAQPage schema from post meta fields,
-  // so we rely on Yoast for schema output and skip manual injection entirely.
-  const enrichedContent = input.content;
+  // JSON-LD schema injection strategy:
+  // WordPress strips <script> tags from Classic Editor post content, but it PRESERVES them
+  // inside Gutenberg <!-- wp:html --> raw HTML blocks. We append the schema blocks as
+  // raw HTML blocks at the very end of the post content so they survive sanitization.
+  // This is the standard approach used by Rank Math, SEOPress, and custom schema plugins.
+  let enrichedContent = input.content;
+  const schemaBlocks: string[] = [];
+  if (input.articleSchema) {
+    schemaBlocks.push(`<!-- wp:html -->\n${input.articleSchema}\n<!-- /wp:html -->`);
+  }
+  if (input.faqSchema) {
+    schemaBlocks.push(`<!-- wp:html -->\n${input.faqSchema}\n<!-- /wp:html -->`);
+  }
+  if (schemaBlocks.length > 0) {
+    enrichedContent = enrichedContent + "\n\n" + schemaBlocks.join("\n\n");
+  }
 
   const body: Record<string, unknown> = {
     title: input.title,

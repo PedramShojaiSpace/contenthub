@@ -200,7 +200,7 @@ export const gscRouter = router({
       let position = gscMap.get(normalised);
       // 2. Substring match: find the GSC query that contains this keyword
       if (position === undefined) {
-        for (const [gscQuery, pos] of gscMap.entries()) {
+        for (const [gscQuery, pos] of Array.from(gscMap.entries())) {
           if (gscQuery.includes(normalised) || normalised.includes(gscQuery)) {
             position = pos;
             break;

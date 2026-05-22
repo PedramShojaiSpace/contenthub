@@ -221,6 +221,9 @@ export default function CreationStudio() {
   // CTA destination blocks for blog CTA dropdown
   const { data: ctaBlocksList = [] } = trpc.cta.list.useQuery(undefined, { refetchOnWindowFocus: false });
   const [selectedCtaBlockId, setSelectedCtaBlockId] = useState<number | null>(null);
+  // Strike Zone SEO targeting — set from Keyword Strategy tool URL params
+  const [focusKeyword, setFocusKeyword] = useState<string>("");
+  const [currentPosition, setCurrentPosition] = useState<string>("");
 
   const generateContentMutation = trpc.ai.generateContent.useMutation({
     onSuccess: (data) => {
@@ -389,15 +392,28 @@ export default function CreationStudio() {
       sessionStorage.removeItem("gumshoe_gap_query_text");
     }
 
-    // Pick up SEO keyword launched from SEO Dashboard striking-distance panel
+    // Pick up SEO keyword launched from SEO Dashboard or Keyword Strategy tool
     const urlParams = new URLSearchParams(window.location.search);
     const seoKeyword = urlParams.get("keyword");
     const seoPlatform = urlParams.get("platform") as Platform | null;
+    const urlFocusKeyword = urlParams.get("focusKeyword");
+    const urlCurrentPosition = urlParams.get("currentPosition");
     if (seoKeyword && !urlParams.get("source")) {
       const targetPlatform = seoPlatform ?? "blog";
       setPlatform(targetPlatform);
-      setIdea(`Write a ${targetPlatform === "blog" ? "blog post" : "piece of content"} targeting the keyword: "${seoKeyword}"\n\nThis keyword is in striking distance (positions 11–20) on Google. The goal is to rank in the top 10 by creating authoritative, helpful content in Dr. Shojai's voice that bridges ancient wisdom with modern science.`);
-      toast.success(`SEO keyword loaded: "${seoKeyword}" — ready to generate!`);
+      // Set the idea as a clean title/topic — the Strike Zone SEO brief is injected server-side
+      // via focusKeyword + currentPosition inputs, NOT embedded in the idea string
+      setIdea(seoKeyword);
+      // Store SEO targeting params for the generation mutation
+      if (urlFocusKeyword) setFocusKeyword(urlFocusKeyword);
+      if (urlCurrentPosition) setCurrentPosition(urlCurrentPosition);
+      const posNum = urlCurrentPosition ? parseFloat(urlCurrentPosition) : null;
+      const isStrikeZone = posNum !== null && posNum >= 11 && posNum <= 30;
+      if (isStrikeZone) {
+        toast.success(`\u26a1 Strike Zone keyword loaded: "${seoKeyword}" (pos ${posNum.toFixed(1)}) \u2014 SEO brief injected!`);
+      } else {
+        toast.success(`SEO keyword loaded: "${seoKeyword}" \u2014 ready to generate!`);
+      }
       window.history.replaceState({}, "", "/studio");
     }
 
@@ -1618,6 +1634,44 @@ export default function CreationStudio() {
                   placeholder='e.g. "You need 8 hours of sleep every night"'
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
+              </div>
+            )}
+
+            {/* Strike Zone SEO Mode indicator — shows when keyword + position are loaded from Keyword Strategy */}
+            {platform === "blog" && focusKeyword && (
+              <div className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 ${
+                currentPosition && parseFloat(currentPosition) >= 11 && parseFloat(currentPosition) <= 30
+                  ? "border-amber-500/40 bg-amber-500/5"
+                  : "border-primary/30 bg-primary/5"
+              }`}>
+                <Zap className={`h-4 w-4 mt-0.5 shrink-0 ${
+                  currentPosition && parseFloat(currentPosition) >= 11 && parseFloat(currentPosition) <= 30
+                    ? "text-amber-500"
+                    : "text-primary"
+                }`} />
+                <div className="min-w-0">
+                  <div className={`text-xs font-semibold uppercase tracking-wider ${
+                    currentPosition && parseFloat(currentPosition) >= 11 && parseFloat(currentPosition) <= 30
+                      ? "text-amber-600"
+                      : "text-primary"
+                  }`}>
+                    {currentPosition && parseFloat(currentPosition) >= 11 && parseFloat(currentPosition) <= 30
+                      ? `⚡ Strike Zone Mode — pos ${parseFloat(currentPosition).toFixed(1)}`
+                      : "SEO Targeting Active"}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Focus keyword: <span className="font-medium text-foreground">"{focusKeyword}"</span>
+                    {currentPosition && parseFloat(currentPosition) >= 11 && parseFloat(currentPosition) <= 30 && (
+                      <span className="ml-1 text-amber-600">\u2014 tactical SEO brief injected to outrank top 10</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setFocusKeyword(""); setCurrentPosition(""); }}
+                    className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground mt-1 underline"
+                  >
+                    Clear targeting
+                  </button>
+                </div>
               </div>
             )}
 

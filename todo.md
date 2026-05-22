@@ -3001,3 +3001,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Build rank tracking tRPC procedures: snapshotRanks, getRankHistory, getRankMovers
 - [ ] Weekly rank snapshot heartbeat: POST /api/scheduled/rank-snapshot — pulls GSC data for all published keyword targets
 - [ ] SEO Authority Tracker panel in KeywordStrategy: rank trend sparklines, position change badges, clicks/impressions over time
+
+## Current Session Tasks
+
+- [x] Fix KeywordStrategy page color scheme: replace all hardcoded dark theme classes with site warm parchment/terracotta semantic tokens
+- [x] Seed Sleep & Recovery keyword campaign: pillar keyword "sleep optimization", monetization goal "Urban Monk Academy", AI cluster + DataForSEO volumes

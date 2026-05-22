@@ -51,30 +51,30 @@ type ContentStatus = "not_started" | "briefed" | "in_progress" | "published";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const FUNNEL_LABELS: Record<FunnelStage, { label: string; color: string; desc: string }> = {
-  tofu: { label: "TOFU", color: "bg-sky-500/20 text-sky-300 border-sky-500/30", desc: "Awareness" },
-  mofu: { label: "MOFU", color: "bg-amber-500/20 text-amber-300 border-amber-500/30", desc: "Consideration" },
-  bofu: { label: "BOFU", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30", desc: "Decision" },
+  tofu: { label: "TOFU", color: "bg-sky-100 text-sky-700 border-sky-200", desc: "Awareness" },
+  mofu: { label: "MOFU", color: "bg-amber-100 text-amber-700 border-amber-200", desc: "Consideration" },
+  bofu: { label: "BOFU", color: "bg-emerald-100 text-emerald-700 border-emerald-200", desc: "Decision" },
 };
 
 const TYPE_LABELS: Record<KeywordType, { label: string; color: string }> = {
-  pillar: { label: "Pillar", color: "bg-violet-500/20 text-violet-300 border-violet-500/30" },
-  cluster: { label: "Cluster", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  conversion: { label: "Conversion", color: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
+  pillar: { label: "Pillar", color: "bg-violet-100 text-violet-700 border-violet-200" },
+  cluster: { label: "Cluster", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  conversion: { label: "Conversion", color: "bg-rose-100 text-rose-700 border-rose-200" },
 };
 
 const MONETIZATION_LABELS: Record<MonetizationTag, { label: string; color: string }> = {
-  academy: { label: "Academy", color: "bg-indigo-500/20 text-indigo-300" },
-  supplements: { label: "Supplements", color: "bg-green-500/20 text-green-300" },
-  testing: { label: "Testing", color: "bg-orange-500/20 text-orange-300" },
-  free_lead: { label: "Free Lead", color: "bg-slate-500/20 text-slate-300" },
-  affiliate: { label: "Affiliate", color: "bg-pink-500/20 text-pink-300" },
+  academy: { label: "Academy", color: "bg-indigo-100 text-indigo-700" },
+  supplements: { label: "Supplements", color: "bg-green-100 text-green-700" },
+  testing: { label: "Testing", color: "bg-orange-100 text-orange-700" },
+  free_lead: { label: "Free Lead", color: "bg-muted text-muted-foreground" },
+  affiliate: { label: "Affiliate", color: "bg-pink-100 text-pink-700" },
 };
 
 const CONTENT_STATUS_ICONS: Record<ContentStatus, React.ReactNode> = {
-  not_started: <Circle className="w-4 h-4 text-slate-500" />,
-  briefed: <FileText className="w-4 h-4 text-amber-400" />,
-  in_progress: <Clock className="w-4 h-4 text-blue-400" />,
-  published: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
+  not_started: <Circle className="w-4 h-4 text-muted-foreground" />,
+  briefed: <FileText className="w-4 h-4 text-amber-500" />,
+  in_progress: <Clock className="w-4 h-4 text-blue-500" />,
+  published: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
 };
 
 function formatVolume(v: number | null | undefined): string {
@@ -116,19 +116,19 @@ function CampaignCard({
       onClick={onSelect}
       className={`w-full text-left p-4 rounded-xl border transition-all ${
         isSelected
-          ? "border-violet-500/60 bg-violet-500/10"
-          : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8"
+          ? "border-primary/50 bg-primary/5 shadow-sm"
+          : "border-border bg-card hover:border-primary/30 hover:bg-primary/3"
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div>
-          <div className="font-semibold text-white text-sm">{campaign.name}</div>
-          <div className="text-xs text-white/50 mt-0.5">"{campaign.pillarKeyword}"</div>
+          <div className="font-semibold text-foreground text-sm">{campaign.name}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">"{campaign.pillarKeyword}"</div>
         </div>
         <Badge
           className={`text-xs shrink-0 ${
             MONETIZATION_LABELS[campaign.monetizationGoal as MonetizationTag]?.color ??
-            "bg-slate-500/20 text-slate-300"
+            "bg-muted text-muted-foreground"
           }`}
           variant="outline"
         >
@@ -139,20 +139,20 @@ function CampaignCard({
 
       {/* Progress bar */}
       <div className="mt-3">
-        <div className="flex justify-between text-xs text-white/40 mb-1">
+        <div className="flex justify-between text-xs text-muted-foreground mb-1">
           <span>{campaign.totalKeywords} keywords</span>
           <span>{progress}% published</span>
         </div>
-        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-emerald-500 rounded-full transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex gap-3 mt-2 text-xs text-white/40">
-          <span className="text-emerald-400">{campaign.published} published</span>
-          <span className="text-blue-400">{campaign.inProgress} in progress</span>
-          <span className="text-amber-400">{campaign.briefed} briefed</span>
+        <div className="flex gap-3 mt-2 text-xs">
+          <span className="text-emerald-600">{campaign.published} published</span>
+          <span className="text-blue-600">{campaign.inProgress} in progress</span>
+          <span className="text-amber-600">{campaign.briefed} briefed</span>
         </div>
       </div>
     </button>
@@ -183,44 +183,44 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5">
+        <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
           <Plus className="w-4 h-4" />
           New Campaign
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-[#1a1a2e] border-white/10 text-white max-w-md">
+      <DialogContent className="bg-card border-border text-foreground max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white">New Keyword Campaign</DialogTitle>
+          <DialogTitle className="text-foreground">New Keyword Campaign</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div>
-            <label className="text-xs text-white/60 mb-1 block">Campaign Name</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Campaign Name</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder='e.g. "Gut Health Authority"'
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              className="bg-background border-border text-foreground placeholder:text-muted-foreground/50"
             />
           </div>
           <div>
-            <label className="text-xs text-white/60 mb-1 block">Pillar Keyword</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Pillar Keyword</label>
             <Input
               value={pillar}
               onChange={(e) => setPillar(e.target.value)}
               placeholder='e.g. "gut health"'
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              className="bg-background border-border text-foreground placeholder:text-muted-foreground/50"
             />
-            <p className="text-xs text-white/40 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               The broad topic you want to own. This becomes your pillar page.
             </p>
           </div>
           <div>
-            <label className="text-xs text-white/60 mb-1 block">Primary Monetization Goal</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Primary Monetization Goal</label>
             <Select value={goal} onValueChange={(v) => setGoal(v as typeof goal)}>
-              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+              <SelectTrigger className="bg-background border-border text-foreground">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[#1a1a2e] border-white/10 text-white">
+              <SelectContent className="bg-card border-border text-foreground">
                 <SelectItem value="academy">Urban Monk Academy ($297/yr)</SelectItem>
                 <SelectItem value="supplements">Supplement Store</SelectItem>
                 <SelectItem value="testing">Functional Testing</SelectItem>
@@ -229,12 +229,12 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
             </Select>
           </div>
           <div>
-            <label className="text-xs text-white/60 mb-1 block">Strategic Notes (optional)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Strategic Notes (optional)</label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Why this topic? What's the unique angle?"
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+              className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 resize-none"
               rows={3}
             />
           </div>
@@ -243,7 +243,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
               create.mutate({ name, pillarKeyword: pillar, monetizationGoal: goal, description })
             }
             disabled={!name || !pillar || create.isPending}
-            className="w-full bg-violet-600 hover:bg-violet-700 text-white"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {create.isPending ? "Creating..." : "Create Campaign"}
           </Button>
@@ -288,15 +288,15 @@ function TargetRow({
 
   const diffColor =
     target.difficulty == null
-      ? "text-white/30"
+      ? "text-muted-foreground/40"
       : target.difficulty < 30
-      ? "text-emerald-400"
+      ? "text-emerald-600"
       : target.difficulty < 60
-      ? "text-amber-400"
-      : "text-rose-400";
+      ? "text-amber-600"
+      : "text-rose-600";
 
   return (
-    <div className="border border-white/8 rounded-lg bg-white/3 hover:bg-white/5 transition-all">
+    <div className="border border-border rounded-lg bg-card hover:bg-muted/30 transition-all">
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Status icon */}
         <button
@@ -314,7 +314,7 @@ function TargetRow({
 
         {/* Keyword */}
         <div className="flex-1 min-w-0">
-          <span className="text-sm text-white font-medium truncate block">{target.keyword}</span>
+          <span className="text-sm text-foreground font-medium truncate block">{target.keyword}</span>
         </div>
 
         {/* Type badge */}
@@ -332,7 +332,7 @@ function TargetRow({
         )}
 
         {/* Volume */}
-        <div className="text-xs text-white/50 shrink-0 w-14 text-right hidden lg:block">
+        <div className="text-xs text-muted-foreground shrink-0 w-14 text-right hidden lg:block">
           {formatVolume(target.searchVolume)}/mo
         </div>
 
@@ -350,7 +350,7 @@ function TargetRow({
               )
             }
             title="Create Video Script"
-            className="p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-violet-400 transition-colors"
+            className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
           >
             <Film className="w-3.5 h-3.5" />
           </button>
@@ -361,7 +361,7 @@ function TargetRow({
               )
             }
             title="Create Blog Post"
-            className="p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-emerald-400 transition-colors"
+            className="p-1.5 rounded-md hover:bg-emerald-50 text-muted-foreground hover:text-emerald-700 transition-colors"
           >
             <PenSquare className="w-3.5 h-3.5" />
           </button>
@@ -371,7 +371,7 @@ function TargetRow({
               target="_blank"
               rel="noopener noreferrer"
               title="View published page"
-              className="p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-sky-400 transition-colors"
+              className="p-1.5 rounded-md hover:bg-sky-50 text-muted-foreground hover:text-sky-700 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
@@ -381,7 +381,7 @@ function TargetRow({
         {/* Expand toggle */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="p-1 rounded hover:bg-white/10 text-white/30 transition-colors shrink-0"
+          className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors shrink-0"
         >
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
@@ -389,7 +389,7 @@ function TargetRow({
         {/* Remove */}
         <button
           onClick={() => onRemove(target.id)}
-          className="p-1 rounded hover:bg-rose-500/20 text-white/20 hover:text-rose-400 transition-colors shrink-0"
+          className="p-1 rounded hover:bg-rose-50 text-muted-foreground/50 hover:text-rose-600 transition-colors shrink-0"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -397,9 +397,9 @@ function TargetRow({
 
       {/* Expanded notes + controls */}
       {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-white/5 space-y-3">
+        <div className="px-4 pb-4 pt-1 border-t border-border space-y-3">
           {target.notes && (
-            <p className="text-xs text-white/50 leading-relaxed">{target.notes}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{target.notes}</p>
           )}
           <div className="flex flex-wrap gap-2">
             {/* Monetization */}
@@ -410,28 +410,28 @@ function TargetRow({
             )}
             {/* CPC */}
             {target.cpc && (
-              <Badge className="text-xs bg-white/5 text-white/40" variant="outline">
+              <Badge className="text-xs bg-muted text-muted-foreground" variant="outline">
                 CPC: ${target.cpc}
               </Badge>
             )}
             {/* Position */}
             {target.currentPosition && (
-              <Badge className="text-xs bg-white/5 text-white/40" variant="outline">
+              <Badge className="text-xs bg-muted text-muted-foreground" variant="outline">
                 GSC pos: {target.currentPosition}
               </Badge>
             )}
           </div>
           {/* Status selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-white/40">Status:</span>
+            <span className="text-xs text-muted-foreground">Status:</span>
             <Select
               value={target.contentStatus}
               onValueChange={(v) => onUpdate(target.id, { contentStatus: v })}
             >
-              <SelectTrigger className="h-7 text-xs bg-white/5 border-white/10 text-white w-36">
+              <SelectTrigger className="h-7 text-xs bg-background border-border text-foreground w-36">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[#1a1a2e] border-white/10 text-white text-xs">
+              <SelectContent className="bg-card border-border text-foreground text-xs">
                 <SelectItem value="not_started">Not Started</SelectItem>
                 <SelectItem value="briefed">Briefed</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
@@ -566,16 +566,16 @@ export default function KeywordStrategy() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Target className="w-6 h-6 text-violet-400" />
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Target className="w-6 h-6 text-primary" />
               Keyword Strategy
             </h1>
-            <p className="text-white/50 text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               Topic cluster campaigns — own the topics that drive Academy memberships
             </p>
           </div>
@@ -585,12 +585,12 @@ export default function KeywordStrategy() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Campaign list */}
           <div className="lg:col-span-1 space-y-3">
-            <div className="text-xs text-white/40 uppercase tracking-wider font-medium px-1 mb-2">
+            <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium px-1 mb-2">
               Campaigns ({campaigns.length})
             </div>
 
             {campaigns.length === 0 && (
-              <div className="text-center py-12 text-white/30 border border-white/5 rounded-xl">
+              <div className="text-center py-12 text-muted-foreground border border-border rounded-xl">
                 <Target className="w-8 h-8 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No campaigns yet.</p>
                 <p className="text-xs mt-1">Create one to start building topic authority.</p>
@@ -607,22 +607,22 @@ export default function KeywordStrategy() {
             ))}
 
             {/* Strategy guide */}
-            <div className="mt-6 p-4 rounded-xl bg-violet-500/5 border border-violet-500/20">
-              <div className="text-xs font-semibold text-violet-300 mb-2 flex items-center gap-1.5">
+            <div className="mt-6 p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <div className="text-xs font-semibold text-primary mb-2 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5" />
                 Strategy Framework
               </div>
-              <div className="space-y-2 text-xs text-white/50">
+              <div className="space-y-2 text-xs text-muted-foreground">
                 <div className="flex gap-2">
-                  <span className="text-violet-400 font-medium w-16 shrink-0">Pillar</span>
+                  <span className="text-violet-700 font-medium w-16 shrink-0">Pillar</span>
                   <span>1 broad page that owns the topic (e.g. "gut health")</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-blue-400 font-medium w-16 shrink-0">Cluster</span>
+                  <span className="text-blue-700 font-medium w-16 shrink-0">Cluster</span>
                   <span>8–12 educational posts that link back to the pillar</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-rose-400 font-medium w-16 shrink-0">Conversion</span>
+                  <span className="text-rose-700 font-medium w-16 shrink-0">Conversion</span>
                   <span>3–5 high-intent pages that sell Academy / supplements</span>
                 </div>
               </div>
@@ -632,7 +632,7 @@ export default function KeywordStrategy() {
           {/* Right: Campaign detail */}
           <div className="lg:col-span-2">
             {!selectedCampaign ? (
-              <div className="flex items-center justify-center h-64 border border-white/5 rounded-xl text-white/30">
+              <div className="flex items-center justify-center h-64 border border-border rounded-xl text-muted-foreground">
                 <div className="text-center">
                   <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p className="text-sm">Select a campaign to view its keyword roadmap</p>
@@ -641,11 +641,11 @@ export default function KeywordStrategy() {
             ) : (
               <div className="space-y-4">
                 {/* Campaign header */}
-                <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-card border border-border shadow-sm">
                   <div>
-                    <h2 className="text-lg font-bold text-white">{selectedCampaign.name}</h2>
-                    <p className="text-sm text-white/50 mt-0.5">
-                      Pillar: <span className="text-violet-300">"{selectedCampaign.pillarKeyword}"</span>
+                    <h2 className="text-lg font-bold text-foreground">{selectedCampaign.name}</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Pillar: <span className="text-primary font-medium">"{selectedCampaign.pillarKeyword}"</span>
                     </p>
                   </div>
                   <div className="flex gap-2 flex-wrap justify-end">
@@ -654,7 +654,7 @@ export default function KeywordStrategy() {
                       variant="outline"
                       onClick={handleEnrich}
                       disabled={isEnriching || targets.length === 0}
-                      className="border-white/20 text-white/70 hover:text-white hover:bg-white/10 gap-1.5 text-xs"
+                      className="border-border text-muted-foreground hover:text-foreground hover:bg-muted gap-1.5 text-xs"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isEnriching ? "animate-spin" : ""}`} />
                       {isEnriching ? "Enriching..." : "Get Volumes"}
@@ -663,7 +663,7 @@ export default function KeywordStrategy() {
                       size="sm"
                       onClick={handleGenerate}
                       disabled={isGenerating}
-                      className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5 text-xs"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs"
                     >
                       <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
                       {isGenerating ? "Generating..." : "AI Generate Cluster"}
@@ -676,7 +676,7 @@ export default function KeywordStrategy() {
                           deleteCampaignMut.mutate({ id: selectedCampaign.id });
                         }
                       }}
-                      className="border-rose-500/30 text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/10 gap-1.5 text-xs"
+                      className="border-rose-200 text-rose-500 hover:text-rose-700 hover:bg-rose-50 gap-1.5 text-xs"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -686,29 +686,29 @@ export default function KeywordStrategy() {
                 {/* Stats row */}
                 <div className="grid grid-cols-4 gap-3">
                   {[
-                    { label: "Total", value: targets.length, color: "text-white" },
+                    { label: "Total", value: targets.length, color: "text-foreground" },
                     {
                       label: "Published",
                       value: targets.filter((t) => t.contentStatus === "published").length,
-                      color: "text-emerald-400",
+                      color: "text-emerald-600",
                     },
                     {
                       label: "In Progress",
                       value: targets.filter((t) => t.contentStatus === "in_progress").length,
-                      color: "text-blue-400",
+                      color: "text-blue-600",
                     },
                     {
                       label: "Not Started",
                       value: targets.filter((t) => t.contentStatus === "not_started").length,
-                      color: "text-white/40",
+                      color: "text-muted-foreground",
                     },
                   ].map((s) => (
                     <div
                       key={s.label}
-                      className="p-3 rounded-lg bg-white/5 border border-white/8 text-center"
+                      className="p-3 rounded-lg bg-card border border-border text-center shadow-sm"
                     >
                       <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
-                      <div className="text-xs text-white/40 mt-0.5">{s.label}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
                     </div>
                   ))}
                 </div>
@@ -716,10 +716,10 @@ export default function KeywordStrategy() {
                 {/* Filters */}
                 <div className="flex gap-2 flex-wrap">
                   <Select value={filterStage} onValueChange={setFilterStage}>
-                    <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-white w-32">
+                    <SelectTrigger className="h-8 text-xs bg-background border-border text-foreground w-32">
                       <SelectValue placeholder="Funnel stage" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1a1a2e] border-white/10 text-white text-xs">
+                    <SelectContent className="bg-card border-border text-foreground text-xs">
                       <SelectItem value="all">All stages</SelectItem>
                       <SelectItem value="tofu">TOFU</SelectItem>
                       <SelectItem value="mofu">MOFU</SelectItem>
@@ -727,10 +727,10 @@ export default function KeywordStrategy() {
                     </SelectContent>
                   </Select>
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-white w-36">
+                    <SelectTrigger className="h-8 text-xs bg-background border-border text-foreground w-36">
                       <SelectValue placeholder="Content status" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1a1a2e] border-white/10 text-white text-xs">
+                    <SelectContent className="bg-card border-border text-foreground text-xs">
                       <SelectItem value="all">All statuses</SelectItem>
                       <SelectItem value="not_started">Not Started</SelectItem>
                       <SelectItem value="briefed">Briefed</SelectItem>
@@ -741,7 +741,7 @@ export default function KeywordStrategy() {
                 </div>
 
                 {/* Add keyword inline */}
-                <div className="flex gap-2 p-3 rounded-xl bg-white/3 border border-white/8">
+                <div className="flex gap-2 p-3 rounded-lg bg-muted/40 border border-border">
                   <Input
                     value={addKeyword}
                     onChange={(e) => setAddKeyword(e.target.value)}
@@ -757,23 +757,23 @@ export default function KeywordStrategy() {
                       }
                     }}
                     placeholder="Add a keyword..."
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 text-sm h-8 flex-1"
+                    className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 text-sm h-8 flex-1"
                   />
                   <Select value={addType} onValueChange={(v) => setAddType(v as KeywordType)}>
-                    <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-white w-28">
+                    <SelectTrigger className="h-8 text-xs bg-background border-border text-foreground w-28">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1a1a2e] border-white/10 text-white text-xs">
+                    <SelectContent className="bg-card border-border text-foreground text-xs">
                       <SelectItem value="pillar">Pillar</SelectItem>
                       <SelectItem value="cluster">Cluster</SelectItem>
                       <SelectItem value="conversion">Conversion</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={addStage} onValueChange={(v) => setAddStage(v as FunnelStage)}>
-                    <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-white w-24">
+                    <SelectTrigger className="h-8 text-xs bg-background border-border text-foreground w-24">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1a1a2e] border-white/10 text-white text-xs">
+                    <SelectContent className="bg-card border-border text-foreground text-xs">
                       <SelectItem value="tofu">TOFU</SelectItem>
                       <SelectItem value="mofu">MOFU</SelectItem>
                       <SelectItem value="bofu">BOFU</SelectItem>
@@ -792,7 +792,7 @@ export default function KeywordStrategy() {
                       });
                     }}
                     disabled={!addKeyword.trim() || addTargetMut.isPending}
-                    className="h-8 bg-violet-600 hover:bg-violet-700 text-white px-3"
+                    className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground px-3"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -800,7 +800,7 @@ export default function KeywordStrategy() {
 
                 {/* Keyword groups */}
                 {targets.length === 0 ? (
-                  <div className="text-center py-12 text-white/30 border border-white/5 rounded-xl">
+                  <div className="text-center py-12 text-muted-foreground border border-border rounded-xl">
                     <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-30" />
                     <p className="text-sm">No keywords yet.</p>
                     <p className="text-xs mt-1">
@@ -811,9 +811,9 @@ export default function KeywordStrategy() {
                 ) : (
                   <div className="space-y-5">
                     {[
-                      { label: "Pillar Page", items: pillarTargets, icon: <TrendingUp className="w-4 h-4 text-violet-400" />, color: "text-violet-300" },
-                      { label: "Cluster Pages", items: clusterTargets, icon: <BarChart3 className="w-4 h-4 text-blue-400" />, color: "text-blue-300" },
-                      { label: "Conversion Pages", items: conversionTargets, icon: <ChevronRight className="w-4 h-4 text-rose-400" />, color: "text-rose-300" },
+                      { label: "Pillar Page", items: pillarTargets, icon: <TrendingUp className="w-4 h-4 text-violet-600" />, color: "text-violet-700" },
+                      { label: "Cluster Pages", items: clusterTargets, icon: <BarChart3 className="w-4 h-4 text-blue-600" />, color: "text-blue-700" },
+                      { label: "Conversion Pages", items: conversionTargets, icon: <ChevronRight className="w-4 h-4 text-rose-600" />, color: "text-rose-700" },
                     ].map(({ label, items, icon, color }) =>
                       items.length > 0 ? (
                         <div key={label}>

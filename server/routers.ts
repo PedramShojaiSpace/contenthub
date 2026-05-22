@@ -2633,6 +2633,32 @@ Return BOTH in this exact format:
           yoastMetaDescription: metaDesc,
         });
 
+        // Step 8: Keyword Strategy publish-back
+        // If this post was created from a keyword target, flip its status to "published"
+        // and record the live URL so the Keyword Strategy dashboard shows it as done.
+        if (input.focusKeyword && newStatus !== "scheduled") {
+          try {
+            const { keywordTargets } = await import("../drizzle/schema");
+            const { eq, like } = await import("drizzle-orm");
+            const db2 = await getDb();
+            if (db2) {
+              // Match by exact focus keyword (case-insensitive via LIKE)
+              await db2
+                .update(keywordTargets)
+                .set({
+                  contentStatus: "published",
+                  publishedUrl: post.link,
+                })
+                .where(
+                  like(keywordTargets.keyword, input.focusKeyword)
+                );
+            }
+          } catch (kErr) {
+            // Non-fatal — keyword strategy publish-back failure should not block the publish
+            console.error("[WP] Keyword target publish-back failed (non-fatal):", kErr);
+          }
+        }
+
         return {
           success: true,
           postId: post.id,

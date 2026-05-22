@@ -1,13 +1,14 @@
 /**
  * gscDigestHandler.ts
  *
- * Heartbeat handler for the weekly GSC SEO digest.
+ * Heartbeat handler for the weekly GSC + Competitive SEO digest.
  * Triggered every Monday at 09:00 UTC via project-level Heartbeat cron.
  *
  * What it does:
  *  1. Loads GSC credentials for the site owner (OWNER_OPEN_ID)
- *  2. Fetches top queries, top pages, striking-distance keywords, and WoW summary
- *  3. Sends a formatted digest notification via notifyOwner
+ *  2. Fetches top queries, top pages, striking-distance keywords, WoW summary, and rank-drop alerts
+ *  3. Fetches top 5 keyword gaps from DataForSEO (keywords competitors rank for that we don't)
+ *  4. Sends a combined digest notification via notifyOwner
  *
  * Registered at: POST /api/scheduled/gsc-digest
  */
@@ -22,6 +23,9 @@ import {
   getWeekOverWeekSummary,
   getQueryRankChanges,
 } from "./googleSearchConsole";
+import { getCompetitorDomains, getRankedKeywords } from "./dataForSeo";
+
+const MY_DOMAIN = "theurbanmonk.com";
 
 export async function gscDigestHandler(req: Request, res: Response) {
   try {
@@ -68,7 +72,7 @@ export async function gscDigestHandler(req: Request, res: Response) {
     const refreshToken = creds.gscRefreshToken;
     const siteUrl = creds.gscSiteUrl;
 
-    // Fetch all data in parallel
+    // ── Fetch GSC data ────────────────────────────────────────────────────────
     const [topQueries, topPages, strikingKeywords, wow, rankChanges] = await Promise.all([
       getTopQueries(refreshToken, siteUrl, 10),
       getTopPages(refreshToken, siteUrl, 10),
@@ -77,7 +81,38 @@ export async function gscDigestHandler(req: Request, res: Response) {
       getQueryRankChanges(refreshToken, siteUrl, 3), // flag drops of 3+ positions
     ]);
 
-    // Format the digest notification
+    // ── Fetch DataForSEO keyword gaps ─────────────────────────────────────────
+    // Get top competitor, then pull their top keywords as gap opportunities
+    let keywordGapLines = "DataForSEO not configured or no gaps found.";
+    try {
+      const competitorResult = await getCompetitorDomains(MY_DOMAIN, 3);
+      const topCompetitor = competitorResult.items?.[0]?.domain;
+      if (topCompetitor) {
+        const gapResult = await getRankedKeywords(topCompetitor, 5);
+        const gapItems = gapResult.items ?? [];
+        if (gapItems.length > 0) {
+          const fmt = (n: number) =>
+            n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString();
+          keywordGapLines =
+            `vs **${topCompetitor}**:\n` +
+            gapItems
+              .map((item, i) => {
+                const kw = item.keyword_data.keyword;
+                const vol = item.keyword_data.keyword_info.search_volume ?? 0;
+                const pos = item.ranked_serp_element.serp_item.rank_group;
+                return `${i + 1}. "${kw}" — ${fmt(vol)}/mo, they rank #${pos}`;
+              })
+              .join("\n");
+        }
+      }
+    } catch (dfsErr) {
+      // DataForSEO failure should not block the GSC digest
+      const msg = dfsErr instanceof Error ? dfsErr.message : String(dfsErr);
+      console.warn("[gscDigestHandler] DataForSEO gap fetch failed:", msg);
+      keywordGapLines = `(DataForSEO fetch failed: ${msg})`;
+    }
+
+    // ── Format the digest notification ───────────────────────────────────────
     const formatNum = (n: number) =>
       n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString();
 
@@ -112,6 +147,17 @@ export async function gscDigestHandler(req: Request, res: Response) {
       })
       .join("\n");
 
+    const rankDropLines =
+      rankChanges.length === 0
+        ? "No significant drops detected this week."
+        : rankChanges
+            .slice(0, 8)
+            .map(
+              (r, i) =>
+                `${i + 1}. "${r.query}" — was #${r.previousPosition.toFixed(1)}, now #${r.currentPosition.toFixed(1)} (▼${r.drop.toFixed(1)} positions)`
+            )
+            .join("\n");
+
     const title = `📊 Weekly SEO Digest — ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
     const content = `
@@ -130,17 +176,13 @@ ${topPagesLines}
 ${strikingLines}
 
 **⚠️ Rank-Drop Alerts (dropped 3+ positions this week)**
-${rankChanges.length === 0
-  ? "No significant drops detected this week."
-  : rankChanges
-      .slice(0, 8)
-      .map(
-        (r, i) =>
-          `${i + 1}. "${r.query}" — was #${r.previousPosition.toFixed(1)}, now #${r.currentPosition.toFixed(1)} (▼${r.drop.toFixed(1)} positions)`
-      )
-      .join("\n")}
+${rankDropLines}
 
-View full dashboard: https://content.theurbanmonk.com/seo
+**🎯 Top 5 Keyword Gaps from DataForSEO (Competitor Opportunities)**
+${keywordGapLines}
+
+View SEO Dashboard: https://content.theurbanmonk.com/seo
+View Competitive Intel: https://content.theurbanmonk.com/competitive-intelligence
 `.trim();
 
     await notifyOwner({ title, content });
@@ -152,6 +194,8 @@ View full dashboard: https://content.theurbanmonk.com/seo
         clicks: wow.thisWeekClicks,
         impressions: wow.thisWeekImpressions,
         strikingCount: strikingKeywords.length,
+        rankDropCount: rankChanges.length,
+        keywordGapIncluded: !keywordGapLines.includes("failed"),
       },
     });
   } catch (err) {

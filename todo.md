@@ -2967,3 +2967,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add tRPC procedures: status, keywordOverview, keywordsForSite, competitors, domainIntersection, rankedKeywords, domainRankOverview (server/dataForSeoRouter.ts)
 - [x] Build CompetitiveIntelligence page: domain overview, competitor list, keyword gap, shared keywords, keyword research panels — sidebar nav added
 - [x] Wire keyword-to-content pipeline: create content buttons on gap keywords navigate to Video Production or Blog Generator
+
+## DataForSEO Enhancement Round 2
+
+- [x] competitor_domains DB table: save curated list of competitor domains to monitor
+- [x] Competitor tracking UI: add/remove competitors in CompetitiveIntelligence page, auto-load saved list
+- [x] Volume badges on striking-distance keywords: DataForSEO monthly search volume pill next to each GSC position-11-20 keyword
+- [x] Extended Monday digest: include top 5 DataForSEO keyword gaps in weekly owner notification

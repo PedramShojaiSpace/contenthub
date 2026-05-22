@@ -206,6 +206,19 @@ export default function SeoDashboard() {
     retry: false,
   });
 
+  // DataForSEO volume lookup for striking-distance keywords
+  // Only fires once we have striking keywords to look up
+  const strikingKeywords = (strikingQuery.data ?? []).map((r: { query: string }) => r.query);
+  const volumeQuery = trpc.dfs.keywordVolumeForList.useQuery(
+    { keywords: strikingKeywords },
+    {
+      enabled: strikingKeywords.length > 0,
+      retry: false,
+      staleTime: 1000 * 60 * 60, // 1 hour — volume data doesn't change frequently
+    }
+  );
+  const volumeMap: Record<string, number | null> = volumeQuery.data?.volumeMap ?? {};
+
   // Build a quick-lookup set: "keyword::type" -> true
   const trackedSet = new Set(
     (trackedQuery.data ?? []).map((r) => `${r.keyword}::${r.contentType}`)
@@ -492,6 +505,18 @@ export default function SeoDashboard() {
                               <Eye className="w-3 h-3" />
                               {row.impressions >= 1000 ? `${(row.impressions / 1000).toFixed(1)}K` : row.impressions}
                             </span>
+                            {/* DataForSEO monthly search volume badge */}
+                            {volumeMap[row.query] != null && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs px-1.5 py-0 border-blue-500/40 text-blue-600 dark:text-blue-400"
+                                title="Monthly search volume (DataForSEO)"
+                              >
+                                {volumeMap[row.query]! >= 1000
+                                  ? `${(volumeMap[row.query]! / 1000).toFixed(1)}K/mo`
+                                  : `${volumeMap[row.query]}/mo`}
+                              </Badge>
+                            )}
                             <Badge
                               variant="outline"
                               className="text-xs px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400"

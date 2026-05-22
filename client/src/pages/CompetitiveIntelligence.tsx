@@ -2,16 +2,17 @@
  * Competitive Intelligence — DataForSEO
  *
  * Panels:
+ *   0. Tracked Competitors — saved list of competitor domains to monitor
  *   1. Domain Overview — organic ranking distribution for your domain
- *   2. Competitor Domains — top competing domains sorted by keyword overlap
+ *   2. Competitor Domains — top competing domains sorted by keyword overlap (DataForSEO-discovered)
  *   3. Keyword Gap — keywords a selected competitor ranks for that you don't
  *   4. Shared Keywords — keywords both you and a competitor rank for (intersection)
  *   5. Keyword Research — search volume, CPC, difficulty, intent for any keywords
  */
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,19 +20,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   BarChart3,
-  Globe,
   Search,
   TrendingUp,
   Zap,
-  ExternalLink,
-  RefreshCw,
   PenSquare,
   Video,
   ChevronRight,
   Users,
   Target,
-  DollarSign,
   AlertCircle,
+  Plus,
+  Trash2,
+  BookMarked,
 } from "lucide-react";
 
 const MY_DOMAIN = "theurbanmonk.com";
@@ -74,7 +74,7 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className={`w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0`}>
+      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
         <Icon className={`w-5 h-5 ${color}`} />
       </div>
       <div>
@@ -95,11 +95,131 @@ function LoadingRows({ count = 6 }: { count?: number }) {
   );
 }
 
+// ─── Tracked Competitor List ──────────────────────────────────────────────────
+
+function TrackedCompetitors({
+  onSelectCompetitor,
+  selectedCompetitor,
+}: {
+  onSelectCompetitor: (domain: string) => void;
+  selectedCompetitor: string | null;
+}) {
+  const [newDomain, setNewDomain] = useState("");
+  const utils = trpc.useUtils();
+
+  const { data, isLoading } = trpc.dfs.listTrackedCompetitors.useQuery();
+  const addMutation = trpc.dfs.addTrackedCompetitor.useMutation({
+    onSuccess: (result) => {
+      if (result.alreadyExists) {
+        toast.info(`${result.domain} is already in your tracking list`);
+      } else {
+        toast.success(`Added ${result.domain} to your tracking list`);
+        setNewDomain("");
+      }
+      utils.dfs.listTrackedCompetitors.invalidate();
+    },
+    onError: () => toast.error("Failed to add competitor"),
+  });
+  const removeMutation = trpc.dfs.removeTrackedCompetitor.useMutation({
+    onSuccess: () => {
+      utils.dfs.listTrackedCompetitors.invalidate();
+      toast.success("Removed from tracking list");
+    },
+    onError: () => toast.error("Failed to remove competitor"),
+  });
+
+  const handleAdd = () => {
+    const domain = newDomain.trim();
+    if (!domain) return;
+    addMutation.mutate({ domain });
+  };
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader className="pb-3">
+        <SectionHeader
+          icon={BookMarked}
+          title="Tracked Competitors"
+          subtitle="Your saved list of competitor domains — click any to run gap analysis"
+          color="text-indigo-500"
+        />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Add new */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="competitor.com"
+            value={newDomain}
+            onChange={(e) => setNewDomain(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            className="flex-1 text-sm"
+          />
+          <Button
+            size="sm"
+            onClick={handleAdd}
+            disabled={addMutation.isPending || !newDomain.trim()}
+            className="gap-1.5 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            Add
+          </Button>
+        </div>
+
+        {/* List */}
+        {isLoading ? (
+          <LoadingRows count={3} />
+        ) : !data?.competitors.length ? (
+          <p className="text-sm text-muted-foreground py-2">
+            No competitors tracked yet. Add a domain above to start monitoring it.
+          </p>
+        ) : (
+          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+            {data.competitors.map((item: { id: number; domain: string; label: string | null; addedAt: Date }) => {
+              const isSelected = selectedCompetitor === item.domain;
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors ${
+                    isSelected ? "bg-primary/5 border-l-2 border-primary" : ""
+                  }`}
+                >
+                  <button
+                    className="flex-1 text-left min-w-0"
+                    onClick={() => onSelectCompetitor(item.domain)}
+                  >
+                    <span className="text-sm font-medium text-foreground truncate block">
+                      {item.label || item.domain}
+                    </span>
+                    {item.label && (
+                      <span className="text-xs text-muted-foreground">{item.domain}</span>
+                    )}
+                  </button>
+                  {isSelected && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary shrink-0">
+                      Active
+                    </Badge>
+                  )}
+                  <button
+                    onClick={() => removeMutation.mutate({ id: item.id })}
+                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                    title="Remove from tracking list"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Domain Overview ──────────────────────────────────────────────────────────
 
 function DomainOverview() {
   const { data, isLoading } = trpc.dfs.domainRankOverview.useQuery({ domain: MY_DOMAIN });
-
   const metrics = data?.metrics?.organic;
 
   return (
@@ -139,14 +259,18 @@ function DomainOverview() {
   );
 }
 
-// ─── Competitor Domains ───────────────────────────────────────────────────────
+// ─── DataForSEO-Discovered Competitor Domains ─────────────────────────────────
 
-function CompetitorDomains({
+function DiscoveredCompetitors({
   onSelectCompetitor,
+  onTrackCompetitor,
   selectedCompetitor,
+  trackedDomains,
 }: {
   onSelectCompetitor: (domain: string) => void;
+  onTrackCompetitor: (domain: string) => void;
   selectedCompetitor: string | null;
+  trackedDomains: Set<string>;
 }) {
   const { data, isLoading } = trpc.dfs.competitors.useQuery({ domain: MY_DOMAIN, limit: 20 });
 
@@ -155,8 +279,8 @@ function CompetitorDomains({
       <CardHeader className="pb-3">
         <SectionHeader
           icon={Users}
-          title="Top Competitor Domains"
-          subtitle="Domains that rank for the most keywords in common with you — click to analyze"
+          title="Discovered Competitors"
+          subtitle="Domains DataForSEO found competing with you — click to analyze, bookmark to track"
           color="text-rose-500"
         />
       </CardHeader>
@@ -170,15 +294,18 @@ function CompetitorDomains({
             {data.items.map((item, i) => {
               const organic = item.full_domain_metrics?.organic;
               const isSelected = selectedCompetitor === item.domain;
+              const isTracked = trackedDomains.has(item.domain);
               return (
-                <button
+                <div
                   key={i}
-                  onClick={() => onSelectCompetitor(item.domain)}
-                  className={`w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors text-left ${
+                  className={`px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors ${
                     isSelected ? "bg-primary/5 border-l-2 border-primary" : ""
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                    onClick={() => onSelectCompetitor(item.domain)}
+                  >
                     <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{item.domain}</p>
@@ -186,17 +313,28 @@ function CompetitorDomains({
                         {item.intersections} shared keywords
                       </p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
                     {organic && (
                       <div className="text-right hidden sm:block">
                         <p className="text-xs text-muted-foreground">{fmt(organic.count)} total kw</p>
                         <p className="text-xs text-emerald-500">{fmt(organic.pos_1)} top-3</p>
                       </div>
                     )}
+                    <button
+                      onClick={() => onTrackCompetitor(item.domain)}
+                      className={`p-1.5 rounded transition-colors ${
+                        isTracked
+                          ? "text-indigo-500 bg-indigo-500/10"
+                          : "text-muted-foreground hover:text-indigo-500 hover:bg-indigo-500/10"
+                      }`}
+                      title={isTracked ? "Already tracked" : "Add to tracking list"}
+                    >
+                      <BookMarked className="w-3.5 h-3.5" />
+                    </button>
                     <ChevronRight className={`w-4 h-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -219,7 +357,6 @@ function KeywordGap({
     { domain: competitor, limit: 100 },
     { enabled: !!competitor }
   );
-
   const items = data?.items ?? [];
 
   return (
@@ -290,7 +427,6 @@ function SharedKeywords({ competitor }: { competitor: string }) {
     { target1: MY_DOMAIN, target2: competitor, limit: 50 },
     { enabled: !!competitor }
   );
-
   const items = data?.items ?? [];
 
   return (
@@ -350,7 +486,7 @@ function KeywordResearch({
   const [inputValue, setInputValue] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
 
-  const { data, isLoading, refetch } = trpc.dfs.keywordOverview.useQuery(
+  const { data, isLoading } = trpc.dfs.keywordOverview.useQuery(
     { keywords },
     { enabled: keywords.length > 0, retry: false }
   );
@@ -461,6 +597,14 @@ export default function CompetitiveIntelligence() {
   const [selectedCompetitor, setSelectedCompetitor] = useState<string | null>(null);
 
   const statusQuery = trpc.dfs.status.useQuery(undefined, { retry: false });
+  const trackedQuery = trpc.dfs.listTrackedCompetitors.useQuery();
+  const addMutation = trpc.dfs.addTrackedCompetitor.useMutation({
+    onSuccess: () => trpc.useUtils().dfs.listTrackedCompetitors.invalidate(),
+  });
+
+  const trackedDomains = new Set<string>(
+    (trackedQuery.data?.competitors ?? []).map((c: { domain: string }) => c.domain)
+  );
 
   const handleCreateContent = (keyword: string, type: "video" | "blog") => {
     const encoded = encodeURIComponent(keyword);
@@ -471,6 +615,15 @@ export default function CompetitiveIntelligence() {
       setLocation(`/studio?keyword=${encoded}&platform=blog`);
       toast.info(`Opening Blog Generator with keyword: "${keyword}"`);
     }
+  };
+
+  const handleTrackCompetitor = (domain: string) => {
+    if (trackedDomains.has(domain)) {
+      toast.info(`${domain} is already in your tracking list`);
+      return;
+    }
+    addMutation.mutate({ domain });
+    toast.success(`Added ${domain} to your tracking list`);
   };
 
   if (statusQuery.isLoading) {
@@ -511,25 +664,31 @@ export default function CompetitiveIntelligence() {
             DataForSEO — keyword gaps, competitor analysis, and search volume research
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5 border-green-500/40 text-green-600 dark:text-green-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-            Connected · {statusQuery.data.login}
-          </Badge>
-        </div>
+        <Badge variant="outline" className="gap-1.5 text-xs py-1 px-2.5 border-green-500/40 text-green-600 dark:text-green-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+          Connected · {statusQuery.data.login}
+        </Badge>
       </div>
 
-      {/* Domain Overview */}
-      <DomainOverview />
+      {/* Tracked Competitors + Domain Overview side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TrackedCompetitors
+          onSelectCompetitor={setSelectedCompetitor}
+          selectedCompetitor={selectedCompetitor}
+        />
+        <DomainOverview />
+      </div>
 
       {/* Keyword Research */}
       <KeywordResearch onCreateContent={handleCreateContent} />
 
-      {/* Competitor Analysis */}
+      {/* Discovered Competitors + Gap Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CompetitorDomains
+        <DiscoveredCompetitors
           onSelectCompetitor={setSelectedCompetitor}
+          onTrackCompetitor={handleTrackCompetitor}
           selectedCompetitor={selectedCompetitor}
+          trackedDomains={trackedDomains}
         />
 
         {selectedCompetitor ? (
@@ -540,9 +699,9 @@ export default function CompetitiveIntelligence() {
         ) : (
           <div className="flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/10 min-h-[200px]">
             <div className="text-center space-y-2 p-6">
-              <Users className="w-8 h-8 text-muted-foreground mx-auto" />
+              <TrendingUp className="w-8 h-8 text-muted-foreground mx-auto" />
               <p className="text-sm text-muted-foreground">
-                Click a competitor domain on the left to see keyword gaps and shared rankings
+                Click a competitor domain (tracked or discovered) to see keyword gaps and shared rankings
               </p>
             </div>
           </div>

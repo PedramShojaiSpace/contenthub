@@ -160,4 +160,71 @@ export const gscRouter = router({
       .orderBy(desc(seoContentTracker.createdAt));
     return rows;
   }),
+
+  /**
+   * Sync GSC query positions into keyword_targets.currentPosition.
+   * Fetches up to 500 GSC queries for the last 28 days, then fuzzy-matches
+   * each keyword target by exact string (case-insensitive) or substring.
+   * Returns counts of matched and unmatched targets.
+   */
+  syncPositionsToKeywordTargets: protectedProcedure.mutation(async ({ ctx }) => {
+    const creds = await getGscCredentials(ctx.user.id);
+    if (!creds.gscSiteUrl) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
+    }
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const { keywordTargets } = await import("../drizzle/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Fetch up to 500 GSC queries (broad, not just striking distance)
+    const gscRows = await getTopQueries(creds.gscRefreshToken!, creds.gscSiteUrl, 500);
+    // Build a lookup map: normalised query -> position
+    const gscMap = new Map<string, number>();
+    for (const row of gscRows) {
+      gscMap.set(row.query.toLowerCase().trim(), row.position);
+    }
+
+    // Load all keyword targets for this user
+    const targets = await db
+      .select()
+      .from(keywordTargets)
+      .where(eq(keywordTargets.userId, ctx.user.id));
+
+    let matched = 0;
+    let unmatched = 0;
+
+    for (const target of targets) {
+      const normalised = target.keyword.toLowerCase().trim();
+      // 1. Exact match
+      let position = gscMap.get(normalised);
+      // 2. Substring match: find the GSC query that contains this keyword
+      if (position === undefined) {
+        for (const [gscQuery, pos] of gscMap.entries()) {
+          if (gscQuery.includes(normalised) || normalised.includes(gscQuery)) {
+            position = pos;
+            break;
+          }
+        }
+      }
+
+      if (position !== undefined) {
+        await db
+          .update(keywordTargets)
+          .set({ currentPosition: position.toFixed(1) })
+          .where(eq(keywordTargets.id, target.id));
+        matched++;
+      } else {
+        unmatched++;
+      }
+    }
+
+    return {
+      success: true,
+      matched,
+      unmatched,
+      total: targets.length,
+      gscQueriesFetched: gscRows.length,
+    };
+  }),
 });

@@ -41,6 +41,7 @@ const PodcastProduction = lazy(() => import("./pages/PodcastProduction"));
 const PodcastEpisodeViewer = lazy(() => import("./pages/PodcastEpisodeViewer"));
 const GuestIntakeForm = lazy(() => import("./pages/GuestIntakeForm"));
 const SeoDashboard = lazy(() => import("./pages/SeoDashboard"));
+const CompetitiveIntelligence = lazy(() => import("./pages/CompetitiveIntelligence"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -89,6 +90,7 @@ function Router() {
         <Route path={"/podcast-production/:id"} component={PodcastEpisodeViewer} />
         <Route path={"/podcast-intake/:token"} component={GuestIntakeForm} />
         <Route path={"/seo"} component={SeoDashboard} />
+        <Route path={"/competitive-intelligence"} component={CompetitiveIntelligence} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

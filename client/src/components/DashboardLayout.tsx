@@ -57,6 +57,7 @@ import {
   GitFork,
   Mic,
   Search,
+  TrendingUp,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -82,6 +83,7 @@ const topNavItems = [
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
   { icon: Search, label: "SEO Dashboard", path: "/seo" },
+  { icon: TrendingUp, label: "Competitive Intel", path: "/competitive-intelligence" },
 ];
 
 // Strategy sub-items (grouped under collapsible parent)

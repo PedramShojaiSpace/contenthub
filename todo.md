@@ -2958,3 +2958,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] SEO content tracker: DB table records keyword sends to Video/Blog generators; SeoDashboard shows "content created" badges
 - [x] Keyword rank-drop alerts: weekly GSC digest flags keywords that dropped 3+ positions week-over-week
 - [x] Top-pages WordPress quick-edit: hover-reveal "Update Content" button links to WP post editor for that URL
+
+## DataForSEO Competitive Intelligence Integration
+
+- [x] Research DataForSEO API endpoints (keyword volume, SERP, competitor rankings, keyword gap)
+- [x] Add DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD credentials
+- [x] Build server/dataForSeo.ts: API client with Basic Auth, keyword overview, keywords for site, competitor domains, domain intersection, ranked keywords, domain rank overview
+- [x] Add tRPC procedures: status, keywordOverview, keywordsForSite, competitors, domainIntersection, rankedKeywords, domainRankOverview (server/dataForSeoRouter.ts)
+- [x] Build CompetitiveIntelligence page: domain overview, competitor list, keyword gap, shared keywords, keyword research panels — sidebar nav added
+- [x] Wire keyword-to-content pipeline: create content buttons on gap keywords navigate to Video Production or Blog Generator

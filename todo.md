@@ -2981,3 +2981,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] keywordStrategyRouter: CRUD for campaigns and targets, AI cluster generation via LLM, DataForSEO volume enrichment
 - [x] KeywordStrategy page (/keyword-strategy): campaign manager, cluster planner with grouped pillar/cluster/conversion rows, content roadmap with Video/Blog creation buttons, status cycling
 - [x] Sidebar nav item "Keyword Strategy" with Target icon added to DashboardLayout
+
+## Keyword Strategy — Round 2
+
+- [ ] Seed gut health campaign: create campaign + AI-generate 15-20 keyword cluster + DataForSEO volume enrichment
+- [ ] Weekly keyword priority digest: Monday heartbeat surfaces top 3 not-started high-volume keywords per campaign
+- [ ] WordPress publish-back: when blog post publishes to WP, auto-update matching keyword target publishedUrl and status to "published"
+
+## Keyword Strategy — Round 2
+
+- [x] Gut health campaign seeded: 19 keywords across pillar/cluster/conversion tiers, enriched with DataForSEO volumes (gut health 40.5K/mo, best probiotics 14.8K/mo, gut microbiome 9.9K/mo, gut brain connection 4.4K/mo)
+- [x] Weekly keyword priority digest: POST /api/scheduled/keyword-priority-digest — surfaces top 3 not-started keywords per campaign by volume every Monday
+- [x] WordPress publish-back: when a blog post publishes with a focusKeyword, matching keyword_targets row flips to "published" and records the live URL

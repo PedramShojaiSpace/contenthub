@@ -2993,3 +2993,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Gut health campaign seeded: 19 keywords across pillar/cluster/conversion tiers, enriched with DataForSEO volumes (gut health 40.5K/mo, best probiotics 14.8K/mo, gut microbiome 9.9K/mo, gut brain connection 4.4K/mo)
 - [x] Weekly keyword priority digest: POST /api/scheduled/keyword-priority-digest — surfaces top 3 not-started keywords per campaign by volume every Monday
 - [x] WordPress publish-back: when a blog post publishes with a focusKeyword, matching keyword_targets row flips to "published" and records the live URL
+
+## Keyword Strategy — Round 3
+
+- [ ] Fix KeywordStrategy page color scheme to match site-wide tokens (warm parchment bg, terracotta primary, semantic card/border colors)
+- [ ] Add keyword_rank_history DB table: weekly GSC rank snapshots per keyword target
+- [ ] Build rank tracking tRPC procedures: snapshotRanks, getRankHistory, getRankMovers
+- [ ] Weekly rank snapshot heartbeat: POST /api/scheduled/rank-snapshot — pulls GSC data for all published keyword targets
+- [ ] SEO Authority Tracker panel in KeywordStrategy: rank trend sparklines, position change badges, clicks/impressions over time

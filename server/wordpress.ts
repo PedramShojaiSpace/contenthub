@@ -263,18 +263,11 @@ function buildFaqSchema(faqMarkdown: string): string | null {
 export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
   const { baseUrl, authHeader } = getWpAuth();
 
-  // Build schema blocks to prepend/append to content
-  let enrichedContent = input.content;
-
-  // Inject Article JSON-LD at the top of the content (invisible to readers, visible to crawlers)
-  if (input.articleSchema) {
-    enrichedContent = input.articleSchema + "\n\n" + enrichedContent;
-  }
-
-  // Inject FAQ JSON-LD at the bottom of the content
-  if (input.faqSchema) {
-    enrichedContent = enrichedContent + "\n\n" + input.faqSchema;
-  }
+  // JSON-LD schema is NOT injected into the post body — WordPress renders <script> tags
+  // inside post content as visible text with <br /> line breaks, breaking the page.
+  // Yoast SEO automatically generates Article and FAQPage schema from post meta fields,
+  // so we rely on Yoast for schema output and skip manual injection entirely.
+  const enrichedContent = input.content;
 
   const body: Record<string, unknown> = {
     title: input.title,

@@ -1020,17 +1020,24 @@ export default function CreationStudio() {
           personaId: selectedPersonaId ?? undefined,
           contentGoal: selectedContentGoal ?? undefined,
           ctaBlockLabel: data.ctaLabel ?? undefined,
+          // SEO fields available on content.create schema
+          focusKeyword: data.focusKeyword ?? undefined,
+          seoKeywords: data.semanticKeywords?.length
+            ? JSON.stringify(data.semanticKeywords)
+            : undefined,
         },
         {
           onSuccess: (saved) => {
             if (saved?.id) {
               setSavedItemIds((prev) => ({ ...prev, blog: saved.id }));
-              if (data.heroImageUrl) {
-                autoUpdateMutation.mutate({ id: saved.id, imageUrl: data.heroImageUrl });
-              }
-              if ((data as any).ctaBannerUrl) {
-                autoUpdateMutation.mutate({ id: saved.id, ctaBannerUrl: (data as any).ctaBannerUrl });
-              }
+              // Second pass: update with fields only available on content.update schema
+              // (yoastSeoTitle, yoastMetaDescription, imageUrl, ctaBannerUrl)
+              const updatePayload: Record<string, unknown> = { id: saved.id };
+              if (data.title) updatePayload.yoastSeoTitle = `${data.title} | The Urban Monk`;
+              if (data.metaDescription) updatePayload.yoastMetaDescription = data.metaDescription;
+              if (data.heroImageUrl) updatePayload.imageUrl = data.heroImageUrl;
+              if ((data as any).ctaBannerUrl) updatePayload.ctaBannerUrl = (data as any).ctaBannerUrl;
+              autoUpdateMutation.mutate(updatePayload as any);
             }
           },
         }
@@ -1058,6 +1065,8 @@ export default function CreationStudio() {
       personaId: selectedPersonaId ?? undefined,
       utmContentOverride: utmContentOverride || undefined,
       ctaBlockId: selectedCtaBlockId ?? undefined,
+      focusKeyword: focusKeyword || undefined,
+      currentPosition: currentPosition || undefined,
     });
   };
 

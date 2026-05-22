@@ -2581,6 +2581,26 @@ Return BOTH in this exact format:
       .mutation(async ({ input }) => {
         const wpBaseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
 
+        // Step 0a: Sanitize and guarantee a clean permalink slug
+        // WordPress falls back to ?p=<id> URLs when the slug is empty, contains
+        // special characters, or conflicts with an existing post.
+        const sanitizeSlug = (raw: string): string => {
+          return raw
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, "")   // strip non-alphanumeric (keep spaces + hyphens)
+            .replace(/\s+/g, "-")            // spaces → hyphens
+            .replace(/-{2,}/g, "-")          // collapse multiple hyphens
+            .replace(/^-+|-+$/g, "")         // trim leading/trailing hyphens
+            .slice(0, 60);                   // WP recommends ≤60 chars for slugs
+        };
+        const baseSlug = sanitizeSlug(input.slug || input.title);
+        // Append a short timestamp suffix to guarantee uniqueness and avoid 301 redirect
+        // collisions with existing posts that share the same slug.
+        const slugSuffix = Date.now().toString(36).slice(-4); // e.g. "k7xq"
+        const safeSlug = `${baseSlug}-${slugSuffix}`;
+        // Override input.slug with the sanitized, unique version for all downstream use
+        const publishInput = { ...input, slug: safeSlug };
+
         // Step 0: GA4 campaign slug validation — warn if campaign slug is not in the canonical list
         let campaignValidationWarning: string | null = null;
         try {
@@ -2601,16 +2621,16 @@ Return BOTH in this exact format:
         // Step 1: Upload hero image to WordPress media library (if provided)
         let featuredMediaId: number | undefined;
         let wpImageUrl: string | undefined;
-        if (input.heroImageUrl) {
+        if (publishInput.heroImageUrl) {
           try {
-            console.log("[WP] Uploading hero image:", input.heroImageUrl);
+            console.log("[WP] Uploading hero image:", publishInput.heroImageUrl);
             // Derive file extension from URL or default to jpg
-            const ext = input.heroImageUrl.toLowerCase().endsWith(".png") ? "png" : "jpg";
-            const filename = `${input.slug}-hero.${ext}`;
+            const ext = publishInput.heroImageUrl.toLowerCase().endsWith(".png") ? "png" : "jpg";
+            const filename = `${publishInput.slug}-hero.${ext}`;
             const media = await uploadMediaFromUrl(
-              input.heroImageUrl,
+              publishInput.heroImageUrl,
               filename,
-              `${input.title} — The Urban Monk` // SEO-optimized alt text
+              `${publishInput.title} — The Urban Monk` // SEO-optimized alt text
             );
             featuredMediaId = media.id;
             wpImageUrl = media.url;
@@ -2624,33 +2644,33 @@ Return BOTH in this exact format:
         }
 
         // Determine WP status and date
-        let wpStatus = input.status;
+        let wpStatus = publishInput.status;
         let wpDate: string | undefined;
-        if (input.scheduledAt && input.scheduledAt > Date.now()) {
+        if (publishInput.scheduledAt && publishInput.scheduledAt > Date.now()) {
           wpStatus = "future";
-          wpDate = new Date(input.scheduledAt).toISOString();
+          wpDate = new Date(publishInput.scheduledAt).toISOString();
         }
 
         // Step 2: Convert Markdown → WordPress HTML
         // - Extracts trailing #hashtags and converts them to <strong> bold text
         // - Converts all Markdown formatting (##, **, >, etc.) to HTML
-        const wpHtmlBody = markdownToWpHtml(input.body);
+        const wpHtmlBody = markdownToWpHtml(publishInput.body);
 
         // Step 3: Build Article + FAQ JSON-LD schema blocks (GhostLink OS B15 AEO)
         const { articleSchema, faqSchema } = buildBlogSchemas({
-          title: input.title,
-          slug: input.slug,
-          metaDescription: input.metaDescription ?? "",
-          heroImageUrl: wpImageUrl ?? input.heroImageUrl,
-          faqSection: input.faqSection,
+          title: publishInput.title,
+          slug: publishInput.slug,
+          metaDescription: publishInput.metaDescription ?? "",
+          heroImageUrl: wpImageUrl ?? publishInput.heroImageUrl,
+          faqSection: publishInput.faqSection,
           baseUrl: wpBaseUrl,
           datePublished: wpDate ?? new Date().toISOString(),
         });
 
         // Step 4: Build SEO title for Yoast (format: Article Title | The Urban Monk)
         // Use explicit override if provided (from SeoKeywordEditor), otherwise auto-generate
-        const seoTitle = input.yoastSeoTitle ?? `${input.title} | The Urban Monk`;
-        const metaDesc = input.yoastMetaDescription ?? input.metaDescription;
+        const seoTitle = publishInput.yoastSeoTitle ?? `${publishInput.title} | The Urban Monk`;
+        const metaDesc = publishInput.yoastMetaDescription ?? publishInput.metaDescription;
 
         // Step 5: Resolve SEO keywords as WordPress tags (create if they don't exist)
         const { authHeader: wpAuthHeader } = (() => {
@@ -2660,8 +2680,8 @@ Return BOTH in this exact format:
         })();
 
         const allKeywords = [
-          ...(input.focusKeyword ? [input.focusKeyword] : []),
-          ...(input.semanticKeywords ?? []),
+          ...(publishInput.focusKeyword ? [publishInput.focusKeyword] : []),
+          ...(publishInput.semanticKeywords ?? []),
         ].filter(Boolean);
 
         let wpTagIds: number[] = [];
@@ -2676,8 +2696,8 @@ Return BOTH in this exact format:
 
         // Step 6: Create the WordPress post with full SEO metadata
         const post = await createWpPost({
-          title: input.title,
-          slug: input.slug,
+          title: publishInput.title,
+          slug: publishInput.slug,
           content: wpHtmlBody,
           excerpt: metaDesc,
           status: wpStatus,
@@ -2685,9 +2705,9 @@ Return BOTH in this exact format:
           categories: DEFAULT_WP_CATEGORIES,
           tags: wpTagIds.length > 0 ? wpTagIds : undefined,
           metaDescription: metaDesc,
-          focusKeyword: input.focusKeyword,
+          focusKeyword: publishInput.focusKeyword,
           seoTitle,
-          canonicalUrl: `${wpBaseUrl}/${input.slug}/`,
+          canonicalUrl: `${wpBaseUrl}/${publishInput.slug}/`,
           articleSchema,
           faqSchema: faqSchema ?? undefined,
           date: wpDate,
@@ -2697,7 +2717,7 @@ Return BOTH in this exact format:
         // Always mark as "published" once sent to WP — even if sent as a draft.
         // This prevents confusion about what has already been pushed to WordPress.
         const newStatus = wpStatus === "future" ? "scheduled" : "published";
-        await updateContentItem(input.contentItemId, {
+        await updateContentItem(publishInput.contentItemId, {
           status: newStatus,
           publishUrl: post.link,
           wpPostId: post.id,  // Save WP post ID so the edit URL can be constructed on the frontend
@@ -2708,7 +2728,7 @@ Return BOTH in this exact format:
         // Step 8: Keyword Strategy publish-back
         // If this post was created from a keyword target, flip its status to "published"
         // and record the live URL so the Keyword Strategy dashboard shows it as done.
-        if (input.focusKeyword && newStatus !== "scheduled") {
+        if (publishInput.focusKeyword && newStatus !== "scheduled") {
           try {
             const { keywordTargets } = await import("../drizzle/schema");
             const { eq, like } = await import("drizzle-orm");
@@ -2722,7 +2742,7 @@ Return BOTH in this exact format:
                   publishedUrl: post.link,
                 })
                 .where(
-                  like(keywordTargets.keyword, input.focusKeyword)
+                  like(keywordTargets.keyword, publishInput.focusKeyword)
                 );
             }
           } catch (kErr) {

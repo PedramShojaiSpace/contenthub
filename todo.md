@@ -3013,3 +3013,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix blog generation prompt for Strike Zone keywords: add focusKeyword + currentPosition inputs to generateBlog mutation, inject tactical SEO brief server-side (7 requirements: keyword placement, search intent, competitive differentiation, E-E-A-T, featured snippet target, PAA coverage, semantic depth), add Strike Zone badge UI in blog panel, pass params from Keyword Strategy tool
 - [x] Auto-populate GSC position data into keyword targets: build server-side sync that matches GSC query rows to keyword_targets by keyword string and writes currentPosition
 - [x] Seed Stress & Cortisol keyword campaign: pillar "cortisol and stress", AI cluster (15-20 keywords), DataForSEO volumes
+
+## SEO Audit Fixes (May 2026)
+
+- [x] Bug 1: Fix focusKeyword null — wire focusKeyword + yoastSeoTitle + yoastMetaDescription through auto-save pipeline (create then update pattern); focusKeyword now passed to generateBlogMutation and saved to DB on every generation
+- [x] Bug 2: Fix permalink slug — add sanitizeSlug() + checkSlugExists() before every WordPress API call; sanitizes to lowercase-hyphen format, appends -2/-3 suffix if slug already exists in WP
+- [x] Bug 3: Fix schema markup injection — inject Article + FAQPage JSON-LD as WordPress raw HTML blocks (<!-- wp:html -->) so they survive WP content sanitization; previously built but never used
+- [x] Add 5 Pedram-specific long-tail keywords to each of 3 campaigns (15 total): taoist approach to gut health, urban monk gut protocol, qigong for digestion, pedram shojai gut health, ancient chinese medicine gut health, qigong for sleep, taoist sleep practices, urban monk sleep method, five element theory sleep, taoist stress management, qigong for stress relief, urban monk cortisol reset, pedram shojai stress, ancient wisdom for modern stress; all set to nominal volume 50/mo (DataForSEO below 10/mo threshold — zero competition)
+- [x] Fix TypeScript errors: yoastSeoTitle/yoastMetaDescription moved from content.create to content.update call; MapIterator downlevelIteration error fixed with Array.from() in gscRouter.ts
+- [x] Build content velocity framework: 90-day publishing calendar, safe velocity by phase (1→2→3 posts/day), Google quality gates checklist, cannibalization prevention rules, cash register math (Month 12: 180K sessions → $267K/yr Academy revenue)

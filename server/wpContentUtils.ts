@@ -153,22 +153,63 @@ const markedOptions = {
  *
  * Full pipeline:
  *  1. Extract trailing hashtag block → convert to bold HTML paragraph
- *  2. Convert remaining Markdown to HTML via marked
- *  3. Append the bold hashtag paragraph at the bottom
+ *  2. Split on raw HTML blocks (e.g. injected CTA banners) so they pass through unchanged
+ *  3. Convert each Markdown segment to HTML via marked
+ *  4. Reassemble segments + HTML passthrough blocks in order
+ *  5. Append the bold hashtag paragraph at the bottom
  *
  * The returned string is safe to pass directly to createWpPost({ content: ... }).
+ *
+ * WHY SPLIT: When a raw HTML block (e.g. <div class="um-cta-banner">) is injected into
+ * a Markdown string, `marked` treats the HTML block as a passthrough but stops converting
+ * Markdown that follows it (e.g. the FAQ section). Splitting on HTML blocks ensures every
+ * Markdown segment is fully converted regardless of what precedes it.
  */
 export function markdownToWpHtml(markdown: string): string {
   if (!markdown || !markdown.trim()) return "";
 
-  // Step 1: Pull out hashtags before markdown parsing (# would be parsed as H1/H2)
+  // Step 1: Pull out trailing hashtags before markdown parsing (# would be parsed as H1/H2)
   const { cleanBody, hashtagHtml } = extractAndConvertHashtags(markdown);
 
-  // Step 2: Convert Markdown → HTML
-  // marked.parse() is synchronous when no async extensions are registered
-  const html = marked.parse(cleanBody, markedOptions) as string;
+  // Step 2: Split on raw HTML blocks so they pass through unchanged.
+  // Pattern: a line that starts with < (HTML tag) and is followed by a closing tag.
+  // We match self-contained block-level HTML elements (div, p with inline style, etc.)
+  // that were injected into the Markdown string (e.g. the um-cta-banner div).
+  // Each segment is either a Markdown chunk or a raw HTML passthrough.
+  const HTML_BLOCK_RE = /(<(?:div|section|figure|aside|table|ul|ol|blockquote|pre|script|style)[^>]*>[\s\S]*?<\/(?:div|section|figure|aside|table|ul|ol|blockquote|pre|script|style)>)/gi;
 
-  // Step 3: Append hashtag block
+  const parts: Array<{ type: "markdown" | "html"; content: string }> = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  // Reset regex state
+  HTML_BLOCK_RE.lastIndex = 0;
+  while ((match = HTML_BLOCK_RE.exec(cleanBody)) !== null) {
+    // Markdown before this HTML block
+    if (match.index > lastIndex) {
+      parts.push({ type: "markdown", content: cleanBody.slice(lastIndex, match.index) });
+    }
+    // The HTML block itself (pass through unchanged)
+    parts.push({ type: "html", content: match[0] });
+    lastIndex = match.index + match[0].length;
+  }
+  // Any remaining Markdown after the last HTML block
+  if (lastIndex < cleanBody.length) {
+    parts.push({ type: "markdown", content: cleanBody.slice(lastIndex) });
+  }
+
+  // Step 3: Convert each Markdown segment; leave HTML segments untouched
+  const converted = parts.map((part) => {
+    if (part.type === "html") return part.content;
+    const trimmed = part.content.trim();
+    if (!trimmed) return "";
+    return marked.parse(trimmed, markedOptions) as string;
+  });
+
+  // Step 4: Reassemble
+  const html = converted.join("\n");
+
+  // Step 5: Append hashtag block
   const finalHtml = hashtagHtml ? `${html}\n${hashtagHtml}` : html;
 
   return finalHtml;

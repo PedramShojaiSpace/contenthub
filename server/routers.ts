@@ -102,6 +102,7 @@ import { dataForSeoRouter } from "./dataForSeoRouter";
 import { crossModuleRouter } from "./crossModuleRouter";
 import { redditRouter } from "./redditRouter";
 import { podcastRouter } from "./podcastRouter";
+import { keywordStrategyRouter } from "./keywordStrategyRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls } from "./urlScrubber";
@@ -362,6 +363,7 @@ export const appRouter = router({
   crossModule: crossModuleRouter,
   reddit: redditRouter,
   podcast: podcastRouter,
+  kwStrategy: keywordStrategyRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

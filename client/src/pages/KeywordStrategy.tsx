@@ -355,11 +355,17 @@ function TargetRow({
             <Film className="w-3.5 h-3.5" />
           </button>
           <button
-            onClick={() =>
-              setLocation(
-                `/studio?keyword=${encodeURIComponent(target.keyword)}&platform=blog`
-              )
-            }
+            onClick={() => {
+              const params = new URLSearchParams({
+                keyword: target.keyword,
+                platform: "blog",
+              });
+              if (target.currentPosition) {
+                params.set("focusKeyword", target.keyword);
+                params.set("currentPosition", target.currentPosition);
+              }
+              setLocation(`/studio?${params.toString()}`);
+            }}
             title="Create Blog Post"
             className="p-1.5 rounded-md hover:bg-emerald-50 text-muted-foreground hover:text-emerald-700 transition-colors"
           >

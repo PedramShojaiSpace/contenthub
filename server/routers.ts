@@ -3106,6 +3106,107 @@ Rules:
         return { results, succeeded, failed, total: drafts.length };
       }),
 
+    // Generate Yoast SEO fields for published posts that are missing them
+    generateYoastForPublished: protectedProcedure
+      .mutation(async () => {
+        const db = await getDb();
+        const { contentItems } = await import('../drizzle/schema');
+        const { eq, and, isNotNull, or, isNull } = await import('drizzle-orm');
+
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        // Get all published blog posts that are missing focus keyword or seo title
+        const published = await db
+          .select()
+          .from(contentItems)
+          .where(
+            and(
+              eq(contentItems.platform, 'blog'),
+              eq(contentItems.status, 'published'),
+              isNotNull(contentItems.textContent),
+              or(
+                isNull(contentItems.focusKeyword),
+                isNull(contentItems.yoastSeoTitle)
+              )
+            )
+          );
+
+        const results: Array<{ id: number; title: string; success: boolean; error?: string }> = [];
+
+        for (const item of published) {
+          // Skip if already has both focus keyword and seo title
+          if (item.focusKeyword && item.yoastSeoTitle) continue;
+          try {
+            const response = await safeLLM({
+              messages: [
+                {
+                  role: 'system',
+                  content: `You are an expert SEO specialist for The Urban Monk (Dr. Pedram Shojai). 
+Generate optimized Yoast SEO fields for a blog post. Return ONLY valid JSON with these exact keys:
+- seoTitle: string (max 60 chars, format: "[Topic] | The Urban Monk", include primary keyword)
+- metaDescription: string (120-155 chars, compelling summary with primary keyword, ends with a benefit or call to action)
+- focusKeyphrase: string (2-4 word phrase, the single most important keyword for this post)
+- semanticKeywords: string[] (5-8 related keywords/phrases that support the focus keyphrase)
+
+Rules:
+- seoTitle MUST be under 60 characters
+- metaDescription MUST be between 120-155 characters
+- focusKeyphrase should be what someone would type into Google to find this article
+- Write in Dr. Pedram Shojai's voice: authoritative, integrative medicine, practical wisdom`,
+                },
+                {
+                  role: 'user',
+                  content: `Blog post title: ${item.title}\n\nBlog post content (first 2000 chars):\n${(item.textContent ?? '').substring(0, 2000)}`,
+                },
+              ],
+              response_format: {
+                type: 'json_schema',
+                json_schema: {
+                  name: 'yoast_seo_fields',
+                  strict: true,
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      seoTitle: { type: 'string', description: 'SEO title max 60 chars' },
+                      metaDescription: { type: 'string', description: 'Meta description 120-155 chars' },
+                      focusKeyphrase: { type: 'string', description: 'Primary focus keyword phrase' },
+                      semanticKeywords: { type: 'array', items: { type: 'string' }, description: 'Related keywords' },
+                    },
+                    required: ['seoTitle', 'metaDescription', 'focusKeyphrase', 'semanticKeywords'],
+                    additionalProperties: false,
+                  },
+                },
+              },
+            });
+
+            const raw = String(response.choices?.[0]?.message?.content ?? '{}');
+            let fields: { seoTitle: string; metaDescription: string; focusKeyphrase: string; semanticKeywords: string[] };
+            try {
+              const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+              fields = JSON.parse(cleaned);
+            } catch {
+              throw new Error('AI returned invalid JSON for Yoast fields');
+            }
+
+            await updateContentItem(item.id, {
+              yoastSeoTitle: fields.seoTitle,
+              yoastMetaDescription: fields.metaDescription,
+              focusKeyword: fields.focusKeyphrase,
+              seoKeywords: JSON.stringify(fields.semanticKeywords),
+            });
+
+            results.push({ id: item.id, title: item.title, success: true });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            results.push({ id: item.id, title: item.title, success: false, error: msg });
+          }
+        }
+
+        const succeeded = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
+        return { results, succeeded, failed, total: published.length };
+      }),
+
     // Batch backfill Yoast SEO fields on all Published WordPress posts
     backfillYoastInWordPress: protectedProcedure
       .mutation(async () => {

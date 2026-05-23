@@ -3081,3 +3081,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Sleep optimization pillar page: not yet published to WordPress (cluster posts exist, pillar page needed)
 - [ ] Register rank-snapshot-weekly heartbeat (Settings → Schedules in Management UI after deploy)
 - [ ] Re-publish gut health and sleep cluster posts through Command Center to apply all pipeline fixes (Yoast, slug sanitization, schema injection, placeholder resolution)
+
+## Regenerate Blog Hero Image Feature
+
+- [ ] Add suggestImageThemes tRPC procedure: given article title + topic, return 5 distinct visual theme suggestions (each with a name, description, and image prompt direction)
+- [ ] Add regenerateBlogHeroImage tRPC procedure: given contentItemId + chosen theme prompt, generate a new hero image and update the content item
+- [ ] Add "Regenerate Image" panel to the blog detail/publish view in Command Center: shows current image, 5 theme suggestion cards, custom prompt override, and Regenerate button
+- [ ] Theme suggestions should be visually distinct (e.g. "Clinical & Clean", "Ancient Wisdom", "Nature & Botanical", "Urban Professional", "Documentary Realism") — not generic AI art
+- [ ] Show loading state during regeneration, swap image in place when done
+- [ ] TypeScript clean, tests passing
+
+## Regenerate Blog Hero Image Feature (May 22, 2026)
+
+- [x] Add `suggestImageThemes` tRPC procedure — AI art director suggests 6 visually distinct themes with image prompts, explicitly avoiding the "warm golden sunrise yoga retreat" cliché
+- [x] Add `regenerateBlogHeroImage` tRPC procedure — generates new image from chosen prompt and updates content item
+- [x] Add Regenerate Image panel to Command Center blog detail dialog — hover overlay button on image, expandable panel with 2-column theme grid, custom prompt textarea, amber Generate button
+- [x] Theme cards show name + description, clicking auto-fills the prompt textarea
+- [x] Panel auto-fetches theme suggestions when opened
+- [x] Image swaps in-place after generation, panel closes, refetch fires

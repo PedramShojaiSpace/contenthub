@@ -1241,6 +1241,43 @@ export default function CommandCenter() {
     },
   });
 
+  // Regenerate Hero Image state (blog posts only)
+  type ImageTheme = { name: string; description: string; imagePrompt: string };
+  const [showImageRegenPanel, setShowImageRegenPanel] = useState(false);
+  const [imageThemes, setImageThemes] = useState<ImageTheme[]>([]);
+  const [selectedTheme, setSelectedTheme] = useState<ImageTheme | null>(null);
+  const [customImagePrompt, setCustomImagePrompt] = useState("");
+  const [isRegeneratingHeroImage, setIsRegeneratingHeroImage] = useState(false);
+  const [isSuggestingThemes, setIsSuggestingThemes] = useState(false);
+
+  const suggestImageThemesMutation = trpc.blog.suggestImageThemes.useMutation({
+    onSuccess: (data) => {
+      setImageThemes(data.themes);
+      setIsSuggestingThemes(false);
+    },
+    onError: (err) => {
+      setIsSuggestingThemes(false);
+      toast.error("Theme suggestions failed: " + err.message);
+    },
+  });
+
+  const regenerateHeroImageMutation = trpc.blog.regenerateBlogHeroImage.useMutation({
+    onSuccess: (data) => {
+      setIsRegeneratingHeroImage(false);
+      setSelectedItem(prev => prev ? { ...prev, imageUrl: data.imageUrl } : prev);
+      setShowImageRegenPanel(false);
+      setImageThemes([]);
+      setSelectedTheme(null);
+      setCustomImagePrompt("");
+      refetch();
+      toast.success(`New hero image generated (${data.themeName})!`);
+    },
+    onError: (err) => {
+      setIsRegeneratingHeroImage(false);
+      toast.error("Image regeneration failed: " + err.message);
+    },
+  });
+
   // UTM: save full UTM URL to UTM Builder history
   const saveUtmLinkMutation = trpc.utm.save.useMutation({
     onSuccess: (data) => {
@@ -2619,8 +2656,166 @@ export default function CommandCenter() {
               </DialogTitle>
             </DialogHeader>
 
-            {/* Hero image */}
-            {selectedItem.imageUrl && (
+            {/* Hero image with Regenerate button */}
+            {selectedItem.platform === "blog" && (
+              <div className="space-y-2">
+                {selectedItem.imageUrl ? (
+                  <div className="relative group">
+                    <img
+                      src={selectedItem.imageUrl}
+                      alt=""
+                      className="w-full rounded-lg object-cover max-h-56"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="bg-background/90 border-border text-xs h-7"
+                        onClick={() => {
+                          setShowImageRegenPanel(!showImageRegenPanel);
+                          if (!showImageRegenPanel && imageThemes.length === 0) {
+                            setIsSuggestingThemes(true);
+                            suggestImageThemesMutation.mutate({
+                              contentItemId: selectedItem.id,
+                              title: selectedItem.title,
+                              focusKeyword: selectedItem.focusKeyword ?? undefined,
+                            });
+                          }
+                        }}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Regenerate Image
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full h-20 rounded-lg border border-dashed border-border flex items-center justify-center bg-muted/20">
+                    <span className="text-xs text-muted-foreground">No hero image</span>
+                  </div>
+                )}
+
+                {/* Regenerate Image Panel */}
+                {showImageRegenPanel && (
+                  <div className="rounded-lg border border-amber-600/30 bg-amber-950/10 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-amber-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
+                        <Wand2 className="h-3 w-3" />
+                        Regenerate Hero Image
+                      </p>
+                      <button
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => { setShowImageRegenPanel(false); setImageThemes([]); setSelectedTheme(null); }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    {isSuggestingThemes ? (
+                      <div className="flex items-center gap-2 py-2">
+                        <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+                        <span className="text-xs text-muted-foreground">Generating theme ideas...</span>
+                      </div>
+                    ) : imageThemes.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-[10px] text-muted-foreground">Choose a visual direction or write your own prompt below:</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {imageThemes.map((theme) => (
+                            <button
+                              key={theme.name}
+                              onClick={() => { setSelectedTheme(theme); setCustomImagePrompt(theme.imagePrompt); }}
+                              className={`text-left p-2 rounded border text-[10px] transition-colors ${
+                                selectedTheme?.name === theme.name
+                                  ? "border-amber-500/60 bg-amber-900/30 text-amber-200"
+                                  : "border-border bg-background/40 text-muted-foreground hover:border-amber-600/40 hover:text-foreground"
+                              }`}
+                            >
+                              <div className="font-semibold text-[10px] mb-0.5">{theme.name}</div>
+                              <div className="text-[9px] leading-relaxed line-clamp-2 opacity-80">{theme.description}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs w-full"
+                        onClick={() => {
+                          setIsSuggestingThemes(true);
+                          suggestImageThemesMutation.mutate({
+                            contentItemId: selectedItem.id,
+                            title: selectedItem.title,
+                            focusKeyword: selectedItem.focusKeyword ?? undefined,
+                          });
+                        }}
+                      >
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Suggest Visual Themes
+                      </Button>
+                    )}
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Image Prompt</Label>
+                      <Textarea
+                        value={customImagePrompt}
+                        onChange={(e) => { setCustomImagePrompt(e.target.value); setSelectedTheme(null); }}
+                        rows={3}
+                        className="bg-background border-border resize-none text-xs font-mono"
+                        placeholder="Or write your own image prompt..."
+                      />
+                    </div>
+
+                    <Button
+                      size="sm"
+                      className="w-full h-8 text-xs bg-amber-600 hover:bg-amber-500 text-white"
+                      disabled={isRegeneratingHeroImage || (!customImagePrompt && !selectedTheme)}
+                      onClick={() => {
+                        const prompt = customImagePrompt || selectedTheme?.imagePrompt || "";
+                        if (!prompt) return;
+                        setIsRegeneratingHeroImage(true);
+                        regenerateHeroImageMutation.mutate({
+                          contentItemId: selectedItem.id,
+                          imagePrompt: prompt,
+                          themeName: selectedTheme?.name ?? "Custom",
+                        });
+                      }}
+                    >
+                      {isRegeneratingHeroImage ? (
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Generating...</>
+                      ) : (
+                        <><ImageIcon className="h-3 w-3 mr-1" />Generate New Image</>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Show Regenerate button below image when panel is closed */}
+                {!showImageRegenPanel && selectedItem.imageUrl && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-7 text-xs border-dashed"
+                    onClick={() => {
+                      setShowImageRegenPanel(true);
+                      if (imageThemes.length === 0) {
+                        setIsSuggestingThemes(true);
+                        suggestImageThemesMutation.mutate({
+                          contentItemId: selectedItem.id,
+                          title: selectedItem.title,
+                          focusKeyword: selectedItem.focusKeyword ?? undefined,
+                        });
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Regenerate Hero Image
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Hero image for non-blog platforms */}
+            {selectedItem.platform !== "blog" && selectedItem.imageUrl && (
               <img
                 src={selectedItem.imageUrl}
                 alt=""

@@ -3443,6 +3443,106 @@ STRICT RULES:
         return { updated: true, newSlug: input.newCampaignSlug };
       }),
 
+    // ── Image Regeneration ─────────────────────────────────────────────────────────────────────────────
+    // Suggest 6 visually distinct image themes for a blog post hero image
+    suggestImageThemes: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        title: z.string(),
+        focusKeyword: z.string().optional(),
+        topic: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const THEME_SYSTEM = `You are a world-class art director for a premium health and wellness brand. Given a blog article title and topic, suggest 6 visually DISTINCT hero image themes. Each theme must look completely different from the others — different color palette, different photographic style, different subject matter, different mood.
+
+The brand is The Urban Monk (Dr. Pedram Shojai) — bridges ancient Taoist wisdom with modern functional medicine. Audience: educated professionals 30-55, health-conscious, skeptical of hype.
+
+CRITICAL: Do NOT default to "warm golden sunrise yoga retreat" imagery. That is the cliché to avoid. Push for specificity, contrast, and visual surprise.
+
+For each theme provide:
+- name: 2-4 word evocative label (e.g. "Clinical Cold Light", "Ancient Stone & Ink", "Documentary Realism")
+- description: 1-2 sentences describing the visual mood, color palette, and subject matter
+- imagePrompt: A precise 60-80 word image generation prompt. Include: subject, lighting, color palette, photographic style, mood, composition. Do NOT include text overlay instructions. End with "16:9 aspect ratio, no text."
+
+Return ONLY a valid JSON array of 6 objects with keys: name, description, imagePrompt. No preamble.`;
+
+        const response = await safeLLM({
+          messages: [
+            { role: 'system', content: THEME_SYSTEM },
+            { role: 'user', content: `Title: ${input.title}\nFocus keyword: ${input.focusKeyword ?? ''}\nTopic: ${input.topic ?? input.title}` },
+          ],
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'image_themes',
+              strict: true,
+              schema: {
+                type: 'object',
+                properties: {
+                  themes: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        description: { type: 'string' },
+                        imagePrompt: { type: 'string' },
+                      },
+                      required: ['name', 'description', 'imagePrompt'],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ['themes'],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const raw = response.choices?.[0]?.message?.content;
+        const text = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map((p: { type: string; text?: string }) => p.type === 'text' ? (p.text ?? '') : '').join('') : '';
+        let themes: Array<{ name: string; description: string; imagePrompt: string }> = [];
+        try {
+          const parsed = JSON.parse(text);
+          themes = Array.isArray(parsed) ? parsed : (parsed.themes ?? []);
+        } catch {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to parse theme suggestions' });
+        }
+        return { themes };
+      }),
+
+    // Regenerate the hero image for a blog post with a chosen theme
+    regenerateBlogHeroImage: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        imagePrompt: z.string().min(10),
+        themeName: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: 'NOT_FOUND', message: 'Content item not found' });
+
+        // Generate the new hero image
+        let newImageUrl: string | undefined;
+        try {
+          const { url } = await generateImage({ prompt: input.imagePrompt });
+          newImageUrl = url;
+        } catch (err) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Image generation failed: ${err instanceof Error ? err.message : String(err)}` });
+        }
+
+        if (!newImageUrl) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Image generation returned no URL' });
+
+        // Update the content item with the new image
+        await updateContentItem(input.contentItemId, {
+          imageUrl: newImageUrl,
+          imagePrompt: input.imagePrompt,
+        });
+
+        return { imageUrl: newImageUrl, themeName: input.themeName ?? 'Custom' };
+      }),
+
     // Bulk validate all published blog posts and fix mismatched utm_campaign slugs
     bulkFixCampaigns: protectedProcedure
       .input(z.object({

@@ -40,6 +40,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 
 export type BufferProfile = {
   id: string;
@@ -54,6 +55,8 @@ type Props = {
   profiles: BufferProfile[];
   contentPlatform: string; // e.g. "meta", "linkedin", "tiktok"
   isPushing: boolean;
+  // DB-backed defaults: platform -> profileIds[]. If provided, used instead of localStorage.
+  dbDefaults?: Record<string, string[]>;
   onConfirm: (params: {
     selectedIds: string[];
     channelServiceMap: Record<string, string>;
@@ -93,19 +96,28 @@ const PLATFORM_NATIVE_SERVICES: Record<string, string[]> = {
 
 const LS_KEY = (platform: string) => `buffer-channel-sel-${platform}`;
 
-function loadSavedSelection(platform: string, profiles: BufferProfile[]): Set<string> {
+function loadSavedSelection(
+  platform: string,
+  profiles: BufferProfile[],
+  dbDefaults?: Record<string, string[]>
+): Set<string> {
+  // 1. Use DB-backed defaults if available
+  if (dbDefaults && dbDefaults[platform] && dbDefaults[platform].length > 0) {
+    const validIds = dbDefaults[platform].filter((id) => profiles.some((p) => p.id === id));
+    if (validIds.length > 0) return new Set(validIds);
+  }
+  // 2. Fall back to localStorage
   try {
     const raw = localStorage.getItem(LS_KEY(platform));
     if (raw) {
       const ids: string[] = JSON.parse(raw);
-      // Only keep IDs that are still connected
       const validIds = ids.filter((id) => profiles.some((p) => p.id === id));
       if (validIds.length > 0) return new Set(validIds);
     }
   } catch {
     // ignore parse errors
   }
-  // Default: pre-select native services for this platform
+  // 3. Default: pre-select native services for this platform
   const native = PLATFORM_NATIVE_SERVICES[platform] ?? [];
   const defaultIds = profiles
     .filter((p) => native.includes(p.service.toLowerCase()))
@@ -127,17 +139,18 @@ export function BufferChannelSelector({
   profiles,
   contentPlatform,
   isPushing,
+  dbDefaults,
   onConfirm,
 }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [metaPostType, setMetaPostType] = useState<"post" | "story" | "reel">("post");
 
-  // Load saved selection when dialog opens
+  // Load saved selection when dialog opens (DB defaults take priority over localStorage)
   useEffect(() => {
     if (open && profiles.length > 0) {
-      setSelected(loadSavedSelection(contentPlatform, profiles));
+      setSelected(loadSavedSelection(contentPlatform, profiles, dbDefaults));
     }
-  }, [open, contentPlatform, profiles]);
+  }, [open, contentPlatform, profiles, dbDefaults]);
 
   // Group profiles by service
   const grouped = profiles.reduce<Record<string, BufferProfile[]>>((acc, p) => {
@@ -201,9 +214,18 @@ export function BufferChannelSelector({
             <Send className="h-4 w-4 text-amber-600" />
             Choose Buffer Accounts
           </DialogTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Select which accounts this post goes to. Your selection is saved per platform.
-          </p>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs text-muted-foreground">
+              Select which accounts this post goes to.
+            </p>
+            <Link
+              href="/default-channels"
+              className="text-[11px] text-amber-600 hover:text-amber-700 underline-offset-2 hover:underline"
+              onClick={onClose}
+            >
+              Edit defaults
+            </Link>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">

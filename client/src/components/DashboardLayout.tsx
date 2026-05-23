@@ -109,6 +109,7 @@ const intelligenceItems = [
   { icon: Users, label: "Avatar", path: "/avatar" },
   { icon: BarChart3, label: "LLM Projects", path: "/llm-projects" },
   { icon: Settings, label: "WordPress Setup", path: "/wordpress-setup" },
+  { icon: Settings, label: "Default Channels", path: "/default-channels" },
   { icon: Inbox, label: "Ingest Inbox", path: "/ingest" },
   { icon: ShieldCheck, label: "Verified Links", path: "/verified-links" },
 ];

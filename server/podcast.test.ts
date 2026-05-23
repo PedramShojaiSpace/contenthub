@@ -49,22 +49,14 @@ const mockEpisode = {
  */
 function buildMockDb(episodes: typeof mockEpisode[]) {
   const whereChain = {
-    // Supports .where() → returns array directly OR supports further .orderBy()
-    where: vi.fn().mockImplementation(() => ({
-      // When called as a terminal (await db.select().from().where())
-      then: (resolve: (v: typeof episodes) => void) => resolve(episodes),
-      // When chained further (.orderBy())
-      orderBy: vi.fn().mockResolvedValue(episodes),
-      // Make it thenable so Drizzle's await works
-      [Symbol.toStringTag]: "Promise",
-    })),
+    // Supports .where() → returns a proper Promise that also supports .orderBy()
+    where: vi.fn().mockImplementation(() => {
+      const p = Promise.resolve(episodes) as Promise<typeof episodes> & { orderBy: ReturnType<typeof vi.fn> };
+      p.orderBy = vi.fn().mockResolvedValue(episodes);
+      return p;
+    }),
     orderBy: vi.fn().mockResolvedValue(episodes),
   };
-
-  // Make whereChain itself awaitable (for .where() used as terminal)
-  Object.assign(whereChain.where, {
-    then: undefined, // will be set per-call
-  });
 
   const fromChain = {
     from: vi.fn().mockReturnValue(whereChain),

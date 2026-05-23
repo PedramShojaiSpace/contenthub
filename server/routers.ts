@@ -2187,9 +2187,50 @@ CAPTION: [caption text]`;
 
         return result;
       }),
+
+    // Get the saved default channel IDs for all platforms
+    getChannelDefaults: protectedProcedure.query(async () => {
+      const { getDb } = await import("./db");
+      const { bufferChannelDefaults } = await import("../drizzle/schema");
+      const db = await getDb();
+      if (!db) return {} as Record<string, string[]>;
+      const rows = await db.select().from(bufferChannelDefaults);
+      // Return as a map: platform -> profileIds[]
+      const result: Record<string, string[]> = {};
+      for (const row of rows) {
+        try {
+          result[row.platform] = row.defaultProfileIds ? JSON.parse(row.defaultProfileIds) : [];
+        } catch {
+          result[row.platform] = [];
+        }
+      }
+      return result;
+    }),
+
+    // Save default channel IDs for a platform (upsert)
+    setChannelDefaults: protectedProcedure
+      .input(
+        z.object({
+          platform: z.string().min(1),
+          profileIds: z.array(z.string()),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { bufferChannelDefaults } = await import("../drizzle/schema");
+        const db = await getDb();
+        if (!db) throw new Error("Database unavailable");
+        const json = JSON.stringify(input.profileIds);
+        // Upsert: insert or update on duplicate platform key
+        await db
+          .insert(bufferChannelDefaults)
+          .values({ platform: input.platform, defaultProfileIds: json })
+          .onDuplicateKeyUpdate({ set: { defaultProfileIds: json } });
+        return { ok: true };
+      }),
   }),
 
-  // ─── Research Intelligence (Gumshoe AI) ──────────────────────────────────
+  // ─── Research Intelligence (Gumshoe AI) ─────────────────────────────────────────────────
   research: router({
     // List all uploaded reports
     listReports: protectedProcedure.query(async () => {

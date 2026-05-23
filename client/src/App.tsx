@@ -25,6 +25,7 @@ const WebinarIntelligencePage = lazy(() => import("./pages/WebinarIntelligence")
 const LLMProjects = lazy(() => import("./pages/LLMProjects"));
 const AvatarRepository = lazy(() => import("./pages/AvatarRepository"));
 const WordPressSetup = lazy(() => import("./pages/WordPressSetup"));
+const DefaultChannels = lazy(() => import("./pages/DefaultChannels"));
 const UTMGenerator = lazy(() => import("./pages/UTMGenerator"));
 const IngestInbox = lazy(() => import("./pages/IngestInbox"));
 const VerifiedLinks = lazy(() => import("./pages/VerifiedLinks"));
@@ -75,6 +76,7 @@ function Router() {
         <Route path={"/avatar-repository"} component={AvatarRepository} />
         <Route path={"/llm-projects"} component={LLMProjects} />
         <Route path={"/wordpress-setup"} component={WordPressSetup} />
+        <Route path={"/default-channels"} component={DefaultChannels} />
         <Route path={"/utm"} component={UTMGenerator} />
         <Route path={"/ingest"} component={IngestInbox} />
         <Route path={"/verified-links"} component={VerifiedLinks} />

@@ -3203,3 +3203,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Update BLOG_PROMPT: meta description hard limit tightened to 130-150 chars (was 140-155)
 - [x] Quality Gate updated with 7 numbered Yoast SEO checks
 - [x] All 378 tests passing
+
+## Yoast Prompt Round 3 + urlScrubber Fix (May 23, 2026)
+- [x] Embed keyphrase-in-first-paragraph rule directly into Section 1 structure instructions with ⚠️ warning
+- [x] Embed keyphrase-in-subheading rule directly into Section 3 and Section 5 structure instructions
+- [x] Raise keyphrase density minimum from 6 to 8 occurrences
+- [x] Tighten title character limit to 48-55 chars (down from 50-58)
+- [x] Tighten meta description to 130-150 chars with explicit 145-or-fewer guidance
+- [x] Fix internal links rule to require 3 links OR placeholders (not just links)
+- [x] Fix urlScrubber resolvePlaceholderLinks to always use best-available fallback instead of stripping to plain text (zero-link bug)
+- [x] All 378 tests passing

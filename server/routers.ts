@@ -2896,6 +2896,45 @@ Rules:
         return fields;
       }),
 
+    // Diagnostic: check whether the wp-yoast-rest-meta.php snippet is installed
+    // Returns { installed: boolean, metaKeys: string[], message: string }
+    checkYoastSnippet: protectedProcedure
+      .query(async () => {
+        const baseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+        const username = process.env.WORDPRESS_USERNAME ?? "";
+        const appPassword = process.env.WORDPRESS_APP_PASSWORD ?? "";
+        const authHeader = "Basic " + Buffer.from(`${username}:${appPassword}`).toString("base64");
+
+        // Fetch the most recent published post with edit context
+        const listRes = await fetch(
+          `${baseUrl}/wp-json/wp/v2/posts?per_page=1&status=publish&context=edit`,
+          { headers: { Authorization: authHeader } }
+        );
+        if (!listRes.ok) {
+          return { installed: false, metaKeys: [], message: `WordPress API error: ${listRes.status}` };
+        }
+        const posts = await listRes.json() as Array<{ id: number; meta?: Record<string, unknown> }>;
+        if (!posts || posts.length === 0) {
+          return { installed: false, metaKeys: [], message: "No published posts found to test against" };
+        }
+
+        const meta = posts[0].meta ?? {};
+        const metaKeys = Object.keys(meta);
+        const yoastKeys = ["_yoast_wpseo_focuskw", "_yoast_wpseo_metadesc", "_yoast_wpseo_title", "_yoast_wpseo_canonical"];
+        const installed = yoastKeys.some(k => metaKeys.includes(k));
+        const foundYoastKeys = metaKeys.filter(k => yoastKeys.includes(k));
+
+        return {
+          installed,
+          metaKeys,
+          foundYoastKeys,
+          message: installed
+            ? `Snippet installed. Yoast meta keys found: ${foundYoastKeys.join(", ")}`
+            : `Snippet NOT installed. Meta keys present: ${metaKeys.join(", ") || "(none)"}. ` +
+              `Add the snippet from docs/wordpress-yoast-rest-api-snippet.php to your WordPress functions.php.`,
+        };
+      }),
+
     // Update Yoast SEO fields on an already-published WordPress post
     updateYoast: protectedProcedure
       .input(z.object({

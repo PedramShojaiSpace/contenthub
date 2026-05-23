@@ -3041,3 +3041,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Fix Yoast focus keyphrase not pushing to WordPress: investigate whether the wp-yoast-rest-meta.php functions.php snippet is installed; if not, provide instructions; if yes, debug the REST meta field name used in updateWpPostYoast()
 - [ ] Wire pillar page URLs into keyword targets table: once the three pillar pages are live, go to /keyword-strategy and set publishedUrl on the pillar keyword targets (activates publish-back tracking so the tool knows the pillar is live)
 - [ ] Register weekly rank-snapshot heartbeat cron via manus-heartbeat CLI (platform create endpoint was returning 500 — retry after deploy; handler is at POST /api/scheduled/rank-snapshot)
+
+## Session Tasks (May 22, 2026 — Yoast + Pillar URLs + Heartbeat)
+
+- [x] Diagnose Yoast focus keyphrase push: confirmed snippet NOT installed on WordPress (no Yoast meta keys in REST API)
+- [x] Fix updateWpPostYoast() to send both yoast_meta and underscore-prefixed meta keys (dual approach, matches createWpPost)
+- [x] Add checkYoastSnippet diagnostic tRPC procedure (blog.checkYoastSnippet) — returns installed status + found meta keys
+- [x] Add live Yoast snippet status card to WordPressSetup page (green/amber indicator with Recheck button)
+- [x] Wire cortisol pillar URL: updated keyword_targets id=39 to real permalink https://theurbanmonk.com/cortisol-stress-reclaim-vitality-ckqp/
+- [x] Confirm gut health and sleep optimization pillar posts not yet published to WordPress (cluster posts exist, pillar pages still needed)
+- [ ] Install wp-yoast-rest-meta.php snippet in WordPress functions.php (see docs/wordpress-yoast-rest-api-snippet.php)
+- [ ] Publish gut health pillar page to WordPress, then set Published URL in /keyword-strategy
+- [ ] Publish sleep optimization pillar page to WordPress, then set Published URL in /keyword-strategy
+- [ ] Publish heavy metal detox pillar page to WordPress, then set Published URL in /keyword-strategy
+- [ ] Register rank-snapshot-weekly heartbeat cron (platform create endpoint returning 500 — use Settings → Schedules UI after deploy, or retry manus-heartbeat create)

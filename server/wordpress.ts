@@ -521,6 +521,12 @@ export async function fetchAllWpPosts(): Promise<WpPostSummary[]> {
 /**
  * Update Yoast SEO fields on an existing WordPress post without changing its content.
  * Used to backfill SEO metadata on already-published posts.
+ *
+ * Two-pronged approach (same as createWpPost):
+ * 1. `yoast_meta` top-level field — works if Yoast registers it (varies by version)
+ * 2. `meta` field with underscore-prefixed keys — works if the wp-yoast-rest-meta.php
+ *    snippet is installed in functions.php or mu-plugins/.
+ *    See: /home/ubuntu/lights-on-optin/docs/wordpress-yoast-rest-api-snippet.php
  */
 export async function updateWpPostYoast(params: {
   wpPostId: number;
@@ -528,18 +534,39 @@ export async function updateWpPostYoast(params: {
   metaDescription?: string;
   focusKeyword?: string;
   canonicalUrl?: string;
-}): Promise<{ success: boolean; postId: number }> {
+}): Promise<{ success: boolean; postId: number; snippetInstalled?: boolean }> {
   const { baseUrl, authHeader } = getWpAuth();
 
+  // Build both field name formats simultaneously
   const yoastMeta: Record<string, string> = {};
-  if (params.seoTitle) yoastMeta["yoast_wpseo_title"] = params.seoTitle;
-  if (params.metaDescription) yoastMeta["yoast_wpseo_metadesc"] = params.metaDescription;
-  if (params.focusKeyword) yoastMeta["yoast_wpseo_focuskw"] = params.focusKeyword;
-  if (params.canonicalUrl) yoastMeta["yoast_wpseo_canonical"] = params.canonicalUrl;
+  const yoastMetaUnderscore: Record<string, string> = {};
+
+  if (params.seoTitle) {
+    yoastMeta["yoast_wpseo_title"] = params.seoTitle;
+    yoastMetaUnderscore["_yoast_wpseo_title"] = params.seoTitle;
+  }
+  if (params.metaDescription) {
+    yoastMeta["yoast_wpseo_metadesc"] = params.metaDescription;
+    yoastMetaUnderscore["_yoast_wpseo_metadesc"] = params.metaDescription;
+  }
+  if (params.focusKeyword) {
+    yoastMeta["yoast_wpseo_focuskw"] = params.focusKeyword;
+    yoastMetaUnderscore["_yoast_wpseo_focuskw"] = params.focusKeyword;
+  }
+  if (params.canonicalUrl) {
+    yoastMeta["yoast_wpseo_canonical"] = params.canonicalUrl;
+    yoastMetaUnderscore["_yoast_wpseo_canonical"] = params.canonicalUrl;
+  }
 
   if (Object.keys(yoastMeta).length === 0) {
     return { success: true, postId: params.wpPostId };
   }
+
+  const body: Record<string, unknown> = {
+    yoast_meta: yoastMeta,
+    // meta field with underscore keys — only works after snippet is installed
+    meta: yoastMetaUnderscore,
+  };
 
   const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts/${params.wpPostId}`, {
     method: "POST",
@@ -547,7 +574,7 @@ export async function updateWpPostYoast(params: {
       Authorization: authHeader,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ yoast_meta: yoastMeta }),
+    body: JSON.stringify(body),
   }, 20_000);
 
   if (!res.ok) {
@@ -555,7 +582,34 @@ export async function updateWpPostYoast(params: {
     throw new Error(`WordPress Yoast update failed: ${errText.substring(0, 300)}`);
   }
 
-  return { success: true, postId: params.wpPostId };
+  // Verify whether the snippet is installed by checking if the focus keyword
+  // was actually written to the meta field
+  let snippetInstalled = false;
+  try {
+    const verifyRes = await wpFetch(
+      `${baseUrl}/wp-json/wp/v2/posts/${params.wpPostId}?context=edit`,
+      { headers: { Authorization: authHeader } },
+      10_000
+    );
+    if (verifyRes.ok) {
+      const verifyData = await verifyRes.json() as { meta?: Record<string, unknown> };
+      const writtenFocuskw = verifyData.meta?.["_yoast_wpseo_focuskw"];
+      snippetInstalled = !!(writtenFocuskw && writtenFocuskw === params.focusKeyword);
+      if (!snippetInstalled) {
+        console.warn(
+          `[WP] Yoast focus keyphrase NOT written to meta. ` +
+          `The wp-yoast-rest-meta.php snippet must be installed in functions.php. ` +
+          `See: /home/ubuntu/lights-on-optin/docs/wordpress-yoast-rest-api-snippet.php`
+        );
+      } else {
+        console.log(`[WP] Yoast SEO fields confirmed written for post ${params.wpPostId}`);
+      }
+    }
+  } catch {
+    // Non-fatal — verification failure doesn't block the update
+  }
+
+  return { success: true, postId: params.wpPostId, snippetInstalled };
 }
 
 /**

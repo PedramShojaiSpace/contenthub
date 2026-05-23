@@ -114,6 +114,8 @@ export default function WordPressSetup() {
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
 
+  const wpConnTest = trpc.blog.testWpConnection.useQuery(undefined, { enabled: false });
+
   // Live Yoast snippet status check
   const {
     data: yoastStatus,
@@ -140,20 +142,14 @@ export default function WordPressSetup() {
     setTestStatus("testing");
     setTestMessage("");
     try {
-      const res = await fetch("/api/trpc/blog.testWpConnection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ json: {} }),
-      });
-      const json = await res.json();
-      const result = json?.result?.data?.json;
-      if (result?.ok) {
+      const result = await wpConnTest.refetch();
+      const data = result.data;
+      if (data?.ok) {
         setTestStatus("ok");
-        setTestMessage(result.message ?? "WordPress is connected and responding.");
+        setTestMessage(data.message ?? "WordPress is connected and responding.");
       } else {
         setTestStatus("error");
-        setTestMessage(result?.message ?? "WordPress returned an unexpected response.");
+        setTestMessage(data?.message ?? "WordPress returned an unexpected response.");
       }
     } catch (err) {
       setTestStatus("error");

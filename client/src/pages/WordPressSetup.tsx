@@ -13,6 +13,8 @@ import {
   ChevronDown,
   ChevronRight,
   ArrowLeft,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -87,6 +89,16 @@ export default function WordPressSetup() {
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
 
+  // Live Yoast snippet status check
+  const {
+    data: yoastStatus,
+    isLoading: yoastLoading,
+    refetch: refetchYoast,
+    isFetching: yoastFetching,
+  } = trpc.blog.checkYoastSnippet.useQuery(undefined, {
+    staleTime: 30_000,
+  });
+
   const handleCopySnippet = () => {
     navigator.clipboard.writeText(FUNCTIONS_PHP_SNIPPET).then(() => {
       toast.success("Snippet copied to clipboard!");
@@ -135,6 +147,87 @@ export default function WordPressSetup() {
           <p className="text-sm text-muted-foreground">One-time setup to unlock full Yoast SEO field automation</p>
         </div>
       </div>
+
+      {/* ─── Yoast Snippet Status (live check) ─────────────────────────────── */}
+      <Card className={`border-2 ${
+        yoastLoading || yoastFetching
+          ? "border-border"
+          : yoastStatus?.installed
+          ? "border-green-500/40 bg-green-500/5"
+          : "border-amber-500/40 bg-amber-500/5"
+      }`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              {yoastLoading || yoastFetching ? (
+                <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : yoastStatus?.installed ? (
+                <ShieldCheck className="h-4 w-4 text-green-500" />
+              ) : (
+                <ShieldAlert className="h-4 w-4 text-amber-500" />
+              )}
+              Yoast Snippet Status
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => refetchYoast()}
+              disabled={yoastFetching}
+              className="h-7 text-xs gap-1.5"
+            >
+              <RefreshCw className={`h-3 w-3 ${yoastFetching ? "animate-spin" : ""}`} />
+              Recheck
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {yoastLoading ? (
+            <p className="text-sm text-muted-foreground">Checking WordPress REST API…</p>
+          ) : yoastStatus?.installed ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                Snippet is installed and working
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Yoast meta keys exposed via REST API:{" "}
+                <code className="bg-muted px-1 rounded text-xs">
+                  {yoastStatus.foundYoastKeys?.join(", ")}
+                </code>
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-500">
+                All future blog publishes will automatically set the focus keyphrase, meta description, and SEO title in Yoast.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                Snippet not yet installed
+              </p>
+              <p className="text-xs text-muted-foreground">
+                The WordPress REST API does not expose any Yoast meta keys. Focus keyphrase and meta description will not be pushed to Yoast until the snippet is added.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Current meta keys visible:{" "}
+                <code className="bg-muted px-1 rounded text-xs">
+                  {yoastStatus?.metaKeys?.join(", ") || "(none)"}
+                </code>
+              </p>
+              <div className="pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopySnippet}
+                  className="gap-2 h-8 text-xs border-amber-500/40 hover:bg-amber-500/10"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy Snippet to Clipboard
+                </Button>
+                <span className="ml-2 text-xs text-muted-foreground">then paste into functions.php (see steps below)</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Connection Status */}
       <Card className="border-border bg-card">

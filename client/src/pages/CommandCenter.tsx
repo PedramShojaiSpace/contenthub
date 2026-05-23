@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
+import { BufferChannelSelector } from "@/components/BufferChannelSelector";
 import {
   DndContext,
   DragEndEvent,
@@ -1195,6 +1196,9 @@ export default function CommandCenter() {
   const [isBatchBackfillingYoast, setIsBatchBackfillingYoast] = useState(false);
   const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
   const [bufferErrors, setBufferErrors] = useState<Record<number, string>>({});
+  // Buffer channel selector dialog state
+  const [channelSelectorItem, setChannelSelectorItem] = useState<ContentItem | null>(null);
+  const [showChannelSelector, setShowChannelSelector] = useState(false);
   const [wpPublishingId, setWpPublishingId] = useState<number | null>(null);
 
   // GA4 campaign auto-fix state
@@ -1406,37 +1410,46 @@ export default function CommandCenter() {
     tiktok: ["tiktok"],
   };
 
-  const handlePushToBuffer = (item: ContentItem, metaPostType?: "post" | "story" | "reel") => {
-    const services = PLATFORM_SERVICE_MAP[item.platform] ?? [];
-    const matchedProfiles = bufferProfiles.filter((p) =>
-      services.includes(p.service.toLowerCase())
-    );
-    if (matchedProfiles.length === 0) {
-      toast.error(`No Buffer channel found for platform "${item.platform}". Check your Buffer connections.`);
-      return;
-    }
+  // Open the channel selector dialog — actual push happens in handleChannelSelectorConfirm
+  const handlePushToBuffer = (item: ContentItem, _metaPostType?: "post" | "story" | "reel") => {
     if (!item.textContent && !item.title) {
       toast.error("This item has no text content to push.");
       return;
     }
-
-    // Build channelServiceMap so Buffer API receives the required metadata for Meta channels.
-    // Without this, Facebook/Instagram posts are rejected because Buffer requires a post type.
-    const channelServiceMap: Record<string, string> = {};
-    for (const pr of matchedProfiles) {
-      channelServiceMap[pr.id] = pr.service;
+    if (bufferProfiles.length === 0) {
+      toast.error("No Buffer accounts connected. Check your Buffer integration.");
+      return;
     }
+    setChannelSelectorItem(item);
+    setShowChannelSelector(true);
+  };
 
+  // Called when the user confirms their channel selection in the dialog
+  const handleChannelSelectorConfirm = (params: {
+    selectedIds: string[];
+    channelServiceMap: Record<string, string>;
+    metaPostType?: "post" | "story" | "reel";
+  }) => {
+    if (!channelSelectorItem) return;
+    const item = channelSelectorItem;
+    if (params.selectedIds.length === 0) {
+      toast.error("Select at least one account.");
+      return;
+    }
     setBufferPushingId(item.id);
     syndicationMutation.mutate({
       contentItemId: item.id,
       text: item.textContent ?? item.title,
-      profileIds: matchedProfiles.map((p) => p.id),
+      profileIds: params.selectedIds,
       imageUrl: item.imageUrl ?? undefined,
       platform: item.platform,
-      // Meta channels require a post type — default to "post" (standard feed post)
-      metaPostType: item.platform === "meta" ? (metaPostType ?? "post") : undefined,
-      channelServiceMap: item.platform === "meta" ? channelServiceMap : undefined,
+      metaPostType: item.platform === "meta" ? (params.metaPostType ?? "post") : undefined,
+      channelServiceMap: item.platform === "meta" ? params.channelServiceMap : undefined,
+    }, {
+      onSettled: () => {
+        setShowChannelSelector(false);
+        setChannelSelectorItem(null);
+      },
     });
   };
 
@@ -3593,6 +3606,18 @@ export default function CommandCenter() {
           </DialogContent>
         )}
       </Dialog>
+      {/* Buffer Channel Selector Dialog */}
+      <BufferChannelSelector
+        open={showChannelSelector}
+        onClose={() => {
+          setShowChannelSelector(false);
+          setChannelSelectorItem(null);
+        }}
+        profiles={bufferProfiles}
+        contentPlatform={channelSelectorItem?.platform ?? "meta"}
+        isPushing={channelSelectorItem ? bufferPushingId === channelSelectorItem.id : false}
+        onConfirm={handleChannelSelectorConfirm}
+      />
     </DashboardLayout>
   );
 }

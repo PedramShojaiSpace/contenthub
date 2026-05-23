@@ -58,7 +58,7 @@ import {
   upsertPlatformStrategy,
 } from "./db";
 import { getBufferProfiles, pushToBuffer, pushCarouselToBuffer } from "./buffer";
-import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, updateWpPostYoast, type WpPostSummary } from "./wordpress";
+import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, updateWpPostYoast, getWpYoastScore, type WpPostSummary } from "./wordpress";
 import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
 import {
   countAddressedGaps,
@@ -261,9 +261,9 @@ CRITICAL OUTPUT RULES:
 - Output ONLY a valid JSON object — nothing else, no preamble, no explanation, no markdown code fences
 - The JSON must have EXACTLY these fields:
   {
-    "title": "H1 headline — must contain the primary keyword, 50-58 chars MAX (Yoast pixel limit), use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
+    "title": "H1 headline — must contain the primary keyword. HARD LIMIT: 50-55 characters MAX including spaces (Yoast pixel limit is strict). Count every character. Example of a 54-char title: 'Fix Your Sleep Architecture Tonight' (36 chars — good). Use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
     "slug": "url-friendly-slug-max-60-chars — must contain the primary keyword",
-    "metaDescription": "140-155 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA. HARD LIMIT: never exceed 155 characters including spaces.",
+    "metaDescription": "130-150 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA. HARD LIMIT: never exceed 150 characters including spaces. Count every character including spaces before outputting. If it is 151+ characters, cut words until it is 150 or under.",
     "focusKeyword": "primary SEO keyword phrase (2-4 words) — MUST be a specific long-tail phrase the target audience types into Google. NEVER use a single-word or generic two-word head term (e.g. 'stress relief' is too broad — use 'qigong for stress relief' or 'nervous system regulation techniques'). The focus keyword must be unique to this article — do not reuse a keyphrase that would apply to multiple articles on the same site.",
     "semanticKeywords": ["3-5 semantic variant phrases that support the focus keyword — weave these naturally into H2s and body"],
     "hookFamily": "which of the 12 Hook Families was used for the title",
@@ -308,8 +308,11 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
    Use the faqSection field content here. Format: ## Frequently Asked Questions\\n[paste the FAQ content]. This section is critical for Google featured snippets and AI engine citation.
 
 SEO + AEO INTEGRATION RULES (non-negotiable):
-- H1 (title) must contain the primary focus keyword
-- KEYPHRASE DENSITY (Yoast minimum): The focus keyword or its close synonym must appear at least 6 times in the article body for a 1,600-2,200 word article. Distribute occurrences across: (1) first paragraph, (2) at least one H2, (3) the framework section, (4) the practical protocol section, (5) the transformation vision or closing, (6) the FAQ section. Do not cluster them — spread them naturally.
+- H1 (title) must contain the primary focus keyword. HARD LIMIT: title must be 50-58 characters INCLUDING spaces. Count every character. If your title is 59+ characters, shorten it before outputting.
+- KEYPHRASE IN INTRODUCTION (Yoast #1 check): The focus keyword or a close synonym MUST appear in the very FIRST sentence or second sentence of the article body. Not the third paragraph — the FIRST paragraph, ideally within the first two sentences. This is the single most important Yoast check. If the focus keyword is not in the first paragraph, Yoast will flag it red regardless of density elsewhere.
+- KEYPHRASE DENSITY (Yoast minimum): The focus keyword or its close synonym must appear at least 6 times in the article body for a 1,600-2,200 word article. Distribute occurrences across: (1) first paragraph, (2) at least one H2 heading, (3) the framework section, (4) the practical protocol section, (5) the transformation vision or closing, (6) the FAQ section. Do not cluster them — spread them naturally.
+- KEYPHRASE IN SUBHEADINGS (Yoast check): At least ONE H2 heading must contain the exact focus keyword or a very close synonym (e.g. if focus keyword is 'qigong for stress relief', an H2 like 'How Qigong for Stress Relief Resets Your Nervous System' passes). This is separate from the density check — it must be in a heading specifically.
+- INTERNAL LINKS (Yoast check): Include at least 3 internal links to other articles on theurbanmonk.com using URLs from the VERIFIED INTERNAL LINK LIST provided. Yoast flags posts with zero internal links as a red problem. If the provided list has fewer than 3 relevant URLs, use all available ones and add placeholder format for the rest.
 - Each H2 must either contain a semantic keyword variant OR be phrased as a question (PAA format)
 - Include a clear, direct answer to the core question within the first 300 words (woven into the opening hook — NOT as a separate TL;DR box or blockquote)
 - Use sequential H2/H3 heading structure — this increases AI citation odds by 2.8x
@@ -346,11 +349,13 @@ FORMATTING RULES (YOAST READABILITY — NON-NEGOTIABLE):
 QUALITY GATE (self-check before outputting):
 - Does the hook pass the 3-second scroll test? Specific, tensioned, relevant?
 - Is there ONE clear Big Idea the audience hasn't heard framed this way?
-- YOAST SEO CHECK: Does the focus keyword appear in the very first paragraph? (Red flag if not)
-- YOAST SEO CHECK: Does the focus keyword appear at least 6 times across the full article body? Count them.
-- YOAST SEO CHECK: Is the title 50-58 characters or fewer? Count the characters.
-- YOAST SEO CHECK: Is the meta description 140-155 characters? Count the characters.
-- YOAST SEO CHECK: Is the focus keyword a specific long-tail phrase (not a generic head term)?
+- YOAST SEO CHECK #1 (CRITICAL): Does the focus keyword appear in the FIRST SENTENCE or SECOND SENTENCE of the article body? If not, rewrite the opening.
+- YOAST SEO CHECK #2: Does the focus keyword appear at least 6 times across the full article body? Count them explicitly.
+- YOAST SEO CHECK #3: Does at least ONE H2 heading contain the focus keyword or a very close synonym?
+- YOAST SEO CHECK #4: Are there at least 3 internal links to theurbanmonk.com URLs from the provided list?
+- YOAST SEO CHECK #5: Is the title 50-55 characters or fewer? Count every character including spaces.
+- YOAST SEO CHECK #6: Is the meta description 130-150 characters? Count every character including spaces.
+- YOAST SEO CHECK #7: Is the focus keyword a specific long-tail phrase (not a generic head term)?
 - YOAST READABILITY CHECK: Is every prose block under 300 words before the next heading?
 - YOAST READABILITY CHECK: Is every paragraph under 150 words?
 - YOAST READABILITY CHECK: Do at least 30% of sentences use a transition word?
@@ -509,6 +514,29 @@ export const appRouter = router({
           input.items.map((item) => createContentItem(item))
         );
         return { created: created.length, ids: created.map((c) => (c as { id: number }).id) };
+      }),
+
+    /**
+     * Fetch the Yoast SEO score for a published blog post from the WordPress REST API.
+     * Stores the result in content_items.yoastScore and yoastScoreFetchedAt.
+     * Returns { seoScore, readabilityScore } where each is "good" | "ok" | "bad" | null.
+     */
+    fetchYoastScore: protectedProcedure
+      .input(z.object({ contentItemId: z.number() }))
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+        if (!item.wpPostId) throw new TRPCError({ code: "BAD_REQUEST", message: "No WordPress post ID — publish the post first" });
+
+        const { seoScore, readabilityScore } = await getWpYoastScore(item.wpPostId);
+
+        // Persist the SEO score (primary indicator shown on card)
+        await updateContentItem(input.contentItemId, {
+          yoastScore: seoScore ?? undefined,
+          yoastScoreFetchedAt: Date.now(),
+        });
+
+        return { seoScore, readabilityScore, fetchedAt: Date.now() };
       }),
   }),
   // ─── AI Generation ──────────────────────────────────────────────────────────
@@ -2781,6 +2809,25 @@ Return BOTH in this exact format:
           yoastMetaDescription: metaDesc,
         });
 
+        // Step 7b: Fire-and-forget Yoast score fetch (non-blocking)
+        // Yoast calculates the score when the post is opened in the editor, so
+        // the score may not be available immediately after publish. We attempt
+        // a fetch after a short delay; if it returns null, the user can refresh
+        // manually from the Kanban card.
+        setTimeout(async () => {
+          try {
+            const { seoScore } = await getWpYoastScore(post.id);
+            if (seoScore) {
+              await updateContentItem(publishInput.contentItemId, {
+                yoastScore: seoScore,
+                yoastScoreFetchedAt: Date.now(),
+              });
+            }
+          } catch {
+            // Non-fatal — score will be null until user refreshes manually
+          }
+        }, 5_000);
+
         // Step 8: Keyword Strategy publish-back
         // If this post was created from a keyword target, flip its status to "published"
         // and record the live URL so the Keyword Strategy dashboard shows it as done.
@@ -3632,6 +3679,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         }
         return { fixed, skipped, total: posts.length, results, dryRun: input.dryRun ?? false };
       }),
+
   }),
 
   personas: personasRouter,

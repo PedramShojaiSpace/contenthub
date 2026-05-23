@@ -84,6 +84,7 @@ import {
   Search,
   TrendingDown,
   MousePointerClick,
+  RotateCcw,
 } from "lucide-react";  
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -120,6 +121,9 @@ type ContentItem = {
   yoastSeoTitle: string | null;
   yoastMetaDescription: string | null;
   ctaBannerUrl: string | null;
+  yoastScore: string | null;
+  yoastScoreFetchedAt: number | null;
+  pushedChannels: string | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -857,6 +861,8 @@ function DraggableCard({
         {/* WordPress links — blog posts with a WP post ID */}
         {item.platform === "blog" && item.wpPostId && (
           <div className="flex flex-col gap-0.5 mt-1">
+            {/* Yoast SEO score badge */}
+            <YoastScoreBadge item={item} />
             <a
               href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${item.wpPostId}&action=edit`)}`}
               target="_blank"
@@ -1141,6 +1147,96 @@ function DroppableCalendarDay({
       </div>
       <div className="space-y-0.5">{children}</div>
     </div>
+  );
+}
+
+// ─── Yoast Score Badge ──────────────────────────────────────────────────────
+/**
+ * Displays a green/orange/red dot indicating the Yoast SEO score for a blog post.
+ * Fetches the score from the WordPress REST API on demand and caches it in the DB.
+ */
+function YoastScoreBadge({ item }: { item: ContentItem }) {
+  const fetchScore = trpc.content.fetchYoastScore.useMutation();
+  const utils = trpc.useUtils();
+
+  const score = item.yoastScore; // "good" | "ok" | "bad" | null
+  const fetchedAt = item.yoastScoreFetchedAt;
+
+  const scoreConfig = {
+    good: { dot: "bg-green-500", label: "Good", text: "text-green-600" },
+    ok:   { dot: "bg-amber-400", label: "OK",   text: "text-amber-600" },
+    bad:  { dot: "bg-red-500",   label: "Needs work", text: "text-red-600" },
+  } as const;
+
+  const config = score && score in scoreConfig
+    ? scoreConfig[score as keyof typeof scoreConfig]
+    : null;
+
+  const handleRefresh = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await fetchScore.mutateAsync({ contentItemId: item.id });
+      utils.content.list.invalidate();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to fetch Yoast score";
+      toast.error(msg);
+    }
+  };
+
+  const lastFetched = fetchedAt
+    ? new Date(fetchedAt).toLocaleString()
+    : null;
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className="flex items-center gap-1 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Score dot */}
+            {config ? (
+              <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${config.dot}`} />
+            ) : (
+              <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-muted-foreground/30" />
+            )}
+            <span className={`text-[10px] font-medium ${
+              config ? config.text : "text-muted-foreground/60"
+            }`}>
+              {config ? `Yoast: ${config.label}` : "Yoast: not scored"}
+            </span>
+            {/* Refresh button */}
+            <button
+              className="ml-0.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+              onClick={handleRefresh}
+              disabled={fetchScore.isPending}
+              title="Refresh Yoast score from WordPress"
+            >
+              {fetchScore.isPending
+                ? <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                : <RotateCcw className="h-2.5 w-2.5" />
+              }
+            </button>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-[10px] max-w-[200px]">
+          {config ? (
+            <div>
+              <p className="font-semibold">Yoast SEO Score: {config.label}</p>
+              {lastFetched && <p className="text-muted-foreground">Last checked: {lastFetched}</p>}
+              <p className="text-muted-foreground mt-0.5">Click ↺ to refresh from WordPress</p>
+            </div>
+          ) : (
+            <div>
+              <p>Yoast score not yet fetched.</p>
+              <p className="text-muted-foreground">Click ↺ to fetch from WordPress.</p>
+              <p className="text-muted-foreground mt-0.5">Score is calculated when the post is opened in the WP editor.</p>
+            </div>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

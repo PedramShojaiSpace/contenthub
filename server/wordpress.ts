@@ -264,20 +264,22 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
   const { baseUrl, authHeader } = getWpAuth();
 
   // JSON-LD schema injection strategy:
-  // WordPress strips <script> tags from Classic Editor post content, but it PRESERVES them
-  // inside Gutenberg <!-- wp:html --> raw HTML blocks. We append the schema blocks as
-  // raw HTML blocks at the very end of the post content so they survive sanitization.
-  // This is the standard approach used by Rank Math, SEOPress, and custom schema plugins.
+  // WordPress Classic Editor (wp_kses_post) strips bare <script> tags from post content.
+  // The correct approach is to NOT inject schema into post content at all — instead,
+  // Yoast SEO generates its own Article schema automatically from the focus keyword,
+  // SEO title, and meta description fields we set via the Yoast REST meta fields.
+  //
+  // For FAQ schema (which Yoast Free does not generate), we use a hidden div wrapper
+  // with a data attribute so the raw JSON is preserved in the DB but not rendered
+  // visibly. A small functions.php snippet can extract and output it in wp_head.
+  // If no snippet is installed, the FAQ schema is simply omitted — it's non-critical.
   let enrichedContent = input.content;
-  const schemaBlocks: string[] = [];
-  if (input.articleSchema) {
-    schemaBlocks.push(`<!-- wp:html -->\n${input.articleSchema}\n<!-- /wp:html -->`);
-  }
+  // Only inject FAQ schema (Article schema is handled by Yoast automatically)
   if (input.faqSchema) {
-    schemaBlocks.push(`<!-- wp:html -->\n${input.faqSchema}\n<!-- /wp:html -->`);
-  }
-  if (schemaBlocks.length > 0) {
-    enrichedContent = enrichedContent + "\n\n" + schemaBlocks.join("\n\n");
+    // Wrap in a hidden div so Classic Editor preserves the content without rendering it
+    // A functions.php snippet can extract this and output it in wp_head if desired.
+    // The div is aria-hidden and display:none so it never appears to readers.
+    enrichedContent = enrichedContent + `\n\n<div class="schema-faq-data" aria-hidden="true" style="display:none;">${input.faqSchema}</div>`;
   }
 
   const body: Record<string, unknown> = {
@@ -641,4 +643,55 @@ export function findRelevantPosts(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map((s) => s.post);
+}
+
+/**
+ * Fetch the Yoast SEO score for a published WordPress post.
+ * Reads the `_yoast_wpseo_linkdex` meta field (SEO score) via the WP REST API.
+ *
+ * Yoast stores the score as a letter grade:
+ *   "good"  → green  (score ≥ 71)
+ *   "ok"    → orange (score 41-70)
+ *   "bad"   → red    (score ≤ 40)
+ *   ""      → not yet calculated (post was never opened in the editor)
+ *
+ * Requires the wp-yoast-rest-meta.php snippet to be installed in functions.php.
+ * Returns null if the snippet is not installed or the post is not found.
+ */
+export async function getWpYoastScore(
+  wpPostId: number
+): Promise<{ seoScore: string | null; readabilityScore: string | null }> {
+  const { baseUrl, authHeader } = getWpAuth();
+  if (!baseUrl) return { seoScore: null, readabilityScore: null };
+
+  try {
+    const res = await wpFetch(
+      `${baseUrl}/wp-json/wp/v2/posts/${wpPostId}?context=edit`,
+      { headers: { Authorization: authHeader } },
+      10_000
+    );
+    if (!res.ok) return { seoScore: null, readabilityScore: null };
+
+    const data = await res.json() as { meta?: Record<string, unknown> };
+    const meta = data.meta ?? {};
+
+    // _yoast_wpseo_linkdex: SEO score ("good" | "ok" | "bad" | "")
+    const rawSeo = meta["_yoast_wpseo_linkdex"];
+    // _yoast_wpseo_content_score: Readability score ("good" | "ok" | "bad" | "")
+    const rawReadability = meta["_yoast_wpseo_content_score"];
+
+    const normalise = (v: unknown): string | null => {
+      if (typeof v !== "string" || v === "") return null;
+      const lower = v.toLowerCase();
+      if (["good", "ok", "bad"].includes(lower)) return lower;
+      return null;
+    };
+
+    return {
+      seoScore: normalise(rawSeo),
+      readabilityScore: normalise(rawReadability),
+    };
+  } catch {
+    return { seoScore: null, readabilityScore: null };
+  }
 }

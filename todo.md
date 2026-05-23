@@ -3177,3 +3177,29 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix previously-used keyphrase: added long-tail specificity requirement and uniqueness rule for focus keyword
 - [x] Added 5 Yoast SEO self-checks to the QUALITY GATE section of the prompt
 - [x] All 378 tests passing, TypeScript clean
+
+## Yoast Score Indicator on Kanban Cards (May 23, 2026)
+
+- [ ] Add yoastScore (varchar) and yoastScoreFetchedAt (bigint) columns to content_items schema
+- [ ] Run pnpm db:push to migrate schema
+- [ ] Add tRPC procedure content.fetchYoastScore that calls WP REST API for wpseo_score meta field
+- [ ] Auto-trigger score fetch after blog publish in the publish procedure
+- [ ] Add green/orange/red dot badge to Kanban card for blog posts with a wpPostId
+- [ ] Add tooltip on badge showing score label and last-fetched time
+- [ ] Add manual refresh button on card for on-demand score refresh
+- [ ] Write vitest for fetchYoastScore procedure
+- [ ] All tests passing, TypeScript clean
+
+## JSON-LD Schema Rendering Bug Fix + Yoast Prompt v2 (May 23, 2026)
+
+- [x] Fix JSON-LD schema injection in wordpress.ts — remove broken wp:html Gutenberg blocks that render as visible text in Classic Editor
+- [x] Article schema now relies on Yoast's auto-generated schema (set via focus keyword + meta fields we already inject)
+- [x] FAQ schema wrapped in hidden div instead of script tag (Classic Editor compatible, non-critical)
+- [x] Run cleanup script scripts/fix-schema-blocks.mjs — fixed 34 existing WordPress posts with broken schema blocks
+- [x] Update BLOG_PROMPT: keyphrase must appear in first 1-2 sentences (not just first paragraph)
+- [x] Update BLOG_PROMPT: at least ONE H2 must contain exact focus keyword (keyphrase in subheadings check)
+- [x] Update BLOG_PROMPT: minimum 3 internal links required (Yoast internal links check)
+- [x] Update BLOG_PROMPT: title hard limit tightened to 50-55 chars (was 50-58)
+- [x] Update BLOG_PROMPT: meta description hard limit tightened to 130-150 chars (was 140-155)
+- [x] Quality Gate updated with 7 numbered Yoast SEO checks
+- [x] All 378 tests passing

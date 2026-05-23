@@ -3146,3 +3146,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Update keyword_targets id=20 (sleep optimization) with published URL
 - [x] All 4 pillar pages now published and wired: gut health ✅, sleep optimization ✅, cortisol ✅, heavy metal detox ✅
 - [x] Deleted duplicate WP post 9739 (first run artifact)
+
+## Default Channels → CreationStudio Wiring (May 23, 2026)
+
+- [x] Add getChannelDefaults query to CreationStudio
+- [x] Add useEffect to initialise selectedProfileIds from DB defaults when platform or profiles change
+- [x] Update handleSyndicateDirect to use DB defaults instead of blindly selecting all matching profiles
+- [x] Add "Edit defaults" link to Buffer Syndication panel header in CreationStudio
+- [x] Add Link import from wouter to CreationStudio
+- [x] Increase vitest global testTimeout to 15s to prevent podcast test flakiness in parallel runs
+- [x] All 378 tests passing, TypeScript clean (0 errors)

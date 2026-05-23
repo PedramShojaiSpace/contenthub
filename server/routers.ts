@@ -263,7 +263,7 @@ CRITICAL OUTPUT RULES:
   {
     "title": "H1 headline — must contain the primary keyword. HARD LIMIT: 50-55 characters MAX including spaces (Yoast pixel limit is strict). Count every character. Example of a 54-char title: 'Fix Your Sleep Architecture Tonight' (36 chars — good). Use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
     "slug": "url-friendly-slug-max-60-chars — must contain the primary keyword",
-    "metaDescription": "130-150 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA. HARD LIMIT: never exceed 150 characters including spaces. Count every character including spaces before outputting. If it is 151+ characters, cut words until it is 150 or under.",
+    "metaDescription": "130-150 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA. HARD LIMIT: never exceed 150 characters including spaces. Count every character including spaces before outputting. If it is 151+ characters, cut words until it is 150 or under. Yoast's pixel limit is 156 chars — aim for 145 or fewer to be safe.",
     "focusKeyword": "primary SEO keyword phrase (2-4 words) — MUST be a specific long-tail phrase the target audience types into Google. NEVER use a single-word or generic two-word head term (e.g. 'stress relief' is too broad — use 'qigong for stress relief' or 'nervous system regulation techniques'). The focus keyword must be unique to this article — do not reuse a keyphrase that would apply to multiple articles on the same site.",
     "semanticKeywords": ["3-5 semantic variant phrases that support the focus keyword — weave these naturally into H2s and body"],
     "hookFamily": "which of the 12 Hook Families was used for the title",
@@ -280,7 +280,7 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
 
 1. OPENING HOOK (2-3 paragraphs, 200-250 words):
    Select hook from the 12 families based on emotional driver. Start with the painful truth — a provocative statement, a surprising statistic, or a brief patient story. Establish the problem viscerally. Make the reader feel seen. End with a bridge sentence that promises real answers. The first sentence must pass the 3-second scroll test: specific, tensioned, relevant.
-   YOAST KEYPHRASE-IN-INTRO RULE (non-negotiable): The focus keyword or a close natural synonym MUST appear in the very first paragraph of the article body. This is Yoast's highest-priority SEO check. Weave it in naturally — do not force it awkwardly, but it must be there. Example: if the focus keyword is "qigong for stress relief", the first paragraph must contain the phrase "qigong" and "stress" or "stress relief" in close proximity.
+   ⚠️ YOAST HARD RULE — KEYPHRASE IN FIRST PARAGRAPH: The EXACT focus keyword (or a one-word variation) MUST appear in the FIRST paragraph of the article body — not the second, not the third. The FIRST paragraph. This is Yoast's single highest-priority check. If you write a pain-narrative first paragraph, you MUST include the focus keyword in it. Example: if the focus keyword is 'qigong for digestion', the first paragraph must contain 'qigong for digestion' or 'digestive qigong' or 'qigong and digestion'. There is no exception to this rule — the narrative hook and the keyphrase must coexist in the first paragraph.
 
 2. KEY TAKEAWAYS (immediately after the opening hook, before the first H2):
    Output a Markdown block that begins with the exact heading: ## Key Takeaways
@@ -288,12 +288,13 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
 
 3. THE HIDDEN PROBLEM — WHY THIS IS HAPPENING (1 H2, 2-3 paragraphs, 200-250 words):
    H2 must contain a semantic keyword and answer a PAA-style question. Diagnose the root cause — the biology, physiology, Taoist or functional medicine lens. Name the surface symptom, reveal the root cause, explain the mechanism, validate their effort. This earns the right to teach.
+   ⚠️ YOAST SUBHEADING RULE: At least ONE of the H2 headings in sections 3, 4, or 5 MUST contain the exact focus keyword or a very close synonym (e.g. if focus keyword is 'qigong for digestion', an H2 like 'How Qigong for Digestion Heals Your Gut-Brain Axis' passes). This is mandatory — Yoast checks every H2 and H3 for the focus keyword.
 
 4. WHAT MOST PEOPLE GET WRONG (1 H2, 2-3 paragraphs, 200-250 words):
    H2 must contain a semantic keyword. Use the 3-Mistake Pattern: (1) the Tactic mistake — what they're doing that doesn't work, (2) the Mindset mistake — what false belief holds them back, (3) the System mistake — what process or structure is missing. Challenge mainstream medicine AND the wellness industry. Be specific. Be bold.
 
 5. THE FRAMEWORK — [GIVE IT A MEMORABLE NAME] (1-2 H2 sections, 3-4 paragraphs each, 300-400 words):
-   H2 must contain the focus keyword or a semantic variant. Name the framework (e.g. "The 3-Gate Protocol" or "The Upstream Reset Method"). For each step: give it a memorable name, teach the core concept, name the common mistake, give a mini-example. Include specific actionable practices — Qigong, breathwork, dietary shifts, supplement protocols, sleep hygiene, nervous system regulation. Reference Pedram's books or podcast episodes naturally as proof.
+   ⚠️ YOAST SUBHEADING RULE: The H2 for this framework section MUST contain the exact focus keyword. This is the most natural place to put it. Example: if focus keyword is 'qigong for digestion', name the section '## The Qigong for Digestion Framework: Three Pillars of Gut Healing'. Name the framework (e.g. "The 3-Gate Protocol" or "The Upstream Reset Method"). For each step: give it a memorable name, teach the core concept, name the common mistake, give a mini-example. Include specific actionable practices — Qigong, breathwork, dietary shifts, supplement protocols, sleep hygiene, nervous system regulation. Reference Pedram's books or podcast episodes naturally as proof.
 
 6. PRACTICAL PROTOCOL (1 H2, 2-3 paragraphs, 150-200 words):
    H2 must be a question (e.g. "How Do You Start This Week?"). Give 3-5 numbered concrete steps. Be specific — not "reduce stress" but "practice 5 minutes of Qigong before breakfast for 30 days."
@@ -308,11 +309,11 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
    Use the faqSection field content here. Format: ## Frequently Asked Questions\\n[paste the FAQ content]. This section is critical for Google featured snippets and AI engine citation.
 
 SEO + AEO INTEGRATION RULES (non-negotiable):
-- H1 (title) must contain the primary focus keyword. HARD LIMIT: title must be 50-58 characters INCLUDING spaces. Count every character. If your title is 59+ characters, shorten it before outputting.
+- H1 (title) must contain the primary focus keyword. HARD LIMIT: title must be 50-55 characters INCLUDING spaces. Count every character. Yoast uses pixel width not character count — colons, capital letters, and wide characters (W, M) consume more pixels. To be safe, aim for 48-52 characters. If your title is 56+ characters, shorten it before outputting. Example safe titles: 'Qigong for Digestion: Heal Your Gut' (36 chars ✓), 'Fix Your Sleep Architecture Tonight' (35 chars ✓).
 - KEYPHRASE IN INTRODUCTION (Yoast #1 check): The focus keyword or a close synonym MUST appear in the very FIRST sentence or second sentence of the article body. Not the third paragraph — the FIRST paragraph, ideally within the first two sentences. This is the single most important Yoast check. If the focus keyword is not in the first paragraph, Yoast will flag it red regardless of density elsewhere.
-- KEYPHRASE DENSITY (Yoast minimum): The focus keyword or its close synonym must appear at least 6 times in the article body for a 1,600-2,200 word article. Distribute occurrences across: (1) first paragraph, (2) at least one H2 heading, (3) the framework section, (4) the practical protocol section, (5) the transformation vision or closing, (6) the FAQ section. Do not cluster them — spread them naturally.
+- KEYPHRASE DENSITY (Yoast minimum): The focus keyword or its close synonym must appear at least 8 times in the article body. Yoast's minimum is 0.5% density — for a 1,600-2,200 word article that means 8-11 occurrences. Distribute occurrences across: (1) first paragraph, (2) at least one H2 heading, (3) the hidden problem section, (4) the framework section, (5) the practical protocol section, (6) the transformation vision, (7) the closing/CTA, (8) the FAQ section. Do not cluster them — spread them naturally. After writing the article, count the occurrences explicitly and add more if below 8.
 - KEYPHRASE IN SUBHEADINGS (Yoast check): At least ONE H2 heading must contain the exact focus keyword or a very close synonym (e.g. if focus keyword is 'qigong for stress relief', an H2 like 'How Qigong for Stress Relief Resets Your Nervous System' passes). This is separate from the density check — it must be in a heading specifically.
-- INTERNAL LINKS (Yoast check): Include at least 3 internal links to other articles on theurbanmonk.com using URLs from the VERIFIED INTERNAL LINK LIST provided. Yoast flags posts with zero internal links as a red problem. If the provided list has fewer than 3 relevant URLs, use all available ones and add placeholder format for the rest.
+- INTERNAL LINKS (Yoast check — RED FLAG if missing): Include at least 3 internal links to other articles on theurbanmonk.com. Use URLs from the VERIFIED INTERNAL LINK LIST provided in the user message. If the list has 3+ relevant URLs, use them with descriptive anchor text. If the list has fewer than 3 relevant URLs, use ALL available ones AND add [INTERNAL LINK: topic] placeholders for the remainder. CRITICAL: You MUST output at least 3 internal link references (real URLs or placeholders). Zero internal links = guaranteed Yoast red flag. The urlScrubber will resolve placeholders automatically — just make sure they are present in the article.
 - Each H2 must either contain a semantic keyword variant OR be phrased as a question (PAA format)
 - Include a clear, direct answer to the core question within the first 300 words (woven into the opening hook — NOT as a separate TL;DR box or blockquote)
 - Use sequential H2/H3 heading structure — this increases AI citation odds by 2.8x
@@ -350,11 +351,11 @@ QUALITY GATE (self-check before outputting):
 - Does the hook pass the 3-second scroll test? Specific, tensioned, relevant?
 - Is there ONE clear Big Idea the audience hasn't heard framed this way?
 - YOAST SEO CHECK #1 (CRITICAL): Does the focus keyword appear in the FIRST SENTENCE or SECOND SENTENCE of the article body? If not, rewrite the opening.
-- YOAST SEO CHECK #2: Does the focus keyword appear at least 6 times across the full article body? Count them explicitly.
+- YOAST SEO CHECK #2: Does the focus keyword appear at least 8 times across the full article body? Count them explicitly. If below 8, add more occurrences before outputting.
 - YOAST SEO CHECK #3: Does at least ONE H2 heading contain the focus keyword or a very close synonym?
 - YOAST SEO CHECK #4: Are there at least 3 internal links to theurbanmonk.com URLs from the provided list?
-- YOAST SEO CHECK #5: Is the title 50-55 characters or fewer? Count every character including spaces.
-- YOAST SEO CHECK #6: Is the meta description 130-150 characters? Count every character including spaces.
+- YOAST SEO CHECK #5: Is the title 48-55 characters or fewer? Count every character including spaces. If 56+, shorten it.
+- YOAST SEO CHECK #6: Is the meta description 130-150 characters? Count every character including spaces. If 151+, cut words until it is 150 or under. Yoast's hard cutoff is 156 chars — stay well under it.
 - YOAST SEO CHECK #7: Is the focus keyword a specific long-tail phrase (not a generic head term)?
 - YOAST READABILITY CHECK: Is every prose block under 300 words before the next heading?
 - YOAST READABILITY CHECK: Is every paragraph under 150 words?

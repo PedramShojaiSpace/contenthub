@@ -135,9 +135,18 @@ export function resolvePlaceholderLinks(
       return `[${bestPost.title}](${bestPost.url})`;
     }
 
-    // No good match — strip the placeholder, leave the topic as plain text
+    // Score was below minScore but we still have a best candidate — use it as a fallback
+    // rather than stripping the link entirely. Stripping produces zero internal links which
+    // is a guaranteed Yoast red flag. Any relevant internal link is better than none.
+    if (bestPost && scoredPosts.length > 0) {
+      resolved.push({ topic, url: bestPost.url, title: bestPost.title });
+      console.log(`[LinkResolver] Fallback resolved "${topic}" → ${bestPost.url} (score: ${bestScore})`);
+      return `[${bestPost.title}](${bestPost.url})`;
+    }
+
+    // Truly no posts available — strip the placeholder, leave the topic as plain text
     stripped.push(topic);
-    console.log(`[LinkResolver] No match for "${topic}" (best score: ${bestScore}) — stripped`);
+    console.log(`[LinkResolver] No posts available for "${topic}" — stripped`);
     return topic;
   });
 

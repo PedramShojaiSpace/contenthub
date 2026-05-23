@@ -1297,6 +1297,10 @@ export default function CommandCenter() {
   const [showChannelSelector, setShowChannelSelector] = useState(false);
   const [wpPublishingId, setWpPublishingId] = useState<number | null>(null);
 
+  // Yoast pre-flight warning state
+  const [yoastPreflightItem, setYoastPreflightItem] = useState<ContentItem | null>(null);
+  const [showYoastWarning, setShowYoastWarning] = useState(false);
+
   // GA4 campaign auto-fix state
   const [campaignWarning, setCampaignWarning] = useState<string | null>(null);
   const [showCampaignFix, setShowCampaignFix] = useState(false);
@@ -1584,29 +1588,22 @@ export default function CommandCenter() {
     },
   });
 
-  const handlePublishToWP = (item: ContentItem) => {
-    if (!item.textContent) {
-      toast.error("This post has no content yet. Generate the blog post first.");
-      return;
-    }
+  // Proceed with the actual WP publish after pre-flight check is passed
+  const doPublishToWP = (item: ContentItem) => {
     setWpPublishingId(item.id);
     const previousStatus = item.status as "idea" | "pending_approval" | "drafting" | "review" | "approved" | "scheduled" | "published";
     const slug = item.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80);
-    // Parse seoKeywords from JSON string if present
     let semanticKeywords: string[] | undefined;
     try {
       if (item.seoKeywords) semanticKeywords = JSON.parse(item.seoKeywords);
     } catch { /* ignore */ }
-
-    // Optimistically move the card to Published immediately
     changeStatusMutation.mutate({ id: item.id, status: "published" });
-
     wpPublishMutation.mutate(
       {
         contentItemId: item.id,
         title: item.title,
         slug,
-        body: item.textContent,
+        body: item.textContent!,
         heroImageUrl: item.imageUrl ?? undefined,
         status: "draft",
         focusKeyword: item.focusKeyword ?? undefined,
@@ -1626,12 +1623,26 @@ export default function CommandCenter() {
         },
         onError: (err) => {
           setWpPublishingId(null);
-          // Roll back the optimistic status update on failure
           changeStatusMutation.mutate({ id: item.id, status: previousStatus });
           toast.error("WordPress publish failed: " + err.message);
         },
       }
     );
+  };
+
+  const handlePublishToWP = (item: ContentItem) => {
+    if (!item.textContent) {
+      toast.error("This post has no content yet. Generate the blog post first.");
+      return;
+    }
+    // Yoast pre-flight: warn if score is bad or not yet fetched
+    const score = item.yoastScore;
+    if (score === "bad" || score === null) {
+      setYoastPreflightItem(item);
+      setShowYoastWarning(true);
+      return;
+    }
+    doPublishToWP(item);
   };
 
   const handleRegenerate = (item: ContentItem) => {
@@ -3716,6 +3727,65 @@ export default function CommandCenter() {
         dbDefaults={bufferChannelDefaults}
         onConfirm={handleChannelSelectorConfirm}
       />
+
+      {/* Yoast Pre-Flight Warning Dialog */}
+      <Dialog open={showYoastWarning} onOpenChange={(open) => { if (!open) { setShowYoastWarning(false); setYoastPreflightItem(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Yoast SEO Pre-Flight Check
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {yoastPreflightItem && (
+              <>
+                <div className="rounded-lg border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-800 space-y-2">
+                  <p className="font-medium">
+                    {yoastPreflightItem.yoastScore === "bad"
+                      ? "This post has a \"Bad\" Yoast SEO score."
+                      : "This post has not been scored by Yoast yet."}
+                  </p>
+                  <p className="text-amber-700">
+                    {yoastPreflightItem.yoastScore === "bad"
+                      ? "Publishing with a bad score may hurt search rankings. Common issues: keyphrase not in introduction, low density, missing internal links, or title too long."
+                      : "The Yoast score is fetched automatically after publishing. If this is a new draft, consider regenerating it with the updated prompt first."}
+                  </p>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Post: <span className="font-medium text-foreground">{yoastPreflightItem.title}</span>
+                </div>
+              </>
+            )}
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowYoastWarning(false);
+                  setYoastPreflightItem(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => {
+                  if (yoastPreflightItem) {
+                    setShowYoastWarning(false);
+                    doPublishToWP(yoastPreflightItem);
+                    setYoastPreflightItem(null);
+                  }
+                }}
+              >
+                Publish Anyway
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

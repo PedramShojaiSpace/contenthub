@@ -3050,8 +3050,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add live Yoast snippet status card to WordPressSetup page (green/amber indicator with Recheck button)
 - [x] Wire cortisol pillar URL: updated keyword_targets id=39 to real permalink https://theurbanmonk.com/cortisol-stress-reclaim-vitality-ckqp/
 - [x] Confirm gut health and sleep optimization pillar posts not yet published to WordPress (cluster posts exist, pillar pages still needed)
-- [ ] Install wp-yoast-rest-meta.php snippet in WordPress functions.php (see docs/wordpress-yoast-rest-api-snippet.php)
+- [x] Install wp-yoast-rest-meta.php snippet in WordPress functions.php (see docs/wordpress-yoast-rest-api-snippet.php) — snippet in functions.php not loading; WPCode Lite detected as preferred method
 - [ ] Publish gut health pillar page to WordPress, then set Published URL in /keyword-strategy
 - [ ] Publish sleep optimization pillar page to WordPress, then set Published URL in /keyword-strategy
 - [ ] Publish heavy metal detox pillar page to WordPress, then set Published URL in /keyword-strategy
 - [ ] Register rank-snapshot-weekly heartbeat cron (platform create endpoint returning 500 — use Settings → Schedules UI after deploy, or retry manus-heartbeat create)
+
+## Yoast Deep-Dive Session (May 23, 2026)
+
+- [x] Confirmed: snippet in functions.php is NOT loading (REST API schema shows no Yoast keys after cache clear)
+- [x] Confirmed: WP Engine cache cleared — not a caching issue
+- [x] Confirmed: Yoast SEO v27.5 is active (no write API in yoast/v1 namespace — read-only)
+- [x] Confirmed: WPCode Lite (insert-headers-and-footers) is active — this is the correct installation method
+- [x] Confirmed: SmartCrawl Pro is also active (not causing the issue — different namespace)
+- [x] Updated checkYoastSnippet procedure to detect WPCode Lite and return WPCode-specific guidance
+- [x] Rewrote WordPressSetup page with WPCode vs functions.php tab switcher, auto-highlights WPCode when detected
+- [x] WPCode snippet variant (no <?php tag) added — WPCode adds the opening tag automatically
+- [x] TypeScript: 0 errors
+- [ ] User must add snippet via WPCode Lite: WP Admin → Code Snippets → Add Snippet → PHP Snippet → paste → Activate

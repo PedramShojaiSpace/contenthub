@@ -15,23 +15,13 @@ import {
   ArrowLeft,
   ShieldCheck,
   ShieldAlert,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-const FUNCTIONS_PHP_SNIPPET = `<?php
-/**
- * The Urban Monk — Yoast SEO REST API Field Exposure
- *
- * Paste this snippet into your WordPress theme's functions.php file
- * (or into a custom plugin / Code Snippets plugin).
- *
- * PURPOSE: Yoast SEO (free) does not expose its meta fields to the WordPress
- * REST API by default. This snippet registers them as REST-readable and
- * REST-writable, allowing content.theurbanmonk.com to automatically populate
- * all Yoast SEO fields when publishing blog posts — no manual entry required.
- */
-add_action( 'rest_api_init', function () {
+// The snippet — no <?php opening tag, WPCode adds that automatically
+const WPCODE_SNIPPET = `add_action( 'rest_api_init', function () {
     $yoast_fields = [
         '_yoast_wpseo_focuskw'   => 'Focus Keyphrase for Yoast SEO',
         '_yoast_wpseo_metadesc'  => 'Meta Description for Yoast SEO',
@@ -52,7 +42,41 @@ add_action( 'rest_api_init', function () {
     }
 } );`;
 
-const STEPS = [
+// Full snippet with PHP opening tag for functions.php
+const FUNCTIONS_PHP_SNIPPET = `<?php
+${WPCODE_SNIPPET}`;
+
+const WPCODE_STEPS = [
+  {
+    number: 1,
+    title: "Open WPCode Lite",
+    description: "In your WordPress admin, go to Code Snippets → Add Snippet.",
+    link: "https://theurbanmonk.com/wp-admin/admin.php?page=wpcode-snippet-manager&custom_snippet=1",
+    linkLabel: "Open WPCode → Add Snippet",
+  },
+  {
+    number: 2,
+    title: "Set snippet type to PHP",
+    description: "Click \"Add Your Custom Code (New Snippet)\" and select PHP Snippet as the code type.",
+  },
+  {
+    number: 3,
+    title: "Paste the snippet",
+    description: "Give it a name like \"Yoast REST API Fields\", paste the snippet below into the code box, and set the insertion location to \"Run Everywhere\".",
+  },
+  {
+    number: 4,
+    title: "Activate and save",
+    description: "Toggle the snippet to Active and click Save Snippet. No restart needed — takes effect immediately.",
+  },
+  {
+    number: 5,
+    title: "Click Recheck above",
+    description: "Come back here and click the Recheck button. The status card should turn green within seconds.",
+  },
+];
+
+const FUNCTIONS_PHP_STEPS = [
   {
     number: 1,
     title: "Open WordPress Admin",
@@ -62,30 +86,31 @@ const STEPS = [
   },
   {
     number: 2,
-    title: "Navigate to Theme Editor",
-    description: "Go to Appearance → Theme File Editor. If you don't see this, use the Code Snippets plugin instead (safer option).",
+    title: "Navigate to Theme File Editor",
+    description: "Go to Appearance → Theme File Editor. Active theme is Hello Elementor.",
     link: "https://theurbanmonk.com/wp-admin/theme-editor.php",
     linkLabel: "Open Theme Editor →",
   },
   {
     number: 3,
     title: "Open functions.php",
-    description: "In the right sidebar, click on 'functions.php' (or your child theme's functions.php if you have one).",
+    description: "In the right sidebar, click on 'functions.php' for the Hello Elementor theme.",
   },
   {
     number: 4,
     title: "Paste the snippet",
-    description: "Scroll to the bottom of the file and paste the snippet below. Click 'Update File' to save.",
+    description: "Scroll to the very bottom of the file and paste the full snippet (including the <?php tag if the file doesn't already end with PHP code). Click 'Update File' to save.",
   },
   {
     number: 5,
-    title: "Done — no restart needed",
-    description: "WordPress REST API changes take effect immediately. All future blog publishes from this platform will automatically populate all Yoast fields.",
+    title: "Click Recheck above",
+    description: "Come back here and click the Recheck button. The status card should turn green within seconds.",
   },
 ];
 
 export default function WordPressSetup() {
   const [snippetExpanded, setSnippetExpanded] = useState(true);
+  const [useWpCode, setUseWpCode] = useState(true);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
 
@@ -99,8 +124,14 @@ export default function WordPressSetup() {
     staleTime: 30_000,
   });
 
+  // Auto-select WPCode tab if WPCode is detected
+  const wpCodeDetected = yoastStatus?.wpCodeActive ?? false;
+  const activeSteps = useWpCode ? WPCODE_STEPS : FUNCTIONS_PHP_STEPS;
+  const snippetToCopy = useWpCode ? WPCODE_SNIPPET : FUNCTIONS_PHP_SNIPPET;
+  const snippetLabel = useWpCode ? "WPCode Snippet (no <?php needed)" : "functions.php Snippet (includes <?php)";
+
   const handleCopySnippet = () => {
-    navigator.clipboard.writeText(FUNCTIONS_PHP_SNIPPET).then(() => {
+    navigator.clipboard.writeText(snippetToCopy).then(() => {
       toast.success("Snippet copied to clipboard!");
     });
   };
@@ -186,7 +217,7 @@ export default function WordPressSetup() {
           ) : yoastStatus?.installed ? (
             <div className="space-y-2">
               <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                Snippet is installed and working
+                ✓ Snippet is active and working
               </p>
               <p className="text-xs text-muted-foreground">
                 Yoast meta keys exposed via REST API:{" "}
@@ -199,34 +230,162 @@ export default function WordPressSetup() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                Snippet not yet installed
+                Snippet not yet active in WordPress REST API
               </p>
               <p className="text-xs text-muted-foreground">
-                The WordPress REST API does not expose any Yoast meta keys. Focus keyphrase and meta description will not be pushed to Yoast until the snippet is added.
+                The WordPress REST API does not expose any Yoast meta keys. The snippet code is correct — it just needs to be added via one of the methods below.
               </p>
+              {wpCodeDetected && (
+                <div className="flex items-start gap-2 rounded-md bg-blue-500/10 border border-blue-500/20 p-3">
+                  <Zap className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">WPCode Lite detected on your site</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Use the WPCode method below — it's safer than editing functions.php and loads before themes.
+                      If you already added it to functions.php, the snippet may have a PHP syntax error or be in the wrong file.
+                    </p>
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
-                Current meta keys visible:{" "}
+                Current meta keys visible in REST API:{" "}
                 <code className="bg-muted px-1 rounded text-xs">
                   {yoastStatus?.metaKeys?.join(", ") || "(none)"}
                 </code>
               </p>
-              <div className="pt-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCopySnippet}
-                  className="gap-2 h-8 text-xs border-amber-500/40 hover:bg-amber-500/10"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy Snippet to Clipboard
-                </Button>
-                <span className="ml-2 text-xs text-muted-foreground">then paste into functions.php (see steps below)</span>
-              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopySnippet}
+                className="gap-2 h-8 text-xs border-amber-500/40 hover:bg-amber-500/10"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy Snippet
+              </Button>
             </div>
           )}
         </CardContent>
+      </Card>
+
+      {/* Why this matters */}
+      <Card className="border-amber-500/20 bg-amber-500/5">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Why this snippet is needed</p>
+              <p className="text-sm text-muted-foreground">
+                Yoast SEO (free version) marks its meta fields as "protected" in WordPress, which blocks external REST API writes by default.
+                Without this snippet, the platform can only write the post content — focus keyphrase and meta description won't stick in Yoast.
+                Add it once and all three fields will auto-populate on every future publish.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Installation method tabs */}
+      <Card className="border-border bg-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Installation Method</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Tab switcher */}
+          <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
+            <button
+              onClick={() => setUseWpCode(true)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                useWpCode
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {wpCodeDetected && <span className="mr-1 text-blue-400">★</span>}
+              Via WPCode Lite {wpCodeDetected && "(recommended)"}
+            </button>
+            <button
+              onClick={() => setUseWpCode(false)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                !useWpCode
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Via functions.php
+            </button>
+          </div>
+
+          {useWpCode && (
+            <div className="rounded-md bg-blue-500/5 border border-blue-500/20 p-3 text-xs text-blue-700 dark:text-blue-300">
+              <strong>Why WPCode is better:</strong> It loads as a plugin (before themes), so it works even if the theme changes.
+              It also has syntax validation and can be toggled on/off without editing files.
+              {wpCodeDetected ? " WPCode Lite is already active on your site." : " Install WPCode Lite from the WordPress plugin directory if needed."}
+            </div>
+          )}
+
+          {/* Steps */}
+          <div className="space-y-4">
+            {activeSteps.map((step) => (
+              <div key={step.number} className="flex gap-4">
+                <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">
+                  {step.number}
+                </div>
+                <div className="space-y-1 flex-1">
+                  <p className="text-sm font-medium text-foreground">{step.title}</p>
+                  <p className="text-sm text-muted-foreground">{step.description}</p>
+                  {"link" in step && step.link && (
+                    <a
+                      href={step.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      {step.linkLabel} <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* The snippet */}
+      <Card className="border-border bg-card">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Code2 className="h-4 w-4 text-muted-foreground" />
+              {snippetLabel}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopySnippet}
+                className="gap-2 h-8 text-xs"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy Snippet
+              </Button>
+              <button
+                onClick={() => setSnippetExpanded(!snippetExpanded)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {snippetExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        {snippetExpanded && (
+          <CardContent>
+            <pre className="bg-muted/50 border border-border rounded-lg p-4 text-xs text-foreground overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
+              {snippetToCopy}
+            </pre>
+          </CardContent>
+        )}
       </Card>
 
       {/* Connection Status */}
@@ -269,89 +428,6 @@ export default function WordPressSetup() {
         </CardContent>
       </Card>
 
-      {/* Why this matters */}
-      <Card className="border-amber-500/20 bg-amber-500/5">
-        <CardContent className="pt-4 pb-4">
-          <div className="flex gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Why this snippet is needed</p>
-              <p className="text-sm text-muted-foreground">
-                Yoast SEO (free version) marks its meta fields as "protected" in WordPress, which blocks external REST API writes by default.
-                Without this snippet, the platform can only write the SEO title — focus keyphrase and meta description won't stick.
-                Paste this once and all three fields will auto-populate on every future publish.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Step-by-step instructions */}
-      <Card className="border-border bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Installation Steps</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {STEPS.map((step) => (
-            <div key={step.number} className="flex gap-4">
-              <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">
-                {step.number}
-              </div>
-              <div className="space-y-1 flex-1">
-                <p className="text-sm font-medium text-foreground">{step.title}</p>
-                <p className="text-sm text-muted-foreground">{step.description}</p>
-                {step.link && (
-                  <a
-                    href={step.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    {step.linkLabel} <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* The snippet */}
-      <Card className="border-border bg-card">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Code2 className="h-4 w-4 text-muted-foreground" />
-              functions.php Snippet
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopySnippet}
-                className="gap-2 h-8 text-xs"
-              >
-                <Copy className="h-3.5 w-3.5" />
-                Copy Snippet
-              </Button>
-              <button
-                onClick={() => setSnippetExpanded(!snippetExpanded)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {snippetExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-        </CardHeader>
-        {snippetExpanded && (
-          <CardContent>
-            <pre className="bg-muted/50 border border-border rounded-lg p-4 text-xs text-foreground overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
-              {FUNCTIONS_PHP_SNIPPET}
-            </pre>
-          </CardContent>
-        )}
-      </Card>
-
       {/* Batch actions */}
       <Card className="border-border bg-card">
         <CardHeader className="pb-3">
@@ -383,7 +459,7 @@ export default function WordPressSetup() {
                 <p className="text-sm font-medium text-foreground">Backfill Yoast in WordPress</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Pushes the stored Yoast fields to all already-published WordPress posts without republishing them. Requires the functions.php snippet above.
+                Pushes the stored Yoast fields to all already-published WordPress posts without republishing them. Requires the snippet above to be active.
               </p>
               <p className="text-xs text-green-400 font-medium">
                 → Go to Command Center → click "Blog" filter → click "Backfill Yoast in WP"

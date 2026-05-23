@@ -2896,6 +2896,36 @@ Rules:
         return fields;
       }),
 
+    // Test WordPress connection — verifies credentials and returns site info
+    testWpConnection: protectedProcedure
+      .query(async () => {
+        const baseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+        const username = process.env.WORDPRESS_USERNAME ?? "";
+        const appPassword = process.env.WORDPRESS_APP_PASSWORD ?? "";
+        const authHeader = "Basic " + Buffer.from(`${username}:${appPassword}`).toString("base64");
+
+        try {
+          const res = await fetch(`${baseUrl}/wp-json/wp/v2/users/me`, {
+            headers: { Authorization: authHeader },
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (!res.ok) {
+            return { ok: false, message: `WordPress returned HTTP ${res.status}. Check credentials.` };
+          }
+          const data = await res.json() as { id?: number; name?: string; roles?: string[] };
+          if (!data.id) {
+            return { ok: false, message: "WordPress responded but did not return a valid user." };
+          }
+          return {
+            ok: true,
+            message: `Connected as ${data.name} (${data.roles?.join(", ") ?? "unknown role"}) on ${baseUrl}`,
+          };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return { ok: false, message: `Connection failed: ${msg}` };
+        }
+      }),
+
     // Diagnostic: check whether the wp-yoast-rest-meta.php snippet is installed
     // Returns { installed: boolean, metaKeys: string[], message: string }
     checkYoastSnippet: protectedProcedure

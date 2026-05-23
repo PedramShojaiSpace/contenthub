@@ -3099,3 +3099,23 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Theme cards show name + description, clicking auto-fills the prompt textarea
 - [x] Panel auto-fetches theme suggestions when opened
 - [x] Image swaps in-place after generation, panel closes, refetch fires
+
+## Buffer Channel Selector (May 22, 2026)
+
+- [ ] Audit current Buffer push flow and channel data structure
+- [ ] Add channel selector UI to Kanban/Command Center push-to-Buffer flow
+- [ ] Show all connected Buffer channels grouped by service (Instagram, Meta, TikTok, etc.)
+- [ ] Checkbox per channel with account name and avatar
+- [ ] Remember last-used channel selection per content item platform
+- [ ] Update syndication.push procedure to accept explicit channelIds array
+- [ ] Prevent push if no channels selected (show validation message)
+- [ ] Show which channels a post was previously sent to on the card
+
+## Buffer Channel Selector (May 22, 2026)
+
+- [x] Build BufferChannelSelector component with checkboxes grouped by service (Instagram, Facebook, TikTok, LinkedIn, etc.)
+- [x] Replace direct "Push to Buffer" with two-step flow: button opens selector dialog, user picks accounts, then confirms
+- [x] Pre-select native accounts for each platform (meta → Instagram + Facebook, tiktok → TikTok, etc.)
+- [x] Persist selection per platform in localStorage so picks are remembered
+- [x] Move Meta post type selector (Feed/Reel/Story) into the channel selector dialog
+- [x] Wire onConfirm to pass exact profileIds and channelServiceMap to syndicationMutation

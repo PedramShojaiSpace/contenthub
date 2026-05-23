@@ -589,6 +589,13 @@
       "when": 1779529670871,
       "tag": "0083_needy_the_executioner",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "5",
+      "when": 1779535321100,
+      "tag": "0084_rare_rawhide_kid",
+      "breakpoints": true
     }
   ]
 }

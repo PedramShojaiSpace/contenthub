@@ -261,10 +261,10 @@ CRITICAL OUTPUT RULES:
 - Output ONLY a valid JSON object — nothing else, no preamble, no explanation, no markdown code fences
 - The JSON must have EXACTLY these fields:
   {
-    "title": "H1 headline — must contain the primary keyword, 50-65 chars, use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
+    "title": "H1 headline — must contain the primary keyword, 50-58 chars MAX (Yoast pixel limit), use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
     "slug": "url-friendly-slug-max-60-chars — must contain the primary keyword",
-    "metaDescription": "150-160 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA",
-    "focusKeyword": "primary SEO keyword phrase (2-4 words) — the exact phrase the target audience types into Google",
+    "metaDescription": "140-155 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA. HARD LIMIT: never exceed 155 characters including spaces.",
+    "focusKeyword": "primary SEO keyword phrase (2-4 words) — MUST be a specific long-tail phrase the target audience types into Google. NEVER use a single-word or generic two-word head term (e.g. 'stress relief' is too broad — use 'qigong for stress relief' or 'nervous system regulation techniques'). The focus keyword must be unique to this article — do not reuse a keyphrase that would apply to multiple articles on the same site.",
     "semanticKeywords": ["3-5 semantic variant phrases that support the focus keyword — weave these naturally into H2s and body"],
     "hookFamily": "which of the 12 Hook Families was used for the title",
     "emotionalDriver": "which of the 7 Emotional Drivers (Clarity, Pain, Belonging, Authority, Courage, Identity, Inspiration) is primary",
@@ -280,6 +280,7 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
 
 1. OPENING HOOK (2-3 paragraphs, 200-250 words):
    Select hook from the 12 families based on emotional driver. Start with the painful truth — a provocative statement, a surprising statistic, or a brief patient story. Establish the problem viscerally. Make the reader feel seen. End with a bridge sentence that promises real answers. The first sentence must pass the 3-second scroll test: specific, tensioned, relevant.
+   YOAST KEYPHRASE-IN-INTRO RULE (non-negotiable): The focus keyword or a close natural synonym MUST appear in the very first paragraph of the article body. This is Yoast's highest-priority SEO check. Weave it in naturally — do not force it awkwardly, but it must be there. Example: if the focus keyword is "qigong for stress relief", the first paragraph must contain the phrase "qigong" and "stress" or "stress relief" in close proximity.
 
 2. KEY TAKEAWAYS (immediately after the opening hook, before the first H2):
    Output a Markdown block that begins with the exact heading: ## Key Takeaways
@@ -308,6 +309,7 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
 
 SEO + AEO INTEGRATION RULES (non-negotiable):
 - H1 (title) must contain the primary focus keyword
+- KEYPHRASE DENSITY (Yoast minimum): The focus keyword or its close synonym must appear at least 6 times in the article body for a 1,600-2,200 word article. Distribute occurrences across: (1) first paragraph, (2) at least one H2, (3) the framework section, (4) the practical protocol section, (5) the transformation vision or closing, (6) the FAQ section. Do not cluster them — spread them naturally.
 - Each H2 must either contain a semantic keyword variant OR be phrased as a question (PAA format)
 - Include a clear, direct answer to the core question within the first 300 words (woven into the opening hook — NOT as a separate TL;DR box or blockquote)
 - Use sequential H2/H3 heading structure — this increases AI citation odds by 2.8x
@@ -344,6 +346,11 @@ FORMATTING RULES (YOAST READABILITY — NON-NEGOTIABLE):
 QUALITY GATE (self-check before outputting):
 - Does the hook pass the 3-second scroll test? Specific, tensioned, relevant?
 - Is there ONE clear Big Idea the audience hasn't heard framed this way?
+- YOAST SEO CHECK: Does the focus keyword appear in the very first paragraph? (Red flag if not)
+- YOAST SEO CHECK: Does the focus keyword appear at least 6 times across the full article body? Count them.
+- YOAST SEO CHECK: Is the title 50-58 characters or fewer? Count the characters.
+- YOAST SEO CHECK: Is the meta description 140-155 characters? Count the characters.
+- YOAST SEO CHECK: Is the focus keyword a specific long-tail phrase (not a generic head term)?
 - YOAST READABILITY CHECK: Is every prose block under 300 words before the next heading?
 - YOAST READABILITY CHECK: Is every paragraph under 150 words?
 - YOAST READABILITY CHECK: Do at least 30% of sentences use a transition word?

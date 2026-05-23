@@ -79,6 +79,8 @@ export const contentItems = mysqlTable("content_items", {
   carouselData: text("carouselData"),
   // CTA banner: AI-generated image URL for the clickable CTA block embedded in blog posts
   ctaBannerUrl: text("ctaBannerUrl"),
+  // Buffer syndication audit: JSON array of {id, name, service} objects for each channel this item was last pushed to
+  pushedChannels: text("pushedChannels"),
   // SEO fields — persisted so CommandCenter publish can auto-push them to WordPress
   focusKeyword: varchar("focusKeyword", { length: 255 }),
   seoKeywords: text("seoKeywords"),  // JSON array of semantic keyword strings

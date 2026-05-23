@@ -1042,28 +1042,30 @@ Rules:
 
             // 2. Load WordPress post index (synced from theurbanmonk.com)
             const allPosts = await db.select().from(wpPostIndex).limit(500);
-            if (allPosts.length === 0) {
-              // No posts indexed yet — auto-sync in background
-              fetchAllWpPosts().then(async (posts) => {
-                if (posts.length === 0) return;
-                const db2 = await getDb();
-                if (!db2) return;
-                const { wpPostIndex: wpi } = await import("../drizzle/schema");
-                for (const p of posts) {
-                  await db2.insert(wpi).values({
-                    wpPostId: p.wpPostId,
-                    title: p.title,
-                    slug: p.slug,
-                    url: p.url,
-                    excerpt: p.excerpt,
-                    categories: JSON.stringify(p.categories),
-                    tags: JSON.stringify(p.tags),
-                    publishedAt: p.publishedAt ? new Date(p.publishedAt) : null,
-                  }).onDuplicateKeyUpdate({ set: { title: p.title, url: p.url, excerpt: p.excerpt, syncedAt: new Date() } });
-                }
-                console.log(`[Blog] Auto-synced ${posts.length} WordPress posts to index.`);
-              }).catch((err) => console.warn("[Blog] WP post auto-sync failed:", err));
-            }
+
+            // Always trigger a background refresh so the link resolver has the freshest post list.
+            // We fire-and-forget regardless of whether the index is empty or stale — this costs
+            // nothing to the generation latency since we use the already-loaded allPosts for the
+            // current request and the refreshed data benefits the NEXT generation.
+            fetchAllWpPosts().then(async (posts) => {
+              if (posts.length === 0) return;
+              const db2 = await getDb();
+              if (!db2) return;
+              const { wpPostIndex: wpi } = await import("../drizzle/schema");
+              for (const p of posts) {
+                await db2.insert(wpi).values({
+                  wpPostId: p.wpPostId,
+                  title: p.title,
+                  slug: p.slug,
+                  url: p.url,
+                  excerpt: p.excerpt,
+                  categories: JSON.stringify(p.categories),
+                  tags: JSON.stringify(p.tags),
+                  publishedAt: p.publishedAt ? new Date(p.publishedAt) : null,
+                }).onDuplicateKeyUpdate({ set: { title: p.title, url: p.url, excerpt: p.excerpt, syncedAt: new Date() } });
+              }
+              console.log(`[Blog] Background WP post index refreshed: ${posts.length} posts synced.`);
+            }).catch((err) => console.warn("[Blog] WP post background sync failed:", err));
 
             // 3. Find relevant WP posts for this topic
             let relevantWpLinks: string[] = [];

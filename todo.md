@@ -3213,3 +3213,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix internal links rule to require 3 links OR placeholders (not just links)
 - [x] Fix urlScrubber resolvePlaceholderLinks to always use best-available fallback instead of stripping to plain text (zero-link bug)
 - [x] All 378 tests passing
+
+## Auto-Sync WP Post Index + Yoast Pre-Flight Check (May 23, 2026)
+- [ ] Auto-trigger syncPostIndex at the start of every generateBlog call (fire-and-forget, non-blocking)
+- [ ] Add Yoast pre-flight warning dialog before blog publish: fetch score, show warning if bad/null
+- [ ] Warning dialog: show score status, list of failing checks, "Publish Anyway" and "Cancel" buttons
+- [ ] Write vitest for the pre-flight score check logic
+
+## Auto-Sync WP Post Index + Yoast Pre-Flight (May 23, 2026)
+- [x] Auto-trigger WP post index background refresh on every blog generation (not just when empty)
+- [x] Add Yoast pre-flight warning dialog before publishing posts with bad/null Yoast score
+- [x] Refactor handlePublishToWP into doPublishToWP (actual publish) + handlePublishToWP (gate check)
+- [x] Dialog shows specific message for "bad" score vs "not yet scored"
+- [x] "Publish Anyway" override button lets user bypass the warning

@@ -2905,17 +2905,27 @@ Rules:
         const appPassword = process.env.WORDPRESS_APP_PASSWORD ?? "";
         const authHeader = "Basic " + Buffer.from(`${username}:${appPassword}`).toString("base64");
 
+        // Detect whether WPCode Lite is active (preferred installation method)
+        let wpCodeActive = false;
+        try {
+          const pluginsRes = await fetch(`${baseUrl}/wp-json/wp/v2/plugins?per_page=100`, { headers: { Authorization: authHeader } });
+          if (pluginsRes.ok) {
+            const plugins = await pluginsRes.json() as Array<{ plugin: string; status: string }>;
+            wpCodeActive = plugins.some(p => p.status === "active" && (p.plugin ?? "").includes("insert-headers-and-footers"));
+          }
+        } catch { /* non-fatal */ }
+
         // Fetch the most recent published post with edit context
         const listRes = await fetch(
           `${baseUrl}/wp-json/wp/v2/posts?per_page=1&status=publish&context=edit`,
           { headers: { Authorization: authHeader } }
         );
         if (!listRes.ok) {
-          return { installed: false, metaKeys: [], message: `WordPress API error: ${listRes.status}` };
+          return { installed: false, metaKeys: [], wpCodeActive, message: `WordPress API error: ${listRes.status}` };
         }
         const posts = await listRes.json() as Array<{ id: number; meta?: Record<string, unknown> }>;
         if (!posts || posts.length === 0) {
-          return { installed: false, metaKeys: [], message: "No published posts found to test against" };
+          return { installed: false, metaKeys: [], wpCodeActive, message: "No published posts found to test against" };
         }
 
         const meta = posts[0].meta ?? {};
@@ -2924,14 +2934,18 @@ Rules:
         const installed = yoastKeys.some(k => metaKeys.includes(k));
         const foundYoastKeys = metaKeys.filter(k => yoastKeys.includes(k));
 
+        const installMethod = wpCodeActive
+          ? "WPCode Lite is active on your site — use it instead of functions.php (safer and more reliable)."
+          : "Add the snippet to Appearance → Theme File Editor → functions.php (active theme: Hello Elementor)."
+
         return {
           installed,
           metaKeys,
           foundYoastKeys,
+          wpCodeActive,
           message: installed
-            ? `Snippet installed. Yoast meta keys found: ${foundYoastKeys.join(", ")}`
-            : `Snippet NOT installed. Meta keys present: ${metaKeys.join(", ") || "(none)"}. ` +
-              `Add the snippet from docs/wordpress-yoast-rest-api-snippet.php to your WordPress functions.php.`,
+            ? `Snippet active. Yoast meta keys found: ${foundYoastKeys.join(", ")}`
+            : `Snippet not detected in REST API. Current meta keys: ${metaKeys.join(", ") || "(none)"}. ${installMethod}`,
         };
       }),
 

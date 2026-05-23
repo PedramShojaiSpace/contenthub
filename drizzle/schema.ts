@@ -81,6 +81,10 @@ export const contentItems = mysqlTable("content_items", {
   ctaBannerUrl: text("ctaBannerUrl"),
   // Buffer syndication audit: JSON array of {id, name, service} objects for each channel this item was last pushed to
   pushedChannels: text("pushedChannels"),
+  // Yoast SEO score fetched from WordPress REST API (_yoast_wpseo_linkdex meta field)
+  // Values: "good" | "ok" | "bad" | null (null = not yet fetched)
+  yoastScore: varchar("yoastScore", { length: 16 }),
+  yoastScoreFetchedAt: bigint("yoastScoreFetchedAt", { mode: "number" }),
   // SEO fields — persisted so CommandCenter publish can auto-push them to WordPress
   focusKeyword: varchar("focusKeyword", { length: 255 }),
   seoKeywords: text("seoKeywords"),  // JSON array of semantic keyword strings

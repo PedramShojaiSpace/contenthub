@@ -3156,3 +3156,24 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Link import from wouter to CreationStudio
 - [x] Increase vitest global testTimeout to 15s to prevent podcast test flakiness in parallel runs
 - [x] All 378 tests passing, TypeScript clean (0 errors)
+
+## "Last Pushed To" Kanban Badges + localStorage Defaults Cache (May 23, 2026)
+
+- [ ] Add pushed_channels JSON column to content_items schema
+- [ ] Run pnpm db:push to migrate schema
+- [ ] Update syndication.push procedure to store channel names on the content item after a successful Buffer push
+- [ ] Update Kanban card UI to display pushed channel service badges
+- [ ] Add localStorage write in DefaultChannels.savePlatform after DB save
+- [ ] Add localStorage read in CreationStudio useEffect as instant pre-selection before DB query resolves
+- [ ] Update tests for syndication push procedure
+- [ ] All tests passing, TypeScript clean
+
+## Yoast SEO Prompt Fixes (May 23, 2026)
+
+- [x] Fix keyphrase-in-introduction: added mandatory rule to include focus keyword in first paragraph of article body
+- [x] Fix keyphrase density: added minimum 6-occurrence rule with distribution map across 6 specific article sections
+- [x] Fix SEO title width: tightened character limit from 50-65 to 50-58 chars to stay within Yoast pixel limit
+- [x] Fix meta description length: tightened from 150-160 to 140-155 chars with hard NEVER-exceed-155 instruction
+- [x] Fix previously-used keyphrase: added long-tail specificity requirement and uniqueness rule for focus keyword
+- [x] Added 5 Yoast SEO self-checks to the QUALITY GATE section of the prompt
+- [x] All 378 tests passing, TypeScript clean

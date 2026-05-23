@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -454,6 +455,45 @@ export default function CreationStudio() {
   const { data: bufferProfiles } = trpc.syndication.getProfiles.useQuery(undefined, {
     retry: false,
   });
+
+  // DB-backed channel defaults — used to pre-select the syndication panel checkboxes
+  const { data: channelDefaults } = trpc.syndication.getChannelDefaults.useQuery(undefined, {
+    retry: false,
+  });
+
+  // Initialise selectedProfileIds from DB defaults (or native services as fallback)
+  // Runs when profiles + defaults are both loaded, and when platform changes
+  useEffect(() => {
+    if (!bufferProfiles || bufferProfiles.length === 0) return;
+    const PLATFORM_TO_SERVICES: Record<string, string[]> = {
+      linkedin: ["linkedin"],
+      meta: ["facebook", "instagram"],
+      x: ["twitter"],
+      youtube: ["youtube"],
+      tiktok: ["tiktok"],
+      all: ["linkedin", "facebook", "instagram", "twitter", "youtube", "tiktok"],
+      blog: [],
+      reframe: [],
+      carousel: ["facebook", "instagram"],
+    };
+    const allowedServices = PLATFORM_TO_SERVICES[platform] ?? [];
+    const platformProfiles = (bufferProfiles as { id: string; service: string }[]).filter(
+      (pr) => allowedServices.includes(pr.service)
+    );
+    if (platformProfiles.length === 0) {
+      setSelectedProfileIds([]);
+      return;
+    }
+    // Use DB defaults if available for this platform
+    const dbIds: string[] = channelDefaults?.[platform] ?? [];
+    const validDbIds = dbIds.filter((id) => platformProfiles.some((pr) => pr.id === id));
+    if (validDbIds.length > 0) {
+      setSelectedProfileIds(validDbIds);
+    } else {
+      // Fallback: pre-select all native platform profiles
+      setSelectedProfileIds(platformProfiles.map((pr) => pr.id));
+    }
+  }, [bufferProfiles, channelDefaults, platform]);
 
   const syndicationMutation = trpc.syndication.push.useMutation({
     onSuccess: (data) => {
@@ -925,9 +965,22 @@ export default function CreationStudio() {
       blog: [],
     };
     const allowedServices = DIRECT_PLATFORM_TO_SERVICES[p] ?? [];
-    const profileIds = (bufferProfiles ?? [])
-      .filter((pr: { id: string; service: string }) => allowedServices.includes(pr.service))
-      .map((pr: { id: string }) => pr.id);
+    const allMatchingProfiles = (bufferProfiles ?? []).filter(
+      (pr: { id: string; service: string }) => allowedServices.includes(pr.service)
+    );
+    if (!allMatchingProfiles.length) {
+      setSyndicatingPlatform(null);
+      toast.error(`No Buffer channels connected for ${p}. Check your Buffer account.`);
+      return;
+    }
+    // Use DB defaults if available — otherwise fall back to all matching profiles
+    const dbDefaultIds: string[] = channelDefaults?.[p] ?? [];
+    const validDefaultIds = dbDefaultIds.filter(
+      (id) => allMatchingProfiles.some((pr: { id: string }) => pr.id === id)
+    );
+    const profileIds = validDefaultIds.length > 0
+      ? validDefaultIds
+      : allMatchingProfiles.map((pr: { id: string }) => pr.id);
     if (!profileIds.length) {
       setSyndicatingPlatform(null);
       toast.error(`No Buffer channels connected for ${p}. Check your Buffer account.`);
@@ -3314,9 +3367,17 @@ export default function CreationStudio() {
                   <Send className="h-4 w-4 text-primary" />
                   Buffer Syndication
                 </CardTitle>
-                <Badge variant="outline" className="border-primary/40 text-primary text-xs">
-                  One-Click Publish
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/default-channels"
+                    className="text-[11px] text-amber-600 hover:text-amber-700 underline-offset-2 hover:underline"
+                  >
+                    Edit defaults
+                  </Link>
+                  <Badge variant="outline" className="border-primary/40 text-primary text-xs">
+                    One-Click Publish
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

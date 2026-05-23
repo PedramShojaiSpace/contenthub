@@ -1483,3 +1483,27 @@ export const keywordTargets = mysqlTable("keyword_targets", {
 
 export type KeywordTarget = typeof keywordTargets.$inferSelect;
 export type InsertKeywordTarget = typeof keywordTargets.$inferInsert;
+
+/**
+ * keyword_rank_history — weekly GSC rank snapshots per keyword target
+ * Populated by the /api/scheduled/rank-snapshot heartbeat every Monday.
+ */
+export const keywordRankHistory = mysqlTable("keyword_rank_history", {
+  id: int("id").autoincrement().primaryKey(),
+  targetId: int("krh_target_id").notNull(),
+  // FK → keyword_targets.id
+  keyword: varchar("krh_keyword", { length: 256 }).notNull(),
+  position: int("krh_position"),
+  // null = not ranking in top 100
+  clicks: int("krh_clicks").default(0),
+  impressions: int("krh_impressions").default(0),
+  ctr: varchar("krh_ctr", { length: 16 }),
+  // e.g. "3.2" (percent)
+  weekLabel: varchar("krh_week_label", { length: 16 }).notNull(),
+  // ISO week string e.g. "2026-W21"
+  snapshotAt: bigint("krh_snapshot_at", { mode: "number" }).notNull(),
+  createdAt: timestamp("krh_created_at").notNull().defaultNow(),
+});
+
+export type KeywordRankHistory = typeof keywordRankHistory.$inferSelect;
+export type InsertKeywordRankHistory = typeof keywordRankHistory.$inferInsert;

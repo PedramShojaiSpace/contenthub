@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,9 @@ import {
   ChevronDown,
   ChevronUp,
   Zap,
+  ArrowUp,
+  ArrowDown,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -76,6 +79,158 @@ const CONTENT_STATUS_ICONS: Record<ContentStatus, React.ReactNode> = {
   in_progress: <Clock className="w-4 h-4 text-blue-500" />,
   published: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
 };
+
+// ─── Rank Sparkline ──────────────────────────────────────────────────────────
+
+/**
+ * Tiny inline SVG sparkline for rank history.
+ * Positions are inverted (lower = better), so we flip the Y axis.
+ * Null positions (not ranking) are shown as gaps.
+ */
+function RankSparkline({
+  history,
+  width = 60,
+  height = 20,
+}: {
+  history: Array<{ position: number | null; weekLabel: string }>;
+  width?: number;
+  height?: number;
+}) {
+  const points = useMemo(() => {
+    if (!history.length) return null;
+    const ranked = history.filter((h) => h.position !== null);
+    if (!ranked.length) return null;
+
+    const positions = ranked.map((h) => h.position as number);
+    const minPos = Math.min(...positions);
+    const maxPos = Math.max(...positions);
+    const range = maxPos - minPos || 1;
+
+    // Map to SVG coordinates — lower position (better rank) = higher Y
+    const n = history.length;
+    return history.map((h, i) => {
+      if (h.position === null) return null;
+      const x = (i / Math.max(n - 1, 1)) * width;
+      // Invert: pos 1 = top (y=2), pos 100 = bottom (y=height-2)
+      const y = height - 2 - ((maxPos - h.position) / range) * (height - 4);
+      return { x, y };
+    });
+  }, [history, width, height]);
+
+  if (!points) {
+    return (
+      <span className="text-xs text-muted-foreground/40 italic">no data</span>
+    );
+  }
+
+  // Build polyline segments (skip nulls)
+  const segments: string[] = [];
+  let current: string[] = [];
+  for (const p of points) {
+    if (p === null) {
+      if (current.length > 1) segments.push(current.join(" "));
+      current = [];
+    } else {
+      current.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+    }
+  }
+  if (current.length > 1) segments.push(current.join(" "));
+
+  const lastRanked = [...history].reverse().find((h) => h.position !== null);
+  const lastPos = lastRanked?.position ?? null;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <svg width={width} height={height} className="overflow-visible">
+        {segments.map((seg, i) => (
+          <polyline
+            key={i}
+            points={seg}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            className="text-primary/70"
+          />
+        ))}
+        {/* Last point dot */}
+        {points[points.length - 1] && (
+          <circle
+            cx={(points[points.length - 1] as { x: number; y: number }).x}
+            cy={(points[points.length - 1] as { x: number; y: number }).y}
+            r="2"
+            fill="currentColor"
+            className="text-primary"
+          />
+        )}
+      </svg>
+      {lastPos !== null && (
+        <span className="text-xs font-mono text-muted-foreground">#{lastPos}</span>
+      )}
+    </div>
+  );
+}
+
+// ─── Rank Movers Panel ────────────────────────────────────────────────────────
+
+function RankMoversPanel() {
+  const { data } = trpc.kwStrategy.getRankMovers.useQuery();
+
+  if (!data || (data.improvers.length === 0 && data.drops.length === 0)) {
+    return null;
+  }
+
+  return (
+    <div className="p-4 rounded-xl bg-card border border-border shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <Activity className="w-4 h-4 text-primary" />
+        <span className="text-sm font-semibold text-foreground">Rank Movers</span>
+        <span className="text-xs text-muted-foreground ml-auto">
+          {data.improvers[0]?.weekLabel ?? ""}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {data.improvers.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1 text-xs font-medium text-emerald-700 mb-2">
+              <ArrowUp className="w-3 h-3" /> Improving
+            </div>
+            <div className="space-y-1">
+              {data.improvers.slice(0, 5).map((m) => (
+                <div key={m.targetId} className="flex items-center justify-between text-xs">
+                  <span className="text-foreground truncate max-w-[150px]">{m.keyword}</span>
+                  <span className="text-emerald-600 font-mono shrink-0 ml-2">
+                    {m.oldPosition} → {m.newPosition}
+                    <span className="text-emerald-500 ml-1">(+{m.delta})</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {data.drops.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1 text-xs font-medium text-rose-700 mb-2">
+              <ArrowDown className="w-3 h-3" /> Dropping
+            </div>
+            <div className="space-y-1">
+              {data.drops.slice(0, 5).map((m) => (
+                <div key={m.targetId} className="flex items-center justify-between text-xs">
+                  <span className="text-foreground truncate max-w-[150px]">{m.keyword}</span>
+                  <span className="text-rose-600 font-mono shrink-0 ml-2">
+                    {m.oldPosition} → {m.newPosition}
+                    <span className="text-rose-500 ml-1">({m.delta})</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function formatVolume(v: number | null | undefined): string {
   if (v == null) return "—";
@@ -257,6 +412,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
 
 function TargetRow({
   target,
+  rankHistory = [],
   onUpdate,
   onRemove,
 }: {
@@ -275,11 +431,14 @@ function TargetRow({
     notes: string | null;
     priority: number;
   };
+  rankHistory?: Array<{ position: number | null; weekLabel: string }>;
   onUpdate: (id: number, updates: Record<string, unknown>) => void;
   onRemove: (id: number) => void;
 }) {
   const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(false);
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [urlDraft, setUrlDraft] = useState(target.publishedUrl ?? "");
 
   const funnel = FUNNEL_LABELS[target.funnelStage as FunnelStage];
   const type = TYPE_LABELS[target.keywordType as KeywordType];
@@ -339,6 +498,11 @@ function TargetRow({
         {/* Difficulty */}
         <div className={`text-xs shrink-0 w-8 text-right hidden lg:block ${diffColor}`}>
           {target.difficulty != null ? `${target.difficulty}` : "—"}
+        </div>
+
+        {/* Rank sparkline */}
+        <div className="shrink-0 hidden xl:flex items-center" title={`Rank trend (${rankHistory.length} weeks)`}>
+          <RankSparkline history={rankHistory} width={56} height={18} />
         </div>
 
         {/* Create content buttons */}
@@ -445,6 +609,71 @@ function TargetRow({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Published URL editor */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground shrink-0">Published URL:</span>
+            {editingUrl ? (
+              <div className="flex items-center gap-1.5 flex-1">
+                <input
+                  type="url"
+                  value={urlDraft}
+                  onChange={(e) => setUrlDraft(e.target.value)}
+                  placeholder="https://theurbanmonk.com/your-post-slug/"
+                  className="flex-1 h-7 text-xs px-2 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (urlDraft && !urlDraft.startsWith("http")) return;
+                      onUpdate(target.id, { publishedUrl: urlDraft || null, contentStatus: urlDraft ? "published" : target.contentStatus });
+                      setEditingUrl(false);
+                    }
+                    if (e.key === "Escape") {
+                      setUrlDraft(target.publishedUrl ?? "");
+                      setEditingUrl(false);
+                    }
+                  }}
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    if (urlDraft && !urlDraft.startsWith("http")) return;
+                    onUpdate(target.id, { publishedUrl: urlDraft || null, contentStatus: urlDraft ? "published" : target.contentStatus });
+                    setEditingUrl(false);
+                  }}
+                  className="h-7 px-2 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { setUrlDraft(target.publishedUrl ?? ""); setEditingUrl(false); }}
+                  className="h-7 px-2 text-xs rounded border border-border text-muted-foreground hover:bg-muted"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                {target.publishedUrl ? (
+                  <a
+                    href={target.publishedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline truncate max-w-[220px]"
+                  >
+                    {target.publishedUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                  </a>
+                ) : (
+                  <span className="text-xs text-muted-foreground/50 italic">Not set</span>
+                )}
+                <button
+                  onClick={() => { setUrlDraft(target.publishedUrl ?? ""); setEditingUrl(true); }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                >
+                  {target.publishedUrl ? "Edit" : "Set URL"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -474,6 +703,13 @@ export default function KeywordStrategy() {
     { enabled: selectedCampaignId != null }
   );
   const targets = targetsData?.targets ?? [];
+
+  // Rank history for sparklines — fetched per campaign
+  const { data: rankHistoryData } = trpc.kwStrategy.getCampaignRankHistory.useQuery(
+    { campaignId: selectedCampaignId! },
+    { enabled: selectedCampaignId != null }
+  );
+  const historyByTarget = rankHistoryData?.historyByTarget ?? {};
 
   const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
 
@@ -834,6 +1070,9 @@ export default function KeywordStrategy() {
                   </Button>
                 </div>
 
+                {/* Rank Movers Panel */}
+                <RankMoversPanel />
+
                 {/* Keyword groups */}
                 {targets.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground border border-border rounded-xl">
@@ -862,6 +1101,7 @@ export default function KeywordStrategy() {
                               <TargetRow
                                 key={t.id}
                                 target={t}
+                                rankHistory={historyByTarget[t.id] ?? []}
                                 onUpdate={(id, updates) => updateTargetMut.mutate({ id, ...updates } as Parameters<typeof updateTargetMut.mutate>[0])}
                                 onRemove={(id) => removeTargetMut.mutate({ id })}
                               />

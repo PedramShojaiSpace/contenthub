@@ -328,12 +328,15 @@ ABSOLUTE RULES — NEVER VIOLATE:
 
 TOTAL ARTICLE LENGTH: 1,600-2,200 words (body only, not counting FAQ). Do not stop short. Every section must be fully developed.
 
-FORMATTING RULES:
+FORMATTING RULES (YOAST READABILITY — NON-NEGOTIABLE):
 - Use ## for H2 section headings (compelling, specific, keyword-rich — not generic like "The Solution")
 - Use ### for H3 sub-headings within the framework steps
+- SUBHEADING DISTRIBUTION: Every block of text MUST have an H2 or H3 heading within every 300 words. If a section runs longer than 300 words, split it with an H3 sub-heading. No section of prose may exceed 300 words without a heading break.
+- PARAGRAPH LENGTH: Every paragraph must be 150 words or fewer (3-5 sentences max). If a paragraph exceeds 150 words, split it into two. This is a hard limit — Yoast flags paragraphs over 150 words as a readability failure.
+- TRANSITION WORDS: At least 30% of sentences must begin with or contain a transition word or phrase. Use: However, Therefore, As a result, In addition, Furthermore, Meanwhile, For example, In contrast, Consequently, First, Second, Third, Finally, In fact, Specifically, Most importantly, In other words, That said, Even so, Because of this, At the same time, To be clear, In practice, Over time, In short. Vary them — do NOT repeat the same transition word more than twice in any section.
+- CONSECUTIVE SENTENCE STARTS: Never begin more than 2 consecutive sentences with the same word.
 - Use **bold** for key terms or critical insights (2-4 per section maximum)
 - Use > blockquote for ONE powerful pull-quote per article only — do NOT use a TL;DR blockquote
-- Short paragraphs (3-5 sentences max) for readability and dwell time
 - No bullet lists in the main body — write in flowing prose
 - No em-dashes used as bullet substitutes
 - No banned words from the Voice Rules above
@@ -341,6 +344,10 @@ FORMATTING RULES:
 QUALITY GATE (self-check before outputting):
 - Does the hook pass the 3-second scroll test? Specific, tensioned, relevant?
 - Is there ONE clear Big Idea the audience hasn't heard framed this way?
+- YOAST READABILITY CHECK: Is every prose block under 300 words before the next heading?
+- YOAST READABILITY CHECK: Is every paragraph under 150 words?
+- YOAST READABILITY CHECK: Do at least 30% of sentences use a transition word?
+- YOAST READABILITY CHECK: Are there any runs of 3+ consecutive sentences starting with the same word?
 - Is there a named framework with 3-7 steps?
 - Is the primary Emotional Driver woven throughout (not bolted on)?
 - Is there proof (mechanism, study, case, process walkthrough)?

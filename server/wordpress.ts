@@ -294,24 +294,42 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
   if (input.date) body.date_gmt = input.date;
 
   // ─── Yoast SEO meta fields ───────────────────────────────────────────────────
-  // Yoast SEO (free) does NOT expose its protected meta keys (_yoast_wpseo_*) via the
-  // standard WP REST API 'meta' field. The only working approach is the 'yoast_meta'
-  // top-level field that Yoast registers on the post endpoint.
-  // Sub-keys use the format WITHOUT the leading underscore: yoast_wpseo_*
+  // Yoast SEO Free does NOT expose _yoast_wpseo_* keys via the REST API by default.
+  // We use a two-pronged approach:
   //
-  // Confirmed working via live API testing:
-  //   yoast_wpseo_title      → sets the Yoast SEO title
-  //   yoast_wpseo_metadesc   → sets the Yoast meta description
-  //   yoast_wpseo_focuskw    → sets the Yoast focus keyphrase
-  //   yoast_wpseo_canonical  → sets the canonical URL
+  // 1. `yoast_meta` top-level field (works if Yoast registers it — varies by version)
+  //    Sub-keys WITHOUT the leading underscore: yoast_wpseo_focuskw, yoast_wpseo_title, etc.
+  //
+  // 2. Standard `meta` field with underscore-prefixed keys (works if the site has the
+  //    wp-yoast-rest-meta.php snippet installed in functions.php or mu-plugins/).
+  //    This is the RECOMMENDED approach — see /home/ubuntu/wp-yoast-rest-meta.php
+  //
+  // Both are sent simultaneously so whichever mechanism is available on the target site
+  // will succeed. The second-pass update below also retries both approaches.
   const yoastMeta: Record<string, string> = {};
-  if (input.seoTitle) yoastMeta["yoast_wpseo_title"] = input.seoTitle;
-  if (input.metaDescription) yoastMeta["yoast_wpseo_metadesc"] = input.metaDescription;
-  if (input.focusKeyword) yoastMeta["yoast_wpseo_focuskw"] = input.focusKeyword;
-  if (input.canonicalUrl) yoastMeta["yoast_wpseo_canonical"] = input.canonicalUrl;
+  const yoastMetaUnderscore: Record<string, string> = {};
+  if (input.seoTitle) {
+    yoastMeta["yoast_wpseo_title"] = input.seoTitle;
+    yoastMetaUnderscore["_yoast_wpseo_title"] = input.seoTitle;
+  }
+  if (input.metaDescription) {
+    yoastMeta["yoast_wpseo_metadesc"] = input.metaDescription;
+    yoastMetaUnderscore["_yoast_wpseo_metadesc"] = input.metaDescription;
+  }
+  if (input.focusKeyword) {
+    yoastMeta["yoast_wpseo_focuskw"] = input.focusKeyword;
+    yoastMetaUnderscore["_yoast_wpseo_focuskw"] = input.focusKeyword;
+  }
+  if (input.canonicalUrl) {
+    yoastMeta["yoast_wpseo_canonical"] = input.canonicalUrl;
+    yoastMetaUnderscore["_yoast_wpseo_canonical"] = input.canonicalUrl;
+  }
 
   if (Object.keys(yoastMeta).length > 0) {
     body.yoast_meta = yoastMeta;
+    // Also try the standard meta field with underscore-prefixed keys
+    // (requires wp-yoast-rest-meta.php snippet in functions.php or mu-plugins)
+    body.meta = { ...(body.meta as Record<string, string> ?? {}), ...yoastMetaUnderscore };
   }
 
   const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts`, {
@@ -346,7 +364,7 @@ export async function createWpPost(input: WpPostInput): Promise<WpPostResult> {
           Authorization: authHeader,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ yoast_meta: yoastMeta }),
+        body: JSON.stringify({ yoast_meta: yoastMeta, meta: yoastMetaUnderscore }),
       }, 15_000);
       if (!updateRes.ok) {
         const errText = await updateRes.text();

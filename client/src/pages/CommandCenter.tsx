@@ -1191,6 +1191,7 @@ export default function CommandCenter() {
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [isBatchGeneratingYoast, setIsBatchGeneratingYoast] = useState(false);
+  const [isBatchGeneratingYoastPublished, setIsBatchGeneratingYoastPublished] = useState(false);
   const [isBatchBackfillingYoast, setIsBatchBackfillingYoast] = useState(false);
   const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
   const [bufferErrors, setBufferErrors] = useState<Record<number, string>>({});
@@ -1535,6 +1536,22 @@ export default function CommandCenter() {
     onError: (err) => {
       setIsBatchGeneratingYoast(false);
       toast.error('Batch Yoast generation failed: ' + err.message);
+    },
+  });
+
+  const batchGenerateYoastPublishedMutation = trpc.blog.generateYoastForPublished.useMutation({
+    onSuccess: (data) => {
+      refetch();
+      setIsBatchGeneratingYoastPublished(false);
+      if (data.failed === 0) {
+        toast.success(`Yoast fields generated for ${data.succeeded} published post${data.succeeded !== 1 ? 's' : ''}! Run Backfill to push to WordPress.`);
+      } else {
+        toast.warning(`${data.succeeded} generated, ${data.failed} failed.`);
+      }
+    },
+    onError: (err) => {
+      setIsBatchGeneratingYoastPublished(false);
+      toast.error('Failed to generate Yoast for published posts: ' + err.message);
     },
   });
 
@@ -2219,8 +2236,25 @@ export default function CommandCenter() {
                   )}
                 </button>
               )}
-              {/* Batch Backfill Yoast in WP — shown when Blog filter is active and there are published posts */}
-              {platformFilter === "blog" && items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId).length > 0 && (
+              {/* Generate Missing Yoast for Published — shown when published posts are missing focus keyword */}
+              {platformFilter === "blog" && items.filter((i) => i.platform === "blog" && i.status === "published" && (!i.focusKeyword || !i.yoastSeoTitle)).length > 0 && (
+                <button
+                  onClick={() => {
+                    setIsBatchGeneratingYoastPublished(true);
+                    batchGenerateYoastPublishedMutation.mutate();
+                  }}
+                  disabled={isBatchGeneratingYoastPublished}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-purple-600/50 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors disabled:opacity-50"
+                >
+                  {isBatchGeneratingYoastPublished ? (
+                    <><span className="h-3 w-3 border border-purple-600 border-t-transparent rounded-full animate-spin" />Generating SEO...</>
+                  ) : (
+                    <><Sparkles className="h-3 w-3" /> Generate Missing Yoast ({items.filter((i) => i.platform === "blog" && i.status === "published" && (!i.focusKeyword || !i.yoastSeoTitle)).length})</>
+                  )}
+                </button>
+              )}
+              {/* Batch Backfill Yoast in WP — shown when published posts have Yoast data ready to push */}
+              {platformFilter === "blog" && items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId && i.focusKeyword).length > 0 && (
                 <button
                   onClick={() => {
                     setIsBatchBackfillingYoast(true);
@@ -2232,7 +2266,7 @@ export default function CommandCenter() {
                   {isBatchBackfillingYoast ? (
                     <><span className="h-3 w-3 border border-green-600 border-t-transparent rounded-full animate-spin" />Updating WP...</>
                   ) : (
-                    <><RefreshCw className="h-3 w-3" /> Backfill Yoast in WP ({items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId).length})</>
+                    <><RefreshCw className="h-3 w-3" /> Backfill Yoast in WP ({items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId && i.focusKeyword).length})</>
                   )}
                 </button>
               )}

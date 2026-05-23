@@ -1507,3 +1507,20 @@ export const keywordRankHistory = mysqlTable("keyword_rank_history", {
 
 export type KeywordRankHistory = typeof keywordRankHistory.$inferSelect;
 export type InsertKeywordRankHistory = typeof keywordRankHistory.$inferInsert;
+
+// ─── Buffer Channel Defaults ─────────────────────────────────────────────────
+// Stores the owner's permanent default channel selection per platform.
+// When the Buffer Channel Selector opens, these are pre-checked.
+// If no row exists for a platform, all channels for that platform are pre-checked.
+export const bufferChannelDefaults = mysqlTable("buffer_channel_defaults", {
+  id: int("id").autoincrement().primaryKey(),
+  // Platform key: instagram | facebook | tiktok | linkedin | twitter | youtube
+  platform: varchar("bcd_platform", { length: 32 }).notNull().unique(),
+  // JSON: string[] — array of Buffer profile IDs that should be pre-checked
+  // varchar(2048) used instead of text because TiDB doesn't allow defaults on BLOB/TEXT columns
+  defaultProfileIds: varchar("bcd_default_profile_ids", { length: 2048 }).notNull().default(""),
+  updatedAt: timestamp("bcd_updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BufferChannelDefault = typeof bufferChannelDefaults.$inferSelect;
+export type InsertBufferChannelDefault = typeof bufferChannelDefaults.$inferInsert;

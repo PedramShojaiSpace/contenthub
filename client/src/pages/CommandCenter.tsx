@@ -1373,6 +1373,7 @@ export default function CommandCenter() {
 
   // Buffer profiles (cached — fetched once)
   const { data: bufferProfiles = [] } = trpc.syndication.getProfiles.useQuery();
+  const { data: bufferChannelDefaults } = trpc.syndication.getChannelDefaults.useQuery();
   // Growth cadence data
   const { data: cadenceData, refetch: refetchCadence } = trpc.growth.weeklyCadence.useQuery();
   // Viral Studio dashboard summary
@@ -3616,6 +3617,7 @@ export default function CommandCenter() {
         profiles={bufferProfiles}
         contentPlatform={channelSelectorItem?.platform ?? "meta"}
         isPushing={channelSelectorItem ? bufferPushingId === channelSelectorItem.id : false}
+        dbDefaults={bufferChannelDefaults}
         onConfirm={handleChannelSelectorConfirm}
       />
     </DashboardLayout>

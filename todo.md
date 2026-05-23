@@ -3119,3 +3119,30 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Persist selection per platform in localStorage so picks are remembered
 - [x] Move Meta post type selector (Feed/Reel/Story) into the channel selector dialog
 - [x] Wire onConfirm to pass exact profileIds and channelServiceMap to syndicationMutation
+
+## Default Buffer Channels Settings (May 23, 2026)
+
+- [ ] Add buffer_channel_defaults table to drizzle schema (platform, channelId, channelName, service, isDefault)
+- [ ] Run db:push after schema update
+- [ ] Add syndication.getDefaultChannels and syndication.setDefaultChannels tRPC procedures
+- [ ] Build Default Channels settings page at /settings/buffer-channels
+- [ ] Add sidebar nav item for Buffer Channel Defaults under Settings
+- [ ] Wire BufferChannelSelector to load DB defaults instead of localStorage
+- [ ] Publish gut health pillar page to WordPress
+- [ ] Publish sleep optimization pillar page to WordPress
+- [ ] Set Published URL for gut health pillar in /keyword-strategy
+- [ ] Set Published URL for sleep optimization pillar in /keyword-strategy
+
+## Default Buffer Channels + Pillar Pages (May 23, 2026)
+
+- [x] Add buffer_channel_defaults table to drizzle schema (varchar(2048) for TiDB compatibility)
+- [x] Add syndication.getChannelDefaults and syndication.setChannelDefaults tRPC procedures
+- [x] Build Default Channels settings page at /default-channels
+- [x] Add sidebar nav item for Default Channels in DashboardLayout
+- [x] Wire BufferChannelSelector to load DB defaults via dbDefaults prop
+- [x] Publish gut health pillar page to WordPress — https://theurbanmonk.com/complete-gut-health-guide-heal-microbiome-bloating-t58q/
+- [x] Publish sleep optimization pillar page to WordPress — https://theurbanmonk.com/sleep-optimization-fix-sleep-architecture-vi72/
+- [x] Update keyword_targets id=1 (gut health) with published URL
+- [x] Update keyword_targets id=20 (sleep optimization) with published URL
+- [x] All 4 pillar pages now published and wired: gut health ✅, sleep optimization ✅, cortisol ✅, heavy metal detox ✅
+- [x] Deleted duplicate WP post 9739 (first run artifact)

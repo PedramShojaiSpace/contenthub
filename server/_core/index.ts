@@ -13,6 +13,7 @@ import { handleIngestResearchReport } from "../ingestRouter";
 import { handleNewsfeedRefresh } from "../newsfeedScheduled";
 import { gscDigestHandler } from "../gscDigestHandler";
 import { keywordPriorityDigestHandler } from "../keywordPriorityDigestHandler";
+import { rankSnapshotHandler } from "../rankSnapshotHandler";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
@@ -93,6 +94,8 @@ async function startServer() {
   // Weekly GSC SEO digest — every Monday 09:00 UTC
   app.post("/api/scheduled/gsc-digest", gscDigestHandler);
   app.post("/api/scheduled/keyword-priority-digest", keywordPriorityDigestHandler);
+  // Weekly rank snapshot — every Monday at 10:00 UTC
+  app.post("/api/scheduled/rank-snapshot", rankSnapshotHandler);
   // ── Stitch job endpoint ─────────────────────────────────────────────────────
   // Runs the full stitching job SYNCHRONOUSLY within an HTTP request.
   // This keeps the Cloud Run container alive (active request) for the full

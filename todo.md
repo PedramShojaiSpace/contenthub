@@ -3027,3 +3027,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 - [x] Fix Strike Zone prompt trigger: only fire for keywords with confirmed GSC position 11-30; currently firing incorrectly on keywords without a real position
 - [x] Rebuild content velocity framework with explicit pillar-cluster interlinking architecture (internal link map, cluster-to-pillar rules, topic cluster diagram)
+
+## Session Handoff — Pending Items (May 2026)
+
+- [x] Seed "Detox & Toxicity" fourth keyword campaign: pillar "heavy metal detox", cluster keywords (environmental toxins, how to detox your body naturally, liver detox, etc.), DataForSEO volumes
+- [x] Build keyword rank tracking (Round 3): keyword_rank_history table, weekly GSC rank snapshot heartbeat, rank trend sparklines in KeywordStrategy UI
+- [ ] Wire WordPress publish-back auto-update of keyword target publishedUrl/status when a post publishes (Round 2 pending)
+- [ ] User must add /home/ubuntu/wp-yoast-rest-meta.php snippet to WordPress theme's functions.php (manual step — required for Yoast focus keyphrase via REST API)
+- [ ] Re-publish the two existing posts (gut health and sleep) through Command Center to apply all pipeline fixes (slug sanitization, schema injection, placeholder resolution, Yoast meta)
+
+## Session Handoff — New Items (May 22, 2026)
+
+- [ ] Fix Yoast focus keyphrase not pushing to WordPress: investigate whether the wp-yoast-rest-meta.php functions.php snippet is installed; if not, provide instructions; if yes, debug the REST meta field name used in updateWpPostYoast()
+- [ ] Wire pillar page URLs into keyword targets table: once the three pillar pages are live, go to /keyword-strategy and set publishedUrl on the pillar keyword targets (activates publish-back tracking so the tool knows the pillar is live)
+- [ ] Register weekly rank-snapshot heartbeat cron via manus-heartbeat CLI (platform create endpoint was returning 500 — retry after deploy; handler is at POST /api/scheduled/rank-snapshot)

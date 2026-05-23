@@ -11,8 +11,8 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { keywordCampaigns, keywordTargets } from "../drizzle/schema";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { keywordCampaigns, keywordTargets, keywordRankHistory } from "../drizzle/schema";
+import { eq, and, desc, asc, inArray } from "drizzle-orm";
 import { getKeywordOverview } from "./dataForSeo";
 import { invokeLLM } from "./_core/llm";
 
@@ -239,6 +239,155 @@ export const keywordStrategyRouter = router({
 
       return { enriched };
     }),
+
+  // ── AI keyword cluster generation ─────────────────────────────────────────
+
+  // ── Rank history ──────────────────────────────────────────────────────────
+
+  /**
+   * Get rank history for a single keyword target.
+   * Returns the last N weekly snapshots, ordered oldest-first for sparklines.
+   */
+  getRankHistory: protectedProcedure
+    .input(
+      z.object({
+        targetId: z.number().int().positive(),
+        limit: z.number().int().min(1).max(52).default(12),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      // Verify the target belongs to this user
+      const [target] = await db!
+        .select()
+        .from(keywordTargets)
+        .where(and(eq(keywordTargets.id, input.targetId), eq(keywordTargets.userId, ctx.user.id)));
+      if (!target) return { history: [] };
+
+      const history = await db!
+        .select()
+        .from(keywordRankHistory)
+        .where(eq(keywordRankHistory.targetId, input.targetId))
+        .orderBy(asc(keywordRankHistory.snapshotAt))
+        .limit(input.limit);
+
+      return { history };
+    }),
+
+  /**
+   * Get rank history for all targets in a campaign.
+   * Returns a map of targetId -> last 12 weekly snapshots.
+   */
+  getCampaignRankHistory: protectedProcedure
+    .input(z.object({ campaignId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      // Verify campaign belongs to this user
+      const [campaign] = await db!
+        .select()
+        .from(keywordCampaigns)
+        .where(and(eq(keywordCampaigns.id, input.campaignId), eq(keywordCampaigns.userId, ctx.user.id)));
+      if (!campaign) return { historyByTarget: {} };
+
+      // Get all targets for this campaign
+      const targets = await db!
+        .select({ id: keywordTargets.id })
+        .from(keywordTargets)
+        .where(eq(keywordTargets.campaignId, input.campaignId));
+
+      if (!targets.length) return { historyByTarget: {} };
+
+      const targetIds = targets.map((t) => t.id);
+
+      // Get last 12 snapshots per target
+      const allHistory = await db!
+        .select()
+        .from(keywordRankHistory)
+        .where(inArray(keywordRankHistory.targetId, targetIds))
+        .orderBy(asc(keywordRankHistory.snapshotAt));
+
+      // Group by targetId, keep last 12 per target
+      const historyByTarget: Record<number, typeof allHistory> = {};
+      for (const row of allHistory) {
+        if (!historyByTarget[row.targetId]) historyByTarget[row.targetId] = [];
+        historyByTarget[row.targetId].push(row);
+      }
+      // Trim to last 12 per target
+      for (const id of Object.keys(historyByTarget)) {
+        const arr = historyByTarget[Number(id)];
+        if (arr.length > 12) historyByTarget[Number(id)] = arr.slice(-12);
+      }
+
+      return { historyByTarget };
+    }),
+
+  /**
+   * Get rank movers: keywords with the biggest position changes in the last 2 snapshots.
+   * Returns top 10 improvers and top 10 drops across all campaigns for this user.
+   */
+  getRankMovers: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+
+    // Get all targets for this user
+    const targets = await db!
+      .select()
+      .from(keywordTargets)
+      .where(eq(keywordTargets.userId, ctx.user.id));
+
+    if (!targets.length) return { improvers: [], drops: [] };
+
+    const targetIds = targets.map((t) => t.id);
+    const targetMap = new Map(targets.map((t) => [t.id, t]));
+
+    // Get the last 2 snapshots per target
+    const allHistory = await db!
+      .select()
+      .from(keywordRankHistory)
+      .where(inArray(keywordRankHistory.targetId, targetIds))
+      .orderBy(desc(keywordRankHistory.snapshotAt));
+
+    // Group by targetId, keep last 2
+    const lastTwoByTarget = new Map<number, typeof allHistory>();
+    for (const row of allHistory) {
+      const existing = lastTwoByTarget.get(row.targetId) ?? [];
+      if (existing.length < 2) {
+        existing.push(row);
+        lastTwoByTarget.set(row.targetId, existing);
+      }
+    }
+
+    const movers: Array<{
+      targetId: number;
+      keyword: string;
+      oldPosition: number | null;
+      newPosition: number | null;
+      delta: number;
+      weekLabel: string;
+    }> = [];
+
+    for (const [targetId, snapshots] of Array.from(lastTwoByTarget.entries())) {
+      if (snapshots.length < 2) continue;
+      const [latest, previous] = snapshots; // desc order: latest first
+      if (latest.position === null || previous.position === null) continue;
+      const delta = previous.position - latest.position; // positive = improved
+      if (Math.abs(delta) >= 3) {
+        movers.push({
+          targetId,
+          keyword: targetMap.get(targetId)?.keyword ?? latest.keyword,
+          oldPosition: previous.position,
+          newPosition: latest.position,
+          delta,
+          weekLabel: latest.weekLabel,
+        });
+      }
+    }
+
+    movers.sort((a, b) => b.delta - a.delta);
+    const improvers = movers.filter((m) => m.delta > 0).slice(0, 10);
+    const drops = movers.filter((m) => m.delta < 0).slice(0, 10);
+
+    return { improvers, drops };
+  }),
 
   // ── AI keyword cluster generation ─────────────────────────────────────────
 

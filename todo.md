@@ -3068,3 +3068,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] WPCode snippet variant (no <?php tag) added — WPCode adds the opening tag automatically
 - [x] TypeScript: 0 errors
 - [ ] User must add snippet via WPCode Lite: WP Admin → Code Snippets → Add Snippet → PHP Snippet → paste → Activate
+
+## Scale Audit Session (May 23, 2026)
+
+- [x] Fixed heavy metal detox pillar URL: updated keyword_targets from draft ?p=9734 to real permalink https://theurbanmonk.com/heavy-metal-detox-reclaim-health-1mxh/
+- [x] Confirmed Yoast backfill: 22/22 tool-managed posts have focus keyphrases in WordPress
+- [x] Confirmed WordPress publish-back wiring: Step 8 in publishBlog procedure fuzzy-matches focusKeyword to keyword_targets and flips contentStatus to "published" + sets publishedUrl
+- [x] Confirmed all 4 keyword campaigns seeded: Gut Health (24), Sleep & Recovery (24), Stress & Cortisol (24), Detox & Toxicity (24) = 96 total targets
+- [x] Confirmed 91 targets at not_started, 5 at published — 91 content opportunities queued
+- [x] Confirmed rank_history table is empty (no snapshots yet — heartbeat not registered)
+- [ ] Gut health pillar page: not yet published to WordPress (cluster posts exist, pillar page needed)
+- [ ] Sleep optimization pillar page: not yet published to WordPress (cluster posts exist, pillar page needed)
+- [ ] Register rank-snapshot-weekly heartbeat (Settings → Schedules in Management UI after deploy)
+- [ ] Re-publish gut health and sleep cluster posts through Command Center to apply all pipeline fixes (Yoast, slug sanitization, schema injection, placeholder resolution)

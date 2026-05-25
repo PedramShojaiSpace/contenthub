@@ -3260,3 +3260,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] DataForSEO SERP lookup for each recommendation keyword — getSerpTop1 extracts the #1 organic result domain and title
 - [x] Competitor gap column in Publish Next panel: CompetitorCell component shows competitor domain + title under each recommendation
 - [x] 378 tests pass, TypeScript clean (0 errors)
+
+## Scoreboard v4 — Pillar Coverage Bar
+
+- [x] Add scoreboard.getPillarCoverage tRPC procedure: groups published blog posts by topic pillar using keyword heuristics, returns count per pillar sorted by coverage
+- [x] Add PillarCoverageBar component to Scoreboard.tsx: compact card above Publish Next panel showing post count per pillar with color-coded badges and mini progress bars
+- [x] Highlight underserved pillars (count < 2) with red border, ring, and NONE label
+- [x] 378 tests pass, TypeScript clean (0 errors)

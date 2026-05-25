@@ -4170,6 +4170,75 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
 
       return enriched.slice(0, 10);
     }),
+
+    /**
+     * Pillar Coverage — group all published blog posts by topic pillar
+     * using keyword heuristics. Returns count per pillar so the Scoreboard
+     * can show which content pillars are underserved.
+     */
+    getPillarCoverage: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const { contentItems } = await import("../drizzle/schema");
+      const { and, eq } = await import("drizzle-orm");
+
+      // Fetch all published blog posts with their focus keyword and title
+      const posts = await db
+        .select({
+          id: contentItems.id,
+          title: contentItems.title,
+          focusKeyword: contentItems.focusKeyword,
+        })
+        .from(contentItems)
+        .where(
+          and(
+            eq(contentItems.status, "published"),
+            eq(contentItems.platform, "blog")
+          )
+        );
+
+      if (posts.length === 0) return [];
+
+      // Keyword heuristics for pillar assignment
+      const PILLAR_KEYWORDS: Record<string, string[]> = {
+        "Sleep": ["sleep", "insomnia", "melatonin", "circadian", "rest", "fatigue", "tired"],
+        "Gut Health": ["gut", "microbiome", "digestion", "probiotic", "prebiotic", "leaky gut", "ibs", "bloat"],
+        "Stress & Anxiety": ["stress", "anxiety", "cortisol", "nervous system", "panic", "worry", "calm", "overwhelm"],
+        "Energy": ["energy", "fatigue", "adrenal", "mitochondria", "caffeine", "vitality", "exhaustion"],
+        "Detox": ["detox", "cleanse", "toxin", "liver", "heavy metal", "fasting", "purify"],
+        "Longevity": ["longevity", "aging", "anti-aging", "lifespan", "telomere", "senescence", "biohack"],
+        "Mindfulness": ["mindfulness", "meditation", "presence", "awareness", "monk", "stillness", "zen"],
+        "Nutrition": ["nutrition", "diet", "food", "eating", "nutrient", "vitamin", "mineral", "supplement"],
+        "Breathwork": ["breath", "breathing", "pranayama", "oxygen", "co2", "hyperventilat", "wim hof"],
+      };
+
+      function assignPillar(title: string, keyword: string | null): string {
+        const text = `${title} ${keyword ?? ""}`.toLowerCase();
+        for (const [pillar, terms] of Object.entries(PILLAR_KEYWORDS)) {
+          if (terms.some((t) => text.includes(t))) return pillar;
+        }
+        return "Other";
+      }
+
+      const counts = new Map<string, number>();
+      for (const post of posts) {
+        const pillar = assignPillar(post.title, post.focusKeyword);
+        counts.set(pillar, (counts.get(pillar) ?? 0) + 1);
+      }
+
+      // Return all known pillars (including zeros) plus any "Other" bucket
+      const ALL_PILLARS = ["Sleep", "Gut Health", "Stress & Anxiety", "Energy", "Detox", "Longevity", "Mindfulness", "Nutrition", "Breathwork"];
+      const result = ALL_PILLARS.map((pillar) => ({
+        pillar,
+        count: counts.get(pillar) ?? 0,
+      }));
+      if (counts.has("Other") && (counts.get("Other") ?? 0) > 0) {
+        result.push({ pillar: "Other", count: counts.get("Other")! });
+      }
+
+      return result.sort((a, b) => b.count - a.count);
+    }),
   }),
 
   optin: router({

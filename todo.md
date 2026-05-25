@@ -3306,3 +3306,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix: frontend `blogContent` state now stores `ctaBannerHtml` separately and passes it to the WP publish mutation
 - [x] Ran strip-cta-html-from-content.mjs: cleaned 24 stored posts that had embedded CTA HTML in textContent
 - [x] TypeScript clean (0 errors), 378 tests pass
+
+## SEO Edit Button on Kanban Card (v9)
+
+- [x] Add "Edit SEO" button to the Kanban card (visible on published blog posts)
+- [x] Clicking it opens the card detail dialog which contains the full SeoKeywordEditor
+- [x] SeoKeywordEditor has Save (DB) + Update in WP (WordPress API) buttons

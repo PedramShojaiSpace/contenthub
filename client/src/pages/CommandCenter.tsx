@@ -85,6 +85,7 @@ import {
   TrendingDown,
   MousePointerClick,
   RotateCcw,
+  PenLine,
 } from "lucide-react";  
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -863,16 +864,26 @@ function DraggableCard({
           <div className="flex flex-col gap-0.5 mt-1">
             {/* Yoast SEO score badge */}
             <YoastScoreBadge item={item} />
-            <a
-              href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${item.wpPostId}&action=edit`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700 hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink className="h-2.5 w-2.5" />
-              {item.status === "published" ? "Edit in WordPress" : "Edit Draft in WordPress"}
-            </a>
+            <div className="flex items-center gap-2 flex-wrap">
+              <a
+                href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${item.wpPostId}&action=edit`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="h-2.5 w-2.5" />
+                {item.status === "published" ? "Edit in WordPress" : "Edit Draft in WordPress"}
+              </a>
+              <button
+                className="flex items-center gap-1 text-[10px] text-amber-600 hover:text-amber-700 hover:underline font-medium"
+                onClick={(e) => { e.stopPropagation(); onClick(); }}
+                title="Edit SEO title, focus keyword, and meta description — opens card detail and scrolls to SEO section"
+              >
+                <PenLine className="h-2.5 w-2.5" />
+                Edit SEO
+              </button>
+            </div>
             {item.publishUrl && (
               <a
                 href={item.publishUrl}
@@ -1345,6 +1356,9 @@ export default function CommandCenter() {
   // Yoast pre-flight warning state
   const [yoastPreflightItem, setYoastPreflightItem] = useState<ContentItem | null>(null);
   const [showYoastWarning, setShowYoastWarning] = useState(false);
+
+  // SEO Edit dialog state — tracks whether the detail dialog was opened via Edit SEO button
+  const [scrollToSeoOnOpen, setScrollToSeoOnOpen] = useState(false);
 
   // GA4 campaign auto-fix state
   const [campaignWarning, setCampaignWarning] = useState<string | null>(null);
@@ -3509,11 +3523,13 @@ export default function CommandCenter() {
             {selectedItem.platform === "blog" && (
               <div className="space-y-3">
                 {/* SEO Keyword Editor */}
-                <SeoKeywordEditor item={selectedItem} onSaved={(updated) => {
-                  // Optimistically update the selectedItem in state with all Yoast fields
-                  setSelectedItem(prev => prev ? { ...prev, ...updated } : prev);
-                  refetch();
-                }} />
+                <div id="seo-keyword-editor">
+                  <SeoKeywordEditor item={selectedItem} onSaved={(updated) => {
+                    // Optimistically update the selectedItem in state with all Yoast fields
+                    setSelectedItem(prev => prev ? { ...prev, ...updated } : prev);
+                    refetch();
+                  }} />
+                </div>
 
                 {/* UTM Preview Panel — shows what UTM params are injected into this post's CTAs */}
                 {(() => {

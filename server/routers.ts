@@ -2776,10 +2776,44 @@ Return BOTH in this exact format:
           datePublished: wpDate ?? new Date().toISOString(),
         });
 
-        // Step 4: Build SEO title for Yoast (format: Article Title | The Urban Monk)
-        // Use explicit override if provided (from SeoKeywordEditor), otherwise auto-generate
-        const seoTitle = publishInput.yoastSeoTitle ?? `${publishInput.title} | The Urban Monk`;
-        const metaDesc = publishInput.yoastMetaDescription ?? publishInput.metaDescription;
+        // Step 4: Build SEO title for Yoast
+        // Yoast requires the EXACT focus keyphrase at the START of the SEO title for a green score.
+        // Format: "Focus Keyphrase: Article Title | The Urban Monk" (keyphrase leads)
+        // If an explicit override was set in SeoKeywordEditor, use it as-is.
+        // Otherwise, auto-generate with keyphrase-first format.
+        let seoTitle: string;
+        if (publishInput.yoastSeoTitle) {
+          seoTitle = publishInput.yoastSeoTitle;
+        } else if (publishInput.focusKeyword) {
+          const kw = publishInput.focusKeyword;
+          const titleLower = publishInput.title.toLowerCase();
+          const kwLower = kw.toLowerCase();
+          // If the title already starts with the keyphrase, don't duplicate it
+          if (titleLower.startsWith(kwLower)) {
+            seoTitle = `${publishInput.title} | The Urban Monk`;
+          } else {
+            // Capitalise the keyphrase for the SEO title
+            const kwCapitalised = kw.charAt(0).toUpperCase() + kw.slice(1);
+            seoTitle = `${kwCapitalised}: ${publishInput.title} | The Urban Monk`;
+          }
+        } else {
+          seoTitle = `${publishInput.title} | The Urban Monk`;
+        }
+
+        // Step 4b: Enforce keyphrase in meta description
+        // Yoast requires the focus keyphrase to appear verbatim in the meta description.
+        // If the AI-generated meta description doesn't contain it, prepend it naturally.
+        let metaDesc = publishInput.yoastMetaDescription ?? publishInput.metaDescription;
+        if (publishInput.focusKeyword && metaDesc) {
+          const kwLower = publishInput.focusKeyword.toLowerCase();
+          if (!metaDesc.toLowerCase().includes(kwLower)) {
+            // Prepend the keyphrase naturally: "[Keyphrase]: [existing description]"
+            // but respect the 155-char Yoast limit
+            const prefix = `${publishInput.focusKeyword}: `;
+            const combined = prefix + metaDesc;
+            metaDesc = combined.length <= 155 ? combined : combined.slice(0, 152) + "...";
+          }
+        }
 
         // Step 5: Resolve SEO keywords as WordPress tags (create if they don't exist)
         const { authHeader: wpAuthHeader } = (() => {

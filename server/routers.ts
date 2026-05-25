@@ -2226,6 +2226,28 @@ CAPTION: [caption text]`;
         return result;
       }),
 
+    // Update the pushedChannels field for a content item after a successful Buffer push
+    // channels: array of { id, name, service } objects
+    updatePushedChannels: protectedProcedure
+      .input(
+        z.object({
+          contentItemId: z.number(),
+          channels: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              service: z.string(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await updateContentItem(input.contentItemId, {
+          pushedChannels: JSON.stringify(input.channels),
+        });
+        return { ok: true };
+      }),
+
     // Get the saved default channel IDs for all platforms
     getChannelDefaults: protectedProcedure.query(async () => {
       const { getDb } = await import("./db");

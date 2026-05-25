@@ -44,6 +44,7 @@ const GuestIntakeForm = lazy(() => import("./pages/GuestIntakeForm"));
 const SeoDashboard = lazy(() => import("./pages/SeoDashboard"));
 const CompetitiveIntelligence = lazy(() => import("./pages/CompetitiveIntelligence"));
 const KeywordStrategy = lazy(() => import("./pages/KeywordStrategy"));
+const Scoreboard = lazy(() => import("./pages/Scoreboard"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -93,6 +94,7 @@ function Router() {
         <Route path={"/podcast-production/:id"} component={PodcastEpisodeViewer} />
         <Route path={"/podcast-intake/:token"} component={GuestIntakeForm} />
         <Route path={"/seo"} component={SeoDashboard} />
+        <Route path={"/scoreboard"} component={Scoreboard} />
         <Route path={"/competitive-intelligence"} component={CompetitiveIntelligence} />
         <Route path={"/keyword-strategy"} component={KeywordStrategy} />
         <Route path={"/404"} component={NotFound} />

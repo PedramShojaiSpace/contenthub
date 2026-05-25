@@ -3225,3 +3225,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Refactor handlePublishToWP into doPublishToWP (actual publish) + handlePublishToWP (gate check)
 - [x] Dialog shows specific message for "bad" score vs "not yet scored"
 - [x] "Publish Anyway" override button lets user bypass the warning
+
+## Content Scoreboard (v-scoreboard)
+
+- [x] Add scoreboard.getPublishedPosts tRPC procedure — returns all published blog posts enriched with Yoast score, pushed channels, and live GSC traffic (28-day window)
+- [x] Scoreboard page built at /scoreboard — shows health signal (green/amber/red), Yoast badge, GSC clicks/impressions/avg position, social push channel badges
+- [x] Search, filter (All/Winning/Watch/Fix), and sort (Newest/Clicks/Position/Health) controls
+- [x] Inline "Refresh Yoast" button per post to fetch latest score from WordPress
+- [x] Summary stat cards: total posts, winning, needs attention, total clicks, avg position
+- [x] Trophy icon added to sidebar nav (above SEO Dashboard)
+- [x] TypeScript clean (0 errors), 378 tests pass

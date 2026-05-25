@@ -3362,6 +3362,7 @@ Rules:
       }),
 
     // Batch backfill Yoast SEO fields on all Published WordPress posts
+    // Applies the same keyphrase-first SEO title and meta desc enforcement as the publish procedure
     backfillYoastInWordPress: protectedProcedure
       .mutation(async () => {
         const db = await getDb();
@@ -3382,27 +3383,64 @@ Rules:
             )
           );
 
-        const results: Array<{ id: number; title: string; wpPostId: number; success: boolean; error?: string }> = [];
+        const results: Array<{ id: number; title: string; wpPostId: number; success: boolean; fixed: string[]; error?: string }> = [];
 
         for (const item of published) {
           if (!item.wpPostId) continue;
+          const fixed: string[] = [];
           try {
+            const focusKw = item.focusKeyword ?? '';
+            let seoTitle = item.yoastSeoTitle ?? item.title ?? '';
+            let metaDesc = item.yoastMetaDescription ?? '';
+
+            // Fix 1: SEO title must start with the focus keyphrase
+            if (focusKw && seoTitle) {
+              const kwLower = focusKw.toLowerCase();
+              const titleLower = seoTitle.toLowerCase();
+              if (!titleLower.startsWith(kwLower)) {
+                // Check if the title already contains the keyphrase — if so, don't double-prefix
+                if (!titleLower.includes(kwLower)) {
+                  const baseTitle = seoTitle.replace(/\s*\|.*$/, '').trim();
+                  seoTitle = `${focusKw}: ${baseTitle} | The Urban Monk`;
+                  fixed.push('seo_title_keyphrase_first');
+                }
+              }
+            }
+
+            // Fix 2: Meta description must contain the focus keyphrase
+            if (focusKw && metaDesc) {
+              const kwLower = focusKw.toLowerCase();
+              if (!metaDesc.toLowerCase().includes(kwLower)) {
+                metaDesc = `${focusKw}: ${metaDesc}`;
+                fixed.push('meta_desc_keyphrase_added');
+              }
+            }
+
+            // Persist fixed values to DB
+            if (fixed.length > 0) {
+              await updateContentItem(item.id, {
+                yoastSeoTitle: seoTitle,
+                yoastMetaDescription: metaDesc,
+              });
+            }
+
             await updateWpPostYoast({
               wpPostId: item.wpPostId,
-              seoTitle: item.yoastSeoTitle ?? undefined,
-              metaDescription: item.yoastMetaDescription ?? undefined,
-              focusKeyword: item.focusKeyword ?? undefined,
+              seoTitle: seoTitle || undefined,
+              metaDescription: metaDesc || undefined,
+              focusKeyword: focusKw || undefined,
             });
-            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, success: true });
+            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, success: true, fixed });
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
-            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, success: false, error: msg });
+            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, success: false, fixed, error: msg });
           }
         }
 
         const succeeded = results.filter((r) => r.success).length;
         const failed = results.filter((r) => !r.success).length;
-        return { results, succeeded, failed, total: published.length };
+        const totalFixed = results.reduce((acc, r) => acc + r.fixed.length, 0);
+        return { results, succeeded, failed, total: published.length, totalFixed };
       }),
 
     // Rewrite a blog post in an accessible, engaging voice for a general audience

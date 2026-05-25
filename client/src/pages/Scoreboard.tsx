@@ -3,7 +3,8 @@
  * ──────────────────
  * Single-view performance dashboard for all published blog posts.
  * Shows Yoast SEO score, GSC traffic, position trend (↑↓), social push
- * channels, health signal, and a "Publish Next" recommendation panel.
+ * channels, health signal, and a "Publish Next" recommendation panel
+ * with cluster view toggle and competitor gap column.
  */
 
 import { useState, useMemo } from "react";
@@ -16,12 +17,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   TrendingUp,
-  TrendingDown,
   Minus,
   Search,
   MousePointerClick,
   Eye,
-  Target,
   RefreshCw,
   ExternalLink,
   CheckCircle2,
@@ -29,13 +28,15 @@ import {
   XCircle,
   BarChart3,
   Globe,
-  Zap,
   Lightbulb,
   ArrowUpRight,
   ArrowDownRight,
   PenLine,
   ChevronDown,
   ChevronUp,
+  LayoutGrid,
+  List,
+  Swords,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -65,9 +66,12 @@ type Recommendation = {
   suggestedTitle: string;
   rationale: string;
   estimatedDifficulty: "low" | "medium" | "high";
+  topicCluster?: string;
   gscPosition: number | null;
   gscImpressions: number | null;
   gscClicks: number | null;
+  competitorDomain: string | null;
+  competitorTitle: string | null;
   source: string;
 };
 
@@ -203,10 +207,58 @@ function DifficultyBadge({ level }: { level: "low" | "medium" | "high" }) {
   return <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 font-semibold">Competitive</span>;
 }
 
+// ── Topic cluster pill ────────────────────────────────────────────────────────
+
+const CLUSTER_COLORS: Record<string, string> = {
+  "Sleep": "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
+  "Gut Health": "bg-lime-500/15 text-lime-700 dark:text-lime-400 border-lime-500/30",
+  "Stress & Anxiety": "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30",
+  "Energy": "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30",
+  "Detox": "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30",
+  "Longevity": "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30",
+  "Mindfulness": "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
+  "Nutrition": "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30",
+  "Breathwork": "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30",
+  "Other": "bg-muted text-muted-foreground border-muted-foreground/30",
+};
+
+function ClusterPill({ cluster }: { cluster: string }) {
+  const colorClass = CLUSTER_COLORS[cluster] ?? CLUSTER_COLORS["Other"];
+  return (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${colorClass}`}>
+      {cluster}
+    </span>
+  );
+}
+
+// ── Competitor gap cell ───────────────────────────────────────────────────────
+
+function CompetitorCell({ domain, title }: { domain: string | null; title: string | null }) {
+  if (!domain) {
+    return <span className="text-[10px] text-muted-foreground/50 italic">—</span>;
+  }
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-semibold text-red-500/80 flex items-center gap-1">
+        <Swords className="w-3 h-3" />
+        {domain.replace(/^www\./, "")}
+      </span>
+      {title && (
+        <span className="text-[10px] text-muted-foreground leading-tight line-clamp-2 max-w-[160px]">
+          {title}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Publish Next Panel ────────────────────────────────────────────────────────
 
 function PublishNextPanel() {
   const [expanded, setExpanded] = useState(true);
+  const [viewMode, setViewMode] = useState<"list" | "cluster">("list");
+  const [activeCluster, setActiveCluster] = useState<string | null>(null);
+
   const recsQuery = trpc.scoreboard.getPublishNextRecommendations.useQuery(undefined, {
     retry: false,
     staleTime: 1000 * 60 * 30, // cache 30 min — LLM calls are expensive
@@ -214,15 +266,35 @@ function PublishNextPanel() {
 
   const recs: Recommendation[] = (recsQuery.data ?? []) as Recommendation[];
 
+  // Build cluster groups
+  const clusterGroups = useMemo(() => {
+    const groups = new Map<string, Recommendation[]>();
+    for (const rec of recs) {
+      const cluster = rec.topicCluster ?? "Other";
+      if (!groups.has(cluster)) groups.set(cluster, []);
+      groups.get(cluster)!.push(rec);
+    }
+    return groups;
+  }, [recs]);
+
+  const clusters = Array.from(clusterGroups.keys());
+
+  const displayRecs = useMemo(() => {
+    if (viewMode === "cluster" && activeCluster) {
+      return clusterGroups.get(activeCluster) ?? [];
+    }
+    return recs;
+  }, [recs, viewMode, activeCluster, clusterGroups]);
+
   return (
     <Card className="bg-card border-border border-primary/20">
-      <CardHeader className="pb-3 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded((v) => !v)}>
           <CardTitle className="text-base flex items-center gap-2">
             <Lightbulb className="w-5 h-5 text-amber-500" />
             Publish Next — Strategic Recommendations
             <Badge className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 ml-1">
-              {recs.length > 0 ? `${recs.length} opportunities` : "Loading…"}
+              {recs.length > 0 ? `${recs.length} opportunities` : recsQuery.isLoading ? "Loading…" : "0"}
             </Badge>
           </CardTitle>
           <button className="text-muted-foreground hover:text-foreground transition-colors">
@@ -232,6 +304,46 @@ function PublishNextPanel() {
         <p className="text-xs text-muted-foreground mt-0.5">
           Keywords where you're already ranking (pos 4–20) but not yet getting clicks — publish these next for fastest traffic gains.
         </p>
+        {expanded && recs.length > 0 && (
+          <div className="flex items-center gap-2 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+            {/* View mode toggle */}
+            <div className="flex items-center gap-1 bg-muted/40 rounded-md p-0.5">
+              <button
+                onClick={() => { setViewMode("list"); setActiveCluster(null); }}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <List className="w-3 h-3" />
+                List
+              </button>
+              <button
+                onClick={() => { setViewMode("cluster"); if (!activeCluster && clusters.length > 0) setActiveCluster(clusters[0]); }}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${viewMode === "cluster" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <LayoutGrid className="w-3 h-3" />
+                By Topic
+              </button>
+            </div>
+
+            {/* Cluster filter pills (only in cluster mode) */}
+            {viewMode === "cluster" && (
+              <div className="flex flex-wrap gap-1.5">
+                {clusters.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setActiveCluster(c)}
+                    className={`text-[10px] px-2 py-0.5 rounded-full border font-medium transition-all ${
+                      activeCluster === c
+                        ? (CLUSTER_COLORS[c] ?? CLUSTER_COLORS["Other"]) + " ring-1 ring-offset-1 ring-current"
+                        : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/60"
+                    }`}
+                  >
+                    {c} ({clusterGroups.get(c)?.length ?? 0})
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </CardHeader>
 
       {expanded && (
@@ -249,7 +361,7 @@ function PublishNextPanel() {
             </div>
           ) : (
             <div className="space-y-2">
-              {recs.map((rec, i) => (
+              {displayRecs.map((rec, i) => (
                 <div
                   key={i}
                   className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors border border-border/50"
@@ -263,8 +375,12 @@ function PublishNextPanel() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-foreground leading-snug">{rec.suggestedTitle}</p>
-                      <DifficultyBadge level={rec.estimatedDifficulty} />
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <DifficultyBadge level={rec.estimatedDifficulty} />
+                        {rec.topicCluster && <ClusterPill cluster={rec.topicCluster} />}
+                      </div>
                     </div>
+
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-[10px] bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded">
                         🔑 {rec.keyword}
@@ -286,7 +402,16 @@ function PublishNextPanel() {
                         <span className="text-[10px] text-purple-500/80 font-medium">✨ AI suggested</span>
                       )}
                     </div>
+
                     <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{rec.rationale}</p>
+
+                    {/* Competitor gap row */}
+                    {(rec.competitorDomain || rec.competitorTitle) && (
+                      <div className="mt-1.5 flex items-start gap-1.5">
+                        <span className="text-[10px] text-muted-foreground/60 shrink-0 mt-0.5">vs #1:</span>
+                        <CompetitorCell domain={rec.competitorDomain} title={rec.competitorTitle} />
+                      </div>
+                    )}
                   </div>
 
                   {/* Action */}
@@ -363,7 +488,6 @@ export default function Scoreboard() {
         return order[a.health] - order[b.health];
       }
       if (sortBy === "trend") {
-        // up first, then flat, then down, then null
         const tOrder = { up: 0, flat: 1, down: 2 };
         const aO = a.trendDirection ? tOrder[a.trendDirection] : 3;
         const bO = b.trendDirection ? tOrder[b.trendDirection] : 3;

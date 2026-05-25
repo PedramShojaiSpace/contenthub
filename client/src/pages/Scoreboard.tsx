@@ -37,6 +37,7 @@ import {
   LayoutGrid,
   List,
   Swords,
+  Layers,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -249,6 +250,95 @@ function CompetitorCell({ domain, title }: { domain: string | null; title: strin
         </span>
       )}
     </div>
+  );
+}
+
+// ── Pillar Coverage Bar ──────────────────────────────────────────────────────
+
+function PillarCoverageBar() {
+  const coverageQuery = trpc.scoreboard.getPillarCoverage.useQuery(undefined, {
+    retry: false,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const pillars: { pillar: string; count: number }[] = (coverageQuery.data ?? []) as { pillar: string; count: number }[];
+
+  if (coverageQuery.isLoading) {
+    return (
+      <Card className="bg-card border-border">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-32" />
+            <div className="flex gap-2 flex-1">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-7 w-20" />)}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (pillars.length === 0) return null;
+
+  const maxCount = Math.max(...pillars.map((p) => p.count), 1);
+
+  return (
+    <Card className="bg-card border-border">
+      <CardContent className="py-3 px-4">
+        <div className="flex items-start gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 shrink-0 pt-1">
+            <Layers className="w-4 h-4 text-primary" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pillar Coverage</span>
+          </div>
+          <div className="flex flex-wrap gap-2 flex-1">
+            {pillars.map(({ pillar, count }) => {
+              const colorClass = CLUSTER_COLORS[pillar] ?? CLUSTER_COLORS["Other"];
+              const isUnderserved = count < 2;
+              return (
+                <div
+                  key={pillar}
+                  className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg border transition-all ${
+                    isUnderserved
+                      ? "border-red-400/40 bg-red-500/8 ring-1 ring-red-400/30"
+                      : `border-border/60 ${colorClass.split(" ")[0]}`
+                  }`}
+                  title={isUnderserved ? `${pillar}: only ${count} post${count === 1 ? "" : "s"} — needs more content` : `${pillar}: ${count} posts`}
+                >
+                  <span className={`text-[10px] font-semibold ${
+                    isUnderserved ? "text-red-500 dark:text-red-400" : colorClass.split(" ").slice(1).join(" ")
+                  }`}>
+                    {pillar}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-base font-bold leading-none ${
+                      isUnderserved ? "text-red-500 dark:text-red-400" : "text-foreground"
+                    }`}>
+                      {count}
+                    </span>
+                    {isUnderserved && count === 0 && (
+                      <span className="text-[9px] text-red-400 font-semibold">NONE</span>
+                    )}
+                  </div>
+                  {/* Mini bar */}
+                  <div className="w-full h-1 rounded-full bg-muted/60 mt-0.5">
+                    <div
+                      className={`h-1 rounded-full transition-all ${
+                        isUnderserved ? "bg-red-400" : "bg-primary/60"
+                      }`}
+                      style={{ width: `${Math.max((count / maxCount) * 100, count > 0 ? 8 : 0)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-1 shrink-0 pt-1">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
+            <span className="text-[10px] text-muted-foreground">Underserved (&lt;2 posts)</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -547,6 +637,9 @@ export default function Scoreboard() {
           />
         </div>
       )}
+
+      {/* Pillar Coverage Bar */}
+      <PillarCoverageBar />
 
       {/* Publish Next recommendations */}
       <PublishNextPanel />

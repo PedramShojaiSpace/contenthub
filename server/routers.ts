@@ -3807,9 +3807,92 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
   }),
 
   /**
-   * Public opt-in procedure — called from the Home page "Lights On" ebook form.
-   * Creates a Kajabi contact and applies the optin-lights-on tag to trigger the automation.
+   * Content Scoreboard — aggregates all published blog posts with their
+   * Yoast scores, GSC traffic (clicks/impressions/position), social push
+   * history, and a computed health signal for the scoreboard page.
    */
+  scoreboard: router({
+    /**
+     * Return all published blog content items enriched with their
+     * stored Yoast score, pushed channels, and GSC traffic data
+     * (matched by publishUrl against the GSC top-pages list).
+     * The GSC data is fetched fresh on each call (28-day window).
+     */
+    getPublishedPosts: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const { contentItems: ci } = await import("../drizzle/schema");
+      const { eq, and, isNotNull } = await import("drizzle-orm");
+
+      // Fetch all published blog posts that have a WordPress post ID
+      const posts = await db
+        .select()
+        .from(ci)
+        .where(
+          and(
+            eq(ci.status, "published"),
+            eq(ci.platform, "blog"),
+            isNotNull(ci.wpPostId)
+          )
+        );
+
+      // Try to fetch GSC data to enrich posts with traffic metrics
+      let gscPageMap: Map<string, { clicks: number; impressions: number; ctr: number; position: number }> = new Map();
+      try {
+        const { userCredentials } = await import("../drizzle/schema");
+        const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
+        if (creds?.gscRefreshToken && creds?.gscSiteUrl) {
+          const { getTopPages: gscGetTopPages } = await import("./googleSearchConsole");
+          const gscPages = await gscGetTopPages(creds.gscRefreshToken, creds.gscSiteUrl, 100);
+          for (const p of gscPages) {
+            // Normalize URL: strip trailing slash, lowercase
+            const key = p.page.replace(/\/$/, "").toLowerCase();
+            gscPageMap.set(key, { clicks: p.clicks, impressions: p.impressions, ctr: p.ctr, position: p.position });
+          }
+        }
+      } catch {
+        // GSC not connected — proceed without traffic data
+      }
+
+      return posts.map((post: any) => {
+        // Match post URL against GSC page map
+        const url = (post.publishUrl ?? "").replace(/\/$/, "").toLowerCase();
+        const gsc = gscPageMap.get(url) ?? null;
+
+        // Parse pushed channels
+        let pushedChannels: { id: string; name: string; service: string }[] = [];
+        try {
+          if (post.pushedChannels) pushedChannels = JSON.parse(post.pushedChannels);
+        } catch {}
+
+        // Compute a simple health signal:
+        // green = yoastScore good + has GSC clicks
+        // amber = yoastScore ok OR no GSC data yet
+        // red   = yoastScore bad OR no yoast score at all
+        let health: "green" | "amber" | "red" = "amber";
+        if (post.yoastScore === "good" && gsc && gsc.clicks > 0) health = "green";
+        else if (post.yoastScore === "bad" || !post.yoastScore) health = "red";
+
+        return {
+          id: post.id,
+          title: post.title,
+          publishUrl: post.publishUrl,
+          wpPostId: post.wpPostId,
+          publishedAt: post.publishedAt,
+          focusKeyword: post.focusKeyword,
+          yoastScore: post.yoastScore,
+          yoastScoreFetchedAt: post.yoastScoreFetchedAt,
+          pushedChannels,
+          gscClicks: gsc?.clicks ?? null,
+          gscImpressions: gsc?.impressions ?? null,
+          gscCtr: gsc?.ctr ?? null,
+          gscPosition: gsc?.position ?? null,
+          health,
+        };
+      });
+    }),
+  }),
+
   optin: router({
     submit: publicProcedure
       .input(
@@ -3838,3 +3921,4 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
   }),
 });
 export type AppRouter = typeof appRouter;
+

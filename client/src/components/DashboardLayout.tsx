@@ -59,6 +59,7 @@ import {
   Search,
   TrendingUp,
   Target,
+  Trophy,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -83,6 +84,7 @@ const topNavItems = [
   { icon: Video, label: "Create Webinar", path: "/webinar" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
+  { icon: Trophy, label: "Content Scoreboard", path: "/scoreboard" },
   { icon: Search, label: "SEO Dashboard", path: "/seo" },
   { icon: TrendingUp, label: "Competitive Intel", path: "/competitive-intelligence" },
   { icon: Target, label: "Keyword Strategy", path: "/keyword-strategy" },

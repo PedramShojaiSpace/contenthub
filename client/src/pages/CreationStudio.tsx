@@ -1018,9 +1018,10 @@ export default function CreationStudio() {
     emotionalDriver?: string;
     faqSection?: string;
     waterfallMap?: string;
-    body: string;
+    body: string;          // Clean Markdown only — no embedded HTML
     imageUrl?: string;
-    ctaBannerUrl?: string;
+    ctaBannerUrl?: string; // URL of the CTA banner image (for preview)
+    ctaBannerHtml?: string; // Full HTML block to inject at WP publish time
   } | null>(null);
   const [isBlogGenerating, setIsBlogGenerating] = useState(false);
   const [blogViewMode, setBlogViewMode] = useState<"preview" | "edit">("preview");
@@ -1059,6 +1060,7 @@ export default function CreationStudio() {
         body: data.article,
         imageUrl: data.heroImageUrl,
         ctaBannerUrl: (data as any).ctaBannerUrl ?? undefined,
+        ctaBannerHtml: (data as any).ctaBannerHtml ?? undefined,
       });
       setIsBlogGenerating(false);
       toast.success("Blog post generated — auto-saving to archive...");
@@ -1345,6 +1347,7 @@ export default function CreationStudio() {
       waterfallMap: blogContent.waterfallMap,
       heroImageUrl: blogContent.imageUrl,
       status,
+      ctaBannerHtml: blogContent.ctaBannerHtml,
     });
   };
 

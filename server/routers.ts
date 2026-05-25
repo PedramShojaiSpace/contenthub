@@ -1559,11 +1559,22 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
         }
 
         // Estimate read time (avg 200 words/min)
-        const wordCount = articleWithCtaBanner.split(/\s+/).length;
+        // NOTE: Use clean articleBody (without CTA HTML) for word count and storage.
+        // The CTA HTML block is stored separately as ctaBannerHtml and injected at
+        // WordPress publish time — it should NOT appear in the editable textarea.
+        const wordCount = blogData.article.split(/\s+/).length;
         const readTime = Math.max(1, Math.round(wordCount / 200));
+
+        // Extract the CTA HTML block that was injected into articleWithCtaBanner
+        // so we can pass it to the frontend separately (for WP publish injection only).
+        const ctaBannerHtmlBlock = articleWithCtaBanner !== blogData.article
+          ? articleWithCtaBanner.replace(blogData.article, "").trim()
+          : undefined;
+
         return {
           ...blogData,
-          article: articleWithCtaBanner,
+          article: blogData.article,  // Clean Markdown only — no embedded HTML
+          ctaBannerHtml: ctaBannerHtmlBlock,  // CTA HTML block for WP publish injection
           heroImageUrl,
           ctaBannerUrl,
           ctaUrl: blogCtaUrl,
@@ -2741,6 +2752,7 @@ Return BOTH in this exact format:
           scheduledAt: z.number().optional(), // UTC ms timestamp for scheduled posts
           yoastSeoTitle: z.string().optional(),      // Override for Yoast SEO title
           yoastMetaDescription: z.string().optional(), // Override for Yoast meta description
+          ctaBannerHtml: z.string().optional(),        // CTA HTML block to inject before FAQ section
         })
       )
       .mutation(async ({ input }) => {
@@ -2819,7 +2831,26 @@ Return BOTH in this exact format:
         // Step 2: Convert Markdown → WordPress HTML
         // - Extracts trailing #hashtags and converts them to <strong> bold text
         // - Converts all Markdown formatting (##, **, >, etc.) to HTML
-        const wpHtmlBody = markdownToWpHtml(publishInput.body);
+        // Strip any previously-embedded CTA HTML blocks from the body before conversion.
+        // These were injected in older versions of the pipeline and should not appear
+        // as raw HTML in the Markdown source.
+        const cleanedBody = publishInput.body
+          .replace(/<div[^>]*class=["']um-cta-banner["'][\s\S]*?<\/div>\s*/gi, "")
+          .trim();
+        let wpHtmlBody = markdownToWpHtml(cleanedBody);
+
+        // Step 2b: Inject CTA banner HTML block (if provided)
+        // The CTA HTML was generated during blog creation but kept separate from the
+        // Markdown body so the edit textarea stays clean. We inject it here at publish
+        // time — before the FAQ section if present, otherwise at the very end.
+        if (publishInput.ctaBannerHtml) {
+          const faqHtmlMatch = wpHtmlBody.match(/<h2[^>]*>\s*(?:Frequently Asked Questions|FAQ)\s*<\/h2>/i);
+          if (faqHtmlMatch && faqHtmlMatch.index !== undefined) {
+            wpHtmlBody = wpHtmlBody.slice(0, faqHtmlMatch.index) + publishInput.ctaBannerHtml + "\n\n" + wpHtmlBody.slice(faqHtmlMatch.index);
+          } else {
+            wpHtmlBody = wpHtmlBody + "\n\n" + publishInput.ctaBannerHtml;
+          }
+        }
 
         // Step 3: Build Article + FAQ JSON-LD schema blocks (GhostLink OS B15 AEO)
         const { articleSchema, faqSchema } = buildBlogSchemas({

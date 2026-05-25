@@ -3296,3 +3296,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
   - ID 270007 "Unmasking the Root: How Gut Barrier Permeability..." — 10,867 chars recovered
   - ID 1170006 "Toxins & Fatigue: The Root Cause Revealed" — 12,501 chars recovered
 - [x] TypeScript clean (0 errors), 378 tests pass
+
+## CTA Banner HTML Separation Fix (v8)
+
+- [x] Root cause: CTA HTML block (`<div class="um-cta-banner">`) was embedded in article body and stored in textContent, causing raw HTML to appear in the edit textarea
+- [x] Fix: server now returns clean Markdown in `article` field and CTA HTML separately in `ctaBannerHtml` field
+- [x] Fix: WordPress publish procedure strips any embedded CTA HTML from body before Markdown-to-HTML conversion (backward compat for older posts)
+- [x] Fix: WordPress publish procedure injects `ctaBannerHtml` into the converted HTML at publish time (before FAQ section if present)
+- [x] Fix: frontend `blogContent` state now stores `ctaBannerHtml` separately and passes it to the WP publish mutation
+- [x] Ran strip-cta-html-from-content.mjs: cleaned 24 stored posts that had embedded CTA HTML in textContent
+- [x] TypeScript clean (0 errors), 378 tests pass

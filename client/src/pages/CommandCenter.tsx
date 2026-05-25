@@ -536,13 +536,30 @@ function SeoKeywordEditor({
       </div>
       <div className="space-y-1.5">
         <div>
-          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">SEO Title <span className="normal-case text-muted-foreground">(shown in Google SERPs)</span></Label>
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Focus Keyphrase <span className="normal-case text-amber-600 font-semibold">(most important — must appear in H2/H3 headings)</span></Label>
           <Input
-            value={seoTitle}
-            onChange={(e) => setSeoTitle(e.target.value)}
-            placeholder={`${item.title} | The Urban Monk`}
-            className="h-7 text-xs mt-0.5"
+            value={focusKw}
+            onChange={(e) => setFocusKw(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSave()}
+            placeholder="e.g. gut dysbiosis fatigue"
+            className="h-7 text-xs mt-0.5 border-amber-400/50 focus:border-amber-500"
           />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">SEO Title <span className="normal-case text-muted-foreground">(shown in Google SERPs, 50-60 chars ideal)</span></Label>
+          <div className="relative">
+            <Input
+              value={seoTitle}
+              onChange={(e) => setSeoTitle(e.target.value)}
+              placeholder={`${item.title} | The Urban Monk`}
+              className="h-7 text-xs mt-0.5 pr-10"
+            />
+            <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono pointer-events-none ${
+              seoTitle.length === 0 ? 'text-muted-foreground' :
+              seoTitle.length <= 60 ? 'text-green-600' :
+              seoTitle.length <= 70 ? 'text-amber-500' : 'text-red-500'
+            }`}>{seoTitle.length}</span>
+          </div>
         </div>
         <div>
           <div className="flex items-center justify-between">
@@ -555,16 +572,6 @@ function SeoKeywordEditor({
             placeholder="Compelling 150-160 character summary for Google search results..."
             className="text-xs mt-0.5 min-h-[56px] resize-none"
             rows={2}
-          />
-        </div>
-        <div>
-          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Focus Keyphrase</Label>
-          <Input
-            value={focusKw}
-            onChange={(e) => setFocusKw(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSave()}
-            placeholder="e.g. gut dysbiosis fatigue"
-            className="h-7 text-xs mt-0.5"
           />
         </div>
         <div>

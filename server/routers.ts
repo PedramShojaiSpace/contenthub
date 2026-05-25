@@ -3962,7 +3962,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
       const db = await getDb();
       if (!db) return [];
       const { contentItems: ci, userCredentials } = await import("../drizzle/schema");
-      const { eq, and, isNotNull } = await import("drizzle-orm");
+      const { eq, and } = await import("drizzle-orm");
 
       // Get all published blog post keywords to know what's already covered
       const publishedPosts = await db
@@ -3990,25 +3990,38 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         // GSC not available
       }
 
-      if (strikingKeywords.length === 0) {
-        // Fallback: use LLM to suggest keyword families based on published post titles
-        const publishedTitles = publishedPosts.map((p: any) => p.title).slice(0, 20).join("\n");
+      // Score striking-distance keywords:
+      // Score = impressions × (1 / position) × 10  (higher impressions + better position = higher score)
+      const scored = strikingKeywords
+        .map((k) => ({ ...k, score: k.impressions * (1 / k.position) * 10 }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 15);
+
+      const publishedTitles = publishedPosts.map((p: any) => p.title).slice(0, 15).join(", ");
+
+      // ── LLM enrichment: titles + rationale + topic cluster ─────────────────
+      // Handles both GSC-sourced and fallback LLM-sourced recommendations
+      const TOPIC_PILLARS = ["Sleep", "Gut Health", "Stress & Anxiety", "Energy", "Detox", "Longevity", "Mindfulness", "Nutrition", "Breathwork", "Other"];
+
+      if (scored.length === 0) {
+        // Fallback: LLM suggests keyword families
+        const fallbackTitles = publishedPosts.map((p: any) => p.title).slice(0, 20).join("\n");
         const fallbackResponse = await safeLLM({
           messages: [
             {
               role: "system",
-              content: `You are an SEO strategist for The Urban Monk (Dr. Pedram Shojai). Based on the published blog posts listed below, suggest 10 keyword opportunities that are semantically related but not yet covered. For each, provide a suggested blog post title and a brief rationale (1-2 sentences) explaining why it would perform well.
+              content: `You are an SEO strategist for The Urban Monk (Dr. Pedram Shojai). Based on the published blog posts listed below, suggest 10 keyword opportunities that are semantically related but not yet covered. For each, assign a topicCluster from: ${TOPIC_PILLARS.join(", ")}.
 
-Published posts:\n${publishedTitles}
+Published posts:\n${fallbackTitles}
 
-Return JSON array: [{"keyword": string, "suggestedTitle": string, "rationale": string, "estimatedDifficulty": "low"|"medium"|"high", "priority": number}]`,
+Return JSON: {"recommendations": [{"keyword": string, "suggestedTitle": string, "rationale": string, "estimatedDifficulty": "low"|"medium"|"high", "topicCluster": string, "priority": number}]}`,
             },
             { role: "user", content: "Suggest the next 10 blog posts to publish for maximum SEO momentum." },
           ],
           response_format: {
             type: "json_schema",
             json_schema: {
-              name: "publish_next",
+              name: "publish_next_v2",
               strict: true,
               schema: {
                 type: "object",
@@ -4022,9 +4035,10 @@ Return JSON array: [{"keyword": string, "suggestedTitle": string, "rationale": s
                         suggestedTitle: { type: "string" },
                         rationale: { type: "string" },
                         estimatedDifficulty: { type: "string", enum: ["low", "medium", "high"] },
+                        topicCluster: { type: "string" },
                         priority: { type: "number" },
                       },
-                      required: ["keyword", "suggestedTitle", "rationale", "estimatedDifficulty", "priority"],
+                      required: ["keyword", "suggestedTitle", "rationale", "estimatedDifficulty", "topicCluster", "priority"],
                       additionalProperties: false,
                     },
                   },
@@ -4043,9 +4057,12 @@ Return JSON array: [{"keyword": string, "suggestedTitle": string, "rationale": s
             suggestedTitle: r.suggestedTitle,
             rationale: r.rationale,
             estimatedDifficulty: r.estimatedDifficulty,
+            topicCluster: r.topicCluster ?? "Other",
             gscPosition: null,
             gscImpressions: null,
             gscClicks: null,
+            competitorDomain: null,
+            competitorTitle: null,
             source: "llm_family",
           }));
         } catch {
@@ -4053,32 +4070,24 @@ Return JSON array: [{"keyword": string, "suggestedTitle": string, "rationale": s
         }
       }
 
-      // Score striking-distance keywords:
-      // Score = impressions × (1 / position) × 10  (higher impressions + better position = higher score)
-      const scored = strikingKeywords
-        .map((k) => ({
-          ...k,
-          score: k.impressions * (1 / k.position) * 10,
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 15);
-
-      // Use LLM to generate suggested titles and rationale for top candidates
-      const kwList = scored.map((k, i) => `${i + 1}. "${k.keyword}" (pos ${k.position.toFixed(1)}, ${k.impressions} impressions)`).join("\n");
-      const publishedTitles = publishedPosts.map((p: any) => p.title).slice(0, 15).join(", ");
-
+      // Build initial enriched list (generic titles as fallback)
       let enriched: any[] = scored.map((k, i) => ({
         rank: i + 1,
         keyword: k.keyword,
         suggestedTitle: `${k.keyword.charAt(0).toUpperCase() + k.keyword.slice(1)}: A Complete Guide`,
         rationale: `Ranking at position ${k.position.toFixed(1)} with ${k.impressions} monthly impressions — a targeted post could move this into the top 3.`,
         estimatedDifficulty: k.position <= 8 ? "low" : k.position <= 14 ? "medium" : "high",
+        topicCluster: "Other",
         gscPosition: k.position,
         gscImpressions: k.impressions,
         gscClicks: k.clicks,
+        competitorDomain: null,
+        competitorTitle: null,
         source: "gsc_striking_distance",
       }));
 
+      // LLM enrichment: titles + rationale + topic cluster in one call
+      const kwList = scored.map((k, i) => `${i + 1}. "${k.keyword}" (pos ${k.position.toFixed(1)}, ${k.impressions} impressions)`).join("\n");
       try {
         const llmResponse = await safeLLM({
           messages: [
@@ -4086,16 +4095,19 @@ Return JSON array: [{"keyword": string, "suggestedTitle": string, "rationale": s
               role: "system",
               content: `You are an SEO content strategist for The Urban Monk (Dr. Pedram Shojai). He has published these blog posts: ${publishedTitles}.
 
-Below are keywords where his site is ranking on page 1-2 of Google (positions 4-20) but not yet getting clicks. For each keyword, suggest a compelling blog post title in Pedram's voice (bridges ancient wisdom + modern science, health-focused, practical) and a 1-sentence rationale for why publishing this now would drive traffic.
+Below are keywords where his site is ranking on page 1-2 of Google (positions 4-20) but not yet getting clicks. For each keyword:
+1. Suggest a compelling blog post title in Pedram's voice (bridges ancient wisdom + modern science, health-focused, practical)
+2. Write a 1-sentence rationale for why publishing this now would drive traffic
+3. Assign a topicCluster from: ${TOPIC_PILLARS.join(", ")}
 
-Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "rationale": string}]}`,
+Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "rationale": string, "topicCluster": string}]}`,
             },
             { role: "user", content: `Keywords to enrich:\n${kwList}` },
           ],
           response_format: {
             type: "json_schema",
             json_schema: {
-              name: "enrich_keywords",
+              name: "enrich_keywords_v2",
               strict: true,
               schema: {
                 type: "object",
@@ -4108,8 +4120,9 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
                         keyword: { type: "string" },
                         suggestedTitle: { type: "string" },
                         rationale: { type: "string" },
+                        topicCluster: { type: "string" },
                       },
-                      required: ["keyword", "suggestedTitle", "rationale"],
+                      required: ["keyword", "suggestedTitle", "rationale", "topicCluster"],
                       additionalProperties: false,
                     },
                   },
@@ -4125,12 +4138,34 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
         enriched = enriched.map((item) => {
           const llm = llmMap.get(item.keyword.toLowerCase());
           if (llm) {
-            return { ...item, suggestedTitle: llm.suggestedTitle as string, rationale: llm.rationale as string };
+            return {
+              ...item,
+              suggestedTitle: llm.suggestedTitle as string,
+              rationale: llm.rationale as string,
+              topicCluster: llm.topicCluster as string ?? item.topicCluster,
+            };
           }
           return item;
         });
       } catch {
         // LLM enrichment failed — return scored list with generic titles
+      }
+
+      // ── Competitor gap: DataForSEO SERP top-1 for each keyword ─────────────
+      try {
+        const { getSerpTop1 } = await import("./dataForSeo");
+        const keywords = enriched.map((e: any) => e.keyword);
+        const serpResults = await getSerpTop1(keywords);
+        const serpMap = new Map(serpResults.map((r) => [r.keyword.toLowerCase(), r]));
+        enriched = enriched.map((item: any) => {
+          const serp = serpMap.get(item.keyword.toLowerCase());
+          if (serp) {
+            return { ...item, competitorDomain: serp.domain, competitorTitle: serp.title };
+          }
+          return item;
+        });
+      } catch {
+        // DataForSEO unavailable — proceed without competitor data
       }
 
       return enriched.slice(0, 10);

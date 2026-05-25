@@ -3247,3 +3247,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Build Publish Next recommendation engine (scoreboard.getPublishNextRecommendations): GSC striking-distance keywords (pos 4-20, impressions ≥50) not yet covered, scored by impressions × (1/position), LLM-enriched titles and rationale
 - [x] Build Publish Next panel in Scoreboard UI: ranked list with difficulty badge, keyword, rationale, one-click Write button linking to Creation Studio
 - [x] 378 tests pass, TypeScript clean (0 errors)
+
+## Scoreboard v3 — Digest, Clusters, Competitor Gap
+
+- [ ] Read periodic-updates.md to confirm heartbeat scheduling approach
+- [x] Weekly Monday digest: scoreboardDigestHandler.ts built with top 3 Publish Next picks + top 3 position gainers, mounted at /api/heartbeat/scoreboard-digest
+- [x] Add scoreboard.getWeeklyDigest tRPC procedure (reusable by both the heartbeat and a manual "Send Now" button)
+- [ ] Add "Send Digest Now" button to Scoreboard header for manual trigger (pending)
+- [x] Cluster view toggle: topicCluster field added to Recommendation type; LLM assigns each recommendation to a pillar (Sleep, Gut Health, Stress & Anxiety, Energy, Detox, Longevity, Mindfulness, Nutrition, Breathwork)
+- [x] Cluster view UI: List / By Topic toggle in Publish Next panel with color-coded cluster filter pills
+- [x] Competitor gap: competitorDomain + competitorTitle fields added to Recommendation type via getSerpTop1 DataForSEO lookup
+- [x] DataForSEO SERP lookup for each recommendation keyword — getSerpTop1 extracts the #1 organic result domain and title
+- [x] Competitor gap column in Publish Next panel: CompetitorCell component shows competitor domain + title under each recommendation
+- [x] 378 tests pass, TypeScript clean (0 errors)

@@ -309,3 +309,89 @@ export async function getDomainRankOverview(domain: string): Promise<DomainRankO
   );
   return result?.[0]?.items?.[0] ?? { metrics: null };
 }
+
+// ─── SERP Top-1 Competitor Lookup ────────────────────────────────────────────
+
+export interface SerpTop1Result {
+  keyword: string;
+  domain: string | null;
+  title: string | null;
+  url: string | null;
+}
+
+/**
+ * For each keyword, fetch the #1 organic SERP result using DataForSEO
+ * SERP / Google Organic / Live / Advanced endpoint.
+ * Returns one result per keyword (or null fields if unavailable).
+ * Batches up to 100 keywords per API call.
+ */
+export async function getSerpTop1(keywords: string[]): Promise<SerpTop1Result[]> {
+  if (keywords.length === 0) return [];
+
+  // DataForSEO SERP live advanced allows up to 100 tasks per call
+  const batches: string[][] = [];
+  for (let i = 0; i < keywords.length; i += 100) {
+    batches.push(keywords.slice(i, i + 100));
+  }
+
+  const results: SerpTop1Result[] = [];
+
+  for (const batch of batches) {
+    const body = batch.map((kw) => ({
+      keyword: kw,
+      location_code: LOCATION_CODE,
+      language_code: LANGUAGE_CODE,
+      depth: 1, // only fetch position 1
+    }));
+
+    try {
+      const raw = await fetch(`${BASE_URL}/serp/google/organic/live/advanced`, {
+        method: "POST",
+        headers: {
+          Authorization: getAuthHeader(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!raw.ok) {
+        // On error, push null results for this batch
+        for (const kw of batch) results.push({ keyword: kw, domain: null, title: null, url: null });
+        continue;
+      }
+
+      const json = (await raw.json()) as {
+        status_code: number;
+        tasks?: Array<{
+          status_code: number;
+          data?: { keyword: string };
+          result?: Array<{
+            items?: Array<{
+              type: string;
+              rank_group: number;
+              domain: string;
+              title: string;
+              url: string;
+            }>;
+          }>;
+        }>;
+      };
+
+      for (const task of json.tasks ?? []) {
+        const kw = task.data?.keyword ?? "";
+        const items = task.result?.[0]?.items ?? [];
+        const top1 = items.find((item) => item.type === "organic" && item.rank_group === 1);
+        results.push({
+          keyword: kw,
+          domain: top1?.domain ?? null,
+          title: top1?.title ?? null,
+          url: top1?.url ?? null,
+        });
+      }
+    } catch {
+      for (const kw of batch) results.push({ keyword: kw, domain: null, title: null, url: null });
+    }
+  }
+
+  return results;
+}

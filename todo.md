@@ -3267,3 +3267,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add PillarCoverageBar component to Scoreboard.tsx: compact card above Publish Next panel showing post count per pillar with color-coded badges and mini progress bars
 - [x] Highlight underserved pillars (count < 2) with red border, ring, and NONE label
 - [x] 378 tests pass, TypeScript clean (0 errors)
+
+## Yoast SEO Baked-In Optimization (v5)
+
+- [x] Audit blog AI generation prompt — prompt already has strong density/H2/meta rules
+- [x] Fix WordPress publish: SEO title now uses keyphrase-first format ("Keyphrase: Title | The Urban Monk") when title doesn't already start with keyphrase
+- [x] Fix WordPress publish: meta description now enforced to contain focus keyphrase verbatim (server-side prepend if missing)
+- [x] Patch dr-pedram-shojai-reclaim-vitality post: 18 keyphrase occurrences, 3/7 H2s (43%), clean SEO title, keyphrase in meta desc
+- [x] 378 tests pass, TypeScript clean (0 errors)

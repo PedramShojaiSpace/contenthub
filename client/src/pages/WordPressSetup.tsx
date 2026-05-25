@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   Zap,
+  UploadCloud,
+  XCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -108,11 +110,20 @@ const FUNCTIONS_PHP_STEPS = [
   },
 ];
 
+type BulkRepushResult = {
+  results: Array<{ id: number; title: string; wpPostId: number; success: boolean; fixed: string[]; error?: string }>;
+  succeeded: number;
+  failed: number;
+  total: number;
+  totalFixed: number;
+};
+
 export default function WordPressSetup() {
   const [snippetExpanded, setSnippetExpanded] = useState(true);
   const [useWpCode, setUseWpCode] = useState(true);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
+  const [bulkResult, setBulkResult] = useState<BulkRepushResult | null>(null);
 
   const wpConnTest = trpc.blog.testWpConnection.useQuery(undefined, { enabled: false });
 
@@ -124,6 +135,17 @@ export default function WordPressSetup() {
     isFetching: yoastFetching,
   } = trpc.blog.checkYoastSnippet.useQuery(undefined, {
     staleTime: 30_000,
+  });
+
+  // Bulk Re-push mutation
+  const bulkRepushMutation = trpc.blog.backfillYoastInWordPress.useMutation({
+    onSuccess: (data) => {
+      setBulkResult(data as BulkRepushResult);
+      toast.success(`Bulk re-push complete: ${data.succeeded} posts updated, ${data.totalFixed} fields fixed.`);
+    },
+    onError: (err) => {
+      toast.error(`Bulk re-push failed: ${err.message}`);
+    },
   });
 
   // Auto-select WPCode tab if WPCode is detected
@@ -155,6 +177,11 @@ export default function WordPressSetup() {
       setTestStatus("error");
       setTestMessage(err instanceof Error ? err.message : "Connection failed.");
     }
+  };
+
+  const handleBulkRepush = () => {
+    setBulkResult(null);
+    bulkRepushMutation.mutate();
   };
 
   return (
@@ -260,6 +287,96 @@ export default function WordPressSetup() {
                 <Copy className="h-3.5 w-3.5" />
                 Copy Snippet
               </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── Bulk Re-push Yoast Fields ─────────────────────────────────────── */}
+      <Card className="border-2 border-blue-500/30 bg-blue-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <UploadCloud className="h-4 w-4 text-blue-400" />
+            Bulk Re-push Yoast Fields
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Re-sends the focus keyphrase, SEO title, and meta description from the database to Yoast for <strong>every published blog post</strong> on WordPress. Also automatically fixes any posts where the SEO title doesn't start with the keyphrase, or the meta description doesn't contain it.
+          </p>
+          <div className="rounded-md bg-blue-500/10 border border-blue-500/20 p-3 text-xs text-blue-700 dark:text-blue-300 space-y-1">
+            <p className="font-medium">What this fixes:</p>
+            <ul className="space-y-0.5 ml-3 list-disc">
+              <li>SEO title not starting with the focus keyphrase → auto-prefixes it</li>
+              <li>Meta description missing the focus keyphrase → auto-prepends it</li>
+              <li>Yoast fields not synced after the snippet was installed → re-pushes all</li>
+            </ul>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleBulkRepush}
+              disabled={bulkRepushMutation.isPending}
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {bulkRepushMutation.isPending ? (
+                <><RefreshCw className="h-4 w-4 animate-spin" /> Re-pushing all posts…</>
+              ) : (
+                <><UploadCloud className="h-4 w-4" /> Bulk Re-push All Posts</>
+              )}
+            </Button>
+            {bulkRepushMutation.isPending && (
+              <p className="text-xs text-muted-foreground animate-pulse">
+                This may take 30–60 seconds for large post counts…
+              </p>
+            )}
+          </div>
+
+          {/* Results */}
+          {bulkResult && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-medium">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {bulkResult.succeeded} posts updated
+                </span>
+                {bulkResult.failed > 0 && (
+                  <span className="flex items-center gap-1.5 text-red-500 font-medium">
+                    <XCircle className="h-4 w-4" />
+                    {bulkResult.failed} failed
+                  </span>
+                )}
+                <span className="text-muted-foreground">
+                  {bulkResult.totalFixed} fields auto-fixed
+                </span>
+              </div>
+
+              {/* Per-post results */}
+              <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-muted/30 divide-y divide-border">
+                {bulkResult.results.map((r) => (
+                  <div key={r.id} className="flex items-start gap-2 px-3 py-2 text-xs">
+                    {r.success ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground truncate">{r.title}</p>
+                      {r.fixed.length > 0 && (
+                        <p className="text-blue-400 mt-0.5">
+                          Fixed: {r.fixed.map(f => f === 'seo_title_keyphrase_first' ? 'SEO title' : 'meta desc').join(', ')}
+                        </p>
+                      )}
+                      {r.error && <p className="text-red-400 mt-0.5">{r.error}</p>}
+                    </div>
+                    <span className="text-muted-foreground flex-shrink-0">WP#{r.wpPostId}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Open any post in the WP editor and click <strong>Update</strong> to trigger Yoast's re-analysis and see the green dots.
+              </p>
             </div>
           )}
         </CardContent>
@@ -429,7 +546,7 @@ export default function WordPressSetup() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-purple-400" />
-            Batch SEO Actions
+            Additional Batch SEO Actions
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -455,7 +572,7 @@ export default function WordPressSetup() {
                 <p className="text-sm font-medium text-foreground">Backfill Yoast in WordPress</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Pushes the stored Yoast fields to all already-published WordPress posts without republishing them. Requires the snippet above to be active.
+                Same as the Bulk Re-push button above, also accessible from the Command Center blog header for convenience.
               </p>
               <p className="text-xs text-green-400 font-medium">
                 → Go to Command Center → click "Blog" filter → click "Backfill Yoast in WP"

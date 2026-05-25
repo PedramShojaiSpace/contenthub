@@ -3275,3 +3275,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix WordPress publish: meta description now enforced to contain focus keyphrase verbatim (server-side prepend if missing)
 - [x] Patch dr-pedram-shojai-reclaim-vitality post: 18 keyphrase occurrences, 3/7 H2s (43%), clean SEO title, keyphrase in meta desc
 - [x] 378 tests pass, TypeScript clean (0 errors)
+
+## Blog Pipeline Full Audit + Bulk Re-push (v6)
+
+- [x] Audit all published blog posts in DB: 32 posts with gaps found (20 with wpPostId needing Yoast fixes, 12 with no wpPostId)
+- [x] Identified root cause: SEO title not keyphrase-first, meta desc missing keyphrase in older posts
+- [x] Upgraded blog.backfillYoastInWordPress procedure: now applies keyphrase-first SEO title fix + meta desc keyphrase enforcement before pushing to WP
+- [x] Added real Bulk Re-push button to WordPress Setup page with live per-post progress, fixed count, and scrollable results list
+- [x] Audit blog generation pipeline: prompt already enforces density/H2/meta rules; publish procedure now enforces keyphrase-first SEO title and meta desc keyphrase on every publish
+- [x] 378 tests pass, TypeScript clean (0 errors)

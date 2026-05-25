@@ -951,6 +951,51 @@ function DraggableCard({
         {isPublished && (
           <AnalyticsPanel item={item} onUpdate={onAnalyticsUpdate} />
         )}
+
+        {/* Pushed channels badges — shows which Buffer accounts this was last sent to */}
+        {item.pushedChannels && (() => {
+          try {
+            const channels: Array<{ id: string; name: string; service: string }> = JSON.parse(item.pushedChannels);
+            if (!channels.length) return null;
+            const SERVICE_COLORS: Record<string, string> = {
+              instagram: "bg-pink-500/10 text-pink-700 border-pink-500/20",
+              facebook: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+              linkedin: "bg-sky-500/10 text-sky-700 border-sky-500/20",
+              twitter: "bg-slate-500/10 text-slate-700 border-slate-500/20",
+              youtube: "bg-red-500/10 text-red-700 border-red-500/20",
+              tiktok: "bg-pink-400/10 text-pink-600 border-pink-400/20",
+            };
+            const SERVICE_ABBR: Record<string, string> = {
+              instagram: "IG",
+              facebook: "FB",
+              linkedin: "LI",
+              twitter: "X",
+              youtube: "YT",
+              tiktok: "TT",
+            };
+            return (
+              <div className="flex flex-wrap gap-0.5 mt-1">
+                {channels.map((ch) => {
+                  const svc = ch.service.toLowerCase();
+                  const colorClass = SERVICE_COLORS[svc] ?? "bg-muted text-muted-foreground border-border";
+                  const abbr = SERVICE_ABBR[svc] ?? svc.slice(0, 2).toUpperCase();
+                  return (
+                    <span
+                      key={ch.id}
+                      title={`Last pushed to ${ch.name} (${ch.service})`}
+                      className={`inline-flex items-center px-1 py-0.5 rounded text-[8px] font-semibold border ${colorClass}`}
+                    >
+                      {abbr}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          } catch {
+            return null;
+          }
+        })()}
+
         {/* Approve / Reject quick actions — Pending Approval column only */}
         {item.status === "pending_approval" && (
           <div className="mt-2 flex gap-1.5">
@@ -1481,12 +1526,24 @@ export default function CommandCenter() {
   const { data: gscStatus } = trpc.gsc.status.useQuery(undefined, { retry: false });
   const seedPillarsMutation = trpc.growth.seedPillars.useMutation({ onSuccess: () => refetchCadence() });
 
+  const updatePushedChannelsMutation = trpc.syndication.updatePushedChannels.useMutation();
+
   const syndicationMutation = trpc.syndication.push.useMutation({
     onSuccess: (result, variables) => {
       setBufferPushingId(null);
       if (result.success) {
         // Clear any previous error for this card on success
         setBufferErrors((prev) => { const next = { ...prev }; delete next[variables.contentItemId]; return next; });
+        // Record which channels this item was pushed to
+        if (variables.channelServiceMap) {
+          const channels = Object.entries(variables.channelServiceMap).map(([id, service]) => {
+            const profile = bufferProfiles.find((p) => p.id === id);
+            return { id, name: profile?.name ?? id, service };
+          });
+          if (channels.length > 0) {
+            updatePushedChannelsMutation.mutate({ contentItemId: variables.contentItemId, channels });
+          }
+        }
         refetch();
         toast.success("Pushed to Buffer queue!");
       } else {
@@ -1545,7 +1602,8 @@ export default function CommandCenter() {
       imageUrl: item.imageUrl ?? undefined,
       platform: item.platform,
       metaPostType: item.platform === "meta" ? (params.metaPostType ?? "post") : undefined,
-      channelServiceMap: item.platform === "meta" ? params.channelServiceMap : undefined,
+      // Always pass channelServiceMap so we can record pushed channels for all platforms
+      channelServiceMap: params.channelServiceMap,
     }, {
       onSettled: () => {
         setShowChannelSelector(false);

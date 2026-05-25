@@ -261,7 +261,7 @@ CRITICAL OUTPUT RULES:
 - Output ONLY a valid JSON object — nothing else, no preamble, no explanation, no markdown code fences
 - The JSON must have EXACTLY these fields:
   {
-    "title": "H1 headline — must contain the primary keyword. HARD LIMIT: 50-55 characters MAX including spaces (Yoast pixel limit is strict). Count every character. Example of a 54-char title: 'Fix Your Sleep Architecture Tonight' (36 chars — good). Use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
+    "title": "H1 headline — must contain the primary keyword. HARD LIMIT: 48 characters MAX including spaces. Count every character before outputting. Example: 'Heal Your Gut for Good: Beyond Diets' = 36 chars (good). Use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
     "slug": "url-friendly-slug-max-60-chars — must contain the primary keyword",
     "metaDescription": "130-150 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA. HARD LIMIT: never exceed 150 characters including spaces. Count every character including spaces before outputting. If it is 151+ characters, cut words until it is 150 or under. Yoast's pixel limit is 156 chars — aim for 145 or fewer to be safe.",
     "focusKeyword": "primary SEO keyword phrase (2-4 words) — MUST be a specific long-tail phrase the target audience types into Google. NEVER use a single-word or generic two-word head term (e.g. 'stress relief' is too broad — use 'qigong for stress relief' or 'nervous system regulation techniques'). The focus keyword must be unique to this article — do not reuse a keyphrase that would apply to multiple articles on the same site.",
@@ -309,9 +309,9 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
    Use the faqSection field content here. Format: ## Frequently Asked Questions\\n[paste the FAQ content]. This section is critical for Google featured snippets and AI engine citation.
 
 SEO + AEO INTEGRATION RULES (non-negotiable):
-- H1 (title) must contain the primary focus keyword. HARD LIMIT: title must be 50-55 characters INCLUDING spaces. Count every character. Yoast uses pixel width not character count — colons, capital letters, and wide characters (W, M) consume more pixels. To be safe, aim for 48-52 characters. If your title is 56+ characters, shorten it before outputting. Example safe titles: 'Qigong for Digestion: Heal Your Gut' (36 chars ✓), 'Fix Your Sleep Architecture Tonight' (35 chars ✓).
+- H1 (title) must contain the primary focus keyword. HARD LIMIT: title must be 48 characters MAX INCLUDING spaces. Yoast uses pixel width — colons, capital letters, and wide characters (W, M) consume extra pixels. Aim for 36-45 characters to be safe. If your title is 49+ characters, shorten it before outputting. Example safe titles: 'Heal Your Gut for Good: Beyond Diets' (36 chars ✓), 'Qigong for Digestion: Heal Your Gut' (35 chars ✓), 'Fix Your Sleep Architecture Tonight' (35 chars ✓). DO NOT write a title longer than 48 characters.
 - KEYPHRASE IN INTRODUCTION (Yoast #1 check): The focus keyword or a close synonym MUST appear in the very FIRST sentence or second sentence of the article body. Not the third paragraph — the FIRST paragraph, ideally within the first two sentences. This is the single most important Yoast check. If the focus keyword is not in the first paragraph, Yoast will flag it red regardless of density elsewhere.
-- KEYPHRASE DENSITY (Yoast minimum): The focus keyword or its close synonym must appear at least 8 times in the article body. Yoast's minimum is 0.5% density — for a 1,600-2,200 word article that means 8-11 occurrences. Distribute occurrences across: (1) first paragraph, (2) at least one H2 heading, (3) the hidden problem section, (4) the framework section, (5) the practical protocol section, (6) the transformation vision, (7) the closing/CTA, (8) the FAQ section. Do not cluster them — spread them naturally. After writing the article, count the occurrences explicitly and add more if below 8.
+- KEYPHRASE DENSITY (Yoast minimum — CRITICAL): The focus keyword or its close synonym must appear at least 10 times total in the article. Yoast counts only body text (not the page title or H1), so you need 10+ total to guarantee 8+ in the body. Distribute occurrences across ALL of these locations: (1) first paragraph first sentence, (2) at least one H2 heading, (3) the hidden problem section body, (4) the framework/protocol section body, (5) the practical steps section, (6) the transformation vision paragraph, (7) the closing/CTA paragraph, (8) the FAQ answer text (at least 2 FAQ answers), (9) a sub-pillar or tip paragraph, (10) the conclusion. Do NOT cluster 2 occurrences in the same sentence. After writing the full article, COUNT every occurrence explicitly and add more if below 10. This is non-negotiable.
 - KEYPHRASE IN SUBHEADINGS (Yoast check): At least ONE H2 heading must contain the exact focus keyword or a very close synonym (e.g. if focus keyword is 'qigong for stress relief', an H2 like 'How Qigong for Stress Relief Resets Your Nervous System' passes). This is separate from the density check — it must be in a heading specifically.
 - INTERNAL LINKS (Yoast check — RED FLAG if missing): Include at least 3 internal links to other articles on theurbanmonk.com. Use URLs from the VERIFIED INTERNAL LINK LIST provided in the user message. If the list has 3+ relevant URLs, use them with descriptive anchor text. If the list has fewer than 3 relevant URLs, use ALL available ones AND add [INTERNAL LINK: topic] placeholders for the remainder. CRITICAL: You MUST output at least 3 internal link references (real URLs or placeholders). Zero internal links = guaranteed Yoast red flag. The urlScrubber will resolve placeholders automatically — just make sure they are present in the article.
 - Each H2 must either contain a semantic keyword variant OR be phrased as a question (PAA format)
@@ -351,11 +351,11 @@ QUALITY GATE (self-check before outputting):
 - Does the hook pass the 3-second scroll test? Specific, tensioned, relevant?
 - Is there ONE clear Big Idea the audience hasn't heard framed this way?
 - YOAST SEO CHECK #1 (CRITICAL): Does the focus keyword appear in the FIRST SENTENCE or SECOND SENTENCE of the article body? If not, rewrite the opening.
-- YOAST SEO CHECK #2: Does the focus keyword appear at least 8 times across the full article body? Count them explicitly. If below 8, add more occurrences before outputting.
+- YOAST SEO CHECK #2: Does the focus keyword appear at least 10 times total in the article (Yoast excludes the H1/title from its count, so 10 total = ~8 in body)? Count them explicitly. If below 10, add more occurrences before outputting.
 - YOAST SEO CHECK #3: Does at least ONE H2 heading contain the focus keyword or a very close synonym?
 - YOAST SEO CHECK #4: Are there at least 3 internal links to theurbanmonk.com URLs from the provided list?
-- YOAST SEO CHECK #5: Is the title 48-55 characters or fewer? Count every character including spaces. If 56+, shorten it.
-- YOAST SEO CHECK #6: Is the meta description 130-150 characters? Count every character including spaces. If 151+, cut words until it is 150 or under. Yoast's hard cutoff is 156 chars — stay well under it.
+- YOAST SEO CHECK #5: Is the title 48 characters or fewer? Count every character including spaces. If 49+, shorten it now before outputting.
+- YOAST SEO CHECK #6: Is the meta description 130-145 characters? Count every character including spaces. If 146+, cut words until it is 145 or under. Yoast's hard cutoff is 156 chars — stay well under it at 145 max.
 - YOAST SEO CHECK #7: Is the focus keyword a specific long-tail phrase (not a generic head term)?
 - YOAST READABILITY CHECK: Is every prose block under 300 words before the next heading?
 - YOAST READABILITY CHECK: Is every paragraph under 150 words?
@@ -1354,9 +1354,9 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
               schema: {
                 type: "object",
                 properties: {
-                  title: { type: "string", description: "H1 headline, 50-65 chars, contains primary keyword" },
+                  title: { type: "string", description: "H1 headline, HARD MAX 48 chars including spaces, must contain primary keyword — count every character" },
                   slug: { type: "string", description: "URL-friendly slug, max 60 chars" },
-                  metaDescription: { type: "string", description: "150-160 char meta description" },
+                  metaDescription: { type: "string", description: "Meta description HARD MAX 145 chars — count every character, must be under 145" },
                   focusKeyword: { type: "string", description: "Primary SEO keyword phrase, 2-4 words" },
                   semanticKeywords: { type: "array", items: { type: "string" }, description: "3-5 semantic keyword variants" },
                   hookFamily: { type: "string", description: "Which of the 12 Hook Families was used" },
@@ -2958,8 +2958,8 @@ Rules:
               schema: {
                 type: "object",
                 properties: {
-                  seoTitle: { type: "string", description: "SEO title max 60 chars" },
-                  metaDescription: { type: "string", description: "Meta description 120-155 chars" },
+seoTitle: { type: "string", description: "SEO title HARD MAX 48 chars — count every character" },
+                   metaDescription: { type: "string", description: "Meta description HARD MAX 145 chars — count every character, must be under 145" },
                   focusKeyphrase: { type: "string", description: "Primary focus keyword phrase" },
                   semanticKeywords: { type: "array", items: { type: "string" }, description: "Related keywords" },
                 },

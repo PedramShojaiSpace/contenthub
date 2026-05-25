@@ -3312,3 +3312,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add "Edit SEO" button to the Kanban card (visible on published blog posts)
 - [x] Clicking it opens the card detail dialog which contains the full SeoKeywordEditor
 - [x] SeoKeywordEditor has Save (DB) + Update in WP (WordPress API) buttons
+
+## Bulk SEO Auto-Fix (v10)
+
+- [x] Add `blog.bulkFixSeoLength` server procedure — finds all posts with SEO title >70 chars or meta desc >160 chars, uses LLM to regenerate clean versions, saves to DB, and pushes to WordPress
+- [x] Add "Auto-Fix All Oversized SEO Fields" button to WordPress Setup page with live progress log
+- [x] Show count of posts fixed, new title preview, and any errors in the result

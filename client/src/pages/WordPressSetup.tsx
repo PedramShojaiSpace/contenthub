@@ -118,12 +118,20 @@ type BulkRepushResult = {
   totalFixed: number;
 };
 
+type BulkFixSeoResult = {
+  results: Array<{ id: number; title: string; wpPostId: number | null; success: boolean; fixed: string[]; newSeoTitle?: string; newMetaDesc?: string; error?: string }>;
+  succeeded: number;
+  failed: number;
+  total: number;
+};
+
 export default function WordPressSetup() {
   const [snippetExpanded, setSnippetExpanded] = useState(true);
   const [useWpCode, setUseWpCode] = useState(true);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
   const [bulkResult, setBulkResult] = useState<BulkRepushResult | null>(null);
+  const [bulkFixSeoResult, setBulkFixSeoResult] = useState<BulkFixSeoResult | null>(null);
 
   const wpConnTest = trpc.blog.testWpConnection.useQuery(undefined, { enabled: false });
 
@@ -182,6 +190,22 @@ export default function WordPressSetup() {
   const handleBulkRepush = () => {
     setBulkResult(null);
     bulkRepushMutation.mutate();
+  };
+
+  // Bulk Auto-Fix SEO Length mutation
+  const bulkFixSeoMutation = trpc.blog.bulkFixSeoLength.useMutation({
+    onSuccess: (data) => {
+      setBulkFixSeoResult(data as BulkFixSeoResult);
+      toast.success(`SEO auto-fix complete: ${data.succeeded} of ${data.total} posts fixed.`);
+    },
+    onError: (err) => {
+      toast.error(`SEO auto-fix failed: ${err.message}`);
+    },
+  });
+
+  const handleBulkFixSeo = () => {
+    setBulkFixSeoResult(null);
+    bulkFixSeoMutation.mutate();
   };
 
   return (
@@ -376,6 +400,91 @@ export default function WordPressSetup() {
 
               <p className="text-xs text-muted-foreground">
                 Open any post in the WP editor and click <strong>Update</strong> to trigger Yoast's re-analysis and see the green dots.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── Bulk Auto-Fix SEO Length ──────────────────────────────────────── */}
+      <Card className="border-2 border-amber-500/30 bg-amber-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-400" />
+            Bulk Auto-Fix SEO Title & Meta Description Length
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Scans <strong>all blog posts</strong> (published and draft) for SEO titles over 70 characters or meta descriptions over 160 characters,
+            then uses AI to regenerate properly-sized versions. Published posts are automatically updated in WordPress.
+          </p>
+          <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+            <p className="font-medium">What this fixes:</p>
+            <p>• SEO titles longer than 70 chars → rewritten to 50–60 chars (Yoast green zone)</p>
+            <p>• Meta descriptions longer than 160 chars → rewritten to 140–155 chars</p>
+            <p>• Duplicate keyphrase prefixes (e.g. "gut health: Gut Health: …") → removed</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleBulkFixSeo}
+              disabled={bulkFixSeoMutation.isPending}
+              className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {bulkFixSeoMutation.isPending ? (
+                <><RefreshCw className="h-4 w-4 animate-spin" /> Fixing SEO fields…</>
+              ) : (
+                <><Sparkles className="h-4 w-4" /> Auto-Fix All Oversized SEO Fields</>
+              )}
+            </Button>
+            {bulkFixSeoMutation.isPending && (
+              <p className="text-xs text-muted-foreground animate-pulse">
+                Processing posts one by one — may take 1–2 minutes…
+              </p>
+            )}
+          </div>
+
+          {/* Results */}
+          {bulkFixSeoResult && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-medium">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {bulkFixSeoResult.succeeded} of {bulkFixSeoResult.total} posts fixed
+                </span>
+                {bulkFixSeoResult.failed > 0 && (
+                  <span className="flex items-center gap-1.5 text-red-500 font-medium">
+                    <XCircle className="h-4 w-4" />
+                    {bulkFixSeoResult.failed} failed
+                  </span>
+                )}
+              </div>
+              <div className="max-h-72 overflow-y-auto rounded-md border border-border bg-muted/30 divide-y divide-border">
+                {bulkFixSeoResult.results.map((r) => (
+                  <div key={r.id} className="flex items-start gap-2 px-3 py-2 text-xs">
+                    {r.success ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground truncate font-medium">{r.title}</p>
+                      {r.fixed.length > 0 && (
+                        <p className="text-amber-400 mt-0.5">Fixed: {r.fixed.join(' · ')}</p>
+                      )}
+                      {r.newSeoTitle && (
+                        <p className="text-muted-foreground mt-0.5 truncate">Title: {r.newSeoTitle}</p>
+                      )}
+                      {r.error && <p className="text-red-400 mt-0.5">{r.error}</p>}
+                    </div>
+                    <span className="text-muted-foreground flex-shrink-0">
+                      {r.wpPostId ? `WP#${r.wpPostId}` : 'draft'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Published posts have been updated in WordPress automatically. Draft posts are saved to the database and will use the new values on next publish.
               </p>
             </div>
           )}

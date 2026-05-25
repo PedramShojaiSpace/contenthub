@@ -3619,22 +3619,14 @@ STRICT RULES:
           console.warn('[Blog] Regen banner composite failed, using raw image:', compErr);
         }
 
-        // Step 3: Replace the old um-cta-banner block in textContent (if any) with the new one
-        let updatedTextContent = item.textContent ?? '';
-        const ctaBannerBlock = `\n\n<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;">\n  <a href="${ctaUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">\n    <img src="${newBannerUrl}" alt="${ctaLabel}" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" />\n    <div style="margin-top:0.75rem;font-size:1rem;font-weight:600;color:#7c5c2e;letter-spacing:0.02em;">${ctaText.slice(0, 120)}${ctaText.length > 120 ? '\u2026' : ''}</div>\n  </a>\n</div>`;
+        // Step 3: Persist only the new banner URL — do NOT embed CTA HTML in textContent.
+        // The CTA HTML is injected at WordPress publish time only (see publishToWordPress procedure).
+        // Also strip any previously-embedded CTA HTML block from textContent if present.
+        let updatedTextContent = (item.textContent ?? '')
+          .replace(/<div[^>]*class=["']um-cta-banner["'][\s\S]*?<\/div>\s*<\/div>/gi, '')
+          .trim();
 
-        // Remove existing banner block if present
-        updatedTextContent = updatedTextContent.replace(/<div class="um-cta-banner"[\s\S]*?<\/div>\s*<\/div>/g, '');
-
-        // Re-inject before FAQ or at end
-        const faqMatch = updatedTextContent.match(/\n##\s*(Frequently Asked Questions|FAQ)/i);
-        if (faqMatch && faqMatch.index !== undefined) {
-          updatedTextContent = updatedTextContent.slice(0, faqMatch.index) + ctaBannerBlock + updatedTextContent.slice(faqMatch.index);
-        } else {
-          updatedTextContent = updatedTextContent + ctaBannerBlock;
-        }
-
-        // Step 4: Persist the new banner URL and updated textContent
+        // Step 4: Persist the new banner URL and cleaned textContent
         await updateContentItem(input.contentItemId, {
           ctaBannerUrl: newBannerUrl,
           textContent: updatedTextContent,

@@ -3235,3 +3235,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Summary stat cards: total posts, winning, needs attention, total clicks, avg position
 - [x] Trophy icon added to sidebar nav (above SEO Dashboard)
 - [x] TypeScript clean (0 errors), 378 tests pass
+
+## Scoreboard Position Trending + Publish Next Engine
+
+- [x] Add gsc_position_history table (contentItemId, url, clicks, impressions, position, recordedAt)
+- [x] Run db:push after schema change (migration 0086_red_quasar.sql applied)
+- [x] Compute trend delta inline in getPublishedPosts: compare latest vs previous snapshot, return direction (up/down/flat) + magnitude
+- [x] Auto-snapshot GSC position on each Scoreboard load (once per hour per post)
+- [x] Update scoreboard.getPublishedPosts to include trendDirection and trendDelta per post
+- [x] Update Scoreboard UI: add Position Trend column with ↑↓ arrows and delta number
+- [x] Build Publish Next recommendation engine (scoreboard.getPublishNextRecommendations): GSC striking-distance keywords (pos 4-20, impressions ≥50) not yet covered, scored by impressions × (1/position), LLM-enriched titles and rationale
+- [x] Build Publish Next panel in Scoreboard UI: ranked list with difficulty badge, keyword, rationale, one-click Write button linking to Creation Studio
+- [x] 378 tests pass, TypeScript clean (0 errors)

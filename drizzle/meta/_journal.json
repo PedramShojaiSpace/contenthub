@@ -603,6 +603,13 @@
       "when": 1779538039207,
       "tag": "0085_gifted_riptide",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "5",
+      "when": 1779746441130,
+      "tag": "0086_red_quasar",
+      "breakpoints": true
     }
   ]
 }

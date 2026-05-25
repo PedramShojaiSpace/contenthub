@@ -1,18 +1,9 @@
 /**
  * Content Scoreboard
  * ──────────────────
- * A single-view performance dashboard for all published blog posts.
- * Shows Yoast SEO score, Google Search Console traffic (clicks, impressions,
- * avg position), social push channels, and a computed health signal.
- *
- * Data sources:
- *  - content_items table (Yoast score, pushedChannels, publishUrl, focusKeyword)
- *  - Google Search Console via gscRouter.topPages (28-day window, live)
- *
- * Health signal logic:
- *  green  = Yoast "good" + GSC clicks > 0
- *  amber  = Yoast "ok" OR no GSC data yet
- *  red    = Yoast "bad" OR no Yoast score at all
+ * Single-view performance dashboard for all published blog posts.
+ * Shows Yoast SEO score, GSC traffic, position trend (↑↓), social push
+ * channels, health signal, and a "Publish Next" recommendation panel.
  */
 
 import { useState, useMemo } from "react";
@@ -39,6 +30,12 @@ import {
   BarChart3,
   Globe,
   Zap,
+  Lightbulb,
+  ArrowUpRight,
+  ArrowDownRight,
+  PenLine,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -57,7 +54,21 @@ type PostRow = {
   gscImpressions: number | null;
   gscCtr: number | null;
   gscPosition: number | null;
+  trendDirection: "up" | "down" | "flat" | null;
+  trendDelta: number | null;
   health: "green" | "amber" | "red";
+};
+
+type Recommendation = {
+  rank: number;
+  keyword: string;
+  suggestedTitle: string;
+  rationale: string;
+  estimatedDifficulty: "low" | "medium" | "high";
+  gscPosition: number | null;
+  gscImpressions: number | null;
+  gscClicks: number | null;
+  source: string;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -85,6 +96,34 @@ function HealthDot({ health }: { health: "green" | "amber" | "red" }) {
   if (health === "green") return <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />;
   if (health === "amber") return <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />;
   return <XCircle className="w-4 h-4 text-red-500 shrink-0" />;
+}
+
+function TrendBadge({ direction, delta }: { direction: "up" | "down" | "flat" | null; delta: number | null }) {
+  if (!direction) {
+    return <span className="text-xs text-muted-foreground italic">—</span>;
+  }
+  if (direction === "flat") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+        <Minus className="w-3 h-3" />
+        flat
+      </span>
+    );
+  }
+  if (direction === "up") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-500">
+        <ArrowUpRight className="w-3.5 h-3.5" />
+        {delta != null ? `+${delta}` : "↑"}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-400">
+      <ArrowDownRight className="w-3.5 h-3.5" />
+      {delta != null ? `-${delta}` : "↓"}
+    </span>
+  );
 }
 
 const SERVICE_COLORS: Record<string, string> = {
@@ -156,19 +195,131 @@ function StatCard({ label, value, sub, icon: Icon, color = "text-primary" }: {
   );
 }
 
+// ── Difficulty badge ──────────────────────────────────────────────────────────
+
+function DifficultyBadge({ level }: { level: "low" | "medium" | "high" }) {
+  if (level === "low") return <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/30 font-semibold">Easy win</span>;
+  if (level === "medium") return <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold">Medium</span>;
+  return <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 font-semibold">Competitive</span>;
+}
+
+// ── Publish Next Panel ────────────────────────────────────────────────────────
+
+function PublishNextPanel() {
+  const [expanded, setExpanded] = useState(true);
+  const recsQuery = trpc.scoreboard.getPublishNextRecommendations.useQuery(undefined, {
+    retry: false,
+    staleTime: 1000 * 60 * 30, // cache 30 min — LLM calls are expensive
+  });
+
+  const recs: Recommendation[] = (recsQuery.data ?? []) as Recommendation[];
+
+  return (
+    <Card className="bg-card border-border border-primary/20">
+      <CardHeader className="pb-3 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-amber-500" />
+            Publish Next — Strategic Recommendations
+            <Badge className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 ml-1">
+              {recs.length > 0 ? `${recs.length} opportunities` : "Loading…"}
+            </Badge>
+          </CardTitle>
+          <button className="text-muted-foreground hover:text-foreground transition-colors">
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Keywords where you're already ranking (pos 4–20) but not yet getting clicks — publish these next for fastest traffic gains.
+        </p>
+      </CardHeader>
+
+      {expanded && (
+        <CardContent className="pt-0">
+          {recsQuery.isLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+            </div>
+          ) : recs.length === 0 ? (
+            <div className="flex flex-col items-center py-10 gap-3 text-center">
+              <Lightbulb className="w-10 h-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">
+                Connect Google Search Console and publish a few blog posts to unlock recommendations.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recs.map((rec, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors border border-border/50"
+                >
+                  {/* Rank */}
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-primary">{rec.rank}</span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-foreground leading-snug">{rec.suggestedTitle}</p>
+                      <DifficultyBadge level={rec.estimatedDifficulty} />
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-[10px] bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded">
+                        🔑 {rec.keyword}
+                      </span>
+                      {rec.gscPosition != null && (
+                        <span className="text-[10px] text-amber-500 font-semibold">
+                          Currently pos {rec.gscPosition.toFixed(1)}
+                        </span>
+                      )}
+                      {rec.gscImpressions != null && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {rec.gscImpressions.toLocaleString()} impressions/mo
+                        </span>
+                      )}
+                      {rec.source === "gsc_striking_distance" && (
+                        <span className="text-[10px] text-primary/70 font-medium">📈 Striking distance</span>
+                      )}
+                      {rec.source === "llm_family" && (
+                        <span className="text-[10px] text-purple-500/80 font-medium">✨ AI suggested</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{rec.rationale}</p>
+                  </div>
+
+                  {/* Action */}
+                  <a
+                    href={`/creation-studio?keyword=${encodeURIComponent(rec.keyword)}&title=${encodeURIComponent(rec.suggestedTitle)}`}
+                    className="inline-flex items-center gap-1 h-7 px-2.5 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0 mt-0.5 font-medium"
+                    title="Open in Creation Studio"
+                  >
+                    <PenLine className="w-3 h-3" />
+                    Write
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Scoreboard() {
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "green" | "amber" | "red">("all");
-  const [sortBy, setSortBy] = useState<"publishedAt" | "clicks" | "position" | "health">("publishedAt");
+  const [sortBy, setSortBy] = useState<"publishedAt" | "clicks" | "position" | "health" | "trend">("publishedAt");
 
   const postsQuery = trpc.scoreboard.getPublishedPosts.useQuery(undefined, { retry: false });
 
   const fetchYoastScore = trpc.content.fetchYoastScore.useMutation({
-    onSuccess: (data, vars) => {
-      toast.success(`Yoast score: ${data.seoScore ?? "unknown"}`);
+    onSuccess: () => {
       utils.scoreboard.getPublishedPosts.invalidate();
     },
     onError: (e) => toast.error(e.message),
@@ -181,11 +332,11 @@ export default function Scoreboard() {
   const greenPosts = posts.filter((p) => p.health === "green").length;
   const redPosts = posts.filter((p) => p.health === "red").length;
   const totalClicks = posts.reduce((s, p) => s + (p.gscClicks ?? 0), 0);
-  const totalImpressions = posts.reduce((s, p) => s + (p.gscImpressions ?? 0), 0);
   const avgPosition = posts.filter((p) => p.gscPosition != null).length > 0
     ? (posts.filter((p) => p.gscPosition != null).reduce((s, p) => s + p.gscPosition!, 0) /
        posts.filter((p) => p.gscPosition != null).length).toFixed(1)
     : "—";
+  const trendingUp = posts.filter((p) => p.trendDirection === "up").length;
 
   // ── Filter + sort ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -211,7 +362,13 @@ export default function Scoreboard() {
         const order = { green: 0, amber: 1, red: 2 };
         return order[a.health] - order[b.health];
       }
-      // publishedAt desc
+      if (sortBy === "trend") {
+        // up first, then flat, then down, then null
+        const tOrder = { up: 0, flat: 1, down: 2 };
+        const aO = a.trendDirection ? tOrder[a.trendDirection] : 3;
+        const bO = b.trendDirection ? tOrder[b.trendDirection] : 3;
+        return aO - bO;
+      }
       return (b.publishedAt ?? 0) - (a.publishedAt ?? 0);
     });
     return rows;
@@ -258,13 +415,17 @@ export default function Scoreboard() {
             icon={MousePointerClick}
           />
           <StatCard
-            label="Avg. Position"
-            value={avgPosition}
-            sub="Posts with GSC data"
-            icon={Target}
+            label="Trending Up"
+            value={trendingUp}
+            sub="Position improving"
+            icon={TrendingUp}
+            color="text-green-500"
           />
         </div>
       )}
+
+      {/* Publish Next recommendations */}
+      <PublishNextPanel />
 
       {/* Filters + search */}
       <div className="flex flex-wrap items-center gap-3">
@@ -292,7 +453,7 @@ export default function Scoreboard() {
         </div>
         <div className="flex gap-2 ml-auto">
           <span className="text-xs text-muted-foreground self-center">Sort:</span>
-          {(["publishedAt", "clicks", "position", "health"] as const).map((s) => (
+          {(["publishedAt", "clicks", "position", "trend", "health"] as const).map((s) => (
             <Button
               key={s}
               size="sm"
@@ -300,7 +461,7 @@ export default function Scoreboard() {
               onClick={() => setSortBy(s)}
               className="text-xs h-8"
             >
-              {s === "publishedAt" ? "Newest" : s === "clicks" ? "Clicks" : s === "position" ? "Position" : "Health"}
+              {s === "publishedAt" ? "Newest" : s === "clicks" ? "Clicks" : s === "position" ? "Position" : s === "trend" ? "Trending" : "Health"}
             </Button>
           ))}
         </div>
@@ -327,11 +488,12 @@ export default function Scoreboard() {
         <Card className="bg-card border-border overflow-hidden">
           <div className="divide-y divide-border">
             {/* Table header */}
-            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               <span>Post</span>
               <span>Yoast</span>
               <span>GSC Traffic</span>
               <span>Avg Position</span>
+              <span>Trend</span>
               <span>Pushed To</span>
               <span></span>
             </div>
@@ -339,7 +501,7 @@ export default function Scoreboard() {
             {filtered.map((post) => (
               <div
                 key={post.id}
-                className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-3 md:gap-4 px-4 py-3 hover:bg-muted/20 transition-colors items-start md:items-center"
+                className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 md:gap-4 px-4 py-3 hover:bg-muted/20 transition-colors items-start md:items-center"
               >
                 {/* Post title + meta */}
                 <div className="flex items-start gap-2 min-w-0">
@@ -402,6 +564,14 @@ export default function Scoreboard() {
                   )}
                 </div>
 
+                {/* Position trend */}
+                <div className="flex flex-col gap-0.5">
+                  <TrendBadge direction={post.trendDirection} delta={post.trendDelta} />
+                  {post.trendDirection === null && (
+                    <span className="text-[10px] text-muted-foreground/60">Need 2+ snapshots</span>
+                  )}
+                </div>
+
                 {/* Pushed channels */}
                 <ChannelBadges channels={post.pushedChannels} />
 
@@ -441,7 +611,8 @@ export default function Scoreboard() {
         <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> Winning — Yoast Good + GSC clicks</span>
         <span className="flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-amber-500" /> Watch — Yoast OK or no GSC data yet</span>
         <span className="flex items-center gap-1.5"><XCircle className="w-3.5 h-3.5 text-red-500" /> Fix — Yoast Bad or score not fetched</span>
-        <span className="ml-auto">GSC data: last 28 days · 3-day lag</span>
+        <span className="flex items-center gap-1.5"><ArrowUpRight className="w-3.5 h-3.5 text-green-500" /> Trend — position improving vs last snapshot</span>
+        <span className="ml-auto">GSC data: last 28 days · 3-day lag · Trend snapshots hourly</span>
       </div>
     </div>
   );

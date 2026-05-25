@@ -1530,3 +1530,25 @@ export const bufferChannelDefaults = mysqlTable("buffer_channel_defaults", {
 
 export type BufferChannelDefault = typeof bufferChannelDefaults.$inferSelect;
 export type InsertBufferChannelDefault = typeof bufferChannelDefaults.$inferInsert;
+
+// ─── GSC Position History ─────────────────────────────────────────────────────
+// Stores a snapshot of each published post's GSC metrics every time the
+// Scoreboard is refreshed. Used to compute position trend (up/down/flat).
+export const gscPositionHistory = mysqlTable("gsc_position_history", {
+  id: int("id").autoincrement().primaryKey(),
+  // Link to the content item (nullable — we also store keyword-level history)
+  contentItemId: int("gph_content_item_id"),
+  // The canonical URL of the page (normalized: lowercase, no trailing slash)
+  url: varchar("gph_url", { length: 512 }).notNull(),
+  // GSC metrics at the time of this snapshot (28-day window)
+  clicks: int("gph_clicks").default(0).notNull(),
+  impressions: int("gph_impressions").default(0).notNull(),
+  ctr: varchar("gph_ctr", { length: 16 }),           // e.g. "3.2" (percent)
+  position: varchar("gph_position", { length: 16 }), // e.g. "7.4" (avg position)
+  // When this snapshot was recorded (Unix ms)
+  recordedAt: bigint("gph_recorded_at", { mode: "number" }).notNull(),
+  createdAt: timestamp("gph_created_at").defaultNow().notNull(),
+});
+
+export type GscPositionHistory = typeof gscPositionHistory.$inferSelect;
+export type InsertGscPositionHistory = typeof gscPositionHistory.$inferInsert;

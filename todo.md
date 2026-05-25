@@ -3284,3 +3284,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Added real Bulk Re-push button to WordPress Setup page with live per-post progress, fixed count, and scrollable results list
 - [x] Audit blog generation pipeline: prompt already enforces density/H2/meta rules; publish procedure now enforces keyphrase-first SEO title and meta desc keyphrase on every publish
 - [x] 378 tests pass, TypeScript clean (0 errors)
+
+## JSON Extraction Bug Fix + DB Recovery (v7)
+
+- [x] Root cause identified: blog AI sometimes returns JSON despite "Do NOT wrap in JSON" instruction
+- [x] Old extractArticleFromJson failed when article value contained unescaped quotes (character walk stopped early)
+- [x] Upgraded extractArticleFromJson to 4-strategy extraction: (1) JSON.parse, (2) character walk, (3) top-level key boundary scan, (4) recovery LLM call as last resort
+- [x] Ran fix-toxins-post.mjs recovery script: extracted clean article from 4 posts with JSON blob content
+  - ID 270001 "What Is Sleep Optimization..." — 7,573 chars recovered
+  - ID 270004 "The Real Reason Your Sleep Isn't Restoring You..." — 3,747 chars recovered
+  - ID 270007 "Unmasking the Root: How Gut Barrier Permeability..." — 10,867 chars recovered
+  - ID 1170006 "Toxins & Fatigue: The Root Cause Revealed" — 12,501 chars recovered
+- [x] TypeScript clean (0 errors), 378 tests pass

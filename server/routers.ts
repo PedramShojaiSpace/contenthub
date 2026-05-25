@@ -1178,11 +1178,12 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
 
         // ── DEFENSIVE: If the model returned JSON despite instructions, extract the article field ──
         // The model sometimes wraps the response in ```json\n{ ... }\n``` even when told not to.
-        // JSON.parse is unreliable here because the article field contains unescaped newlines.
-        // Strategy: use a targeted regex to extract the "article" string value directly.
+        // Strategy 1: JSON.parse (works when properly escaped)
+        // Strategy 2: Extract "article" value via character walk (handles unescaped newlines)
+        // Strategy 3: Find "article": then grab everything until the next top-level key
         const extractArticleFromJson = (raw: string): string | null => {
           try {
-            // Step 1: Strip code fences — handles ```json\n, ```json , ``` variants
+            // Step 1: Strip code fences
             const stripped = raw
               .replace(/^```+\s*json\s*\n?/i, "")
               .replace(/^```+\s*\n?/i, "")
@@ -1201,40 +1202,78 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
                 }
               }
             } catch {
-              // JSON.parse failed — fall through to regex extraction
+              // JSON.parse failed — fall through
             }
 
-            // Step 3: Regex extraction — find "article": "..." and extract the value
-            // This handles cases where the article field contains unescaped newlines
-            // that break JSON.parse. We find the key and extract everything until
-            // the next top-level JSON key or the closing brace of the root object.
+            // Step 3: Character-walk extraction — handles unescaped newlines inside the value
             const articleKeyMatch = stripped.match(/"article"\s*:\s*"/);
-            if (!articleKeyMatch || articleKeyMatch.index === undefined) return null;
-
-            const valueStart = articleKeyMatch.index + articleKeyMatch[0].length;
-            // Walk forward to find the end of the string value (unescaped closing quote)
-            let i = valueStart;
-            let result = "";
-            while (i < stripped.length) {
-              const ch = stripped[i];
-              if (ch === "\\" && i + 1 < stripped.length) {
-                // Escape sequence — decode common ones
-                const next = stripped[i + 1];
-                if (next === "n") { result += "\n"; i += 2; continue; }
-                if (next === "t") { result += "\t"; i += 2; continue; }
-                if (next === "\\") { result += "\\"; i += 2; continue; }
-                if (next === '"') { result += '"'; i += 2; continue; }
-                result += next; i += 2; continue;
+            if (articleKeyMatch && articleKeyMatch.index !== undefined) {
+              const valueStart = articleKeyMatch.index + articleKeyMatch[0].length;
+              let i = valueStart;
+              let result = "";
+              while (i < stripped.length) {
+                const ch = stripped[i];
+                if (ch === "\\" && i + 1 < stripped.length) {
+                  const next = stripped[i + 1];
+                  if (next === "n") { result += "\n"; i += 2; continue; }
+                  if (next === "t") { result += "\t"; i += 2; continue; }
+                  if (next === "\\") { result += "\\"; i += 2; continue; }
+                  if (next === '"') { result += '"'; i += 2; continue; }
+                  result += next; i += 2; continue;
+                }
+                if (ch === '"') break; // end of string value
+                result += ch;
+                i++;
               }
-              if (ch === '"') {
-                // Unescaped quote = end of string value
-                break;
-              }
-              result += ch;
-              i++;
+              if (result.length > 200) return result;
             }
 
-            if (result.length > 200) return result;
+            // Step 4: Fallback — find "article": then grab until the next top-level JSON key
+            // This handles cases where the article value contains unescaped quotes that
+            // cause the character walk to stop early.
+            const articleKeyIdx = stripped.indexOf('"article":');
+            if (articleKeyIdx !== -1) {
+              // Find the opening quote of the value
+              const openQuoteIdx = stripped.indexOf('"', articleKeyIdx + '"article":'.length);
+              if (openQuoteIdx !== -1) {
+                // Find the next top-level key pattern: ",\n  "someKey": or end of object
+                // Look for pattern: ",\n  "<word>":\s" at the same indent level
+                const afterValue = stripped.slice(openQuoteIdx + 1);
+                // Find the last occurrence of a top-level key transition
+                // Top-level keys appear as: (newline)(spaces)"key": at depth 1
+                const nextKeyMatch = afterValue.match(/\n\s{0,4}"[a-zA-Z]+"\s*:/);
+                if (nextKeyMatch && nextKeyMatch.index !== undefined) {
+                  // Walk back from nextKeyMatch.index to find the closing quote + comma
+                  const candidateEnd = nextKeyMatch.index;
+                  // The article value ends just before the comma that precedes the next key
+                  const commaIdx = afterValue.lastIndexOf(',', candidateEnd);
+                  const endIdx = commaIdx !== -1 ? commaIdx : candidateEnd;
+                  let articleValue = afterValue.slice(0, endIdx);
+                  // Strip trailing quote if present
+                  if (articleValue.endsWith('"')) articleValue = articleValue.slice(0, -1);
+                  // Decode escape sequences
+                  articleValue = articleValue
+                    .replace(/\\n/g, "\n")
+                    .replace(/\\t/g, "\t")
+                    .replace(/\\\\/g, "\\")
+                    .replace(/\\"/g, '"');
+                  if (articleValue.length > 200) return articleValue;
+                } else {
+                  // No next key — article is the last field; grab until closing }
+                  let articleValue = afterValue;
+                  // Strip trailing "} or "\n}
+                  articleValue = articleValue.replace(/"?\s*\}\s*$/, "");
+                  if (articleValue.endsWith('"')) articleValue = articleValue.slice(0, -1);
+                  articleValue = articleValue
+                    .replace(/\\n/g, "\n")
+                    .replace(/\\t/g, "\t")
+                    .replace(/\\\\/g, "\\")
+                    .replace(/\\"/g, '"');
+                  if (articleValue.length > 200) return articleValue;
+                }
+              }
+            }
+
             return null;
           } catch {
             return null;
@@ -1252,7 +1291,24 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
             console.log("[Blog] Extracted article from JSON response, length:", extracted.length);
             articleBody = extracted;
           } else {
-            console.warn("[Blog] Response looked like JSON but extraction failed — using raw response.");
+            // Last resort: if extraction failed but body is JSON, make a second LLM call
+            // asking it to output just the article body as plain Markdown
+            console.warn("[Blog] JSON extraction failed — making a recovery LLM call for plain Markdown output.");
+            try {
+              const recoveryResponse = await safeLLM({
+                messages: [
+                  { role: "system", content: "You are a content formatter. Extract and output ONLY the article body text from the JSON below. Output clean Markdown only — no JSON, no code fences, no explanation. Start with the first paragraph of the article." },
+                  { role: "user", content: articleBody.substring(0, 8000) },
+                ],
+              });
+              const recoveryText = (String(recoveryResponse.choices?.[0]?.message?.content ?? "")).trim();
+              if (recoveryText && recoveryText.length > 500 && !/^\s*\{/.test(recoveryText)) {
+                console.log("[Blog] Recovery call succeeded, length:", recoveryText.length);
+                articleBody = recoveryText;
+              }
+            } catch (recoveryErr) {
+              console.error("[Blog] Recovery call also failed:", recoveryErr);
+            }
           }
         }
 

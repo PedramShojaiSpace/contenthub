@@ -3530,6 +3530,122 @@ Rules:
         return { results, succeeded, failed, total: published.length, totalFixed };
       }),
 
+    // Bulk-fix SEO titles (>70 chars) and meta descriptions (>160 chars) using LLM
+    bulkFixSeoLength: protectedProcedure
+      .mutation(async () => {
+        const db = await getDb();
+        const { contentItems } = await import('../drizzle/schema');
+        const { eq, and, isNotNull } = await import('drizzle-orm');
+
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        // Get all blog posts (published + draft) that have oversized SEO fields
+        const allPosts = await db
+          .select()
+          .from(contentItems)
+          .where(eq(contentItems.platform, 'blog'));
+
+        // Filter to only those with issues
+        const needsFix = allPosts.filter(item => {
+          const titleTooLong = item.yoastSeoTitle && item.yoastSeoTitle.length > 70;
+          const descTooLong = item.yoastMetaDescription && item.yoastMetaDescription.length > 160;
+          return titleTooLong || descTooLong;
+        });
+
+        const results: Array<{ id: number; title: string; wpPostId: number | null; success: boolean; fixed: string[]; newSeoTitle?: string; newMetaDesc?: string; error?: string }> = [];
+
+        for (const item of needsFix) {
+          const fixed: string[] = [];
+          try {
+            let seoTitle = item.yoastSeoTitle ?? '';
+            let metaDesc = item.yoastMetaDescription ?? '';
+            const focusKw = item.focusKeyword ?? '';
+
+            const titleTooLong = seoTitle.length > 70;
+            const descTooLong = metaDesc.length > 160;
+
+            if (titleTooLong || descTooLong) {
+              // Use LLM to generate properly-sized versions
+              const prompt = [
+                `You are an SEO expert. Rewrite the following Yoast SEO fields to meet strict character limits.`,
+                ``,
+                `Focus Keyphrase: ${focusKw || '(none)'}`,
+                `Article Title: ${item.title}`,
+                titleTooLong ? `Current SEO Title (${seoTitle.length} chars — TOO LONG, must be ≤60 chars): ${seoTitle}` : `Current SEO Title (OK): ${seoTitle}`,
+                descTooLong ? `Current Meta Description (${metaDesc.length} chars — TOO LONG, must be 140-155 chars): ${metaDesc}` : `Current Meta Description (OK): ${metaDesc}`,
+                ``,
+                `RULES:`,
+                `1. SEO Title: must be 50-60 characters total including " | The Urban Monk" suffix (18 chars). So the title portion before the suffix must be 32-42 chars. Do NOT include the focus keyphrase as a prefix — just write a natural, compelling title.`,
+                `2. Meta Description: must be 140-155 characters. Include the focus keyphrase naturally. Make it compelling and click-worthy.`,
+                `3. Return ONLY valid JSON with keys: seoTitle, metaDescription`,
+                `4. Do not include any explanation or preamble.`,
+              ].join('\n');
+
+              const llmResp = await safeLLM({
+                messages: [
+                  { role: 'system', content: 'You are an SEO expert. Return only valid JSON.' },
+                  { role: 'user', content: prompt },
+                ],
+                response_format: {
+                  type: 'json_schema',
+                  json_schema: {
+                    name: 'seo_fields',
+                    strict: true,
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        seoTitle: { type: 'string', description: 'SEO title, 50-60 chars total' },
+                        metaDescription: { type: 'string', description: 'Meta description, 140-155 chars' },
+                      },
+                      required: ['seoTitle', 'metaDescription'],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+              });
+
+              const parsed = JSON.parse(llmResp.choices[0].message.content as string) as { seoTitle: string; metaDescription: string };
+
+              if (titleTooLong && parsed.seoTitle) {
+                seoTitle = parsed.seoTitle;
+                fixed.push(`seo_title_shortened (${seoTitle.length} chars)`);
+              }
+              if (descTooLong && parsed.metaDescription) {
+                metaDesc = parsed.metaDescription;
+                fixed.push(`meta_desc_shortened (${metaDesc.length} chars)`);
+              }
+            }
+
+            // Save to DB
+            if (fixed.length > 0) {
+              await updateContentItem(item.id, {
+                yoastSeoTitle: seoTitle,
+                yoastMetaDescription: metaDesc,
+              });
+            }
+
+            // Push to WordPress if published
+            if (item.wpPostId && fixed.length > 0) {
+              await updateWpPostYoast({
+                wpPostId: item.wpPostId,
+                seoTitle: seoTitle || undefined,
+                metaDescription: metaDesc || undefined,
+                focusKeyword: focusKw || undefined,
+              });
+            }
+
+            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId ?? null, success: true, fixed, newSeoTitle: seoTitle, newMetaDesc: metaDesc });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId ?? null, success: false, fixed, error: msg });
+          }
+        }
+
+        const succeeded = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
+        return { results, succeeded, failed, total: needsFix.length };
+      }),
+
     // Rewrite a blog post in an accessible, engaging voice for a general audience
     createReaderVersion: protectedProcedure
       .input(z.object({

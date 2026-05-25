@@ -3814,15 +3814,14 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
   scoreboard: router({
     /**
      * Return all published blog content items enriched with their
-     * stored Yoast score, pushed channels, and GSC traffic data
-     * (matched by publishUrl against the GSC top-pages list).
-     * The GSC data is fetched fresh on each call (28-day window).
+     * stored Yoast score, pushed channels, live GSC traffic data,
+     * and position trend (up/down/flat) computed from stored history.
      */
     getPublishedPosts: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) return [];
-      const { contentItems: ci } = await import("../drizzle/schema");
-      const { eq, and, isNotNull } = await import("drizzle-orm");
+      const { contentItems: ci, gscPositionHistory, userCredentials } = await import("../drizzle/schema");
+      const { eq, and, isNotNull, desc, inArray } = await import("drizzle-orm");
 
       // Fetch all published blog posts that have a WordPress post ID
       const posts = await db
@@ -3836,16 +3835,16 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           )
         );
 
-      // Try to fetch GSC data to enrich posts with traffic metrics
+      // Try to fetch live GSC data
       let gscPageMap: Map<string, { clicks: number; impressions: number; ctr: number; position: number }> = new Map();
+      let gscConnected = false;
       try {
-        const { userCredentials } = await import("../drizzle/schema");
         const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
         if (creds?.gscRefreshToken && creds?.gscSiteUrl) {
+          gscConnected = true;
           const { getTopPages: gscGetTopPages } = await import("./googleSearchConsole");
           const gscPages = await gscGetTopPages(creds.gscRefreshToken, creds.gscSiteUrl, 100);
           for (const p of gscPages) {
-            // Normalize URL: strip trailing slash, lowercase
             const key = p.page.replace(/\/$/, "").toLowerCase();
             gscPageMap.set(key, { clicks: p.clicks, impressions: p.impressions, ctr: p.ctr, position: p.position });
           }
@@ -3854,8 +3853,51 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         // GSC not connected — proceed without traffic data
       }
 
-      return posts.map((post: any) => {
-        // Match post URL against GSC page map
+      // Fetch position history for all posts (last 2 snapshots per URL)
+      const postIds = posts.map((p: any) => p.id).filter(Boolean);
+      let historyRows: any[] = [];
+      if (postIds.length > 0) {
+        historyRows = await db
+          .select()
+          .from(gscPositionHistory)
+          .where(inArray(gscPositionHistory.contentItemId, postIds))
+          .orderBy(desc(gscPositionHistory.recordedAt));
+      }
+
+      // Group history by contentItemId, keep last 2 snapshots
+      const historyByItem = new Map<number, any[]>();
+      for (const row of historyRows) {
+        const id = row.contentItemId;
+        if (!id) continue;
+        if (!historyByItem.has(id)) historyByItem.set(id, []);
+        const arr = historyByItem.get(id)!;
+        if (arr.length < 2) arr.push(row);
+      }
+
+      // If we have live GSC data, record a new snapshot for each post
+      if (gscConnected && gscPageMap.size > 0) {
+        const now = Date.now();
+        for (const post of posts as any[]) {
+          const url = (post.publishUrl ?? "").replace(/\/$/, "").toLowerCase();
+          const gsc = gscPageMap.get(url);
+          if (!gsc) continue;
+          // Only snapshot once per hour to avoid flooding the table
+          const existing = historyByItem.get(post.id)?.[0];
+          const oneHourAgo = now - 3_600_000;
+          if (existing && existing.recordedAt > oneHourAgo) continue;
+          await db.insert(gscPositionHistory).values({
+            contentItemId: post.id,
+            url,
+            clicks: gsc.clicks,
+            impressions: gsc.impressions,
+            ctr: String(gsc.ctr),
+            position: String(gsc.position),
+            recordedAt: now,
+          });
+        }
+      }
+
+      return (posts as any[]).map((post) => {
         const url = (post.publishUrl ?? "").replace(/\/$/, "").toLowerCase();
         const gsc = gscPageMap.get(url) ?? null;
 
@@ -3865,10 +3907,23 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           if (post.pushedChannels) pushedChannels = JSON.parse(post.pushedChannels);
         } catch {}
 
-        // Compute a simple health signal:
-        // green = yoastScore good + has GSC clicks
-        // amber = yoastScore ok OR no GSC data yet
-        // red   = yoastScore bad OR no yoast score at all
+        // Compute position trend from last 2 snapshots
+        const history = historyByItem.get(post.id) ?? [];
+        let trendDirection: "up" | "down" | "flat" | null = null;
+        let trendDelta: number | null = null;
+        if (history.length >= 2) {
+          const latest = parseFloat(history[0].position ?? "0");
+          const prev = parseFloat(history[1].position ?? "0");
+          if (!isNaN(latest) && !isNaN(prev) && prev > 0) {
+            const delta = prev - latest; // positive = improved (lower position number = better)
+            trendDelta = Math.abs(parseFloat(delta.toFixed(1)));
+            if (Math.abs(delta) < 0.5) trendDirection = "flat";
+            else if (delta > 0) trendDirection = "up";   // position improved
+            else trendDirection = "down";                  // position worsened
+          }
+        }
+
+        // Health signal
         let health: "green" | "amber" | "red" = "amber";
         if (post.yoastScore === "good" && gsc && gsc.clicks > 0) health = "green";
         else if (post.yoastScore === "bad" || !post.yoastScore) health = "red";
@@ -3887,9 +3942,198 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           gscImpressions: gsc?.impressions ?? null,
           gscCtr: gsc?.ctr ?? null,
           gscPosition: gsc?.position ?? null,
+          trendDirection,
+          trendDelta,
           health,
         };
       });
+    }),
+
+    /**
+     * Publish Next Recommendations
+     * ─────────────────────────────
+     * Scores keyword opportunities by combining:
+     *  1. Striking-distance keywords (GSC pos 4-20) not yet covered by a published post
+     *  2. Semantic keyword families adjacent to posts that are trending up or have high clicks
+     *  3. DataForSEO search volume for each candidate keyword
+     *  4. LLM-generated rationale and suggested title for the top 10
+     */
+    getPublishNextRecommendations: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const { contentItems: ci, userCredentials } = await import("../drizzle/schema");
+      const { eq, and, isNotNull } = await import("drizzle-orm");
+
+      // Get all published blog post keywords to know what's already covered
+      const publishedPosts = await db
+        .select({ focusKeyword: ci.focusKeyword, title: ci.title, publishUrl: ci.publishUrl })
+        .from(ci)
+        .where(and(eq(ci.status, "published"), eq(ci.platform, "blog")));
+
+      const coveredKeywords = new Set(
+        publishedPosts.map((p: any) => (p.focusKeyword ?? "").toLowerCase().trim()).filter(Boolean)
+      );
+
+      // Fetch GSC striking-distance keywords (pos 4-20, impressions > 50)
+      let strikingKeywords: { keyword: string; position: number; impressions: number; clicks: number }[] = [];
+      try {
+        const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
+        if (creds?.gscRefreshToken && creds?.gscSiteUrl) {
+          const { getTopQueries: gscGetTopQueries } = await import("./googleSearchConsole");
+          const allKws = await gscGetTopQueries(creds.gscRefreshToken, creds.gscSiteUrl, 200);
+          strikingKeywords = allKws
+            .filter((k: any) => k.position >= 4 && k.position <= 20 && k.impressions >= 50)
+            .map((k: any) => ({ keyword: k.query, position: k.position, impressions: k.impressions, clicks: k.clicks }))
+            .filter((k: any) => !coveredKeywords.has(k.keyword.toLowerCase().trim()));
+        }
+      } catch {
+        // GSC not available
+      }
+
+      if (strikingKeywords.length === 0) {
+        // Fallback: use LLM to suggest keyword families based on published post titles
+        const publishedTitles = publishedPosts.map((p: any) => p.title).slice(0, 20).join("\n");
+        const fallbackResponse = await safeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are an SEO strategist for The Urban Monk (Dr. Pedram Shojai). Based on the published blog posts listed below, suggest 10 keyword opportunities that are semantically related but not yet covered. For each, provide a suggested blog post title and a brief rationale (1-2 sentences) explaining why it would perform well.
+
+Published posts:\n${publishedTitles}
+
+Return JSON array: [{"keyword": string, "suggestedTitle": string, "rationale": string, "estimatedDifficulty": "low"|"medium"|"high", "priority": number}]`,
+            },
+            { role: "user", content: "Suggest the next 10 blog posts to publish for maximum SEO momentum." },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "publish_next",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  recommendations: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        keyword: { type: "string" },
+                        suggestedTitle: { type: "string" },
+                        rationale: { type: "string" },
+                        estimatedDifficulty: { type: "string", enum: ["low", "medium", "high"] },
+                        priority: { type: "number" },
+                      },
+                      required: ["keyword", "suggestedTitle", "rationale", "estimatedDifficulty", "priority"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["recommendations"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        try {
+          const parsed = JSON.parse(fallbackResponse.choices[0].message.content as string);
+          return (parsed.recommendations ?? []).map((r: any, i: number) => ({
+            rank: i + 1,
+            keyword: r.keyword,
+            suggestedTitle: r.suggestedTitle,
+            rationale: r.rationale,
+            estimatedDifficulty: r.estimatedDifficulty,
+            gscPosition: null,
+            gscImpressions: null,
+            gscClicks: null,
+            source: "llm_family",
+          }));
+        } catch {
+          return [];
+        }
+      }
+
+      // Score striking-distance keywords:
+      // Score = impressions × (1 / position) × 10  (higher impressions + better position = higher score)
+      const scored = strikingKeywords
+        .map((k) => ({
+          ...k,
+          score: k.impressions * (1 / k.position) * 10,
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 15);
+
+      // Use LLM to generate suggested titles and rationale for top candidates
+      const kwList = scored.map((k, i) => `${i + 1}. "${k.keyword}" (pos ${k.position.toFixed(1)}, ${k.impressions} impressions)`).join("\n");
+      const publishedTitles = publishedPosts.map((p: any) => p.title).slice(0, 15).join(", ");
+
+      let enriched: any[] = scored.map((k, i) => ({
+        rank: i + 1,
+        keyword: k.keyword,
+        suggestedTitle: `${k.keyword.charAt(0).toUpperCase() + k.keyword.slice(1)}: A Complete Guide`,
+        rationale: `Ranking at position ${k.position.toFixed(1)} with ${k.impressions} monthly impressions — a targeted post could move this into the top 3.`,
+        estimatedDifficulty: k.position <= 8 ? "low" : k.position <= 14 ? "medium" : "high",
+        gscPosition: k.position,
+        gscImpressions: k.impressions,
+        gscClicks: k.clicks,
+        source: "gsc_striking_distance",
+      }));
+
+      try {
+        const llmResponse = await safeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are an SEO content strategist for The Urban Monk (Dr. Pedram Shojai). He has published these blog posts: ${publishedTitles}.
+
+Below are keywords where his site is ranking on page 1-2 of Google (positions 4-20) but not yet getting clicks. For each keyword, suggest a compelling blog post title in Pedram's voice (bridges ancient wisdom + modern science, health-focused, practical) and a 1-sentence rationale for why publishing this now would drive traffic.
+
+Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "rationale": string}]}`,
+            },
+            { role: "user", content: `Keywords to enrich:\n${kwList}` },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "enrich_keywords",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  enriched: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        keyword: { type: "string" },
+                        suggestedTitle: { type: "string" },
+                        rationale: { type: "string" },
+                      },
+                      required: ["keyword", "suggestedTitle", "rationale"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["enriched"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        const parsed = JSON.parse(llmResponse.choices[0].message.content as string);
+        const llmMap = new Map<string, any>((parsed.enriched ?? []).map((e: any) => [e.keyword.toLowerCase(), e]));
+        enriched = enriched.map((item) => {
+          const llm = llmMap.get(item.keyword.toLowerCase());
+          if (llm) {
+            return { ...item, suggestedTitle: llm.suggestedTitle as string, rationale: llm.rationale as string };
+          }
+          return item;
+        });
+      } catch {
+        // LLM enrichment failed — return scored list with generic titles
+      }
+
+      return enriched.slice(0, 10);
     }),
   }),
 

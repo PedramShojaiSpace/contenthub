@@ -2111,6 +2111,18 @@ export default function CommandCenter() {
         setShowCampaignFix(true);
         toast.warning("GA4 Campaign Warning — see Fix Campaign panel below.", { duration: 6000 });
       }
+      if (data.keyphraseAlreadyUsed) {
+        const conflictNote = data.keyphraseConflictUrl
+          ? ` Previously used on: ${data.keyphraseConflictUrl}`
+          : "";
+        toast.warning(
+          `Yoast: Focus keyphrase "${variables.focusKeyword ?? ""}" was already used on another post.${conflictNote} Consider updating the keyphrase in the SEO editor.`,
+          { duration: 10000 }
+        );
+      }
+      if (data.wpCategories && data.wpCategories.length > 1) {
+        console.log(`[WP] Post assigned to categories: ${data.wpCategories.join(", ")}`);
+      }
     },
   });
 

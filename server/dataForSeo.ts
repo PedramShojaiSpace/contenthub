@@ -175,8 +175,28 @@ export async function testCredentials(): Promise<{ balance: number; login: strin
 
 // ─── 2. Keyword Overview (search volume, CPC, difficulty, intent) ─────────────
 
+// Raw shape returned by DataForSEO keyword_overview/live
+interface RawKeywordOverviewItem {
+  keyword: string;
+  keyword_info?: {
+    search_volume?: number | null;
+    cpc?: number | null;
+    competition?: number | null;
+  } | null;
+  keyword_properties?: {
+    keyword_difficulty?: number | null;
+  } | null;
+  search_intent_info?: {
+    main_intent: string;
+    foreign_intent?: string[] | null;
+  } | null;
+  keyword_info_normalized_with_bing?: {
+    monthly_searches?: Array<{ year: number; month: number; search_volume: number }> | null;
+  } | null;
+}
+
 export async function getKeywordOverview(keywords: string[]): Promise<KeywordOverviewItem[]> {
-  const result = await dfsPost<Array<{ items: KeywordOverviewItem[] }>>(
+  const result = await dfsPost<Array<{ items: RawKeywordOverviewItem[] }>>(
     "/dataforseo_labs/google/keyword_overview/live",
     [
       {
@@ -186,7 +206,22 @@ export async function getKeywordOverview(keywords: string[]): Promise<KeywordOve
       },
     ]
   );
-  return result?.[0]?.items ?? [];
+  const rawItems = result?.[0]?.items ?? [];
+  // Map nested API response to the flat structure the UI expects
+  return rawItems.map((raw) => ({
+    keyword: raw.keyword,
+    search_volume: raw.keyword_info?.search_volume ?? null,
+    cpc: raw.keyword_info?.cpc ?? null,
+    competition: raw.keyword_info?.competition ?? null,
+    keyword_difficulty: raw.keyword_properties?.keyword_difficulty ?? null,
+    search_intent_info: raw.search_intent_info
+      ? {
+          main_intent: raw.search_intent_info.main_intent,
+          foreign_intent: raw.search_intent_info.foreign_intent ?? undefined,
+        }
+      : null,
+    monthly_searches: raw.keyword_info_normalized_with_bing?.monthly_searches ?? null,
+  }));
 }
 
 // ─── 3. Keywords For Site (what keywords does a domain rank for) ──────────────

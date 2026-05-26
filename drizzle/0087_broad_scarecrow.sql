@@ -1,0 +1,1 @@
+ALTER TABLE `content_items` ADD `bufferPostId` varchar(128);

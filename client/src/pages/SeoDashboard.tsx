@@ -237,13 +237,26 @@ export default function SeoDashboard() {
     },
   });
 
-  const handleRefresh = () => {
-    utils.gsc.status.invalidate();
-    utils.gsc.weekOverWeek.invalidate();
-    utils.gsc.topQueries.invalidate();
-    utils.gsc.topPages.invalidate();
-    utils.gsc.strikingDistance.invalidate();
-    utils.gsc.trackedKeywords.invalidate();
+  const isRefreshing =
+    wowQuery.isFetching ||
+    topQueriesQuery.isFetching ||
+    topPagesQuery.isFetching ||
+    strikingQuery.isFetching;
+
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([
+        utils.gsc.status.invalidate(),
+        utils.gsc.weekOverWeek.invalidate(),
+        utils.gsc.topQueries.invalidate(),
+        utils.gsc.topPages.invalidate(),
+        utils.gsc.strikingDistance.invalidate(),
+        utils.gsc.trackedKeywords.invalidate(),
+      ]);
+      toast.success("SEO data refreshed from Google Search Console");
+    } catch (err: any) {
+      toast.error(`Refresh failed: ${err?.message ?? "Unknown error"}`);
+    }
   };
 
   if (statusQuery.isLoading) {
@@ -284,9 +297,9 @@ export default function SeoDashboard() {
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <SiteSelector currentSiteUrl={activeSite} onSelect={setSelectedSite} />
-          <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Refresh
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            {isRefreshing ? "Refreshing…" : "Refresh"}
           </Button>
           <Button
             variant="ghost"

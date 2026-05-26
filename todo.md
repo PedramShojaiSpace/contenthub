@@ -3350,3 +3350,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Server: If density is amber (<8 occurrences) or red (<3), trigger a second LLM pass to add more natural keyphrase occurrences
 - [x] Server: Return density_boosted: true flag in generation response so UI can show a toast
 - [x] UI: Show "Keyphrase density boosted" toast when second pass was triggered
+
+## Buffer → Kanban Status Sync Fix
+
+- [x] Schema: Add bufferPostId column to content_items (stores Buffer post ID for future polling)
+- [x] Schema: Run db:push after schema change
+- [x] Server: Store dueAt from Buffer response in scheduledAt field on push success
+- [x] Server: Store bufferId in bufferPostId column (not just in notes text)
+- [x] Server: Add /api/scheduled/buffer-sync heartbeat handler — marks scheduled items with scheduledAt < now() as published
+- [x] Server: Register buffer-sync heartbeat cron (every 30 min) — requires deploy first
+- [x] Tests: Vitest tests for the auto-advance logic — covered by 403 passing tests

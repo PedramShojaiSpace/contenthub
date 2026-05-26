@@ -2335,10 +2335,18 @@ CAPTION: [caption text]`;
         });
 
         // If successful, update the content item status to 'scheduled'
+        // Also store the Buffer post ID and the dueAt time so the heartbeat
+        // sync job can auto-advance the card to 'published' once the post goes live.
         if (result.success) {
+          const dueAtMs = result.dueAt ? new Date(result.dueAt).getTime() : undefined;
           await updateContentItem(input.contentItemId, {
             status: "scheduled",
             notes: `Buffer ID: ${result.bufferId ?? "queued"}`,
+            bufferPostId: result.bufferId ?? undefined,
+            // Store the Buffer-scheduled time so the heartbeat can auto-advance to published.
+            // If Buffer returned a dueAt, use it; otherwise fall back to the caller's scheduledAt
+            // or a 30-minute window from now (Buffer's default queue slot estimate).
+            scheduledAt: dueAtMs ?? input.scheduledAt ?? (Date.now() + 30 * 60 * 1000),
           });
         }
 

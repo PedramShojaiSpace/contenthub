@@ -482,6 +482,10 @@ async function startServer() {
   const { handleRedditNightly } = await import("../redditScheduled");
   app.post("/api/scheduled/reddit-nightly", handleRedditNightly);
 
+  // Buffer → Kanban status sync — every 30 min, advances 'scheduled' items past their dueAt to 'published'
+  const { handleBufferSync } = await import("../bufferSyncHandler");
+  app.post("/api/scheduled/buffer-sync", handleBufferSync);
+
   // tRPC API
   app.use(
     "/api/trpc",

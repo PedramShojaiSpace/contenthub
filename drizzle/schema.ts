@@ -81,6 +81,8 @@ export const contentItems = mysqlTable("content_items", {
   ctaBannerUrl: text("ctaBannerUrl"),
   // Buffer syndication audit: JSON array of {id, name, service} objects for each channel this item was last pushed to
   pushedChannels: text("pushedChannels"),
+  // Buffer post ID — stored on push success so we can poll Buffer API for sent status
+  bufferPostId: varchar("bufferPostId", { length: 128 }),
   // Yoast SEO score fetched from WordPress REST API (_yoast_wpseo_linkdex meta field)
   // Values: "good" | "ok" | "bad" | null (null = not yet fetched)
   yoastScore: varchar("yoastScore", { length: 16 }),

@@ -21,6 +21,7 @@ export type BufferProfile = {
 export type BufferUpdateResult = {
   success: boolean;
   bufferId?: string;
+  dueAt?: string; // ISO 8601 UTC timestamp when Buffer will send the post
   error?: string;
 };
 
@@ -321,7 +322,7 @@ export async function pushToBuffer(params: {
 
       // Check if it's a success or error response
       if ("post" in createResult) {
-        results.push({ success: true, bufferId: createResult.post.id });
+        results.push({ success: true, bufferId: createResult.post.id, dueAt: createResult.post.dueAt });
       } else {
         results.push({ success: false, error: createResult.message });
       }
@@ -340,7 +341,7 @@ export async function pushToBuffer(params: {
     .filter(Boolean);
 
   if (anySuccess) {
-    return { success: true, bufferId: firstSuccess?.bufferId };
+    return { success: true, bufferId: firstSuccess?.bufferId, dueAt: firstSuccess?.dueAt };
   }
   return { success: false, error: errors.join("; ") };
 }

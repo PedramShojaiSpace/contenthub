@@ -3366,3 +3366,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] DB: Backfill — advance all 'scheduled' items older than 48 hours to 'published' (2 items: IDs 1080009, 1080012)
 - [x] UI: Add "Mark as Published" button on scheduled Kanban cards (instant status advance, no cron wait)
 - [x] Server: Reused content.changeStatus mutation for markPublished (no new procedure needed)
+
+## Keyword Research Enhancements (v-kw2)
+
+- [ ] UI: Add monthly search trend sparkline to keyword results table (24-month history from API)
+- [ ] UI: Add difficulty color scale to results table (green 0-29, amber 30-59, red 60+)
+- [ ] UI: Add "Research this keyword" button on blog Kanban cards (pre-fills keyword research panel with focus keyphrase)
+- [ ] UI: Wire cross-panel navigation so clicking Research button navigates to SEO Intelligence and runs the search

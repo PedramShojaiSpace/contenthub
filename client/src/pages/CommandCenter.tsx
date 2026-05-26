@@ -871,6 +871,8 @@ function DraggableCard({
           <div className="flex flex-col gap-0.5 mt-1">
             {/* Yoast SEO score badge */}
             <YoastScoreBadge item={item} />
+            {/* Pre-publish SEO validator — compact dot + tooltip for blog cards */}
+            <SeoValidatorPanel item={item} compact={true} />
             <div className="flex items-center gap-2 flex-wrap">
               <a
                 href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${item.wpPostId}&action=edit`)}`}
@@ -1300,6 +1302,147 @@ function YoastScoreBadge({ item }: { item: ContentItem }) {
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+// ─── Pre-Publish SEO Validator Panel ────────────────────────────────────────
+/**
+ * Shows a compact row of green/amber/red badges for SEO checks before publishing.
+ * Used both on the Kanban card (compact mode) and in the card detail panel (full mode).
+ * Fetches live data from the server-side validateSeo procedure.
+ */
+function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compact?: boolean }) {
+  // Only render for blog posts with content
+  if (item.platform !== "blog" || !item.textContent) return null;
+
+  const { data, isLoading, refetch } = trpc.blog.validateSeo.useQuery(
+    { contentItemId: item.id },
+    { enabled: true, staleTime: 30_000 }
+  );
+
+  const statusColors = {
+    green: "bg-green-500/15 text-green-700 border-green-500/30",
+    amber: "bg-amber-500/15 text-amber-700 border-amber-500/30",
+    red:   "bg-red-500/15 text-red-700 border-red-500/30",
+  } as const;
+
+  const statusDots = {
+    green: "bg-green-500",
+    amber: "bg-amber-400",
+    red:   "bg-red-500",
+  } as const;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground/50" />
+        <span className="text-[9px] text-muted-foreground/50">Checking SEO…</span>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const overall = data.overallStatus;
+
+  if (compact) {
+    // Compact mode: single overall dot + label + tooltip with all checks
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className="flex items-center gap-1 mt-1 cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${statusDots[overall]}`} />
+              <span className={`text-[10px] font-medium ${
+                overall === "green" ? "text-green-700" : overall === "amber" ? "text-amber-700" : "text-red-700"
+              }`}>
+                SEO: {overall === "green" ? "Ready" : overall === "amber" ? "Review" : "Issues"}
+              </span>
+              <button
+                className="ml-0.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                onClick={(e) => { e.stopPropagation(); refetch(); }}
+                title="Refresh SEO checks"
+              >
+                <RotateCcw className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-[10px] max-w-[260px] p-2">
+            <p className="font-semibold mb-1.5">Pre-Publish SEO Checks</p>
+            <div className="space-y-1">
+              {data.checks.map((check) => (
+                <div key={check.label} className="flex items-start gap-1.5">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 mt-0.5 ${statusDots[check.status]}`} />
+                  <div>
+                    <span className="font-medium">{check.label}:</span>{" "}
+                    <span className="text-muted-foreground">{check.message}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Full mode: expanded badge grid for the card detail panel
+  return (
+    <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+          <Target className="h-3 w-3" />
+          Pre-Publish SEO Check
+        </p>
+        <button
+          className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          onClick={() => refetch()}
+          title="Refresh SEO checks"
+        >
+          <RotateCcw className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {data.checks.map((check) => (
+          <TooltipProvider key={check.label} delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={`flex items-center gap-1.5 rounded px-2 py-1 border text-[10px] cursor-default ${
+                    statusColors[check.status]
+                  }`}
+                >
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDots[check.status]}`} />
+                  <span className="font-medium truncate">{check.label}</span>
+                  <span className="ml-auto font-mono text-[9px] opacity-70 shrink-0">{check.value}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-[10px] max-w-[220px]">
+                {check.message}
+                {check.status !== "green" && check.label === "H2 Subheading" && (
+                  <p className="mt-0.5 text-muted-foreground">Auto-fixed when you click Publish to WordPress.</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ))}
+      </div>
+      {overall === "red" && (
+        <p className="text-[10px] text-red-600 flex items-center gap-1">
+          <AlertCircle className="h-3 w-3 flex-shrink-0" />
+          Fix red issues before publishing for best Yoast results.
+        </p>
+      )}
+      {overall === "green" && (
+        <p className="text-[10px] text-green-700 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+          All checks passed — ready to publish!
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -3676,6 +3819,9 @@ export default function CommandCenter() {
                     <p className="text-[10px] text-amber-300/50 italic">No banner yet. Click “Generate Banner” to create one for this post.</p>
                   )}
                 </div>
+
+                {/* Pre-Publish SEO Validator — full badge grid shown above the Publish button */}
+                <SeoValidatorPanel item={selectedItem} compact={false} />
 
                 {/* WordPress Publish actions */}
                 <div className="flex items-center gap-2 flex-wrap">

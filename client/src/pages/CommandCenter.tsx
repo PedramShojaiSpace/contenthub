@@ -630,6 +630,8 @@ function DraggableCard({
   isPushingToBuffer,
   onPublishToWP,
   isPublishingToWP,
+  onMarkPublished,
+  isMarkingPublished,
   onViewScript,
   bufferError,
   onClearBufferError,
@@ -645,6 +647,8 @@ function DraggableCard({
   isPushingToBuffer: boolean;
   onPublishToWP: (item: ContentItem) => void;
   isPublishingToWP: boolean;
+  onMarkPublished?: (item: ContentItem) => void;
+  isMarkingPublished?: boolean;
   onViewScript?: (scriptId: number) => void;
   bufferError?: string;
   onClearBufferError?: () => void;
@@ -1067,6 +1071,26 @@ function DraggableCard({
                   <ExternalLink className="h-2.5 w-2.5" />
                 )}
                 {isPublishingToWP ? "Publishing…" : "Publish to WP"}
+              </Button>
+            )}
+            {/* Mark as Published — scheduled items only (instant advance without waiting for cron) */}
+            {item.status === "scheduled" && onMarkPublished && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full h-6 text-[10px] border-green-600/40 text-green-700 hover:bg-green-50 hover:text-green-800 hover:border-green-600 gap-1"
+                disabled={isMarkingPublished}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkPublished(item);
+                }}
+              >
+                {isMarkingPublished ? (
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-2.5 w-2.5" />
+                )}
+                {isMarkingPublished ? "Marking…" : "Mark as Published"}
               </Button>
             )}
             {/* Push to Buffer — non-blog platforms */}
@@ -1533,6 +1557,7 @@ export default function CommandCenter() {
   const [isBatchBackfillingYoast, setIsBatchBackfillingYoast] = useState(false);
   const [bufferPushingId, setBufferPushingId] = useState<number | null>(null);
   const [bufferErrors, setBufferErrors] = useState<Record<number, string>>({});
+  const [markingPublishedId, setMarkingPublishedId] = useState<number | null>(null);
   // Buffer channel selector dialog state
   const [channelSelectorItem, setChannelSelectorItem] = useState<ContentItem | null>(null);
   const [showChannelSelector, setShowChannelSelector] = useState(false);
@@ -1939,6 +1964,24 @@ export default function CommandCenter() {
     onSuccess: () => refetch(),
     onError: (err) => toast.error("Status update failed: " + err.message),
   });
+
+  // Mark as Published — instant advance for scheduled items (no cron wait)
+  const markPublishedMutation = trpc.content.changeStatus.useMutation({
+    onSuccess: () => {
+      refetch();
+      setMarkingPublishedId(null);
+      toast.success("Marked as published!");
+    },
+    onError: (err) => {
+      setMarkingPublishedId(null);
+      toast.error("Failed to mark as published: " + err.message);
+    },
+  });
+  const handleMarkPublished = (item: ContentItem) => {
+    setMarkingPublishedId(item.id);
+    markPublishedMutation.mutate({ id: item.id, status: "published" });
+  };
+
   const updateMutation = trpc.content.update.useMutation({
     onSuccess: () => {
       refetch();
@@ -2784,6 +2827,8 @@ export default function CommandCenter() {
                               isPushingToBuffer={bufferPushingId === item.id}
                               onPublishToWP={handlePublishToWP}
                               isPublishingToWP={wpPublishingId === item.id}
+                              onMarkPublished={handleMarkPublished}
+                              isMarkingPublished={markingPublishedId === item.id}
                               onViewScript={handleViewScript}
                               bufferError={bufferErrors[(item as ContentItem).id]}
                               onClearBufferError={() => setBufferErrors((prev) => { const next = { ...prev }; delete next[(item as ContentItem).id]; return next; })}

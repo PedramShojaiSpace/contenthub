@@ -3360,3 +3360,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Server: Add /api/scheduled/buffer-sync heartbeat handler — marks scheduled items with scheduledAt < now() as published
 - [x] Server: Register buffer-sync heartbeat cron (every 30 min) — requires deploy first
 - [x] Tests: Vitest tests for the auto-advance logic — covered by 403 passing tests
+
+## Kanban Published Sync — Phase 2
+
+- [x] DB: Backfill — advance all 'scheduled' items older than 48 hours to 'published' (2 items: IDs 1080009, 1080012)
+- [x] UI: Add "Mark as Published" button on scheduled Kanban cards (instant status advance, no cron wait)
+- [x] Server: Reused content.changeStatus mutation for markPublished (no new procedure needed)

@@ -633,6 +633,7 @@ function DraggableCard({
   onMarkPublished,
   isMarkingPublished,
   onViewScript,
+  onNavigate,
   bufferError,
   onClearBufferError,
 }: {
@@ -650,6 +651,7 @@ function DraggableCard({
   onMarkPublished?: (item: ContentItem) => void;
   isMarkingPublished?: boolean;
   onViewScript?: (scriptId: number) => void;
+  onNavigate?: (path: string) => void;
   bufferError?: string;
   onClearBufferError?: () => void;
 }) {
@@ -862,11 +864,22 @@ function DraggableCard({
 
         {/* Focus keyword badge — blog posts with a keyword set */}
         {item.platform === "blog" && item.focusKeyword && (
-          <div className="flex items-center gap-1 mt-1">
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] bg-amber-500/10 text-amber-700 border border-amber-500/20 truncate max-w-full">
+          <div className="flex items-center gap-1 mt-1 flex-wrap">
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] bg-amber-500/10 text-amber-700 border border-amber-500/20 truncate max-w-[calc(100%-60px)]">
               <Zap className="h-2 w-2 shrink-0" />
               <span className="truncate">{item.focusKeyword}</span>
             </span>
+            <button
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] bg-violet-500/10 text-violet-700 border border-violet-500/20 hover:bg-violet-500/20 transition-colors shrink-0"
+              title={`Research "${item.focusKeyword}" in Competitive Intelligence`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate?.(`/competitive-intelligence?keyword=${encodeURIComponent(item.focusKeyword!)}`);
+              }}
+            >
+              <Search className="h-2 w-2 shrink-0" />
+              <span>Research</span>
+            </button>
           </div>
         )}
 
@@ -2830,6 +2843,7 @@ export default function CommandCenter() {
                               onMarkPublished={handleMarkPublished}
                               isMarkingPublished={markingPublishedId === item.id}
                               onViewScript={handleViewScript}
+                              onNavigate={setLocation}
                               bufferError={bufferErrors[(item as ContentItem).id]}
                               onClearBufferError={() => setBufferErrors((prev) => { const next = { ...prev }; delete next[(item as ContentItem).id]; return next; })}
                             />

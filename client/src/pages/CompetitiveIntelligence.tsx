@@ -9,7 +9,8 @@
  *   4. Shared Keywords — keywords both you and a competitor rank for (intersection)
  *   5. Keyword Research — search volume, CPC, difficulty, intent for any keywords
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from "recharts";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -478,13 +479,95 @@ function SharedKeywords({ competitor }: { competitor: string }) {
 
 // ─── Keyword Research ─────────────────────────────────────────────────────────
 
+// ─── Sparkline ───────────────────────────────────────────────────────────────
+
+function KeywordSparkline({
+  data,
+}: {
+  data: Array<{ year: number; month: number; search_volume: number }> | null | undefined;
+}) {
+  if (!data || data.length < 2) return <span className="text-muted-foreground text-xs">—</span>;
+  // Sort chronologically and take last 12 months
+  const sorted = [...data]
+    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+    .slice(-12)
+    .map((d) => ({ v: d.search_volume }));
+  const max = Math.max(...sorted.map((d) => d.v));
+  const min = Math.min(...sorted.map((d) => d.v));
+  const trend = sorted[sorted.length - 1].v >= sorted[0].v;
+  const color = trend ? "#22c55e" : "#f97316";
+  return (
+    <div className="w-20 h-8 inline-block">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={sorted} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
+          <defs>
+            <linearGradient id={`sg-${min}-${max}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Tooltip
+            content={({ active, payload }) =>
+              active && payload?.[0] ? (
+                <div className="bg-popover border border-border rounded px-2 py-1 text-[10px] text-foreground shadow">
+                  {fmt(payload[0].value as number)}
+                </div>
+              ) : null
+            }
+          />
+          <Area
+            type="monotone"
+            dataKey="v"
+            stroke={color}
+            strokeWidth={1.5}
+            fill={`url(#sg-${min}-${max})`}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Difficulty Badge ─────────────────────────────────────────────────────────
+
+function DifficultyBadge({ d }: { d: number | null | undefined }) {
+  if (d == null) return <span className="text-muted-foreground text-xs">—</span>;
+  const color =
+    d < 30
+      ? "bg-green-500/10 text-green-600 border-green-500/30"
+      : d < 60
+      ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+      : "bg-red-500/10 text-red-600 border-red-500/30";
+  const label = d < 30 ? "Easy" : d < 60 ? "Medium" : "Hard";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${color}`}
+    >
+      {d} · {label}
+    </span>
+  );
+}
+
 function KeywordResearch({
   onCreateContent,
+  initialKeyword,
 }: {
   onCreateContent: (keyword: string, type: "video" | "blog") => void;
+  initialKeyword?: string;
 }) {
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState(initialKeyword ?? "");
   const [keywords, setKeywords] = useState<string[]>([]);
+
+  // Auto-run search when initialKeyword is provided
+  useEffect(() => {
+    if (initialKeyword && initialKeyword.trim()) {
+      setInputValue(initialKeyword);
+      const kws = [initialKeyword.trim()];
+      setKeywords(kws);
+    }
+  }, [initialKeyword]);
 
   const { data, isLoading } = trpc.dfs.keywordOverview.useQuery(
     { keywords },
@@ -533,27 +616,30 @@ function KeywordResearch({
 
         {data?.items && data.items.length > 0 && (
           <div className="rounded-lg border border-border overflow-hidden">
-            <div className="grid grid-cols-6 gap-2 px-4 py-2 bg-muted/20 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-              <span className="col-span-2">Keyword</span>
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-2 bg-muted/20 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+              <span>Keyword</span>
               <span className="text-right">Volume</span>
+              <span className="text-center">Trend (12mo)</span>
               <span className="text-right">CPC</span>
               <span className="text-right">Difficulty</span>
               <span className="text-right">Intent</span>
             </div>
             <div className="divide-y divide-border">
               {data.items.map((item, i) => (
-                <div key={i} className="px-4 py-2.5 grid grid-cols-6 gap-2 items-center hover:bg-muted/30 group">
-                  <span className="col-span-2 text-sm text-foreground truncate">{item.keyword}</span>
+                <div key={i} className="px-4 py-2 grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-2 items-center hover:bg-muted/30 group">
+                  <span className="text-sm text-foreground truncate">{item.keyword}</span>
                   <span className="text-right text-sm font-medium text-foreground">
                     {fmt(item.search_volume)}
                   </span>
+                  <div className="flex justify-center">
+                    <KeywordSparkline data={item.monthly_searches} />
+                  </div>
                   <span className="text-right text-xs text-muted-foreground">
                     {item.cpc != null ? `$${item.cpc.toFixed(2)}` : "—"}
                   </span>
-                  <span className={`text-right text-xs font-medium ${difficultyColor(item.keyword_difficulty)}`}>
-                    {item.keyword_difficulty != null ? `${item.keyword_difficulty} · ` : ""}
-                    {difficultyLabel(item.keyword_difficulty)}
-                  </span>
+                  <div className="flex justify-end">
+                    <DifficultyBadge d={item.keyword_difficulty} />
+                  </div>
                   <span className="text-right text-xs text-muted-foreground capitalize">
                     {item.search_intent_info?.main_intent ?? "—"}
                   </span>
@@ -595,6 +681,9 @@ function KeywordResearch({
 export default function CompetitiveIntelligence() {
   const [, setLocation] = useLocation();
   const [selectedCompetitor, setSelectedCompetitor] = useState<string | null>(null);
+
+  // Read ?keyword= URL param so Kanban cards can deep-link to keyword research
+  const initialKeyword = new URLSearchParams(window.location.search).get("keyword") ?? undefined;
 
   const statusQuery = trpc.dfs.status.useQuery(undefined, { retry: false });
   const trackedQuery = trpc.dfs.listTrackedCompetitors.useQuery();
@@ -680,7 +769,7 @@ export default function CompetitiveIntelligence() {
       </div>
 
       {/* Keyword Research */}
-      <KeywordResearch onCreateContent={handleCreateContent} />
+      <KeywordResearch onCreateContent={handleCreateContent} initialKeyword={initialKeyword} />
 
       {/* Discovered Competitors + Gap Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -263,7 +263,7 @@ CRITICAL OUTPUT RULES:
   {
     "title": "H1 headline — must contain the primary keyword. HARD LIMIT: 48 characters MAX including spaces. Count every character before outputting. Example: 'Heal Your Gut for Good: Beyond Diets' = 36 chars (good). Use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
     "slug": "url-friendly-slug-max-60-chars — must contain the primary keyword",
-    "metaDescription": "130-150 chars — include focus keyword in first 20 chars, state the benefit clearly, end with a soft CTA. HARD LIMIT: never exceed 150 characters including spaces. Count every character including spaces before outputting. If it is 151+ characters, cut words until it is 150 or under. Yoast's pixel limit is 156 chars — aim for 145 or fewer to be safe.",
+    "metaDescription": "EXACTLY 140-150 chars — no more, no less. MANDATORY STEPS: (1) Write the description. (2) Count every character including spaces. (3) If under 140, expand. (4) If over 150, cut words. (5) Output only when count is 140-150. Include focus keyword in first 25 chars. State the core benefit. End with a soft CTA. Example (145 chars): Decode your GI Map test results through a functional lens. Learn why labs say normal when you feel sick, and how to restore gut health naturally. DO NOT output a description ending with ellipsis — that means it was truncated and is invalid.",
     "focusKeyword": "primary SEO keyword phrase (2-4 words) — MUST be a specific long-tail phrase the target audience types into Google. NEVER use a single-word or generic two-word head term (e.g. 'stress relief' is too broad — use 'qigong for stress relief' or 'nervous system regulation techniques'). The focus keyword must be unique to this article — do not reuse a keyphrase that would apply to multiple articles on the same site.",
     "semanticKeywords": ["3-5 semantic variant phrases that support the focus keyword — weave these naturally into H2s and body"],
     "hookFamily": "which of the 12 Hook Families was used for the title",
@@ -355,7 +355,7 @@ QUALITY GATE (self-check before outputting):
 - YOAST SEO CHECK #3: Does at least ONE H2 heading contain the focus keyword or a very close synonym?
 - YOAST SEO CHECK #4: Are there at least 3 internal links to theurbanmonk.com URLs from the provided list?
 - YOAST SEO CHECK #5: Is the title 48 characters or fewer? Count every character including spaces. If 49+, shorten it now before outputting.
-- YOAST SEO CHECK #6: Is the meta description 130-145 characters? Count every character including spaces. If 146+, cut words until it is 145 or under. Yoast's hard cutoff is 156 chars — stay well under it at 145 max.
+- YOAST SEO CHECK #6: Is the meta description EXACTLY 140-150 characters? Count every character including spaces. If over 150, cut words. If under 140, expand. Yoast's hard cutoff is 156 chars — stay well under it. The description must NOT end with '...' (that means it was truncated and is invalid). Count explicitly: write the description, then count every character, then adjust until the count is 140-150.
 - YOAST SEO CHECK #7: Is the focus keyword a specific long-tail phrase (not a generic head term)?
 - YOAST READABILITY CHECK: Is every prose block under 300 words before the next heading?
 - YOAST READABILITY CHECK: Is every paragraph under 150 words?
@@ -1412,7 +1412,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
                 properties: {
                   title: { type: "string", description: "H1 headline, HARD MAX 48 chars including spaces, must contain primary keyword — count every character" },
                   slug: { type: "string", description: "URL-friendly slug, max 60 chars" },
-                  metaDescription: { type: "string", description: "Meta description HARD MAX 145 chars — count every character, must be under 145" },
+                  metaDescription: { type: "string", description: "Meta description: EXACTLY 140-150 chars. Count every character including spaces. If over 150, cut words. If under 140, expand. Must include focus keyword in first 25 chars. Must NOT end with ellipsis" },
                   focusKeyword: { type: "string", description: "Primary SEO keyword phrase, 2-4 words" },
                   semanticKeywords: { type: "array", items: { type: "string" }, description: "3-5 semantic keyword variants" },
                   hookFamily: { type: "string", description: "Which of the 12 Hook Families was used" },
@@ -2890,19 +2890,58 @@ Return BOTH in this exact format:
           seoTitle = `${publishInput.title} | The Urban Monk`;
         }
 
+        // Step 4a-ii: Hard-enforce SEO title under 60 chars (Yoast green zone)
+        // If the auto-built title exceeds 60 chars, fall back to a shorter format:
+        // "Focus Keyphrase | The Urban Monk" (drops the article title entirely)
+        if (seoTitle.length > 60 && publishInput.focusKeyword) {
+          const kw = publishInput.focusKeyword;
+          const kwCapitalised = kw.charAt(0).toUpperCase() + kw.slice(1);
+          const shortTitle = `${kwCapitalised} | The Urban Monk`;
+          if (shortTitle.length <= 60) {
+            seoTitle = shortTitle;
+          } else {
+            // Last resort: truncate keyphrase to fit
+            const maxKwLen = 60 - " | The Urban Monk".length;
+            seoTitle = `${kwCapitalised.slice(0, maxKwLen)} | The Urban Monk`;
+          }
+        } else if (seoTitle.length > 60) {
+          // No keyphrase — truncate at last word boundary before 57 chars
+          let trimmed = seoTitle.slice(0, 57);
+          const lastSpace = trimmed.lastIndexOf(" ");
+          if (lastSpace > 20) trimmed = trimmed.slice(0, lastSpace);
+          seoTitle = trimmed.trimEnd() + "...";
+        }
+
         // Step 4b: Enforce keyphrase in meta description
         // Yoast requires the focus keyphrase to appear verbatim in the meta description.
         // If the AI-generated meta description doesn't contain it, prepend it naturally.
-        let metaDesc = publishInput.yoastMetaDescription ?? publishInput.metaDescription;
+        // HARD LIMIT: meta description must be 140-155 chars for Yoast green zone.
+        let metaDesc = publishInput.yoastMetaDescription ?? publishInput.metaDescription ?? "";
+
+        // 4b-i: Ensure keyphrase is present
         if (publishInput.focusKeyword && metaDesc) {
           const kwLower = publishInput.focusKeyword.toLowerCase();
           if (!metaDesc.toLowerCase().includes(kwLower)) {
             // Prepend the keyphrase naturally: "[Keyphrase]: [existing description]"
-            // but respect the 155-char Yoast limit
             const prefix = `${publishInput.focusKeyword}: `;
-            const combined = prefix + metaDesc;
-            metaDesc = combined.length <= 155 ? combined : combined.slice(0, 152) + "...";
+            metaDesc = prefix + metaDesc;
           }
+        }
+
+        // 4b-ii: Hard-trim to 155 chars at a word boundary (never truncate mid-word)
+        if (metaDesc.length > 155) {
+          // Trim to 152 chars at last space, then add ellipsis
+          let trimmed = metaDesc.slice(0, 152);
+          const lastSpace = trimmed.lastIndexOf(" ");
+          if (lastSpace > 100) trimmed = trimmed.slice(0, lastSpace);
+          metaDesc = trimmed.trimEnd() + "...";
+        }
+
+        // 4b-iii: If the stored meta desc looks like a truncated stub (ends with "..."
+        // and is exactly 155 chars), it was never properly written — flag it.
+        // The LLM prompt already enforces 140-155 chars, so this is a safety net only.
+        if (metaDesc.endsWith("...") && metaDesc.length >= 150) {
+          console.warn(`[SEO] Meta description for "${publishInput.title}" appears truncated — review recommended.`);
         }
 
         // Step 5: Resolve SEO keywords as WordPress tags (create if they don't exist)
@@ -3105,7 +3144,7 @@ Rules:
                 type: "object",
                 properties: {
 seoTitle: { type: "string", description: "SEO title HARD MAX 48 chars — count every character" },
-                   metaDescription: { type: "string", description: "Meta description HARD MAX 145 chars — count every character, must be under 145" },
+                   metaDescription: { type: "string", description: "Meta description: EXACTLY 140-150 chars. Count every character including spaces. If over 150, cut words. If under 140, expand. Must include focus keyword in first 25 chars. Must NOT end with ellipsis" },
                   focusKeyphrase: { type: "string", description: "Primary focus keyword phrase" },
                   semanticKeywords: { type: "array", items: { type: "string" }, description: "Related keywords" },
                 },
@@ -3311,7 +3350,7 @@ Rules:
                     type: 'object',
                     properties: {
                       seoTitle: { type: 'string', description: 'SEO title max 60 chars' },
-                      metaDescription: { type: 'string', description: 'Meta description 120-155 chars' },
+                      metaDescription: { type: 'string', description: 'Meta description: EXACTLY 140-150 chars. Count every character. If over 150, cut words. Must NOT end with ellipsis' },
                       focusKeyphrase: { type: 'string', description: 'Primary focus keyword phrase' },
                       semanticKeywords: { type: 'array', items: { type: 'string' }, description: 'Related keywords' },
                     },
@@ -3412,7 +3451,7 @@ Rules:
                     type: 'object',
                     properties: {
                       seoTitle: { type: 'string', description: 'SEO title max 60 chars' },
-                      metaDescription: { type: 'string', description: 'Meta description 120-155 chars' },
+                      metaDescription: { type: 'string', description: 'Meta description: EXACTLY 140-150 chars. Count every character. If over 150, cut words. Must NOT end with ellipsis' },
                       focusKeyphrase: { type: 'string', description: 'Primary focus keyword phrase' },
                       semanticKeywords: { type: 'array', items: { type: 'string' }, description: 'Related keywords' },
                     },
@@ -3598,7 +3637,7 @@ Rules:
                       type: 'object',
                       properties: {
                         seoTitle: { type: 'string', description: 'SEO title, 50-60 chars total' },
-                        metaDescription: { type: 'string', description: 'Meta description, 140-155 chars' },
+                        metaDescription: { type: 'string', description: 'Meta description: EXACTLY 140-150 chars. Count every character. If over 150, cut words. Must NOT end with ellipsis' },
                       },
                       required: ['seoTitle', 'metaDescription'],
                       additionalProperties: false,

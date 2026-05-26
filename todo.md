@@ -3318,3 +3318,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add `blog.bulkFixSeoLength` server procedure — finds all posts with SEO title >70 chars or meta desc >160 chars, uses LLM to regenerate clean versions, saves to DB, and pushes to WordPress
 - [x] Add "Auto-Fix All Oversized SEO Fields" button to WordPress Setup page with live progress log
 - [x] Show count of posts fixed, new title preview, and any errors in the result
+
+## Markdown Rendering Bug + Yoast Fix (v12 Hotfix)
+- [ ] Fix markdownToWpHtml not converting ## and ### headings in FAQ section to HTML
+- [ ] Fix 4 Yoast SEO issues on Vagus Nerve post: keyphrase in subheading, SEO title width, keyphrase in intro, meta description length

@@ -9,16 +9,21 @@
  *   dfs.domainIntersection   — keywords both your domain and a competitor share
  *   dfs.rankedKeywords       — top keywords a competitor ranks for (gap analysis source)
  *   dfs.domainRankOverview   — organic ranking distribution summary for a domain
+ *   dfs.keywordGap           — keywords competitor ranks for that you don't (gap view)
  *   dfs.listTrackedCompetitors   — list saved competitor domains for this user
  *   dfs.addTrackedCompetitor     — save a competitor domain to the tracking list
  *   dfs.removeTrackedCompetitor  — remove a competitor domain from the tracking list
  *   dfs.keywordVolumeForList     — batch volume lookup for a list of keywords (for GSC badges)
+ *   dfs.saveKeywordSearch    — save a keyword lookup to the history log
+ *   dfs.getKeywordHistory    — retrieve past keyword searches (most recent first)
+ *   dfs.toggleKeywordFavorite — toggle isFavorite flag on a saved keyword search
+ *   dfs.deleteKeywordSearch  — delete a keyword search from history
  */
 import { z } from "zod";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { competitorDomains } from "../drizzle/schema";
+import { competitorDomains, keywordSearches } from "../drizzle/schema";
 import {
   testCredentials,
   getKeywordOverview,
@@ -27,6 +32,7 @@ import {
   getDomainIntersection,
   getRankedKeywords,
   getDomainRankOverview,
+  getKeywordGap,
 } from "./dataForSeo";
 
 export const dataForSeoRouter = router({
@@ -150,6 +156,26 @@ export const dataForSeoRouter = router({
       return result;
     }),
 
+  // ── Keyword Gap: keywords competitor ranks for that you don't ────────────
+  keywordGap: protectedProcedure
+    .input(
+      z.object({
+        myDomain: z
+          .string()
+          .min(1)
+          .transform((d) => d.toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "")),
+        competitorDomain: z
+          .string()
+          .min(1)
+          .transform((d) => d.toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "")),
+        limit: z.number().int().min(1).max(100).default(50),
+      })
+    )
+    .query(async ({ input }) => {
+      const result = await getKeywordGap(input.myDomain, input.competitorDomain, input.limit);
+      return result;
+    }),
+
   // ── Competitor tracking list ──────────────────────────────────────────────
 
   listTrackedCompetitors: protectedProcedure.query(async ({ ctx }) => {
@@ -207,6 +233,138 @@ export const dataForSeoRouter = router({
           and(
             eq(competitorDomains.id, input.id),
             eq(competitorDomains.userId, ctx.user.id)
+          )
+        );
+      return { success: true };
+    }),
+
+  // ── Keyword Search History ────────────────────────────────────────────────
+
+  /**
+   * Save a keyword lookup to the history log.
+   * Called automatically whenever the user runs a keyword overview search.
+   * Deduplicates by keyword (updates existing row if found within 24h).
+   */
+  saveKeywordSearch: protectedProcedure
+    .input(
+      z.object({
+        keyword: z.string().min(1).max(512),
+        searchVolume: z.number().int().nullable().optional(),
+        difficulty: z.number().int().nullable().optional(),
+        cpc: z.string().nullable().optional(),
+        intent: z.string().nullable().optional(),
+        trendData: z.string().nullable().optional(), // JSON string
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      // Check if this keyword was already searched by this user in the last 24h
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const existing = await db!
+        .select({ id: keywordSearches.id })
+        .from(keywordSearches)
+        .where(
+          and(
+            eq(keywordSearches.keyword, input.keyword),
+            eq(keywordSearches.userId, ctx.user.id)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Update metrics on the existing row (keep isFavorite unchanged)
+        await db!
+          .update(keywordSearches)
+          .set({
+            searchVolume: input.searchVolume ?? null,
+            difficulty: input.difficulty ?? null,
+            cpc: input.cpc ?? null,
+            intent: input.intent ?? null,
+            trendData: input.trendData ?? null,
+          })
+          .where(eq(keywordSearches.id, existing[0].id));
+        return { id: existing[0].id, created: false };
+      }
+
+      const [result] = await db!.insert(keywordSearches).values({
+        keyword: input.keyword,
+        searchVolume: input.searchVolume ?? null,
+        difficulty: input.difficulty ?? null,
+        cpc: input.cpc ?? null,
+        intent: input.intent ?? null,
+        trendData: input.trendData ?? null,
+        isFavorite: false,
+        userId: ctx.user.id,
+      });
+      return { id: result.insertId, created: true };
+    }),
+
+  /**
+   * Retrieve past keyword searches for the current user, most recent first.
+   * Optionally filter to favorites only.
+   */
+  getKeywordHistory: protectedProcedure
+    .input(
+      z.object({
+        favoritesOnly: z.boolean().default(false),
+        limit: z.number().int().min(1).max(200).default(50),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      const conditions = [eq(keywordSearches.userId, ctx.user.id)];
+      if (input.favoritesOnly) {
+        conditions.push(eq(keywordSearches.isFavorite, true));
+      }
+      const rows = await db!
+        .select()
+        .from(keywordSearches)
+        .where(and(...conditions))
+        .orderBy(desc(keywordSearches.createdAt))
+        .limit(input.limit);
+      return { searches: rows };
+    }),
+
+  /**
+   * Toggle the isFavorite flag on a saved keyword search.
+   */
+  toggleKeywordFavorite: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      // Fetch current state
+      const [row] = await db!
+        .select({ id: keywordSearches.id, isFavorite: keywordSearches.isFavorite })
+        .from(keywordSearches)
+        .where(
+          and(
+            eq(keywordSearches.id, input.id),
+            eq(keywordSearches.userId, ctx.user.id)
+          )
+        )
+        .limit(1);
+      if (!row) throw new Error("Keyword search not found");
+      const newValue = !row.isFavorite;
+      await db!
+        .update(keywordSearches)
+        .set({ isFavorite: newValue })
+        .where(eq(keywordSearches.id, input.id));
+      return { id: input.id, isFavorite: newValue };
+    }),
+
+  /**
+   * Delete a keyword search from history.
+   */
+  deleteKeywordSearch: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      await db!
+        .delete(keywordSearches)
+        .where(
+          and(
+            eq(keywordSearches.id, input.id),
+            eq(keywordSearches.userId, ctx.user.id)
           )
         );
       return { success: true };

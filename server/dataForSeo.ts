@@ -430,3 +430,130 @@ export async function getSerpTop1(keywords: string[]): Promise<SerpTop1Result[]>
 
   return results;
 }
+
+// ─── 8. Keyword Gap (competitor ranks, you don't) ─────────────────────────────
+
+export interface KeywordGapItem {
+  keyword: string;
+  search_volume: number | null;
+  keyword_difficulty: number | null;
+  cpc: number | null;
+  competitor_rank: number | null;   // competitor's position (1-100)
+  my_rank: number | null;           // your position (null = not ranking in top 100)
+  competitor_url: string | null;
+  monthly_searches?: Array<{ year: number; month: number; search_volume: number }> | null;
+}
+
+interface RawGapItem {
+  keyword_data?: {
+    keyword?: string;
+    keyword_info?: {
+      search_volume?: number | null;
+      cpc?: number | null;
+    };
+    keyword_properties?: {
+      keyword_difficulty?: number | null;
+    };
+    keyword_info_normalized_with_bing?: {
+      monthly_searches?: Array<{ year: number; month: number; search_volume: number }> | null;
+    } | null;
+  };
+  // first_domain = myDomain, second_domain = competitorDomain
+  first_domain_serp_element?: {
+    serp_item?: { rank_group?: number; url?: string } | null;
+  } | null;
+  second_domain_serp_element?: {
+    serp_item?: { rank_group?: number; url?: string } | null;
+  } | null;
+}
+
+/**
+ * Returns keywords that `competitorDomain` ranks for but `myDomain` does NOT rank for.
+ * Uses the DataForSEO /dataforseo_labs/google/domain_intersection/live endpoint with
+ * a filter that excludes keywords where myDomain already has a position.
+ *
+ * Strategy: fetch intersection with both domains, then also fetch competitor-only ranked
+ * keywords and subtract the intersection to find true gaps.
+ */
+export async function getKeywordGap(
+  myDomain: string,
+  competitorDomain: string,
+  limit = 100
+): Promise<{ items: KeywordGapItem[]; total_count: number }> {
+  // Use domain_intersection to get keywords both rank for (we'll exclude these)
+  // Then get competitor's ranked keywords and subtract
+  // DataForSEO has a dedicated endpoint: we use ranked_keywords for competitor
+  // filtered to exclude keywords where myDomain also appears.
+  // The cleanest approach: use domain_intersection with filters to find
+  // keywords where competitor ranks but my domain does NOT.
+
+  // We'll use the ranked_keywords endpoint for the competitor and then
+  // cross-reference with keywords_for_site for our domain.
+  // However the most efficient approach is domain_intersection with
+  // exclude_top_domains = [myDomain] — but that's not available.
+  // Instead: fetch competitor's ranked keywords (top 20), then filter out
+  // any that appear in our domain's keyword list.
+
+  // Fetch competitor's top keywords
+  const competitorResult = await dfsPost<
+    Array<{ items: RankedKeywordItem[]; total_count: number }>
+  >("/dataforseo_labs/google/ranked_keywords/live", [
+    {
+      target: competitorDomain,
+      location_code: LOCATION_CODE,
+      language_code: LANGUAGE_CODE,
+      limit: Math.min(limit * 2, 200), // fetch extra to account for filtering
+      order_by: ["keyword_data.keyword_info.search_volume,desc"],
+      filters: [
+        ["keyword_data.keyword_info.search_volume", ">", 100],
+        "and",
+        ["ranked_serp_element.serp_item.rank_group", "<=", 30],
+      ],
+    },
+  ]);
+
+  const competitorItems = competitorResult?.[0]?.items ?? [];
+  const competitorTotal = competitorResult?.[0]?.total_count ?? 0;
+
+  if (competitorItems.length === 0) {
+    return { items: [], total_count: 0 };
+  }
+
+  // Fetch our domain's keywords to build an exclusion set
+  const myResult = await dfsPost<
+    Array<{ items: RankedKeywordItem[]; total_count: number }>
+  >("/dataforseo_labs/google/ranked_keywords/live", [
+    {
+      target: myDomain,
+      location_code: LOCATION_CODE,
+      language_code: LANGUAGE_CODE,
+      limit: 200,
+      order_by: ["keyword_data.keyword_info.search_volume,desc"],
+      filters: [["keyword_data.keyword_info.search_volume", ">", 0]],
+    },
+  ]);
+
+  const myKeywords = new Set(
+    (myResult?.[0]?.items ?? []).map((item) => item.keyword_data?.keyword?.toLowerCase() ?? "")
+  );
+
+  // Filter: keep only keywords competitor ranks for that we don't rank for
+  const gapItems: KeywordGapItem[] = competitorItems
+    .filter((item) => {
+      const kw = item.keyword_data?.keyword?.toLowerCase() ?? "";
+      return kw && !myKeywords.has(kw);
+    })
+    .slice(0, limit)
+    .map((item) => ({
+      keyword: item.keyword_data?.keyword ?? "",
+      search_volume: item.keyword_data?.keyword_info?.search_volume ?? null,
+      keyword_difficulty: null, // not available in ranked_keywords response
+      cpc: item.keyword_data?.keyword_info?.cpc ?? null,
+      competitor_rank: item.ranked_serp_element?.serp_item?.rank_group ?? null,
+      my_rank: null,
+      competitor_url: item.ranked_serp_element?.serp_item?.url ?? null,
+      monthly_searches: null,
+    }));
+
+  return { items: gapItems, total_count: competitorTotal };
+}

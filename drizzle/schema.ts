@@ -1554,3 +1554,27 @@ export const gscPositionHistory = mysqlTable("gsc_position_history", {
 
 export type GscPositionHistory = typeof gscPositionHistory.$inferSelect;
 export type InsertGscPositionHistory = typeof gscPositionHistory.$inferInsert;
+
+// ─── Keyword Search History ───────────────────────────────────────────────────
+// Stores every keyword the user researches in the Competitive Intelligence tool.
+// Allows revisiting past lookups and flagging favorites for article planning.
+export const keywordSearches = mysqlTable("keyword_searches", {
+  id: int("id").autoincrement().primaryKey(),
+  // The keyword that was researched
+  keyword: varchar("ksh_keyword", { length: 512 }).notNull(),
+  // DataForSEO metrics at the time of the lookup
+  searchVolume: int("ksh_search_volume"),
+  difficulty: int("ksh_difficulty"),
+  cpc: varchar("ksh_cpc", { length: 32 }),           // e.g. "2.45"
+  intent: varchar("ksh_intent", { length: 64 }),     // e.g. "informational"
+  // Trend data: JSON array of monthly volumes [{year, month, search_volume}]
+  trendData: text("ksh_trend_data"),
+  // Flagged as a favorite for article planning
+  isFavorite: boolean("ksh_is_favorite").default(false).notNull(),
+  // Which user performed the search (nullable for backward compat)
+  userId: int("ksh_user_id"),
+  createdAt: timestamp("ksh_created_at").defaultNow().notNull(),
+});
+
+export type KeywordSearch = typeof keywordSearches.$inferSelect;
+export type InsertKeywordSearch = typeof keywordSearches.$inferInsert;

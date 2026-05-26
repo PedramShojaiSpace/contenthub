@@ -3373,3 +3373,23 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] UI: Add difficulty color scale to results table (green 0-29, amber 30-59, red 60+)
 - [ ] UI: Add "Research this keyword" button on blog Kanban cards (pre-fills keyword research panel with focus keyphrase)
 - [ ] UI: Wire cross-panel navigation so clicking Research button navigates to SEO Intelligence and runs the search
+
+## Keyword Research Enhancements (v-kw3)
+
+- [x] DB: Add keyword_searches table (keyword, searchVolume, difficulty, cpc, intent, trendData, isFavorite, userId, createdAt)
+- [x] DB: Run db:push to create keyword_searches table
+- [x] Server: Add keywordGap procedure — uses DataForSEO ranked_keywords + exclusion set to find gap keywords
+- [x] Server: Add saveKeywordSearch procedure — auto-saves every keyword research lookup to history (deduplicates within 24h)
+- [x] Server: Add getKeywordHistory procedure — retrieves past searches, most recent first, with optional favoritesOnly filter
+- [x] Server: Add toggleKeywordFavorite procedure — flips isFavorite flag on a saved search
+- [x] Server: Add deleteKeywordSearch procedure — removes a search from history
+- [x] UI: Keyword History sidebar — toggled via History button in page header, shows all past searches with star/delete
+- [x] UI: Favorites filter in history sidebar — toggle between All and Favorites view
+- [x] UI: Star toggle on each history item — click to favorite/unfavorite, persists to DB
+- [x] UI: Click history item to re-run the search (navigates to page with ?keyword= param)
+- [x] UI: "Generate article" button in Keyword Research results table — hover to reveal, one click opens Creation Studio with keyword pre-filled as focus keyphrase
+- [x] UI: "Article" button in Keyword Gap view table — same behavior as above
+- [x] UI: New Keyword Gap Analysis section — enter your domain + competitor domain side by side, surfaces gap keywords sorted by volume
+- [x] UI: Keyword Gap table shows keyword, volume, CPC, competitor rank, and Article action button
+- [x] Auto-save to history: every keyword researched via Keyword Research panel is automatically saved to the history log
+- [x] CreationStudio: already handles ?keyword=&platform=blog URL params — no changes needed

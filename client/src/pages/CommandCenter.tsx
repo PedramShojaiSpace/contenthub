@@ -1676,6 +1676,13 @@ export default function CommandCenter() {
     try {
       if (item.seoKeywords) semanticKeywords = JSON.parse(item.seoKeywords);
     } catch { /* ignore */ }
+    // Build CTA banner HTML from stored ctaBannerUrl so it gets injected at publish time
+    let ctaBannerHtml: string | undefined;
+    if (item.ctaBannerUrl) {
+      const campaignSlug = slug.substring(0, 60);
+      const ctaHref = `https://go.theurbanmonk.com/${campaignSlug}?utm_source=blog&utm_medium=organic-content&utm_campaign=${campaignSlug}&utm_content=inline-cta`;
+      ctaBannerHtml = `<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;"><a href="${ctaHref}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><img src="${item.ctaBannerUrl}" alt="${item.title}" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" /></a></div>`;
+    }
     changeStatusMutation.mutate({ id: item.id, status: "published" });
     wpPublishMutation.mutate(
       {
@@ -1689,6 +1696,7 @@ export default function CommandCenter() {
         semanticKeywords: semanticKeywords,
         yoastSeoTitle: item.yoastSeoTitle ?? undefined,
         yoastMetaDescription: item.yoastMetaDescription ?? undefined,
+        ctaBannerHtml,
       },
       {
         onSuccess: (data) => {

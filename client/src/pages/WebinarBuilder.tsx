@@ -1496,7 +1496,7 @@ export default function WebinarBuilder() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-          {/* Sidebar — webinar list */}
+          {/* Sidebar — webinar list + funnel progress + cross-module panel */}
           <div className="space-y-4">
             <div className="p-4 rounded-xl border border-border/50 bg-card">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -1544,41 +1544,41 @@ export default function WebinarBuilder() {
                 )}
               </div>
             )}
+
+            {/* Cross-module feed panel — kept in sidebar so it never displaces the main wizard */}
+            {activeWebinarId && completedSteps.size > 0 && (
+              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+                <h3 className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
+                  Send to...
+                </h3>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Use this webinar's topic, outline, and audience to pre-fill another tool.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start text-xs gap-2 bg-background"
+                  onClick={() => navigate(`/ebook-generator?from=webinar&id=${activeWebinarId}`)}
+                >
+                  <BookOpen className="h-3.5 w-3.5 text-primary" />
+                  Create E-Book from this Webinar
+                  <ArrowUpRight className="h-3 w-3 ml-auto text-muted-foreground" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start text-xs gap-2 bg-background"
+                  onClick={() => navigate(`/landing-pages?from=webinar&id=${activeWebinarId}`)}
+                >
+                  <LayoutTemplate className="h-3.5 w-3.5 text-primary" />
+                  Create Landing Page from this Webinar
+                  <ArrowUpRight className="h-3 w-3 ml-auto text-muted-foreground" />
+                </Button>
+              </div>
+            )}
           </div>
 
-          {/* Cross-module feed panel */}
-          {activeWebinarId && completedSteps.size > 0 && (
-            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
-              <h3 className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
-                Send to...
-              </h3>
-              <p className="text-[11px] text-muted-foreground mb-2">
-                Use this webinar's topic, outline, and audience to pre-fill another tool.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-xs gap-2 bg-background"
-                onClick={() => navigate(`/ebook-generator?from=webinar&id=${activeWebinarId}`)}
-              >
-                <BookOpen className="h-3.5 w-3.5 text-primary" />
-                Create E-Book from this Webinar
-                <ArrowUpRight className="h-3 w-3 ml-auto text-muted-foreground" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-xs gap-2 bg-background"
-                onClick={() => navigate(`/landing-pages?from=webinar&id=${activeWebinarId}`)}
-              >
-                <LayoutTemplate className="h-3.5 w-3.5 text-primary" />
-                Create Landing Page from this Webinar
-                <ArrowUpRight className="h-3 w-3 ml-auto text-muted-foreground" />
-              </Button>
-            </div>
-          )}
-
-          {/* Main wizard */}
+          {/* Main wizard — always in the second column */}
           <div className="p-6 rounded-xl border border-border/50 bg-card">
             <StepIndicator current={step} completed={completedSteps} />
             {step === 1 && renderStep1()}

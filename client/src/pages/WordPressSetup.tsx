@@ -133,6 +133,14 @@ export default function WordPressSetup() {
   const [bulkResult, setBulkResult] = useState<BulkRepushResult | null>(null);
   const [bulkFixSeoResult, setBulkFixSeoResult] = useState<BulkFixSeoResult | null>(null);
 
+  type SyncWpIdsResult = {
+    results: Array<{ id: number; title: string; wpPostId: number | null; found: boolean; error?: string }>;
+    found: number;
+    notFound: number;
+    total: number;
+  };
+  const [syncWpIdsResult, setSyncWpIdsResult] = useState<SyncWpIdsResult | null>(null);
+
   const wpConnTest = trpc.blog.testWpConnection.useQuery(undefined, { enabled: false });
 
   // Live Yoast snippet status check
@@ -206,6 +214,22 @@ export default function WordPressSetup() {
   const handleBulkFixSeo = () => {
     setBulkFixSeoResult(null);
     bulkFixSeoMutation.mutate();
+  };
+
+  // Sync missing WP post IDs mutation
+  const syncWpIdsMutation = trpc.blog.syncMissingWpIds.useMutation({
+    onSuccess: (data) => {
+      setSyncWpIdsResult(data as SyncWpIdsResult);
+      toast.success(`Synced ${data.found} of ${data.total} missing WordPress post IDs.`);
+    },
+    onError: (err) => {
+      toast.error(`Sync failed: ${err.message}`);
+    },
+  });
+
+  const handleSyncWpIds = () => {
+    setSyncWpIdsResult(null);
+    syncWpIdsMutation.mutate();
   };
 
   return (
@@ -400,6 +424,72 @@ export default function WordPressSetup() {
 
               <p className="text-xs text-muted-foreground">
                 Open any post in the WP editor and click <strong>Update</strong> to trigger Yoast's re-analysis and see the green dots.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── Sync Missing WP Post IDs ──────────────────────────────────────── */}
+      <Card className="border-2 border-blue-500/30 bg-blue-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-blue-400" />
+            Sync Missing WordPress Post IDs
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Some published posts are missing their WordPress post ID in the database, which hides the <strong>"Update in WP"</strong> button in the SEO editor.
+            This scans all published blog posts with no WP ID, searches WordPress by title, and links them automatically.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSyncWpIds}
+              disabled={syncWpIdsMutation.isPending}
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {syncWpIdsMutation.isPending ? (
+                <><RefreshCw className="h-4 w-4 animate-spin" /> Syncing…</>
+              ) : (
+                <><RefreshCw className="h-4 w-4" /> Sync Missing WP Post IDs</>
+              )}
+            </Button>
+          </div>
+          {syncWpIdsResult && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-medium">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {syncWpIdsResult.found} of {syncWpIdsResult.total} linked
+                </span>
+                {syncWpIdsResult.notFound > 0 && (
+                  <span className="flex items-center gap-1.5 text-amber-500 font-medium">
+                    <AlertCircle className="h-4 w-4" />
+                    {syncWpIdsResult.notFound} not found in WordPress
+                  </span>
+                )}
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded-md border border-border bg-muted/30 divide-y divide-border">
+                {syncWpIdsResult.results.map((r) => (
+                  <div key={r.id} className="flex items-start gap-2 px-3 py-2 text-xs">
+                    {r.found ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground truncate">{r.title}</p>
+                      {r.error && <p className="text-red-400 mt-0.5">{r.error}</p>}
+                    </div>
+                    <span className="text-muted-foreground flex-shrink-0">
+                      {r.wpPostId ? `WP#${r.wpPostId}` : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Reload the Command Center to see the "Update in WP" button appear on the linked cards.
               </p>
             </div>
           )}

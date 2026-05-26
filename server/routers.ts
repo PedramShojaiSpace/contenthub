@@ -3646,6 +3646,68 @@ Rules:
         return { results, succeeded, failed, total: needsFix.length };
       }),
 
+    // Sync missing WordPress post IDs for published blog posts
+    syncMissingWpIds: protectedProcedure
+      .mutation(async () => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        const { contentItems } = await import('../drizzle/schema');
+        const { eq, isNull, and } = await import('drizzle-orm');
+
+        // Get all published blog posts with no wpPostId
+        const missing = await db
+          .select()
+          .from(contentItems)
+          .where(
+            and(
+              eq(contentItems.platform, 'blog'),
+              eq(contentItems.status, 'published'),
+              isNull(contentItems.wpPostId)
+            )
+          );
+
+        const results: Array<{ id: number; title: string; wpPostId: number | null; found: boolean; error?: string }> = [];
+
+        for (const item of missing) {
+          try {
+            // Search WordPress by title
+            const searchTitle = encodeURIComponent(item.title.slice(0, 60));
+            const searchUrl = `${process.env.WORDPRESS_URL}/wp-json/wp/v2/posts?search=${searchTitle}&per_page=5&_fields=id,title,link,status`;
+            const resp = await fetch(searchUrl, {
+              headers: {
+                Authorization: 'Basic ' + Buffer.from(`${process.env.WORDPRESS_USERNAME}:${process.env.WORDPRESS_APP_PASSWORD}`).toString('base64'),
+              },
+            });
+            if (!resp.ok) {
+              results.push({ id: item.id, title: item.title, wpPostId: null, found: false, error: `WP search failed: ${resp.status}` });
+              continue;
+            }
+            const posts: Array<{ id: number; title: { rendered: string }; link: string; status: string }> = await resp.json();
+            // Find best match: exact title match or closest
+            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const itemNorm = normalize(item.title);
+            const match = posts.find(p => normalize(p.title.rendered) === itemNorm) || posts[0];
+            if (!match) {
+              results.push({ id: item.id, title: item.title, wpPostId: null, found: false, error: 'No matching WP post found' });
+              continue;
+            }
+            // Update DB
+            await db
+              .update(contentItems)
+              .set({ wpPostId: match.id, publishUrl: match.link })
+              .where(eq(contentItems.id, item.id));
+            results.push({ id: item.id, title: item.title, wpPostId: match.id, found: true });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            results.push({ id: item.id, title: item.title, wpPostId: null, found: false, error: msg });
+          }
+        }
+
+        const found = results.filter(r => r.found).length;
+        const notFound = results.filter(r => !r.found).length;
+        return { results, found, notFound, total: missing.length };
+      }),
+
     // Rewrite a blog post in an accessible, engaging voice for a general audience
     createReaderVersion: protectedProcedure
       .input(z.object({

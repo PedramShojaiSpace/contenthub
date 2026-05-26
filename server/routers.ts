@@ -2855,6 +2855,41 @@ Return BOTH in this exact format:
           }
         }
 
+        // Step 2c: H2 keyphrase auto-fix (Yoast subheading check)
+        // Yoast requires the focus keyphrase to appear in at least one H2 or H3 subheading.
+        // If none of the H2s contain the keyphrase, we rewrite the THIRD H2 (the framework/protocol
+        // section — the most natural placement) to prepend the keyphrase.
+        // This runs on the Markdown source (before HTML conversion) so the edit is clean.
+        if (publishInput.focusKeyword) {
+          const kw = publishInput.focusKeyword.toLowerCase();
+          const h2Regex = /^## .+$/gm;
+          const h2Matches = Array.from(cleanedBody.matchAll(h2Regex));
+          const keyphraseInH2 = h2Matches.some((m) => m[0].toLowerCase().includes(kw));
+
+          if (!keyphraseInH2 && h2Matches.length >= 2) {
+            // Pick the best H2 to inject into:
+            // Prefer the 3rd H2 (index 2) — typically the framework/protocol section.
+            // Fall back to the 2nd H2 (index 1) if there are fewer than 3.
+            const targetIndex = h2Matches.length >= 3 ? 2 : 1;
+            const targetMatch = h2Matches[targetIndex];
+            const originalH2 = targetMatch[0]; // e.g. "## How to Improve Your Sleep"
+            const headingText = originalH2.replace(/^## /, "").trim();
+            const kwCapitalised = publishInput.focusKeyword.charAt(0).toUpperCase() + publishInput.focusKeyword.slice(1);
+
+            // Build the new heading: "## [Focus Keyphrase]: [Original Heading]"
+            // But only if the combined length is reasonable (≤ 80 chars)
+            const newHeading = `## ${kwCapitalised}: ${headingText}`;
+            const finalHeading = newHeading.length <= 80 ? newHeading : `## How ${kwCapitalised} ${headingText}`;
+
+            // Replace only the first occurrence of this exact H2 in the body
+            const escapedOriginal = originalH2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const patchedBody = cleanedBody.replace(new RegExp(escapedOriginal, "m"), finalHeading);
+            // Re-convert patched Markdown to HTML
+            wpHtmlBody = markdownToWpHtml(patchedBody);
+            console.log(`[SEO H2 Fix] Injected keyphrase "${publishInput.focusKeyword}" into H2: "${originalH2}" → "${finalHeading}"`);
+          }
+        }
+
         // Step 3: Build Article + FAQ JSON-LD schema blocks (GhostLink OS B15 AEO)
         const { articleSchema, faqSchema } = buildBlogSchemas({
           title: publishInput.title,
@@ -4074,6 +4109,134 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           fixed++;
         }
         return { fixed, skipped, total: posts.length, results, dryRun: input.dryRun ?? false };
+      }),
+
+    // ── Pre-Publish SEO Validator ─────────────────────────────────────────────────────────────────────
+    // Returns a structured SEO score for a content item before it is published to WordPress.
+    // Each check returns a status of "green" | "amber" | "red" and a human-readable message.
+    // Used by the Kanban card SEO badge panel and the card detail publish section.
+    validateSeo: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+      }))
+      .query(async ({ input }) => {
+        const { getContentItem } = await import("./db");
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+
+        type SeoStatus = "green" | "amber" | "red";
+        type SeoCheck = { status: SeoStatus; label: string; value: string; message: string };
+
+        const checks: SeoCheck[] = [];
+
+        // 1. SEO Title length (Yoast green: ≤60 chars, amber: 61-70, red: >70 or missing)
+        const seoTitle = item.yoastSeoTitle ?? `${item.title} | The Urban Monk`;
+        const titleLen = seoTitle.length;
+        checks.push({
+          status: titleLen <= 60 ? "green" : titleLen <= 70 ? "amber" : "red",
+          label: "SEO Title",
+          value: `${titleLen} chars`,
+          message: titleLen <= 60
+            ? `${titleLen} chars — perfect`
+            : titleLen <= 70
+            ? `${titleLen} chars — slightly long (aim for ≤60)`
+            : `${titleLen} chars — too long (Yoast red zone, must be ≤60)`,
+        });
+
+        // 2. Meta description length (green: 140-155, amber: 120-139 or 156-160, red: <120 or >160 or missing)
+        const metaDesc = item.yoastMetaDescription ?? "";
+        const metaLen = metaDesc.length;
+        const metaStatus: SeoStatus = !metaDesc
+          ? "red"
+          : metaLen >= 140 && metaLen <= 155
+          ? "green"
+          : metaLen >= 120 && metaLen <= 160
+          ? "amber"
+          : "red";
+        checks.push({
+          status: metaStatus,
+          label: "Meta Desc",
+          value: metaDesc ? `${metaLen} chars` : "missing",
+          message: !metaDesc
+            ? "Missing — required for Yoast green"
+            : metaLen >= 140 && metaLen <= 155
+            ? `${metaLen} chars — perfect`
+            : metaLen > 155 && metaLen <= 160
+            ? `${metaLen} chars — slightly over (trim to ≤155)`
+            : metaLen > 160
+            ? `${metaLen} chars — too long (Yoast red zone)`
+            : `${metaLen} chars — too short (aim for 140-155)`,
+        });
+
+        // 3. Focus keyphrase in body (green: present ≥8 times, amber: 3-7, red: 0-2 or missing keyphrase)
+        const focusKw = item.focusKeyword ?? null;
+        if (!focusKw) {
+          checks.push({
+            status: "red",
+            label: "Keyphrase",
+            value: "missing",
+            message: "No focus keyphrase set — required for Yoast",
+          });
+        } else {
+          const body = item.textContent ?? "";
+          const kwLower = focusKw.toLowerCase();
+          const occurrences = (body.toLowerCase().match(new RegExp(kwLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) ?? []).length;
+          const kwStatus: SeoStatus = occurrences >= 8 ? "green" : occurrences >= 3 ? "amber" : "red";
+          checks.push({
+            status: kwStatus,
+            label: "Keyphrase",
+            value: `${occurrences}×`,
+            message: occurrences >= 8
+              ? `Found ${occurrences} times — good density`
+              : occurrences >= 3
+              ? `Found ${occurrences} times — aim for 8+`
+              : `Found only ${occurrences} times — needs more occurrences`,
+          });
+        }
+
+        // 4. Keyphrase in H2 subheadings (green: at least 1 H2 contains it, red: none do)
+        if (!focusKw) {
+          checks.push({
+            status: "red",
+            label: "H2 Subheading",
+            value: "no keyphrase",
+            message: "Set a focus keyphrase first",
+          });
+        } else {
+          const body = item.textContent ?? "";
+          const kwLower = focusKw.toLowerCase();
+          const h2Lines = body.split("\n").filter((l) => l.startsWith("## "));
+          const keyphraseInH2 = h2Lines.some((l) => l.toLowerCase().includes(kwLower));
+          checks.push({
+            status: keyphraseInH2 ? "green" : "red",
+            label: "H2 Subheading",
+            value: keyphraseInH2 ? "found" : "missing",
+            message: keyphraseInH2
+              ? "Keyphrase found in at least one H2"
+              : "Keyphrase missing from all H2 headings — auto-fixed at publish time",
+          });
+        }
+
+        // 5. Meta description contains focus keyphrase (green: yes, red: no)
+        if (focusKw && metaDesc) {
+          const kwInMeta = metaDesc.toLowerCase().includes(focusKw.toLowerCase());
+          checks.push({
+            status: kwInMeta ? "green" : "amber",
+            label: "Keyphrase in Meta",
+            value: kwInMeta ? "yes" : "no",
+            message: kwInMeta
+              ? "Keyphrase found in meta description"
+              : "Keyphrase missing from meta desc — auto-prepended at publish time",
+          });
+        }
+
+        const overallStatus: SeoStatus = checks.some((c) => c.status === "red")
+          ? "red"
+          : checks.some((c) => c.status === "amber")
+          ? "amber"
+          : "green";
+
+        return { checks, overallStatus, focusKeyword: focusKw, title: item.title };
       }),
 
   }),

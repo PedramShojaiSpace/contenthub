@@ -3322,3 +3322,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 ## Markdown Rendering Bug + Yoast Fix (v12 Hotfix)
 - [ ] Fix markdownToWpHtml not converting ## and ### headings in FAQ section to HTML
 - [ ] Fix 4 Yoast SEO issues on Vagus Nerve post: keyphrase in subheading, SEO title width, keyphrase in intro, meta description length
+
+## Pre-Publish SEO Validator + H2 Keyphrase Auto-Fix
+
+- [x] Server: Add server-side H2 keyphrase auto-fix in blog.publish pipeline (scan H2s, inject keyphrase if missing)
+- [x] Server: Add blog.validateSeo tRPC procedure returning green/amber/red scores for title, meta desc, keyphrase, H2 subheadings
+- [x] UI: Build SeoValidatorBadges component (compact badge row: title length, meta desc length, keyphrase in body, keyphrase in H2)
+- [x] UI: Wire SeoValidatorBadges into the Kanban card (visible on blog cards, below focus keyword badge)
+- [x] UI: Wire SeoValidatorBadges into the card detail panel (above the Publish to WordPress button)
+- [x] UI: Block/warn publish if any badge is red (show tooltip explaining the issue)
+- [x] Tests: Vitest tests for validateSeo procedure and H2 keyphrase auto-fix logic

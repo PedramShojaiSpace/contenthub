@@ -213,3 +213,62 @@ describe("fixH2Keyphrase", () => {
     expect(result).toContain("## How Gut health");
   });
 });
+
+// ─── Keyphrase density boost eligibility ─────────────────────────────────────
+describe("keyphrase density boost eligibility", () => {
+  it("triggers boost when keyphrase appears fewer than 8 times", () => {
+    const body = "gut health is important. gut health matters. gut health affects everything.";
+    // 3 occurrences → below threshold → should boost
+    const kw = "gut health";
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const count = (body.toLowerCase().match(new RegExp(escaped, "g")) ?? []).length;
+    expect(count).toBe(3);
+    expect(count < 8).toBe(true); // boost should trigger
+  });
+
+  it("does not trigger boost when keyphrase appears 8+ times", () => {
+    const kw = "gut health";
+    const body = Array(8).fill("gut health is the topic here.").join(" ");
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const count = (body.toLowerCase().match(new RegExp(escaped, "g")) ?? []).length;
+    expect(count).toBeGreaterThanOrEqual(8);
+    expect(count < 8).toBe(false); // boost should NOT trigger
+  });
+
+  it("handles keyphrases with regex special characters safely", () => {
+    const kw = "c++ programming";
+    const body = "c++ programming is great. c++ programming rocks.";
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    expect(() => new RegExp(escaped, "g")).not.toThrow();
+    const count = (body.toLowerCase().match(new RegExp(escaped, "g")) ?? []).length;
+    expect(count).toBe(2);
+  });
+});
+
+// ─── Meta description hard-trim logic ────────────────────────────────────────
+describe("meta description hard-trim at publish time", () => {
+  function hardTrimMetaDesc(desc: string, maxLen = 155): string {
+    if (desc.length <= maxLen) return desc;
+    const trimmed = desc.slice(0, maxLen);
+    const lastSpace = trimmed.lastIndexOf(" ");
+    return lastSpace > 100 ? trimmed.slice(0, lastSpace) : trimmed;
+  }
+
+  it("returns the description unchanged when within limit", () => {
+    const desc = "A".repeat(155);
+    expect(hardTrimMetaDesc(desc)).toBe(desc);
+  });
+
+  it("trims at word boundary when over 155 chars", () => {
+    const desc = "This is a very long meta description that goes well over the limit and needs to be trimmed at a word boundary to avoid cutting mid-word in the output.";
+    const result = hardTrimMetaDesc(desc);
+    expect(result.length).toBeLessThanOrEqual(155);
+    expect(result.endsWith(" ")).toBe(false);
+  });
+
+  it("falls back to hard char cut when no space found near limit", () => {
+    const desc = "A".repeat(200);
+    const result = hardTrimMetaDesc(desc);
+    expect(result.length).toBeLessThanOrEqual(155);
+  });
+});

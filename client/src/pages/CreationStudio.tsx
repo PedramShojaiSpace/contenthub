@@ -1063,7 +1063,15 @@ export default function CreationStudio() {
         ctaBannerHtml: (data as any).ctaBannerHtml ?? undefined,
       });
       setIsBlogGenerating(false);
-      toast.success("Blog post generated — auto-saving to archive...");
+
+      // Keyphrase density check — show informational toast if density is low
+      // (the server-side density boost pass runs inside generateBlog before returning)
+      const densityBoosted = (data as any).densityBoosted ?? false;
+      if (densityBoosted) {
+        toast.success("Blog post generated — keyphrase density boosted ✓", { duration: 5000 });
+      } else {
+        toast.success("Blog post generated — auto-saving to archive...");
+      }
 
       // Auto-save blog post immediately
       autoSaveMutation.mutate(

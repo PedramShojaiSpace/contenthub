@@ -1390,6 +1390,18 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
   }
 
   // Full mode: expanded badge grid for the card detail panel
+  const fixSeoMutation = trpc.blog.fixSeoIssues.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Fixed: ${result.fixed.join(", ") || "no changes needed"}`);
+      refetch();
+    },
+    onError: (err) => toast.error("Fix failed: " + err.message),
+  });
+
+  const hasFixableIssues = data.checks.some(
+    (c) => c.status !== "green" && ["SEO Title", "Meta Desc", "H2 Subheading", "Keyphrase in Meta"].includes(c.label)
+  );
+
   return (
     <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-2">
       <div className="flex items-center justify-between">
@@ -1397,13 +1409,30 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
           <Target className="h-3 w-3" />
           Pre-Publish SEO Check
         </p>
-        <button
-          className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-          onClick={() => refetch()}
-          title="Refresh SEO checks"
-        >
-          <RotateCcw className="h-3 w-3" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {hasFixableIssues && (
+            <button
+              className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded bg-blue-600/10 border border-blue-600/30 text-blue-700 hover:bg-blue-600/20 transition-colors disabled:opacity-50"
+              onClick={() => fixSeoMutation.mutate({ contentItemId: item.id })}
+              disabled={fixSeoMutation.isPending}
+              title="Auto-fix all red/amber SEO issues and push to WordPress"
+            >
+              {fixSeoMutation.isPending ? (
+                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              ) : (
+                <Zap className="h-2.5 w-2.5" />
+              )}
+              Fix Now
+            </button>
+          )}
+          <button
+            className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            onClick={() => refetch()}
+            title="Refresh SEO checks"
+          >
+            <RotateCcw className="h-3 w-3" />
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         {data.checks.map((check) => (
@@ -1423,7 +1452,7 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
               <TooltipContent side="top" className="text-[10px] max-w-[220px]">
                 {check.message}
                 {check.status !== "green" && check.label === "H2 Subheading" && (
-                  <p className="mt-0.5 text-muted-foreground">Auto-fixed when you click Publish to WordPress.</p>
+                  <p className="mt-0.5 text-muted-foreground">Auto-fixed when you click Publish to WordPress, or use Fix Now above.</p>
                 )}
               </TooltipContent>
             </Tooltip>
@@ -1433,7 +1462,13 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
       {overall === "red" && (
         <p className="text-[10px] text-red-600 flex items-center gap-1">
           <AlertCircle className="h-3 w-3 flex-shrink-0" />
-          Fix red issues before publishing for best Yoast results.
+          Click “Fix Now” to auto-fix all issues before publishing.
+        </p>
+      )}
+      {overall === "amber" && (
+        <p className="text-[10px] text-amber-700 flex items-center gap-1">
+          <AlertCircle className="h-3 w-3 flex-shrink-0" />
+          Minor issues detected — click “Fix Now” to resolve them.
         </p>
       )}
       {overall === "green" && (
@@ -1987,6 +2022,18 @@ export default function CommandCenter() {
     onError: (err) => toast.error("Bulk fix failed: " + err.message),
   });
 
+  const bulkFixH2Mutation = trpc.blog.bulkFixH2Keyphrases.useMutation({
+    onSuccess: (data) => {
+      if (data.fixed === 0) {
+        toast.info(`All ${data.alreadyOk} blog posts already have keyphrase in H2s. ${data.skipped} skipped.`);
+      } else {
+        toast.success(`Fixed H2 keyphrases in ${data.fixed} of ${data.total} posts. ${data.alreadyOk} already OK, ${data.skipped} skipped.`);
+        refetch();
+      }
+    },
+    onError: (err) => toast.error("Bulk H2 fix failed: " + err.message),
+  });
+
   const fixCampaignSlugMutation = trpc.blog.fixCampaignSlug.useMutation({
     onSuccess: (data) => {
       if (data.updated) {
@@ -2276,6 +2323,23 @@ export default function CommandCenter() {
                     <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Fixing…</>
                   ) : (
                     <><AlertTriangle className="h-3 w-3 mr-1" /> Fix All Campaigns</>
+                  )}
+                </Button>
+              )}
+              {/* Bulk Fix H2 Keyphrases — backfills keyphrase into H2s for all published blog posts */}
+              {(platformFilter === "blog" || platformFilter === "all") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hidden md:flex"
+                  disabled={bulkFixH2Mutation.isPending}
+                  onClick={() => bulkFixH2Mutation.mutate({ dryRun: false })}
+                  title="Scan all published blog posts and inject focus keyphrase into H2s where missing"
+                >
+                  {bulkFixH2Mutation.isPending ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Fixing H2s…</>
+                  ) : (
+                    <><Zap className="h-3 w-3 mr-1" /> Fix All H2s</>
                   )}
                 </Button>
               )}

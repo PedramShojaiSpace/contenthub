@@ -58,7 +58,7 @@ import {
   upsertPlatformStrategy,
 } from "./db";
 import { getBufferProfiles, pushToBuffer, pushCarouselToBuffer } from "./buffer";
-import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, updateWpPostYoast, getWpYoastScore, type WpPostSummary } from "./wordpress";
+import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, updateWpPostYoast, getWpYoastScore, updateWpPostContent, type WpPostSummary } from "./wordpress";
 import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
 import {
   countAddressedGaps,
@@ -1558,6 +1558,54 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           console.warn("[Blog] CTA banner generation failed (non-fatal):", bannerErr);
         }
 
+        // ── PASS 2b: Keyphrase Density Feedback Loop ────────────────────────────
+        // After metadata extraction, count how many times the focus keyphrase appears
+        // in the article body. If fewer than 8 occurrences (amber/red), run a targeted
+        // second LLM pass that adds natural keyphrase occurrences without changing the
+        // article structure, tone, or headings.
+        let densityBoosted = false;
+        const focusKwForDensity = blogData.focusKeyword?.toLowerCase() ?? "";
+        if (focusKwForDensity) {
+          const escaped = focusKwForDensity.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const occurrences = (blogData.article.toLowerCase().match(new RegExp(escaped, "g")) ?? []).length;
+          if (occurrences < 8) {
+            console.log(`[Blog] Keyphrase density: ${occurrences} occurrences (target: 8+) — running density boost pass`);
+            try {
+              const densityBoostResponse = await safeLLM({
+                messages: [
+                  {
+                    role: "system",
+                    content: `You are an SEO editor for Dr. Pedram Shojai (The Urban Monk). Your ONLY task is to increase the natural occurrence of the focus keyphrase in the article body to reach at least 8 occurrences. Rules:
+- Do NOT change any headings (H1, H2, H3)
+- Do NOT change the introduction paragraph
+- Do NOT add new sections or remove content
+- Do NOT change the tone, voice, or meaning
+- Add the keyphrase naturally into existing sentences — vary the phrasing slightly (e.g. "${blogData.focusKeyword}", "your ${blogData.focusKeyword}", "understanding ${blogData.focusKeyword}")
+- Return the COMPLETE article with your additions — do not truncate
+- Return ONLY the article body, no preamble or explanation`,
+                  },
+                  {
+                    role: "user",
+                    content: `Focus keyphrase: "${blogData.focusKeyword}" (currently appears ${occurrences} times, need at least 8)\n\nARTICLE:\n${blogData.article}`,
+                  },
+                ],
+              });
+              const boostedBody = String(densityBoostResponse.choices?.[0]?.message?.content ?? "").trim();
+              if (boostedBody.length > blogData.article.length * 0.7) {
+                // Sanity check: boosted body must be at least 70% of original length
+                const boostedOccurrences = (boostedBody.toLowerCase().match(new RegExp(escaped, "g")) ?? []).length;
+                if (boostedOccurrences > occurrences) {
+                  blogData.article = boostedBody;
+                  densityBoosted = true;
+                  console.log(`[Blog] Density boost: ${occurrences} → ${boostedOccurrences} occurrences`);
+                }
+              }
+            } catch (densityErr) {
+              console.warn("[Blog] Density boost pass failed (non-fatal):", densityErr);
+            }
+          }
+        }
+
         // Estimate read time (avg 200 words/min)
         // NOTE: Use clean articleBody (without CTA HTML) for word count and storage.
         // The CTA HTML block is stored separately as ctaBannerHtml and injected at
@@ -1589,6 +1637,7 @@ OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do 
           faqSection: blogData.faqSection ?? "",
           waterfallMap: blogData.waterfallMap ?? "",
           ctaLabel: blogCtaLabel,
+          densityBoosted,  // true if a second LLM pass was run to boost keyphrase density
         };
       }),
 
@@ -4237,6 +4286,193 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           : "green";
 
         return { checks, overallStatus, focusKeyword: focusKw, title: item.title };
+      }),
+
+    // ── Bulk H2 Keyphrase Backfill ──────────────────────────────────────────────────────────────────
+    // Scans all published blog posts, finds those where the focus keyphrase is missing
+    // from all H2 headings, rewrites the 3rd H2 to include it, saves to DB, and pushes
+    // the updated HTML to WordPress. Safe to run multiple times (idempotent).
+    bulkFixH2Keyphrases: protectedProcedure
+      .input(z.object({ dryRun: z.boolean().optional().default(false) }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { contentItems } = await import("../drizzle/schema");
+        const { eq, and, isNotNull } = await import("drizzle-orm");
+
+        const published = await db
+          .select()
+          .from(contentItems)
+          .where(and(
+            eq(contentItems.platform, "blog"),
+            eq(contentItems.status, "published"),
+            isNotNull(contentItems.wpPostId),
+            isNotNull(contentItems.textContent),
+            isNotNull(contentItems.focusKeyword),
+          ));
+
+        type FixResult = { id: number; title: string; wpPostId: number; status: "fixed" | "already_ok" | "skipped" | "error"; reason?: string };
+        const results: FixResult[] = [];
+        let fixed = 0;
+        let alreadyOk = 0;
+        let skipped = 0;
+        let errors = 0;
+
+        for (const item of published) {
+          if (!item.wpPostId || !item.textContent || !item.focusKeyword) {
+            skipped++;
+            results.push({ id: item.id, title: item.title ?? "", wpPostId: item.wpPostId ?? 0, status: "skipped", reason: "missing wpPostId, textContent, or focusKeyword" });
+            continue;
+          }
+
+          const kw = item.focusKeyword.toLowerCase();
+          const h2Lines = item.textContent.split("\n").filter((l) => l.startsWith("## "));
+          const keyphraseInH2 = h2Lines.some((l) => l.toLowerCase().includes(kw));
+
+          if (keyphraseInH2) {
+            alreadyOk++;
+            results.push({ id: item.id, title: item.title ?? "", wpPostId: item.wpPostId, status: "already_ok" });
+            continue;
+          }
+
+          // Apply the same fix logic as Step 2c in blog.publish
+          const h2Regex = /^## .+$/gm;
+          const h2Matches = Array.from(item.textContent.matchAll(h2Regex));
+          if (h2Matches.length < 2) {
+            skipped++;
+            results.push({ id: item.id, title: item.title ?? "", wpPostId: item.wpPostId, status: "skipped", reason: "fewer than 2 H2s — cannot safely inject" });
+            continue;
+          }
+
+          const targetIndex = h2Matches.length >= 3 ? 2 : 1;
+          const targetMatch = h2Matches[targetIndex];
+          const originalH2 = targetMatch[0];
+          const headingText = originalH2.replace(/^## /, "").trim();
+          const kwCapitalised = item.focusKeyword.charAt(0).toUpperCase() + item.focusKeyword.slice(1);
+          const newHeading = `## ${kwCapitalised}: ${headingText}`;
+          const finalHeading = newHeading.length <= 80 ? newHeading : `## How ${kwCapitalised} ${headingText}`;
+          const escapedOriginal = originalH2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const patchedBody = item.textContent.replace(new RegExp(escapedOriginal, "m"), finalHeading);
+          const patchedHtml = markdownToWpHtml(patchedBody);
+
+          if (!input.dryRun) {
+            try {
+              await updateContentItem(item.id, { textContent: patchedBody });
+              await updateWpPostContent(item.wpPostId, patchedHtml);
+              fixed++;
+              results.push({ id: item.id, title: item.title ?? "", wpPostId: item.wpPostId, status: "fixed", reason: `"${originalH2}" → "${finalHeading}"` });
+            } catch (err: unknown) {
+              errors++;
+              const msg = err instanceof Error ? err.message : String(err);
+              results.push({ id: item.id, title: item.title ?? "", wpPostId: item.wpPostId, status: "error", reason: msg });
+            }
+          } else {
+            fixed++; // count as "would fix" in dry run
+            results.push({ id: item.id, title: item.title ?? "", wpPostId: item.wpPostId, status: "fixed", reason: `DRY RUN: "${originalH2}" → "${finalHeading}"` });
+          }
+        }
+
+        return { fixed, alreadyOk, skipped, errors, total: published.length, dryRun: input.dryRun, results };
+      }),
+
+    // ── Fix SEO Issues (Fix Now button) ─────────────────────────────────────────────────────────
+    // Triggered by the "Fix Now" button on red/amber SEO badges in the card detail panel.
+    // Runs all available auto-fixes for a single content item and pushes to WordPress.
+    fixSeoIssues: protectedProcedure
+      .input(z.object({ contentItemId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getContentItem } = await import("./db");
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+
+        const fixed: string[] = [];
+        let seoTitle = item.yoastSeoTitle ?? `${item.title} | The Urban Monk`;
+        let metaDesc = item.yoastMetaDescription ?? "";
+        const focusKw = item.focusKeyword ?? null;
+        let patchedBody = item.textContent ?? "";
+
+        // Fix 1: SEO title — trim to ≤60 chars
+        if (seoTitle.length > 60) {
+          if (focusKw) {
+            // Rebuild as "Keyphrase | The Urban Monk" (guaranteed ≤60)
+            const kwCapitalised = focusKw.charAt(0).toUpperCase() + focusKw.slice(1);
+            const candidate = `${kwCapitalised} | The Urban Monk`;
+            seoTitle = candidate.length <= 60 ? candidate : candidate.slice(0, 57) + "…";
+          } else {
+            seoTitle = seoTitle.slice(0, 57) + "…";
+          }
+          fixed.push("seo_title_trimmed");
+        }
+
+        // Fix 2: Meta description — trim to 140-155 chars
+        if (metaDesc.length > 155) {
+          // Trim at last word boundary before 155
+          const trimmed = metaDesc.slice(0, 155);
+          const lastSpace = trimmed.lastIndexOf(" ");
+          metaDesc = lastSpace > 100 ? trimmed.slice(0, lastSpace) : trimmed;
+          fixed.push("meta_desc_trimmed");
+        } else if (!metaDesc && focusKw && item.textContent) {
+          // Generate a basic meta desc from the first paragraph if missing
+          const firstPara = item.textContent.split("\n").find((l) => l.trim().length > 80 && !l.startsWith("#") && !l.startsWith("-"));
+          if (firstPara) {
+            const candidate = `${focusKw.charAt(0).toUpperCase() + focusKw.slice(1)}: ${firstPara.trim()}`;
+            metaDesc = candidate.length <= 155 ? candidate : candidate.slice(0, 152) + "…";
+            fixed.push("meta_desc_generated");
+          }
+        }
+
+        // Fix 3: Ensure focus keyphrase is in meta desc
+        if (focusKw && metaDesc && !metaDesc.toLowerCase().includes(focusKw.toLowerCase())) {
+          const candidate = `${focusKw}: ${metaDesc}`;
+          metaDesc = candidate.length <= 155 ? candidate : candidate.slice(0, 152) + "…";
+          fixed.push("meta_desc_keyphrase_added");
+        }
+
+        // Fix 4: H2 keyphrase injection (same logic as Step 2c in blog.publish)
+        if (focusKw && patchedBody) {
+          const kw = focusKw.toLowerCase();
+          const h2Regex = /^## .+$/gm;
+          const h2Matches = Array.from(patchedBody.matchAll(h2Regex));
+          const keyphraseInH2 = h2Matches.some((m) => m[0].toLowerCase().includes(kw));
+          if (!keyphraseInH2 && h2Matches.length >= 2) {
+            const targetIndex = h2Matches.length >= 3 ? 2 : 1;
+            const originalH2 = h2Matches[targetIndex][0];
+            const headingText = originalH2.replace(/^## /, "").trim();
+            const kwCapitalised = focusKw.charAt(0).toUpperCase() + focusKw.slice(1);
+            const newHeading = `## ${kwCapitalised}: ${headingText}`;
+            const finalHeading = newHeading.length <= 80 ? newHeading : `## How ${kwCapitalised} ${headingText}`;
+            const escapedOriginal = originalH2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            patchedBody = patchedBody.replace(new RegExp(escapedOriginal, "m"), finalHeading);
+            fixed.push("h2_keyphrase_injected");
+          }
+        }
+
+        if (fixed.length === 0) {
+          return { fixed, message: "No issues found — all checks already passing" };
+        }
+
+        // Persist to DB
+        await updateContentItem(item.id, {
+          yoastSeoTitle: seoTitle,
+          yoastMetaDescription: metaDesc,
+          ...(fixed.includes("h2_keyphrase_injected") ? { textContent: patchedBody } : {}),
+        });
+
+        // Push to WordPress if the post is already published there
+        if (item.wpPostId) {
+          await updateWpPostYoast({
+            wpPostId: item.wpPostId,
+            seoTitle,
+            metaDescription: metaDesc,
+            focusKeyword: focusKw ?? undefined,
+          });
+          if (fixed.includes("h2_keyphrase_injected")) {
+            const patchedHtml = markdownToWpHtml(patchedBody);
+            await updateWpPostContent(item.wpPostId, patchedHtml);
+          }
+        }
+
+        return { fixed, message: `Fixed: ${fixed.join(", ")}` };
       }),
 
   }),

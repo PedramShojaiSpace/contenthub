@@ -367,23 +367,35 @@ export default function SeoDashboard() {
                 ) : (
                   <div className="divide-y divide-border">
                     {queries.map((row, i) => (
-                      <div key={i} className="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-muted/30">
+                      <div key={i} className="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-muted/30 group">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
                           <span className="text-sm text-foreground truncate">{row.query}</span>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <MousePointerClick className="w-3 h-3" />
-                            {row.clicks}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-3 h-3" />
-                            {row.impressions >= 1000 ? `${(row.impressions / 1000).toFixed(1)}K` : row.impressions}
-                          </span>
-                          <Badge variant="outline" className="text-xs px-1.5 py-0">
-                            #{row.position.toFixed(1)}
-                          </Badge>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => {
+                              setLocation(`/studio?keyword=${encodeURIComponent(row.query)}&platform=blog`);
+                              toast.info(`Opening Blog Generator with keyword: "${row.query}"`);
+                            }}
+                            title={`Generate article for "${row.query}"`}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-emerald-50 text-muted-foreground hover:text-emerald-700"
+                          >
+                            <PenSquare className="w-3.5 h-3.5" />
+                          </button>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <MousePointerClick className="w-3 h-3" />
+                              {row.clicks}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Eye className="w-3 h-3" />
+                              {row.impressions >= 1000 ? `${(row.impressions / 1000).toFixed(1)}K` : row.impressions}
+                            </span>
+                            <Badge variant="outline" className="text-xs px-1.5 py-0">
+                              #{row.position.toFixed(1)}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     ))}

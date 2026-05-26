@@ -3393,3 +3393,20 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] UI: Keyword Gap table shows keyword, volume, CPC, competitor rank, and Article action button
 - [x] Auto-save to history: every keyword researched via Keyword Research panel is automatically saved to the history log
 - [x] CreationStudio: already handles ?keyword=&platform=blog URL params — no changes needed
+
+## Yoast SEO Fixes & WordPress Category Redesign (v-yoast-cat)
+
+- [x] Fix meta description trim: target ≤152 chars at word boundary, no ellipsis (was adding "..." which pushed over 156 char limit)
+- [x] Add keyphrase deduplication check: query contentItems for published posts with same focusKeyword before publishing
+- [x] Return keyphraseAlreadyUsed + keyphraseConflictUrl in blog.publish response
+- [x] Show orange toast warning in CommandCenter when keyphrase already used on another post
+- [x] Show orange toast warning in CreationStudio when keyphrase already used on another post
+- [x] Add wpCategoryOverride field to blog.publish input schema for manual category selection
+- [x] Build resolveWpCategories() in wpContentUtils.ts — always assigns parent ID 19, auto-detects cluster subcategory from focus keyword, never assigns duplicate ID 941
+- [x] Build CLUSTER_MAP with 9 topic clusters (Gut Health, Stress, Sleep, Energy, Detox, Mindfulness, Nutrition, Fitness, Longevity)
+- [x] Build ensureWpSubcategory() — creates subcategory as child of ID 19 if it doesn't exist yet, returns ID
+- [x] Build fetchWpCategories() — fetches all WP categories for UI dropdown
+- [x] Replace DEFAULT_WP_CATEGORIES with dynamic wpCategoryIds in blog.publish Step 6
+- [x] Return wpCategories array in blog.publish response
+- [x] TypeScript: 0 errors after all changes
+- [x] Tests: 403 passed, 0 failures

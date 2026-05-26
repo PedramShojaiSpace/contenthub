@@ -281,3 +281,191 @@ export async function resolveOrCreateWpTags(
 
   return tagIds;
 }
+
+// ─── WordPress Category Auto-Assignment ──────────────────────────────────────
+//
+// Category hierarchy on theurbanmonk.com:
+//   Health and Wellness (ID 19, slug: wellness) ← PARENT — always assigned
+//     ├─ Gut Health & Digestion      (cluster subcategory — created on first use)
+//     ├─ Stress & Mental Wellness    (cluster subcategory — created on first use)
+//     ├─ Sleep & Recovery            (cluster subcategory — created on first use)
+//     ├─ Energy & Vitality           (cluster subcategory — created on first use)
+//     ├─ Detox & Cleansing           (cluster subcategory — created on first use)
+//     ├─ Mindfulness & Meditation    (cluster subcategory — created on first use)
+//     ├─ Nutrition & Diet            (cluster subcategory — created on first use)
+//     ├─ Fitness & Movement          (cluster subcategory — created on first use)
+//     └─ Longevity & Anti-Aging      (cluster subcategory — created on first use)
+//
+// The old duplicate category ID 941 ("Health & Wellness") is intentionally
+// excluded — it was causing the "Health and Wellness / Health and Wellness"
+// double-category display in WordPress.
+
+/** Cluster definitions: keyword signals → subcategory label */
+const CLUSTER_MAP: Array<{ label: string; slug: string; keywords: string[] }> = [
+  {
+    label: "Gut Health & Digestion",
+    slug: "gut-health-digestion",
+    keywords: ["gut", "digestion", "microbiome", "probiotic", "leaky gut", "ibs", "bloating", "bowel", "intestin", "colon", "stomach", "gi map", "dysbiosis"],
+  },
+  {
+    label: "Stress & Mental Wellness",
+    slug: "stress-mental-wellness",
+    keywords: ["stress", "anxiety", "cortisol", "nervous system", "mental", "burnout", "adrenal", "hpa axis", "mood", "depression", "emotional"],
+  },
+  {
+    label: "Sleep & Recovery",
+    slug: "sleep-recovery",
+    keywords: ["sleep", "insomnia", "circadian", "melatonin", "rest", "recovery", "fatigue", "tired", "exhaustion"],
+  },
+  {
+    label: "Energy & Vitality",
+    slug: "energy-vitality",
+    keywords: ["energy", "mitochondria", "atp", "fatigue", "vitality", "stamina", "chronic fatigue", "adrenal fatigue", "low energy"],
+  },
+  {
+    label: "Detox & Cleansing",
+    slug: "detox-cleansing",
+    keywords: ["detox", "cleanse", "toxin", "heavy metal", "liver", "lymph", "fasting", "autophagy", "elimination"],
+  },
+  {
+    label: "Mindfulness & Meditation",
+    slug: "mindfulness-meditation",
+    keywords: ["meditation", "mindfulness", "qigong", "breathwork", "breath", "pranayama", "presence", "awareness", "monk", "taoist", "zen"],
+  },
+  {
+    label: "Nutrition & Diet",
+    slug: "nutrition-diet",
+    keywords: ["nutrition", "diet", "food", "eating", "meal", "nutrient", "vitamin", "mineral", "supplement", "keto", "paleo", "anti-inflammatory"],
+  },
+  {
+    label: "Fitness & Movement",
+    slug: "fitness-movement",
+    keywords: ["exercise", "fitness", "movement", "workout", "yoga", "strength", "cardio", "flexibility", "mobility"],
+  },
+  {
+    label: "Longevity & Anti-Aging",
+    slug: "longevity-anti-aging",
+    keywords: ["longevity", "aging", "anti-aging", "lifespan", "healthspan", "telomere", "biohack", "epigenetic", "senescence"],
+  },
+];
+
+/**
+ * Detect which cluster subcategory best matches the focus keyword.
+ * Returns the cluster label + slug, or null if no match.
+ */
+function detectCluster(focusKeyword: string): { label: string; slug: string } | null {
+  if (!focusKeyword) return null;
+  const kw = focusKeyword.toLowerCase();
+  for (const cluster of CLUSTER_MAP) {
+    if (cluster.keywords.some((sig) => kw.includes(sig))) {
+      return { label: cluster.label, slug: cluster.slug };
+    }
+  }
+  return null;
+}
+
+/**
+ * Ensure a WordPress category exists as a child of "Health and Wellness" (ID 19).
+ * If it already exists, returns its ID. If not, creates it and returns the new ID.
+ * Returns null on any error (non-fatal — post will still be published under parent).
+ */
+async function ensureWpSubcategory(
+  label: string,
+  slug: string,
+  authHeader: string,
+  baseUrl: string
+): Promise<number | null> {
+  try {
+    // Search for existing category by slug
+    const searchRes = await wpFetch(
+      `${baseUrl}/wp-json/wp/v2/categories?slug=${encodeURIComponent(slug)}&per_page=5`,
+      { headers: { Authorization: authHeader } },
+      8_000
+    );
+    if (searchRes.ok) {
+      const existing = await safeParseJson<Array<{ id: number; slug: string }>>(searchRes, "WP category search");
+      if (existing.length > 0) return existing[0].id;
+    }
+
+    // Create the subcategory under parent ID 19 (Health and Wellness)
+    const createRes = await wpFetch(`${baseUrl}/wp-json/wp/v2/categories`, {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: label, slug, parent: WP_CATEGORY_HEALTH_AND_WELLNESS }),
+    }, 8_000);
+
+    if (createRes.ok) {
+      const newCat = await safeParseJson<{ id: number }>(createRes, "WP category create");
+      return newCat.id;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve the final list of WordPress category IDs for a post.
+ *
+ * Rules:
+ *  1. Always include the parent "Health and Wellness" (ID 19).
+ *  2. If wpCategoryOverride is provided, use it as the subcategory.
+ *  3. Otherwise, auto-detect the cluster from focusKeyword and ensure/create the subcategory.
+ *  4. Never include the duplicate ID 941 ("Health & Wellness").
+ */
+export async function resolveWpCategories(params: {
+  focusKeyword?: string;
+  wpCategoryOverride?: number;
+  baseUrl: string;
+  authHeader: string;
+}): Promise<number[]> {
+  const ids: number[] = [WP_CATEGORY_HEALTH_AND_WELLNESS];
+
+  // Manual override takes precedence
+  if (params.wpCategoryOverride && params.wpCategoryOverride !== WP_CATEGORY_HEALTH_AND_WELLNESS) {
+    ids.push(params.wpCategoryOverride);
+    return ids;
+  }
+
+  // Auto-detect cluster from focus keyword
+  if (params.focusKeyword) {
+    const cluster = detectCluster(params.focusKeyword);
+    if (cluster) {
+      const subcatId = await ensureWpSubcategory(
+        cluster.label,
+        cluster.slug,
+        params.authHeader,
+        params.baseUrl
+      );
+      if (subcatId && subcatId !== WP_CATEGORY_HEALTH_AND_WELLNESS) {
+        ids.push(subcatId);
+      }
+    }
+  }
+
+  return ids;
+}
+
+/**
+ * Fetch all WordPress categories (for use in the UI dropdown).
+ * Returns id, name, slug, parent for each category.
+ */
+export async function fetchWpCategories(
+  authHeader: string,
+  baseUrl: string
+): Promise<Array<{ id: number; name: string; slug: string; parent: number }>> {
+  try {
+    const res = await wpFetch(
+      `${baseUrl}/wp-json/wp/v2/categories?per_page=100&orderby=name&order=asc`,
+      { headers: { Authorization: authHeader } },
+      10_000
+    );
+    if (!res.ok) return [];
+    return safeParseJson<Array<{ id: number; name: string; slug: string; parent: number }>>(res, "WP categories fetch");
+  } catch {
+    return [];
+  }
+}

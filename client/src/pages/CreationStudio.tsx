@@ -1308,6 +1308,15 @@ export default function CreationStudio() {
           ? "Published to WordPress!"
           : "Saved as draft in WordPress!"
       );
+      if (data.keyphraseAlreadyUsed) {
+        const conflictNote = data.keyphraseConflictUrl
+          ? ` Previously used on: ${data.keyphraseConflictUrl}`
+          : "";
+        toast.warning(
+          `Yoast: Focus keyphrase was already used on another post.${conflictNote} Consider changing it in the SEO editor.`,
+          { duration: 10000 }
+        );
+      }
       utils.content.list.invalidate();
     },
     onError: (err) => {

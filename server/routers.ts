@@ -59,7 +59,7 @@ import {
 } from "./db";
 import { getBufferProfiles, pushToBuffer, pushCarouselToBuffer } from "./buffer";
 import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, updateWpPostYoast, getWpYoastScore, updateWpPostContent, type WpPostSummary } from "./wordpress";
-import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
+import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags, resolveWpCategories } from "./wpContentUtils";
 import {
   countAddressedGaps,
   getCompetitorLeaderboard,
@@ -2813,6 +2813,7 @@ Return BOTH in this exact format:
           yoastSeoTitle: z.string().optional(),      // Override for Yoast SEO title
           yoastMetaDescription: z.string().optional(), // Override for Yoast meta description
           ctaBannerHtml: z.string().optional(),        // CTA HTML block to inject before FAQ section
+          wpCategoryOverride: z.number().optional(),    // Manual WP category ID override (subcategory)
         })
       )
       .mutation(async ({ input }) => {
@@ -3020,21 +3021,74 @@ Return BOTH in this exact format:
           }
         }
 
-        // 4b-ii: Hard-trim to 155 chars at a word boundary (never truncate mid-word)
-        if (metaDesc.length > 155) {
-          // Trim to 152 chars at last space, then add ellipsis
+        // 4b-ii: Hard-trim to ≤152 chars at a word boundary (never truncate mid-word, never add ellipsis).
+        // Yoast's hard cutoff is 156 chars — we target ≤152 to stay comfortably in the green zone.
+        // NOTE: Do NOT add "..." — Yoast counts it as characters and the truncated result still exceeds the limit.
+        if (metaDesc.length > 152) {
+          // Walk back from char 152 to the last space so we never cut mid-word
           let trimmed = metaDesc.slice(0, 152);
           const lastSpace = trimmed.lastIndexOf(" ");
           if (lastSpace > 100) trimmed = trimmed.slice(0, lastSpace);
-          metaDesc = trimmed.trimEnd() + "...";
+          metaDesc = trimmed.trimEnd();
+          // Remove any trailing punctuation that looks odd as the last character
+          metaDesc = metaDesc.replace(/[,;:\-–—]$/, "").trimEnd();
         }
 
-        // 4b-iii: If the stored meta desc looks like a truncated stub (ends with "..."
-        // and is exactly 155 chars), it was never properly written — flag it.
-        // The LLM prompt already enforces 140-155 chars, so this is a safety net only.
-        if (metaDesc.endsWith("...") && metaDesc.length >= 150) {
-          console.warn(`[SEO] Meta description for "${publishInput.title}" appears truncated — review recommended.`);
+        // 4b-iii: Sanity-check — flag if still over 155 (should never happen after the trim above)
+        if (metaDesc.length > 155) {
+          console.warn(`[SEO] Meta description for "${publishInput.title}" is ${metaDesc.length} chars after trim — review recommended.`);
         }
+
+        // Step 4c: Keyphrase deduplication check
+        // Warn if this focus keyword was already used on a previously published post.
+        // Yoast flags "previously used keyphrase" when the same focuskw appears on 2+ posts.
+        // We check the wpPostIndex table (synced from WP) for a matching focus keyword.
+        let keyphraseAlreadyUsed = false;
+        let keyphraseConflictUrl: string | null = null;
+        if (publishInput.focusKeyword) {
+          try {
+            const db3 = await getDb();
+            if (db3) {
+              // Check content_items table for any published post with the same focusKeyword
+              const { contentItems } = await import("../drizzle/schema");
+              const { and, eq: eqOp, ne, like } = await import("drizzle-orm");
+              const existing = await db3
+                .select({ id: contentItems.id, publishUrl: contentItems.publishUrl, focusKeyword: contentItems.focusKeyword })
+                .from(contentItems)
+                .where(
+                  and(
+                    eqOp(contentItems.status, "published"),
+                    ne(contentItems.id, publishInput.contentItemId),
+                    like(contentItems.focusKeyword, publishInput.focusKeyword)
+                  )
+                )
+                .limit(1);
+              if (existing.length > 0) {
+                keyphraseAlreadyUsed = true;
+                keyphraseConflictUrl = existing[0].publishUrl ?? null;
+                console.warn(`[SEO] Focus keyphrase "${publishInput.focusKeyword}" was already used on post ${existing[0].id} (${keyphraseConflictUrl}). Yoast will flag this.`);
+              }
+            }
+          } catch (kpErr) {
+            // Non-fatal — dedup check failure should not block the publish
+            console.warn("[SEO] Keyphrase dedup check failed (non-fatal):", kpErr);
+          }
+        }
+
+        // Step 4d: Determine WordPress category IDs
+        // Strategy: assign the parent "Health and Wellness" (ID 19) PLUS the matching
+        // cluster subcategory (if one exists). Never assign the duplicate ID 941.
+        // If the user provided an explicit wpCategoryId override, use that as the subcategory.
+        const wpCategoryIds = await resolveWpCategories({
+          focusKeyword: publishInput.focusKeyword,
+          wpCategoryOverride: publishInput.wpCategoryOverride,
+          baseUrl: wpBaseUrl,
+          authHeader: (() => {
+            const u = process.env.WORDPRESS_USERNAME ?? "";
+            const p = process.env.WORDPRESS_APP_PASSWORD ?? "";
+            return "Basic " + Buffer.from(`${u}:${p}`).toString("base64");
+          })(),
+        });
 
         // Step 5: Resolve SEO keywords as WordPress tags (create if they don't exist)
         const { authHeader: wpAuthHeader } = (() => {
@@ -3066,7 +3120,7 @@ Return BOTH in this exact format:
           excerpt: metaDesc,
           status: wpStatus,
           featuredMediaId,
-          categories: DEFAULT_WP_CATEGORIES,
+          categories: wpCategoryIds,
           tags: wpTagIds.length > 0 ? wpTagIds : undefined,
           metaDescription: metaDesc,
           focusKeyword: publishInput.focusKeyword,
@@ -3143,6 +3197,9 @@ Return BOTH in this exact format:
           wpStatus,
           imageUploaded: !!featuredMediaId,
           campaignValidationWarning: campaignValidationWarning ?? null,
+          keyphraseAlreadyUsed,
+          keyphraseConflictUrl,
+          wpCategories: wpCategoryIds,
         };
       }),
 

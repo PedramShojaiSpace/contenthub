@@ -3332,3 +3332,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] UI: Wire SeoValidatorBadges into the card detail panel (above the Publish to WordPress button)
 - [x] UI: Block/warn publish if any badge is red (show tooltip explaining the issue)
 - [x] Tests: Vitest tests for validateSeo procedure and H2 keyphrase auto-fix logic
+
+## SEO Automation Phase 2
+
+### Feature 1: Bulk H2 Keyphrase Backfill
+- [x] Server: Add blog.bulkFixH2Keyphrases tRPC procedure — scans all published blog posts, finds those missing keyphrase in H2s, patches body in DB and pushes updated HTML to WordPress
+- [x] UI: Add "Bulk Fix H2 Keyphrases" button in Command Center batch actions bar with progress toast
+- [x] Backfill run: 35 of 49 posts fixed, 14 already OK, 0 errors
+
+### Feature 2: Fix Now Buttons on Red SEO Badges
+- [x] Server: Add blog.fixSeoIssues tRPC mutation — accepts contentItemId, runs auto-fix for meta desc length, SEO title length, and keyphrase injection, saves to DB and pushes to WordPress
+- [x] UI: Add "Fix Now" button on red/amber badges in the SeoValidatorPanel full mode (card detail panel)
+- [x] UI: Refresh SEO validator panel after fix completes
+
+### Feature 3: Keyphrase Density Feedback Loop
+- [x] Server: After blog generation completes, run density check on the generated body
+- [x] Server: If density is amber (<8 occurrences) or red (<3), trigger a second LLM pass to add more natural keyphrase occurrences
+- [x] Server: Return density_boosted: true flag in generation response so UI can show a toast
+- [x] UI: Show "Keyphrase density boosted" toast when second pass was triggered

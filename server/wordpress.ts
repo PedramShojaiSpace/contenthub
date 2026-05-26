@@ -695,3 +695,32 @@ export async function getWpYoastScore(
     return { seoScore: null, readabilityScore: null };
   }
 }
+
+/**
+ * Update the body content (HTML) of an existing WordPress post.
+ * Used by the H2 keyphrase backfill to patch the rendered HTML without
+ * republishing the entire post or changing its status/slug.
+ */
+export async function updateWpPostContent(
+  wpPostId: number,
+  htmlContent: string
+): Promise<{ success: boolean }> {
+  const { baseUrl, authHeader } = getWpAuth();
+  if (!baseUrl) throw new Error("WordPress URL not configured");
+
+  const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts/${wpPostId}`, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content: htmlContent }),
+  }, 20_000);
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`WordPress content update failed: ${errText.substring(0, 300)}`);
+  }
+
+  return { success: true };
+}

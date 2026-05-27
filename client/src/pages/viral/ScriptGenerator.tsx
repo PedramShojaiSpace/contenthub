@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   FileText, Copy, Clock, ChevronDown, ChevronUp, Loader2,
   Zap, Kanban, CheckCircle2, Star, SendHorizonal, Play, X as XIcon,
-  ListChecks, RotateCcw, Users,
+  ListChecks, RotateCcw, Users, Monitor, AlignLeft, Clapperboard,
 } from "lucide-react";
 
 const PLATFORMS = [
@@ -89,9 +89,49 @@ interface BatchItem {
 }
 
 // ─── ScriptDisplay ─────────────────────────────────────────────────────────────
-function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text: string) => void }) {
+// ─── Teleprompter Segment ─────────────────────────────────────────────────────
+function TeleprompterSegment({
+  label, badge, badgeColor, text, onCopy, segmentIndex, totalSegments,
+}: {
+  label: string;
+  badge: string;
+  badgeColor: string;
+  text: string;
+  onCopy: (t: string) => void;
+  segmentIndex: number;
+  totalSegments: number;
+}) {
+  return (
+    <div className="rounded-xl border-2 border-border bg-background overflow-hidden">
+      {/* Segment header */}
+      <div className={`flex items-center justify-between px-4 py-2.5 ${badgeColor}`}>
+        <div className="flex items-center gap-2">
+          <Clapperboard className="w-4 h-4" />
+          <span className="text-sm font-bold tracking-wide">{label}</span>
+          <span className="text-xs opacity-75">({badge})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs opacity-60">Video {segmentIndex} of {totalSegments}</span>
+          <Button variant="ghost" size="sm" className="h-6 text-xs px-2 hover:bg-white/20" onClick={() => onCopy(text)}>
+            <Copy className="w-3 h-3 mr-1" />Copy
+          </Button>
+        </div>
+      </div>
+      {/* Script text — large, readable for teleprompter */}
+      <div className="p-5 bg-gray-950 text-white">
+        <p className="text-xl leading-[1.9] font-medium tracking-wide whitespace-pre-wrap">
+          {text}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── ScriptDisplay ─────────────────────────────────────────────────────────────
+function ScriptDisplay({ result, onCopy, autoSaved }: { result: ScriptResult; onCopy: (text: string) => void; autoSaved?: boolean }) {
   const [showStructure, setShowStructure] = useState(false);
-  const [savedToKanban, setSavedToKanban] = useState(false);
+  const [showTeleprompter, setShowTeleprompter] = useState(false);
+  const [savedToKanban, setSavedToKanban] = useState(autoSaved ?? false);
 
   const PLATFORM_MAP: Record<string, string> = {
     tiktok: "tiktok",
@@ -139,6 +179,24 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
     { label: "CTA", key: "cta", color: "border-l-violet-400" },
   ] : [];
 
+  // Build teleprompter segments:
+  // Segment 1: Hook (separate video)
+  // Segment 2: Body = Problem + Agitate + Value + Proof (single video)
+  // Segment 3: CTA (separate video)
+  const hookText = result.script?.hook ?? result.hook ?? "";
+  const bodyText = [
+    result.script?.problem,
+    result.script?.agitate,
+    result.script?.value,
+    result.script?.proof,
+  ].filter(Boolean).join("\n\n");
+  const ctaText = result.script?.cta ?? "";
+  const teleprompterSegments = [
+    hookText ? { label: "HOOK", badge: "Record separately — first 3 seconds", badgeColor: "bg-red-600 text-white", text: hookText } : null,
+    bodyText ? { label: "BODY", badge: "Record as single continuous video", badgeColor: "bg-green-700 text-white", text: bodyText } : null,
+    ctaText ? { label: "CTA", badge: "Record separately — final overlay", badgeColor: "bg-violet-700 text-white", text: ctaText } : null,
+  ].filter(Boolean) as Array<{ label: string; badge: string; badgeColor: string; text: string }>;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -149,66 +207,118 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
         {result.wordCount && (
           <Badge variant="outline" className="text-xs">{result.wordCount} words</Badge>
         )}
+        {savedToKanban && (
+          <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
+            <CheckCircle2 className="w-3 h-3 mr-1" />Saved to Command Center
+          </Badge>
+        )}
       </div>
 
-      <div className="relative">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Full Script</h4>
-          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => onCopy(result.fullScript)}>
-            <Copy className="w-3 h-3 mr-1" />Copy Script
-          </Button>
-        </div>
-        <div className="bg-muted/30 border border-border rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
-          {result.fullScript}
-        </div>
+      {/* View toggle: Script vs Teleprompter */}
+      <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
+        <button
+          onClick={() => setShowTeleprompter(false)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+            !showTeleprompter ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <AlignLeft className="w-3.5 h-3.5" />Script
+        </button>
+        <button
+          onClick={() => setShowTeleprompter(true)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+            showTeleprompter ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Monitor className="w-3.5 h-3.5" />Teleprompter
+        </button>
       </div>
 
-      {sections.length > 0 && (
-        <div>
-          <button
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setShowStructure(!showStructure)}
-          >
-            {showStructure ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            {showStructure ? "Hide" : "Show"} HPAVPC structure
-          </button>
-          {showStructure && (
-            <div className="mt-2 space-y-2">
-              {sections.map((s) => {
-                const text = (result.script as any)[s.key];
-                if (!text) return null;
-                return (
-                  <div key={s.key} className={`border-l-2 pl-3 py-1 ${s.color}`}>
-                    <p className="text-xs font-semibold text-muted-foreground mb-0.5">{s.label}</p>
-                    <p className="text-xs text-foreground leading-relaxed">{text}</p>
-                  </div>
-                );
-              })}
+      {showTeleprompter ? (
+        /* ── Teleprompter View ── */
+        <div className="space-y-4">
+          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <Clapperboard className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">
+              <strong>Recording guide:</strong> Each segment below is a separate video file. Record the <strong>Hook</strong> first (multiple takes with different energy), then record the <strong>Body</strong> as one continuous take, then record the <strong>CTA</strong> variants. Combine in post.
+            </p>
+          </div>
+          {teleprompterSegments.map((seg, i) => (
+            <TeleprompterSegment
+              key={seg.label}
+              label={seg.label}
+              badge={seg.badge}
+              badgeColor={seg.badgeColor}
+              text={seg.text}
+              onCopy={onCopy}
+              segmentIndex={i + 1}
+              totalSegments={teleprompterSegments.length}
+            />
+          ))}
+        </div>
+      ) : (
+        /* ── Script View ── */
+        <div className="space-y-4">
+          <div className="relative">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Full Script</h4>
+              <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => onCopy(result.fullScript)}>
+                <Copy className="w-3 h-3 mr-1" />Copy Script
+              </Button>
+            </div>
+            <div className="bg-muted/30 border border-border rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+              {result.fullScript}
+            </div>
+          </div>
+
+          {sections.length > 0 && (
+            <div>
+              <button
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setShowStructure(!showStructure)}
+              >
+                {showStructure ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {showStructure ? "Hide" : "Show"} HPAVPC structure
+              </button>
+              {showStructure && (
+                <div className="mt-2 space-y-2">
+                  {sections.map((s) => {
+                    const text = (result.script as any)[s.key];
+                    if (!text) return null;
+                    return (
+                      <div key={s.key} className={`border-l-2 pl-3 py-1 ${s.color}`}>
+                        <p className="text-xs font-semibold text-muted-foreground mb-0.5">{s.label}</p>
+                        <p className="text-xs text-foreground leading-relaxed">{text}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {result.captionHook && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-semibold text-blue-700">Caption Hook</p>
-            <Button variant="ghost" size="sm" className="h-5 text-xs px-1 text-blue-600" onClick={() => onCopy(result.captionHook!)}>
-              <Copy className="w-3 h-3" />
-            </Button>
-          </div>
-          <p className="text-xs text-foreground">{result.captionHook}</p>
-        </div>
-      )}
+          {result.captionHook && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-semibold text-blue-700">Caption Hook</p>
+                <Button variant="ghost" size="sm" className="h-5 text-xs px-1 text-blue-600" onClick={() => onCopy(result.captionHook!)}>
+                  <Copy className="w-3 h-3" />
+                </Button>
+              </div>
+              <p className="text-xs text-foreground">{result.captionHook}</p>
+            </div>
+          )}
 
-      {result.hashtags?.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-1.5">Hashtags</p>
-          <div className="flex flex-wrap gap-1.5">
-            {result.hashtags.map((tag, i) => (
-              <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded-full text-foreground">{tag}</span>
-            ))}
-          </div>
+          {result.hashtags?.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-1.5">Hashtags</p>
+              <div className="flex flex-wrap gap-1.5">
+                {result.hashtags.map((tag, i) => (
+                  <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded-full text-foreground">{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -232,6 +342,100 @@ function ScriptDisplay({ result, onCopy }: { result: ScriptResult; onCopy: (text
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── BatchTeleprompterPanel ─────────────────────────────────────────────────
+function BatchTeleprompterPanel({ queue, onCopy }: { queue: BatchItem[]; onCopy: (t: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const doneItems = queue.filter((q) => q.status === "done" && q.result);
+  if (doneItems.length === 0) return null;
+
+  // All hooks (one per video)
+  const hookSegments = doneItems.map((item, i) => ({
+    label: `HOOK ${i + 1}`,
+    badge: `${item.framework ?? ""} — record separately`,
+    badgeColor: "bg-red-600 text-white",
+    text: item.result!.script?.hook ?? item.result!.hook ?? "",
+    segmentIndex: i + 1,
+    totalSegments: doneItems.length + 2, // hooks + body + cta
+  }));
+
+  // Body from first script (problem + agitate + value + proof)
+  const firstScript = doneItems[0].result!.script;
+  const bodyText = [
+    firstScript?.problem,
+    firstScript?.agitate,
+    firstScript?.value,
+    firstScript?.proof,
+  ].filter(Boolean).join("\n\n");
+
+  // CTA from first script
+  const ctaText = firstScript?.cta ?? "";
+
+  const totalSegments = hookSegments.length + (bodyText ? 1 : 0) + (ctaText ? 1 : 0);
+  let segmentCounter = hookSegments.length;
+
+  return (
+    <div className="border-t border-green-300 pt-3">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full text-sm font-semibold text-green-800 hover:text-green-900"
+      >
+        <div className="flex items-center gap-2">
+          <Monitor className="w-4 h-4" />
+          Recording Guide — Teleprompter View
+        </div>
+        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <Clapperboard className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">
+              <strong>Recording order:</strong> Record each HOOK as a separate video ({hookSegments.length} takes). Then record the BODY once. Then record the CTA once. Combine in post.
+            </p>
+          </div>
+          {/* All hooks */}
+          {hookSegments.map((seg) => (
+            <TeleprompterSegment
+              key={seg.label}
+              label={seg.label}
+              badge={seg.badge}
+              badgeColor={seg.badgeColor}
+              text={seg.text}
+              onCopy={onCopy}
+              segmentIndex={seg.segmentIndex}
+              totalSegments={totalSegments}
+            />
+          ))}
+          {/* Shared body */}
+          {bodyText && (
+            <TeleprompterSegment
+              label="BODY"
+              badge="Shared across all hook variants — record once"
+              badgeColor="bg-green-700 text-white"
+              text={bodyText}
+              onCopy={onCopy}
+              segmentIndex={++segmentCounter}
+              totalSegments={totalSegments}
+            />
+          )}
+          {/* Shared CTA */}
+          {ctaText && (
+            <TeleprompterSegment
+              label="CTA"
+              badge="Shared across all hook variants — record once"
+              badgeColor="bg-violet-700 text-white"
+              text={ctaText}
+              onCopy={onCopy}
+              segmentIndex={++segmentCounter}
+              totalSegments={totalSegments}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -381,7 +585,22 @@ function BatchQueuePanel({
       }
     }
     setIsRunningAll(false);
-    toast.success("All scripts generated!");
+    // Auto-save all completed scripts to Command Center
+    const kanbanPlatform = PLATFORM_MAP_BATCH[platform] ?? "tiktok";
+    const completedItems = queue
+      .filter((q) => q.status === "done" && q.result)
+      .map((q) => ({
+        title: (q.result!.hook ?? "").slice(0, 80),
+        rawIdea: q.result!.hook,
+        platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
+        status: "drafting" as const,
+        textContent: q.result!.fullScript,
+      }));
+    if (completedItems.length > 0) {
+      saveAllMutation.mutate({ items: completedItems });
+    } else {
+      toast.success("All scripts generated!");
+    }
   };
 
   // Keep ref in sync with latest handleGenerateAll
@@ -562,6 +781,8 @@ function BatchQueuePanel({
               Creates {doneCount} Drafting cards in your Kanban board — or expand individual scripts above to save selectively.
             </p>
           )}
+          {/* Consolidated Teleprompter View */}
+          <BatchTeleprompterPanel queue={queue} onCopy={onCopy} />
         </div>
       )}
     </div>
@@ -649,10 +870,40 @@ export default function ScriptGenerator() {
     }
   }, []);
 
+  const autoSaveToKanbanMutation = trpc.content.createBulk.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Script auto-saved to Command Center ✓</span>
+          <span className="text-xs text-muted-foreground">Find it in the Drafting column of your Kanban board.</span>
+        </div>
+      );
+    },
+  });
+
+  const PLATFORM_MAP_SINGLE: Record<string, string> = {
+    tiktok: "tiktok",
+    instagram: "meta",
+    youtube: "youtube",
+    linkedin: "linkedin",
+    x: "x",
+  };
+
   const generateMutation = trpc.viralStudio.generateScript.useMutation({
     onSuccess: (data) => {
-      setResult(data as unknown as ScriptResult);
-      toast.success("Script generated!");
+      const scriptResult = data as unknown as ScriptResult;
+      setResult(scriptResult);
+      // Auto-save to Command Center immediately
+      const kanbanPlatform = PLATFORM_MAP_SINGLE[platform] ?? "tiktok";
+      autoSaveToKanbanMutation.mutate({
+        items: [{
+          title: (topic.trim() || "Untitled Script").slice(0, 80),
+          rawIdea: hook.trim(),
+          platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
+          status: "drafting" as const,
+          textContent: scriptResult.fullScript,
+        }],
+      });
     },
     onError: (err) => toast.error(`Failed: ${err.message}`),
   });
@@ -1007,7 +1258,7 @@ export default function ScriptGenerator() {
       ) : result ? (
         <div>
           <h3 className="text-sm font-semibold mb-3">Generated Script</h3>
-          <ScriptDisplay result={result} onCopy={handleCopy} />
+          <ScriptDisplay result={result} onCopy={handleCopy} autoSaved={true} />
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-xl text-center p-6">

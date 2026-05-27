@@ -3209,6 +3209,79 @@ Return BOTH in this exact format:
           }
         }, 5_000);
 
+        // Step 7c: Auto-fix Yoast issues (H2 keyphrase + meta desc) — non-blocking, fires 5 s after publish
+        // This ensures every newly published post always has the keyphrase in an H2 and in the meta desc,
+        // without requiring a manual "Fix Yoast Issues" button click.
+        if (newStatus !== "scheduled") {
+          setTimeout(async () => {
+            try {
+              const { fetchSingleWpPost } = await import("./wordpress");
+              const livePost = await fetchSingleWpPost(post.id);
+              let wpHtmlBody = livePost.content;
+              const focusKw = publishInput.focusKeyword;
+              let metaDesc = publishInput.metaDescription ?? livePost.metaDescription ?? "";
+              const seoTitle = publishInput.seoTitle ?? livePost.seoTitle ?? `${publishInput.title} | The Urban Monk`;
+              const trimToWordBoundary = (s: string, maxLen: number): string => {
+                if (s.length <= maxLen) return s;
+                let t = s.slice(0, maxLen);
+                const sp = t.lastIndexOf(" ");
+                if (sp > 0) t = t.slice(0, sp);
+                return t.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+              };
+
+              // H2 keyphrase injection
+              if (focusKw && wpHtmlBody) {
+                const kw = focusKw.toLowerCase();
+                const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
+                const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>((?:[\s\S])*?)<\/h[23]>/gi;
+                const htmlHeadings = Array.from(wpHtmlBody.matchAll(htmlHeadingRegex));
+                const htmlH2s = htmlHeadings.filter((m) => m[1].toLowerCase() === "h2");
+                const stripTags = (s: string) => s.replace(/<[^>]+>/g, "").trim();
+                const keyphraseInSubheading = htmlHeadings.some((m) => kwRegex.test(stripTags(m[3])));
+                if (!keyphraseInSubheading && (htmlH2s.length > 0 || htmlHeadings.length > 0)) {
+                  const targetIndex = htmlH2s.length >= 3 ? 2 : htmlH2s.length >= 2 ? 1 : 0;
+                  const targetMatch = htmlH2s[targetIndex] ?? htmlHeadings[0];
+                  if (targetMatch) {
+                    const originalTag = targetMatch[0];
+                    const tagName = targetMatch[1];
+                    const tagAttrs = targetMatch[2] ?? "";
+                    const headingText = stripTags(targetMatch[3]);
+                    const kwCapitalised = focusKw.charAt(0).toUpperCase() + focusKw.slice(1);
+                    const candidateText = `${kwCapitalised}: ${headingText}`;
+                    const finalText = candidateText.length <= 80 ? candidateText : kwCapitalised;
+                    const finalTag = `<${tagName}${tagAttrs}>${finalText}</${tagName}>`;
+                    const escapedOriginal = originalTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    wpHtmlBody = wpHtmlBody.replace(new RegExp(escapedOriginal), finalTag);
+                    await updateWpPostContent(post.id, wpHtmlBody);
+                  }
+                }
+              }
+
+              // Meta description keyphrase enforcement
+              if (focusKw && metaDesc) {
+                const kwLower = focusKw.toLowerCase();
+                if (!metaDesc.toLowerCase().includes(kwLower)) {
+                  const prefix = `${focusKw}: `;
+                  const maxBodyLen = 148 - prefix.length;
+                  metaDesc = (prefix + trimToWordBoundary(metaDesc, maxBodyLen)).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+                } else {
+                  metaDesc = trimToWordBoundary(metaDesc, 148);
+                }
+                if (metaDesc.length > 155) {
+                  const sp = metaDesc.slice(0, 148).lastIndexOf(" ");
+                  metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 148)).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+                }
+                await updateWpPostYoast({ wpPostId: post.id, seoTitle: seoTitle || undefined, metaDescription: metaDesc || undefined, focusKeyword: focusKw || undefined });
+                await updateContentItem(publishInput.contentItemId, { yoastMetaDescription: metaDesc });
+              }
+            } catch (autoFixErr) {
+              // Non-fatal — auto-fix failure should never block the publish response
+              console.error("[WP] Auto-fix Yoast issues failed (non-fatal):", autoFixErr);
+            }
+          }, 5_000);
+        }
+
         // Step 8: Keyword Strategy publish-back
         // If this post was created from a keyword target, flip its status to "published"
         // and record the live URL so the Keyword Strategy dashboard shows it as done.
@@ -4784,6 +4857,220 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
             ? "No issues found — H2 keyphrase and meta description are already correct"
             : `Fixed: ${fixed.filter(f => !f.endsWith("_already_ok")).join(", ")}`,
           metaDesc,
+        };
+      }),
+
+    // ── Bulk Fix Yoast Issues ──────────────────────────────────────────────────────────────────────
+    // Iterates all published blog posts that have a wpPostId and runs fixYoastIssues on each.
+    // Same logic as the single-post fixYoastIssues but batched.
+    bulkFixYoastIssues: protectedProcedure
+      .mutation(async () => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { contentItems } = await import("../drizzle/schema");
+        const { eq, and, isNotNull } = await import("drizzle-orm");
+        const { fetchSingleWpPost } = await import("./wordpress");
+
+        const published = await db
+          .select()
+          .from(contentItems)
+          .where(and(
+            eq(contentItems.platform, "blog"),
+            eq(contentItems.status, "published"),
+            isNotNull(contentItems.wpPostId),
+            isNotNull(contentItems.focusKeyword),
+          ));
+
+        type BulkResult = { id: number; title: string; wpPostId: number; status: "fixed" | "already_ok" | "error"; fixed: string[]; error?: string };
+        const results: BulkResult[] = [];
+        let fixedCount = 0;
+        let alreadyOkCount = 0;
+        let errorCount = 0;
+
+        const trimToWordBoundary = (s: string, maxLen: number): string => {
+          if (s.length <= maxLen) return s;
+          let t = s.slice(0, maxLen);
+          const sp = t.lastIndexOf(" ");
+          if (sp > 0) t = t.slice(0, sp);
+          return t.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+        };
+
+        for (const item of published) {
+          if (!item.wpPostId || !item.focusKeyword) continue;
+          const fixedFields: string[] = [];
+          try {
+            const livePost = await fetchSingleWpPost(item.wpPostId);
+            let wpHtmlBody = livePost.content;
+            const focusKw = item.focusKeyword;
+            let metaDesc = item.yoastMetaDescription ?? livePost.metaDescription ?? "";
+            const seoTitle = item.yoastSeoTitle ?? livePost.seoTitle ?? `${item.title} | The Urban Monk`;
+
+            // Step 2c: H2 keyphrase injection
+            if (focusKw && wpHtmlBody) {
+              const kw = focusKw.toLowerCase();
+              const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
+              const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>((?:[\s\S])*?)<\/h[23]>/gi;
+              const htmlHeadings = Array.from(wpHtmlBody.matchAll(htmlHeadingRegex));
+              const htmlH2s = htmlHeadings.filter((m) => m[1].toLowerCase() === "h2");
+              const stripTags = (s: string) => s.replace(/<[^>]+>/g, "").trim();
+              const keyphraseInSubheading = htmlHeadings.some((m) => kwRegex.test(stripTags(m[3])));
+
+              if (!keyphraseInSubheading && (htmlH2s.length > 0 || htmlHeadings.length > 0)) {
+                const targetIndex = htmlH2s.length >= 3 ? 2 : htmlH2s.length >= 2 ? 1 : 0;
+                const targetMatch = htmlH2s[targetIndex] ?? htmlHeadings[0];
+                if (targetMatch) {
+                  const originalTag = targetMatch[0];
+                  const tagName = targetMatch[1];
+                  const tagAttrs = targetMatch[2] ?? "";
+                  const headingText = stripTags(targetMatch[3]);
+                  const kwCapitalised = focusKw.charAt(0).toUpperCase() + focusKw.slice(1);
+                  const candidateText = `${kwCapitalised}: ${headingText}`;
+                  const finalText = candidateText.length <= 80 ? candidateText : kwCapitalised;
+                  const finalTag = `<${tagName}${tagAttrs}>${finalText}</${tagName}>`;
+                  const escapedOriginal = originalTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                  wpHtmlBody = wpHtmlBody.replace(new RegExp(escapedOriginal), finalTag);
+                  fixedFields.push(`h2_keyphrase_injected`);
+                }
+              }
+            }
+
+            // Step 4b: meta description enforcement
+            if (focusKw && metaDesc) {
+              const kwLower = focusKw.toLowerCase();
+              const hasKw = metaDesc.toLowerCase().includes(kwLower);
+              if (!hasKw) {
+                const prefix = `${focusKw}: `;
+                const maxBodyLen = 148 - prefix.length;
+                const trimmedBody = trimToWordBoundary(metaDesc, maxBodyLen);
+                metaDesc = (prefix + trimmedBody).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+                fixedFields.push("meta_desc_keyphrase_prepended");
+              } else {
+                const trimmed = trimToWordBoundary(metaDesc, 148);
+                if (trimmed !== metaDesc) { metaDesc = trimmed; fixedFields.push("meta_desc_trimmed"); }
+              }
+            } else if (metaDesc) {
+              metaDesc = trimToWordBoundary(metaDesc, 148);
+            }
+            if (metaDesc.length > 155) {
+              const sp = metaDesc.slice(0, 148).lastIndexOf(" ");
+              metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 148)).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+              fixedFields.push("meta_desc_force_truncated");
+            }
+
+            // Push to WordPress
+            await updateWpPostContent(item.wpPostId, wpHtmlBody);
+            await updateWpPostYoast({
+              wpPostId: item.wpPostId,
+              seoTitle: seoTitle || undefined,
+              metaDescription: metaDesc || undefined,
+              focusKeyword: focusKw || undefined,
+            });
+            await updateContentItem(item.id, { yoastMetaDescription: metaDesc });
+
+            if (fixedFields.length === 0) {
+              alreadyOkCount++;
+              results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, status: "already_ok", fixed: [] });
+            } else {
+              fixedCount++;
+              results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, status: "fixed", fixed: fixedFields });
+            }
+          } catch (err: unknown) {
+            errorCount++;
+            const msg = err instanceof Error ? err.message : String(err);
+            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId ?? 0, status: "error", fixed: [], error: msg });
+          }
+        }
+
+        return { results, fixedCount, alreadyOkCount, errorCount, total: published.length };
+      }),
+
+    // ── Readability Analysis ───────────────────────────────────────────────────────────────────────
+    // Analyses the Markdown body of a content item for Yoast readability checks:
+    //   1. Transition word percentage (Yoast green ≥30%)
+    //   2. Consecutive sentence starts (Yoast red: any word starts 3+ sentences in a row)
+    // Returns structured results for the SeoValidatorPanel.
+    analyzeReadability: protectedProcedure
+      .input(z.object({ contentItemId: z.number() }))
+      .query(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item || !item.textContent) return null;
+
+        const body = item.textContent;
+
+        // ── Sentence tokenisation ────────────────────────────────────────────────
+        // Split on sentence-ending punctuation followed by whitespace or end-of-string.
+        // Exclude heading lines (starting with #) and blank lines.
+        const lines = body.split("\n").filter((l) => {
+          const t = l.trim();
+          return t.length > 0 && !t.startsWith("#") && !t.startsWith("-") && !t.startsWith("|") && !t.startsWith(">");
+        });
+        const rawText = lines.join(" ");
+        // Split on . ! ? followed by space or end
+        const sentences = rawText
+          .split(/(?<=[.!?])\s+/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 10); // ignore very short fragments
+
+        const totalSentences = sentences.length;
+
+        // ── Transition word check ────────────────────────────────────────────────
+        const TRANSITION_WORDS = [
+          "however", "therefore", "as a result", "in addition", "furthermore",
+          "meanwhile", "for example", "in contrast", "consequently", "first",
+          "second", "third", "finally", "in fact", "specifically", "most importantly",
+          "in other words", "that said", "even so", "because of this", "at the same time",
+          "to be clear", "in practice", "over time", "in short", "additionally",
+          "moreover", "notably", "instead", "still", "yet", "thus", "hence",
+          "indeed", "otherwise", "likewise", "similarly", "afterward", "previously",
+          "ultimately", "essentially", "particularly", "importantly", "fortunately",
+          "unfortunately", "surprisingly", "although", "while", "since", "because",
+          "unless", "until", "when", "after", "before", "also", "but", "so",
+        ];
+        let transitionCount = 0;
+        for (const s of sentences) {
+          const lower = s.toLowerCase();
+          if (TRANSITION_WORDS.some((tw) => lower.includes(tw))) transitionCount++;
+        }
+        const transitionPct = totalSentences > 0 ? Math.round((transitionCount / totalSentences) * 100) : 0;
+        const transitionStatus: "green" | "amber" | "red" =
+          transitionPct >= 30 ? "green" : transitionPct >= 20 ? "amber" : "red";
+
+        // ── Consecutive sentence starts check ────────────────────────────────────
+        // Find the first word of each sentence and look for runs of 3+
+        const firstWords = sentences.map((s) => {
+          const m = s.match(/^([A-Za-z]+)/);
+          return m ? m[1].toLowerCase() : "";
+        }).filter(Boolean);
+
+        let maxRun = 1;
+        let currentRun = 1;
+        let worstWord = "";
+        let violationCount = 0;
+        for (let i = 1; i < firstWords.length; i++) {
+          if (firstWords[i] === firstWords[i - 1]) {
+            currentRun++;
+            if (currentRun >= 3 && currentRun > maxRun) {
+              maxRun = currentRun;
+              worstWord = firstWords[i];
+            }
+            if (currentRun === 3) violationCount++; // count each new violation group
+          } else {
+            currentRun = 1;
+          }
+        }
+        const consecutiveStatus: "green" | "amber" | "red" =
+          maxRun < 3 ? "green" : maxRun === 3 ? "amber" : "red";
+
+        return {
+          totalSentences,
+          transitionCount,
+          transitionPct,
+          transitionStatus,
+          consecutiveStatus,
+          maxRun,
+          worstWord: worstWord || null,
+          violationCount,
         };
       }),
 

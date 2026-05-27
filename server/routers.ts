@@ -1401,7 +1401,7 @@ SEO NOTE: The target focus keyword for this article is "${kw}". Use it naturally
                 properties: {
                   title: { type: "string", description: "H1 headline, HARD MAX 48 chars including spaces, must contain primary keyword — count every character" },
                   slug: { type: "string", description: "URL-friendly slug, max 60 chars" },
-                  metaDescription: { type: "string", description: "Meta description: EXACTLY 140-150 chars. Count every character including spaces. If over 150, cut words. If under 140, expand. Must include focus keyword in first 25 chars. Must NOT end with ellipsis" },
+                  metaDescription: { type: "string", description: "Meta description: STRICT 130-148 chars total (count every character including spaces). RULE 1: Start with the focus keyword as the very first words. RULE 2: Stay between 130-148 chars — shorter is better than longer. RULE 3: Never end with ellipsis. RULE 4: Write a complete compelling sentence that includes the focus keyword naturally in the first 20 chars." },
                   focusKeyword: { type: "string", description: "Primary SEO keyword phrase, 2-4 words" },
                   semanticKeywords: { type: "array", items: { type: "string" }, description: "3-5 semantic keyword variants" },
                   hookFamily: { type: "string", description: "Which of the 12 Hook Families was used" },
@@ -2907,11 +2907,19 @@ Return BOTH in this exact format:
         // If none of the H2s contain the keyphrase, we rewrite the THIRD H2 (the framework/protocol
         // section — the most natural placement) to prepend the keyphrase.
         // This runs on the Markdown source (before HTML conversion) so the edit is clean.
+        //
+        // IMPORTANT: Use word-boundary regex matching, NOT String.includes().
+        // includes() returns true for partial matches (e.g. 'gut' matches 'gut health protocol')
+        // but Yoast uses exact-phrase matching. We must check for the full keyphrase as a
+        // contiguous sequence of words, not just a substring.
         if (publishInput.focusKeyword) {
           const kw = publishInput.focusKeyword.toLowerCase();
+          // Build a regex that matches the keyphrase as whole words (case-insensitive)
+          const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const kwRegex = new RegExp(`(?<![a-z0-9])${kwEscaped}(?![a-z0-9])`, "i");
           const h2Regex = /^## .+$/gm;
           const h2Matches = Array.from(cleanedBody.matchAll(h2Regex));
-          const keyphraseInH2 = h2Matches.some((m) => m[0].toLowerCase().includes(kw));
+          const keyphraseInH2 = h2Matches.some((m) => kwRegex.test(m[0]));
 
           if (!keyphraseInH2 && h2Matches.length >= 2) {
             // Pick the best H2 to inject into:
@@ -2994,36 +3002,45 @@ Return BOTH in this exact format:
           seoTitle = trimmed.trimEnd() + "...";
         }
 
-        // Step 4b: Enforce keyphrase in meta description
-        // Yoast requires the focus keyphrase to appear verbatim in the meta description.
-        // If the AI-generated meta description doesn't contain it, prepend it naturally.
-        // HARD LIMIT: meta description must be 140-155 chars for Yoast green zone.
+        // Step 4b: Enforce keyphrase in meta description + hard length limit
+        // Yoast requires:
+        //   (a) the focus keyphrase to appear verbatim in the meta description
+        //   (b) the meta description to be ≤155 chars (green zone: 140-155)
+        // We handle BOTH in a single atomic pass so the keyphrase injection never
+        // pushes the result back over the length limit.
         let metaDesc = publishInput.yoastMetaDescription ?? publishInput.metaDescription ?? "";
 
-        // 4b-i: Ensure keyphrase is present
+        // Helper: trim to ≤maxLen at a word boundary, no ellipsis
+        const trimToWordBoundary = (s: string, maxLen: number): string => {
+          if (s.length <= maxLen) return s;
+          let t = s.slice(0, maxLen);
+          const sp = t.lastIndexOf(" ");
+          if (sp > Math.floor(maxLen * 0.6)) t = t.slice(0, sp);
+          return t.trimEnd().replace(/[,;:\-–—]$/, "").trimEnd();
+        };
+
         if (publishInput.focusKeyword && metaDesc) {
           const kwLower = publishInput.focusKeyword.toLowerCase();
-          if (!metaDesc.toLowerCase().includes(kwLower)) {
-            // Prepend the keyphrase naturally: "[Keyphrase]: [existing description]"
+          const hasKw = metaDesc.toLowerCase().includes(kwLower);
+
+          if (!hasKw) {
+            // Keyphrase is missing — we need to inject it.
+            // Strategy: prepend "[Keyphrase]: " then trim the TAIL of the description
+            // so the total stays ≤152 chars. This guarantees the keyphrase survives.
             const prefix = `${publishInput.focusKeyword}: `;
-            metaDesc = prefix + metaDesc;
+            const maxBodyLen = 152 - prefix.length; // chars available for the rest
+            const trimmedBody = trimToWordBoundary(metaDesc, maxBodyLen);
+            metaDesc = (prefix + trimmedBody).trimEnd().replace(/[,;:\-–—]$/, "").trimEnd();
+          } else {
+            // Keyphrase is already present — just enforce the length limit
+            metaDesc = trimToWordBoundary(metaDesc, 152);
           }
+        } else {
+          // No keyphrase — just enforce the length limit
+          metaDesc = trimToWordBoundary(metaDesc, 152);
         }
 
-        // 4b-ii: Hard-trim to ≤152 chars at a word boundary (never truncate mid-word, never add ellipsis).
-        // Yoast's hard cutoff is 156 chars — we target ≤152 to stay comfortably in the green zone.
-        // NOTE: Do NOT add "..." — Yoast counts it as characters and the truncated result still exceeds the limit.
-        if (metaDesc.length > 152) {
-          // Walk back from char 152 to the last space so we never cut mid-word
-          let trimmed = metaDesc.slice(0, 152);
-          const lastSpace = trimmed.lastIndexOf(" ");
-          if (lastSpace > 100) trimmed = trimmed.slice(0, lastSpace);
-          metaDesc = trimmed.trimEnd();
-          // Remove any trailing punctuation that looks odd as the last character
-          metaDesc = metaDesc.replace(/[,;:\-–—]$/, "").trimEnd();
-        }
-
-        // 4b-iii: Sanity-check — flag if still over 155 (should never happen after the trim above)
+        // Sanity-check — flag if still over 155 (should never happen after the logic above)
         if (metaDesc.length > 155) {
           console.warn(`[SEO] Meta description for "${publishInput.title}" is ${metaDesc.length} chars after trim — review recommended.`);
         }

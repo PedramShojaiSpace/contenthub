@@ -178,16 +178,16 @@ Rules:
 - Direct, confident, no filler words
 - No hashtags
 - No emojis
-- Do NOT include the URL in your response — it will be appended automatically
+- Do NOT include the URL in your response — Buffer attaches it as a link card automatically
 - End with a period or natural sentence ending`;
 
 export async function generateXVersion(
   linkedInCommentary: string,
-  articleUrl: string
+  _articleUrl?: string // kept for backward-compat call sites; URL is NOT appended to X posts
 ): Promise<string> {
-  // Twitter wraps ALL URLs to exactly 23 chars (t.co), regardless of raw length.
-  // So the text budget is: 280 - 23 (t.co URL) - 2 ("\n\n" separator) = 255 chars.
-  // We ask the LLM for ≤250 to leave a 5-char safety buffer.
+  // X posts do not include the URL in the body — Buffer attaches it as a link card.
+  // Full 280-char budget is available for the tweet text.
+  // We target ≤250 to leave a comfortable safety buffer.
   const TEXT_BUDGET = 250;
   const userPrompt = `Here is a LinkedIn post I wrote. Condense it into a single punchy X/Twitter post of ≤${TEXT_BUDGET} characters that captures the sharpest insight.
 
@@ -212,7 +212,9 @@ Write ONLY the tweet text (no URL, no hashtags). Maximum ${TEXT_BUDGET} characte
     tweet = tweet.slice(0, TEXT_BUDGET - 1).replace(/\s+\S*$/, "") + "…";
   }
 
-  // Append the article URL so the post always links back to the source.
-  // Twitter counts the t.co-wrapped URL as 23 chars, so total ≤ 250 + 2 + 23 = 275 chars.
-  return `${tweet}\n\n${articleUrl}`;
+  // Do NOT append the URL to X posts.
+  // Buffer automatically attaches the article as a link card (with image, title, domain),
+  // so adding the raw URL to the tweet body wastes ~23 t.co chars and can push the post
+  // over the 280-char limit. LinkedIn posts keep the URL; X posts do not.
+  return tweet;
 }

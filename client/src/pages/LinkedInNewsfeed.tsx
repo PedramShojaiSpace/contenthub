@@ -609,6 +609,83 @@ function ArticleDetailDialog({
                           </button>
                         </div>
                       )}
+
+                      {/* Phone-frame X post preview */}
+                      {rawXText && (
+                        <div className="mt-3">
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5 font-medium">Preview — how it will look on X</p>
+                          {/* Phone frame */}
+                          <div className="mx-auto w-[260px] rounded-[2rem] border-2 border-slate-300 bg-slate-100 shadow-md overflow-hidden">
+                            {/* Status bar */}
+                            <div className="bg-slate-800 px-4 py-1.5 flex justify-between items-center">
+                              <span className="text-[9px] text-slate-300 font-medium">9:41</span>
+                              <div className="flex gap-1">
+                                <div className="w-3 h-1.5 rounded-sm bg-slate-400" />
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                              </div>
+                            </div>
+                            {/* X app chrome */}
+                            <div className="bg-black px-3 py-2 flex items-center gap-2 border-b border-slate-800">
+                              <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center">
+                                <Twitter size={10} className="text-white" />
+                              </div>
+                              <span className="text-[10px] text-slate-300 font-semibold">X</span>
+                            </div>
+                            {/* Tweet card */}
+                            <div className="bg-black p-3">
+                              {/* Author row */}
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center shrink-0">
+                                  <span className="text-[9px] text-white font-bold">PS</span>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-white font-semibold leading-none">Dr. Pedram Shojai</p>
+                                  <p className="text-[9px] text-slate-500 leading-none mt-0.5">@PedramShojai</p>
+                                </div>
+                              </div>
+                              {/* Tweet text — URLs rendered in sky-blue, rest in white */}
+                              <p className="text-[11px] text-white leading-relaxed whitespace-pre-wrap break-words">
+                                {(() => {
+                                  const urlRegex = /(https?:\/\/\S+)/g;
+                                  const parts = rawXText.split(urlRegex);
+                                  return parts.map((part, i) =>
+                                    urlRegex.test(part) ? (
+                                      <span key={i} className="text-sky-400">
+                                        {part.length > 30 ? part.slice(0, 27) + "…" : part}
+                                      </span>
+                                    ) : (
+                                      <span key={i}>{part}</span>
+                                    )
+                                  );
+                                })()}
+                              </p>
+                              {/* Link card */}
+                              {article.url && (
+                                <div className="mt-2 rounded-xl border border-slate-700 overflow-hidden">
+                                  {article.imageUrl && (
+                                    <img
+                                      src={article.imageUrl}
+                                      alt=""
+                                      className="w-full h-16 object-cover"
+                                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                    />
+                                  )}
+                                  <div className="px-2 py-1.5 bg-slate-900">
+                                    <p className="text-[9px] text-slate-400 truncate">{(() => { try { return new URL(article.url).hostname.replace("www.", ""); } catch { return article.url; } })()}</p>
+                                    <p className="text-[10px] text-white font-medium leading-tight line-clamp-2">{article.title}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {/* Engagement row */}
+                              <div className="flex items-center gap-4 mt-2 pt-2 border-t border-slate-800">
+                                {["Reply", "Repost", "Like", "Bookmark"].map((a) => (
+                                  <span key={a} className="text-[9px] text-slate-600">{a}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

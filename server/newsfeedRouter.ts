@@ -422,12 +422,12 @@ export const newsfeedRouter = router({
 
       if (!article) throw new Error("Article not found");
 
-      // Extract the text portion (strip trailing URL if present)
+      // Strip any trailing URL that may have been appended by an older version of the code.
+      // New X posts no longer include the URL in the body (Buffer attaches it as a link card).
       const urlPattern = /\n\nhttps?:\/\/\S+$/;
       const textOnly = input.currentText.replace(urlPattern, "").trim();
-      const articleUrl = article.url;
 
-      // Re-condense with a strict 220-char budget (leaves plenty of room for URL)
+      // Re-condense with a strict 220-char budget
       const STRICT_BUDGET = 220;
       const { invokeLLM } = await import("./_core/llm");
       const response = await invokeLLM({
@@ -452,7 +452,8 @@ export const newsfeedRouter = router({
         shortened = shortened.slice(0, STRICT_BUDGET - 1).replace(/\s+\S*$/, "") + "…";
       }
 
-      const xVersion = `${shortened}\n\n${articleUrl}`;
+      // X posts do not include the URL in the body — Buffer attaches it as a link card.
+      const xVersion = shortened;
 
       // Persist the shortened version
       await database

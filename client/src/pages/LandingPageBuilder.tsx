@@ -299,7 +299,7 @@ export default function LandingPageBuilder() {
   // Fetch the source landing page copy when opened with ?fromLpId= (from LandingPageGenerator)
   const fromLpQuery = trpc.landingPages.getForCHBuilder.useQuery(
     { id: fromLpId! },
-    { enabled: fromLpId !== null && !fromLpPopulated }
+    { enabled: fromLpId !== null && !fromLpPopulated, retry: 2 }
   );
 
   useEffect(() => {
@@ -309,6 +309,7 @@ export default function LandingPageBuilder() {
   }, [previewQuery.data]);
 
   // Auto-populate form from URL params (campaign, template) — runs once on mount
+  // Also auto-open builder if fromLpId is present (even before data loads)
   useEffect(() => {
     if (urlCampaign || urlTemplate) {
       setForm(f => ({
@@ -317,6 +318,11 @@ export default function LandingPageBuilder() {
         ...(urlTemplate ? { template: urlTemplate } : {}),
       }));
     }
+    // If navigated here with a fromLpId, open the builder immediately so the user
+    // isn't stuck on the list view while the query loads.
+    if (fromLpId !== null) {
+      setView("builder");
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -324,8 +330,15 @@ export default function LandingPageBuilder() {
   useEffect(() => {
     if (fromLpQuery.data && !fromLpPopulated) {
       const src = fromLpQuery.data;
+      // Build a slug from the title
+      const autoSlug = src.title
+        ? src.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").substring(0, 60)
+        : "";
       setForm(f => ({
         ...f,
+        title: src.title || f.title,
+        // Only set slug if the form doesn't already have one
+        slug: f.slug || autoSlug,
         headline: src.headline || f.headline,
         subheadline: src.subheadline || f.subheadline,
         bodyCopy: src.bodyCopy || f.bodyCopy,
@@ -334,11 +347,17 @@ export default function LandingPageBuilder() {
         ...(urlTemplate ? { template: urlTemplate } : {}),
       }));
       setFromLpPopulated(true);
-      // Open the builder automatically
-      setView("builder");
       toast.success("Copy imported from Landing Page Generator — review and publish when ready!");
     }
   }, [fromLpQuery.data, fromLpPopulated]);
+
+  // Handle fromLpId query error — show toast and stay in builder
+  useEffect(() => {
+    if (fromLpQuery.error && !fromLpPopulated && fromLpId !== null) {
+      toast.error("Could not load source page copy. You can still fill in the form manually.");
+      setFromLpPopulated(true); // prevent re-triggering
+    }
+  }, [fromLpQuery.error, fromLpPopulated, fromLpId]);
 
   // ── Form helpers ──────────────────────────────────────────────────────────
 

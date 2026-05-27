@@ -327,8 +327,8 @@ FORMATTING RULES (YOAST READABILITY — NON-NEGOTIABLE):
 - Use ### for H3 sub-headings within the framework steps
 - SUBHEADING DISTRIBUTION: Every block of text MUST have an H2 or H3 heading within every 300 words. If a section runs longer than 300 words, split it with an H3 sub-heading. No section of prose may exceed 300 words without a heading break.
 - PARAGRAPH LENGTH: Every paragraph must be 150 words or fewer (3-5 sentences max). If a paragraph exceeds 150 words, split it into two. This is a hard limit — Yoast flags paragraphs over 150 words as a readability failure.
-- TRANSITION WORDS: At least 30% of sentences must begin with or contain a transition word or phrase. Use: However, Therefore, As a result, In addition, Furthermore, Meanwhile, For example, In contrast, Consequently, First, Second, Third, Finally, In fact, Specifically, Most importantly, In other words, That said, Even so, Because of this, At the same time, To be clear, In practice, Over time, In short. Vary them — do NOT repeat the same transition word more than twice in any section.
-- CONSECUTIVE SENTENCE STARTS: Never begin more than 2 consecutive sentences with the same word.
+- TRANSITION WORDS (YOAST HARD REQUIREMENT — ≥30%): At least 30% of ALL sentences in the article must begin with or contain a transition word or phrase. Yoast counts every sentence in the body — aim for 35% to give yourself a buffer. REQUIRED TRANSITION WORDS (use all of these throughout the article, distributed evenly): However, Therefore, As a result, In addition, Furthermore, Meanwhile, For example, In contrast, Consequently, First, Second, Third, Finally, In fact, Specifically, Most importantly, In other words, That said, Even so, Because of this, At the same time, To be clear, In practice, Over time, In short, Additionally, Moreover, Notably, Instead, Still, Yet, Thus, Hence, Indeed, Otherwise, Likewise, Similarly, Afterward, Previously, Ultimately, Essentially, Particularly, Importantly, Fortunately, Unfortunately, Surprisingly. RULE: Every paragraph of 3+ sentences must contain at least one transition word. Never write 3 consecutive sentences without a transition. After writing the full article, count: (number of sentences with a transition) ÷ (total sentences) — if below 30%, add transitions before outputting.
+- CONSECUTIVE SENTENCE STARTS (YOAST HARD REQUIREMENT): NEVER begin 3 or more consecutive sentences with the same word. This is a hard red flag in Yoast. After writing each paragraph, scan the first word of every sentence. If any word appears 3+ times in a row as the sentence opener, rewrite at least one of those sentences to start differently. Common offenders: 'The', 'This', 'It', 'You', 'He', 'She', 'They', 'Your', 'When', 'If'. Before outputting, do a final scan of the entire article for any run of 3+ consecutive sentences starting with the same word — fix every instance.
 - Use **bold** for key terms or critical insights (2-4 per section maximum)
 - Use > blockquote for ONE powerful pull-quote per article only — do NOT use a TL;DR blockquote
 - No bullet lists in the main body — write in flowing prose
@@ -347,8 +347,8 @@ QUALITY GATE (self-check before outputting):
 - YOAST SEO CHECK #7: Is the focus keyword a specific long-tail phrase (not a generic head term)?
 - YOAST READABILITY CHECK: Is every prose block under 300 words before the next heading?
 - YOAST READABILITY CHECK: Is every paragraph under 150 words?
-- YOAST READABILITY CHECK: Do at least 30% of sentences use a transition word?
-- YOAST READABILITY CHECK: Are there any runs of 3+ consecutive sentences starting with the same word?
+- YOAST READABILITY CHECK — TRANSITION WORDS (CRITICAL): Count every sentence in the article. Count how many contain a transition word from the required list. Divide: transitions ÷ total sentences. If below 30%, you MUST add more transitions before outputting. Target 35% to pass comfortably. Do NOT skip this count.
+- YOAST READABILITY CHECK — CONSECUTIVE SENTENCE STARTS (CRITICAL): Scan every paragraph. Find the first word of each sentence. If any word starts 3 or more consecutive sentences in a row, rewrite one of those sentences NOW before outputting. This is a hard red flag. Common offenders to check: 'The', 'This', 'It', 'You', 'Your', 'When', 'If', 'He', 'She', 'They'. Do NOT skip this scan.
 - Is there a named framework with 3-7 steps?
 - Is the primary Emotional Driver woven throughout (not bolted on)?
 - Is there proof (mechanism, study, case, process walkthrough)?
@@ -4656,6 +4656,135 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         }
 
         return { fixed, message: `Fixed: ${fixed.join(", ")}` };
+      }),
+
+    // ── Fix Yoast Issues (one-click button for live WP posts) ──────────────────────────────────────
+    // Re-runs Step 2c (H2 keyphrase injection) and Step 4b (meta description enforcement)
+    // on the LIVE WordPress post without regenerating the full article.
+    // Fetches the current HTML from WordPress, applies both fixes, and writes back.
+    fixYoastIssues: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        wpPostId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { fetchSingleWpPost } = await import("./wordpress");
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+
+        // Use the focus keyword from DB (most authoritative source)
+        const focusKw = item.focusKeyword ?? null;
+
+        // Fetch the live HTML from WordPress
+        const livePost = await fetchSingleWpPost(input.wpPostId);
+        let wpHtmlBody = livePost.content;
+
+        // Determine meta description: prefer DB value, fall back to live WP value
+        let metaDesc = item.yoastMetaDescription ?? livePost.metaDescription ?? "";
+        let seoTitle = item.yoastSeoTitle ?? livePost.seoTitle ?? `${item.title} | The Urban Monk`;
+
+        const fixed: string[] = [];
+
+        // ── Re-run Step 2c: H2/H3 keyphrase injection ────────────────────────────
+        if (focusKw && wpHtmlBody) {
+          const kw = focusKw.toLowerCase();
+          const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
+          const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>((?:[\s\S])*?)<\/h[23]>/gi;
+          const htmlHeadings = Array.from(wpHtmlBody.matchAll(htmlHeadingRegex));
+          const htmlH2s = htmlHeadings.filter((m) => m[1].toLowerCase() === "h2");
+          const stripTags = (s: string) => s.replace(/<[^>]+>/g, "").trim();
+          const keyphraseInSubheading = htmlHeadings.some((m) => kwRegex.test(stripTags(m[3])));
+
+          if (!keyphraseInSubheading && (htmlH2s.length > 0 || htmlHeadings.length > 0)) {
+            const targetIndex = htmlH2s.length >= 3 ? 2 : htmlH2s.length >= 2 ? 1 : 0;
+            const targetMatch = htmlH2s[targetIndex] ?? htmlHeadings[0];
+            if (targetMatch) {
+              const originalTag = targetMatch[0];
+              const tagName = targetMatch[1];
+              const tagAttrs = targetMatch[2] ?? "";
+              const headingText = stripTags(targetMatch[3]);
+              const kwCapitalised = focusKw.charAt(0).toUpperCase() + focusKw.slice(1);
+              const candidateText = `${kwCapitalised}: ${headingText}`;
+              const finalText = candidateText.length <= 80 ? candidateText : kwCapitalised;
+              const finalTag = `<${tagName}${tagAttrs}>${finalText}</${tagName}>`;
+              const escapedOriginal = originalTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              wpHtmlBody = wpHtmlBody.replace(new RegExp(escapedOriginal), finalTag);
+              fixed.push(`h2_keyphrase_injected: "${headingText}" → "${finalText}"`);
+            }
+          } else if (keyphraseInSubheading) {
+            fixed.push("h2_already_ok");
+          }
+        }
+
+        // ── Re-run Step 4b: meta description enforcement ─────────────────────────
+        const trimToWordBoundary = (s: string, maxLen: number): string => {
+          if (s.length <= maxLen) return s;
+          let t = s.slice(0, maxLen);
+          const sp = t.lastIndexOf(" ");
+          if (sp > 0) t = t.slice(0, sp);
+          return t.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+        };
+
+        if (focusKw && metaDesc) {
+          const kwLower = focusKw.toLowerCase();
+          const hasKw = metaDesc.toLowerCase().includes(kwLower);
+          if (!hasKw) {
+            const prefix = `${focusKw}: `;
+            const maxBodyLen = 148 - prefix.length;
+            const trimmedBody = trimToWordBoundary(metaDesc, maxBodyLen);
+            metaDesc = (prefix + trimmedBody).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+            fixed.push("meta_desc_keyphrase_prepended");
+          } else {
+            metaDesc = trimToWordBoundary(metaDesc, 148);
+            if (metaDesc !== (item.yoastMetaDescription ?? "")) fixed.push("meta_desc_trimmed");
+          }
+        } else if (metaDesc) {
+          metaDesc = trimToWordBoundary(metaDesc, 148);
+        }
+        // Hard safety net
+        if (metaDesc.length > 155) {
+          const sp = metaDesc.slice(0, 148).lastIndexOf(" ");
+          metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 148)).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+          fixed.push("meta_desc_force_truncated");
+        }
+
+        // ── Push both fixes to WordPress ─────────────────────────────────────────
+        await updateWpPostContent(input.wpPostId, wpHtmlBody);
+        await updateWpPostYoast({
+          wpPostId: input.wpPostId,
+          seoTitle: seoTitle || undefined,
+          metaDescription: metaDesc || undefined,
+          focusKeyword: focusKw ?? undefined,
+        });
+
+        // ── Persist updated meta desc to DB ──────────────────────────────────────
+        await updateContentItem(input.contentItemId, {
+          yoastMetaDescription: metaDesc,
+        });
+
+        // ── Refresh Yoast score after a short delay ───────────────────────────────
+        setTimeout(async () => {
+          try {
+            const { getWpYoastScore } = await import("./wordpress");
+            const { seoScore } = await getWpYoastScore(input.wpPostId);
+            if (seoScore) {
+              await updateContentItem(input.contentItemId, {
+                yoastScore: seoScore,
+                yoastScoreFetchedAt: Date.now(),
+              });
+            }
+          } catch { /* non-fatal */ }
+        }, 5_000);
+
+        return {
+          success: true,
+          fixed,
+          message: fixed.filter(f => !f.endsWith("_already_ok")).length === 0
+            ? "No issues found — H2 keyphrase and meta description are already correct"
+            : `Fixed: ${fixed.filter(f => !f.endsWith("_already_ok")).join(", ")}`,
+          metaDesc,
+        };
       }),
 
   }),

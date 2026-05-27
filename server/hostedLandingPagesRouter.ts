@@ -87,7 +87,10 @@ const CAMPAIGN_CONFIG: Record<string, { label: string; accentColor: string; desc
 
 // ── HTML renderer ─────────────────────────────────────────────────────────────
 
+const DEFAULT_GA4_ID = "G-166813991";
+
 function renderTrackingScripts(fbPixelId: string, ga4Id?: string | null, customHead?: string | null): string {
+  const resolvedGa4Id = ga4Id || DEFAULT_GA4_ID;
   const fbPixel = `
 <!-- Meta Pixel Code -->
 <script>
@@ -107,15 +110,15 @@ src="https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1"
 /></noscript>
 <!-- End Meta Pixel Code -->`;
 
-  const ga4Script = ga4Id ? `
+  const ga4Script = `
 <!-- Google Analytics GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=${ga4Id}"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=${resolvedGa4Id}"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', '${ga4Id}');
-</script>` : "";
+  gtag('config', '${resolvedGa4Id}');
+</script>`;
 
   return fbPixel + ga4Script + (customHead || "");
 }

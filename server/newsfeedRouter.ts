@@ -147,6 +147,38 @@ export const newsfeedRouter = router({
         notes: `Source: ${article.source}\nURL: ${article.url}\nTopic: ${article.topic}`,
       });
       const contentItemId = (inserted as any).insertId as number;
+
+      // ── Create X/Twitter Kanban card when includeX is checked ──────────────
+      // Generate (or reuse cached) X version and insert a separate contentItem
+      // with platform="x" so it appears in the Command Center Kanban immediately.
+      let xContentItemId: number | null = null;
+      if (input.includeX) {
+        try {
+          let xText = article.xVersion;
+          if (!xText) {
+            const { generateXVersion } = await import("./newsfeedCommentary");
+            xText = await generateXVersion(article.commentary, article.url);
+            // Cache the generated X version on the article row
+            await database
+              .update(newsfeedArticles)
+              .set({ xVersion: xText })
+              .where(eq(newsfeedArticles.id, input.id));
+          }
+          const [xInserted] = await database.insert(contentItems).values({
+            title: article.title.slice(0, 255),
+            platform: "x",
+            status: "approved",
+            textContent: xText,
+            rawIdea: `[Newsfeed/X] ${article.source}: ${article.url}`,
+            notes: `Source: ${article.source}\nURL: ${article.url}\nTopic: ${article.topic}\nLinkedIn card: #${contentItemId}`,
+          });
+          xContentItemId = (xInserted as any).insertId as number;
+        } catch (err) {
+          // Non-fatal — LinkedIn card still created; log the X failure
+          console.error("[approveArticle] Failed to create X Kanban card:", err);
+        }
+      }
+
       await database
         .update(newsfeedArticles)
         .set({
@@ -156,7 +188,7 @@ export const newsfeedRouter = router({
           includeX: input.includeX, // store so Approved tab can pre-fill the toggle
         })
         .where(eq(newsfeedArticles.id, input.id));
-      return { contentItemId };
+      return { contentItemId, xContentItemId };
     }),
 
   // ── Dismiss article ────────────────────────────────────────────────────────

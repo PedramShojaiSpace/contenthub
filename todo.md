@@ -3454,3 +3454,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Bulk fix: H2 keyphrase injection + meta description enforcement for all red posts
 - [x] Per-post results list with fixed/already_ok/error status badges
 - [x] Invalidate scoreboard query after fix completes
+
+## Viral Video Generator Fixes
+
+- [x] Auto-save to Command Center/Kanban on script generation (single + batch)
+- [x] Teleprompter view: hooks as separate video segments, body as single video, CTAs as separate videos
+- [x] Batch teleprompter panel: all hooks + shared body + shared CTA with recording guide

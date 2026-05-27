@@ -15,6 +15,7 @@ import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { wrapLLM } from "./llmUtils";
 import { safeParseJson } from "./fetchUtils";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { landingPages } from "../drizzle/schema";
@@ -647,4 +648,59 @@ Rules:
       return { valid: false, reason: err instanceof Error ? err.message : String(err) };
     }
   }),
+
+  // Parse a Gamma landing page's copyBody Markdown into structured fields for the CH builder
+  getForCHBuilder: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const page = await getLandingPage(input.id);
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const copy = page.copyBody ?? "";
+      const lines = copy.split("\n").map(l => l.trim()).filter(Boolean);
+
+      // Extract headline — first # heading, strip leading #
+      const headlineLine = lines.find(l => l.startsWith("# "));
+      const headline = headlineLine ? headlineLine.replace(/^#+\s*/, "") : "";
+
+      // Extract subheadline — first ## heading or first bold sentence
+      const subheadlineLine = lines.find(l => l.startsWith("## "));
+      const boldLine = lines.find(l => /^\*\*[^*]+\*\*/.test(l));
+      const subheadline = subheadlineLine
+        ? subheadlineLine.replace(/^#+\s*/, "")
+        : boldLine
+          ? boldLine.replace(/\*\*/g, "")
+          : "";
+
+      // Body copy — everything after the first ## heading, joined
+      const firstH2Idx = lines.findIndex(l => l.startsWith("## "));
+      const bodyCopy = firstH2Idx >= 0
+        ? lines.slice(firstH2Idx).join("\n")
+        : copy;
+
+      // Infer campaign from offer
+      const offerToCampaign: Record<string, string> = {
+        lights_on_webinar: "lo",
+        upstream_bundle: "lo",
+        upstream_course: "lo",
+        explorer_tier: "lo",
+        deep_sleep_webinar: "sleep",
+        kbmo_testing: "gut",
+        gateway_health: "gut",
+        homesick_screening: "webinar",
+        interconnected_screening: "webinar",
+      };
+      const campaign = offerToCampaign[page.offer] ?? "lo";
+
+      return {
+        id: page.id,
+        title: page.title ?? "",
+        headline,
+        subheadline,
+        bodyCopy,
+        campaign,
+        offer: page.offer,
+        personaName: page.personaName ?? "",
+      };
+    }),
 });

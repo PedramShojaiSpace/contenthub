@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Campaign = "lo" | "gut" | "sleep";
+type Campaign = "lo" | "gut" | "sleep" | "webinar";
 type Template = "optin" | "vsl" | "sales";
 type Status = "draft" | "published" | "archived";
 
@@ -71,6 +72,7 @@ const CAMPAIGN_META: Record<Campaign, { label: string; color: string; bg: string
   lo: { label: "Lights On", color: "text-amber-600", bg: "bg-amber-50 border-amber-200", description: "Energy, focus & cellular vitality" },
   gut: { label: "Gut Health", color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200", description: "Microbiome, digestion & gut-brain axis" },
   sleep: { label: "Sleep & Recovery", color: "text-blue-600", bg: "bg-blue-50 border-blue-200", description: "Deep sleep, recovery & circadian rhythm" },
+  webinar: { label: "Webinar", color: "text-violet-600", bg: "bg-violet-50 border-violet-200", description: "Live & on-demand webinar registration" },
 };
 
 const TEMPLATE_META: Record<Template, { label: string; icon: React.ReactNode; description: string }> = {
@@ -126,10 +128,17 @@ function pageUrl(campaign: Campaign, slug: string): string {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function LandingPageBuilder() {
+  const search = useSearch();
+  const searchParams = new URLSearchParams(search);
+  const fromLpId = searchParams.get("fromLpId") ? Number(searchParams.get("fromLpId")) : null;
+  const urlCampaign = searchParams.get("campaign") as Campaign | null;
+  const urlTemplate = searchParams.get("template") as Template | null;
+
   const [view, setView] = useState<"list" | "builder" | "preview">("list");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [fromLpPopulated, setFromLpPopulated] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     hero: true,
     optin: true,
@@ -209,11 +218,49 @@ export default function LandingPageBuilder() {
     { enabled: view === "preview" && editingId !== null }
   );
 
+  // Fetch the source landing page copy when opened with ?fromLpId= (from LandingPageGenerator)
+  const fromLpQuery = trpc.landingPages.getForCHBuilder.useQuery(
+    { id: fromLpId! },
+    { enabled: fromLpId !== null && !fromLpPopulated }
+  );
+
   useEffect(() => {
     if (previewQuery.data?.html) {
       setPreviewHtml(previewQuery.data.html);
     }
   }, [previewQuery.data]);
+
+  // Auto-populate form from URL params (campaign, template) — runs once on mount
+  useEffect(() => {
+    if (urlCampaign || urlTemplate) {
+      setForm(f => ({
+        ...f,
+        ...(urlCampaign ? { campaign: urlCampaign } : {}),
+        ...(urlTemplate ? { template: urlTemplate } : {}),
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-populate form from fromLpId source page (one-time, from LandingPageGenerator)
+  useEffect(() => {
+    if (fromLpQuery.data && !fromLpPopulated) {
+      const src = fromLpQuery.data;
+      setForm(f => ({
+        ...f,
+        headline: src.headline || f.headline,
+        subheadline: src.subheadline || f.subheadline,
+        bodyCopy: src.bodyCopy || f.bodyCopy,
+        // Use inferred campaign from the offer type unless URL param overrides
+        campaign: (urlCampaign ?? src.campaign ?? f.campaign) as Campaign,
+        ...(urlTemplate ? { template: urlTemplate } : {}),
+      }));
+      setFromLpPopulated(true);
+      // Open the builder automatically
+      setView("builder");
+      toast.success("Copy imported from Landing Page Generator — review and publish when ready!");
+    }
+  }, [fromLpQuery.data, fromLpPopulated]);
 
   // ── Form helpers ──────────────────────────────────────────────────────────
 
@@ -829,23 +876,14 @@ export default function LandingPageBuilder() {
           })}
         </div>
 
-        {/* CNAME setup notice */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <Globe className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+        {/* Domain live confirmation */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-blue-900">CNAME Setup Required</p>
-              <p className="text-xs text-blue-700 mt-1">
-                To make <code>ch.theurbanmonk.com</code> work, add this DNS record with your domain registrar:
-              </p>
-              <div className="mt-2 bg-white border border-blue-200 rounded p-2 font-mono text-xs text-blue-900 space-y-1">
-                <div><span className="text-blue-500">Type:</span> CNAME</div>
-                <div><span className="text-blue-500">Name:</span> ch</div>
-                <div><span className="text-blue-500">Value:</span> content.theurbanmonk.com</div>
-                <div><span className="text-blue-500">TTL:</span> 3600 (or Auto)</div>
-              </div>
-              <p className="text-xs text-blue-600 mt-2">
-                Then go to <strong>Settings → Domains</strong> in this app and add <code>ch.theurbanmonk.com</code> as a custom domain.
+              <p className="text-sm font-medium text-green-900">Domain Active</p>
+              <p className="text-xs text-green-700 mt-0.5">
+                Pages publish instantly to <a href="https://ch.theurbanmonk.com" target="_blank" rel="noopener noreferrer" className="font-mono underline hover:text-green-900">ch.theurbanmonk.com</a> with FB Pixel + GA4 baked in.
               </p>
             </div>
           </div>

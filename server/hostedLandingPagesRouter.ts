@@ -15,7 +15,7 @@ import { marked } from "marked";
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
-const campaignEnum = z.enum(["lo", "gut", "sleep"]);
+const campaignEnum = z.enum(["lo", "gut", "sleep", "webinar"]);
 const templateEnum = z.enum(["optin", "vsl", "sales"]);
 
 const testimonialSchema = z.object({
@@ -493,6 +493,21 @@ export const hostedLandingPagesRouter = router({
     return db.select().from(hostedLandingPages).orderBy(desc(hostedLandingPages.createdAt));
   }),
 
+  // Get one page by ID — alias used by CH builder's fromLpId auto-populate
+  get: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [page] = await db
+        .select()
+        .from(hostedLandingPages)
+        .where(eq(hostedLandingPages.id, input.id))
+        .limit(1);
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      return page;
+    }),
+
   // Get one page by ID (admin)
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -678,7 +693,7 @@ export const hostedLandingPagesRouter = router({
   // AI copy generator — drafts headline, subheadline, body copy, CTA, and opt-in text from a single prompt
   generateCopy: protectedProcedure
     .input(z.object({
-      campaign: z.enum(["lo", "gut", "sleep"]),
+      campaign: z.enum(["lo", "gut", "sleep", "webinar"]),
       template: z.enum(["optin", "vsl", "sales"]),
       prompt: z.string().min(10).max(500),
     }))

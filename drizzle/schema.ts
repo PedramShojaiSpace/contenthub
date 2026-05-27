@@ -1611,7 +1611,7 @@ export type InsertReadabilityHistory = typeof readabilityHistory.$inferInsert;
 // Template: optin | vsl | sales
 // status: draft | published | archived
 
-export const hostedLpCampaignEnum = mysqlEnum("hlp_campaign", ["lo", "gut", "sleep"]);
+export const hostedLpCampaignEnum = mysqlEnum("hlp_campaign", ["lo", "gut", "sleep", "webinar"]);
 export const hostedLpTemplateEnum = mysqlEnum("hlp_template", ["optin", "vsl", "sales"]);
 export const hostedLpStatusEnum = mysqlEnum("hlp_status", ["draft", "published", "archived"]);
 

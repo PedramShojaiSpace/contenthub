@@ -72,25 +72,47 @@ const topNavItems = [
   { icon: LayoutDashboard, label: "Command Center", path: "/" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
   { icon: Newspaper, label: "LinkedIn Newsfeed", path: "/newsfeed" },
-  { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
-  { icon: Video, label: "Video Production", path: "/video-production" },
-  { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
-  { icon: MessageSquare, label: "ManyChat Wizard", path: "/manychat-wizard" },
-  { icon: BookOpen, label: "Book Library", path: "/book-library" },
   { icon: FileText, label: "E-Book Generator", path: "/ebook-generator" },
-  { icon: Film, label: "Script Library", path: "/scripts" },
-  { icon: Image, label: "Asset Library", path: "/assets" },
-  { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
   { icon: Library, label: "Media Vault", path: "/media-vault" },
   { icon: Video, label: "Create Webinar", path: "/webinar" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
+  { icon: Target, label: "Keyword Strategy", path: "/keyword-strategy" },
+];
+
+// Libraries sub-items
+const librariesItems = [
+  { icon: Film, label: "Script Library", path: "/scripts" },
+  { icon: BookOpen, label: "Book Library", path: "/book-library" },
+  { icon: Image, label: "Asset Library", path: "/assets" },
+];
+
+const librariesPaths = new Set(librariesItems.map((i) => i.path));
+
+// SEO sub-items
+const seoItems = [
   { icon: Trophy, label: "Content Scoreboard", path: "/scoreboard" },
   { icon: Search, label: "SEO Dashboard", path: "/seo" },
-  { icon: TrendingUp, label: "Competitive Intel", path: "/competitive-intelligence" },
-  { icon: Target, label: "Keyword Strategy", path: "/keyword-strategy" },
+];
+
+const seoPaths = new Set(seoItems.map((i) => i.path));
+
+// Landing Pages sub-items
+const landingPagesItems = [
+  { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
   { icon: Layout, label: "CH Landing Pages", path: "/ch-pages" },
 ];
+
+const landingPagesPaths = new Set(landingPagesItems.map((i) => i.path));
+
+// Video Production sub-items
+const videoItems = [
+  { icon: Video, label: "Video Production", path: "/video-production" },
+  { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
+  { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
+];
+
+const videoPaths = new Set(videoItems.map((i) => i.path));
 
 // Strategy sub-items (grouped under collapsible parent)
 const strategyItems = [
@@ -103,6 +125,8 @@ const strategyPaths = new Set(strategyItems.map((i) => i.path));
 
 // Intelligence sub-items (grouped under collapsible parent)
 const intelligenceItems = [
+  { icon: TrendingUp, label: "Competitive Intel", path: "/competitive-intelligence" },
+  { icon: MessageSquare, label: "ManyChat Wizard", path: "/manychat-wizard" },
   { icon: Hash, label: "Reddit Intel", path: "/reddit-intelligence" },
   { icon: FlaskConical, label: "Research", path: "/research" },
   { icon: ClipboardList, label: "Typeform", path: "/typeform" },
@@ -211,7 +235,6 @@ function DashboardLayoutContent({
   const isIntelligenceActive = intelligencePaths.has(location);
   const [intelligenceOpen, setIntelligenceOpen] = useState(isIntelligenceActive);
 
-  // Keep group open when navigating to an intelligence sub-route
   useEffect(() => {
     if (isIntelligenceActive) setIntelligenceOpen(true);
   }, [isIntelligenceActive]);
@@ -224,10 +247,34 @@ function DashboardLayoutContent({
     if (isStrategyActive) setStrategyOpen(true);
   }, [isStrategyActive]);
 
+  // Libraries group
+  const isLibrariesActive = librariesPaths.has(location);
+  const [librariesOpen, setLibrariesOpen] = useState(isLibrariesActive);
+  useEffect(() => { if (isLibrariesActive) setLibrariesOpen(true); }, [isLibrariesActive]);
+
+  // SEO group
+  const isSeoActive = seoPaths.has(location);
+  const [seoOpen, setSeoOpen] = useState(isSeoActive);
+  useEffect(() => { if (isSeoActive) setSeoOpen(true); }, [isSeoActive]);
+
+  // Landing Pages group
+  const isLandingPagesActive = landingPagesPaths.has(location);
+  const [landingPagesOpen, setLandingPagesOpen] = useState(isLandingPagesActive);
+  useEffect(() => { if (isLandingPagesActive) setLandingPagesOpen(true); }, [isLandingPagesActive]);
+
+  // Video Production group
+  const isVideoActive = videoPaths.has(location);
+  const [videoOpen, setVideoOpen] = useState(isVideoActive);
+  useEffect(() => { if (isVideoActive) setVideoOpen(true); }, [isVideoActive]);
+
   const activeLabel =
     topNavItems.find((i) => i.path === location)?.label ??
     intelligenceItems.find((i) => i.path === location)?.label ??
     strategyItems.find((i) => i.path === location)?.label ??
+    librariesItems.find((i) => i.path === location)?.label ??
+    seoItems.find((i) => i.path === location)?.label ??
+    landingPagesItems.find((i) => i.path === location)?.label ??
+    videoItems.find((i) => i.path === location)?.label ??
     "Menu";
 
   useEffect(() => {
@@ -407,6 +454,187 @@ function DashboardLayoutContent({
                   </div>
                 )}
               </SidebarMenuItem>
+
+              {/* Libraries Group — collapsible */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isLibrariesActive}
+                  onClick={() => {
+                    if (isCollapsed) {
+                      setLocation(librariesItems[0].path);
+                    } else {
+                      setLibrariesOpen((prev) => !prev);
+                    }
+                  }}
+                  tooltip="Libraries"
+                  className={`h-10 transition-all font-normal ${isLibrariesActive ? "text-primary" : ""}`}
+                >
+                  <BookOpen className={`h-4 w-4 ${isLibrariesActive ? "text-primary" : ""}`} />
+                  <span className="flex-1">Libraries</span>
+                  {!isCollapsed && (
+                    librariesOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </SidebarMenuButton>
+                {librariesOpen && !isCollapsed && (
+                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+                    {librariesItems.map((sub) => {
+                      const isActive = location === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          onClick={() => setLocation(sub.path)}
+                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                            ${isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            }`}
+                        >
+                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenuItem>
+
+              {/* SEO Group — collapsible */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isSeoActive}
+                  onClick={() => {
+                    if (isCollapsed) {
+                      setLocation(seoItems[0].path);
+                    } else {
+                      setSeoOpen((prev) => !prev);
+                    }
+                  }}
+                  tooltip="SEO"
+                  className={`h-10 transition-all font-normal ${isSeoActive ? "text-primary" : ""}`}
+                >
+                  <Search className={`h-4 w-4 ${isSeoActive ? "text-primary" : ""}`} />
+                  <span className="flex-1">SEO</span>
+                  {!isCollapsed && (
+                    seoOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </SidebarMenuButton>
+                {seoOpen && !isCollapsed && (
+                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+                    {seoItems.map((sub) => {
+                      const isActive = location === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          onClick={() => setLocation(sub.path)}
+                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                            ${isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            }`}
+                        >
+                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenuItem>
+
+              {/* Landing Pages Group — collapsible */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isLandingPagesActive}
+                  onClick={() => {
+                    if (isCollapsed) {
+                      setLocation(landingPagesItems[0].path);
+                    } else {
+                      setLandingPagesOpen((prev) => !prev);
+                    }
+                  }}
+                  tooltip="Landing Pages"
+                  className={`h-10 transition-all font-normal ${isLandingPagesActive ? "text-primary" : ""}`}
+                >
+                  <Globe className={`h-4 w-4 ${isLandingPagesActive ? "text-primary" : ""}`} />
+                  <span className="flex-1">Landing Pages</span>
+                  {!isCollapsed && (
+                    landingPagesOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </SidebarMenuButton>
+                {landingPagesOpen && !isCollapsed && (
+                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+                    {landingPagesItems.map((sub) => {
+                      const isActive = location === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          onClick={() => setLocation(sub.path)}
+                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                            ${isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            }`}
+                        >
+                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenuItem>
+
+              {/* Video Production Group — collapsible */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isVideoActive}
+                  onClick={() => {
+                    if (isCollapsed) {
+                      setLocation(videoItems[0].path);
+                    } else {
+                      setVideoOpen((prev) => !prev);
+                    }
+                  }}
+                  tooltip="Video Production"
+                  className={`h-10 transition-all font-normal ${isVideoActive ? "text-primary" : ""}`}
+                >
+                  <Video className={`h-4 w-4 ${isVideoActive ? "text-primary" : ""}`} />
+                  <span className="flex-1">Video Production</span>
+                  {!isCollapsed && (
+                    videoOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </SidebarMenuButton>
+                {videoOpen && !isCollapsed && (
+                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+                    {videoItems.map((sub) => {
+                      const isActive = location === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          onClick={() => setLocation(sub.path)}
+                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                            ${isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            }`}
+                        >
+                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenuItem>
+
             </SidebarMenu>
           </SidebarContent>
 

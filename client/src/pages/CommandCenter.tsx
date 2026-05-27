@@ -87,7 +87,7 @@ import {
   RotateCcw,
   PenLine,
 } from "lucide-react";  
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import {
   DropdownMenu,
@@ -636,6 +636,7 @@ function DraggableCard({
   onNavigate,
   bufferError,
   onClearBufferError,
+  readabilityBadge,
 }: {
   item: ContentItem;
   onStatusChange: (id: number, status: Status) => void;
@@ -654,6 +655,7 @@ function DraggableCard({
   onNavigate?: (path: string) => void;
   bufferError?: string;
   onClearBufferError?: () => void;
+  readabilityBadge?: "green" | "amber" | "red" | null;
 }) {
    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${item.id}`,
@@ -886,8 +888,36 @@ function DraggableCard({
         {/* WordPress links — blog posts with a WP post ID */}
         {item.platform === "blog" && item.wpPostId && (
           <div className="flex flex-col gap-0.5 mt-1">
-            {/* Yoast SEO score badge */}
-            <YoastScoreBadge item={item} />
+            {/* Yoast SEO score badge + Readability R badge */}
+            <div className="flex items-center gap-1.5">
+              <YoastScoreBadge item={item} />
+              {readabilityBadge && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold cursor-default select-none ${
+                          readabilityBadge === "green"
+                            ? "bg-green-100 text-green-700 border border-green-300"
+                            : readabilityBadge === "amber"
+                            ? "bg-amber-100 text-amber-700 border border-amber-300"
+                            : "bg-red-100 text-red-700 border border-red-300"
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        R
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-[10px] max-w-[180px]">
+                      <p className="font-semibold mb-0.5">Readability</p>
+                      {readabilityBadge === "green" && <p>Transition words and sentence starts look good.</p>}
+                      {readabilityBadge === "amber" && <p>Minor readability issues — check transition word % or consecutive sentence starts.</p>}
+                      {readabilityBadge === "red" && <p>Readability issues detected — transition words below 30% or 3+ consecutive sentences start with the same word.</p>}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
             {/* Pre-publish SEO validator — compact dot + tooltip for blog cards */}
             <SeoValidatorPanel item={item} compact={true} />
             <div className="flex items-center gap-2 flex-wrap">
@@ -1627,7 +1657,8 @@ export default function CommandCenter() {
   const [newTitle, setNewTitle] = useState("");
   const [newIdea, setNewIdea] = useState("");
   const [newPlatform, setNewPlatform] = useState<Platform>("linkedin");
-  const [viewMode, setViewMode] = useState<"kanban" | "calendar" | "personas">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "calendar" | "personas" | "readability-audit">("kanban");
+  const [readabilitySort, setReadabilitySort] = useState<"worst" | "transitions" | "consecutive">("worst");
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [scheduleDialogDate, setScheduleDialogDate] = useState<string | null>(null);
@@ -2079,6 +2110,21 @@ export default function CommandCenter() {
   };
 
   const { data: items = [], refetch } = trpc.content.list.useQuery();
+
+  // Bulk readability scores — used for the R badge on Kanban cards and the Readability Audit table
+  const { data: readabilityScores } = trpc.blog.bulkAnalyzeReadability.useQuery(undefined, {
+    staleTime: 120_000, // 2 min cache — re-fetches after bulk fix
+    refetchOnWindowFocus: false,
+  });
+  // Build a map from contentItemId → overall badge for O(1) lookup in DraggableCard
+  const readabilityMap = useMemo(() => {
+    const m: Record<number, "green" | "amber" | "red"> = {};
+    if (readabilityScores) {
+      for (const r of readabilityScores) m[r.id] = r.overall;
+    }
+    return m;
+  }, [readabilityScores]);
+
   const createMutation = trpc.content.create.useMutation({
     onSuccess: () => {
       refetch();
@@ -2509,6 +2555,15 @@ export default function CommandCenter() {
                 >
                   <Users className="h-3 w-3 mr-1" />
                   Personas
+                </Button>
+                <Button
+                  variant={viewMode === "readability-audit" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("readability-audit")}
+                  className="h-7 px-3 text-xs"
+                >
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  Readability
                 </Button>
               </div>
               {/* Bulk Fix All Mismatched Campaigns — only shown when blog filter is active */}
@@ -3012,6 +3067,7 @@ export default function CommandCenter() {
                               onNavigate={setLocation}
                               bufferError={bufferErrors[(item as ContentItem).id]}
                               onClearBufferError={() => setBufferErrors((prev) => { const next = { ...prev }; delete next[(item as ContentItem).id]; return next; })}
+                              readabilityBadge={readabilityMap[(item as ContentItem).id] ?? null}
                             />
                           </div>
                         ))}
@@ -3248,6 +3304,175 @@ export default function CommandCenter() {
         {viewMode === "personas" && (
           <PersonasView items={items} />
         )}
+
+        {/* ── READABILITY AUDIT VIEW ────────────────────────────────────────────── */}
+        {viewMode === "readability-audit" && (() => {
+          if (!readabilityScores) {
+            return (
+              <div className="flex items-center justify-center py-20 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                <span className="text-sm">Analysing readability for all published posts…</span>
+              </div>
+            );
+          }
+          if (readabilityScores.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+                <BookOpen className="h-8 w-8 opacity-30" />
+                <p className="text-sm">No published blog posts found.</p>
+              </div>
+            );
+          }
+
+          const sorted = [...readabilityScores].sort((a, b) => {
+            if (readabilitySort === "transitions") return a.transitionPct - b.transitionPct;
+            if (readabilitySort === "consecutive") return b.maxRun - a.maxRun;
+            // "worst" — sort by overall status (red first, then amber, then green), then by transitionPct asc
+            const order = { red: 0, amber: 1, green: 2 };
+            const diff = order[a.overall] - order[b.overall];
+            return diff !== 0 ? diff : a.transitionPct - b.transitionPct;
+          });
+
+          const statusDot: Record<string, string> = {
+            green: "bg-green-500",
+            amber: "bg-amber-500",
+            red: "bg-red-500",
+          };
+          const statusText: Record<string, string> = {
+            green: "text-green-700",
+            amber: "text-amber-700",
+            red: "text-red-700",
+          };
+          const statusBg: Record<string, string> = {
+            green: "bg-green-50 border-green-200",
+            amber: "bg-amber-50 border-amber-200",
+            red: "bg-red-50 border-red-200",
+          };
+
+          const counts = { green: 0, amber: 0, red: 0 };
+          for (const r of readabilityScores) counts[r.overall]++;
+
+          return (
+            <div className="space-y-4">
+              {/* Summary row */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-xs text-muted-foreground">{counts.green} passing</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
+                  <span className="text-xs text-muted-foreground">{counts.amber} needs work</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-xs text-muted-foreground">{counts.red} critical</span>
+                </div>
+                <div className="ml-auto flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground mr-1">Sort by:</span>
+                  {(["worst", "transitions", "consecutive"] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setReadabilitySort(s)}
+                      className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                        readabilitySort === s
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/60"
+                      }`}
+                    >
+                      {s === "worst" ? "Worst First" : s === "transitions" ? "Transitions %" : "Consecutive Starts"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/30 border-b border-border">
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground w-8">#</th>
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Title</th>
+                      <th className="text-center px-3 py-2 font-semibold text-muted-foreground w-20">Overall</th>
+                      <th className="text-center px-3 py-2 font-semibold text-muted-foreground w-24">Transitions</th>
+                      <th className="text-center px-3 py-2 font-semibold text-muted-foreground w-28">Sent. Starts</th>
+                      <th className="text-center px-3 py-2 font-semibold text-muted-foreground w-20">Sentences</th>
+                      <th className="text-left px-3 py-2 font-semibold text-muted-foreground w-32">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorted.map((r, idx) => (
+                      <tr
+                        key={r.id}
+                        className={`border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer ${
+                          idx % 2 === 0 ? "" : "bg-muted/10"
+                        }`}
+                        onClick={() => {
+                          const ci = items.find((i) => i.id === r.id) as ContentItem | undefined;
+                          if (ci) { setSelectedItem(ci); setEditingContent(ci.textContent ?? ""); }
+                        }}
+                      >
+                        <td className="px-3 py-2 text-muted-foreground/50">{idx + 1}</td>
+                        <td className="px-3 py-2">
+                          <div className="font-medium text-foreground line-clamp-1 max-w-[320px]">{r.title}</div>
+                          {r.focusKeyword && (
+                            <div className="text-[10px] text-muted-foreground/60 mt-0.5 truncate max-w-[320px]">{r.focusKeyword}</div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium ${statusBg[r.overall]} ${statusText[r.overall]}`}>
+                            <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusDot[r.overall]}`} />
+                            {r.overall.charAt(0).toUpperCase() + r.overall.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`font-mono font-semibold ${statusText[r.transitionStatus]}`}>{r.transitionPct}%</span>
+                          <span className="text-muted-foreground/50 ml-1">({r.transitionCount}/{r.totalSentences})</span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {r.maxRun < 3 ? (
+                            <span className="text-green-600 font-medium">OK</span>
+                          ) : (
+                            <span className={`font-mono font-semibold ${statusText[r.consecutiveStatus]}`}>
+                              {r.maxRun}× “{r.worstWord}”
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-center text-muted-foreground/60">{r.totalSentences}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            {r.wpPostId && (
+                              <a
+                                href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${r.wpPostId}&action=edit`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-0.5"
+                              >
+                                <ExternalLink className="h-2.5 w-2.5" />
+                                Edit
+                              </a>
+                            )}
+                            {r.publishUrl && (
+                              <a
+                                href={r.publishUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-green-600 hover:text-green-700 hover:underline flex items-center gap-0.5"
+                              >
+                                <ExternalLink className="h-2.5 w-2.5" />
+                                View
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Drag Overlay */}
         <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>

@@ -3220,7 +3220,7 @@ Return BOTH in this exact format:
               let wpHtmlBody = livePost.content;
               const focusKw = publishInput.focusKeyword;
               let metaDesc = publishInput.metaDescription ?? livePost.metaDescription ?? "";
-              const seoTitle = publishInput.seoTitle ?? livePost.seoTitle ?? `${publishInput.title} | The Urban Monk`;
+              const seoTitle = publishInput.yoastSeoTitle ?? livePost.seoTitle ?? `${publishInput.title} | The Urban Monk`;
               const trimToWordBoundary = (s: string, maxLen: number): string => {
                 if (s.length <= maxLen) return s;
                 let t = s.slice(0, maxLen);
@@ -5072,6 +5072,104 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           worstWord: worstWord || null,
           violationCount,
         };
+      }),
+
+    // ── Bulk Readability Audit ────────────────────────────────────────────────
+    // Returns readability scores for ALL published blog posts in one query.
+    // Used by the Readability Audit table and the Kanban card R-badge.
+    bulkAnalyzeReadability: protectedProcedure
+      .query(async () => {
+        const db = await getDb();
+        if (!db) throw new Error("Database unavailable");
+        const { contentItems } = await import("../drizzle/schema");
+        const { eq, and, isNotNull } = await import("drizzle-orm");
+
+        const posts = await db
+          .select()
+          .from(contentItems)
+          .where(
+            and(
+              eq(contentItems.platform, "blog"),
+              eq(contentItems.status, "published"),
+              isNotNull(contentItems.textContent),
+            )
+          );
+
+        const TRANSITION_WORDS = [
+          "however", "therefore", "as a result", "in addition", "furthermore",
+          "meanwhile", "for example", "in contrast", "consequently", "first",
+          "second", "third", "finally", "in fact", "specifically", "most importantly",
+          "in other words", "that said", "even so", "because of this", "at the same time",
+          "to be clear", "in practice", "over time", "in short", "additionally",
+          "moreover", "notably", "instead", "still", "yet", "thus", "hence",
+          "indeed", "otherwise", "likewise", "similarly", "afterward", "previously",
+          "ultimately", "essentially", "particularly", "importantly", "fortunately",
+          "unfortunately", "surprisingly", "although", "while", "since", "because",
+          "unless", "until", "when", "after", "before", "also", "but", "so",
+        ];
+
+        const analyzeOne = (body: string) => {
+          const lines = body.split("\n").filter((l) => {
+            const t = l.trim();
+            return t.length > 0 && !t.startsWith("#") && !t.startsWith("-") && !t.startsWith("|") && !t.startsWith(">");
+          });
+          const rawText = lines.join(" ");
+          const sentences = rawText
+            .split(/(?<=[.!?])\s+/)
+            .map((s) => s.trim())
+            .filter((s) => s.length > 10);
+
+          const totalSentences = sentences.length;
+          let transitionCount = 0;
+          for (const s of sentences) {
+            const lower = s.toLowerCase();
+            if (TRANSITION_WORDS.some((tw) => lower.includes(tw))) transitionCount++;
+          }
+          const transitionPct = totalSentences > 0 ? Math.round((transitionCount / totalSentences) * 100) : 0;
+          const transitionStatus: "green" | "amber" | "red" =
+            transitionPct >= 30 ? "green" : transitionPct >= 20 ? "amber" : "red";
+
+          const firstWords = sentences.map((s) => {
+            const m = s.match(/^([A-Za-z]+)/);
+            return m ? m[1].toLowerCase() : "";
+          }).filter(Boolean);
+
+          let maxRun = 1;
+          let currentRun = 1;
+          let worstWord = "";
+          let violationCount = 0;
+          for (let i = 1; i < firstWords.length; i++) {
+            if (firstWords[i] === firstWords[i - 1]) {
+              currentRun++;
+              if (currentRun >= 3 && currentRun > maxRun) {
+                maxRun = currentRun;
+                worstWord = firstWords[i];
+              }
+              if (currentRun === 3) violationCount++;
+            } else {
+              currentRun = 1;
+            }
+          }
+          const consecutiveStatus: "green" | "amber" | "red" =
+            maxRun < 3 ? "green" : maxRun === 3 ? "amber" : "red";
+
+          // Overall readability badge: worst of the two checks
+          const overall: "green" | "amber" | "red" =
+            transitionStatus === "red" || consecutiveStatus === "red" ? "red"
+            : transitionStatus === "amber" || consecutiveStatus === "amber" ? "amber"
+            : "green";
+
+          return { totalSentences, transitionCount, transitionPct, transitionStatus, consecutiveStatus, maxRun, worstWord: worstWord || null, violationCount, overall };
+        };
+
+        return posts.map((p) => ({
+          id: p.id,
+          title: p.title,
+          focusKeyword: p.focusKeyword,
+          publishUrl: p.publishUrl,
+          wpPostId: p.wpPostId,
+          ...analyzeOne(p.textContent ?? ""),
+        }));
       }),
 
   }),

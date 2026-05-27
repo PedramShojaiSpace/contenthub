@@ -707,7 +707,11 @@ export default function LinkedInNewsfeed() {
 
   const approveMutation = trpc.newsfeed.approveArticle.useMutation({
     onSuccess: (data) => {
-      toast.success(`Approved! LinkedIn card #${data.contentItemId} created in Command Center`);
+      if (data.xContentItemId) {
+        toast.success(`Approved! LinkedIn card #${data.contentItemId} + X card #${data.xContentItemId} created in Command Center`);
+      } else {
+        toast.success(`Approved! LinkedIn card #${data.contentItemId} created in Command Center`);
+      }
       refetchArticles();
     },
     onError: (err) => toast.error(`Approve failed: ${err.message}`),

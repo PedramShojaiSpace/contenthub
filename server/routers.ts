@@ -4964,15 +4964,36 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
 
             // Push to WordPress
             await updateWpPostContent(item.wpPostId, wpHtmlBody);
-            await updateWpPostYoast({
+            const yoastResult = await updateWpPostYoast({
               wpPostId: item.wpPostId,
               seoTitle: seoTitle || undefined,
               metaDescription: metaDesc || undefined,
               focusKeyword: focusKw || undefined,
             });
-            await updateContentItem(item.id, { yoastMetaDescription: metaDesc });
 
-            if (fixedFields.length === 0) {
+            // Mark as fixed in DB — yoastFixedAt lets the scoreboard show amber
+            // immediately even before Yoast recalculates _yoast_wpseo_linkdex.
+            const now = Date.now();
+            await updateContentItem(item.id, {
+              yoastMetaDescription: metaDesc,
+              yoastFixedAt: now,
+            });
+
+            // Try to re-fetch the Yoast score immediately — Yoast may have
+            // recalculated linkdex if the snippet is installed.
+            try {
+              const { getWpYoastScore } = await import("./wordpress");
+              const { seoScore } = await getWpYoastScore(item.wpPostId);
+              if (seoScore) {
+                await updateContentItem(item.id, {
+                  yoastScore: seoScore,
+                  yoastScoreFetchedAt: now,
+                });
+                if (seoScore === "good") fixedFields.push("score_now_green");
+              }
+            } catch { /* non-fatal */ }
+
+            if (fixedFields.filter(f => !f.startsWith("score_")).length === 0) {
               alreadyOkCount++;
               results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, status: "already_ok", fixed: [] });
             } else {
@@ -5458,9 +5479,16 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         }
 
         // Health signal
+        // A post is "green" if Yoast score is good AND it has GSC clicks.
+        // A post is "red" if Yoast score is bad/missing AND it has NOT been fixed recently.
+        // A post is "amber" if Yoast score is bad/missing BUT yoastFixedAt is set
+        //   (meaning we pushed the fix to WP and are waiting for Yoast to recalculate).
         let health: "green" | "amber" | "red" = "amber";
         if (post.yoastScore === "good" && gsc && gsc.clicks > 0) health = "green";
-        else if (post.yoastScore === "bad" || !post.yoastScore) health = "red";
+        else if (post.yoastScore === "bad" || !post.yoastScore) {
+          // Check if we've already pushed a fix — if so, show amber (pending recalculation)
+          health = post.yoastFixedAt ? "amber" : "red";
+        }
 
         // Resolve topicCluster: prefer DB value (persisted on publish/sync),
         // fall back to client-side keyword matching if not yet in the index.
@@ -5475,6 +5503,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           focusKeyword: post.focusKeyword,
           yoastScore: post.yoastScore,
           yoastScoreFetchedAt: post.yoastScoreFetchedAt,
+          yoastFixedAt: post.yoastFixedAt ?? null,
           pushedChannels,
           gscClicks: gsc?.clicks ?? null,
           gscImpressions: gsc?.impressions ?? null,

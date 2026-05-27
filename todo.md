@@ -3418,3 +3418,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] UI: Add WP category dropdown to CommandCenter WP publish dialog — fetch all WP categories, group by parent, show auto-detected cluster as default, allow manual override
 - [x] Server: Add blog.getWpCategories procedure — calls fetchWpCategories() and returns id/name/slug/parent list
 - [x] UI: Pass wpCategoryOverride from the publish dialog to the blog.publish mutation
+
+## Fix Yoast Issues Button & Prompt Tightening
+
+- [ ] Server: add blog.fixYoastIssues procedure — takes contentItemId + wpPostId, fetches live WP post HTML, re-runs Step 2c (H2 keyphrase injection) and Step 4b (meta description trim + keyphrase injection), then calls updateWpPostYoast to push the fixed values back to WordPress
+- [ ] UI: add "Fix Yoast Issues" button to CommandCenter detail dialog — only visible for published posts with a wpPostId, shows spinner during fix, toast on success/failure
+- [ ] Prompt: tighten BLOG_CONTENT_RULES to explicitly require the focus keyphrase verbatim in at least one H2 subheading

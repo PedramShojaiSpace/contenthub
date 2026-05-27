@@ -1642,6 +1642,25 @@ export default function CommandCenter() {
     },
   });
 
+  // Fix Yoast Issues — re-runs Step 2c + Step 4b on the live WP post
+  const [isFixingYoast, setIsFixingYoast] = useState(false);
+  const fixYoastIssuesMutation = trpc.blog.fixYoastIssues.useMutation({
+    onSuccess: (result) => {
+      setIsFixingYoast(false);
+      const realFixes = result.fixed.filter((f) => !f.endsWith("_already_ok"));
+      if (realFixes.length === 0) {
+        toast.success("Yoast: H2 keyphrase and meta description are already correct.");
+      } else {
+        toast.success(`Yoast fixed: ${realFixes.join(", ")}`);
+      }
+      refetch();
+    },
+    onError: (err) => {
+      setIsFixingYoast(false);
+      toast.error("Fix Yoast Issues failed: " + err.message);
+    },
+  });
+
   // Regenerate Hero Image state (blog posts only)
   type ImageTheme = { name: string; description: string; imagePrompt: string };
   const [showImageRegenPanel, setShowImageRegenPanel] = useState(false);
@@ -4084,6 +4103,31 @@ export default function CommandCenter() {
                       <ExternalLink className="h-3 w-3" />
                       View Post
                     </a>
+                  )}
+
+                  {/* Fix Yoast Issues — re-runs H2 keyphrase injection + meta desc enforcement on the live WP post */}
+                  {selectedItem.wpPostId && selectedItem.platform === "blog" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 border-orange-500/40 text-orange-600 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-500 gap-1"
+                      disabled={isFixingYoast || fixYoastIssuesMutation.isPending}
+                      onClick={() => {
+                        setIsFixingYoast(true);
+                        fixYoastIssuesMutation.mutate({
+                          contentItemId: selectedItem.id,
+                          wpPostId: selectedItem.wpPostId!,
+                        });
+                      }}
+                      title="Re-run H2 keyphrase injection and meta description enforcement on the live WordPress post"
+                    >
+                      {isFixingYoast || fixYoastIssuesMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Zap className="h-3 w-3" />
+                      )}
+                      {isFixingYoast || fixYoastIssuesMutation.isPending ? "Fixing Yoast…" : "Fix Yoast Issues"}
+                    </Button>
                   )}
                 </div>
               </div>

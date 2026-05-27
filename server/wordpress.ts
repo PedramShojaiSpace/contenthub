@@ -697,6 +697,48 @@ export async function getWpYoastScore(
 }
 
 /**
+ * Fetch a single WordPress post by ID and return its rendered HTML body
+ * plus the current Yoast meta fields (focus keyword, meta description).
+ * Used by the fixYoastIssues procedure to get the live post state.
+ */
+export async function fetchSingleWpPost(wpPostId: number): Promise<{
+  content: string;
+  focusKeyword: string | null;
+  metaDescription: string | null;
+  seoTitle: string | null;
+}> {
+  const { baseUrl, authHeader } = getWpAuth();
+  if (!baseUrl) throw new Error("WordPress URL not configured");
+
+  const res = await wpFetch(
+    `${baseUrl}/wp-json/wp/v2/posts/${wpPostId}?context=edit`,
+    { headers: { Authorization: authHeader } },
+    20_000
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`WordPress fetch failed: ${errText.substring(0, 300)}`);
+  }
+
+  const data = await res.json() as {
+    content?: { rendered?: string; raw?: string };
+    meta?: Record<string, unknown>;
+    yoast_meta?: Record<string, unknown>;
+  };
+
+  // Prefer raw (edit context) over rendered so we get the actual stored HTML
+  const content = (data.content?.raw ?? data.content?.rendered ?? "") as string;
+  const meta = data.meta ?? {};
+
+  const focusKeyword = (meta["_yoast_wpseo_focuskw"] as string | undefined) ?? null;
+  const metaDescription = (meta["_yoast_wpseo_metadesc"] as string | undefined) ?? null;
+  const seoTitle = (meta["_yoast_wpseo_title"] as string | undefined) ?? null;
+
+  return { content, focusKeyword, metaDescription, seoTitle };
+}
+
+/**
  * Update the body content (HTML) of an existing WordPress post.
  * Used by the H2 keyphrase backfill to patch the rendered HTML without
  * republishing the entire post or changing its status/slug.

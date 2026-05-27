@@ -125,6 +125,10 @@ type ContentItem = {
   yoastScore: string | null;
   yoastScoreFetchedAt: number | null;
   pushedChannels: string | null;
+  readabilityScore: string | null;
+  readabilityTransitionPct: number | null;
+  readabilityMaxRun: number | null;
+  readabilityUpdatedAt: number | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -2111,19 +2115,30 @@ export default function CommandCenter() {
 
   const { data: items = [], refetch } = trpc.content.list.useQuery();
 
-  // Bulk readability scores — used for the R badge on Kanban cards and the Readability Audit table
+  // Bulk readability scores — used for the R badge on Kanban cards and the Readability Audit table.
+  // The live analysis query also persists scores to DB, so on subsequent loads the Kanban badge
+  // can be served instantly from the contentItems list (items already in memory).
   const { data: readabilityScores } = trpc.blog.bulkAnalyzeReadability.useQuery(undefined, {
     staleTime: 120_000, // 2 min cache — re-fetches after bulk fix
     refetchOnWindowFocus: false,
   });
-  // Build a map from contentItemId → overall badge for O(1) lookup in DraggableCard
+  // Build a map from contentItemId → overall badge for O(1) lookup in DraggableCard.
+  // Priority: live analysis result > persisted DB score on the content item.
   const readabilityMap = useMemo(() => {
     const m: Record<number, "green" | "amber" | "red"> = {};
+    // Seed from persisted DB scores (instant — no extra query needed)
+    for (const item of items) {
+      const ci = item as ContentItem;
+      if (ci.readabilityScore && (ci.readabilityScore === "green" || ci.readabilityScore === "amber" || ci.readabilityScore === "red")) {
+        m[ci.id] = ci.readabilityScore as "green" | "amber" | "red";
+      }
+    }
+    // Override with live analysis results when available (more up-to-date)
     if (readabilityScores) {
       for (const r of readabilityScores) m[r.id] = r.overall;
     }
     return m;
-  }, [readabilityScores]);
+  }, [readabilityScores, items]);
 
   const createMutation = trpc.content.create.useMutation({
     onSuccess: () => {
@@ -2270,6 +2285,32 @@ export default function CommandCenter() {
       setIsBulkFixingYoast(false);
       toast.error("Bulk Yoast fix failed: " + err.message);
     },
+  });
+
+  // Fix All Readability Issues — runs bulkFixYoastIssues on all red/amber posts from the audit table
+  const [isFixingAllReadability, setIsFixingAllReadability] = useState(false);
+  const fixAllReadabilityMutation = trpc.blog.bulkFixYoastIssues.useMutation({
+    onSuccess: (data) => {
+      setIsFixingAllReadability(false);
+      refetch();
+      // Invalidate readability scores so the table + badges refresh
+      trpc.useUtils().blog.bulkAnalyzeReadability.invalidate();
+      if (data.fixedCount === 0) {
+        toast.success(`All ${data.alreadyOkCount} posts already have correct Yoast fields.`);
+      } else {
+        toast.success(`Fixed ${data.fixedCount} post${data.fixedCount !== 1 ? 's' : ''}. Re-running readability analysis…`);
+      }
+    },
+    onError: (err) => {
+      setIsFixingAllReadability(false);
+      toast.error("Fix All failed: " + err.message);
+    },
+  });
+
+  // Readability trend data — 30-day history for sparkline
+  const { data: readabilityTrend = [] } = trpc.blog.readabilityTrend.useQuery(undefined, {
+    staleTime: 300_000, // 5 min cache
+    refetchOnWindowFocus: false,
   });
 
   const fixCampaignSlugMutation = trpc.blog.fixCampaignSlug.useMutation({
@@ -3352,38 +3393,95 @@ export default function CommandCenter() {
           const counts = { green: 0, amber: 0, red: 0 };
           for (const r of readabilityScores) counts[r.overall]++;
 
+          // Sparkline: compute max for scaling
+          const sparkMax = readabilityTrend.length > 0
+            ? Math.max(...readabilityTrend.map((d) => d.totalCount || 1))
+            : 1;
+
           return (
             <div className="space-y-4">
-              {/* Summary row */}
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-xs text-muted-foreground">{counts.green} passing</span>
+              {/* Header: sparkline + summary + Fix All */}
+              <div className="rounded-lg border border-border bg-muted/10 p-3 flex flex-col gap-3">
+                {/* Top row: counts + Fix All button */}
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-xs text-muted-foreground">{counts.green} passing</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="text-xs text-muted-foreground">{counts.amber} needs work</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+                    <span className="text-xs text-muted-foreground">{counts.red} critical</span>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    {/* Fix All button */}
+                    {(counts.amber + counts.red) > 0 && (
+                      <button
+                        onClick={() => {
+                          setIsFixingAllReadability(true);
+                          fixAllReadabilityMutation.mutate();
+                        }}
+                        disabled={isFixingAllReadability}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-red-500/50 bg-red-50 text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50 dark:bg-red-950/30 dark:text-red-300 dark:border-red-500/30"
+                        title={`Run Fix Yoast Issues on all ${counts.amber + counts.red} red/amber posts`}
+                      >
+                        {isFixingAllReadability ? (
+                          <><Loader2 className="h-3 w-3 animate-spin" /> Fixing…</>
+                        ) : (
+                          <><Zap className="h-3 w-3" /> Fix All ({counts.amber + counts.red})</>
+                        )}
+                      </button>
+                    )}
+                    {/* Sort controls */}
+                    <span className="text-xs text-muted-foreground">Sort by:</span>
+                    {(["worst", "transitions", "consecutive"] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setReadabilitySort(s)}
+                        className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                          readabilitySort === s
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/60"
+                        }`}
+                      >
+                        {s === "worst" ? "Worst First" : s === "transitions" ? "Transitions %" : "Consecutive Starts"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
-                  <span className="text-xs text-muted-foreground">{counts.amber} needs work</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
-                  <span className="text-xs text-muted-foreground">{counts.red} critical</span>
-                </div>
-                <div className="ml-auto flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground mr-1">Sort by:</span>
-                  {(["worst", "transitions", "consecutive"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setReadabilitySort(s)}
-                      className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
-                        readabilitySort === s
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/60"
-                      }`}
-                    >
-                      {s === "worst" ? "Worst First" : s === "transitions" ? "Transitions %" : "Consecutive Starts"}
-                    </button>
-                  ))}
-                </div>
+
+                {/* Sparkline: 30-day green/amber/red trend */}
+                {readabilityTrend.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground mb-1">30-day readability trend</p>
+                    <div className="flex items-end gap-0.5 h-10">
+                      {readabilityTrend.map((d, i) => {
+                        const total = d.totalCount || 1;
+                        const greenH = Math.round((d.greenCount / total) * 40);
+                        const amberH = Math.round((d.amberCount / total) * 40);
+                        const redH = Math.max(40 - greenH - amberH, 0);
+                        return (
+                          <div
+                            key={i}
+                            className="flex flex-col-reverse flex-1 min-w-[4px] rounded-sm overflow-hidden"
+                            title={`${d.dateLabel}: ${d.greenCount}G / ${d.amberCount}A / ${d.redCount}R`}
+                          >
+                            {d.greenCount > 0 && <div style={{ height: greenH }} className="bg-green-500/70" />}
+                            {d.amberCount > 0 && <div style={{ height: amberH }} className="bg-amber-500/70" />}
+                            {d.redCount > 0 && <div style={{ height: redH }} className="bg-red-500/70" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
+                      <span>{readabilityTrend[0]?.dateLabel}</span>
+                      <span>{readabilityTrend[readabilityTrend.length - 1]?.dateLabel}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Table */}

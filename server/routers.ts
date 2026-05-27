@@ -5162,7 +5162,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           return { totalSentences, transitionCount, transitionPct, transitionStatus, consecutiveStatus, maxRun, worstWord: worstWord || null, violationCount, overall };
         };
 
-        return posts.map((p) => ({
+        const results = posts.map((p) => ({
           id: p.id,
           title: p.title,
           focusKeyword: p.focusKeyword,
@@ -5170,6 +5170,61 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           wpPostId: p.wpPostId,
           ...analyzeOne(p.textContent ?? ""),
         }));
+
+        // Persist scores back to DB for instant Kanban badge loading
+        const now = Date.now();
+        for (const r of results) {
+          await db.update(contentItems)
+            .set({
+              readabilityScore: r.overall,
+              readabilityTransitionPct: r.transitionPct,
+              readabilityMaxRun: r.maxRun,
+              readabilityUpdatedAt: now,
+            })
+            .where(eq(contentItems.id, r.id));
+        }
+
+        // Take a daily snapshot for the trend sparkline
+        // Only write one snapshot per calendar day (UTC)
+        const { readabilityHistory } = await import("../drizzle/schema");
+        const todayLabel = new Date().toISOString().slice(0, 10); // "2026-05-27"
+        const existing = await db.select().from(readabilityHistory)
+          .where(eq(readabilityHistory.dateLabel, todayLabel))
+          .limit(1);
+        const counts = { green: 0, amber: 0, red: 0 };
+        for (const r of results) counts[r.overall]++;
+        if (existing.length === 0) {
+          await db.insert(readabilityHistory).values({
+            dateLabel: todayLabel,
+            greenCount: counts.green,
+            amberCount: counts.amber,
+            redCount: counts.red,
+            totalCount: results.length,
+            snapshotAt: now,
+          });
+        } else {
+          // Update today’s snapshot with latest counts
+          await db.update(readabilityHistory)
+            .set({ greenCount: counts.green, amberCount: counts.amber, redCount: counts.red, totalCount: results.length, snapshotAt: now })
+            .where(eq(readabilityHistory.dateLabel, todayLabel));
+        }
+
+        return results;
+      }),
+
+    // ── Readability Trend ───────────────────────────────────────────────────
+    // Returns the last 30 days of readability snapshots for the trend sparkline.
+    readabilityTrend: protectedProcedure
+      .query(async () => {
+        const db = await getDb();
+        if (!db) return [];
+        const { readabilityHistory } = await import("../drizzle/schema");
+        const { desc } = await import("drizzle-orm");
+        const rows = await db.select().from(readabilityHistory)
+          .orderBy(desc(readabilityHistory.dateLabel))
+          .limit(30);
+        // Return oldest-first for the chart
+        return rows.reverse();
       }),
 
   }),

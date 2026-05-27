@@ -1588,6 +1588,12 @@ export default function CommandCenter() {
     staleTime: 1000 * 60 * 10, // cache 10 min — categories rarely change
     enabled: true,
   });
+  // Reset category override each time a different post is opened so the
+  // dropdown always starts at "Auto-detect" rather than carrying over the
+  // previous post's manual selection.
+  useEffect(() => {
+    setWpCategoryOverride(0);
+  }, [selectedItem?.id]);
 
   // SEO Edit dialog state — tracks whether the detail dialog was opened via Edit SEO button
   const [scrollToSeoOnOpen, setScrollToSeoOnOpen] = useState(false);

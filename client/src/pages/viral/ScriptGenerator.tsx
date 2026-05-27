@@ -584,9 +584,11 @@ function BatchQueuePanel({
     setCountdown(null);
   };
 
-  const generateOne = useCallback(async (index: number) => {
+  // generateOne now returns the result so handleGenerateAll can collect them directly
+  // (avoids stale-closure bug where queue state hasn't updated yet when we read it)
+  const generateOne = useCallback(async (index: number): Promise<ScriptResult | null> => {
     const item = queue[index];
-    if (!item || item.status === "done") return;
+    if (!item || item.status === "done") return null;
 
     setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "generating" } : q));
     try {
@@ -611,34 +613,42 @@ function BatchQueuePanel({
         targetPersona: persona || undefined,
         targetProgram: safeProgram,
       });
-      setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "done", result: result as unknown as ScriptResult } : q));
+      const scriptResult = result as unknown as ScriptResult;
+      setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "done", result: scriptResult } : q));
       setExpandedIndex(index);
+      return scriptResult;
     } catch (err: any) {
       setQueue((prev) => prev.map((q, i) => i === index ? { ...q, status: "error", error: err.message } : q));
+      return null;
     }
   }, [queue, topic, platform, lengthSeconds, cta, seoKeywords, persona, generateMutation]);
 
   const handleGenerateAll = async () => {
     setIsRunningAll(true);
+    // Collect results directly to avoid stale-closure bug (queue state lags behind setQueue calls)
+    const freshResults: Array<{ hook: string; fullScript: string }> = [];
     for (let i = 0; i < queue.length; i++) {
-      if (queue[i].status !== "done") {
-        await generateOne(i);
+      if (queue[i].status === "done" && queue[i].result) {
+        // Already done from a previous run — include it
+        freshResults.push({ hook: queue[i].result!.hook, fullScript: queue[i].result!.fullScript });
+      } else {
+        const result = await generateOne(i);
+        if (result) freshResults.push({ hook: result.hook, fullScript: result.fullScript });
       }
     }
     setIsRunningAll(false);
-    // Auto-save all completed scripts to Command Center
+    // Auto-save all completed scripts to Command Center using the freshly-collected results
     const kanbanPlatform = PLATFORM_MAP_BATCH[platform] ?? "tiktok";
-    const completedItems = queue
-      .filter((q) => q.status === "done" && q.result)
-      .map((q) => ({
-        title: (q.result!.hook ?? "").slice(0, 80),
-        rawIdea: q.result!.hook,
-        platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
-        status: "drafting" as const,
-        textContent: q.result!.fullScript,
-      }));
-    if (completedItems.length > 0) {
-      saveAllMutation.mutate({ items: completedItems });
+    if (freshResults.length > 0) {
+      saveAllMutation.mutate({
+        items: freshResults.map((r) => ({
+          title: (r.hook ?? "").slice(0, 80),
+          rawIdea: r.hook,
+          platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
+          status: "drafting" as const,
+          textContent: r.fullScript,
+        })),
+      });
     } else {
       toast.success("All scripts generated!");
     }

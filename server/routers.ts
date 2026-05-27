@@ -2902,46 +2902,58 @@ Return BOTH in this exact format:
           }
         }
 
-        // Step 2c: H2 keyphrase auto-fix (Yoast subheading check)
-        // Yoast requires the focus keyphrase to appear in at least one H2 or H3 subheading.
-        // If none of the H2s contain the keyphrase, we rewrite the THIRD H2 (the framework/protocol
-        // section — the most natural placement) to prepend the keyphrase.
-        // This runs on the Markdown source (before HTML conversion) so the edit is clean.
+        // Step 2c: H2/H3 keyphrase auto-fix (Yoast subheading check)
+        // Yoast requires the focus keyphrase to appear as an EXACT PHRASE in at least one
+        // H2 or H3 subheading. We check both levels and inject if missing.
         //
-        // IMPORTANT: Use word-boundary regex matching, NOT String.includes().
-        // includes() returns true for partial matches (e.g. 'gut' matches 'gut health protocol')
-        // but Yoast uses exact-phrase matching. We must check for the full keyphrase as a
-        // contiguous sequence of words, not just a substring.
+        // Rules:
+        // 1. Check H2 AND H3 headings (Yoast accepts either)
+        // 2. Use word-boundary regex — NOT includes() — to avoid false positives from partial matches
+        // 3. If missing, rewrite the best available heading to START with the keyphrase
+        //    ("## [Keyphrase]: [Rest of heading]") — placing it first guarantees Yoast finds it
+        // 4. Handle articles with only 1 H2 by falling back to the first H2
+        // 5. If the heading would exceed 80 chars, use just "## [Keyphrase]" as the heading
         if (publishInput.focusKeyword) {
           const kw = publishInput.focusKeyword.toLowerCase();
-          // Build a regex that matches the keyphrase as whole words (case-insensitive)
+          // Escape special regex chars in the keyphrase
           const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const kwRegex = new RegExp(`(?<![a-z0-9])${kwEscaped}(?![a-z0-9])`, "i");
-          const h2Regex = /^## .+$/gm;
-          const h2Matches = Array.from(cleanedBody.matchAll(h2Regex));
-          const keyphraseInH2 = h2Matches.some((m) => kwRegex.test(m[0]));
+          // Match the keyphrase as a contiguous exact phrase (word boundaries on both sides)
+          const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
 
-          if (!keyphraseInH2 && h2Matches.length >= 2) {
-            // Pick the best H2 to inject into:
-            // Prefer the 3rd H2 (index 2) — typically the framework/protocol section.
-            // Fall back to the 2nd H2 (index 1) if there are fewer than 3.
-            const targetIndex = h2Matches.length >= 3 ? 2 : 1;
-            const targetMatch = h2Matches[targetIndex];
-            const originalH2 = targetMatch[0]; // e.g. "## How to Improve Your Sleep"
-            const headingText = originalH2.replace(/^## /, "").trim();
-            const kwCapitalised = publishInput.focusKeyword.charAt(0).toUpperCase() + publishInput.focusKeyword.slice(1);
+          // Collect all H2 and H3 headings from the Markdown source
+          const headingRegex = /^(#{2,3}) .+$/gm;
+          const allHeadings = Array.from(cleanedBody.matchAll(headingRegex));
+          const h2Matches = allHeadings.filter((m) => m[1] === "##");
 
-            // Build the new heading: "## [Focus Keyphrase]: [Original Heading]"
-            // But only if the combined length is reasonable (≤ 80 chars)
-            const newHeading = `## ${kwCapitalised}: ${headingText}`;
-            const finalHeading = newHeading.length <= 80 ? newHeading : `## How ${kwCapitalised} ${headingText}`;
+          // Check if the keyphrase already appears in any H2 or H3
+          const keyphraseInSubheading = allHeadings.some((m) => kwRegex.test(m[0]));
 
-            // Replace only the first occurrence of this exact H2 in the body
-            const escapedOriginal = originalH2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            const patchedBody = cleanedBody.replace(new RegExp(escapedOriginal, "m"), finalHeading);
-            // Re-convert patched Markdown to HTML
-            wpHtmlBody = markdownToWpHtml(patchedBody);
-            console.log(`[SEO H2 Fix] Injected keyphrase "${publishInput.focusKeyword}" into H2: "${originalH2}" → "${finalHeading}"`);
+          if (!keyphraseInSubheading) {
+            // Choose the target heading to rewrite:
+            // Prefer the 3rd H2 (index 2) → 2nd H2 (index 1) → 1st H2 (index 0)
+            // This avoids rewriting the intro H2 which often contains the article title.
+            const targetIndex = h2Matches.length >= 3 ? 2 : h2Matches.length >= 2 ? 1 : 0;
+            const targetMatch = h2Matches[targetIndex] ?? allHeadings[0]; // ultimate fallback
+
+            if (targetMatch) {
+              const originalHeading = targetMatch[0]; // e.g. "## How to Improve Your Sleep"
+              const hLevel = targetMatch[1]; // "##" or "###"
+              const headingText = originalHeading.replace(/^#{2,3} /, "").trim();
+              const kwCapitalised = publishInput.focusKeyword.charAt(0).toUpperCase() + publishInput.focusKeyword.slice(1);
+
+              // Strategy: start the heading with the keyphrase so Yoast cannot miss it.
+              // Format: "## [Keyphrase]: [Original Heading Text]"
+              // If that exceeds 80 chars, drop the original text and use just the keyphrase.
+              const candidate = `${hLevel} ${kwCapitalised}: ${headingText}`;
+              const finalHeading = candidate.length <= 80 ? candidate : `${hLevel} ${kwCapitalised}`;
+
+              // Replace only the first occurrence of this exact heading in the body
+              const escapedOriginal = originalHeading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              const patchedBody = cleanedBody.replace(new RegExp(escapedOriginal, "m"), finalHeading);
+              // Re-convert patched Markdown to HTML
+              wpHtmlBody = markdownToWpHtml(patchedBody);
+              console.log(`[SEO H2 Fix] Injected keyphrase "${publishInput.focusKeyword}" into heading: "${originalHeading}" → "${finalHeading}"`);
+            }
           }
         }
 

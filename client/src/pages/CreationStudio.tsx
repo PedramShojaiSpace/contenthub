@@ -402,18 +402,22 @@ export default function CreationStudio() {
     if (seoKeyword && !urlParams.get("source")) {
       const targetPlatform = seoPlatform ?? "blog";
       setPlatform(targetPlatform);
-      // Set the idea as a clean title/topic — the Strike Zone SEO brief is injected server-side
-      // via focusKeyword + currentPosition inputs, NOT embedded in the idea string
-      setIdea(seoKeyword);
+      // If a suggested title was passed (e.g. from the Content Scoreboard Write button),
+      // use it as the idea so the AI generates content for that specific title.
+      // Otherwise fall back to the raw keyword.
+      const urlTitle = urlParams.get("title");
+      setIdea(urlTitle ? urlTitle : seoKeyword);
       // Store SEO targeting params for the generation mutation.
       // Always reset both fields — prevents stale state from a previous keyword session
       // where a position was set but the new keyword has no position data.
-      setFocusKeyword(urlFocusKeyword ?? "");
+      setFocusKeyword(urlFocusKeyword ?? seoKeyword);
       setCurrentPosition(urlCurrentPosition ?? "");
       const posNum = urlCurrentPosition ? parseFloat(urlCurrentPosition) : null;
       const isStrikeZone = posNum !== null && posNum >= 11 && posNum <= 30;
       if (isStrikeZone) {
         toast.success(`\u26a1 Strike Zone keyword loaded: "${seoKeyword}" (pos ${posNum.toFixed(1)}) \u2014 SEO brief injected!`);
+      } else if (urlTitle) {
+        toast.success(`Scoreboard recommendation loaded: "${urlTitle}" \u2014 ready to generate!`);
       } else {
         toast.success(`SEO keyword loaded: "${seoKeyword}" \u2014 ready to generate!`);
       }

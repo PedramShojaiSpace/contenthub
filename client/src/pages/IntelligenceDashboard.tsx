@@ -352,7 +352,7 @@ export default function IntelligenceDashboard() {
                   <CheckCircle2 className="w-3 h-3" /> Inform Script
                 </span>
               </div>
-              <Link href="/creation-studio">
+              <Link href="/studio">
                 <Button variant="outline" size="sm" className="w-full mt-1 gap-1.5 text-xs h-7">
                   <ExternalLink className="w-3 h-3" />
                   Open Creation Studio

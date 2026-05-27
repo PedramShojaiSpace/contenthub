@@ -506,7 +506,7 @@ function PublishNextPanel() {
 
                   {/* Action */}
                   <a
-                    href={`/creation-studio?keyword=${encodeURIComponent(rec.keyword)}&title=${encodeURIComponent(rec.suggestedTitle)}`}
+                    href={`/studio?keyword=${encodeURIComponent(rec.keyword)}&title=${encodeURIComponent(rec.suggestedTitle)}&platform=blog`}
                     className="inline-flex items-center gap-1 h-7 px-2.5 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0 mt-0.5 font-medium"
                     title="Open in Creation Studio"
                   >

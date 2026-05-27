@@ -3188,6 +3188,41 @@ Return BOTH in this exact format:
           }
         }
 
+        // Step 9: Upsert wp_post_index with topicCluster so the scoreboard badge
+        // survives page refreshes without re-running keyword matching on the client.
+        if (newStatus !== "scheduled") {
+          try {
+            const { wpPostIndex: wpiTable } = await import("../drizzle/schema");
+            const { detectCluster: dc } = await import("./wpContentUtils");
+            const db4 = await getDb();
+            if (db4) {
+              const cluster = publishInput.focusKeyword ? dc(publishInput.focusKeyword) : null;
+              await db4
+                .insert(wpiTable)
+                .values({
+                  wpPostId: post.id,
+                  title: publishInput.title,
+                  slug: publishInput.slug,
+                  url: post.link,
+                  topicCluster: cluster?.label ?? null,
+                  publishedAt: new Date(),
+                  syncedAt: new Date(),
+                })
+                .onDuplicateKeyUpdate({
+                  set: {
+                    title: publishInput.title,
+                    url: post.link,
+                    topicCluster: cluster?.label ?? null,
+                    syncedAt: new Date(),
+                  },
+                });
+            }
+          } catch (idxErr) {
+            // Non-fatal — index update failure should not block the publish response
+            console.error("[WP] wp_post_index upsert failed (non-fatal):", idxErr);
+          }
+        }
+
         return {
           success: true,
           postId: post.id,
@@ -3224,8 +3259,14 @@ Return BOTH in this exact format:
         const db = await getDb();
         if (!db) throw new Error("Database unavailable");
         const { wpPostIndex } = await import("../drizzle/schema");
+        const { detectCluster: dc } = await import("./wpContentUtils");
         let upserted = 0;
         for (const p of posts) {
+          // Derive cluster from keyword matching against the post title and excerpt.
+          // The WP sync API doesn't return the Yoast focus keyword directly,
+          // so we match against title + excerpt text.
+          const clusterSource = `${p.title} ${p.excerpt}`;
+          const cluster = clusterSource ? dc(clusterSource) : null;
           await db
             .insert(wpPostIndex)
             .values({
@@ -3237,12 +3278,14 @@ Return BOTH in this exact format:
               categories: JSON.stringify(p.categories),
               tags: JSON.stringify(p.tags),
               publishedAt: p.publishedAt ? new Date(p.publishedAt) : null,
+              topicCluster: cluster?.label ?? null,
             })
             .onDuplicateKeyUpdate({
               set: {
                 title: p.title,
                 url: p.url,
                 excerpt: p.excerpt,
+                topicCluster: cluster?.label ?? null,
                 syncedAt: new Date(),
               },
             });
@@ -4681,6 +4724,14 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           )
         );
 
+      // Build a map of wpPostId -> topicCluster from the wp_post_index table
+      const { wpPostIndex: wpiTable } = await import("../drizzle/schema");
+      const wpiRows = await db.select({ wpPostId: wpiTable.wpPostId, topicCluster: wpiTable.topicCluster }).from(wpiTable);
+      const clusterByWpId = new Map<number, string | null>();
+      for (const row of wpiRows) {
+        clusterByWpId.set(row.wpPostId, row.topicCluster ?? null);
+      }
+
       // Try to fetch live GSC data
       let gscPageMap: Map<string, { clicks: number; impressions: number; ctr: number; position: number }> = new Map();
       let gscConnected = false;
@@ -4774,6 +4825,10 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         if (post.yoastScore === "good" && gsc && gsc.clicks > 0) health = "green";
         else if (post.yoastScore === "bad" || !post.yoastScore) health = "red";
 
+        // Resolve topicCluster: prefer DB value (persisted on publish/sync),
+        // fall back to client-side keyword matching if not yet in the index.
+        const dbCluster = post.wpPostId ? (clusterByWpId.get(post.wpPostId) ?? null) : null;
+
         return {
           id: post.id,
           title: post.title,
@@ -4791,6 +4846,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           trendDirection,
           trendDelta,
           health,
+          topicCluster: dbCluster,
         };
       });
     }),
@@ -5015,6 +5071,69 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
       }
 
       return enriched.slice(0, 10);
+    }),
+
+    /**
+     * Cluster Coverage — returns how many of the nine topic clusters have at
+     * least one published post, using the persisted topicCluster column in
+     * wp_post_index (falls back to keyword matching on contentItems).
+     * Used by the Scoreboard header stat card.
+     */
+    getClusterCoverage: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { covered: 0, total: 9, clusters: [] };
+
+      const ALL_CLUSTERS = [
+        "Gut Health & Digestion",
+        "Stress & Mental Wellness",
+        "Sleep & Recovery",
+        "Energy & Vitality",
+        "Detox & Cleansing",
+        "Mindfulness & Meditation",
+        "Nutrition & Diet",
+        "Fitness & Movement",
+        "Longevity & Anti-Aging",
+      ];
+
+      // Prefer the persisted topicCluster from wp_post_index
+      const { wpPostIndex: wpiTable } = await import("../drizzle/schema");
+      const { isNotNull } = await import("drizzle-orm");
+      const wpiRows = await db
+        .select({ topicCluster: wpiTable.topicCluster })
+        .from(wpiTable)
+        .where(isNotNull(wpiTable.topicCluster));
+
+      const coveredSet = new Set<string>();
+      for (const row of wpiRows) {
+        if (row.topicCluster) coveredSet.add(row.topicCluster);
+      }
+
+      // Also check contentItems focusKeyword for posts not yet in the index
+      if (coveredSet.size < ALL_CLUSTERS.length) {
+        const { contentItems } = await import("../drizzle/schema");
+        const { and, eq } = await import("drizzle-orm");
+        const { detectCluster: dc } = await import("./wpContentUtils");
+        const posts = await db
+          .select({ focusKeyword: contentItems.focusKeyword, title: contentItems.title })
+          .from(contentItems)
+          .where(and(eq(contentItems.status, "published"), eq(contentItems.platform, "blog")));
+        for (const p of posts) {
+          const src = `${p.focusKeyword ?? ""} ${p.title ?? ""}`;
+          const cluster = dc(src);
+          if (cluster) coveredSet.add(cluster.label);
+        }
+      }
+
+      const clusters = ALL_CLUSTERS.map((name) => ({
+        name,
+        covered: coveredSet.has(name),
+      }));
+
+      return {
+        covered: clusters.filter((c) => c.covered).length,
+        total: ALL_CLUSTERS.length,
+        clusters,
+      };
     }),
 
     /**

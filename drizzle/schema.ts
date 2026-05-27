@@ -727,6 +727,7 @@ export const wpPostIndex = mysqlTable("wp_post_index", {
   categories: text("categories"),        // JSON: string[] category names
   tags: text("tags"),                    // JSON: string[] tag names
   publishedAt: timestamp("publishedAt"),
+  topicCluster: varchar("topicCluster", { length: 128 }),  // e.g. "Gut Health & Digestion"
   syncedAt: timestamp("syncedAt").defaultNow().notNull(),
 });
 export type WpPost = typeof wpPostIndex.$inferSelect;

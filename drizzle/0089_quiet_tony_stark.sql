@@ -1,0 +1,1 @@
+ALTER TABLE `wp_post_index` ADD `topicCluster` varchar(128);

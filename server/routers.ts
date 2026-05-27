@@ -1084,11 +1084,22 @@ Rules:
               new Set([...relevantVerified, ...relevantWpLinks])
             ).slice(0, 12);
 
-            if (allLinkLines.length > 0) {
-              internalLinkBlock = `\n\nVERIFIED INTERNAL LINK LIST — CRITICAL: You may ONLY use URLs from this list as internal links. Do NOT invent, guess, or construct any theurbanmonk.com URL not shown here. For any topic not covered by a URL in this list, use the placeholder format: [INTERNAL LINK: topic].\n${allLinkLines.join("\n")}`;
-            } else {
-              // No links available — instruct AI to use placeholders only
-              internalLinkBlock = `\n\nVERIFIED INTERNAL LINK LIST — CRITICAL: No pre-verified internal links are available for this topic. Do NOT invent any theurbanmonk.com URLs. Use ONLY the placeholder format for all internal links: [INTERNAL LINK: topic of related article].`;
+            // Foundation links: always include these 4 core Urban Monk pages so the AI
+            // always has at least 3 real internal links to use, even when the WP post index
+            // is empty. This guarantees Yoast's internal links check passes on every post.
+            const foundationLinks = [
+              `- [The Urban Monk Academy — Holistic Health & Wellness Training](https://theurbanmonk.com/urban-monk-academy/)`,
+              `- [The Urban Monk — Dr. Pedram Shojai's Official Site](https://theurbanmonk.com/)`,
+              `- [Well.org — Wellness Community & Resources](https://well.org/)`,
+              `- [Urban Monk Nutrition — Supplements & Wellness Products](https://theurbanmonk.com/urban-monk-nutrition/)`,
+            ];
+            // Merge: topic-specific links first, then foundation links (deduped, capped at 12)
+            const mergedLinkLines = Array.from(
+              new Set([...allLinkLines, ...foundationLinks])
+            ).slice(0, 12);
+            internalLinkBlock = `\n\nVERIFIED INTERNAL LINK LIST — CRITICAL: You may ONLY use URLs from this list as internal links. Do NOT invent, guess, or construct any theurbanmonk.com URL not shown here. You MUST include at least 3 links from this list in the article body. For any topic not covered by a URL in this list, use the placeholder format: [INTERNAL LINK: topic].\n${mergedLinkLines.join("\n")}`;
+            if (allLinkLines.length === 0) {
+              console.log(`[Blog] WP post index empty — using foundation links only for internal link injection.`);
             }
           }
         } catch (err) {
@@ -2906,13 +2917,17 @@ Return BOTH in this exact format:
         // Yoast requires the focus keyphrase to appear as an EXACT PHRASE in at least one
         // H2 or H3 subheading. We check both levels and inject if missing.
         //
+        // CRITICAL: This fix operates on wpHtmlBody (HTML), NOT on cleanedBody (Markdown).
+        // Operating on Markdown and re-converting would discard the CTA banner HTML that
+        // was injected in Step 2b. We patch the HTML directly instead.
+        //
         // Rules:
-        // 1. Check H2 AND H3 headings (Yoast accepts either)
+        // 1. Check <h2> AND <h3> tags in the HTML (Yoast accepts either)
         // 2. Use word-boundary regex — NOT includes() — to avoid false positives from partial matches
-        // 3. If missing, rewrite the best available heading to START with the keyphrase
-        //    ("## [Keyphrase]: [Rest of heading]") — placing it first guarantees Yoast finds it
+        // 3. If missing, rewrite the BEST available <h2> to START with the keyphrase
+        //    ("<h2>Keyphrase: Original Text</h2>") — placing it first guarantees Yoast finds it
         // 4. Handle articles with only 1 H2 by falling back to the first H2
-        // 5. If the heading would exceed 80 chars, use just "## [Keyphrase]" as the heading
+        // 5. If the heading would exceed 80 chars, use just the keyphrase as the heading text
         if (publishInput.focusKeyword) {
           const kw = publishInput.focusKeyword.toLowerCase();
           // Escape special regex chars in the keyphrase
@@ -2920,39 +2935,40 @@ Return BOTH in this exact format:
           // Match the keyphrase as a contiguous exact phrase (word boundaries on both sides)
           const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
 
-          // Collect all H2 and H3 headings from the Markdown source
-          const headingRegex = /^(#{2,3}) .+$/gm;
-          const allHeadings = Array.from(cleanedBody.matchAll(headingRegex));
-          const h2Matches = allHeadings.filter((m) => m[1] === "##");
+          // Collect all <h2> and <h3> tags from the HTML
+          // Matches: <h2>Text</h2> or <h2 class="...">Text</h2>
+          const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>([^<]+)<\/h[23]>/gi;
+          const htmlHeadings = Array.from(wpHtmlBody.matchAll(htmlHeadingRegex));
+          const htmlH2s = htmlHeadings.filter((m) => m[1].toLowerCase() === "h2");
 
-          // Check if the keyphrase already appears in any H2 or H3
-          const keyphraseInSubheading = allHeadings.some((m) => kwRegex.test(m[0]));
+          // Check if the keyphrase already appears in any <h2> or <h3> text content
+          const keyphraseInSubheading = htmlHeadings.some((m) => kwRegex.test(m[3]));
 
           if (!keyphraseInSubheading) {
-            // Choose the target heading to rewrite:
+            // Choose the target <h2> to rewrite:
             // Prefer the 3rd H2 (index 2) → 2nd H2 (index 1) → 1st H2 (index 0)
             // This avoids rewriting the intro H2 which often contains the article title.
-            const targetIndex = h2Matches.length >= 3 ? 2 : h2Matches.length >= 2 ? 1 : 0;
-            const targetMatch = h2Matches[targetIndex] ?? allHeadings[0]; // ultimate fallback
+            const targetIndex = htmlH2s.length >= 3 ? 2 : htmlH2s.length >= 2 ? 1 : 0;
+            const targetMatch = htmlH2s[targetIndex] ?? htmlHeadings[0]; // ultimate fallback
 
             if (targetMatch) {
-              const originalHeading = targetMatch[0]; // e.g. "## How to Improve Your Sleep"
-              const hLevel = targetMatch[1]; // "##" or "###"
-              const headingText = originalHeading.replace(/^#{2,3} /, "").trim();
+              const originalTag = targetMatch[0]; // e.g. "<h2>How to Improve Your Sleep</h2>"
+              const tagName = targetMatch[1]; // "h2" or "h3"
+              const tagAttrs = targetMatch[2] ?? ""; // any class/id attributes
+              const headingText = targetMatch[3].trim(); // inner text
               const kwCapitalised = publishInput.focusKeyword.charAt(0).toUpperCase() + publishInput.focusKeyword.slice(1);
 
-              // Strategy: start the heading with the keyphrase so Yoast cannot miss it.
-              // Format: "## [Keyphrase]: [Original Heading Text]"
-              // If that exceeds 80 chars, drop the original text and use just the keyphrase.
-              const candidate = `${hLevel} ${kwCapitalised}: ${headingText}`;
-              const finalHeading = candidate.length <= 80 ? candidate : `${hLevel} ${kwCapitalised}`;
+              // Strategy: start the heading text with the keyphrase so Yoast cannot miss it.
+              // Format: "<h2>Keyphrase: Original Heading Text</h2>"
+              // If that exceeds 80 chars, use just the keyphrase as the heading text.
+              const candidateText = `${kwCapitalised}: ${headingText}`;
+              const finalText = candidateText.length <= 80 ? candidateText : kwCapitalised;
+              const finalTag = `<${tagName}${tagAttrs}>${finalText}</${tagName}>`;
 
-              // Replace only the first occurrence of this exact heading in the body
-              const escapedOriginal = originalHeading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-              const patchedBody = cleanedBody.replace(new RegExp(escapedOriginal, "m"), finalHeading);
-              // Re-convert patched Markdown to HTML
-              wpHtmlBody = markdownToWpHtml(patchedBody);
-              console.log(`[SEO H2 Fix] Injected keyphrase "${publishInput.focusKeyword}" into heading: "${originalHeading}" → "${finalHeading}"`);
+              // Replace only the first occurrence of this exact tag in the HTML
+              const escapedOriginal = originalTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              wpHtmlBody = wpHtmlBody.replace(new RegExp(escapedOriginal), finalTag);
+              console.log(`[SEO H2 Fix] Injected keyphrase "${publishInput.focusKeyword}" into <${tagName}>: "${headingText}" → "${finalText}"`);
             }
           }
         }
@@ -3022,13 +3038,16 @@ Return BOTH in this exact format:
         // pushes the result back over the length limit.
         let metaDesc = publishInput.yoastMetaDescription ?? publishInput.metaDescription ?? "";
 
-        // Helper: trim to ≤maxLen at a word boundary, no ellipsis
+        // Helper: trim to ≤maxLen at a word boundary, no ellipsis.
+        // Always finds the last space to avoid cutting mid-word.
+        // Falls back to hard slice only if no space exists in the string.
         const trimToWordBoundary = (s: string, maxLen: number): string => {
           if (s.length <= maxLen) return s;
           let t = s.slice(0, maxLen);
           const sp = t.lastIndexOf(" ");
-          if (sp > Math.floor(maxLen * 0.6)) t = t.slice(0, sp);
-          return t.trimEnd().replace(/[,;:\-–—]$/, "").trimEnd();
+          // Always trim to last word boundary (sp > 0 means a space was found)
+          if (sp > 0) t = t.slice(0, sp);
+          return t.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
         };
 
         if (publishInput.focusKeyword && metaDesc) {
@@ -3040,21 +3059,23 @@ Return BOTH in this exact format:
             // Strategy: prepend "[Keyphrase]: " then trim the TAIL of the description
             // so the total stays ≤152 chars. This guarantees the keyphrase survives.
             const prefix = `${publishInput.focusKeyword}: `;
-            const maxBodyLen = 152 - prefix.length; // chars available for the rest
+            const maxBodyLen = 148 - prefix.length; // chars available for the rest (148 = safe buffer under Yoast 156 threshold)
             const trimmedBody = trimToWordBoundary(metaDesc, maxBodyLen);
             metaDesc = (prefix + trimmedBody).trimEnd().replace(/[,;:\-–—]$/, "").trimEnd();
           } else {
             // Keyphrase is already present — just enforce the length limit
-            metaDesc = trimToWordBoundary(metaDesc, 152);
+            metaDesc = trimToWordBoundary(metaDesc, 148);
           }
         } else {
           // No keyphrase — just enforce the length limit
-          metaDesc = trimToWordBoundary(metaDesc, 152);
+          metaDesc = trimToWordBoundary(metaDesc, 148);
         }
 
-        // Sanity-check — flag if still over 155 (should never happen after the logic above)
+        // Hard safety net — force-truncate if somehow still over 155 (should never happen)
         if (metaDesc.length > 155) {
-          console.warn(`[SEO] Meta description for "${publishInput.title}" is ${metaDesc.length} chars after trim — review recommended.`);
+          const sp = metaDesc.slice(0, 148).lastIndexOf(' ');
+          metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 148)).trimEnd().replace(/[,;:\-–—]$/, '').trimEnd();
+          console.warn(`[SEO] Meta description force-truncated to ${metaDesc.length} chars for "${publishInput.title}"`);
         }
 
         // Step 4c: Keyphrase deduplication check

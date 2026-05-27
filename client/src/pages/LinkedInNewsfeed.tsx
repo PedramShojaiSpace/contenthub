@@ -385,6 +385,14 @@ function ArticleDetailDialog({
     onError: (err) => toast.error(`X version generation failed: ${err.message}`),
   });
 
+  const shortenXMutation = trpc.newsfeed.shortenXVersion.useMutation({
+    onSuccess: (data, variables) => {
+      onXVersionChange(variables.id, data.xVersion);
+      toast.success("X post shortened — check the character count above");
+    },
+    onError: (err) => toast.error(`Shorten failed: ${err.message}`),
+  });
+
   if (!article) return null;
 
   const handleCopy = () => {
@@ -395,9 +403,16 @@ function ArticleDetailDialog({
     }
   };
 
-  const charCount = (article.xVersion ?? "").length;
+  // Twitter wraps all URLs to 23 chars (t.co). Use t.co-aware count for the limit check.
+  const tcoAwareCount = (text: string) => {
+    const urlRegex = /https?:\/\/\S+/g;
+    const TCO_LEN = 23;
+    return text.replace(urlRegex, (url) => "x".repeat(Math.min(url.length, TCO_LEN))).length;
+  };
+  const rawXText = article.xVersion ?? "";
+  const charCount = tcoAwareCount(rawXText);
   const charColor =
-    charCount > 280 ? "text-red-600" : charCount > 250 ? "text-amber-600" : "text-slate-400";
+    charCount > 280 ? "text-red-600" : charCount > 260 ? "text-amber-600" : "text-slate-400";
 
   const handleXToggle = (checked: boolean) => {
     setIncludeX(checked);
@@ -575,9 +590,24 @@ function ArticleDetailDialog({
                         placeholder="X version will appear here…"
                       />
                       {charCount > 280 && (
-                        <p className="text-xs text-red-600 mt-1">
-                          Over 280 characters — please shorten before pushing to X.
-                        </p>
+                        <div className="mt-2 p-2.5 bg-red-50 border border-red-200 rounded-lg flex items-start justify-between gap-3">
+                          <p className="text-xs text-red-700">
+                            <strong>{charCount}/280</strong> characters (t.co-aware) — post is too long to publish.
+                            Edit the text above or use AI to shorten it automatically.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => shortenXMutation.mutate({ id: article.id, currentText: rawXText })}
+                            disabled={shortenXMutation.isPending}
+                            className="shrink-0 inline-flex items-center gap-1 text-xs font-medium bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded disabled:opacity-50"
+                          >
+                            {shortenXMutation.isPending ? (
+                              <><Loader2 size={11} className="animate-spin" /> Shortening…</>
+                            ) : (
+                              <>✂ AI Shorten</>
+                            )}
+                          </button>
+                        </div>
                       )}
                     </>
                   )}

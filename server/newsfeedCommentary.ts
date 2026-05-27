@@ -185,15 +185,16 @@ export async function generateXVersion(
   linkedInCommentary: string,
   articleUrl: string
 ): Promise<string> {
-  // URL will be appended as a link attachment in Buffer, but we include it in
-  // the text as a fallback so the post always has the source reference.
-  // Twitter wraps URLs to 23 chars (t.co), so we budget 257 chars for text.
-  const userPrompt = `Here is a LinkedIn post I wrote. Condense it into a single punchy X/Twitter post of ≤257 characters that captures the sharpest insight.
+  // Twitter wraps ALL URLs to exactly 23 chars (t.co), regardless of raw length.
+  // So the text budget is: 280 - 23 (t.co URL) - 2 ("\n\n" separator) = 255 chars.
+  // We ask the LLM for ≤250 to leave a 5-char safety buffer.
+  const TEXT_BUDGET = 250;
+  const userPrompt = `Here is a LinkedIn post I wrote. Condense it into a single punchy X/Twitter post of ≤${TEXT_BUDGET} characters that captures the sharpest insight.
 
 LINKEDIN POST:
 ${linkedInCommentary}
 
-Write ONLY the tweet text (no URL, no hashtags). Maximum 257 characters.`;
+Write ONLY the tweet text (no URL, no hashtags). Maximum ${TEXT_BUDGET} characters. Count carefully — this is a hard limit.`;
 
   const response = await invokeLLM({
     messages: [
@@ -206,12 +207,12 @@ Write ONLY the tweet text (no URL, no hashtags). Maximum 257 characters.`;
   if (!content) throw new Error("LLM returned empty X version");
   let tweet = typeof content === "string" ? content.trim() : JSON.stringify(content);
 
-  // Hard truncate at 257 chars if LLM went over (safety net)
-  if (tweet.length > 257) {
-    // Truncate at last word boundary
-    tweet = tweet.slice(0, 254).replace(/\s+\S*$/, "") + "…";
+  // Hard truncate at TEXT_BUDGET chars if LLM went over (safety net)
+  if (tweet.length > TEXT_BUDGET) {
+    tweet = tweet.slice(0, TEXT_BUDGET - 1).replace(/\s+\S*$/, "") + "…";
   }
 
-  // Append the article URL so the post always links back to the source
+  // Append the article URL so the post always links back to the source.
+  // Twitter counts the t.co-wrapped URL as 23 chars, so total ≤ 250 + 2 + 23 = 275 chars.
   return `${tweet}\n\n${articleUrl}`;
 }

@@ -58,6 +58,7 @@ type PostRow = {
   focusKeyword: string | null;
   yoastScore: string | null;
   yoastScoreFetchedAt: number | null;
+  yoastFixedAt: number | null;
   pushedChannels: { id: string; name: string; service: string }[];
   gscClicks: number | null;
   gscImpressions: number | null;
@@ -450,7 +451,17 @@ function AutoSolveModal({
               ))}
             </div>
 
-            <div className="flex justify-end">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800/40 p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                Fixed posts now show as <strong>amber</strong> on the scoreboard. They'll turn <strong>green</strong> once Yoast recalculates the score in WordPress (usually within 24h, or when the post is opened in the WP editor).
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { utils.scoreboard.getPublishedPosts.invalidate(); toast.info("Refreshing scoreboard…"); }}>
+                <RefreshCw className="w-4 h-4 mr-1.5" />
+                Refresh Scoreboard
+              </Button>
               <Button onClick={handleClose}>
                 <CheckCircle2 className="w-4 h-4 mr-1.5" />
                 Done

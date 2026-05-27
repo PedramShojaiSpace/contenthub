@@ -98,6 +98,9 @@ export const contentItems = mysqlTable("content_items", {
   readabilityTransitionPct: int("readabilityTransitionPct"),  // 0-100
   readabilityMaxRun: int("readabilityMaxRun"),                 // max consecutive same-start run
   readabilityUpdatedAt: bigint("readabilityUpdatedAt", { mode: "number" }),
+  // Timestamp set when bulkFixYoastIssues successfully pushes meta/content to WordPress.
+  // Used to show "fixed" status in the scoreboard even before Yoast recalculates linkdex.
+  yoastFixedAt: bigint("yoastFixedAt", { mode: "number" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

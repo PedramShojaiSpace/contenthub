@@ -103,6 +103,31 @@ function HealthDot({ health }: { health: "green" | "amber" | "red" }) {
   return <XCircle className="w-4 h-4 text-red-500 shrink-0" />;
 }
 
+// Derive a short cluster label from a focus keyword — same mapping used in CommandCenter
+const CLUSTER_MAP: Array<{ label: string; short: string; keywords: string[]; color: string }> = [
+  { label: "Gut Health", short: "Gut", keywords: ["gut", "digestion", "microbiome", "probiotic", "bloating", "intestin"], color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
+  { label: "Stress & Mind", short: "Stress", keywords: ["stress", "anxiety", "cortisol", "burnout", "adrenal", "mood"], color: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30" },
+  { label: "Sleep", short: "Sleep", keywords: ["sleep", "insomnia", "circadian", "melatonin", "rest", "recovery"], color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30" },
+  { label: "Energy", short: "Energy", keywords: ["energy", "mitochondria", "fatigue", "vitality", "stamina"], color: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
+  { label: "Detox", short: "Detox", keywords: ["detox", "cleanse", "toxin", "liver", "lymph", "fasting"], color: "bg-lime-500/15 text-lime-600 dark:text-lime-400 border-lime-500/30" },
+  { label: "Mindfulness", short: "Mind", keywords: ["meditation", "mindfulness", "qigong", "breathwork", "pranayama", "monk"], color: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30" },
+  { label: "Nutrition", short: "Nutrition", keywords: ["nutrition", "diet", "food", "eating", "meal", "nutrient", "supplement"], color: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30" },
+  { label: "Fitness", short: "Fitness", keywords: ["exercise", "fitness", "movement", "workout", "yoga", "strength"], color: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" },
+  { label: "Longevity", short: "Longevity", keywords: ["longevity", "aging", "anti-aging", "lifespan", "biohack"], color: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30" },
+];
+
+function ClusterBadge({ keyword }: { keyword: string | null }) {
+  if (!keyword) return null;
+  const kw = keyword.toLowerCase();
+  const cluster = CLUSTER_MAP.find((c) => c.keywords.some((sig) => kw.includes(sig)));
+  if (!cluster) return null;
+  return (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${cluster.color}`}>
+      {cluster.short}
+    </span>
+  );
+}
+
 function TrendBadge({ direction, delta }: { direction: "up" | "down" | "flat" | null; delta: number | null }) {
   if (!direction) {
     return <span className="text-xs text-muted-foreground italic">—</span>;
@@ -731,6 +756,7 @@ export default function Scoreboard() {
                           🔑 {post.focusKeyword}
                         </span>
                       )}
+                      <ClusterBadge keyword={post.focusKeyword} />
                       <span className="text-[10px] text-muted-foreground">{timeAgo(post.publishedAt)}</span>
                     </div>
                   </div>

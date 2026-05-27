@@ -486,6 +486,39 @@ async function startServer() {
   const { handleBufferSync } = await import("../bufferSyncHandler");
   app.post("/api/scheduled/buffer-sync", handleBufferSync);
 
+  // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
+  // Public routes: /{campaign}/{slug} — serves full HTML pages
+  // Campaigns: lo | gut | sleep
+  app.get("/:campaign(lo|gut|sleep)/:slug", async (req, res) => {
+    try {
+      const { campaign, slug } = req.params as { campaign: "lo" | "gut" | "sleep"; slug: string };
+      const { getDb } = await import("../db");
+      const { hostedLandingPages } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const { renderLandingPageHtml } = await import("../hostedLandingPagesRouter");
+      const db = await getDb();
+      if (!db) return res.status(503).send("Service unavailable");
+      const [page] = await db
+        .select()
+        .from(hostedLandingPages)
+        .where(and(eq(hostedLandingPages.campaign, campaign), eq(hostedLandingPages.slug, slug)))
+        .limit(1);
+      if (!page || page.status !== "published") {
+        return res.status(404).send(`<!DOCTYPE html><html><head><title>Page Not Found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px"><h1>404 — Page Not Found</h1><p>This page does not exist or has not been published yet.</p></body></html>`);
+      }
+      // Increment view count (fire and forget)
+      db.update(hostedLandingPages).set({ viewCount: (page.viewCount || 0) + 1 }).where(eq(hostedLandingPages.id, page.id)).catch(() => {});
+      const html = renderLandingPageHtml(page);
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      return res.send(html);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[landing-page] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

@@ -1018,6 +1018,41 @@ function DraggableCard({
           </div>
         )}
 
+        {/* X character count badge — t.co-aware (URLs count as 23 chars) */}
+        {item.platform === "x" && item.textContent && (() => {
+          const tcoCount = (text: string) => {
+            const TCO_LEN = 23;
+            return text.replace(/https?:\/\/\S+/g, (url) => "x".repeat(Math.min(url.length, TCO_LEN))).length;
+          };
+          const count = tcoCount(item.textContent);
+          const isOver = count > 280;
+          const isWarn = count > 260 && count <= 280;
+          return (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded text-[9px] font-mono border cursor-default select-none ${
+                      isOver
+                        ? "bg-red-100 text-red-700 border-red-300"
+                        : isWarn
+                        ? "bg-amber-100 text-amber-700 border-amber-300"
+                        : "bg-green-100 text-green-700 border-green-300"
+                    }`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {count}/280
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-[10px] max-w-[180px]">
+                  <p className="font-semibold mb-0.5">X character count (t.co-aware)</p>
+                  <p>URLs count as 23 chars (Twitter t.co wrapping). {isOver ? "Over limit — shorten before pushing." : isWarn ? "Close to limit." : "Within limit."}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })()}
+
         {/* Analytics panel for published items */}
         {isPublished && (
           <AnalyticsPanel item={item} onUpdate={onAnalyticsUpdate} />

@@ -353,7 +353,7 @@ const CLUSTER_MAP: Array<{ label: string; slug: string; keywords: string[] }> = 
  * Detect which cluster subcategory best matches the focus keyword.
  * Returns the cluster label + slug, or null if no match.
  */
-function detectCluster(focusKeyword: string): { label: string; slug: string } | null {
+export function detectCluster(focusKeyword: string): { label: string; slug: string } | null {
   if (!focusKeyword) return null;
   const kw = focusKeyword.toLowerCase();
   for (const cluster of CLUSTER_MAP) {

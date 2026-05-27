@@ -59,6 +59,7 @@ type PostRow = {
   trendDirection: "up" | "down" | "flat" | null;
   trendDelta: number | null;
   health: "green" | "amber" | "red";
+  topicCluster: string | null;
 };
 
 type Recommendation = {
@@ -104,16 +105,17 @@ function HealthDot({ health }: { health: "green" | "amber" | "red" }) {
 }
 
 // Derive a short cluster label from a focus keyword — same mapping used in CommandCenter
+// Labels MUST match the server-side detectCluster() labels in wpContentUtils.ts
 const CLUSTER_MAP: Array<{ label: string; short: string; keywords: string[]; color: string }> = [
-  { label: "Gut Health", short: "Gut", keywords: ["gut", "digestion", "microbiome", "probiotic", "bloating", "intestin"], color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
-  { label: "Stress & Mind", short: "Stress", keywords: ["stress", "anxiety", "cortisol", "burnout", "adrenal", "mood"], color: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30" },
-  { label: "Sleep", short: "Sleep", keywords: ["sleep", "insomnia", "circadian", "melatonin", "rest", "recovery"], color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30" },
-  { label: "Energy", short: "Energy", keywords: ["energy", "mitochondria", "fatigue", "vitality", "stamina"], color: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
-  { label: "Detox", short: "Detox", keywords: ["detox", "cleanse", "toxin", "liver", "lymph", "fasting"], color: "bg-lime-500/15 text-lime-600 dark:text-lime-400 border-lime-500/30" },
-  { label: "Mindfulness", short: "Mind", keywords: ["meditation", "mindfulness", "qigong", "breathwork", "pranayama", "monk"], color: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30" },
-  { label: "Nutrition", short: "Nutrition", keywords: ["nutrition", "diet", "food", "eating", "meal", "nutrient", "supplement"], color: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30" },
-  { label: "Fitness", short: "Fitness", keywords: ["exercise", "fitness", "movement", "workout", "yoga", "strength"], color: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" },
-  { label: "Longevity", short: "Longevity", keywords: ["longevity", "aging", "anti-aging", "lifespan", "biohack"], color: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30" },
+  { label: "Gut Health & Digestion", short: "Gut", keywords: ["gut", "digestion", "microbiome", "probiotic", "bloating", "intestin"], color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
+  { label: "Stress & Mental Wellness", short: "Stress", keywords: ["stress", "anxiety", "cortisol", "burnout", "adrenal", "mood"], color: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30" },
+  { label: "Sleep & Recovery", short: "Sleep", keywords: ["sleep", "insomnia", "circadian", "melatonin", "rest", "recovery"], color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30" },
+  { label: "Energy & Vitality", short: "Energy", keywords: ["energy", "mitochondria", "fatigue", "vitality", "stamina"], color: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
+  { label: "Detox & Cleansing", short: "Detox", keywords: ["detox", "cleanse", "toxin", "liver", "lymph", "fasting"], color: "bg-lime-500/15 text-lime-600 dark:text-lime-400 border-lime-500/30" },
+  { label: "Mindfulness & Meditation", short: "Mind", keywords: ["meditation", "mindfulness", "qigong", "breathwork", "pranayama", "monk"], color: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30" },
+  { label: "Nutrition & Diet", short: "Nutrition", keywords: ["nutrition", "diet", "food", "eating", "meal", "nutrient", "supplement"], color: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30" },
+  { label: "Fitness & Movement", short: "Fitness", keywords: ["exercise", "fitness", "movement", "workout", "yoga", "strength"], color: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" },
+  { label: "Longevity & Anti-Aging", short: "Longevity", keywords: ["longevity", "aging", "anti-aging", "lifespan", "biohack"], color: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30" },
 ];
 
 function ClusterBadge({ keyword }: { keyword: string | null }) {
@@ -554,9 +556,11 @@ export default function Scoreboard() {
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "green" | "amber" | "red">("all");
+  const [clusterFilter, setClusterFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"publishedAt" | "clicks" | "position" | "health" | "trend">("publishedAt");
 
   const postsQuery = trpc.scoreboard.getPublishedPosts.useQuery(undefined, { retry: false });
+  const clusterCoverageQuery = trpc.scoreboard.getClusterCoverage.useQuery(undefined, { retry: false });
 
   const fetchYoastScore = trpc.content.fetchYoastScore.useMutation({
     onSuccess: () => {
@@ -582,6 +586,14 @@ export default function Scoreboard() {
   const filtered = useMemo(() => {
     let rows = [...posts];
     if (filter !== "all") rows = rows.filter((p) => p.health === filter);
+    if (clusterFilter) {
+      rows = rows.filter((p) => {
+        if (p.topicCluster) return p.topicCluster === clusterFilter;
+        const kw = p.focusKeyword ?? "";
+        const match = CLUSTER_MAP.find((c) => c.keywords.some((sig) => kw.toLowerCase().includes(sig)));
+        return match?.label === clusterFilter;
+      });
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter(
@@ -611,7 +623,7 @@ export default function Scoreboard() {
       return (b.publishedAt ?? 0) - (a.publishedAt ?? 0);
     });
     return rows;
-  }, [posts, filter, search, sortBy]);
+  }, [posts, filter, clusterFilter, search, sortBy]);
 
   const handleRefresh = () => {
     utils.scoreboard.getPublishedPosts.invalidate();
@@ -639,11 +651,11 @@ export default function Scoreboard() {
 
       {/* Summary cards */}
       {postsQuery.isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <StatCard label="Published Posts" value={totalPosts} icon={Globe} />
           <StatCard label="Winning (Green)" value={greenPosts} sub="Yoast good + GSC clicks" icon={CheckCircle2} color="text-green-500" />
           <StatCard label="Needs Attention" value={redPosts} sub="Yoast bad or no score" icon={XCircle} color="text-red-500" />
@@ -660,6 +672,34 @@ export default function Scoreboard() {
             icon={TrendingUp}
             color="text-green-500"
           />
+          {/* Cluster Coverage Card */}
+          {(() => {
+            const cc = clusterCoverageQuery.data;
+            const covered = cc?.covered ?? 0;
+            const total = cc?.total ?? 9;
+            const pct = total > 0 ? Math.round((covered / total) * 100) : 0;
+            const uncovered = cc?.clusters.filter((c) => !c.covered).map((c) => c.name) ?? [];
+            return (
+              <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-1 relative overflow-hidden">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Layers className="w-4 h-4" />
+                  <span className="text-xs font-medium">Cluster Coverage</span>
+                </div>
+                <div className="text-2xl font-bold text-foreground">
+                  {covered}<span className="text-base font-normal text-muted-foreground">/{total}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">clusters with posts</div>
+                <div className="w-full bg-muted/40 rounded-full h-1.5 mt-1">
+                  <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                {uncovered.length > 0 && (
+                  <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate" title={uncovered.join(", ")}>
+                    Gap: {uncovered.slice(0, 2).map((n) => n.split(" ")[0]).join(", ")}{uncovered.length > 2 ? ` +${uncovered.length - 2}` : ""}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -670,41 +710,71 @@ export default function Scoreboard() {
       <PublishNextPanel />
 
       {/* Filters + search */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-48 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search posts or keywords…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-background border-border"
-          />
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-48 max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search posts or keywords…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-background border-border"
+            />
+          </div>
+          <div className="flex gap-2">
+            {(["all", "green", "amber", "red"] as const).map((f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={filter === f ? "default" : "outline"}
+                onClick={() => setFilter(f)}
+                className="capitalize"
+              >
+                {f === "all" ? "All" : f === "green" ? "✓ Winning" : f === "amber" ? "⚠ Watch" : "✗ Fix"}
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-2 ml-auto">
+            <span className="text-xs text-muted-foreground self-center">Sort:</span>
+            {(["publishedAt", "clicks", "position", "trend", "health"] as const).map((s) => (
+              <Button
+                key={s}
+                size="sm"
+                variant={sortBy === s ? "secondary" : "ghost"}
+                onClick={() => setSortBy(s)}
+                className="text-xs h-8"
+              >
+                {s === "publishedAt" ? "Newest" : s === "clicks" ? "Clicks" : s === "position" ? "Position" : s === "trend" ? "Trending" : "Health"}
+              </Button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {(["all", "green", "amber", "red"] as const).map((f) => (
-            <Button
-              key={f}
-              size="sm"
-              variant={filter === f ? "default" : "outline"}
-              onClick={() => setFilter(f)}
-              className="capitalize"
+
+        {/* Cluster filter pills */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs text-muted-foreground">Cluster:</span>
+          <button
+            onClick={() => setClusterFilter(null)}
+            className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+              clusterFilter === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-transparent text-muted-foreground border-border hover:border-primary/50"
+            }`}
+          >
+            All
+          </button>
+          {CLUSTER_MAP.map((c) => (
+            <button
+              key={c.label}
+              onClick={() => setClusterFilter(clusterFilter === c.label ? null : c.label)}
+              className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                clusterFilter === c.label
+                  ? `${c.color} border-transparent`
+                  : "bg-transparent text-muted-foreground border-border hover:border-primary/50"
+              }`}
             >
-              {f === "all" ? "All" : f === "green" ? "✓ Winning" : f === "amber" ? "⚠ Watch" : "✗ Fix"}
-            </Button>
-          ))}
-        </div>
-        <div className="flex gap-2 ml-auto">
-          <span className="text-xs text-muted-foreground self-center">Sort:</span>
-          {(["publishedAt", "clicks", "position", "trend", "health"] as const).map((s) => (
-            <Button
-              key={s}
-              size="sm"
-              variant={sortBy === s ? "secondary" : "ghost"}
-              onClick={() => setSortBy(s)}
-              className="text-xs h-8"
-            >
-              {s === "publishedAt" ? "Newest" : s === "clicks" ? "Clicks" : s === "position" ? "Position" : s === "trend" ? "Trending" : "Health"}
-            </Button>
+              {c.short}
+            </button>
           ))}
         </div>
       </div>

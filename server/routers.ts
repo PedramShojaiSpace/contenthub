@@ -59,7 +59,7 @@ import {
 } from "./db";
 import { getBufferProfiles, pushToBuffer, pushCarouselToBuffer } from "./buffer";
 import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, updateWpPostYoast, getWpYoastScore, updateWpPostContent, type WpPostSummary } from "./wordpress";
-import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags, resolveWpCategories } from "./wpContentUtils";
+import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags, resolveWpCategories, fetchWpCategories } from "./wpContentUtils";
 import {
   countAddressedGaps,
   getCompetitorLeaderboard,
@@ -3204,6 +3204,17 @@ Return BOTH in this exact format:
       }),
 
     // Sync WordPress post index (for internal link injection in blog generation)
+    // Fetch all WordPress categories (for the publish dialog category dropdown)
+    getWpCategories: protectedProcedure
+      .query(async () => {
+        const wpBaseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+        const u = process.env.WORDPRESS_USERNAME ?? "";
+        const p = process.env.WORDPRESS_APP_PASSWORD ?? "";
+        const authHeader = "Basic " + Buffer.from(`${u}:${p}`).toString("base64");
+        const categories = await fetchWpCategories(authHeader, wpBaseUrl);
+        return categories;
+      }),
+
     syncPostIndex: protectedProcedure
       .mutation(async () => {
         const posts = await fetchAllWpPosts();

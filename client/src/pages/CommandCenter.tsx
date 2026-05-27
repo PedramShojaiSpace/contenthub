@@ -1439,6 +1439,19 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
     (c) => c.status !== "green" && ["SEO Title", "Meta Desc", "H2 Subheading", "Keyphrase in Meta"].includes(c.label)
   );
 
+  // Readability analysis (transition words + consecutive sentence starts)
+  const { data: readability, isLoading: readabilityLoading } = trpc.blog.analyzeReadability.useQuery(
+    { contentItemId: item.id },
+    { enabled: !compact, staleTime: 60_000 }
+  );
+
+  // Combine SEO + readability overall status for the summary footer
+  const readabilityOverall: "green" | "amber" | "red" | null = readability
+    ? (readability.transitionStatus === "red" || readability.consecutiveStatus === "red" ? "red"
+      : readability.transitionStatus === "amber" || readability.consecutiveStatus === "amber" ? "amber"
+      : "green")
+    : null;
+
   return (
     <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-2">
       <div className="flex items-center justify-between">
@@ -1496,19 +1509,87 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
           </TooltipProvider>
         ))}
       </div>
-      {overall === "red" && (
+
+      {/* Readability badges — transition words + consecutive sentence starts */}
+      {!compact && (
+        <div className="pt-1 border-t border-border/40">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+            <BookOpen className="h-3 w-3" />
+            Readability
+          </p>
+          {readabilityLoading ? (
+            <div className="flex items-center gap-1">
+              <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground/50" />
+              <span className="text-[9px] text-muted-foreground/50">Analysing…</span>
+            </div>
+          ) : readability ? (
+            <div className="grid grid-cols-2 gap-1.5">
+              {/* Transition words badge */}
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className={`flex items-center gap-1.5 rounded px-2 py-1 border text-[10px] cursor-default ${statusColors[readability.transitionStatus]}`}>
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDots[readability.transitionStatus]}`} />
+                      <span className="font-medium truncate">Transitions</span>
+                      <span className="ml-auto font-mono text-[9px] opacity-70 shrink-0">{readability.transitionPct}%</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-[10px] max-w-[240px]">
+                    <p className="font-semibold mb-0.5">Transition Words: {readability.transitionPct}%</p>
+                    <p>{readability.transitionCount} of {readability.totalSentences} sentences contain a transition word.</p>
+                    <p className="mt-0.5 text-muted-foreground">Yoast requires ≥30%. Target 35% for a comfortable pass.</p>
+                    {readability.transitionStatus !== "green" && (
+                      <p className="mt-0.5 text-amber-600">Add words like: However, Therefore, Furthermore, In addition, As a result, Finally…</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Consecutive sentence starts badge */}
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className={`flex items-center gap-1.5 rounded px-2 py-1 border text-[10px] cursor-default ${statusColors[readability.consecutiveStatus]}`}>
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDots[readability.consecutiveStatus]}`} />
+                      <span className="font-medium truncate">Sentence Starts</span>
+                      <span className="ml-auto font-mono text-[9px] opacity-70 shrink-0">
+                        {readability.maxRun < 3 ? "OK" : `${readability.maxRun}×`}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-[10px] max-w-[240px]">
+                    <p className="font-semibold mb-0.5">Consecutive Sentence Starts</p>
+                    {readability.maxRun < 3 ? (
+                      <p>No consecutive sentence start violations found.</p>
+                    ) : (
+                      <>
+                        <p>{readability.violationCount} violation{readability.violationCount !== 1 ? "s" : ""} found. Longest run: {readability.maxRun} sentences starting with "{readability.worstWord}".</p>
+                        <p className="mt-0.5 text-red-600">Yoast flags this as a hard red. Rewrite at least one sentence in each run to start differently.</p>
+                      </>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          ) : (
+            <p className="text-[9px] text-muted-foreground/50 italic">No content to analyse.</p>
+          )}
+        </div>
+      )}
+
+      {(overall === "red" || readabilityOverall === "red") && (
         <p className="text-[10px] text-red-600 flex items-center gap-1">
           <AlertCircle className="h-3 w-3 flex-shrink-0" />
-          Click “Fix Now” to auto-fix all issues before publishing.
+          {overall === "red" ? 'Click "Fix Now" to auto-fix all issues before publishing.' : 'Readability issues detected — review transition words and sentence starts.'}
         </p>
       )}
-      {overall === "amber" && (
+      {overall !== "red" && readabilityOverall !== "red" && (overall === "amber" || readabilityOverall === "amber") && (
         <p className="text-[10px] text-amber-700 flex items-center gap-1">
           <AlertCircle className="h-3 w-3 flex-shrink-0" />
-          Minor issues detected — click “Fix Now” to resolve them.
+          {overall === "amber" ? 'Minor SEO issues detected — click "Fix Now" to resolve them.' : 'Readability could be improved — add more transition words.'}
         </p>
       )}
-      {overall === "green" && (
+      {overall === "green" && (readabilityOverall === "green" || readabilityOverall === null) && (
         <p className="text-[10px] text-green-700 flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
           All checks passed — ready to publish!
@@ -2123,6 +2204,26 @@ export default function CommandCenter() {
       }
     },
     onError: (err) => toast.error("Bulk H2 fix failed: " + err.message),
+  });
+
+  // Bulk Fix Yoast Issues — iterates all published posts and runs fixYoastIssues on each
+  const [isBulkFixingYoast, setIsBulkFixingYoast] = useState(false);
+  const bulkFixYoastMutation = trpc.blog.bulkFixYoastIssues.useMutation({
+    onSuccess: (data) => {
+      setIsBulkFixingYoast(false);
+      refetch();
+      if (data.errorCount > 0) {
+        toast.warning(`Bulk Yoast fix: ${data.fixedCount} fixed, ${data.alreadyOkCount} already OK, ${data.errorCount} errors out of ${data.total} posts.`);
+      } else if (data.fixedCount === 0) {
+        toast.success(`All ${data.alreadyOkCount} published posts already have correct Yoast H2 + meta desc.`);
+      } else {
+        toast.success(`Bulk Yoast fix complete: ${data.fixedCount} posts updated, ${data.alreadyOkCount} already OK.`);
+      }
+    },
+    onError: (err) => {
+      setIsBulkFixingYoast(false);
+      toast.error("Bulk Yoast fix failed: " + err.message);
+    },
   });
 
   const fixCampaignSlugMutation = trpc.blog.fixCampaignSlug.useMutation({
@@ -2822,6 +2923,24 @@ export default function CommandCenter() {
                     <><span className="h-3 w-3 border border-green-600 border-t-transparent rounded-full animate-spin" />Updating WP...</>
                   ) : (
                     <><RefreshCw className="h-3 w-3" /> Backfill Yoast in WP ({items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId && i.focusKeyword).length})</>
+                  )}
+                </button>
+              )}
+              {/* Bulk Fix Yoast Issues — re-runs H2 keyphrase injection + meta desc enforcement on all published posts */}
+              {platformFilter === "blog" && items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId).length > 0 && (
+                <button
+                  onClick={() => {
+                    setIsBulkFixingYoast(true);
+                    bulkFixYoastMutation.mutate();
+                  }}
+                  disabled={isBulkFixingYoast}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-orange-500/50 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors disabled:opacity-50"
+                  title="Re-run H2 keyphrase injection and meta description enforcement on all published WordPress posts"
+                >
+                  {isBulkFixingYoast ? (
+                    <><span className="h-3 w-3 border border-orange-600 border-t-transparent rounded-full animate-spin" />Fixing Yoast…</>
+                  ) : (
+                    <><Zap className="h-3 w-3" /> Bulk Fix Yoast ({items.filter((i) => i.platform === "blog" && i.status === "published" && i.wpPostId).length})</>
                   )}
                 </button>
               )}

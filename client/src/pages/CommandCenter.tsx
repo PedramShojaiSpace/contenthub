@@ -1680,6 +1680,7 @@ export default function CommandCenter() {
   );
 
   const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [showOnlyRedAmber, setShowOnlyRedAmber] = useState(false); // Readability filter: show only red/amber posts
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [isBatchGeneratingYoast, setIsBatchGeneratingYoast] = useState(false);
   const [isBatchGeneratingYoastPublished, setIsBatchGeneratingYoastPublished] = useState(false);
@@ -2945,7 +2946,7 @@ export default function CommandCenter() {
                 return (
                   <button
                     key={p}
-                    onClick={() => setPlatformFilter(p)}
+                     onClick={() => { setPlatformFilter(p); if (p !== "blog") setShowOnlyRedAmber(false); }}
                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                       platformFilter === p
                         ? "bg-primary text-primary-foreground border-primary"
@@ -3040,6 +3041,24 @@ export default function CommandCenter() {
                   )}
                 </button>
               )}
+              {/* Readability filter toggle — show only red/amber posts */}
+              {platformFilter === "blog" && Object.keys(readabilityMap).length > 0 && (
+                <button
+                  onClick={() => setShowOnlyRedAmber((v) => !v)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    showOnlyRedAmber
+                      ? "bg-red-600 text-white border-red-600 shadow-sm"
+                      : "border-red-500/50 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-500/30"
+                  }`}
+                  title={showOnlyRedAmber ? "Showing only red/amber readability posts — click to show all" : "Filter to show only posts with red or amber readability scores"}
+                >
+                  <span className="inline-block w-2 h-2 rounded-full bg-current opacity-80" />
+                  {showOnlyRedAmber ? "Readability: red/amber only" : "Show red/amber only"}
+                  {showOnlyRedAmber && (
+                    <span className="ml-1 opacity-70">✕</span>
+                  )}
+                </button>
+              )}
               {/* Batch Publish Approved button */}
               {items.filter((i) => i.status === "approved").length > 0 && (
                 <button
@@ -3065,7 +3084,9 @@ export default function CommandCenter() {
           {viewMode === "kanban" && (
             <div className="grid grid-cols-6 gap-4 overflow-x-auto">
               {STATUSES.map((col) => {
-                const colItems = (platformFilter === "all" ? items : items.filter((i) => i.platform === platformFilter)).filter((i) => i.status === col.key);
+                const colItems = (platformFilter === "all" ? items : items.filter((i) => i.platform === platformFilter))
+                  .filter((i) => i.status === col.key)
+                  .filter((i) => !showOnlyRedAmber || readabilityMap[i.id] === "red" || readabilityMap[i.id] === "amber");
                 const isDrafting = col.key === "drafting";
                 return (
                   <div

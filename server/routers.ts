@@ -3954,23 +3954,40 @@ Rules:
 
         for (const item of missing) {
           try {
-            // Search WordPress by title
-            const searchTitle = encodeURIComponent(item.title.slice(0, 60));
-            const searchUrl = `${process.env.WORDPRESS_URL}/wp-json/wp/v2/posts?search=${searchTitle}&per_page=5&_fields=id,title,link,status`;
-            const resp = await fetch(searchUrl, {
-              headers: {
-                Authorization: 'Basic ' + Buffer.from(`${process.env.WORDPRESS_USERNAME}:${process.env.WORDPRESS_APP_PASSWORD}`).toString('base64'),
-              },
-            });
-            if (!resp.ok) {
-              results.push({ id: item.id, title: item.title, wpPostId: null, found: false, error: `WP search failed: ${resp.status}` });
-              continue;
-            }
-            const posts: Array<{ id: number; title: { rendered: string }; link: string; status: string }> = await resp.json();
-            // Find best match: exact title match or closest
+            // Search WordPress by title — strip special chars so WP search works reliably
             const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
             const itemNorm = normalize(item.title);
-            const match = posts.find(p => normalize(p.title.rendered) === itemNorm) || posts[0];
+            // Try multiple search strategies: first 8 plain words, then first 5 words
+            const plainWords = item.title.replace(/[^a-zA-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim().split(' ');
+            const searchQuery1 = plainWords.slice(0, 8).join(' ');
+            const searchQuery2 = plainWords.slice(0, 5).join(' ');
+            const authHeader = 'Basic ' + Buffer.from(`${process.env.WORDPRESS_USERNAME}:${process.env.WORDPRESS_APP_PASSWORD}`).toString('base64');
+
+            let posts: Array<{ id: number; title: { rendered: string }; link: string; status: string }> = [];
+            for (const q of [searchQuery1, searchQuery2]) {
+              if (!q.trim()) continue;
+              const searchUrl = `${process.env.WORDPRESS_URL}/wp-json/wp/v2/posts?search=${encodeURIComponent(q)}&per_page=10&_fields=id,title,link,status`;
+              const resp = await fetch(searchUrl, { headers: { Authorization: authHeader } });
+              if (resp.ok) {
+                const batch: typeof posts = await resp.json();
+                posts = batch;
+                if (posts.length > 0) break;
+              }
+            }
+
+            if (posts.length === 0) {
+              results.push({ id: item.id, title: item.title, wpPostId: null, found: false, error: 'No matching WP post found' });
+              continue;
+            }
+
+            // Find best match: exact normalized title, then highest word overlap
+            const wordOverlap = (a: string, b: string) => {
+              const wa = new Set(a.toLowerCase().split(/\s+/));
+              const wb = b.toLowerCase().split(/\s+/);
+              return wb.filter(w => wa.has(w)).length;
+            };
+            const exactMatch = posts.find(p => normalize(p.title.rendered) === itemNorm);
+            const match = exactMatch ?? posts.sort((a, b) => wordOverlap(item.title, b.title.rendered) - wordOverlap(item.title, a.title.rendered))[0];
             if (!match) {
               results.push({ id: item.id, title: item.title, wpPostId: null, found: false, error: 'No matching WP post found' });
               continue;

@@ -18,6 +18,7 @@ import {
   Zap,
   UploadCloud,
   XCircle,
+  Database,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -140,6 +141,24 @@ export default function WordPressSetup() {
     total: number;
   };
   const [syncWpIdsResult, setSyncWpIdsResult] = useState<SyncWpIdsResult | null>(null);
+
+  type SyncPostIndexResult = { synced: number; message: string };
+  const [syncPostIndexResult, setSyncPostIndexResult] = useState<SyncPostIndexResult | null>(null);
+
+  const syncPostIndexMutation = trpc.blog.syncPostIndex.useMutation({
+    onSuccess: (data) => {
+      setSyncPostIndexResult(data as SyncPostIndexResult);
+      toast.success(data.message);
+    },
+    onError: (err) => {
+      toast.error(`Sync failed: ${err.message}`);
+    },
+  });
+
+  const handleSyncPostIndex = () => {
+    setSyncPostIndexResult(null);
+    syncPostIndexMutation.mutate();
+  };
 
   const wpConnTest = trpc.blog.testWpConnection.useQuery(undefined, { enabled: false });
 
@@ -425,6 +444,46 @@ export default function WordPressSetup() {
               <p className="text-xs text-muted-foreground">
                 Open any post in the WP editor and click <strong>Update</strong> to trigger Yoast's re-analysis and see the green dots.
               </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── Sync WP Post Index ────────────────────────────────────────────── */}
+      <Card className="border-2 border-green-500/30 bg-green-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Database className="h-4 w-4 text-green-400" />
+            Sync WP Post Index
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Pulls all published posts from WordPress into the internal post index. This powers{" "}
+            <strong>internal link suggestions</strong> during article generation and{" "}
+            <strong>cluster coverage</strong> on the Content Scoreboard. Run this once after publishing posts
+            manually in WordPress, or whenever the Scoreboard cluster badges look out of date.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSyncPostIndex}
+              disabled={syncPostIndexMutation.isPending}
+              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {syncPostIndexMutation.isPending ? (
+                <><RefreshCw className="h-4 w-4 animate-spin" /> Syncing from WordPress…</>
+              ) : (
+                <><Database className="h-4 w-4" /> Sync WP Post Index</>
+              )}
+            </Button>
+            {syncPostIndexMutation.isPending && (
+              <p className="text-xs text-muted-foreground animate-pulse">Fetching all posts from WordPress…</p>
+            )}
+          </div>
+          {syncPostIndexResult && (
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <span className="text-green-600 dark:text-green-400 font-medium">{syncPostIndexResult.message}</span>
             </div>
           )}
         </CardContent>

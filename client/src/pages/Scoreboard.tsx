@@ -7,9 +7,11 @@
  * with cluster view toggle and competitor gap column.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +40,11 @@ import {
   List,
   Swords,
   Layers,
+  Wand2,
+  Loader2,
+  Zap,
+  CheckCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -224,6 +231,235 @@ function StatCard({ label, value, sub, icon: Icon, color = "text-primary" }: {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ── Clickable stat card (for Needs Attention) ───────────────────────────────
+
+function ClickableStatCard({ label, value, sub, icon: Icon, color = "text-primary", onClick }: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon: React.ElementType;
+  color?: string;
+  onClick: () => void;
+}) {
+  return (
+    <Card
+      className="bg-card border-border cursor-pointer hover:border-red-400/60 hover:bg-red-50/30 dark:hover:bg-red-950/20 transition-all group relative overflow-hidden"
+      onClick={onClick}
+    >
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+          </div>
+          <div className={`w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center ${color}`}>
+            <Icon className="w-4 h-4" />
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Wand2 className="w-3.5 h-3.5" />
+          Click to auto-fix
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Auto-Solve Modal ──────────────────────────────────────────────────────────
+
+type FixResult = {
+  id: number;
+  title: string;
+  wpPostId: number;
+  status: "fixed" | "already_ok" | "error";
+  fixed: string[];
+  error?: string;
+};
+
+function AutoSolveModal({
+  open,
+  onClose,
+  redPosts,
+}: {
+  open: boolean;
+  onClose: () => void;
+  redPosts: PostRow[];
+}) {
+  const utils = trpc.useUtils();
+  const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
+  const [results, setResults] = useState<FixResult[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [currentTitle, setCurrentTitle] = useState("");
+
+  const bulkFix = trpc.blog.bulkFixYoastIssues.useMutation({
+    onSuccess: (data) => {
+      setResults(data.results as FixResult[]);
+      setProgress(100);
+      setPhase("done");
+      utils.scoreboard.getPublishedPosts.invalidate();
+      toast.success(`Auto-fix complete — ${data.fixedCount} posts improved, ${data.alreadyOkCount} already OK, ${data.errorCount} errors`);
+    },
+    onError: (e) => {
+      setPhase("idle");
+      toast.error(`Auto-fix failed: ${e.message}`);
+    },
+  });
+
+  const handleStart = useCallback(() => {
+    setPhase("running");
+    setResults([]);
+    setProgress(0);
+    setCurrentTitle("Scanning all published posts…");
+    // Animate progress while the server processes (it can take 30-90s for 60+ posts)
+    let tick = 0;
+    const interval = setInterval(() => {
+      tick++;
+      // Slow logarithmic progress — reaches ~85% by tick 120 (60s at 500ms)
+      const pct = Math.min(85, Math.round(85 * (1 - Math.exp(-tick / 60))));
+      setProgress(pct);
+      if (tick % 4 === 0) {
+        const idx = Math.floor(Math.random() * redPosts.length);
+        setCurrentTitle(redPosts[idx]?.title ?? "Processing…");
+      }
+    }, 500);
+    bulkFix.mutate(undefined, {
+      onSettled: () => clearInterval(interval),
+    });
+  }, [bulkFix, redPosts]);
+
+  const handleClose = () => {
+    if (phase === "running") return; // prevent closing mid-run
+    setPhase("idle");
+    setResults([]);
+    setProgress(0);
+    onClose();
+  };
+
+  const fixedCount = results.filter((r) => r.status === "fixed").length;
+  const alreadyOkCount = results.filter((r) => r.status === "already_ok").length;
+  const errorCount = results.filter((r) => r.status === "error").length;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wand2 className="w-5 h-5 text-red-500" />
+            Auto-Fix SEO Issues
+          </DialogTitle>
+          <DialogDescription>
+            Automatically fixes H2 keyphrase injection and meta description issues for all {redPosts.length} posts needing attention.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Idle state */}
+        {phase === "idle" && (
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+              <p className="text-sm font-medium">What this does:</p>
+              <ul className="text-sm text-muted-foreground space-y-1.5">
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />Injects the focus keyphrase into an H2 heading if it's missing</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />Ensures the meta description includes the focus keyphrase</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />Trims meta descriptions that exceed 160 characters</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />Pushes all changes live to WordPress automatically</li>
+              </ul>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800/40 p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                This will process <strong>{redPosts.length} posts</strong> and push changes directly to WordPress. The operation may take 1–3 minutes. Do not close this window while it's running.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleStart}>
+                <Zap className="w-4 h-4 mr-1.5" />
+                Auto-Fix All {redPosts.length} Posts
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Running state */}
+        {phase === "running" && (
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processing posts…
+                </span>
+                <span className="font-medium">{progress}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">Currently fixing:</p>
+              <p className="text-sm font-medium mt-0.5 truncate">{currentTitle}</p>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">Please wait — changes are being pushed to WordPress…</p>
+          </div>
+        )}
+
+        {/* Done state */}
+        {phase === "done" && (
+          <div className="space-y-4 py-2 flex flex-col min-h-0">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 p-3 text-center">
+                <p className="text-2xl font-bold text-green-600">{fixedCount}</p>
+                <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">Fixed</p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/20 p-3 text-center">
+                <p className="text-2xl font-bold text-foreground">{alreadyOkCount}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Already OK</p>
+              </div>
+              <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-3 text-center">
+                <p className="text-2xl font-bold text-red-600">{errorCount}</p>
+                <p className="text-xs text-red-700 dark:text-red-400 mt-0.5">Errors</p>
+              </div>
+            </div>
+
+            {/* Scrollable results list */}
+            <div className="flex-1 overflow-y-auto border border-border rounded-lg divide-y divide-border min-h-0 max-h-72">
+              {results.map((r) => (
+                <div key={r.id} className="flex items-start gap-3 px-3 py-2.5">
+                  {r.status === "fixed" && <CheckCheck className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />}
+                  {r.status === "already_ok" && <CheckCircle2 className="w-4 h-4 text-muted-foreground/50 shrink-0 mt-0.5" />}
+                  {r.status === "error" && <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{r.title}</p>
+                    {r.status === "fixed" && r.fixed.length > 0 && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">{r.fixed.map(f => f.replace(/_/g, " ")).join(" · ")}</p>
+                    )}
+                    {r.status === "error" && r.error && (
+                      <p className="text-xs text-red-500 mt-0.5 truncate">{r.error}</p>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${
+                    r.status === "fixed" ? "bg-green-500/15 text-green-600 border-green-500/30" :
+                    r.status === "already_ok" ? "bg-muted text-muted-foreground border-muted-foreground/30" :
+                    "bg-red-500/15 text-red-600 border-red-500/30"
+                  }`}>
+                    {r.status === "fixed" ? "Fixed" : r.status === "already_ok" ? "OK" : "Error"}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleClose}>
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                Done
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -558,6 +794,7 @@ export default function Scoreboard() {
   const [filter, setFilter] = useState<"all" | "green" | "amber" | "red">("all");
   const [clusterFilter, setClusterFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"publishedAt" | "clicks" | "position" | "health" | "trend">("publishedAt");
+  const [autoSolveOpen, setAutoSolveOpen] = useState(false);
 
   const postsQuery = trpc.scoreboard.getPublishedPosts.useQuery(undefined, { retry: false });
   const clusterCoverageQuery = trpc.scoreboard.getClusterCoverage.useQuery(undefined, { retry: false });
@@ -575,6 +812,7 @@ export default function Scoreboard() {
   const totalPosts = posts.length;
   const greenPosts = posts.filter((p) => p.health === "green").length;
   const redPosts = posts.filter((p) => p.health === "red").length;
+  const redPostsList = posts.filter((p) => p.health === "red");
   const totalClicks = posts.reduce((s, p) => s + (p.gscClicks ?? 0), 0);
   const avgPosition = posts.filter((p) => p.gscPosition != null).length > 0
     ? (posts.filter((p) => p.gscPosition != null).reduce((s, p) => s + p.gscPosition!, 0) /
@@ -658,7 +896,7 @@ export default function Scoreboard() {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <StatCard label="Published Posts" value={totalPosts} icon={Globe} />
           <StatCard label="Winning (Green)" value={greenPosts} sub="Yoast good + GSC clicks" icon={CheckCircle2} color="text-green-500" />
-          <StatCard label="Needs Attention" value={redPosts} sub="Yoast bad or no score" icon={XCircle} color="text-red-500" />
+          <ClickableStatCard label="Needs Attention" value={redPosts} sub="Yoast bad or no score" icon={XCircle} color="text-red-500" onClick={() => setAutoSolveOpen(true)} />
           <StatCard
             label="Total Clicks (28d)"
             value={totalClicks >= 1000 ? `${(totalClicks / 1000).toFixed(1)}K` : totalClicks}
@@ -936,6 +1174,13 @@ export default function Scoreboard() {
         <span className="flex items-center gap-1.5"><ArrowUpRight className="w-3.5 h-3.5 text-green-500" /> Trend — position improving vs last snapshot</span>
         <span className="ml-auto">GSC data: last 28 days · 3-day lag · Trend snapshots hourly</span>
       </div>
+
+      {/* Auto-Solve Modal */}
+      <AutoSolveModal
+        open={autoSolveOpen}
+        onClose={() => setAutoSolveOpen(false)}
+        redPosts={redPostsList}
+      />
     </div>
   );
 }

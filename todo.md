@@ -3440,3 +3440,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Keep "Add Manually" tab for one-off manual entries
 - [x] Section title shows live count of selected testimonials
 - [x] Vitest tests for testimonials.list and testimonials.seedLightsOn procedures (3 tests, all pass)
+
+## CH Landing Page Builder — UX Improvements (Round 2)
+
+- [ ] Clone page button on list cards (copy any existing CH page as starting point)
+- [ ] Loading skeleton in builder form while fromLpId query is in-flight
+- [ ] View source page link in builder header when fromLpId is set
+
+## Content Scoreboard — Auto-Solve
+
+- [x] Make "Needs Attention" card clickable with hover tooltip
+- [x] Auto-Solve modal: idle/running/done phases with progress bar
+- [x] Bulk fix: H2 keyphrase injection + meta description enforcement for all red posts
+- [x] Per-post results list with fixed/already_ok/error status badges
+- [x] Invalidate scoreboard query after fix completes

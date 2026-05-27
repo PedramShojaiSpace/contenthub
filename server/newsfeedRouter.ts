@@ -401,4 +401,65 @@ export const newsfeedRouter = router({
       label: val.label,
     }));
   }),
+
+  // ── Shorten X version (AI re-condense) ────────────────────────────────────
+  // Called when the stored xVersion exceeds 280 chars (t.co-aware).
+  // Re-runs the LLM with a stricter 220-char budget and saves the result.
+  shortenXVersion: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      currentText: z.string(), // the current over-limit text so LLM can see what to cut
+    }))
+    .mutation(async ({ input }) => {
+      const database = await getDb();
+      if (!database) throw new Error("Database not available");
+
+      const [article] = await database
+        .select()
+        .from(newsfeedArticles)
+        .where(eq(newsfeedArticles.id, input.id))
+        .limit(1);
+
+      if (!article) throw new Error("Article not found");
+
+      // Extract the text portion (strip trailing URL if present)
+      const urlPattern = /\n\nhttps?:\/\/\S+$/;
+      const textOnly = input.currentText.replace(urlPattern, "").trim();
+      const articleUrl = article.url;
+
+      // Re-condense with a strict 220-char budget (leaves plenty of room for URL)
+      const STRICT_BUDGET = 220;
+      const { invokeLLM } = await import("./_core/llm");
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are a social media editor. Your only job is to shorten X/Twitter posts to fit within a strict character limit while preserving the core insight. Be ruthless — cut filler, merge ideas, use shorter synonyms. Never add new ideas.",
+          },
+          {
+            role: "user",
+            content: `This X/Twitter post is too long. Shorten it to STRICTLY ≤${STRICT_BUDGET} characters. Preserve the sharpest insight. No hashtags, no emojis, no URL.\n\nCURRENT TEXT (${textOnly.length} chars):\n${textOnly}\n\nWrite ONLY the shortened text. Count every character.`,
+          },
+        ],
+      });
+
+      const content = response.choices?.[0]?.message?.content;
+      if (!content) throw new Error("LLM returned empty response");
+      let shortened = typeof content === "string" ? content.trim() : JSON.stringify(content);
+
+      // Hard safety truncation
+      if (shortened.length > STRICT_BUDGET) {
+        shortened = shortened.slice(0, STRICT_BUDGET - 1).replace(/\s+\S*$/, "") + "…";
+      }
+
+      const xVersion = `${shortened}\n\n${articleUrl}`;
+
+      // Persist the shortened version
+      await database
+        .update(newsfeedArticles)
+        .set({ xVersion })
+        .where(eq(newsfeedArticles.id, input.id));
+
+      return { xVersion };
+    }),
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,11 @@ import {
   BookOpen,
   Video,
   FileText,
+  Search,
+  Database,
+  Filter,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -149,7 +154,14 @@ export default function LandingPageBuilder() {
     advanced: false,
   });
   const [testimonialInput, setTestimonialInput] = useState({ name: "", title: "", quote: "", avatarUrl: "" });
-  const [testimonials, setTestimonials] = useState<Array<{ name: string; title?: string; quote: string; avatarUrl?: string }>>([]);
+  type TestimonialItem = {
+    name?: string; title?: string; quote: string; avatarUrl?: string;
+    authorName?: string; authorTitle?: string; dateLabel?: string; category?: string; dbId?: number;
+  };
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
+  const [testimonialSearch, setTestimonialSearch] = useState("");
+  const [testimonialCategoryFilter, setTestimonialCategoryFilter] = useState<string>("ALL");
+  const [testimonialTab, setTestimonialTab] = useState<"pick" | "manual">("pick");
   const [copiedUrl, setCopiedUrl] = useState<number | null>(null);
   const previewRef = useRef<HTMLIFrameElement>(null);
 
@@ -212,6 +224,72 @@ export default function LandingPageBuilder() {
     },
     onError: (e) => toast.error(e.message),
   });
+
+  // ── Testimonials DB queries & mutations ─────────────────────────────────
+  const dbTestimonialsQuery = trpc.testimonials.list.useQuery({});
+  const dbTestimonials = dbTestimonialsQuery.data ?? [];
+
+  const seedMutation = trpc.testimonials.seedLightsOn.useMutation({
+    onSuccess: (r) => { toast.success(`Seeded ${r.seeded} Lights On testimonials! ${r.message}`); dbTestimonialsQuery.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const importPptxMutation = trpc.testimonials.bulkImportFromPptx.useMutation({
+    onSuccess: (r) => { toast.success(`Imported ${r.imported} testimonials from PPTX!`); dbTestimonialsQuery.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const pptxFileRef = useRef<HTMLInputElement>(null);
+
+  function handlePptxUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = (ev.target?.result as string).split(",")[1];
+      importPptxMutation.mutate({ campaign: "lo", pptxBase64: base64 });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  // Derived: unique categories from DB testimonials
+  const dbCategories = useMemo(() => {
+    const cats = new Set<string>();
+    dbTestimonials.forEach(t => { if (t.category) cats.add(t.category); });
+    return ["ALL", ...Array.from(cats).sort()];
+  }, [dbTestimonials]);
+
+  // Derived: filtered DB testimonials
+  const filteredDbTestimonials = useMemo(() => {
+    return dbTestimonials.filter(t => {
+      const matchCat = testimonialCategoryFilter === "ALL" || t.category === testimonialCategoryFilter;
+      const q = testimonialSearch.toLowerCase();
+      const matchSearch = !q ||
+        (t.authorName || "").toLowerCase().includes(q) ||
+        (t.quote || "").toLowerCase().includes(q) ||
+        (t.category || "").toLowerCase().includes(q);
+      return matchCat && matchSearch;
+    });
+  }, [dbTestimonials, testimonialCategoryFilter, testimonialSearch]);
+
+  // Derived: set of dbIds already added
+  const addedDbIds = useMemo(() => new Set(testimonials.filter(t => t.dbId).map(t => t.dbId!)), [testimonials]);
+
+  function toggleDbTestimonial(t: typeof dbTestimonials[0]) {
+    if (addedDbIds.has(t.id)) {
+      setTestimonials(prev => prev.filter(p => p.dbId !== t.id));
+    } else {
+      setTestimonials(prev => [...prev, {
+        quote: t.quote,
+        authorName: t.authorName,
+        authorTitle: t.authorTitle ?? undefined,
+        dateLabel: t.dateLabel ?? undefined,
+        category: t.category ?? undefined,
+        dbId: t.id,
+      }]);
+    }
+  }
 
   const previewQuery = trpc.hostedLp.preview.useQuery(
     { id: editingId! },
@@ -340,7 +418,12 @@ export default function LandingPageBuilder() {
       toast.error("Name and quote are required");
       return;
     }
-    setTestimonials(prev => [...prev, { ...testimonialInput }]);
+    setTestimonials(prev => [...prev, {
+      name: testimonialInput.name,
+      title: testimonialInput.title || undefined,
+      quote: testimonialInput.quote,
+      avatarUrl: testimonialInput.avatarUrl || undefined,
+    }]);
     setTestimonialInput({ name: "", title: "", quote: "", avatarUrl: "" });
   }
 
@@ -750,47 +833,190 @@ export default function LandingPageBuilder() {
           </Section>
 
           {/* Testimonials */}
-          <Section id="testimonials" title="Testimonials">
-            {testimonials.map((t, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{t.name}</p>
-                  {t.title && <p className="text-xs text-muted-foreground">{t.title}</p>}
-                  <p className="text-sm mt-1 text-muted-foreground italic">"{t.quote}"</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setTestimonials(prev => prev.filter((_, j) => j !== i))}
-                  className="text-muted-foreground hover:text-destructive shrink-0"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+          <Section id="testimonials" title={`Testimonials (${testimonials.length} selected)`}>
+            {/* Selected testimonials list */}
+            {testimonials.length > 0 && (
+              <div className="space-y-2 mb-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Selected for this page</p>
+                {testimonials.map((t, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium">{t.authorName || t.name || "Anonymous"}</p>
+                        {t.category && (
+                          <span className="text-[10px] font-bold tracking-widest uppercase text-amber-700 bg-amber-100 border border-amber-300 rounded px-1.5 py-0.5">{t.category}</span>
+                        )}
+                        {t.dateLabel && (
+                          <span className="text-[10px] text-muted-foreground">{t.dateLabel}</span>
+                        )}
+                      </div>
+                      {(t.authorTitle || t.title) && <p className="text-xs text-muted-foreground">{t.authorTitle || t.title}</p>}
+                      <p className="text-sm mt-1 text-muted-foreground italic line-clamp-2">"{t.quote}"</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTestimonials(prev => prev.filter((_, j) => j !== i))}
+                      className="text-muted-foreground hover:text-destructive shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-            <div className="space-y-2 pt-2 border-t border-border">
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  value={testimonialInput.name}
-                  onChange={e => setTestimonialInput(t => ({ ...t, name: e.target.value }))}
-                  placeholder="Name *"
-                />
-                <Input
-                  value={testimonialInput.title}
-                  onChange={e => setTestimonialInput(t => ({ ...t, title: e.target.value }))}
-                  placeholder="Title / Location"
-                />
-              </div>
-              <Textarea
-                value={testimonialInput.quote}
-                onChange={e => setTestimonialInput(t => ({ ...t, quote: e.target.value }))}
-                placeholder="Quote *"
-                rows={2}
-              />
-              <Button type="button" variant="outline" size="sm" onClick={addTestimonial}>
-                <Plus className="w-3.5 h-3.5 mr-1.5" />
-                Add Testimonial
-              </Button>
+            )}
+
+            {/* Tab switcher */}
+            <div className="flex gap-1 mb-3 border-b border-border">
+              <button
+                type="button"
+                onClick={() => setTestimonialTab("pick")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-t transition-colors ${
+                  testimonialTab === "pick" ? "bg-background border border-b-background border-border text-foreground -mb-px" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Database className="w-3.5 h-3.5 inline mr-1.5" />
+                Pick from Library
+              </button>
+              <button
+                type="button"
+                onClick={() => setTestimonialTab("manual")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-t transition-colors ${
+                  testimonialTab === "manual" ? "bg-background border border-b-background border-border text-foreground -mb-px" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5 inline mr-1.5" />
+                Add Manually
+              </button>
             </div>
+
+            {testimonialTab === "pick" && (
+              <div className="space-y-3">
+                {/* Seed / Import controls */}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button" variant="outline" size="sm"
+                    onClick={() => seedMutation.mutate()}
+                    disabled={seedMutation.isPending}
+                  >
+                    <Database className="w-3.5 h-3.5 mr-1.5" />
+                    {seedMutation.isPending ? "Seeding…" : "Seed LO Testimonials"}
+                  </Button>
+                  <Button
+                    type="button" variant="outline" size="sm"
+                    onClick={() => pptxFileRef.current?.click()}
+                    disabled={importPptxMutation.isPending}
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    {importPptxMutation.isPending ? "Importing…" : "Import from PPTX"}
+                  </Button>
+                  <input ref={pptxFileRef} type="file" accept=".pptx" className="hidden" onChange={handlePptxUpload} />
+                  {dbTestimonials.length > 0 && (
+                    <span className="text-xs text-muted-foreground self-center">{dbTestimonials.length} testimonials in library</span>
+                  )}
+                </div>
+
+                {dbTestimonials.length > 0 && (
+                  <>
+                    {/* Search + Category filter */}
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          value={testimonialSearch}
+                          onChange={e => setTestimonialSearch(e.target.value)}
+                          placeholder="Search name, quote, category…"
+                          className="pl-8 text-sm h-8"
+                        />
+                      </div>
+                      <select
+                        value={testimonialCategoryFilter}
+                        onChange={e => setTestimonialCategoryFilter(e.target.value)}
+                        className="h-8 text-sm border border-input rounded-md px-2 bg-background"
+                      >
+                        {dbCategories.map(c => (
+                          <option key={c} value={c}>{c === "ALL" ? "All Categories" : c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Testimonials checklist */}
+                    <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+                      {filteredDbTestimonials.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">No testimonials match your filter.</p>
+                      ) : filteredDbTestimonials.map(t => {
+                        const isAdded = addedDbIds.has(t.id);
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => toggleDbTestimonial(t)}
+                            className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors ${
+                              isAdded
+                                ? "bg-amber-50 border-amber-300 hover:bg-amber-100"
+                                : "bg-muted/20 border-border hover:bg-muted/40"
+                            }`}
+                          >
+                            <span className="mt-0.5 shrink-0">
+                              {isAdded
+                                ? <CheckSquare className="w-4 h-4 text-amber-600" />
+                                : <Square className="w-4 h-4 text-muted-foreground" />}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-sm font-medium">{t.authorName || "Anonymous"}</span>
+                                {t.category && (
+                                  <span className="text-[10px] font-bold tracking-widest uppercase text-amber-700 bg-amber-100 border border-amber-300 rounded px-1 py-0.5">{t.category}</span>
+                                )}
+                                {t.dateLabel && (
+                                  <span className="text-[10px] text-muted-foreground">{t.dateLabel}</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 italic">"{t.quote}"</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Showing {filteredDbTestimonials.length} of {dbTestimonials.length} · {addedDbIds.size} selected
+                    </p>
+                  </>
+                )}
+
+                {dbTestimonials.length === 0 && !dbTestimonialsQuery.isLoading && (
+                  <p className="text-sm text-muted-foreground py-2">
+                    No testimonials in library yet. Click "Seed LO Testimonials" to load the built-in set, or import your PPTX file.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {testimonialTab === "manual" && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={testimonialInput.name}
+                    onChange={e => setTestimonialInput(t => ({ ...t, name: e.target.value }))}
+                    placeholder="Name *"
+                  />
+                  <Input
+                    value={testimonialInput.title}
+                    onChange={e => setTestimonialInput(t => ({ ...t, title: e.target.value }))}
+                    placeholder="Title / Location"
+                  />
+                </div>
+                <Textarea
+                  value={testimonialInput.quote}
+                  onChange={e => setTestimonialInput(t => ({ ...t, quote: e.target.value }))}
+                  placeholder="Quote *"
+                  rows={2}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={addTestimonial}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Add Testimonial
+                </Button>
+              </div>
+            )}
           </Section>
 
           {/* Tracking */}

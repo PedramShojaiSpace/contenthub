@@ -92,6 +92,12 @@ export const contentItems = mysqlTable("content_items", {
   seoKeywords: text("seoKeywords"),  // JSON array of semantic keyword strings
   yoastSeoTitle: varchar("yoastSeoTitle", { length: 255 }),  // Yoast SEO title (shown in SERPs)
   yoastMetaDescription: text("yoastMetaDescription"),  // Yoast meta description (150-160 chars)
+  // Readability scores — persisted for instant Kanban badge loading
+  // readabilityScore: "green" | "amber" | "red" | null (null = not yet analysed)
+  readabilityScore: varchar("readabilityScore", { length: 8 }),
+  readabilityTransitionPct: int("readabilityTransitionPct"),  // 0-100
+  readabilityMaxRun: int("readabilityMaxRun"),                 // max consecutive same-start run
+  readabilityUpdatedAt: bigint("readabilityUpdatedAt", { mode: "number" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1579,3 +1585,21 @@ export const keywordSearches = mysqlTable("keyword_searches", {
 
 export type KeywordSearch = typeof keywordSearches.$inferSelect;
 export type InsertKeywordSearch = typeof keywordSearches.$inferInsert;
+
+// ─── Readability History ──────────────────────────────────────────────────────
+// Daily snapshots of how many blog posts are green / amber / red.
+// Used by the 30-day readability trend sparkline in the Readability Audit header.
+export const readabilityHistory = mysqlTable("readability_history", {
+  id: int("id").autoincrement().primaryKey(),
+  // UTC date string e.g. "2026-05-27"
+  dateLabel: varchar("dateLabel", { length: 16 }).notNull(),
+  // Counts at snapshot time
+  greenCount: int("greenCount").notNull().default(0),
+  amberCount: int("amberCount").notNull().default(0),
+  redCount: int("redCount").notNull().default(0),
+  totalCount: int("totalCount").notNull().default(0),
+  snapshotAt: bigint("snapshotAt", { mode: "number" }).notNull(),
+});
+
+export type ReadabilityHistory = typeof readabilityHistory.$inferSelect;
+export type InsertReadabilityHistory = typeof readabilityHistory.$inferInsert;

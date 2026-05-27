@@ -1,0 +1,689 @@
+/**
+ * Hosted Landing Pages Router
+ * Serves pages at ch.theurbanmonk.com/{campaign}/{slug}
+ * Campaigns: lo | gut | sleep
+ * Templates: optin | vsl | sales
+ */
+
+import { z } from "zod";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { getDb } from "./db";
+import { hostedLandingPages } from "../drizzle/schema";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { marked } from "marked";
+
+// ── Zod schemas ───────────────────────────────────────────────────────────────
+
+const campaignEnum = z.enum(["lo", "gut", "sleep"]);
+const templateEnum = z.enum(["optin", "vsl", "sales"]);
+
+const testimonialSchema = z.object({
+  name: z.string(),
+  title: z.string().optional(),
+  quote: z.string(),
+  avatarUrl: z.string().optional(),
+});
+
+const pageContentSchema = z.object({
+  title: z.string().min(1),
+  internalLabel: z.string().optional(),
+  campaign: campaignEnum,
+  slug: z.string().min(1).regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
+  template: templateEnum,
+
+  headline: z.string().optional(),
+  subheadline: z.string().optional(),
+  heroImageUrl: z.string().optional(),
+
+  videoEmbedCode: z.string().optional(),
+  videoThumbnailUrl: z.string().optional(),
+
+  bodyCopy: z.string().optional(),
+
+  optinHeadline: z.string().optional(),
+  optinButtonText: z.string().optional(),
+  optinLeadMagnet: z.string().optional(),
+  kajabiFormUrl: z.string().optional(),
+  thankYouUrl: z.string().optional(),
+
+  ctaText: z.string().optional(),
+  ctaUrl: z.string().optional(),
+  ctaSubtext: z.string().optional(),
+
+  testimonials: z.array(testimonialSchema).optional(),
+
+  facebookPixelId: z.string().optional(),
+  ga4MeasurementId: z.string().optional(),
+  customHeadScripts: z.string().optional(),
+
+  accentColor: z.string().optional(),
+  logoUrl: z.string().optional(),
+
+  personaId: z.number().optional(),
+  ebookId: z.number().optional(),
+  webinarSessionId: z.number().optional(),
+});
+
+// ── Campaign brand config ─────────────────────────────────────────────────────
+
+const CAMPAIGN_CONFIG: Record<string, { label: string; accentColor: string; description: string }> = {
+  lo: {
+    label: "Lights On",
+    accentColor: "#E8A020",
+    description: "Energy, focus, and cellular vitality",
+  },
+  gut: {
+    label: "Gut Health",
+    accentColor: "#2D7D46",
+    description: "Microbiome, digestion, and gut-brain axis",
+  },
+  sleep: {
+    label: "Sleep & Recovery",
+    accentColor: "#3B5BA5",
+    description: "Deep sleep, recovery, and circadian rhythm",
+  },
+};
+
+// ── HTML renderer ─────────────────────────────────────────────────────────────
+
+function renderTrackingScripts(fbPixelId: string, ga4Id?: string | null, customHead?: string | null): string {
+  const fbPixel = `
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${fbPixelId}');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->`;
+
+  const ga4Script = ga4Id ? `
+<!-- Google Analytics GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=${ga4Id}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '${ga4Id}');
+</script>` : "";
+
+  return fbPixel + ga4Script + (customHead || "");
+}
+
+function renderOptinTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtml: string): string {
+  const brand = CAMPAIGN_CONFIG[page.campaign] || CAMPAIGN_CONFIG.lo;
+  const accent = page.accentColor || brand.accentColor;
+  const testimonials: Array<{ name: string; title?: string; quote: string; avatarUrl?: string }> = page.testimonials
+    ? JSON.parse(page.testimonials)
+    : [];
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${page.title}</title>
+  ${renderTrackingScripts(page.facebookPixelId || "1498608757116877", page.ga4MeasurementId, page.customHeadScripts)}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: ${accent}; --dark: #1a1a1a; --light: #f9f7f4; }
+    body { font-family: 'Inter', sans-serif; background: var(--light); color: var(--dark); line-height: 1.6; }
+    .hero { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); color: white; padding: 80px 24px 60px; text-align: center; }
+    .hero-inner { max-width: 760px; margin: 0 auto; }
+    .campaign-badge { display: inline-block; background: var(--accent); color: white; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 20px; margin-bottom: 24px; }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(28px, 5vw, 52px); line-height: 1.2; margin-bottom: 20px; }
+    .hero p { font-size: clamp(16px, 2.5vw, 20px); opacity: 0.85; max-width: 600px; margin: 0 auto 32px; }
+    .hero-img { width: 100%; max-width: 600px; border-radius: 12px; margin: 0 auto 32px; display: block; }
+    .optin-box { background: white; border-radius: 16px; padding: 40px 32px; max-width: 520px; margin: -40px auto 0; position: relative; z-index: 10; box-shadow: 0 20px 60px rgba(0,0,0,0.12); }
+    .optin-box h2 { font-family: 'Playfair Display', serif; font-size: 24px; margin-bottom: 8px; text-align: center; }
+    .optin-box p { font-size: 14px; color: #666; text-align: center; margin-bottom: 24px; }
+    .optin-form { display: flex; flex-direction: column; gap: 12px; }
+    .optin-form input { padding: 14px 16px; border: 2px solid #e5e5e5; border-radius: 8px; font-size: 16px; font-family: inherit; transition: border-color 0.2s; }
+    .optin-form input:focus { outline: none; border-color: var(--accent); }
+    .optin-btn { background: var(--accent); color: white; border: none; padding: 16px; border-radius: 8px; font-size: 18px; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; font-family: inherit; }
+    .optin-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .optin-btn:active { transform: translateY(0); }
+    .privacy-note { font-size: 12px; color: #999; text-align: center; margin-top: 12px; }
+    .body-section { max-width: 760px; margin: 60px auto; padding: 0 24px; }
+    .body-section h2 { font-family: 'Playfair Display', serif; font-size: 28px; margin-bottom: 16px; }
+    .body-section p { margin-bottom: 16px; color: #444; }
+    .testimonials { background: #f0ede8; padding: 60px 24px; }
+    .testimonials-inner { max-width: 900px; margin: 0 auto; }
+    .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 28px; text-align: center; margin-bottom: 40px; }
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+    .testimonial-card { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .testimonial-quote { font-size: 15px; color: #444; line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; flex-shrink: 0; overflow: hidden; }
+    .testimonial-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .testimonial-name { font-weight: 600; font-size: 14px; }
+    .testimonial-title { font-size: 12px; color: #888; }
+    .footer { background: #1a1a1a; color: #888; text-align: center; padding: 32px 24px; font-size: 13px; }
+    .footer a { color: #aaa; text-decoration: none; }
+    @media (max-width: 600px) { .optin-box { margin: -20px 16px 0; padding: 28px 20px; } }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-inner">
+      <span class="campaign-badge">${brand.label}</span>
+      ${page.heroImageUrl ? `<img src="${page.heroImageUrl}" alt="" class="hero-img">` : ""}
+      <h1>${page.headline || page.title}</h1>
+      ${page.subheadline ? `<p>${page.subheadline}</p>` : ""}
+    </div>
+  </section>
+
+  <div class="optin-box">
+    ${page.optinHeadline ? `<h2>${page.optinHeadline}</h2>` : ""}
+    ${page.optinLeadMagnet ? `<p>Get your free <strong>${page.optinLeadMagnet}</strong> instantly</p>` : ""}
+    ${page.kajabiFormUrl ? `
+    <form class="optin-form" action="${page.kajabiFormUrl}" method="POST" id="optin-form">
+      <input type="text" name="first_name" placeholder="First Name" required>
+      <input type="email" name="email" placeholder="Email Address" required>
+      <button type="submit" class="optin-btn">${page.optinButtonText || "Yes, Send It To Me!"}</button>
+    </form>
+    <p class="privacy-note">🔒 Your information is 100% secure. No spam, ever.</p>
+    ` : `<p style="text-align:center;color:#888;font-size:14px;">Opt-in form coming soon.</p>`}
+  </div>
+
+  ${bodyHtml ? `<div class="body-section">${bodyHtml}</div>` : ""}
+
+  ${testimonials.length > 0 ? `
+  <section class="testimonials">
+    <div class="testimonials-inner">
+      <h2>What People Are Saying</h2>
+      <div class="testimonials-grid">
+        ${testimonials.map(t => `
+        <div class="testimonial-card">
+          <p class="testimonial-quote">"${t.quote}"</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">
+              ${t.avatarUrl ? `<img src="${t.avatarUrl}" alt="${t.name}">` : t.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div class="testimonial-name">${t.name}</div>
+              ${t.title ? `<div class="testimonial-title">${t.title}</div>` : ""}
+            </div>
+          </div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </section>` : ""}
+
+  <footer class="footer">
+    <p>© ${new Date().getFullYear()} Dr. Pedram Shojai · The Urban Monk · <a href="https://theurbanmonk.com/privacy">Privacy Policy</a></p>
+  </footer>
+
+  <script>
+    // Track opt-in with FB Pixel
+    const form = document.getElementById('optin-form');
+    if (form) {
+      form.addEventListener('submit', function() {
+        if (typeof fbq !== 'undefined') fbq('track', 'Lead');
+      });
+    }
+  </script>
+</body>
+</html>`;
+}
+
+function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtml: string): string {
+  const brand = CAMPAIGN_CONFIG[page.campaign] || CAMPAIGN_CONFIG.lo;
+  const accent = page.accentColor || brand.accentColor;
+  const testimonials: Array<{ name: string; title?: string; quote: string; avatarUrl?: string }> = page.testimonials
+    ? JSON.parse(page.testimonials)
+    : [];
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${page.title}</title>
+  ${renderTrackingScripts(page.facebookPixelId || "1498608757116877", page.ga4MeasurementId, page.customHeadScripts)}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: ${accent}; }
+    body { font-family: 'Inter', sans-serif; background: #fff; color: #1a1a1a; line-height: 1.6; }
+    .top-bar { background: #1a1a1a; color: white; text-align: center; padding: 12px 24px; font-size: 14px; }
+    .hero { padding: 60px 24px 40px; text-align: center; max-width: 860px; margin: 0 auto; }
+    .campaign-badge { display: inline-block; background: var(--accent); color: white; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 20px; margin-bottom: 20px; }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(26px, 4.5vw, 48px); line-height: 1.2; margin-bottom: 16px; }
+    .hero p { font-size: clamp(15px, 2vw, 18px); color: #555; max-width: 640px; margin: 0 auto 32px; }
+    .video-wrapper { max-width: 760px; margin: 0 auto 48px; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.15); background: #000; aspect-ratio: 16/9; position: relative; }
+    .video-wrapper iframe, .video-wrapper video { width: 100%; height: 100%; border: none; }
+    .video-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; color: #555; font-size: 14px; }
+    .cta-section { text-align: center; padding: 40px 24px; }
+    .cta-btn { display: inline-block; background: var(--accent); color: white; text-decoration: none; padding: 20px 48px; border-radius: 8px; font-size: 20px; font-weight: 700; font-family: inherit; border: none; cursor: pointer; transition: opacity 0.2s, transform 0.1s; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .cta-btn:hover { opacity: 0.92; transform: translateY(-2px); }
+    .cta-subtext { margin-top: 12px; font-size: 13px; color: #888; }
+    .body-section { max-width: 760px; margin: 0 auto 60px; padding: 0 24px; }
+    .body-section h2 { font-family: 'Playfair Display', serif; font-size: 28px; margin-bottom: 16px; }
+    .body-section p { margin-bottom: 16px; color: #444; }
+    .testimonials { background: #f5f3ef; padding: 60px 24px; }
+    .testimonials-inner { max-width: 900px; margin: 0 auto; }
+    .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 28px; text-align: center; margin-bottom: 40px; }
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+    .testimonial-card { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .testimonial-quote { font-size: 15px; color: #444; line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; flex-shrink: 0; overflow: hidden; }
+    .testimonial-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .testimonial-name { font-weight: 600; font-size: 14px; }
+    .testimonial-title { font-size: 12px; color: #888; }
+    .footer { background: #1a1a1a; color: #888; text-align: center; padding: 32px 24px; font-size: 13px; }
+    .footer a { color: #aaa; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="top-bar">Watch this short video to discover ${brand.description}</div>
+
+  <div class="hero">
+    <span class="campaign-badge">${brand.label}</span>
+    <h1>${page.headline || page.title}</h1>
+    ${page.subheadline ? `<p>${page.subheadline}</p>` : ""}
+  </div>
+
+  <div class="video-wrapper" style="max-width:760px;margin:0 auto 48px;">
+    ${page.videoEmbedCode
+      ? page.videoEmbedCode
+      : `<div class="video-placeholder">Video embed code not yet configured</div>`}
+  </div>
+
+  ${(page.ctaText || page.ctaUrl) ? `
+  <div class="cta-section">
+    <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">
+      ${page.ctaText || "Get Started Now"}
+    </a>
+    ${page.ctaSubtext ? `<p class="cta-subtext">${page.ctaSubtext}</p>` : ""}
+  </div>` : ""}
+
+  ${bodyHtml ? `<div class="body-section">${bodyHtml}</div>` : ""}
+
+  ${testimonials.length > 0 ? `
+  <section class="testimonials">
+    <div class="testimonials-inner">
+      <h2>What People Are Saying</h2>
+      <div class="testimonials-grid">
+        ${testimonials.map(t => `
+        <div class="testimonial-card">
+          <p class="testimonial-quote">"${t.quote}"</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">
+              ${t.avatarUrl ? `<img src="${t.avatarUrl}" alt="${t.name}">` : t.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div class="testimonial-name">${t.name}</div>
+              ${t.title ? `<div class="testimonial-title">${t.title}</div>` : ""}
+            </div>
+          </div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </section>` : ""}
+
+  ${(page.ctaText || page.ctaUrl) ? `
+  <div class="cta-section" style="padding-bottom:60px;">
+    <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">
+      ${page.ctaText || "Get Started Now"}
+    </a>
+    ${page.ctaSubtext ? `<p class="cta-subtext">${page.ctaSubtext}</p>` : ""}
+  </div>` : ""}
+
+  <footer class="footer">
+    <p>© ${new Date().getFullYear()} Dr. Pedram Shojai · The Urban Monk · <a href="https://theurbanmonk.com/privacy">Privacy Policy</a></p>
+  </footer>
+</body>
+</html>`;
+}
+
+function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtml: string): string {
+  const brand = CAMPAIGN_CONFIG[page.campaign] || CAMPAIGN_CONFIG.lo;
+  const accent = page.accentColor || brand.accentColor;
+  const testimonials: Array<{ name: string; title?: string; quote: string; avatarUrl?: string }> = page.testimonials
+    ? JSON.parse(page.testimonials)
+    : [];
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${page.title}</title>
+  ${renderTrackingScripts(page.facebookPixelId || "1498608757116877", page.ga4MeasurementId, page.customHeadScripts)}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: ${accent}; }
+    body { font-family: 'Inter', sans-serif; background: #fff; color: #1a1a1a; line-height: 1.7; }
+    .hero { background: linear-gradient(160deg, #1a1a1a 0%, #2a2a2a 100%); color: white; padding: 80px 24px 60px; }
+    .hero-inner { max-width: 820px; margin: 0 auto; }
+    .campaign-badge { display: inline-block; background: var(--accent); color: white; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 20px; margin-bottom: 24px; }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(28px, 5vw, 54px); line-height: 1.15; margin-bottom: 20px; }
+    .hero p { font-size: clamp(16px, 2vw, 20px); opacity: 0.85; max-width: 680px; margin-bottom: 36px; }
+    .hero-img { width: 100%; max-width: 700px; border-radius: 12px; margin-top: 32px; }
+    .sales-body { max-width: 760px; margin: 0 auto; padding: 60px 24px; }
+    .sales-body h2 { font-family: 'Playfair Display', serif; font-size: 30px; margin: 40px 0 16px; color: #1a1a1a; }
+    .sales-body h3 { font-family: 'Playfair Display', serif; font-size: 22px; margin: 28px 0 12px; }
+    .sales-body p { margin-bottom: 18px; color: #333; font-size: 17px; }
+    .sales-body ul, .sales-body ol { padding-left: 24px; margin-bottom: 18px; }
+    .sales-body li { margin-bottom: 8px; color: #333; font-size: 17px; }
+    .cta-block { background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%); color: white; border-radius: 16px; padding: 48px 40px; text-align: center; margin: 48px 0; }
+    .cta-block h2 { font-family: 'Playfair Display', serif; font-size: 28px; margin-bottom: 12px; }
+    .cta-block p { opacity: 0.8; margin-bottom: 28px; }
+    .cta-btn { display: inline-block; background: var(--accent); color: white; text-decoration: none; padding: 20px 48px; border-radius: 8px; font-size: 20px; font-weight: 700; font-family: inherit; border: none; cursor: pointer; transition: opacity 0.2s, transform 0.1s; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .cta-btn:hover { opacity: 0.92; transform: translateY(-2px); }
+    .cta-subtext { margin-top: 12px; font-size: 13px; opacity: 0.6; }
+    .testimonials { background: #f5f3ef; padding: 60px 24px; }
+    .testimonials-inner { max-width: 900px; margin: 0 auto; }
+    .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 28px; text-align: center; margin-bottom: 40px; }
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+    .testimonial-card { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .testimonial-quote { font-size: 15px; color: #444; line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; flex-shrink: 0; overflow: hidden; }
+    .testimonial-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .testimonial-name { font-weight: 600; font-size: 14px; }
+    .testimonial-title { font-size: 12px; color: #888; }
+    .footer { background: #1a1a1a; color: #888; text-align: center; padding: 32px 24px; font-size: 13px; }
+    .footer a { color: #aaa; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-inner">
+      <span class="campaign-badge">${brand.label}</span>
+      <h1>${page.headline || page.title}</h1>
+      ${page.subheadline ? `<p>${page.subheadline}</p>` : ""}
+      ${(page.ctaText || page.ctaUrl) ? `
+      <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">
+        ${page.ctaText || "Get Started Now"}
+      </a>` : ""}
+      ${page.heroImageUrl ? `<img src="${page.heroImageUrl}" alt="" class="hero-img">` : ""}
+    </div>
+  </section>
+
+  <div class="sales-body">
+    ${bodyHtml}
+
+    ${(page.ctaText || page.ctaUrl) ? `
+    <div class="cta-block">
+      <h2>Ready to Transform Your ${brand.label}?</h2>
+      ${page.ctaSubtext ? `<p>${page.ctaSubtext}</p>` : ""}
+      <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">
+        ${page.ctaText || "Get Started Now"}
+      </a>
+    </div>` : ""}
+  </div>
+
+  ${testimonials.length > 0 ? `
+  <section class="testimonials">
+    <div class="testimonials-inner">
+      <h2>Real Results from Real People</h2>
+      <div class="testimonials-grid">
+        ${testimonials.map(t => `
+        <div class="testimonial-card">
+          <p class="testimonial-quote">"${t.quote}"</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">
+              ${t.avatarUrl ? `<img src="${t.avatarUrl}" alt="${t.name}">` : t.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div class="testimonial-name">${t.name}</div>
+              ${t.title ? `<div class="testimonial-title">${t.title}</div>` : ""}
+            </div>
+          </div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </section>` : ""}
+
+  ${(page.ctaText || page.ctaUrl) ? `
+  <div style="text-align:center;padding:60px 24px;">
+    <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">
+      ${page.ctaText || "Get Started Now"}
+    </a>
+    ${page.ctaSubtext ? `<p style="margin-top:12px;font-size:13px;color:#888;">${page.ctaSubtext}</p>` : ""}
+  </div>` : ""}
+
+  <footer class="footer">
+    <p>© ${new Date().getFullYear()} Dr. Pedram Shojai · The Urban Monk · <a href="https://theurbanmonk.com/privacy">Privacy Policy</a></p>
+  </footer>
+</body>
+</html>`;
+}
+
+export function renderLandingPageHtml(page: typeof hostedLandingPages.$inferSelect): string {
+  const bodyHtml = page.bodyCopy ? marked.parse(page.bodyCopy) as string : "";
+  switch (page.template) {
+    case "vsl":
+      return renderVslTemplate(page, bodyHtml);
+    case "sales":
+      return renderSalesTemplate(page, bodyHtml);
+    default:
+      return renderOptinTemplate(page, bodyHtml);
+  }
+}
+
+// ── tRPC Router ───────────────────────────────────────────────────────────────
+
+export const hostedLandingPagesRouter = router({
+  // List all pages (admin)
+  list: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(hostedLandingPages).orderBy(desc(hostedLandingPages.createdAt));
+  }),
+
+  // Get one page by ID (admin)
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [page] = await db
+        .select()
+        .from(hostedLandingPages)
+        .where(eq(hostedLandingPages.id, input.id))
+        .limit(1);
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      return page;
+    }),
+
+  // Get one page by campaign + slug (public — for rendering)
+  getBySlug: publicProcedure
+    .input(z.object({ campaign: campaignEnum, slug: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [page] = await db
+        .select()
+        .from(hostedLandingPages)
+        .where(
+          and(
+            eq(hostedLandingPages.campaign, input.campaign),
+            eq(hostedLandingPages.slug, input.slug),
+          )
+        )
+        .limit(1);
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      return page;
+    }),
+
+  // Create a new page
+  create: protectedProcedure
+    .input(pageContentSchema)
+    .mutation(async ({ input }) => {
+      // Check slug uniqueness within campaign
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const existing = await db
+        .select({ id: hostedLandingPages.id })
+        .from(hostedLandingPages)
+        .where(
+          and(
+            eq(hostedLandingPages.campaign, input.campaign),
+            eq(hostedLandingPages.slug, input.slug),
+          )
+        )
+        .limit(1);
+      if (existing.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `A page already exists at /${input.campaign}/${input.slug}`,
+        });
+      }
+
+      const testimonialsJson = input.testimonials ? JSON.stringify(input.testimonials) : null;
+
+      const [result] = await db.insert(hostedLandingPages).values({
+        campaign: input.campaign,
+        slug: input.slug,
+        template: input.template,
+        status: "draft",
+        title: input.title,
+        internalLabel: input.internalLabel,
+        headline: input.headline,
+        subheadline: input.subheadline,
+        heroImageUrl: input.heroImageUrl,
+        videoEmbedCode: input.videoEmbedCode,
+        videoThumbnailUrl: input.videoThumbnailUrl,
+        bodyCopy: input.bodyCopy,
+        optinHeadline: input.optinHeadline,
+        optinButtonText: input.optinButtonText || "Yes, Send It To Me!",
+        optinLeadMagnet: input.optinLeadMagnet,
+        kajabiFormUrl: input.kajabiFormUrl,
+        thankYouUrl: input.thankYouUrl,
+        ctaText: input.ctaText,
+        ctaUrl: input.ctaUrl,
+        ctaSubtext: input.ctaSubtext,
+        testimonials: testimonialsJson,
+        facebookPixelId: input.facebookPixelId || "1498608757116877",
+        ga4MeasurementId: input.ga4MeasurementId,
+        customHeadScripts: input.customHeadScripts,
+        accentColor: input.accentColor,
+        logoUrl: input.logoUrl,
+        personaId: input.personaId,
+        ebookId: input.ebookId,
+        webinarSessionId: input.webinarSessionId,
+      });
+
+      return { id: (result as any).insertId as number };
+    }),
+
+  // Update a page
+  update: protectedProcedure
+    .input(z.object({ id: z.number() }).merge(pageContentSchema.partial()))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { id, testimonials, ...rest } = input;
+
+      const updateData: Record<string, unknown> = { ...rest };
+      if (testimonials !== undefined) {
+        updateData.testimonials = JSON.stringify(testimonials);
+      }
+
+      await db
+        .update(hostedLandingPages)
+        .set(updateData)
+        .where(eq(hostedLandingPages.id, id));
+
+      return { success: true };
+    }),
+
+  // Publish a page
+  publish: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db
+        .update(hostedLandingPages)
+        .set({ status: "published", publishedAt: new Date() })
+        .where(eq(hostedLandingPages.id, input.id));
+      return { success: true };
+    }),
+
+  // Unpublish (back to draft)
+  unpublish: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db
+        .update(hostedLandingPages)
+        .set({ status: "draft", publishedAt: null })
+        .where(eq(hostedLandingPages.id, input.id));
+      return { success: true };
+    }),
+
+  // Archive a page
+  archive: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db
+        .update(hostedLandingPages)
+        .set({ status: "archived" })
+        .where(eq(hostedLandingPages.id, input.id));
+      return { success: true };
+    }),
+
+  // Delete a page
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.delete(hostedLandingPages).where(eq(hostedLandingPages.id, input.id));
+      return { success: true };
+    }),
+
+  // Track a view (public — called from the rendered page JS)
+  trackView: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+      // Increment view count — fire and forget
+      await db
+        .update(hostedLandingPages)
+        .set({ viewCount: sql`${hostedLandingPages.viewCount} + 1` })
+        .where(eq(hostedLandingPages.id, input.id))
+        .catch(() => {});
+      return { success: true };
+    }),
+
+  // Get rendered HTML for preview (admin)
+  preview: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [page] = await db
+        .select()
+        .from(hostedLandingPages)
+        .where(eq(hostedLandingPages.id, input.id))
+        .limit(1);
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      return { html: renderLandingPageHtml(page) };
+    }),
+});

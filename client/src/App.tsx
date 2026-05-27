@@ -45,6 +45,7 @@ const SeoDashboard = lazy(() => import("./pages/SeoDashboard"));
 const CompetitiveIntelligence = lazy(() => import("./pages/CompetitiveIntelligence"));
 const KeywordStrategy = lazy(() => import("./pages/KeywordStrategy"));
 const Scoreboard = lazy(() => import("./pages/Scoreboard"));
+const LandingPageBuilder = lazy(() => import("./pages/LandingPageBuilder"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -97,6 +98,7 @@ function Router() {
         <Route path={"/scoreboard"} component={Scoreboard} />
         <Route path={"/competitive-intelligence"} component={CompetitiveIntelligence} />
         <Route path={"/keyword-strategy"} component={KeywordStrategy} />
+        <Route path={"/ch-pages"} component={LandingPageBuilder} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

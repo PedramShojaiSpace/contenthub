@@ -103,6 +103,7 @@ import { crossModuleRouter } from "./crossModuleRouter";
 import { redditRouter } from "./redditRouter";
 import { podcastRouter } from "./podcastRouter";
 import { keywordStrategyRouter } from "./keywordStrategyRouter";
+import { hostedLandingPagesRouter } from "./hostedLandingPagesRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
@@ -372,6 +373,7 @@ export const appRouter = router({
   reddit: redditRouter,
   podcast: podcastRouter,
   kwStrategy: keywordStrategyRouter,
+  hostedLp: hostedLandingPagesRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

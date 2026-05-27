@@ -1603,3 +1603,85 @@ export const readabilityHistory = mysqlTable("readability_history", {
 
 export type ReadabilityHistory = typeof readabilityHistory.$inferSelect;
 export type InsertReadabilityHistory = typeof readabilityHistory.$inferInsert;
+
+// ─── Hosted Landing Pages (ch.theurbanmonk.com) ───────────────────────────────
+// Self-hosted landing pages served at ch.theurbanmonk.com/{campaign}/{slug}.
+// Replaces Gamma for all Urban Monk landing pages.
+// Campaign: lo | gut | sleep
+// Template: optin | vsl | sales
+// status: draft | published | archived
+
+export const hostedLpCampaignEnum = mysqlEnum("hlp_campaign", ["lo", "gut", "sleep"]);
+export const hostedLpTemplateEnum = mysqlEnum("hlp_template", ["optin", "vsl", "sales"]);
+export const hostedLpStatusEnum = mysqlEnum("hlp_status", ["draft", "published", "archived"]);
+
+export const hostedLandingPages = mysqlTable("hosted_landing_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  // URL: ch.theurbanmonk.com/{campaign}/{slug}
+  campaign: hostedLpCampaignEnum.notNull().default("lo"),
+  slug: varchar("hlp_slug", { length: 128 }).notNull(),
+  template: hostedLpTemplateEnum.notNull().default("optin"),
+  status: hostedLpStatusEnum.notNull().default("draft"),
+
+  // Page identity
+  title: varchar("hlp_title", { length: 255 }).notNull(),
+  // Internal label (not shown publicly)
+  internalLabel: varchar("hlp_internal_label", { length: 255 }),
+
+  // Hero section
+  headline: text("hlp_headline"),
+  subheadline: text("hlp_subheadline"),
+  heroImageUrl: text("hlp_hero_image_url"),
+  heroImageKey: text("hlp_hero_image_key"),
+
+  // VSL section (vsl + sales templates)
+  videoEmbedCode: text("hlp_video_embed_code"),   // full iframe/script embed
+  videoThumbnailUrl: text("hlp_video_thumbnail_url"),
+
+  // Body copy (markdown — rendered to HTML at serve time)
+  bodyCopy: longtext("hlp_body_copy"),
+
+  // Opt-in form config
+  optinHeadline: varchar("hlp_optin_headline", { length: 255 }),
+  optinButtonText: varchar("hlp_optin_button_text", { length: 128 }).default("Yes, Send It To Me!"),
+  optinLeadMagnet: varchar("hlp_optin_lead_magnet", { length: 255 }),
+  // Kajabi form action URL (from Kajabi landing page embed code)
+  kajabiFormUrl: text("hlp_kajabi_form_url"),
+  // Redirect after opt-in
+  thankYouUrl: text("hlp_thank_you_url"),
+
+  // CTA button (vsl + sales templates)
+  ctaText: varchar("hlp_cta_text", { length: 255 }),
+  ctaUrl: text("hlp_cta_url"),
+  ctaSubtext: varchar("hlp_cta_subtext", { length: 255 }),
+
+  // Social proof
+  testimonials: longtext("hlp_testimonials"),  // JSON: { name, title, quote, avatarUrl }[]
+
+  // Tracking
+  facebookPixelId: varchar("hlp_fb_pixel_id", { length: 64 }).default("1498608757116877"),
+  ga4MeasurementId: varchar("hlp_ga4_id", { length: 32 }),  // e.g. G-XXXXXXXXXX
+  customHeadScripts: text("hlp_custom_head_scripts"),  // any extra <script> tags
+
+  // Design overrides (optional — leave null to use campaign defaults)
+  accentColor: varchar("hlp_accent_color", { length: 16 }),  // hex e.g. #2D7D46
+  logoUrl: text("hlp_logo_url"),
+
+  // Stats (lightweight, not a full analytics system)
+  viewCount: int("hlp_view_count").default(0).notNull(),
+  optinCount: int("hlp_optin_count").default(0).notNull(),
+
+  // Cross-links to other modules
+  personaId: int("hlp_persona_id"),
+  ebookId: int("hlp_ebook_id"),
+  webinarSessionId: int("hlp_webinar_session_id"),
+
+  publishedAt: timestamp("hlp_published_at"),
+  createdAt: timestamp("hlp_created_at").defaultNow().notNull(),
+  updatedAt: timestamp("hlp_updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type HostedLandingPage = typeof hostedLandingPages.$inferSelect;
+export type InsertHostedLandingPage = typeof hostedLandingPages.$inferInsert;
+
+// Unique constraint: campaign + slug must be unique (enforced at app level too)

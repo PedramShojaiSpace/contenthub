@@ -19,10 +19,17 @@ const campaignEnum = z.enum(["lo", "gut", "sleep", "webinar"]);
 const templateEnum = z.enum(["optin", "vsl", "sales"]);
 
 const testimonialSchema = z.object({
-  name: z.string(),
+  // Original manual-entry fields
+  name: z.string().optional().default(""),
   title: z.string().optional(),
   quote: z.string(),
   avatarUrl: z.string().optional(),
+  // Extended fields when imported from DB testimonials table
+  authorName: z.string().optional(),   // DB field — display name
+  authorTitle: z.string().optional(),  // DB field — title/role
+  dateLabel: z.string().optional(),    // e.g. "Week 6 · Lights On"
+  category: z.string().optional(),     // e.g. "NEUROCEPTION"
+  dbId: z.number().optional(),         // original testimonials.id for reference
 });
 
 const pageContentSchema = z.object({
@@ -123,10 +130,43 @@ src="https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1"
   return fbPixel + ga4Script + (customHead || "");
 }
 
+// Helper to render a single testimonial card (shared across all templates)
+function renderTestimonialCard(t: Record<string, any>): string {
+  const displayName = t.authorName || t.name || "Anonymous";
+  const displayTitle = t.authorTitle || t.title || "";
+  const initial = displayName.charAt(0).toUpperCase();
+  return `
+        <div class="testimonial-card">
+          ${t.category ? `<div class="testimonial-category">${t.category}</div>` : ""}
+          <p class="testimonial-quote">"${t.quote}"</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">
+              ${t.avatarUrl ? `<img src="${t.avatarUrl}" alt="${displayName}">` : initial}
+            </div>
+            <div>
+              <div class="testimonial-name">${displayName}</div>
+              ${displayTitle ? `<div class="testimonial-title">${displayTitle}</div>` : ""}
+              ${t.dateLabel ? `<div class="testimonial-date">${t.dateLabel}</div>` : ""}
+            </div>
+          </div>
+        </div>`;
+}
+
+const TESTIMONIAL_CARD_CSS = `
+    .testimonial-card { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); display: flex; flex-direction: column; }
+    .testimonial-category { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); background: rgba(var(--accent-rgb,232,160,32),0.1); border: 1px solid rgba(var(--accent-rgb,232,160,32),0.25); border-radius: 4px; padding: 2px 8px; margin-bottom: 12px; width: fit-content; }
+    .testimonial-quote { font-size: 15px; color: #444; line-height: 1.7; margin-bottom: 20px; font-style: italic; flex: 1; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; margin-top: auto; }
+    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; flex-shrink: 0; overflow: hidden; }
+    .testimonial-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .testimonial-name { font-weight: 600; font-size: 14px; }
+    .testimonial-title { font-size: 12px; color: #888; }
+    .testimonial-date { font-size: 11px; color: #aaa; margin-top: 2px; }`;
+
 function renderOptinTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtml: string): string {
   const brand = CAMPAIGN_CONFIG[page.campaign] || CAMPAIGN_CONFIG.lo;
   const accent = page.accentColor || brand.accentColor;
-  const testimonials: Array<{ name: string; title?: string; quote: string; avatarUrl?: string }> = page.testimonials
+  const testimonials: Array<Record<string, any>> = page.testimonials
     ? JSON.parse(page.testimonials)
     : [];
 
@@ -165,14 +205,8 @@ function renderOptinTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
     .testimonials { background: #f0ede8; padding: 60px 24px; }
     .testimonials-inner { max-width: 900px; margin: 0 auto; }
     .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 28px; text-align: center; margin-bottom: 40px; }
-    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
-    .testimonial-card { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-    .testimonial-quote { font-size: 15px; color: #444; line-height: 1.7; margin-bottom: 20px; font-style: italic; }
-    .testimonial-author { display: flex; align-items: center; gap: 12px; }
-    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; flex-shrink: 0; overflow: hidden; }
-    .testimonial-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .testimonial-name { font-weight: 600; font-size: 14px; }
-    .testimonial-title { font-size: 12px; color: #888; }
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
+    ${TESTIMONIAL_CARD_CSS}
     .footer { background: #1a1a1a; color: #888; text-align: center; padding: 32px 24px; font-size: 13px; }
     .footer a { color: #aaa; text-decoration: none; }
     @media (max-width: 600px) { .optin-box { margin: -20px 16px 0; padding: 28px 20px; } }
@@ -208,19 +242,7 @@ function renderOptinTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
     <div class="testimonials-inner">
       <h2>What People Are Saying</h2>
       <div class="testimonials-grid">
-        ${testimonials.map(t => `
-        <div class="testimonial-card">
-          <p class="testimonial-quote">"${t.quote}"</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar">
-              ${t.avatarUrl ? `<img src="${t.avatarUrl}" alt="${t.name}">` : t.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div class="testimonial-name">${t.name}</div>
-              ${t.title ? `<div class="testimonial-title">${t.title}</div>` : ""}
-            </div>
-          </div>
-        </div>`).join("")}
+        ${testimonials.map(t => renderTestimonialCard(t)).join("")}
       </div>
     </div>
   </section>` : ""}
@@ -245,7 +267,7 @@ function renderOptinTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
 function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtml: string): string {
   const brand = CAMPAIGN_CONFIG[page.campaign] || CAMPAIGN_CONFIG.lo;
   const accent = page.accentColor || brand.accentColor;
-  const testimonials: Array<{ name: string; title?: string; quote: string; avatarUrl?: string }> = page.testimonials
+  const testimonials: Array<Record<string, any>> = page.testimonials
     ? JSON.parse(page.testimonials)
     : [];
 
@@ -280,14 +302,8 @@ function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtm
     .testimonials { background: #f5f3ef; padding: 60px 24px; }
     .testimonials-inner { max-width: 900px; margin: 0 auto; }
     .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 28px; text-align: center; margin-bottom: 40px; }
-    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
-    .testimonial-card { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-    .testimonial-quote { font-size: 15px; color: #444; line-height: 1.7; margin-bottom: 20px; font-style: italic; }
-    .testimonial-author { display: flex; align-items: center; gap: 12px; }
-    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; flex-shrink: 0; overflow: hidden; }
-    .testimonial-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .testimonial-name { font-weight: 600; font-size: 14px; }
-    .testimonial-title { font-size: 12px; color: #888; }
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
+    ${TESTIMONIAL_CARD_CSS}
     .footer { background: #1a1a1a; color: #888; text-align: center; padding: 32px 24px; font-size: 13px; }
     .footer a { color: #aaa; text-decoration: none; }
   </style>
@@ -322,19 +338,7 @@ function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtm
     <div class="testimonials-inner">
       <h2>What People Are Saying</h2>
       <div class="testimonials-grid">
-        ${testimonials.map(t => `
-        <div class="testimonial-card">
-          <p class="testimonial-quote">"${t.quote}"</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar">
-              ${t.avatarUrl ? `<img src="${t.avatarUrl}" alt="${t.name}">` : t.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div class="testimonial-name">${t.name}</div>
-              ${t.title ? `<div class="testimonial-title">${t.title}</div>` : ""}
-            </div>
-          </div>
-        </div>`).join("")}
+        ${testimonials.map(t => renderTestimonialCard(t)).join("")}
       </div>
     </div>
   </section>` : ""}
@@ -357,7 +361,7 @@ function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtm
 function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtml: string): string {
   const brand = CAMPAIGN_CONFIG[page.campaign] || CAMPAIGN_CONFIG.lo;
   const accent = page.accentColor || brand.accentColor;
-  const testimonials: Array<{ name: string; title?: string; quote: string; avatarUrl?: string }> = page.testimonials
+  const testimonials: Array<Record<string, any>> = page.testimonials
     ? JSON.parse(page.testimonials)
     : [];
 
@@ -395,14 +399,8 @@ function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
     .testimonials { background: #f5f3ef; padding: 60px 24px; }
     .testimonials-inner { max-width: 900px; margin: 0 auto; }
     .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 28px; text-align: center; margin-bottom: 40px; }
-    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
-    .testimonial-card { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-    .testimonial-quote { font-size: 15px; color: #444; line-height: 1.7; margin-bottom: 20px; font-style: italic; }
-    .testimonial-author { display: flex; align-items: center; gap: 12px; }
-    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; flex-shrink: 0; overflow: hidden; }
-    .testimonial-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .testimonial-name { font-weight: 600; font-size: 14px; }
-    .testimonial-title { font-size: 12px; color: #888; }
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
+    ${TESTIMONIAL_CARD_CSS}
     .footer { background: #1a1a1a; color: #888; text-align: center; padding: 32px 24px; font-size: 13px; }
     .footer a { color: #aaa; text-decoration: none; }
   </style>
@@ -439,19 +437,7 @@ function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
     <div class="testimonials-inner">
       <h2>Real Results from Real People</h2>
       <div class="testimonials-grid">
-        ${testimonials.map(t => `
-        <div class="testimonial-card">
-          <p class="testimonial-quote">"${t.quote}"</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar">
-              ${t.avatarUrl ? `<img src="${t.avatarUrl}" alt="${t.name}">` : t.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div class="testimonial-name">${t.name}</div>
-              ${t.title ? `<div class="testimonial-title">${t.title}</div>` : ""}
-            </div>
-          </div>
-        </div>`).join("")}
+        ${testimonials.map(t => renderTestimonialCard(t)).join("")}
       </div>
     </div>
   </section>` : ""}

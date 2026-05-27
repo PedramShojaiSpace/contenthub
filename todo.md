@@ -3424,3 +3424,19 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Server: add blog.fixYoastIssues procedure — takes contentItemId + wpPostId, fetches live WP post HTML, re-runs Step 2c (H2 keyphrase injection) and Step 4b (meta description trim + keyphrase injection), then calls updateWpPostYoast to push the fixed values back to WordPress
 - [ ] UI: add "Fix Yoast Issues" button to CommandCenter detail dialog — only visible for published posts with a wpPostId, shows spinner during fix, toast on success/failure
 - [ ] Prompt: tighten BLOG_CONTENT_RULES to explicitly require the focus keyphrase verbatim in at least one H2 subheading
+
+## CH Landing Page Builder — Testimonials DB Picker
+
+- [x] Extend testimonialSchema in hostedLandingPagesRouter to support authorName, dateLabel, category, dbId fields
+- [x] Add shared renderTestimonialCard() helper and TESTIMONIAL_CARD_CSS constant (used by all 3 templates)
+- [x] Update optin/vsl/sales HTML templates to use shared helper (shows category badge, dateLabel, authorName)
+- [x] Add DB testimonials query (trpc.testimonials.list) to LandingPageBuilder
+- [x] Add "Seed LO Testimonials" button (calls seedLightsOn mutation)
+- [x] Add "Import from PPTX" button with file picker (calls bulkImportFromPptx mutation)
+- [x] Add category filter dropdown (dynamically populated from DB categories)
+- [x] Add search box (filter by name, quote, or category)
+- [x] Add scrollable checklist of DB testimonials with checkbox-style toggle (amber highlight when selected)
+- [x] Selected testimonials shown at top of section with category badge, dateLabel, and remove button
+- [x] Keep "Add Manually" tab for one-off manual entries
+- [x] Section title shows live count of selected testimonials
+- [x] Vitest tests for testimonials.list and testimonials.seedLightsOn procedures (3 tests, all pass)

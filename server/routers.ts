@@ -104,6 +104,7 @@ import { redditRouter } from "./redditRouter";
 import { podcastRouter } from "./podcastRouter";
 import { keywordStrategyRouter } from "./keywordStrategyRouter";
 import { hostedLandingPagesRouter } from "./hostedLandingPagesRouter";
+import { testimonialsRouter } from "./testimonialsRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
@@ -374,6 +375,7 @@ export const appRouter = router({
   podcast: podcastRouter,
   kwStrategy: keywordStrategyRouter,
   hostedLp: hostedLandingPagesRouter,
+  testimonials: testimonialsRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

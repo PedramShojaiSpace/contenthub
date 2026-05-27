@@ -1685,3 +1685,35 @@ export type HostedLandingPage = typeof hostedLandingPages.$inferSelect;
 export type InsertHostedLandingPage = typeof hostedLandingPages.$inferInsert;
 
 // Unique constraint: campaign + slug must be unique (enforced at app level too)
+
+// ─── Testimonials ─────────────────────────────────────────────────────────────
+// Stores testimonials imported from PPTX or entered manually.
+// campaign: which product they belong to (lo, gut, sleep, webinar, general)
+// category: the thematic tag from the slide (e.g. NEUROCEPTION, SLEEP & RECOVERY)
+// source: where the testimonial came from (pptx, manual, etc.)
+
+export const testimonialCampaignEnum = mysqlEnum("testimonial_campaign", [
+  "lo",
+  "gut",
+  "sleep",
+  "webinar",
+  "general",
+]);
+
+export const testimonials = mysqlTable("testimonials", {
+  id: int("id").autoincrement().primaryKey(),
+  campaign: testimonialCampaignEnum.notNull().default("lo"),
+  category: varchar("category", { length: 128 }),   // e.g. "NEUROCEPTION"
+  quote: text("quote").notNull(),
+  authorName: varchar("author_name", { length: 255 }).notNull(),
+  authorTitle: varchar("author_title", { length: 255 }),  // optional role/location
+  dateLabel: varchar("date_label", { length: 128 }),      // e.g. "Week 6 · Lights On"
+  source: varchar("source", { length: 64 }).default("manual"),  // "pptx" | "manual"
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: int("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Testimonial = typeof testimonials.$inferSelect;
+export type InsertTestimonial = typeof testimonials.$inferInsert;

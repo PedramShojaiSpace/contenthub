@@ -244,7 +244,10 @@ const PLATFORM_IMAGE_STYLES: Record<string, string> = {
 };
 
 // Blog-specific AI prompt — produces a full SEO+AEO-optimized article implementing GhostLink OS pillar standards
-const BLOG_PROMPT = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
+// BLOG_CONTENT_RULES contains all writing/SEO rules WITHOUT any JSON output instruction.
+// This is used for the article-body pass (Pass 1) so there is no conflicting output format.
+// The metadata pass (Pass 2) uses its own separate JSON schema prompt.
+const BLOG_CONTENT_RULES = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
 
 AUDIENCE: Educated, health-conscious adults aged 30-55. Ambitious professionals, parents, and seekers who are serious about optimizing their biology, reducing chronic stress, and integrating ancient wisdom with modern science. They are skeptical of hype but hungry for evidence-based alternatives. They have tried conventional medicine and found it lacking. They want depth, not listicles.
 
@@ -257,24 +260,9 @@ VOICE (GhostLink OS B6 Voice Rules — non-negotiable):
 - Opinions land hard. No "I think maybe."
 - Pedram writes as a doctor (OMD), a Taoist monk, a filmmaker, and a father. Warm but direct. He cites mechanisms (not just studies). He tells short stories. Never condescending. No fluff.
 
-CRITICAL OUTPUT RULES:
-- Output ONLY a valid JSON object — nothing else, no preamble, no explanation, no markdown code fences
-- The JSON must have EXACTLY these fields:
-  {
-    "title": "H1 headline — must contain the primary keyword. HARD LIMIT: 48 characters MAX including spaces. Count every character before outputting. Example: 'Heal Your Gut for Good: Beyond Diets' = 36 chars (good). Use one of the 12 Hook Families: Pain-Based, Desire-Based, Contrarian, Truth Bomb, Pattern Interrupt, Misconception, Data/Proof, Experience, Identity, Challenge, Story, or Framework Preview",
-    "slug": "url-friendly-slug-max-60-chars — must contain the primary keyword",
-    "metaDescription": "EXACTLY 140-150 chars — no more, no less. MANDATORY STEPS: (1) Write the description. (2) Count every character including spaces. (3) If under 140, expand. (4) If over 150, cut words. (5) Output only when count is 140-150. Include focus keyword in first 25 chars. State the core benefit. End with a soft CTA. Example (145 chars): Decode your GI Map test results through a functional lens. Learn why labs say normal when you feel sick, and how to restore gut health naturally. DO NOT output a description ending with ellipsis — that means it was truncated and is invalid.",
-    "focusKeyword": "primary SEO keyword phrase (2-4 words) — MUST be a specific long-tail phrase the target audience types into Google. NEVER use a single-word or generic two-word head term (e.g. 'stress relief' is too broad — use 'qigong for stress relief' or 'nervous system regulation techniques'). The focus keyword must be unique to this article — do not reuse a keyphrase that would apply to multiple articles on the same site.",
-    "semanticKeywords": ["3-5 semantic variant phrases that support the focus keyword — weave these naturally into H2s and body"],
-    "hookFamily": "which of the 12 Hook Families was used for the title",
-    "emotionalDriver": "which of the 7 Emotional Drivers (Clarity, Pain, Belonging, Authority, Courage, Identity, Inspiration) is primary",
-    "faqSection": "a Markdown FAQ section with 4-6 questions formatted as: ### Question\\nAnswer (2-3 sentences, direct, no fluff). Questions must be real People Also Ask (PAA) queries for this topic.",
-    "waterfallMap": "a brief 5-item list of derivative content pieces this article can generate: e.g. 1. Short-form video hook (Pain driver), 2. LinkedIn post (Authority driver), etc.",
-    "article": "the full article in clean Markdown"
-  }
-- The article field must be CLEAN Markdown — escape any double quotes inside the JSON string as \\" — use \\n for newlines
-- Do NOT include the title as an H1 in the article body (rendered separately)
-- Do NOT include any labels like 'Hook:', 'CTA:', 'Section 1:', or '---' dividers
+⚠️ OUTPUT FORMAT FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do NOT wrap in JSON. Do NOT include a title H1 at the top. Start directly with the opening hook paragraph. Write the complete article — all sections fully developed — ending with the FAQ section. Do not stop early. Do NOT output JSON under any circumstances.
+
+Do NOT include any labels like 'Hook:', 'CTA:', 'Section 1:', or '---' dividers
 
 ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Architecture):
 
@@ -1160,9 +1148,10 @@ SEO NOTE: The target focus keyword for this article is "${kw}". Use it naturally
         // ── PASS 1: Generate the full article body as plain Markdown ────────────────
         // Keeping the article separate from JSON avoids token-limit truncation.
         // The article prompt asks for ONLY the Markdown body — no JSON wrapper.
-        const ARTICLE_BODY_PROMPT = `${BLOG_PROMPT}
-
-OVERRIDE FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do NOT wrap in JSON. Do NOT include a title H1 at the top. Start directly with the opening hook paragraph. Write the complete article — all sections fully developed — ending with the FAQ section. Do not stop early.`;
+        // ARTICLE_BODY_PROMPT uses BLOG_CONTENT_RULES which already has the Markdown-only
+        // output instruction at the top. There is NO JSON schema in this prompt, so the model
+        // cannot fall back to JSON output. This eliminates the conflicting-instruction bug.
+        const ARTICLE_BODY_PROMPT = BLOG_CONTENT_RULES;
 
         const articleResponse = await safeLLM({
           messages: [

@@ -1028,6 +1028,19 @@ export default function LandingPageGenerator() {
                       </>
                     )}
                   </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      handleSaveCopy();
+                      const params = new URLSearchParams();
+                      if (generatedPageId) params.set("fromLpId", String(generatedPageId));
+                      navigate(`/ch-pages?${params.toString()}`);
+                    }}
+                    className="bg-[oklch(0.45_0.18_140)] hover:bg-[oklch(0.38_0.18_140)] text-white font-semibold"
+                  >
+                    <Globe className="h-4 w-4 mr-2" />
+                    Publish to CH Pages
+                  </Button>
                 </div>
               </div>
 
@@ -1150,6 +1163,30 @@ export default function LandingPageGenerator() {
                 </div>
               )}
 
+              {/* CH Pages info banner */}
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+                <Globe className="h-5 w-5 text-emerald-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-emerald-800">Also available: Publish to CH Pages</div>
+                  <div className="text-xs text-emerald-700 mt-0.5">
+                    Host this page on <span className="font-mono">ch.theurbanmonk.com</span> with FB Pixel + GA4 baked in — no Gamma credits needed.
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    handleSaveCopy();
+                    const params = new URLSearchParams();
+                    if (generatedPageId) params.set("fromLpId", String(generatedPageId));
+                    navigate(`/ch-pages?${params.toString()}`);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                >
+                  <Globe className="h-3.5 w-3.5 mr-1.5" />
+                  Open CH Builder
+                </Button>
+              </div>
+
               {/* Two-column layout: edit + info */}
               <div className="grid grid-cols-3 gap-4">
                 {/* Copy editor */}
@@ -1192,20 +1229,15 @@ export default function LandingPageGenerator() {
                   <Card className="border-[oklch(0.88_0.02_80)] bg-white">
                     <CardContent className="p-4 space-y-3">
                       <div className="text-xs font-semibold text-[oklch(0.3_0.03_60)] uppercase tracking-wide">
-                        Publish to Gamma
+                        Publish Options
                       </div>
+                      <div className="text-xs text-[oklch(0.3_0.03_60)] font-medium mt-1">Gamma (AI-designed)</div>
                       <div className="text-xs text-[oklch(0.3_0.03_60)] leading-relaxed">
-                        Clicking "Publish to Gamma" sends this copy to the Gamma API to generate a
-                        fully designed landing page. This uses Gamma credits — only click when ready.
+                        Sends copy to Gamma API. Uses Gamma credits. ~30–90 sec.
                       </div>
-                      <div className="text-xs text-[oklch(0.3_0.03_60)]">
-                        <span className="font-medium text-[oklch(0.35_0.03_60)]">Format:</span> Webpage (not presentation)
-                      </div>
-                      <div className="text-xs text-[oklch(0.3_0.03_60)]">
-                        <span className="font-medium text-[oklch(0.35_0.03_60)]">Style:</span> Warm, earthy, wellness aesthetic
-                      </div>
-                      <div className="text-xs text-[oklch(0.3_0.03_60)]">
-                        <span className="font-medium text-[oklch(0.35_0.03_60)]">Time:</span> ~30–90 seconds
+                      <div className="text-xs text-[oklch(0.3_0.03_60)] font-medium mt-2">CH Pages (self-hosted)</div>
+                      <div className="text-xs text-[oklch(0.3_0.03_60)] leading-relaxed">
+                        Hosts at <span className="font-mono text-[10px]">ch.theurbanmonk.com</span> with FB Pixel + GA4. Instant, no credits.
                       </div>
                     </CardContent>
                   </Card>

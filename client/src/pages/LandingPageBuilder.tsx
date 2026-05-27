@@ -182,6 +182,28 @@ export default function LandingPageBuilder() {
     onError: (e) => toast.error(e.message),
   });
 
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [showAiPanel, setShowAiPanel] = useState(false);
+
+  const generateCopyMutation = trpc.hostedLp.generateCopy.useMutation({
+    onSuccess: (copy) => {
+      setForm(f => ({
+        ...f,
+        headline: copy.headline || f.headline,
+        subheadline: copy.subheadline || f.subheadline,
+        bodyCopy: copy.bodyCopy || f.bodyCopy,
+        optinHeadline: copy.optinHeadline || f.optinHeadline,
+        optinButtonText: copy.optinButtonText || f.optinButtonText,
+        ctaText: copy.ctaText || f.ctaText,
+        ctaSubtext: copy.ctaSubtext || f.ctaSubtext,
+      }));
+      setShowAiPanel(false);
+      setAiPrompt("");
+      toast.success("Copy generated! Review and edit as needed.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const previewQuery = trpc.hostedLp.preview.useQuery(
     { id: editingId! },
     { enabled: view === "preview" && editingId !== null }
@@ -462,6 +484,55 @@ export default function LandingPageBuilder() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* AI Copy Generator */}
+          <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-600" />
+                <span className="font-semibold text-sm text-amber-800">AI Copy Generator</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAiPanel(v => !v)}
+                className="text-xs text-amber-700 hover:text-amber-900 underline"
+              >
+                {showAiPanel ? "Hide" : "Generate copy with AI"}
+              </button>
+            </div>
+            {showAiPanel && (
+              <div className="space-y-3">
+                <p className="text-xs text-amber-700">
+                  Describe what this page is for in one sentence. The AI will draft headline, subheadline, body copy, opt-in text, and CTA — all in Dr. Shojai's voice.
+                </p>
+                <Textarea
+                  value={aiPrompt}
+                  onChange={e => setAiPrompt(e.target.value)}
+                  placeholder={`e.g. "Free chapter opt-in for burned-out professionals who want to reclaim their energy without giving up their career"`}
+                  rows={3}
+                  className="bg-white text-sm"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  disabled={!aiPrompt.trim() || generateCopyMutation.isPending}
+                  onClick={() => generateCopyMutation.mutate({
+                    campaign: form.campaign,
+                    template: form.template,
+                    prompt: aiPrompt.trim(),
+                  })}
+                >
+                  {generateCopyMutation.isPending ? (
+                    <><span className="animate-spin mr-1.5">⏳</span> Generating…</>
+                  ) : (
+                    <><Zap className="w-3.5 h-3.5 mr-1.5" /> Generate Copy</>
+                  )}
+                </Button>
+                <p className="text-xs text-amber-600">All fields will be filled in — you can edit anything afterwards.</p>
+              </div>
+            )}
           </div>
 
           {/* Hero section */}

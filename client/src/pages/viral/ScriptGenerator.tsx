@@ -237,11 +237,29 @@ function ScriptDisplay({ result, onCopy, autoSaved }: { result: ScriptResult; on
       {showTeleprompter ? (
         /* ── Teleprompter View ── */
         <div className="space-y-4">
-          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <Clapperboard className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">
-              <strong>Recording guide:</strong> Each segment below is a separate video file. Record the <strong>Hook</strong> first (multiple takes with different energy), then record the <strong>Body</strong> as one continuous take, then record the <strong>CTA</strong> variants. Combine in post.
-            </p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg flex-1">
+              <Clapperboard className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800">
+                <strong>Recording guide:</strong> Each segment is a separate video. Record Hook, then Body once, then CTA. Combine in post.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 h-9 text-xs font-semibold border-amber-400 text-amber-700 hover:bg-amber-50 gap-1.5"
+              onClick={() => {
+                const fullDoc = teleprompterSegments
+                  .map((seg, i) =>
+                    `=== VIDEO ${i + 1} OF ${teleprompterSegments.length}: ${seg.label} ===\n${seg.badge.toUpperCase()}\n\n${seg.text}`
+                  )
+                  .join("\n\n" + "-".repeat(50) + "\n\n");
+                onCopy(fullDoc);
+              }}
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Copy All for Teleprompter
+            </Button>
           </div>
           {teleprompterSegments.map((seg, i) => (
             <TeleprompterSegment
@@ -391,11 +409,34 @@ function BatchTeleprompterPanel({ queue, onCopy }: { queue: BatchItem[]; onCopy:
       </button>
       {open && (
         <div className="mt-3 space-y-3">
-          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <Clapperboard className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">
-              <strong>Recording order:</strong> Record each HOOK as a separate video ({hookSegments.length} takes). Then record the BODY once. Then record the CTA once. Combine in post.
-            </p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg flex-1">
+              <Clapperboard className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800">
+                <strong>Recording order:</strong> Record each HOOK separately ({hookSegments.length} takes), then BODY once, then CTA once.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 h-9 text-xs font-semibold border-amber-400 text-amber-700 hover:bg-amber-50 gap-1.5"
+              onClick={() => {
+                const allSegments: Array<{ label: string; badge: string; text: string }> = [
+                  ...hookSegments.map((s) => ({ label: s.label, badge: s.badge, text: s.text })),
+                  ...(bodyText ? [{ label: "BODY", badge: "Shared — record once", text: bodyText }] : []),
+                  ...(ctaText ? [{ label: "CTA", badge: "Shared — record once", text: ctaText }] : []),
+                ];
+                const fullDoc = allSegments
+                  .map((seg, i) =>
+                    `=== VIDEO ${i + 1} OF ${allSegments.length}: ${seg.label} ===\n${seg.badge.toUpperCase()}\n\n${seg.text}`
+                  )
+                  .join("\n\n" + "-".repeat(50) + "\n\n");
+                onCopy(fullDoc);
+              }}
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Copy All for Teleprompter
+            </Button>
           </div>
           {/* All hooks */}
           {hookSegments.map((seg) => (

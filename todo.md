@@ -3410,3 +3410,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Return wpCategories array in blog.publish response
 - [x] TypeScript: 0 errors after all changes
 - [x] Tests: 403 passed, 0 failures
+
+## Scoreboard Rewrite Button & Category Dropdown (v-rewrite-cat)
+
+- [x] UI: Add "Rewrite" button to each scoreboard table row — navigates to /studio with keyword, title, and platform=blog pre-filled
+- [x] UI: Rewrite button always visible (small, styled like the recommendations Write button)
+- [x] UI: Add WP category dropdown to CommandCenter WP publish dialog — fetch all WP categories, group by parent, show auto-detected cluster as default, allow manual override
+- [x] Server: Add blog.getWpCategories procedure — calls fetchWpCategories() and returns id/name/slug/parent list
+- [x] UI: Pass wpCategoryOverride from the publish dialog to the blog.publish mutation

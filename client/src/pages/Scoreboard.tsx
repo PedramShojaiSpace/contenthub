@@ -794,6 +794,15 @@ export default function Scoreboard() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1.5">
+                  {/* Rewrite — opens Creation Studio with keyword + title pre-filled */}
+                  <a
+                    href={`/studio?keyword=${encodeURIComponent(post.focusKeyword ?? post.title)}&title=${encodeURIComponent(post.title)}&platform=blog`}
+                    className="inline-flex items-center gap-1 h-7 px-2.5 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                    title={`Rewrite: open "${post.title}" in Creation Studio`}
+                  >
+                    <PenLine className="w-3 h-3" />
+                    <span className="hidden sm:inline">Rewrite</span>
+                  </a>
                   <Button
                     size="sm"
                     variant="ghost"

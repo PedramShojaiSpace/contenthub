@@ -1580,6 +1580,15 @@ export default function CommandCenter() {
   const [yoastPreflightItem, setYoastPreflightItem] = useState<ContentItem | null>(null);
   const [showYoastWarning, setShowYoastWarning] = useState(false);
 
+  // WP category override — lets user pick a subcategory before publishing
+  // 0 = auto-detect from focus keyword (default)
+  const [wpCategoryOverride, setWpCategoryOverride] = useState<number>(0);
+  const wpCategoriesQuery = trpc.blog.getWpCategories.useQuery(undefined, {
+    retry: false,
+    staleTime: 1000 * 60 * 10, // cache 10 min — categories rarely change
+    enabled: true,
+  });
+
   // SEO Edit dialog state — tracks whether the detail dialog was opened via Edit SEO button
   const [scrollToSeoOnOpen, setScrollToSeoOnOpen] = useState(false);
 
@@ -1913,6 +1922,7 @@ export default function CommandCenter() {
         yoastSeoTitle: item.yoastSeoTitle ?? undefined,
         yoastMetaDescription: item.yoastMetaDescription ?? undefined,
         ctaBannerHtml,
+        wpCategoryOverride: wpCategoryOverride > 0 ? wpCategoryOverride : undefined,
       },
       {
         onSuccess: (data) => {
@@ -3957,6 +3967,74 @@ export default function CommandCenter() {
 
                 {/* Pre-Publish SEO Validator — full badge grid shown above the Publish button */}
                 <SeoValidatorPanel item={selectedItem} compact={false} />
+
+                {/* WP Category Selector — shown for blog posts only */}
+                {selectedItem.platform === "blog" && (() => {
+                  const allCats = wpCategoriesQuery.data ?? [];
+                  // Build a grouped list: parent categories + their children
+                  // Filter out the duplicate ID 941 and show only ID 19 + its children
+                  const parentCats = allCats.filter((c) => c.parent === 0);
+                  const childCats = allCats.filter((c) => c.parent !== 0);
+                  // Auto-detect cluster label from focus keyword for the placeholder
+                  const autoLabel = (() => {
+                    const kw = (selectedItem.focusKeyword ?? "").toLowerCase();
+                    if (!kw) return "Auto-detect from keyword";
+                    const clusters: Array<{ label: string; keywords: string[] }> = [
+                      { label: "Gut Health & Digestion", keywords: ["gut", "digestion", "microbiome", "probiotic", "bloating", "intestin"] },
+                      { label: "Stress & Mental Wellness", keywords: ["stress", "anxiety", "cortisol", "burnout", "adrenal", "mood"] },
+                      { label: "Sleep & Recovery", keywords: ["sleep", "insomnia", "circadian", "melatonin", "rest", "recovery"] },
+                      { label: "Energy & Vitality", keywords: ["energy", "mitochondria", "fatigue", "vitality", "stamina"] },
+                      { label: "Detox & Cleansing", keywords: ["detox", "cleanse", "toxin", "liver", "lymph", "fasting"] },
+                      { label: "Mindfulness & Meditation", keywords: ["meditation", "mindfulness", "qigong", "breathwork", "pranayama", "monk"] },
+                      { label: "Nutrition & Diet", keywords: ["nutrition", "diet", "food", "eating", "meal", "nutrient", "supplement"] },
+                      { label: "Fitness & Movement", keywords: ["exercise", "fitness", "movement", "workout", "yoga", "strength"] },
+                      { label: "Longevity & Anti-Aging", keywords: ["longevity", "aging", "anti-aging", "lifespan", "biohack"] },
+                    ];
+                    const match = clusters.find((c) => c.keywords.some((sig) => kw.includes(sig)));
+                    return match ? `Auto: ${match.label}` : "Auto-detect from keyword";
+                  })();
+                  return (
+                    <div className="rounded-lg border border-border/60 bg-muted/10 p-3 space-y-2">
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-1">
+                        <span>📂</span> WordPress Category
+                      </p>
+                      <Select
+                        value={String(wpCategoryOverride)}
+                        onValueChange={(v) => setWpCategoryOverride(Number(v))}
+                      >
+                        <SelectTrigger className="h-8 text-xs bg-background border-border">
+                          <SelectValue placeholder={autoLabel} />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border-border">
+                          <SelectItem value="0" className="text-xs">
+                            <span className="text-muted-foreground italic">{autoLabel}</span>
+                          </SelectItem>
+                          {wpCategoriesQuery.isLoading ? (
+                            <SelectItem value="-1" disabled className="text-xs text-muted-foreground">Loading categories…</SelectItem>
+                          ) : (
+                            <>
+                              {/* Show parent categories first */}
+                              {parentCats.filter((c) => c.id !== 941).map((parent) => (
+                                <SelectItem key={parent.id} value={String(parent.id)} className="text-xs font-medium">
+                                  {parent.name}
+                                </SelectItem>
+                              ))}
+                              {/* Show child categories indented */}
+                              {childCats.map((child) => (
+                                <SelectItem key={child.id} value={String(child.id)} className="text-xs pl-6">
+                                  ↳ {child.name}
+                                </SelectItem>
+                              ))}
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground/60">
+                        Parent "Health and Wellness" is always assigned. Select a subcategory to override auto-detection.
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* WordPress Publish actions */}
                 <div className="flex items-center gap-2 flex-wrap">

@@ -2935,14 +2935,20 @@ Return BOTH in this exact format:
           // Match the keyphrase as a contiguous exact phrase (word boundaries on both sides)
           const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
 
-          // Collect all <h2> and <h3> tags from the HTML
-          // Matches: <h2>Text</h2> or <h2 class="...">Text</h2>
-          const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>([^<]+)<\/h[23]>/gi;
+          // Collect all <h2> and <h3> tags from the HTML.
+          // The inner content may contain child tags like <strong> or <em>, so we
+          // capture everything between the opening and closing tag (including HTML),
+          // then strip tags to get the plain text for keyphrase matching.
+          // Use [\ \S] instead of . with s-flag to match across newlines (avoids ES2018 requirement)
+          const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>((?:[\s\S])*?)<\/h[23]>/gi;
           const htmlHeadings = Array.from(wpHtmlBody.matchAll(htmlHeadingRegex));
           const htmlH2s = htmlHeadings.filter((m) => m[1].toLowerCase() === "h2");
 
-          // Check if the keyphrase already appears in any <h2> or <h3> text content
-          const keyphraseInSubheading = htmlHeadings.some((m) => kwRegex.test(m[3]));
+          // Strip HTML tags to get plain text for keyphrase matching
+          const stripTags = (s: string) => s.replace(/<[^>]+>/g, "").trim();
+
+          // Check if the keyphrase already appears in any <h2> or <h3> plain text
+          const keyphraseInSubheading = htmlHeadings.some((m) => kwRegex.test(stripTags(m[3])));
 
           if (!keyphraseInSubheading) {
             // Choose the target <h2> to rewrite:
@@ -2952,14 +2958,14 @@ Return BOTH in this exact format:
             const targetMatch = htmlH2s[targetIndex] ?? htmlHeadings[0]; // ultimate fallback
 
             if (targetMatch) {
-              const originalTag = targetMatch[0]; // e.g. "<h2>How to Improve Your Sleep</h2>"
+              const originalTag = targetMatch[0]; // e.g. "<h2><strong>Key Takeaways</strong></h2>"
               const tagName = targetMatch[1]; // "h2" or "h3"
               const tagAttrs = targetMatch[2] ?? ""; // any class/id attributes
-              const headingText = targetMatch[3].trim(); // inner text
+              const headingText = stripTags(targetMatch[3]); // plain text (no HTML tags)
               const kwCapitalised = publishInput.focusKeyword.charAt(0).toUpperCase() + publishInput.focusKeyword.slice(1);
 
               // Strategy: start the heading text with the keyphrase so Yoast cannot miss it.
-              // Format: "<h2>Keyphrase: Original Heading Text</h2>"
+              // Format: "<h2>Keyphrase: Original Heading Text</h2>" (plain text, no child tags)
               // If that exceeds 80 chars, use just the keyphrase as the heading text.
               const candidateText = `${kwCapitalised}: ${headingText}`;
               const finalText = candidateText.length <= 80 ? candidateText : kwCapitalised;
@@ -3074,9 +3080,11 @@ Return BOTH in this exact format:
         // Hard safety net — force-truncate if somehow still over 155 (should never happen)
         if (metaDesc.length > 155) {
           const sp = metaDesc.slice(0, 148).lastIndexOf(' ');
-          metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 148)).trimEnd().replace(/[,;:\-–—]$/, '').trimEnd();
+          metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 148)).trimEnd().replace(/[,;:\-\u2013\u2014]$/, '').trimEnd();
           console.warn(`[SEO] Meta description force-truncated to ${metaDesc.length} chars for "${publishInput.title}"`);
         }
+        console.log(`[SEO] Final meta description: ${metaDesc.length} chars — "${metaDesc.slice(0, 60)}..."`);
+        console.log(`[SEO] Focus keyword: "${publishInput.focusKeyword}" | metaDesc contains kw: ${metaDesc.toLowerCase().includes((publishInput.focusKeyword ?? '').toLowerCase())}`);
 
         // Step 4c: Keyphrase deduplication check
         // Warn if this focus keyword was already used on a previously published post.

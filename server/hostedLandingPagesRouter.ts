@@ -675,6 +675,91 @@ export const hostedLandingPagesRouter = router({
       return { success: true };
     }),
 
+  // AI copy generator — drafts headline, subheadline, body copy, CTA, and opt-in text from a single prompt
+  generateCopy: protectedProcedure
+    .input(z.object({
+      campaign: z.enum(["lo", "gut", "sleep"]),
+      template: z.enum(["optin", "vsl", "sales"]),
+      prompt: z.string().min(10).max(500),
+    }))
+    .mutation(async ({ input }) => {
+      const { invokeLLM } = await import("./_core/llm");
+
+      const campaignContext: Record<string, string> = {
+        lo: "Lights On — Dr. Pedram Shojai's program about reclaiming energy, vitality, and focus. Target audience: burned-out professionals, entrepreneurs, and high-achievers who feel exhausted, foggy, and disconnected. Core promise: restore your energy and mental clarity naturally.",
+        gut: "Gut Health — Dr. Pedram Shojai's program about healing the gut, reducing inflammation, and restoring digestive health. Target audience: people suffering from bloating, fatigue, brain fog, and chronic digestive issues. Core promise: heal your gut and transform your health from the inside out.",
+        sleep: "Sleep — Dr. Pedram Shojai's program about mastering deep, restorative sleep. Target audience: insomniacs, light sleepers, and chronically tired people. Core promise: fall asleep faster, stay asleep longer, and wake up fully restored.",
+      };
+
+      const templateContext: Record<string, string> = {
+        optin: "opt-in page (lead magnet / free gift). Needs: punchy headline, benefit-driven subheadline, short body copy (2–3 sentences), opt-in form headline, and button text.",
+        vsl: "video sales letter page. Needs: curiosity-driven headline, subheadline that teases the video, short pre-video body copy (1–2 sentences), and a strong CTA button text.",
+        sales: "long-form sales page. Needs: bold headline, empathetic subheadline, longer body copy (3–4 paragraphs covering problem, agitation, solution), and a compelling CTA.",
+      };
+
+      const systemPrompt = `You are a world-class direct-response copywriter for Dr. Pedram Shojai, The Urban Monk — a bestselling author, filmmaker, and wellness expert. You write in his voice: warm, authoritative, practical, and slightly irreverent. You never use hype or fake urgency. You write copy that converts because it is deeply true and resonant.
+
+Campaign context: ${campaignContext[input.campaign]}
+Page type: ${templateContext[input.template]}
+
+Return ONLY valid JSON matching this exact schema — no markdown, no explanation:
+{
+  "headline": "string (max 80 chars, bold promise or pattern interrupt)",
+  "subheadline": "string (max 140 chars, expands on headline with empathy or curiosity)",
+  "bodyCopy": "string (markdown-formatted body copy appropriate for the template type)",
+  "optinHeadline": "string (max 60 chars, the text above the email form — e.g. 'Get Instant Access')",
+  "optinButtonText": "string (max 40 chars, the CTA button — e.g. 'Yes, Send It To Me!')",
+  "ctaText": "string (max 40 chars, primary CTA button text)",
+  "ctaSubtext": "string (max 100 chars, reassurance text below CTA — e.g. 'No credit card required.')"
+}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Write landing page copy for this page. Additional context from user: ${input.prompt}` },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "landing_page_copy",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                headline: { type: "string" },
+                subheadline: { type: "string" },
+                bodyCopy: { type: "string" },
+                optinHeadline: { type: "string" },
+                optinButtonText: { type: "string" },
+                ctaText: { type: "string" },
+                ctaSubtext: { type: "string" },
+              },
+              required: ["headline", "subheadline", "bodyCopy", "optinHeadline", "optinButtonText", "ctaText", "ctaSubtext"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const rawContent = response?.choices?.[0]?.message?.content;
+      const raw = typeof rawContent === "string" ? rawContent : null;
+      if (!raw) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM returned empty response" });
+      try {
+        const copy = JSON.parse(raw);
+        return copy as {
+          headline: string;
+          subheadline: string;
+          bodyCopy: string;
+          optinHeadline: string;
+          optinButtonText: string;
+          ctaText: string;
+          ctaSubtext: string;
+        };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse LLM response" });
+      }
+    }),
+
   // Get rendered HTML for preview (admin)
   preview: protectedProcedure
     .input(z.object({ id: z.number() }))

@@ -1034,6 +1034,16 @@ export default function LandingPageGenerator() {
                       handleSaveCopy();
                       const params = new URLSearchParams();
                       if (generatedPageId) params.set("fromLpId", String(generatedPageId));
+                      // Infer campaign from offer so CH builder pre-selects the right campaign
+                      const offerCampaignMap: Record<string, string> = {
+                        lights_on_webinar: "lo", upstream_bundle: "lo", upstream_course: "lo", explorer_tier: "lo",
+                        deep_sleep_webinar: "sleep",
+                        kbmo_testing: "gut", gateway_health: "gut",
+                        homesick_screening: "webinar", interconnected_screening: "webinar",
+                      };
+                      const campaign = offerCampaignMap[selectedOffer] ?? "lo";
+                      params.set("campaign", campaign);
+                      params.set("template", "optin");
                       navigate(`/ch-pages?${params.toString()}`);
                     }}
                     className="bg-[oklch(0.45_0.18_140)] hover:bg-[oklch(0.38_0.18_140)] text-white font-semibold"
@@ -1178,6 +1188,14 @@ export default function LandingPageGenerator() {
                     handleSaveCopy();
                     const params = new URLSearchParams();
                     if (generatedPageId) params.set("fromLpId", String(generatedPageId));
+                    const offerCampaignMap2: Record<string, string> = {
+                      lights_on_webinar: "lo", upstream_bundle: "lo", upstream_course: "lo", explorer_tier: "lo",
+                      deep_sleep_webinar: "sleep",
+                      kbmo_testing: "gut", gateway_health: "gut",
+                      homesick_screening: "webinar", interconnected_screening: "webinar",
+                    };
+                    params.set("campaign", offerCampaignMap2[selectedOffer] ?? "lo");
+                    params.set("template", "optin");
                     navigate(`/ch-pages?${params.toString()}`);
                   }}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"

@@ -1,0 +1,1 @@
+ALTER TABLE `hosted_landing_pages` MODIFY COLUMN `hlp_campaign` enum('lo','gut','sleep','webinar') NOT NULL DEFAULT 'lo';

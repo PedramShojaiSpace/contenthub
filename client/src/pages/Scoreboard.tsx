@@ -46,6 +46,9 @@ import {
   Zap,
   CheckCheck,
   AlertTriangle,
+  Globe2,
+  Share2,
+  Send,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -617,6 +620,327 @@ function PillarCoverageBar() {
   );
 }
 
+// ── Indexing Status Panel ────────────────────────────────────────────────────
+
+function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; publishUrl: string | null }[] }) {
+  const [results, setResults] = useState<Record<string, { verdict: string; coverageState: string; lastCrawlTime: string | null; error: string | null }>>({});
+  const [loading, setLoading] = useState(false);
+  const [requestingUrl, setRequestingUrl] = useState<string | null>(null);
+
+  const bulkInspect = trpc.gsc.bulkInspectUrls.useMutation({
+    onSuccess: (data) => {
+      const map: Record<string, any> = {};
+      for (const item of data) {
+        map[item.url] = item.status
+          ? { verdict: item.status.verdict, coverageState: item.status.coverageState, lastCrawlTime: item.status.lastCrawlTime, error: null }
+          : { verdict: "FAIL", coverageState: "Error", lastCrawlTime: null, error: item.error };
+      }
+      setResults(map);
+      setLoading(false);
+      toast.success("Indexing status refreshed for " + data.length + " posts");
+    },
+    onError: (err) => {
+      setLoading(false);
+      toast.error("Failed to check indexing status: " + err.message);
+    },
+  });
+
+  const requestIndex = trpc.gsc.requestIndexing.useMutation({
+    onSuccess: (data, vars) => {
+      setRequestingUrl(null);
+      if (data.success) {
+        toast.success("Indexing requested — Google will crawl this URL soon.");
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err) => {
+      setRequestingUrl(null);
+      toast.error("Request failed: " + err.message);
+    },
+  });
+
+  const publishedWithUrl = posts.filter((p) => p.publishUrl);
+
+  const handleCheckAll = () => {
+    const urls = publishedWithUrl.slice(0, 20).map((p) => p.publishUrl!);
+    if (!urls.length) return;
+    setLoading(true);
+    bulkInspect.mutate({ urls });
+  };
+
+  const verdictColor = (v: string) =>
+    v === "PASS" ? "text-green-500" : v === "NEUTRAL" ? "text-amber-500" : "text-red-500";
+  const verdictIcon = (v: string) =>
+    v === "PASS" ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : v === "NEUTRAL" ? <AlertCircle className="w-3.5 h-3.5 text-amber-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />;
+
+  return (
+    <Card className="border-border bg-card">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe2 className="w-4 h-4 text-primary" />
+            <CardTitle className="text-sm font-semibold">Google Indexing Status</CardTitle>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCheckAll}
+            disabled={loading || publishedWithUrl.length === 0}
+            className="h-7 px-3 text-xs gap-1.5"
+          >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            Check All ({Math.min(publishedWithUrl.length, 20)})
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Check whether Google has indexed your posts. Click "Request Indexing" to submit a crawl hint for any unindexed URL.
+        </p>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {Object.keys(results).length === 0 && !loading && (
+          <div className="text-center py-6 text-muted-foreground text-sm">
+            <Globe2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p>Click "Check All" to inspect up to 20 posts at once.</p>
+            <p className="text-xs mt-1">Requires Google Search Console to be connected in SEO Dashboard.</p>
+          </div>
+        )}
+        {loading && (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-2 rounded-md bg-muted/30">
+                <Skeleton className="w-3.5 h-3.5 rounded-full" />
+                <Skeleton className="h-3 flex-1" />
+                <Skeleton className="h-6 w-24" />
+              </div>
+            ))}
+          </div>
+        )}
+        {!loading && Object.keys(results).length > 0 && (
+          <div className="space-y-1.5">
+            {publishedWithUrl.slice(0, 20).map((post) => {
+              const r = results[post.publishUrl!];
+              if (!r) return null;
+              return (
+                <div key={post.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/30 transition-colors">
+                  {verdictIcon(r.verdict)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{post.title}</p>
+                    <p className={`text-xs ${verdictColor(r.verdict)}`}>
+                      {r.error ? r.error : r.coverageState}
+                      {r.lastCrawlTime && (
+                        <span className="text-muted-foreground ml-1.5">
+                          · Last crawled {new Date(r.lastCrawlTime).toLocaleDateString()}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {r.verdict !== "PASS" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-xs gap-1 shrink-0"
+                      disabled={requestingUrl === post.publishUrl}
+                      onClick={() => {
+                        setRequestingUrl(post.publishUrl!);
+                        requestIndex.mutate({ url: post.publishUrl! });
+                      }}
+                    >
+                      {requestingUrl === post.publishUrl ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Send className="w-3 h-3" />
+                      )}
+                      Request Indexing
+                    </Button>
+                  )}
+                  {r.verdict === "PASS" && (
+                    <Badge variant="outline" className="text-xs text-green-600 border-green-600/30 bg-green-500/10 shrink-0">
+                      Indexed
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Quick Share Dialog ────────────────────────────────────────────────────────
+
+function QuickShareDialog({
+  post,
+  open,
+  onClose,
+}: {
+  post: { id: number; title: string; publishUrl: string | null; focusKeyword: string | null } | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [selectedPlatform, setSelectedPlatform] = useState<"linkedin" | "twitter" | "facebook" | "instagram">("linkedin");
+  const [generatedCopy, setGeneratedCopy] = useState("");
+  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const channelsQuery = trpc.syndication.getProfiles.useQuery(undefined, { enabled: open });
+  const generateShareCopy = trpc.blog.generateShareCopy.useMutation({
+    onSuccess: (data) => {
+      setGeneratedCopy(data.copy);
+      setIsGenerating(false);
+    },
+    onError: (err) => {
+      setIsGenerating(false);
+      toast.error("Failed to generate copy: " + err.message);
+    },
+  });
+  const pushMutation = trpc.syndication.push.useMutation({
+    onSuccess: () => {
+      toast.success("Post queued in Buffer!");
+      onClose();
+    },
+    onError: (err: any) => toast.error("Push failed: " + err.message),
+  });
+
+  const platforms = [
+    { id: "linkedin" as const, label: "LinkedIn" },
+    { id: "twitter" as const, label: "X / Twitter" },
+    { id: "facebook" as const, label: "Facebook" },
+    { id: "instagram" as const, label: "Instagram" },
+  ];
+
+  const channelsForPlatform = (channelsQuery.data ?? []).filter((c: any) => {
+    const svc = (c.service ?? "").toLowerCase();
+    if (selectedPlatform === "linkedin") return svc === "linkedin";
+    if (selectedPlatform === "twitter") return svc === "twitter";
+    if (selectedPlatform === "facebook") return svc === "facebook";
+    if (selectedPlatform === "instagram") return svc === "instagram";
+    return false;
+  });
+
+  const handleGenerate = () => {
+    if (!post) return;
+    setIsGenerating(true);
+    setGeneratedCopy("");
+    generateShareCopy.mutate({
+      contentItemId: post.id,
+      platform: selectedPlatform,
+      blogUrl: post.publishUrl ?? "",
+      title: post.title,
+      focusKeyword: post.focusKeyword ?? "",
+    });
+  };
+
+  const handlePush = () => {
+    if (!post || !generatedCopy || selectedChannels.length === 0) return;
+    const allChannels = channelsQuery.data ?? [];
+    const channelServiceMap: Record<string, string> = {};
+    for (const ch of allChannels as any[]) {
+      if (selectedChannels.includes(ch.id)) channelServiceMap[ch.id] = ch.service;
+    }
+    pushMutation.mutate({
+      contentItemId: post.id,
+      text: generatedCopy,
+      profileIds: selectedChannels,
+      platform: selectedPlatform,
+      channelServiceMap,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Share2 className="w-4 h-4 text-primary" />
+            Quick Share to Social
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            Generate a platform-optimized post with a link to the blog, then push to Buffer.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            {platforms.map((p) => (
+              <Button
+                key={p.id}
+                size="sm"
+                variant={selectedPlatform === p.id ? "default" : "outline"}
+                onClick={() => { setSelectedPlatform(p.id); setGeneratedCopy(""); }}
+                className="h-7 text-xs"
+              >
+                {p.label}
+              </Button>
+            ))}
+          </div>
+          {post?.publishUrl && (
+            <div className="text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1.5 flex items-center gap-1.5">
+              <Globe2 className="w-3 h-3 shrink-0" />
+              <span className="truncate">{post.publishUrl}</span>
+            </div>
+          )}
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating || !post?.publishUrl}
+            className="w-full gap-2"
+            size="sm"
+          >
+            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            {generatedCopy ? "Regenerate Copy" : "Generate Copy"}
+          </Button>
+          {generatedCopy && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Edit before posting:</label>
+              <textarea
+                className="w-full min-h-[120px] text-sm bg-muted/30 border border-border rounded-md p-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+                value={generatedCopy}
+                onChange={(e) => setGeneratedCopy(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground text-right">{generatedCopy.length} chars</p>
+            </div>
+          )}
+          {generatedCopy && channelsForPlatform.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Push to channels:</label>
+              <div className="flex flex-wrap gap-2">
+                {channelsForPlatform.map((ch: any) => (
+                  <button
+                    key={ch.id}
+                    onClick={() =>
+                      setSelectedChannels((prev) =>
+                        prev.includes(ch.id) ? prev.filter((id) => id !== ch.id) : [...prev, ch.id]
+                      )
+                    }
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      selectedChannels.includes(ch.id)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    {ch.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {generatedCopy && (
+            <Button
+              onClick={handlePush}
+              disabled={selectedChannels.length === 0 || pushMutation.isPending}
+              className="w-full gap-2"
+            >
+              {pushMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Push to Buffer ({selectedChannels.length} channel{selectedChannels.length !== 1 ? "s" : ""})
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Publish Next Panel ────────────────────────────────────────────────────────
 
 function PublishNextPanel() {
@@ -807,6 +1131,7 @@ export default function Scoreboard() {
   const [clusterFilter, setClusterFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"publishedAt" | "clicks" | "position" | "health" | "trend">("publishedAt");
   const [autoSolveOpen, setAutoSolveOpen] = useState(false);
+  const [sharePost, setSharePost] = useState<PostRow | null>(null);
 
   const postsQuery = trpc.scoreboard.getPublishedPosts.useQuery(undefined, { retry: false });
   const clusterCoverageQuery = trpc.scoreboard.getClusterCoverage.useQuery(undefined, { retry: false });
@@ -1162,6 +1487,18 @@ export default function Scoreboard() {
                     <span className="hidden sm:inline">Yoast</span>
                   </Button>
                   {post.publishUrl && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
+                      onClick={() => setSharePost(post)}
+                      title="Quick Share to Social"
+                    >
+                      <Share2 className="w-3 h-3" />
+                      <span className="hidden sm:inline">Share</span>
+                    </Button>
+                  )}
+                  {post.publishUrl && (
                     <a
                       href={post.publishUrl}
                       target="_blank"
@@ -1179,6 +1516,9 @@ export default function Scoreboard() {
         </Card>
       )}
 
+      {/* Indexing Status Panel */}
+      <IndexingStatusPanel posts={posts} />
+
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t border-border">
         <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> Winning — Yoast Good + GSC clicks</span>
@@ -1193,6 +1533,11 @@ export default function Scoreboard() {
         open={autoSolveOpen}
         onClose={() => setAutoSolveOpen(false)}
         redPosts={redPostsList}
+      />
+      <QuickShareDialog
+        post={sharePost}
+        open={sharePost !== null}
+        onClose={() => setSharePost(null)}
       />
     </div>
     </DashboardLayout>

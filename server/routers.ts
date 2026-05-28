@@ -5438,6 +5438,39 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         // Return oldest-first for the chart
         return rows.reverse();
       }),
+    // -- Generate Share Copy --
+    generateShareCopy: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        platform: z.enum(["linkedin", "twitter", "facebook", "instagram"]),
+        blogUrl: z.string(),
+        title: z.string(),
+        focusKeyword: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import("./_core/llm");
+        const platformRules: Record<string, string> = {
+          linkedin: "Write a 150-200 word LinkedIn post. Professional but warm tone. Open with a compelling insight or question. 2-3 short paragraphs. End with a clear CTA to read the full article. Include 3-5 relevant hashtags at the end. Append the blog URL on its own line at the very end.",
+          twitter: "Write a punchy X/Twitter post under 280 characters total. Lead with the most surprising or contrarian insight. End with the blog URL. No hashtags unless they fit naturally within the character limit.",
+          facebook: "Write a 100-150 word Facebook post. Conversational, warm, community-focused tone. Ask a question or share a relatable scenario. End with a CTA to read more and include the blog URL.",
+          instagram: "Write an Instagram caption (150-200 words). Start with a bold hook sentence. Use line breaks for readability. End with a CTA and the blog URL. Include 5-8 relevant hashtags on the last line.",
+        };
+        const systemPrompt = "You are a social media copywriter for Dr. Pedram Shojai (The Urban Monk). Write in his voice: wise, direct, grounded, and empowering. Never use structural labels. Output only the final post copy - nothing else.";
+        const userPrompt = "Write a " + input.platform + " post promoting this blog article:\n\nTitle: " + input.title + "\nFocus keyword: " + (input.focusKeyword ?? "wellness") + "\nBlog URL: " + input.blogUrl + "\n\nPlatform rules: " + platformRules[input.platform];
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        });
+        const rawContent = response.choices?.[0]?.message?.content ?? "";
+        const raw = typeof rawContent === "string" ? rawContent : "";
+        const cleaned = raw
+          .replace(/^(Hook|CTA|Body|Intro|Outro|Caption|Post|Copy):\s*/gim, "")
+          .replace(/^-{3,}\s*$/gm, "")
+          .trim();
+        return { copy: cleaned };
+      }),
 
   }),
 

@@ -13,6 +13,8 @@ import {
   getStrikingDistanceKeywords,
   getWeekOverWeekSummary,
   listGscSites,
+  inspectUrl,
+  requestIndexing,
 } from "./googleSearchConsole";
 
 async function getGscCredentials(userId: number) {
@@ -227,4 +229,76 @@ export const gscRouter = router({
       gscQueriesFetched: gscRows.length,
     };
   }),
+
+  /**
+   * Inspect a single URL's indexing status via the GSC URL Inspection API.
+   * Returns coverage state, last crawl time, and verdict.
+   */
+  inspectUrl: protectedProcedure
+    .input(z.object({ url: z.string().url() }))
+    .query(async ({ ctx, input }) => {
+      const creds = await getGscCredentials(ctx.user.id);
+      if (!creds.gscSiteUrl) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
+      }
+      return inspectUrl(creds.gscRefreshToken!, creds.gscSiteUrl, input.url);
+    }),
+
+  /**
+   * Bulk inspect up to 20 URLs at once (rate-limited to avoid GSC quota).
+   * Returns an array of index status results in the same order as input.
+   */
+  bulkInspectUrls: protectedProcedure
+    .input(z.object({ urls: z.array(z.string().url()).min(1).max(20) }))
+    .mutation(async ({ ctx, input }) => {
+      const creds = await getGscCredentials(ctx.user.id);
+      if (!creds.gscSiteUrl) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
+      }
+      // Process sequentially with a small delay to respect GSC rate limits (600 req/min)
+      const results = [];
+      for (const url of input.urls) {
+        try {
+          const status = await inspectUrl(creds.gscRefreshToken!, creds.gscSiteUrl, url);
+          results.push({ url, status, error: null });
+        } catch (err: any) {
+          results.push({ url, status: null, error: err?.message ?? "Inspection failed" });
+        }
+        // Small delay between requests to avoid rate limiting
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      return results;
+    }),
+
+  /**
+   * Request indexing for a URL via the Google Indexing API.
+   * Sends a URL_UPDATED notification which acts as a crawl hint.
+   */
+  requestIndexing: protectedProcedure
+    .input(z.object({ url: z.string().url() }))
+    .mutation(async ({ ctx, input }) => {
+      const creds = await getGscCredentials(ctx.user.id);
+      return requestIndexing(creds.gscRefreshToken!, input.url);
+    }),
+
+  /**
+   * Bulk request indexing for multiple URLs.
+   * Processes up to 10 URLs sequentially.
+   */
+  bulkRequestIndexing: protectedProcedure
+    .input(z.object({ urls: z.array(z.string().url()).min(1).max(10) }))
+    .mutation(async ({ ctx, input }) => {
+      const creds = await getGscCredentials(ctx.user.id);
+      const results = [];
+      for (const url of input.urls) {
+        try {
+          const result = await requestIndexing(creds.gscRefreshToken!, url);
+          results.push({ url, ...result });
+        } catch (err: any) {
+          results.push({ url, success: false, message: err?.message ?? "Request failed" });
+        }
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      return results;
+    }),
 });

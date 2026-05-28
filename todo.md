@@ -3519,3 +3519,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix 4: Added FIX PATTERN example showing exactly how to break a "The…The…The…" run
 - [x] Fix 5: Added server-side ReadabilityRepair post-processor — runs after URL scrubbing, before metadata extraction — deterministically fixes any remaining runs of 3+ consecutive same-start sentences by prepending a rotating transition word
 - [x] TypeScript: 0 errors after all changes
+
+## GSC Indexing Panel + Quick Social Share (completed 2026-05-28)
+- [x] Add inspectUrl, bulkInspectUrls, requestIndexing procedures to gscRouter
+- [x] Add IndexingStatusPanel component to Scoreboard — shows index status per post with Request Indexing button
+- [x] Add generateShareCopy procedure to blog router — platform-specific copy with blog URL
+- [x] Add QuickShareDialog component to Scoreboard — generate + preview + push to Buffer per platform
+- [x] Add Share button to each post row in Scoreboard
+- [x] TypeScript: 0 errors

@@ -687,6 +687,27 @@
       "when": 1779973772675,
       "tag": "0097_spicy_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "5",
+      "when": 1779975114006,
+      "tag": "0098_shallow_lethal_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "5",
+      "when": 1779975354569,
+      "tag": "0099_spooky_tarot",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "5",
+      "when": 1779975597515,
+      "tag": "0100_breezy_vulcan",
+      "breakpoints": true
     }
   ]
 }

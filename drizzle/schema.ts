@@ -1094,6 +1094,9 @@ export const userCredentials = mysqlTable("user_credentials", {
   // Google Search Console
   gscRefreshToken: text("gscRefreshToken"),
   gscSiteUrl: varchar("gscSiteUrl", { length: 256 }),
+  // Gmail OAuth (Backlink Outreach Engine — Alyzza@theurbanmonk.com)
+  gmailRefreshToken: text("gmailRefreshToken"),
+  gmailEmail: varchar("gmailEmail", { length: 256 }),
   updatedAt: timestamp("uc_updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type UserCredentials = typeof userCredentials.$inferSelect;
@@ -1794,6 +1797,8 @@ export const backlinkProspects = mysqlTable("backlink_prospects", {
   linkAnchorText: varchar("linkAnchorText", { length: 255 }),
   linkVerifiedAt: timestamp("linkVerifiedAt"),
   linkLiveAt: timestamp("linkLiveAt"),
+  linkLastCheckedAt: timestamp("linkLastCheckedAt"),
+  linkIsLive: boolean("linkIsLive"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1808,6 +1813,8 @@ export const backlinkEmails = mysqlTable("backlink_emails", {
   body: text("body").notNull(),
   status: mysqlEnum("email_status", ["draft", "approved", "sent", "bounced"]).default("draft").notNull(),
   sentAt: timestamp("sentAt"),
+  gmailThreadId: varchar("gmailThreadId", { length: 255 }),   // Gmail thread ID for reply tracking
+  gmailMessageId: varchar("gmailMessageId", { length: 255 }), // Gmail message ID
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

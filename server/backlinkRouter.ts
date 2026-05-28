@@ -22,6 +22,8 @@ import {
 } from "../drizzle/schema";
 import { eq, desc, and, inArray, not } from "drizzle-orm";
 import { getAuthHeader } from "./dataForSeo";
+import { getGmailAuthUrl, isGmailAuthorized, sendGmailOutreach } from "./gmail";
+
 
 // ─── DataForSEO helpers ───────────────────────────────────────────────────────
 
@@ -605,6 +607,318 @@ export const backlinkRouter = router({
       return { success: true };
     }),
 
+  /**
+   * Bulk discover prospects from a predefined list of Urban Monk blog topic keywords.
+   * Runs all keywords sequentially (to avoid rate-limiting), deduplicates by domain,
+   * and returns a summary of how many new prospects were added.
+   */
+  bulkDiscoverProspects: protectedProcedure
+    .input(
+      z.object({
+        keywords: z.array(z.string().min(2).max(200)).min(1).max(20),
+        outreachType: z.enum(["guest_post", "resource_page", "broken_link"]).default("guest_post"),
+        depth: z.number().min(5).max(20).default(10),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      let totalAdded = 0;
+      let totalSkipped = 0;
+      const errors: string[] = [];
+
+      for (const keyword of input.keywords) {
+        try {
+          // Fetch SERP results for this keyword
+          const serpResults = await getSerpResults(keyword, input.depth);
+          const filtered = serpResults.filter(
+            (r) => !EXCLUDED_DOMAINS.has(r.domain) && !EXCLUDED_DOMAINS.has(r.domain.replace(/^www\./, ""))
+          );
+
+          if (filtered.length === 0) continue;
+
+          // Check which domains are already in the database
+          const domains = filtered.map((r) => r.domain);
+          const existing = await db
+            .select({ domain: backlinkProspects.domain })
+            .from(backlinkProspects)
+            .where(inArray(backlinkProspects.domain, domains));
+          const existingDomains = new Set(existing.map((e) => e.domain));
+
+          const newResults = filtered.filter((r) => !existingDomains.has(r.domain));
+          totalSkipped += filtered.length - newResults.length;
+
+          if (newResults.length === 0) continue;
+
+          // Enrich top 5 per keyword (rate-limit friendly)
+          const toEnrich = newResults.slice(0, 5);
+          const rows: Array<typeof backlinkProspects.$inferInsert> = [];
+
+          for (const r of toEnrich) {
+            const metrics = await getDomainMetrics(r.domain);
+            rows.push({
+              domain: r.domain,
+              pageUrl: r.url,
+              pageTitle: r.title?.slice(0, 512) || null,
+              domainAuthority: metrics.domain_rank ?? null,
+              organicTraffic: metrics.organic_traffic ?? null,
+              topicRelevance: keyword,
+              discoveryKeyword: keyword,
+              outreachType: input.outreachType,
+              status: "discovered" as const,
+            });
+          }
+
+          if (rows.length > 0) {
+            await db.insert(backlinkProspects).values(rows);
+            totalAdded += rows.length;
+          }
+
+          // Small delay between keywords to be respectful of rate limits
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        } catch (err) {
+          errors.push(`${keyword}: ${err instanceof Error ? err.message : "unknown error"}`);
+        }
+      }
+
+      return { totalAdded, totalSkipped, errors };
+    }),
+
+  /**
+   * Check if a placed backlink is still live.
+   * Fetches the target page and scans for a link to theurbanmonk.com.
+   * Returns whether the link was found, the HTTP status, and a timestamp.
+   */
+  checkLinkLive: protectedProcedure
+    .input(z.object({ prospectId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [prospect] = await db
+        .select()
+        .from(backlinkProspects)
+        .where(eq(backlinkProspects.id, input.prospectId))
+        .limit(1);
+
+      if (!prospect) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
+      }
+
+      const urlToCheck = prospect.placedLinkUrl || prospect.pageUrl;
+
+      let httpStatus = 0;
+      let linkFound = false;
+      let errorMsg: string | null = null;
+
+      try {
+        const response = await fetch(urlToCheck, {
+          method: "GET",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; LinkChecker/1.0; +https://theurbanmonk.com)",
+          },
+          signal: AbortSignal.timeout(15000),
+        });
+
+        httpStatus = response.status;
+
+        if (response.ok) {
+          const html = await response.text();
+          // Check for any link to theurbanmonk.com
+          linkFound =
+            html.includes("theurbanmonk.com") ||
+            html.includes("urbanmonkacademy.com") ||
+            html.includes("pedramshojai");
+        }
+      } catch (err) {
+        errorMsg = err instanceof Error ? err.message : "Fetch failed";
+        httpStatus = 0;
+      }
+
+      // Update the prospect with the check result
+      await db
+        .update(backlinkProspects)
+        .set({ linkLastCheckedAt: new Date(), linkIsLive: linkFound })
+        .where(eq(backlinkProspects.id, input.prospectId));
+
+      // If link was previously won but is now gone, notify owner
+      if (prospect.status === "won" && !linkFound && !errorMsg) {
+        const { notifyOwner } = await import("./_core/notification");
+        await notifyOwner({
+          title: `⚠️ Backlink removed: ${prospect.domain}`,
+          content: `The backlink from ${prospect.domain} (${urlToCheck}) no longer contains a link to theurbanmonk.com. HTTP status: ${httpStatus}. You may want to follow up.`,
+        });
+      }
+
+      return { linkFound, httpStatus, errorMsg, checkedAt: new Date() };
+    }),
+
+
+  /**
+   * Check if Gmail is authorized for Alyzza's account.
+   */
+  getGmailStatus: protectedProcedure.query(() => {
+    return { authorized: isGmailAuthorized() };
+  }),
+
+  /**
+   * Get the Gmail OAuth authorization URL for Alyzza to authorize.
+   */
+  getGmailAuthUrl: protectedProcedure.query(() => {
+    try {
+      const url = getGmailAuthUrl();
+      return { url };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: msg });
+    }
+  }),
+
+  /**
+   * Send an approved outreach email via Alyzza's Gmail account.
+   * Updates the email status to "sent" and records the Gmail thread ID.
+   */
+  sendEmail: protectedProcedure
+    .input(z.object({
+      emailId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Load the email and its prospect
+      const [email] = await db
+        .select()
+        .from(backlinkEmails)
+        .where(eq(backlinkEmails.id, input.emailId));
+      if (!email) throw new TRPCError({ code: "NOT_FOUND", message: "Email not found" });
+      if (email.status !== "approved") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Email must be approved before sending" });
+      }
+
+      const [prospect] = await db
+        .select()
+        .from(backlinkProspects)
+        .where(eq(backlinkProspects.id, email.prospectId));
+      if (!prospect) throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
+      if (!prospect.contactEmail) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Prospect has no contact email set" });
+      }
+
+      // Send via Gmail
+      const result = await sendGmailOutreach({
+        to: prospect.contactEmail,
+        toName: prospect.contactName ?? undefined,
+        subject: email.subject,
+        body: email.body,
+        threadId: email.gmailThreadId ?? undefined,
+        inReplyToMessageId: email.gmailMessageId ?? undefined,
+      });
+
+      // Update email record
+      await db.update(backlinkEmails)
+        .set({
+          status: "sent",
+          sentAt: new Date(),
+          gmailThreadId: result.threadId,
+          gmailMessageId: result.messageId,
+        })
+        .where(eq(backlinkEmails.id, input.emailId));
+
+      // Update prospect status
+      const newStatus = email.emailType === "initial" ? "emailed" : "followed_up";
+      const updateData: Partial<typeof backlinkProspects.$inferInsert> = {
+        status: newStatus as typeof backlinkProspects.$inferSelect["status"],
+      };
+      if (email.emailType === "initial") {
+        updateData.firstEmailSentAt = new Date();
+      } else {
+        updateData.lastFollowUpAt = new Date();
+      }
+      await db.update(backlinkProspects)
+        .set(updateData)
+        .where(eq(backlinkProspects.id, email.prospectId));
+
+      return { success: true, messageId: result.messageId, threadId: result.threadId };
+    }),
+
+  /**
+   * Draft and queue a follow-up email for a prospect that hasn't responded.
+   * Called by the heartbeat job 7 days after the initial email.
+   */
+  draftFollowUp: protectedProcedure
+    .input(z.object({
+      prospectId: z.number(),
+      followUpNumber: z.number().min(1).max(2).default(1),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [prospect] = await db
+        .select()
+        .from(backlinkProspects)
+        .where(eq(backlinkProspects.id, input.prospectId));
+      if (!prospect) throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
+
+      // Get the original email for context
+      const [originalEmail] = await db
+        .select()
+        .from(backlinkEmails)
+        .where(and(
+          eq(backlinkEmails.prospectId, input.prospectId),
+          eq(backlinkEmails.emailType, "initial")
+        ));
+
+      const followUpType = input.followUpNumber === 1 ? "follow_up_1" : "follow_up_2";
+
+      // Generate follow-up copy via LLM
+      const prompt = `You are writing a brief, warm follow-up email for Dr. Pedram Shojai (The Urban Monk).
+
+Context:
+- Site we reached out to: ${prospect.domain}
+- Page we referenced: ${prospect.pageTitle ?? prospect.pageUrl}
+- Outreach type: ${prospect.outreachType === "guest_post" ? "Guest post offer" : "Resource page link request"}
+- Follow-up number: ${input.followUpNumber} of 2
+- Original email subject: ${originalEmail?.subject ?? "our previous message"}
+
+Write a ${input.followUpNumber === 1 ? "gentle 3-sentence" : "final 2-sentence"} follow-up email.
+- Follow-up 1: Friendly bump, assume they're busy, restate the value briefly
+- Follow-up 2: Short final check-in, no pressure, leave the door open
+
+Rules:
+- NO structural labels (Hook:, CTA:, etc.)
+- DO NOT use "I hope this email finds you well" or similar clichés
+- Keep it under 100 words
+- Sign off as Dr. Pedram Shojai
+
+Return JSON: { "subject": "Re: [original subject]", "body": "..." }`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert email copywriter. Return only valid JSON." },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      const rawContent = response.choices[0]?.message?.content;
+      const parsed = JSON.parse(typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent));
+
+      // Save the follow-up draft
+      const [inserted] = await db.insert(backlinkEmails).values({
+        prospectId: input.prospectId,
+        emailType: followUpType as "follow_up_1" | "follow_up_2",
+        subject: parsed.subject ?? `Follow-up: ${originalEmail?.subject ?? "our collaboration"}`,
+        body: parsed.body ?? "",
+        status: "draft",
+        gmailThreadId: originalEmail?.gmailThreadId ?? null,
+        gmailMessageId: originalEmail?.gmailMessageId ?? null,
+      }).$returningId();
+
+      return { emailId: inserted.id, subject: parsed.subject, body: parsed.body };
+    }),
   /**
    * Get summary stats for the outreach dashboard.
    */

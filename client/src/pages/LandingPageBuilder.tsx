@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -1080,6 +1081,7 @@ export default function LandingPageBuilder() {
   const drafts = (pages as LandingPage[]).filter(p => p.status === "draft");
 
   return (
+    <DashboardLayout>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card px-6 py-4">
@@ -1172,6 +1174,7 @@ export default function LandingPageBuilder() {
         )}
       </div>
     </div>
+    </DashboardLayout>
   );
 }
 

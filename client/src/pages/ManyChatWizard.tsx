@@ -9,6 +9,7 @@
  */
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -209,6 +210,7 @@ export default function ManyChatWizard() {
   const phaseDone = (phase: string) => phaseSteps(phase).every((s) => completedSteps.has(s.id));
 
   return (
+    <DashboardLayout>
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -457,5 +459,6 @@ export default function ManyChatWizard() {
         </Link>
       </div>
     </div>
+    </DashboardLayout>
   );
 }

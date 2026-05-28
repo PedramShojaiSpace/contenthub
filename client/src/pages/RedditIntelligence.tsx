@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
 import type { RedditSubreddit, RedditPost } from "../../../drizzle/schema";
 import { useLocation } from "wouter";
@@ -413,7 +414,7 @@ function PostCard({
             size="sm"
             variant="outline"
             className="h-7 text-[10px] gap-1 text-primary border-primary/30 hover:bg-primary/10"
-            onClick={() => navigate(`/command-center?title=${encodeURIComponent(post.title)}&source=reddit&subreddit=${post.subreddit}`)}
+            onClick={() => navigate(`/?title=${encodeURIComponent(post.title)}&source=reddit&subreddit=${post.subreddit}`)}
           >
             <Zap className="w-3 h-3" />
             Create Content
@@ -646,6 +647,7 @@ export default function RedditIntelligence() {
   const unanalyzedCount = (posts ?? []).filter((p: RedditPost) => !p.isAnalyzed).length;
 
   return (
+    <DashboardLayout>
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -1018,5 +1020,6 @@ export default function RedditIntelligence() {
         </TabsContent>
       </Tabs>
     </div>
+    </DashboardLayout>
   );
 }

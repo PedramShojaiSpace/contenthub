@@ -5,6 +5,7 @@
  * Left side: list of all episodes with status badges.
  * Right side: guest intake form to create a new episode prep session.
  */
+import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -469,6 +470,7 @@ export default function PodcastProduction() {
   const pendingCount = episodes?.filter((e) => e.status !== "complete").length ?? 0;
 
   return (
+    <DashboardLayout>
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -537,5 +539,6 @@ export default function PodcastProduction() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

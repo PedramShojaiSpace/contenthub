@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -252,6 +253,7 @@ export default function WordPressSetup() {
   };
 
   return (
+    <DashboardLayout>
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       {/* Back nav */}
       <a href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -840,5 +842,6 @@ export default function WordPressSetup() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

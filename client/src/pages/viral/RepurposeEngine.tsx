@@ -187,7 +187,7 @@ export default function RepurposeEngine() {
             {data.created} draft cards created in Command Center!{" "}
             <button
               className="underline font-medium"
-              onClick={() => setLocation("/command-center")}
+              onClick={() => setLocation("/")}
             >
               View Kanban →
             </button>
@@ -380,7 +380,7 @@ export default function RepurposeEngine() {
                     size="sm"
                     variant="outline"
                     className="shrink-0 text-xs"
-                    onClick={() => setLocation("/command-center")}
+                    onClick={() => setLocation("/")}
                   >
                     <Kanban className="w-3.5 h-3.5 mr-1.5" />
                     View Kanban

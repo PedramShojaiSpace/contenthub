@@ -10,6 +10,7 @@
  *   5. Keyword Research — search volume, CPC, difficulty, intent for any keywords
  *   6. Keyword History — sidebar showing past searches with favorites toggle
  */
+import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useEffect, useCallback } from "react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from "recharts";
 import { trpc } from "@/lib/trpc";
@@ -1092,6 +1093,7 @@ export default function CompetitiveIntelligence() {
   }
 
   return (
+    <DashboardLayout>
     <div className="flex h-full min-h-0">
       {/* Main content */}
       <div className="flex-1 min-w-0 overflow-y-auto">
@@ -1181,5 +1183,6 @@ export default function CompetitiveIntelligence() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -149,6 +150,7 @@ export default function VerifiedLinks() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
+    <DashboardLayout>
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -399,5 +401,6 @@ export default function VerifiedLinks() {
         </DialogContent>
       </Dialog>
     </div>
+    </DashboardLayout>
   );
 }

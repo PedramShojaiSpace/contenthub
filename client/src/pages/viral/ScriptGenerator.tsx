@@ -535,7 +535,7 @@ function BatchQueuePanel({
           <span className="font-semibold">{data.created} scripts saved to Command Center ✓</span>
           <button
             className="text-xs text-blue-600 hover:text-blue-800 underline text-left font-medium"
-            onClick={() => setLocation("/command-center?column=drafting")}
+            onClick={() => setLocation("/?column=drafting")}
           >
             View in Kanban (Drafting column) →
           </button>

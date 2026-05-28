@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -626,6 +627,7 @@ export default function IngestInbox() {
   }
 
   return (
+    <DashboardLayout>
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -678,5 +680,6 @@ export default function IngestInbox() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

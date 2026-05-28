@@ -3468,3 +3468,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Build VideoDeliveryHub component: script inbox, upload button, video preview, Buffer push
 - [ ] Add "Video Delivery" tab to Viral Studio
 - [ ] Wire Buffer push to use videoUrl when present
+## Navigation Audit (overnight cleanup)
+- [x] Add DashboardLayout to BookLibrary (was missing sidebar)
+- [x] Add DashboardLayout to ManyChatWizard (was missing sidebar)
+- [x] Add DashboardLayout to VideoProductionSession (was missing sidebar)
+- [x] Add DashboardLayout to VideoVariantFactory (was missing sidebar)
+- [x] Add DashboardLayout to WordPressSetup (was missing sidebar)
+- [x] Add DashboardLayout to PodcastEpisodeViewer (was missing sidebar)
+- [x] Fix broken /command-center links in ABTestLab, RepurposeEngine, ScriptGenerator, RedditIntelligence (route is /)
+- [x] Verify all 28 sidebar nav paths are registered in App.tsx (all confirmed)
+- [x] TypeScript: 0 errors after all navigation fixes

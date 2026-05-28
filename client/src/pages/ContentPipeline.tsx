@@ -10,6 +10,7 @@
  * "linked from" badge using the real FK columns (sourceWebinarId, sourceEbookId,
  * sourceLandingPageId) — no topic-name inference.
  */
+import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -533,6 +534,7 @@ export default function ContentPipeline() {
   const totalLinked = linkedEbooks + linkedPages;
 
   return (
+    <DashboardLayout>
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -667,5 +669,6 @@ export default function ContentPipeline() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

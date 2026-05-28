@@ -510,6 +510,40 @@ export const appRouter = router({
       }),
 
     /**
+     * Upload a finished video file to S3 and attach it to a content item.
+     * The client sends the file as a base64-encoded string with mimeType.
+     * Returns the S3 URL stored on the content item.
+     */
+    uploadVideo: protectedProcedure
+      .input(
+        z.object({
+          contentItemId: z.number(),
+          base64Data: z.string().min(1),
+          mimeType: z.string().default("video/mp4"),
+          fileName: z.string().default("video.mp4"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+
+        // Decode base64 and upload to S3
+        const { storagePut } = await import("./storage");
+        const fileBuffer = Buffer.from(input.base64Data, "base64");
+        const ext = input.fileName.split(".").pop() ?? "mp4";
+        const key = `videos/${input.contentItemId}-${Date.now()}.${ext}`;
+        const { url } = await storagePut(key, fileBuffer, input.mimeType);
+
+        // Persist videoUrl + videoKey on the content item
+        await updateContentItem(input.contentItemId, {
+          videoUrl: url,
+          videoKey: key,
+        });
+
+        return { videoUrl: url, videoKey: key };
+      }),
+
+    /**
      * Fetch the Yoast SEO score for a published blog post from the WordPress REST API.
      * Stores the result in content_items.yoastScore and yoastScoreFetchedAt.
      * Returns { seoScore, readabilityScore } where each is "good" | "ok" | "bad" | null.
@@ -2304,6 +2338,7 @@ CAPTION: [caption text]`;
           text: z.string().min(1),
           profileIds: z.array(z.string()).min(1),
           imageUrl: z.string().optional(),
+          videoUrl: z.string().optional(), // S3 URL of finished video — used for video posts
           scheduledAt: z.number().optional(),
           platform: z.string().optional(), // used for platform-specific limits (e.g. X = 280 chars)
           metaPostType: z.enum(["post", "story", "reel"]).optional(), // required for facebook/instagram
@@ -2331,6 +2366,7 @@ CAPTION: [caption text]`;
           text: input.text,
           profileIds: input.profileIds,
           imageUrl: input.imageUrl,
+          videoUrl: input.videoUrl,
           scheduledAt: input.scheduledAt,
           platform: input.platform,
           metaPostType: input.metaPostType,

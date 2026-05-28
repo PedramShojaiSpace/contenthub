@@ -101,6 +101,9 @@ export const contentItems = mysqlTable("content_items", {
   // Timestamp set when bulkFixYoastIssues successfully pushes meta/content to WordPress.
   // Used to show "fixed" status in the scoreboard even before Yoast recalculates linkdex.
   yoastFixedAt: bigint("yoastFixedAt", { mode: "number" }),
+  // Video Delivery Hub: finished video uploaded by edit team
+  videoUrl: text("videoUrl"),   // S3 public URL of the finished video file
+  videoKey: text("videoKey"),   // S3 key for deletion/management
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

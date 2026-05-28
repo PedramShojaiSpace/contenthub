@@ -3,7 +3,7 @@ import { useSearch } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Zap, FileText, RefreshCw, TrendingUp, MessageSquare, BarChart2, FlaskConical, Flame } from "lucide-react";
+import { Zap, FileText, RefreshCw, TrendingUp, MessageSquare, BarChart2, FlaskConical, Flame, Film } from "lucide-react";
 import HookGenerator from "./viral/HookGenerator";
 import ScriptGenerator from "./viral/ScriptGenerator";
 import RepurposeEngine from "./viral/RepurposeEngine";
@@ -12,10 +12,12 @@ import DMPlaybook from "./viral/DMPlaybook";
 import AnalyticsDashboard from "./viral/AnalyticsDashboard";
 import ABTestLab from "./viral/ABTestLab";
 import PerformanceSignal from "./viral/PerformanceSignal";
+import VideoDeliveryHub from "./viral/VideoDeliveryHub";
 
 const TABS = [
   { id: "hooks", label: "Hook Generator", icon: Zap, badge: "Core" },
   { id: "scripts", label: "Script Generator", icon: FileText, badge: "Core" },
+  { id: "delivery", label: "Video Delivery", icon: Film, badge: "New" },
   { id: "repurpose", label: "Repurpose Engine", icon: RefreshCw, badge: "Power" },
   { id: "topics", label: "Viral Topics", icon: TrendingUp, badge: "Daily" },
   { id: "dm", label: "DM Playbooks", icon: MessageSquare, badge: "Growth" },
@@ -29,6 +31,8 @@ const TAB_PARAM_MAP: Record<string, string> = {
   hook: "hooks",
   script: "scripts",
   scripts: "scripts",
+  delivery: "delivery",
+  video: "delivery",
   repurpose: "repurpose",
   topics: "topics",
   dm: "dm",
@@ -111,6 +115,9 @@ export default function ViralStudio() {
             </TabsContent>
             <TabsContent value="abtest" className="m-0 h-full">
               <ABTestLab />
+            </TabsContent>
+            <TabsContent value="delivery" className="m-0 h-full">
+              <VideoDeliveryHub />
             </TabsContent>
             <TabsContent value="signals" className="m-0 h-full">
               <PerformanceSignal />

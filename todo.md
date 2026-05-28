@@ -3460,3 +3460,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Auto-save to Command Center/Kanban on script generation (single + batch)
 - [x] Teleprompter view: hooks as separate video segments, body as single video, CTAs as separate videos
 - [x] Batch teleprompter panel: all hooks + shared body + shared CTA with recording guide
+
+## Video Delivery Hub
+
+- [ ] Add videoUrl and videoKey columns to content_items schema
+- [ ] Add uploadVideo tRPC procedure (S3 upload, stores videoUrl on content item)
+- [ ] Build VideoDeliveryHub component: script inbox, upload button, video preview, Buffer push
+- [ ] Add "Video Delivery" tab to Viral Studio
+- [ ] Wire Buffer push to use videoUrl when present

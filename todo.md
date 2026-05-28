@@ -3443,9 +3443,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## CH Landing Page Builder — UX Improvements (Round 2)
 
-- [ ] Clone page button on list cards (copy any existing CH page as starting point)
-- [ ] Loading skeleton in builder form while fromLpId query is in-flight
-- [ ] View source page link in builder header when fromLpId is set
+- [x] Clone page button on list cards (copy any existing CH page as starting point)
+- [x] Loading skeleton in builder form while fromLpId query is in-flight
+- [x] View source page link in builder header when fromLpId is set
 
 ## Content Scoreboard — Auto-Solve
 

@@ -31,6 +31,9 @@ import {
   Filter,
   CheckSquare,
   Square,
+  Loader2,
+  CopyPlus,
+  ArrowUpRight,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -165,6 +168,45 @@ export default function LandingPageBuilder() {
   const [testimonialTab, setTestimonialTab] = useState<"pick" | "manual">("pick");
   const [copiedUrl, setCopiedUrl] = useState<number | null>(null);
   const previewRef = useRef<HTMLIFrameElement>(null);
+
+  // ── Clone helper ──────────────────────────────────────────────────────────
+  // Pre-fills the builder form with a copy of the source page.
+  // The user reviews/adjusts slug & title, then clicks "Create Page" to save.
+  function openClone(page: LandingPage) {
+    // Copy all fields, clear id, append -copy to slug, reset status to draft
+    const newSlug = `${page.slug}-copy`.slice(0, 80);
+    setForm({
+      title: `${page.title} (Copy)`,
+      internalLabel: page.internalLabel || "",
+      campaign: page.campaign,
+      slug: newSlug,
+      template: page.template,
+      headline: page.headline || "",
+      subheadline: page.subheadline || "",
+      heroImageUrl: page.heroImageUrl || "",
+      videoEmbedCode: page.videoEmbedCode || "",
+      bodyCopy: page.bodyCopy || "",
+      optinHeadline: page.optinHeadline || "",
+      optinButtonText: page.optinButtonText || "Yes, Send It To Me!",
+      optinLeadMagnet: page.optinLeadMagnet || "",
+      kajabiFormUrl: page.kajabiFormUrl || "",
+      thankYouUrl: page.thankYouUrl || "",
+      ctaText: page.ctaText || "",
+      ctaUrl: page.ctaUrl || "",
+      ctaSubtext: page.ctaSubtext || "",
+      facebookPixelId: page.facebookPixelId || "1498608757116877",
+      ga4MeasurementId: page.ga4MeasurementId || "",
+      customHeadScripts: page.customHeadScripts || "",
+      accentColor: page.accentColor || "",
+    });
+    try {
+      setTestimonials(page.testimonials ? JSON.parse(page.testimonials) : []);
+    } catch {
+      setTestimonials([]);
+    }
+    setEditingId(null); // new page, not editing existing
+    setView("builder");
+  }
 
   // ── Queries & Mutations ───────────────────────────────────────────────────
 
@@ -521,6 +563,34 @@ export default function LandingPageBuilder() {
 
   if (view === "builder") {
     const isSaving = createMutation.isPending || updateMutation.isPending;
+    // Show loading skeleton while fromLpId query is in-flight
+    const isLoadingSource = fromLpId !== null && !fromLpPopulated && fromLpQuery.isLoading;
+    if (isLoadingSource) {
+      return (
+        <div className="min-h-screen bg-background">
+          <div className="sticky top-0 z-30 bg-card border-b px-6 py-3 flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => setView("list")}>← Pages</Button>
+            <div className="flex-1 min-w-0">
+              <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+              <div className="h-3 w-32 bg-muted animate-pulse rounded mt-1" />
+            </div>
+          </div>
+          <div className="max-w-3xl mx-auto px-6 py-8 space-y-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading copy from Landing Page Generator…
+            </div>
+            {[1, 2, 3].map(i => (
+              <div key={i} className="border border-border rounded-lg p-4 space-y-3">
+                <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                <div className="h-8 w-full bg-muted animate-pulse rounded" />
+                <div className="h-8 w-3/4 bg-muted animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-background">
         {/* Builder header */}
@@ -534,6 +604,16 @@ export default function LandingPageBuilder() {
               <p className="text-xs text-muted-foreground">
                 {CH_DOMAIN}/{form.campaign}/{form.slug}
               </p>
+            )}
+            {/* Source page link when opened from Landing Page Generator */}
+            {fromLpId !== null && fromLpPopulated && fromLpQuery.data && (
+              <a
+                href={`/landing-pages?highlight=${fromLpId}`}
+                className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
+              >
+                <ArrowUpRight className="w-3 h-3" />
+                View source in Landing Page Generator
+              </a>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -1144,7 +1224,7 @@ export default function LandingPageBuilder() {
               Live Pages ({published.length})
             </h2>
             <div className="space-y-3">
-              {published.map(page => <PageCard key={page.id} page={page} onEdit={openEdit} onPublish={publishMutation.mutate} onUnpublish={unpublishMutation.mutate} onDelete={deleteMutation.mutate} onCopy={copyUrl} copiedUrl={copiedUrl} />)}
+              {published.map(page => <PageCard key={page.id} page={page} onEdit={openEdit} onClone={openClone} onPublish={publishMutation.mutate} onUnpublish={unpublishMutation.mutate} onDelete={deleteMutation.mutate} onCopy={copyUrl} copiedUrl={copiedUrl} />)}
             </div>
           </div>
         )}
@@ -1156,7 +1236,7 @@ export default function LandingPageBuilder() {
               Drafts ({drafts.length})
             </h2>
             <div className="space-y-3">
-              {drafts.map(page => <PageCard key={page.id} page={page} onEdit={openEdit} onPublish={publishMutation.mutate} onUnpublish={unpublishMutation.mutate} onDelete={deleteMutation.mutate} onCopy={copyUrl} copiedUrl={copiedUrl} />)}
+              {drafts.map(page => <PageCard key={page.id} page={page} onEdit={openEdit} onClone={openClone} onPublish={publishMutation.mutate} onUnpublish={unpublishMutation.mutate} onDelete={deleteMutation.mutate} onCopy={copyUrl} copiedUrl={copiedUrl} />)}
             </div>
           </div>
         )}
@@ -1183,6 +1263,7 @@ export default function LandingPageBuilder() {
 function PageCard({
   page,
   onEdit,
+  onClone,
   onPublish,
   onUnpublish,
   onDelete,
@@ -1191,6 +1272,7 @@ function PageCard({
 }: {
   page: LandingPage;
   onEdit: (p: LandingPage) => void;
+  onClone: (p: LandingPage) => void;
   onPublish: (v: { id: number }) => void;
   onUnpublish: (v: { id: number }) => void;
   onDelete: (v: { id: number }) => void;
@@ -1237,8 +1319,11 @@ function PageCard({
         )}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
-        <Button variant="ghost" size="sm" onClick={() => onEdit(page)}>
+        <Button variant="ghost" size="sm" onClick={() => onEdit(page)} title="Edit">
           <Pencil className="w-3.5 h-3.5" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onClone(page)} title="Clone as new draft">
+          <CopyPlus className="w-3.5 h-3.5" />
         </Button>
         {page.status === "draft" ? (
           <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50" onClick={() => onPublish({ id: page.id })}>

@@ -47,6 +47,10 @@ import {
   BarChart3,
   Globe,
   Pencil,
+  Zap,
+  RefreshCw,
+  ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -85,6 +89,8 @@ interface Prospect {
   wonAt: Date | null;
   placedLinkUrl: string | null;
   linkAnchorText: string | null;
+  linkIsLive: boolean | null;
+  linkLastCheckedAt: Date | null;
 }
 
 interface BacklinkEmail {
@@ -126,6 +132,8 @@ function ProspectCard({
   onEditContact,
   onMarkWon,
   onMarkStatus,
+  onCheckLink,
+  checkingLinkId,
 }: {
   prospect: Prospect;
   onApprove: (id: number) => void;
@@ -134,6 +142,8 @@ function ProspectCard({
   onEditContact: (prospect: Prospect) => void;
   onMarkWon: (prospect: Prospect) => void;
   onMarkStatus: (prospect: Prospect) => void;
+  onCheckLink: (prospect: Prospect) => void;
+  checkingLinkId: number | null;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -236,6 +246,30 @@ function ProspectCard({
                 Mark Won
               </Button>
             )}
+            {prospect.status === "won" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className={`h-7 text-xs ${
+                  prospect.linkIsLive === false
+                    ? "text-red-600 border-red-200 hover:bg-red-50"
+                    : prospect.linkIsLive === true
+                    ? "text-green-700 border-green-200 hover:bg-green-50"
+                    : "text-muted-foreground"
+                }`}
+                onClick={() => onCheckLink(prospect)}
+                disabled={checkingLinkId === prospect.id}
+              >
+                {checkingLinkId === prospect.id ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                ) : prospect.linkIsLive === false ? (
+                  <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                ) : (
+                  <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                )}
+                {prospect.linkIsLive === false ? "Link Removed!" : prospect.linkIsLive === true ? "Link Live ✓" : "Check Link"}
+              </Button>
+            )}
             {(prospect.status === "emailed" || prospect.status === "followed_up" || prospect.status === "followed_up_2") && (
               <Button
                 size="sm"
@@ -318,7 +352,9 @@ function EmailDraftDialog({
   const [activeEmailId, setActiveEmailId] = useState<number | null>(null);
   const utils = trpc.useUtils();
 
-  const { data: emails, isLoading: loadingEmails } = trpc.backlink.listEmails.useQuery(
+  const { data: gmailStatus } = trpc.backlink.getGmailStatus.useQuery();
+
+  const { data: emails } = trpc.backlink.listEmails.useQuery(
     { prospectId: prospect?.id ?? 0 },
     { enabled: !!prospect }
   );
@@ -329,7 +365,7 @@ function EmailDraftDialog({
       setEditedBody(email.body);
       setActiveEmailId(email.id);
       utils.backlink.listEmails.invalidate({ prospectId: prospect?.id });
-      toast.success("Email drafted — review and copy below");
+      toast.success("Email drafted — review and edit below");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -351,6 +387,17 @@ function EmailDraftDialog({
     onError: (e) => toast.error(e.message),
   });
 
+  const sendEmailMutation = trpc.backlink.sendEmail.useMutation({
+    onSuccess: () => {
+      utils.backlink.listProspects.invalidate();
+      utils.backlink.getStats.invalidate();
+      utils.backlink.listEmails.invalidate({ prospectId: prospect?.id });
+      toast.success("✅ Email sent via Gmail! Prospect status updated.");
+      onClose();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const handleDraft = () => {
     if (!prospect) return;
     draftMutation.mutate({ prospectId: prospect.id, emailType });
@@ -359,6 +406,13 @@ function EmailDraftDialog({
   const handleSaveEdits = () => {
     if (!activeEmailId) return;
     updateEmailMutation.mutate({ id: activeEmailId, subject: editedSubject, body: editedBody });
+  };
+
+  const handleApproveAndSend = async () => {
+    if (!activeEmailId) return;
+    // First save any edits, then approve, then send
+    await updateEmailMutation.mutateAsync({ id: activeEmailId, subject: editedSubject, body: editedBody, status: "approved" });
+    sendEmailMutation.mutate({ emailId: activeEmailId });
   };
 
   const handleCopy = () => {
@@ -385,6 +439,8 @@ function EmailDraftDialog({
 
   if (!prospect) return null;
 
+  const isSending = sendEmailMutation.isPending || updateEmailMutation.isPending;
+
   return (
     <Dialog open={!!prospect} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -396,6 +452,25 @@ function EmailDraftDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Gmail status banner */}
+          {gmailStatus && !gmailStatus.authorized && (
+            <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-amber-900">Gmail not connected</p>
+                <p className="text-xs text-amber-700">Connect Gmail to send directly from Alyzza's account, or use Copy + send manually.</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-100"
+                onClick={() => window.open("/api/gmail/auth-url", "_self")}
+              >
+                Connect Gmail
+              </Button>
+            </div>
+          )}
+
           {/* Existing drafts */}
           {emails && emails.length > 0 && (
             <div>
@@ -462,28 +537,51 @@ function EmailDraftDialog({
                 />
               </div>
 
-              <div className="flex gap-2 pt-1">
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleSaveEdits}>
+              <div className="flex gap-2 pt-1 flex-wrap">
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleSaveEdits} disabled={updateEmailMutation.isPending}>
                   Save Edits
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleCopy}>
                   <Copy className="w-3.5 h-3.5 mr-1.5" />
-                  Copy to Clipboard
+                  Copy
                 </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs ml-auto bg-green-600 hover:bg-green-700"
-                  onClick={handleMarkSent}
-                  disabled={markSentMutation.isPending || !activeEmailId}
-                >
-                  <Send className="w-3.5 h-3.5 mr-1.5" />
-                  Mark as Sent
-                </Button>
+                {gmailStatus?.authorized ? (
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs ml-auto bg-green-600 hover:bg-green-700"
+                    onClick={handleApproveAndSend}
+                    disabled={isSending || !activeEmailId || !prospect.contactEmail}
+                    title={!prospect.contactEmail ? "Add contact email first" : ""}
+                  >
+                    {isSending ? (
+                      <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Sending…</>
+                    ) : (
+                      <><Send className="w-3.5 h-3.5 mr-1.5" />Send via Gmail</>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs ml-auto bg-green-600 hover:bg-green-700"
+                    onClick={handleMarkSent}
+                    disabled={markSentMutation.isPending || !activeEmailId}
+                  >
+                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    Mark as Sent
+                  </Button>
+                )}
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                Tip: Copy the email, send it from your own email client (Gmail, etc.), then click "Mark as Sent" to update the pipeline status.
-              </p>
+              {!prospect.contactEmail && (
+                <p className="text-xs text-amber-600">
+                  ⚠️ No contact email set. Add it via the Edit Contact button before sending.
+                </p>
+              )}
+              {!gmailStatus?.authorized && (
+                <p className="text-xs text-muted-foreground">
+                  Tip: Copy the email, send it from Gmail manually, then click "Mark as Sent" to update the pipeline.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -699,14 +797,63 @@ export default function BacklinkOutreach() {
   const [contactProspect, setContactProspect] = useState<Prospect | null>(null);
   const [wonProspect, setWonProspect] = useState<Prospect | null>(null);
   const [statusProspect, setStatusProspect] = useState<Prospect | null>(null);
+  const [checkingLinkId, setCheckingLinkId] = useState<number | null>(null);
+  const [bulkDiscovering, setBulkDiscovering] = useState(false);
 
   const utils = trpc.useUtils();
 
+  const { data: gmailStatus } = trpc.backlink.getGmailStatus.useQuery();
   const { data: stats } = trpc.backlink.getStats.useQuery();
   const { data: prospects, isLoading: loadingProspects } = trpc.backlink.listProspects.useQuery({
     status: filterStatus === "all" ? undefined : filterStatus,
     limit: 100,
   });
+
+  const bulkDiscoverMutation = trpc.backlink.bulkDiscoverProspects.useMutation({
+    onSuccess: (result) => {
+      setBulkDiscovering(false);
+      utils.backlink.listProspects.invalidate();
+      utils.backlink.getStats.invalidate();
+      toast.success(
+        `Bulk discovery complete: ${result.totalAdded} new prospects across ${suggestedKeywords.length} keywords${result.totalSkipped > 0 ? ` (${result.totalSkipped} duplicates skipped)` : ""}`
+      );
+      if (result.totalAdded > 0) setActiveTab("review");
+    },
+    onError: (e) => {
+      setBulkDiscovering(false);
+      toast.error(e.message);
+    },
+  });
+
+  const checkLinkMutation = trpc.backlink.checkLinkLive.useMutation({
+    onSuccess: (result, variables) => {
+      setCheckingLinkId(null);
+      utils.backlink.listProspects.invalidate();
+      if (result.linkFound) {
+        toast.success(`✅ Backlink is live (HTTP ${result.httpStatus})`);
+      } else {
+        toast.error(`⚠️ Backlink not found — may have been removed (HTTP ${result.httpStatus})`);
+      }
+    },
+    onError: (e) => {
+      setCheckingLinkId(null);
+      toast.error(e.message);
+    },
+  });
+
+  const handleBulkDiscover = () => {
+    setBulkDiscovering(true);
+    bulkDiscoverMutation.mutate({ keywords: suggestedKeywords, outreachType });
+  };
+
+  const handleCheckLink = (prospect: Prospect) => {
+    if (!prospect.placedLinkUrl) {
+      toast.error("No placed link URL recorded — mark the prospect as Won first and enter the link URL");
+      return;
+    }
+    setCheckingLinkId(prospect.id);
+    checkLinkMutation.mutate({ prospectId: prospect.id });
+  };
 
   const discoverMutation = trpc.backlink.discoverProspects.useMutation({
     onSuccess: (result) => {
@@ -774,6 +921,36 @@ export default function BacklinkOutreach() {
             Find relevant sites, draft personalized outreach emails, and build domain authority.
           </p>
         </div>
+
+        {/* Gmail connect banner */}
+        {gmailStatus && !gmailStatus.authorized && (
+          <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-blue-900">Connect Gmail to send outreach directly</p>
+              <p className="text-xs text-blue-700 mt-0.5">Authorize Alyzza's Gmail account to send emails from within this tool. Emails appear to come from Dr. Pedram Shojai.</p>
+            </div>
+            <Button
+              size="sm"
+              className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={async () => {
+                const resp = await fetch("/api/gmail/auth-url", { credentials: "include" });
+                const data = await resp.json();
+                if (data.url) window.location.href = data.url;
+                else toast.error(data.error ?? "Could not get auth URL");
+              }}
+            >
+              <Mail className="w-3.5 h-3.5 mr-1.5" />
+              Connect Gmail
+            </Button>
+          </div>
+        )}
+        {gmailStatus?.authorized && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <p className="text-xs text-green-800 font-medium">Gmail connected — emails will be sent directly from Alyzza's account</p>
+          </div>
+        )}
 
         {/* Stats bar */}
         {stats && (
@@ -849,6 +1026,28 @@ export default function BacklinkOutreach() {
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Searching…</>
                     ) : (
                       <><Search className="w-4 h-4 mr-2" />Find Prospects</>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Bulk discover button */}
+                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <Zap className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-amber-900">Bulk Discovery</p>
+                    <p className="text-xs text-amber-700">Search all 10 suggested keywords at once and deduplicate results automatically.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100"
+                    onClick={handleBulkDiscover}
+                    disabled={bulkDiscovering || bulkDiscoverMutation.isPending}
+                  >
+                    {bulkDiscovering || bulkDiscoverMutation.isPending ? (
+                      <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Discovering…</>
+                    ) : (
+                      <><Zap className="w-3.5 h-3.5 mr-1.5" />Discover All Topics</>
                     )}
                   </Button>
                 </div>
@@ -934,6 +1133,8 @@ export default function BacklinkOutreach() {
                     onEditContact={setContactProspect}
                     onMarkWon={setWonProspect}
                     onMarkStatus={setStatusProspect}
+                    onCheckLink={handleCheckLink}
+                    checkingLinkId={checkingLinkId}
                   />
                 ))}
               </div>

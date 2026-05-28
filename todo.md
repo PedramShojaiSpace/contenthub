@@ -3538,3 +3538,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Sidebar nav: SEO section → Backlink Outreach (Link2 icon)
 - [x] Route /backlink-outreach registered in App.tsx
 - [x] TypeScript: 0 errors
+
+## Backlink Outreach Engine — Phase 2 (May 2026)
+- [x] Bulk prospect discovery: bulkDiscoverProspects procedure runs all 10 suggested keywords, deduplicates, adds to pipeline
+- [x] Won link tracker: checkLinkLive procedure pings placed URL, updates linkIsLive, notifies owner if link removed
+- [x] Gmail OAuth for Alyzza (alyzza@theurbanmonk.com): gmailRefreshToken column in userCredentials, /api/gmail/auth-url + /api/gmail/callback + /api/gmail/status Express routes, getGmailStatus + getGmailAuthUrl + sendEmail + draftFollowUp tRPC procedures
+- [x] Gmail connect banner on BacklinkOutreach page (shows when not authorized, green status when connected)
+- [x] EmailDraftDialog: "Send via Gmail" button when Gmail is authorized (auto-approves + sends in one click); falls back to "Mark as Sent" when not authorized
+- [x] TypeScript: 0 errors, 414 tests pass
+- [ ] Auto-schedule follow-up emails 7 days after initial send via heartbeat system
+- [ ] Follow-up 2 auto-scheduled 7 days after follow-up 1 if no response

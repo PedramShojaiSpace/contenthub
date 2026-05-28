@@ -306,6 +306,64 @@ async function startServer() {
     }
   });
 
+  // ── Gmail OAuth routes (Backlink Outreach Engine) ───────────────────────
+  // GET /api/gmail/auth-url — returns the OAuth URL for Alyzza to authorize
+  app.get("/api/gmail/auth-url", async (req, res) => {
+    try {
+      await sdk.authenticateRequest(req);
+      const { getGmailAuthUrl } = await import("../gmail");
+      const url = getGmailAuthUrl();
+      return res.json({ url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(400).json({ error: msg });
+    }
+  });
+  // GET /api/gmail/callback — Google redirects here after Alyzza authorizes
+  app.get("/api/gmail/callback", async (req, res) => {
+    const code = req.query.code as string;
+    if (!code) return res.status(400).send("Missing authorization code");
+    try {
+      const { exchangeGmailCode } = await import("../gmail");
+      const { refreshToken, email } = await exchangeGmailCode(code);
+      // Store in process.env so the current server process can use it immediately
+      process.env.GMAIL_REFRESH_TOKEN = refreshToken;
+      // Also persist in DB so it survives restarts (stored in userCredentials as a generic token)
+      const db = await getDb();
+      if (db) {
+        const { userCredentials } = await import("../../drizzle/schema");
+        const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, 1));
+        if (existing) {
+          await db.update(userCredentials)
+            .set({ gmailRefreshToken: refreshToken } as any)
+            .where(eq(userCredentials.userId, 1));
+        } else {
+          await db.insert(userCredentials).values({ userId: 1, gmailRefreshToken: refreshToken } as any);
+        }
+      }
+      return res.send(`
+        <html><body style="font-family:sans-serif;padding:40px;max-width:600px">
+          <h2>&#x2705; Gmail Connected!</h2>
+          <p>Outreach emails will now be sent from <strong>${email}</strong> as Dr. Pedram Shojai.</p>
+          <p><a href="/backlink-outreach">&larr; Return to Backlink Outreach</a></p>
+          <script>setTimeout(() => { window.location.href = '/backlink-outreach'; }, 2000);</script>
+        </body></html>
+      `);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>&#x274c; Authorization failed</h2><p>${msg}</p></body></html>`);
+    }
+  });
+  // GET /api/gmail/status — check if Gmail is authorized
+  app.get("/api/gmail/status", async (req, res) => {
+    try {
+      await sdk.authenticateRequest(req);
+      return res.json({ authorized: !!process.env.GMAIL_REFRESH_TOKEN });
+    } catch {
+      return res.json({ authorized: false });
+    }
+  });
+
   // ── Book PDF upload endpoints ────────────────────────────────────────────────
   // POST /api/books/upload — accepts PDF + bookId, extracts text, uploads to S3
   const pdfUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });

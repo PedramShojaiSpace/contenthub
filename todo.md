@@ -3548,3 +3548,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript: 0 errors, 414 tests pass
 - [ ] Auto-schedule follow-up emails 7 days after initial send via heartbeat system
 - [ ] Follow-up 2 auto-scheduled 7 days after follow-up 1 if no response
+
+## Backlink Outreach Engine — Phase 3 (May 2026)
+- [ ] Gmail credentials: GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET added to Secrets
+- [ ] Heartbeat auto-follow-up: /api/scheduled/backlink-followup handler drafts + sends follow-up 1 (7 days after initial email) and follow-up 2 (7 days after follow-up 1) for all emailed prospects with Gmail connected
+- [ ] followUpCronTaskUid column added to backlink_prospects schema + db:push
+- [ ] Heartbeat job created via manus-heartbeat CLI (runs daily at 08:00 UTC)
+- [ ] Bulk Request Indexing button in Scoreboard GSC panel: submits all un-indexed posts in one click (up to 10 at a time)

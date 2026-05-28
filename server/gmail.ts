@@ -34,7 +34,7 @@ function getGmailOAuthClient() {
   }
 
   const redirectUri = process.env.NODE_ENV === "production"
-    ? `${process.env.VITE_APP_URL ?? "https://lights-on-optin.manus.space"}/api/gmail/callback`
+    ? "https://content.theurbanmonk.com/api/gmail/callback"
     : "http://localhost:3000/api/gmail/callback";
 
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);

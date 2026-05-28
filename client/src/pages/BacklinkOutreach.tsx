@@ -353,6 +353,7 @@ function EmailDraftDialog({
   const utils = trpc.useUtils();
 
   const { data: gmailStatus } = trpc.backlink.getGmailStatus.useQuery();
+  const { data: gmailAuthUrlData } = trpc.backlink.getGmailAuthUrl.useQuery(undefined, { enabled: gmailStatus !== undefined && !gmailStatus?.authorized });
 
   const { data: emails } = trpc.backlink.listEmails.useQuery(
     { prospectId: prospect?.id ?? 0 },
@@ -464,7 +465,7 @@ function EmailDraftDialog({
                 size="sm"
                 variant="outline"
                 className="shrink-0 h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-100"
-                onClick={() => window.open("/api/gmail/auth-url", "_self")}
+                onClick={() => { if (gmailAuthUrlData?.url) window.location.href = gmailAuthUrlData.url; else toast.error("Could not get Gmail auth URL"); }}
               >
                 Connect Gmail
               </Button>
@@ -803,6 +804,7 @@ export default function BacklinkOutreach() {
   const utils = trpc.useUtils();
 
   const { data: gmailStatus } = trpc.backlink.getGmailStatus.useQuery();
+  const { data: gmailAuthUrlData } = trpc.backlink.getGmailAuthUrl.useQuery(undefined, { enabled: gmailStatus !== undefined && !gmailStatus?.authorized });
   const { data: stats } = trpc.backlink.getStats.useQuery();
   const { data: prospects, isLoading: loadingProspects } = trpc.backlink.listProspects.useQuery({
     status: filterStatus === "all" ? undefined : filterStatus,
@@ -933,12 +935,7 @@ export default function BacklinkOutreach() {
             <Button
               size="sm"
               className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={async () => {
-                const resp = await fetch("/api/gmail/auth-url", { credentials: "include" });
-                const data = await resp.json();
-                if (data.url) window.location.href = data.url;
-                else toast.error(data.error ?? "Could not get auth URL");
-              }}
+              onClick={() => { if (gmailAuthUrlData?.url) window.location.href = gmailAuthUrlData.url; else toast.error("Could not get Gmail auth URL"); }}
             >
               <Mail className="w-3.5 h-3.5 mr-1.5" />
               Connect Gmail

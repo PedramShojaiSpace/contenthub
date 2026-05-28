@@ -3527,3 +3527,14 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add QuickShareDialog component to Scoreboard — generate + preview + push to Buffer per platform
 - [x] Add Share button to each post row in Scoreboard
 - [x] TypeScript: 0 errors
+
+## Backlink Outreach Engine (built May 2026)
+- [x] backlink_prospects and backlink_emails database tables (schema + db:push)
+- [x] backlinkRouter: discoverProspects (DataForSEO SERP), listProspects, approveProspect, rejectProspect, updateContact, draftEmail (LLM), listEmails, updateEmail, markEmailSent, updateProspectStatus, getStats
+- [x] BacklinkOutreach.tsx page: Discover / Review Queue / Email Drafting tabs
+- [x] ProspectCard component with DA score, traffic, approve/reject/draft email actions
+- [x] EmailDraftDialog: AI-generated outreach emails (guest post, resource page, follow-ups), inline editing, copy to clipboard, mark as sent
+- [x] Stats bar: total prospects, approved, emailed, won
+- [x] Sidebar nav: SEO section → Backlink Outreach (Link2 icon)
+- [x] Route /backlink-outreach registered in App.tsx
+- [x] TypeScript: 0 errors

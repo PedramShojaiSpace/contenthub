@@ -1,0 +1,42 @@
+CREATE TABLE `backlink_emails` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`prospectId` int NOT NULL,
+	`email_type` enum('initial','follow_up_1','follow_up_2','custom') NOT NULL,
+	`subject` varchar(512) NOT NULL,
+	`body` text NOT NULL,
+	`email_status` enum('draft','approved','sent','bounced') NOT NULL DEFAULT 'draft',
+	`sentAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `backlink_emails_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `backlink_prospects` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`domain` varchar(255) NOT NULL,
+	`pageUrl` text NOT NULL,
+	`pageTitle` varchar(512),
+	`domainAuthority` int,
+	`organicTraffic` int,
+	`topicRelevance` varchar(255),
+	`discoveryKeyword` varchar(255),
+	`outreach_type` enum('guest_post','resource_page','broken_link') NOT NULL DEFAULT 'guest_post',
+	`contactEmail` varchar(320),
+	`contactName` varchar(255),
+	`contactPageUrl` text,
+	`backlink_prospect_status` enum('discovered','approved','rejected','emailed','followed_up','followed_up_2','responded','won','lost') NOT NULL DEFAULT 'discovered',
+	`ownerNotes` text,
+	`discoveredAt` timestamp NOT NULL DEFAULT (now()),
+	`approvedAt` timestamp,
+	`firstEmailSentAt` timestamp,
+	`lastFollowUpAt` timestamp,
+	`respondedAt` timestamp,
+	`wonAt` timestamp,
+	`placedLinkUrl` text,
+	`linkAnchorText` varchar(255),
+	`linkVerifiedAt` timestamp,
+	`linkLiveAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `backlink_prospects_id` PRIMARY KEY(`id`)
+);

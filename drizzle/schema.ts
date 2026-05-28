@@ -1746,3 +1746,70 @@ export const videoPushLogs = mysqlTable("video_push_logs", {
 });
 export type VideoPushLog = typeof videoPushLogs.$inferSelect;
 export type InsertVideoPushLog = typeof videoPushLogs.$inferInsert;
+
+// ─── Backlink Outreach Engine ─────────────────────────────────────────────────
+// Tracks link-building prospects discovered via DataForSEO and the outreach
+// email pipeline for each approved prospect.
+
+export const backlinkProspectStatusEnum = mysqlEnum("backlink_prospect_status", [
+  "discovered",   // Found by DataForSEO, awaiting owner review
+  "approved",     // Owner approved — ready for email drafting
+  "rejected",     // Owner rejected — skip
+  "emailed",      // First outreach email sent
+  "followed_up",  // Follow-up 1 sent
+  "followed_up_2",// Follow-up 2 sent
+  "responded",    // Prospect replied (positive or negative)
+  "won",          // Backlink placed and confirmed
+  "lost",         // Prospect declined or went cold
+]);
+
+export const backlinkProspects = mysqlTable("backlink_prospects", {
+  id: int("id").autoincrement().primaryKey(),
+  // Discovery metadata
+  domain: varchar("domain", { length: 255 }).notNull(),
+  pageUrl: text("pageUrl").notNull(),           // Specific page URL (for broken link / resource page)
+  pageTitle: varchar("pageTitle", { length: 512 }),
+  domainAuthority: int("domainAuthority"),       // DA score from DataForSEO
+  organicTraffic: int("organicTraffic"),         // Estimated monthly organic traffic
+  topicRelevance: varchar("topicRelevance", { length: 255 }), // e.g. "gut health", "stress"
+  discoveryKeyword: varchar("discoveryKeyword", { length: 255 }), // Keyword used to find this site
+  outreachType: mysqlEnum("outreach_type", ["guest_post", "resource_page", "broken_link"]).default("guest_post").notNull(),
+  // Contact info
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  contactName: varchar("contactName", { length: 255 }),
+  contactPageUrl: text("contactPageUrl"),
+  // Status workflow
+  status: backlinkProspectStatusEnum.default("discovered").notNull(),
+  // Notes from owner review
+  ownerNotes: text("ownerNotes"),
+  // Timestamps
+  discoveredAt: timestamp("discoveredAt").defaultNow().notNull(),
+  approvedAt: timestamp("approvedAt"),
+  firstEmailSentAt: timestamp("firstEmailSentAt"),
+  lastFollowUpAt: timestamp("lastFollowUpAt"),
+  respondedAt: timestamp("respondedAt"),
+  wonAt: timestamp("wonAt"),
+  // Link tracking (once won)
+  placedLinkUrl: text("placedLinkUrl"),         // The URL of the page where the link was placed
+  linkAnchorText: varchar("linkAnchorText", { length: 255 }),
+  linkVerifiedAt: timestamp("linkVerifiedAt"),
+  linkLiveAt: timestamp("linkLiveAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BacklinkProspect = typeof backlinkProspects.$inferSelect;
+export type InsertBacklinkProspect = typeof backlinkProspects.$inferInsert;
+
+export const backlinkEmails = mysqlTable("backlink_emails", {
+  id: int("id").autoincrement().primaryKey(),
+  prospectId: int("prospectId").notNull(),      // FK → backlink_prospects.id
+  emailType: mysqlEnum("email_type", ["initial", "follow_up_1", "follow_up_2", "custom"]).notNull(),
+  subject: varchar("subject", { length: 512 }).notNull(),
+  body: text("body").notNull(),
+  status: mysqlEnum("email_status", ["draft", "approved", "sent", "bounced"]).default("draft").notNull(),
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BacklinkEmail = typeof backlinkEmails.$inferSelect;
+export type InsertBacklinkEmail = typeof backlinkEmails.$inferInsert;

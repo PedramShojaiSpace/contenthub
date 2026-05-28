@@ -93,6 +93,7 @@ const librariesPaths = new Set(librariesItems.map((i) => i.path));
 const seoItems = [
   { icon: Trophy, label: "Content Scoreboard", path: "/scoreboard" },
   { icon: Search, label: "SEO Dashboard", path: "/seo" },
+  { icon: Link2, label: "Backlink Outreach", path: "/backlink-outreach" },
 ];
 
 const seoPaths = new Set(seoItems.map((i) => i.path));

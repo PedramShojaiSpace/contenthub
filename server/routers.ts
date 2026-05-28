@@ -109,6 +109,39 @@ import { kajabiOptIn } from "./kajabiApi";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 
+/**
+ * cleanSocialCopy — post-processing guard that strips structural labels the LLM
+ * occasionally outputs despite explicit prompt instructions.
+ *
+ * Patterns removed:
+ *  - Standalone label lines: "Hook:", "CTA:", "Body:", "Section 1:", "[Section]", etc.
+ *  - Markdown horizontal rules: lines that are only dashes, underscores, or asterisks (---)
+ *  - Meta-commentary lines: "Here's your …", "Here is the …", "Below is …"
+ *  - Trailing/leading blank lines (normalised to single blank lines between paragraphs)
+ *
+ * Safe for all platforms — does NOT touch hashtags, URLs, or numbered thread lines (1/).
+ */
+function cleanSocialCopy(text: string): string {
+  const lines = text.split("\n");
+  const cleaned: string[] = [];
+  // Matches lines that are ONLY a label followed by a colon (and optional whitespace)
+  // e.g. "Hook:", "CTA:", "Body:", "Section 1:", "Slide 3:", "Opening:"
+  const labelPattern = /^\s*(?:hook|cta|body|intro|outro|caption|section\s*\d*|slide\s*\d*|post|tweet\s*\d*|thread|opening|closing|call\s*to\s*action|visual|image|note|tip|p\d+)\s*:\s*$/i;
+  // Matches lines that are only horizontal-rule characters
+  const dividerPattern = /^\s*[-_*]{3,}\s*$/;
+  // Matches meta-commentary openers ("Here's your LinkedIn post:", "Below is the caption:", etc.)
+  const metaCommentPattern = /^\s*(?:here(?:'s| is)|below is|the following is|this is|above is)\s+(?:your|the|a)\s+/i;
+  for (const line of lines) {
+    if (labelPattern.test(line)) continue;       // strip "Hook:", "CTA:", etc.
+    if (dividerPattern.test(line)) continue;     // strip "---", "___", "***"
+    if (metaCommentPattern.test(line)) continue; // strip "Here's your LinkedIn post:"
+    cleaned.push(line);
+  }
+  // Collapse 3+ consecutive blank lines down to 2
+  const collapsed = cleaned.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return collapsed;
+}
+
 // Platform-specific prompt templates for Pedram's voice
 // CRITICAL: All prompts must produce ONLY clean, publishable copy — no labels, headers, or internal markup.
 const PLATFORM_PROMPTS: Record<string, string> = {
@@ -762,7 +795,7 @@ export const appRouter = router({
             });
 
             const rawContent = response.choices?.[0]?.message?.content;
-            const text = typeof rawContent === "string" ? rawContent : "Content generation failed.";
+            const text = cleanSocialCopy(typeof rawContent === "string" ? rawContent : "Content generation failed.");
 
             // Generate a clean, short title for this content item (used as Kanban card title)
             const titleResponse = await safeLLM({
@@ -2157,15 +2190,13 @@ Return BOTH in this exact format:
           : "";
 
         // Parse the two sections
-        const postMatch = rawContent.match(/\[POST\]\s*([\s\S]*?)(?=\[IMAGE PROMPT\]|$)/);
+                const postMatch = rawContent.match(/\[POST\]\s*([\s\S]*?)(?=\[IMAGE PROMPT\]|$)/);
         const imageMatch = rawContent.match(/\[IMAGE PROMPT\]\s*([\s\S]*)$/);
-
         return {
-          post: postMatch?.[1]?.trim() ?? rawContent,
+          post: cleanSocialCopy(postMatch?.[1]?.trim() ?? rawContent),
           imagePrompt: imageMatch?.[1]?.trim() ?? "",
         };
       }),
-
     // AI: generate a Reframe Post (10-slide carousel in Nicole LePera format)
     generateReframePost: protectedProcedure
       .input(
@@ -2857,16 +2888,14 @@ Return BOTH in this exact format:
           : "";
 
         // Parse the two sections
-        const postMatch = rawContent.match(/\[POST\]\s*([\s\S]*?)(?=\[IMAGE PROMPT\]|$)/);
+                const postMatch = rawContent.match(/\[POST\]\s*([\s\S]*?)(?=\[IMAGE PROMPT\]|$)/);
         const imageMatch = rawContent.match(/\[IMAGE PROMPT\]\s*([\s\S]*)$/);
-
         return {
-          post: postMatch?.[1]?.trim() ?? rawContent,
+          post: cleanSocialCopy(postMatch?.[1]?.trim() ?? rawContent),
           imagePrompt: imageMatch?.[1]?.trim() ?? "",
         };
       }),
   }),
-
   // ─── Weekly Digest ─────────────────────────────────────────────────────────────────────────────
   digest: router({
     // Manually trigger the weekly digest (admin only)

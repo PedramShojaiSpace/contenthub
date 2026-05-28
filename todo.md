@@ -3501,3 +3501,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Frontend: show image loading skeleton while image generates (isGenerating && !output?.imageUrl)
 - [x] Frontend: "Regenerate Image" button per panel to swap the image without regenerating copy
 - [x] Frontend: "Attach to Card" auto-includes the image when saving to Kanban (autoUpdateMutation)
+
+## Clean Publishable Copy & Buffer Push (completed 2026-05-28)
+
+- [x] Add cleanSocialCopy() server-side post-processor to strip structural labels (Hook:, CTA:, ---, meta-commentary) from all platform outputs
+- [x] Apply cleanSocialCopy to generateContent text results (all 5 platforms)
+- [x] Apply cleanSocialCopy to both generatePostAndImage return values (viral studio + repurpose engine)
+- [x] Confirm per-panel Push to Buffer button (handleSyndicateDirect) already implemented in Creation Studio
+- [x] TypeScript: 0 errors after all changes

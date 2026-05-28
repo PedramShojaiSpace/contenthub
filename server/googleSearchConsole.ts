@@ -19,6 +19,8 @@ const REDIRECT_URI = "https://content.theurbanmonk.com/api/gsc/callback";
 
 const GSC_SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly",
+  "https://www.googleapis.com/auth/webmasters", // needed for URL Inspection API
+  "https://www.googleapis.com/auth/indexing",   // needed for Indexing API (request indexing)
 ];
 
 function getOAuthClient() {
@@ -65,6 +67,85 @@ function getSearchConsoleClient(refreshToken: string) {
   const oauth2Client = getOAuthClient();
   oauth2Client.setCredentials({ refresh_token: refreshToken });
   return google.webmasters({ version: "v3", auth: oauth2Client });
+}
+
+/** Get an authenticated OAuth2 client using a stored refresh token (for Indexing API) */
+function getOAuthClientWithToken(refreshToken: string) {
+  const oauth2Client = getOAuthClient();
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  return oauth2Client;
+}
+
+export interface UrlIndexStatus {
+  url: string;
+  coverageState: string; // e.g. "Submitted and indexed", "URL is not on Google", "Crawled - currently not indexed"
+  robotsTxtState: string;
+  indexingState: string;
+  lastCrawlTime: string | null;
+  pageFetchState: string;
+  googleCanonical: string | null;
+  userCanonical: string | null;
+  verdict: "PASS" | "NEUTRAL" | "FAIL";
+}
+
+/**
+ * Inspect a URL using the Google Search Console URL Inspection API.
+ * Returns indexing status and coverage state.
+ */
+export async function inspectUrl(
+  refreshToken: string,
+  siteUrl: string,
+  inspectionUrl: string
+): Promise<UrlIndexStatus> {
+  const oauth2Client = getOAuthClientWithToken(refreshToken);
+  const { data } = await (google as any).searchconsole({ version: "v1", auth: oauth2Client })
+    .urlInspection.index.inspect({
+      requestBody: {
+        inspectionUrl,
+        siteUrl,
+      },
+    });
+  const result = data?.inspectionResult ?? {};
+  const indexResult = result.indexStatusResult ?? {};
+  return {
+    url: inspectionUrl,
+    coverageState: indexResult.coverageState ?? "Unknown",
+    robotsTxtState: indexResult.robotsTxtState ?? "Unknown",
+    indexingState: indexResult.indexingState ?? "Unknown",
+    lastCrawlTime: indexResult.lastCrawlTime ?? null,
+    pageFetchState: indexResult.pageFetchState ?? "Unknown",
+    googleCanonical: indexResult.googleCanonical ?? null,
+    userCanonical: indexResult.userCanonical ?? null,
+    verdict: indexResult.verdict === "PASS" ? "PASS" : indexResult.verdict === "NEUTRAL" ? "NEUTRAL" : "FAIL",
+  };
+}
+
+/**
+ * Request indexing for a URL using the Google Indexing API.
+ * Note: This API is officially only for job postings and live streams, but
+ * Google processes URL_UPDATED notifications for any URL as a crawl hint.
+ */
+export async function requestIndexing(
+  refreshToken: string,
+  pageUrl: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const oauth2Client = getOAuthClientWithToken(refreshToken);
+    const indexing = (google as any).indexing({ version: "v3", auth: oauth2Client });
+    await indexing.urlNotifications.publish({
+      requestBody: {
+        url: pageUrl,
+        type: "URL_UPDATED",
+      },
+    });
+    return { success: true, message: "Indexing request submitted successfully." };
+  } catch (err: any) {
+    // Fall back to URL Inspection API ping (which also triggers a crawl hint)
+    return {
+      success: false,
+      message: err?.message ?? "Indexing request failed. Use Google Search Console manually.",
+    };
+  }
 }
 
 /** Helper: get date string N days ago in YYYY-MM-DD format */

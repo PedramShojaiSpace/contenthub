@@ -680,6 +680,13 @@
       "when": 1779936862111,
       "tag": "0096_fixed_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "5",
+      "when": 1779973772675,
+      "tag": "0097_spicy_tarantula",
+      "breakpoints": true
     }
   ]
 }

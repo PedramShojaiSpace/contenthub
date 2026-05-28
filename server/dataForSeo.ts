@@ -16,7 +16,7 @@ const BASE_URL = "https://api.dataforseo.com/v3";
 const LOCATION_CODE = 2840; // United States
 const LANGUAGE_CODE = "en";
 
-function getAuthHeader(): string {
+export function getAuthHeader(): string {
   const login = process.env.DATAFORSEO_LOGIN;
   const password = process.env.DATAFORSEO_PASSWORD;
   if (!login || !password) {

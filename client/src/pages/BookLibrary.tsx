@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { generateAllCards } from "@/components/TitleCardRenderer";
 import { Button } from "@/components/ui/button";
@@ -1380,22 +1381,21 @@ export default function BookLibrary() {
 
   if (selectedBookId) {
     return (
-      <BookDetailPanel
-        bookId={selectedBookId}
-        onBack={() => setSelectedBookId(null)}
-      />
+      <DashboardLayout>
+        <BookDetailPanel
+          bookId={selectedBookId}
+          onBack={() => setSelectedBookId(null)}
+        />
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <a href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Hub
-          </a>
           <div>
             <h1 className="text-2xl font-semibold">Book Library</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -1482,5 +1482,6 @@ export default function BookLibrary() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

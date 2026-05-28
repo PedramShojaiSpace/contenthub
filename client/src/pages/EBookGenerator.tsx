@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -2190,6 +2191,7 @@ export default function EBookGenerator() {
   }
 
   return (
+    <DashboardLayout>
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         {/* Header */}
@@ -2401,5 +2403,6 @@ export default function EBookGenerator() {
         )}
       </div>
     </div>
+    </DashboardLayout>
   );
 }

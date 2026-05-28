@@ -10,6 +10,7 @@
  *  6. Poll until done, then download each variant MP4
  */
 
+import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -621,6 +622,7 @@ export default function VideoVariantFactory() {
   const totalVariants = hookClips.length * ctaCount;
 
   return (
+    <DashboardLayout>
     <div className="min-h-screen bg-background text-foreground p-6 space-y-6">
       {/* Back nav */}
       <a href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -1688,6 +1690,7 @@ export default function VideoVariantFactory() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }
 

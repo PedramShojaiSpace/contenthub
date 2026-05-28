@@ -341,7 +341,7 @@ export default function ABTestLab() {
           <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
           <span>
             Winner promoted to Kanban!{" "}
-            <button className="underline font-medium" onClick={() => setLocation("/command-center")}>
+            <button className="underline font-medium" onClick={() => setLocation("/")}>
               View card →
             </button>
           </span>
@@ -615,7 +615,7 @@ export default function ABTestLab() {
                       <Copy className="w-3 h-3 mr-1" />Copy to Main Account
                     </Button>
                     {promotedTests.has(selectedTest.id) ? (
-                      <Button size="sm" variant="outline" className="h-7 text-xs border-green-400 text-green-700" onClick={() => setLocation("/command-center")}>
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-green-400 text-green-700" onClick={() => setLocation("/")}>
                         <Kanban className="w-3 h-3 mr-1" />View in Kanban
                       </Button>
                     ) : (

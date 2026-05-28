@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -824,6 +825,7 @@ export default function KeywordStrategy() {
   };
 
   return (
+    <DashboardLayout>
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
@@ -1118,5 +1120,6 @@ export default function KeywordStrategy() {
         </div>
       </div>
     </div>
+    </DashboardLayout>
   );
 }

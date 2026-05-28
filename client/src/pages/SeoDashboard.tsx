@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
@@ -288,6 +289,7 @@ export default function SeoDashboard() {
   const striking: QRow[] = (strikingQuery.data ?? []) as QRow[];
 
   return (
+    <DashboardLayout>
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -601,5 +603,6 @@ export default function SeoDashboard() {
         </>
       )}
     </div>
+    </DashboardLayout>
   );
 }

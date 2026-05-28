@@ -14,6 +14,7 @@
  * Allows regenerating the report and editing intake fields.
  */
 import { Badge } from "@/components/ui/badge";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -179,6 +180,7 @@ export default function PodcastEpisodeViewer() {
 
   if (!episode) {
     return (
+      <DashboardLayout>
       <div className="p-6 max-w-5xl mx-auto text-center py-24">
         <AlertCircle className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
         <p className="text-muted-foreground">Episode not found.</p>
@@ -186,6 +188,7 @@ export default function PodcastEpisodeViewer() {
           Back to Podcast Production
         </Button>
       </div>
+      </DashboardLayout>
     );
   }
 
@@ -194,6 +197,7 @@ export default function PodcastEpisodeViewer() {
   const hasReport = episode.status === "complete" && episode.reportMarkdown;
 
   return (
+    <DashboardLayout>
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Back nav */}
       <button
@@ -605,5 +609,6 @@ export default function PodcastEpisodeViewer() {
         </Tabs>
       )}
     </div>
+    </DashboardLayout>
   );
 }

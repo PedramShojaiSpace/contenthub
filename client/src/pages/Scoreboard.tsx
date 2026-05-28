@@ -8,6 +8,7 @@
  */
 
 import { useState, useMemo, useCallback } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -880,6 +881,7 @@ export default function Scoreboard() {
   };
 
   return (
+    <DashboardLayout>
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1193,5 +1195,6 @@ export default function Scoreboard() {
         redPosts={redPostsList}
       />
     </div>
+    </DashboardLayout>
   );
 }

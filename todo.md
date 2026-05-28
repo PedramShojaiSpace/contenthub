@@ -3509,3 +3509,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Apply cleanSocialCopy to both generatePostAndImage return values (viral studio + repurpose engine)
 - [x] Confirm per-panel Push to Buffer button (handleSyndicateDirect) already implemented in Creation Studio
 - [x] TypeScript: 0 errors after all changes
+
+## Readability Fix — Consecutive Sentences & Transition Words (2026-05-28)
+
+- [x] Root cause: HARD STOP readability rules were buried mid-prompt — LLM deprioritizes mid-prompt instructions
+- [x] Fix 1: Moved HARD STOP 1 (transition words ≥30%) and HARD STOP 2 (consecutive sentence starts) to the very top of BLOG_CONTENT_RULES, before AUDIENCE and VOICE sections
+- [x] Fix 2: Expanded transition word list with 15 additional connectives (Although, Because, Since, While, When, After, Before, Once, Unless, Until, Despite, Rather than, Not only, As long as, As soon as)
+- [x] Fix 3: Added numbered HOW TO COMPLY steps for each rule (LLMs follow numbered lists more reliably than prose)
+- [x] Fix 4: Added FIX PATTERN example showing exactly how to break a "The…The…The…" run
+- [x] Fix 5: Added server-side ReadabilityRepair post-processor — runs after URL scrubbing, before metadata extraction — deterministically fixes any remaining runs of 3+ consecutive same-start sentences by prepending a rotating transition word
+- [x] TypeScript: 0 errors after all changes

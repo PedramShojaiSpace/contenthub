@@ -3478,3 +3478,26 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix broken /command-center links in ABTestLab, RepurposeEngine, ScriptGenerator, RedditIntelligence (route is /)
 - [x] Verify all 28 sidebar nav paths are registered in App.tsx (all confirmed)
 - [x] TypeScript: 0 errors after all navigation fixes
+
+## Fix Yoast Issues Button (confirmed already implemented)
+- [x] Server: blog.fixYoastIssues procedure — fetches live WP post HTML, re-runs H2 keyphrase injection (Step 2c) and meta description enforcement (Step 4b), pushes fixed values back to WordPress
+- [x] Server: blog.bulkFixYoastIssues procedure — iterates all published posts with wpPostId, runs fixYoastIssues on each
+- [x] UI: "Fix Yoast Issues" button in CommandCenter detail dialog — visible for published blog posts with wpPostId, shows spinner, toast on success/failure
+- [x] UI: "Bulk Fix Yoast" button in CommandCenter toolbar — visible when blog filter is active and published posts exist
+- [x] UI: Auto-Solve modal in Scoreboard — calls bulkFixYoastIssues with progress bar, per-post results list
+
+## Video Delivery Hub (confirmed already implemented)
+- [x] videoUrl and videoKey columns in content_items schema
+- [x] uploadVideo tRPC procedure (S3 upload, stores videoUrl on content item)
+- [x] VideoDeliveryHub component: script inbox, upload button, video preview, Buffer push
+- [x] "Video Delivery" tab in Viral Studio
+- [x] Buffer push uses videoUrl when present (MultiChannelPushDialog)
+- [x] logVideoPush tRPC procedure for push history tracking
+
+## Auto-Image with Content Generation (confirmed already implemented)
+- [x] Backend: generate platform-specific image in parallel with content text generation (generateContent procedure, generateImages: true default)
+- [x] Backend: return imageUrl per platform output alongside the copy
+- [x] Frontend: display generated image inline in each platform output panel (above the copy)
+- [x] Frontend: show image loading skeleton while image generates (isGenerating && !output?.imageUrl)
+- [x] Frontend: "Regenerate Image" button per panel to swap the image without regenerating copy
+- [x] Frontend: "Attach to Card" auto-includes the image when saving to Kanban (autoUpdateMutation)

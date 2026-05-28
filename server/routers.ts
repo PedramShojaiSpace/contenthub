@@ -539,10 +539,55 @@ export const appRouter = router({
           videoUrl: url,
           videoKey: key,
         });
-
         return { videoUrl: url, videoKey: key };
       }),
-
+    // Log a per-channel video push to video_push_logs
+    logVideoPush: protectedProcedure
+      .input(
+        z.object({
+          contentItemId: z.number(),
+          pushes: z.array(z.object({
+            channelId: z.string(),
+            channelName: z.string(),
+            service: z.string(),
+            bufferPostId: z.string().optional(),
+            caption: z.string().optional(),
+            scheduledAt: z.number().optional(),
+          })),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { videoPushLogs } = await import("../drizzle/schema");
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const rows = input.pushes.map((p) => ({
+          contentItemId: input.contentItemId,
+          channelId: p.channelId,
+          channelName: p.channelName,
+          service: p.service,
+          bufferPostId: p.bufferPostId ?? null,
+          caption: p.caption ?? null,
+          scheduledAt: p.scheduledAt ?? null,
+        }));
+        await db.insert(videoPushLogs).values(rows);
+        return { logged: rows.length };
+      }),
+    // Get push history for a content item
+    getVideoPushLogs: protectedProcedure
+      .input(z.object({ contentItemId: z.number() }))
+      .query(async ({ input }) => {
+        const { videoPushLogs } = await import("../drizzle/schema");
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return [];
+        const { eq, desc } = await import("drizzle-orm");
+        return db
+          .select()
+          .from(videoPushLogs)
+          .where(eq(videoPushLogs.contentItemId, input.contentItemId))
+          .orderBy(desc(videoPushLogs.pushedAt));
+      }),
     /**
      * Fetch the Yoast SEO score for a published blog post from the WordPress REST API.
      * Stores the result in content_items.yoastScore and yoastScoreFetchedAt.

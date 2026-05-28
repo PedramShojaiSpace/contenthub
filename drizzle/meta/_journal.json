@@ -673,6 +673,13 @@
       "when": 1779933165383,
       "tag": "0095_silent_korath",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "5",
+      "when": 1779936862111,
+      "tag": "0096_fixed_amphibian",
+      "breakpoints": true
     }
   ]
 }

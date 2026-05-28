@@ -1723,3 +1723,26 @@ export const testimonials = mysqlTable("testimonials", {
 
 export type Testimonial = typeof testimonials.$inferSelect;
 export type InsertTestimonial = typeof testimonials.$inferInsert;
+
+// ─── Video Push Logs ──────────────────────────────────────────────────────────
+// Tracks each individual channel push for a video — one row per channel per push.
+// Used to show per-channel push history and eventually pull performance metrics.
+export const videoPushLogs = mysqlTable("video_push_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  contentItemId: int("content_item_id").notNull(),
+  channelId: varchar("channel_id", { length: 128 }).notNull(),
+  channelName: varchar("channel_name", { length: 255 }).notNull(),
+  service: varchar("service", { length: 64 }).notNull(),
+  bufferPostId: varchar("buffer_post_id", { length: 255 }),
+  caption: text("caption"),
+  scheduledAt: bigint("scheduled_at", { mode: "number" }),
+  pushedAt: timestamp("pushed_at").defaultNow().notNull(),
+  // Performance metrics (populated later via Buffer analytics sync)
+  views: int("views").default(0),
+  likes: int("likes").default(0),
+  comments: int("comments").default(0),
+  shares: int("shares").default(0),
+  lastSyncedAt: timestamp("last_synced_at"),
+});
+export type VideoPushLog = typeof videoPushLogs.$inferSelect;
+export type InsertVideoPushLog = typeof videoPushLogs.$inferInsert;

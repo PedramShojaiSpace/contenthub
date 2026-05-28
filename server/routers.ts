@@ -284,6 +284,30 @@ const PLATFORM_IMAGE_STYLES: Record<string, string> = {
 // The metadata pass (Pass 2) uses its own separate JSON schema prompt.
 const BLOG_CONTENT_RULES = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
 
+⚠️ YOAST READABILITY HARD STOPS — READ THESE FIRST, BEFORE WRITING A SINGLE SENTENCE:
+
+HARD STOP 1 — TRANSITION WORDS (≥30% of all sentences REQUIRED):
+Yoast scans every sentence in the article body and counts how many contain a transition word or phrase. The minimum passing threshold is 30%. Below 30% = RED FAIL. You MUST target 35% to pass comfortably.
+
+WHAT COUNTS AS A TRANSITION WORD: However, Therefore, As a result, In addition, Furthermore, Meanwhile, For example, In contrast, Consequently, First, Second, Third, Finally, In fact, Specifically, Most importantly, In other words, That said, Even so, Because of this, At the same time, To be clear, In practice, Over time, In short, Additionally, Moreover, Notably, Instead, Still, Yet, Thus, Hence, Indeed, Otherwise, Likewise, Similarly, Afterward, Previously, Ultimately, Essentially, Particularly, Importantly, Fortunately, Unfortunately, Surprisingly, Although, Because, Since, While, When, After, Before, Once, Unless, Until, Despite, Rather than, Not only, As long as, As soon as.
+
+HOW TO COMPLY:
+1. Every paragraph of 3+ sentences MUST contain at least one transition word.
+2. NEVER write 3 consecutive sentences without a transition word appearing somewhere in one of them.
+3. After writing the full article, count: (sentences with a transition) ÷ (total sentences). If below 35%, add transitions to the weakest paragraphs before outputting.
+4. Distribute transitions evenly — do not cluster them all in one section.
+
+HARD STOP 2 — CONSECUTIVE SENTENCE STARTS (ZERO TOLERANCE):
+Yoast flags any run of 4 or more consecutive sentences that begin with the same word as a RED FAIL. Even 3 in a row is an amber warning.
+
+HOW TO COMPLY:
+1. After writing each paragraph, scan the FIRST WORD of every sentence in that paragraph.
+2. If the same word opens 3 or more sentences in a row, rewrite at least one of them to start with a different word or a transition phrase.
+3. Most common offenders: ‘The’, ‘This’, ‘It’, ‘You’, ‘Your’, ‘He’, ‘She’, ‘They’, ‘When’, ‘If’, ‘A’, ‘An’, ‘In’, ‘By’.
+4. Before outputting the full article, do a FINAL SCAN of the entire text. Find every run of 3+ consecutive sentences starting with the same word. Fix every single instance.
+
+FIX PATTERN: If you have written “The gut… The liver… The brain…” — change the third to “Meanwhile, the brain…” or “Consequently, the brain…” or restructure the sentence entirely.
+
 AUDIENCE: Educated, health-conscious adults aged 30-55. Ambitious professionals, parents, and seekers who are serious about optimizing their biology, reducing chronic stress, and integrating ancient wisdom with modern science. They are skeptical of hype but hungry for evidence-based alternatives. They have tried conventional medicine and found it lacking. They want depth, not listicles.
 
 VOICE (GhostLink OS B6 Voice Rules — non-negotiable):
@@ -1504,6 +1528,59 @@ SEO NOTE: The target focus keyword for this article is "${kw}". Use it naturally
           console.warn("[URLScrubber] Could not run URL scrubber:", scrubErr);
         }
 
+        // ── READABILITY AUTO-REPAIR: Fix consecutive sentence starts ────────────────
+        // Runs after URL scrubbing. Scans every paragraph for runs of 3+ consecutive
+        // sentences starting with the same word and injects a transition word to break
+        // the run. This is a deterministic fix — no LLM call required.
+        try {
+          const REPAIR_TRANSITIONS = [
+            "Furthermore,", "Additionally,", "Moreover,", "In fact,",
+            "Notably,", "Meanwhile,", "Consequently,", "That said,",
+            "In practice,", "Importantly,", "Ultimately,", "Essentially,",
+          ];
+          let repairIdx = 0;
+          const paragraphs = articleBody.split(/\n{2,}/);
+          const repairedParagraphs = paragraphs.map((para) => {
+            // Skip headings, code blocks, blockquotes, lists
+            const trimmed = para.trim();
+            if (trimmed.startsWith("#") || trimmed.startsWith(">") || trimmed.startsWith("-") || trimmed.startsWith("|") || trimmed.startsWith("```")) return para;
+            // Split paragraph into sentences
+            const sentenceRegex = /(?<=[.!?])\s+(?=[A-Z"])/g;
+            const sentences = para.split(sentenceRegex);
+            if (sentences.length < 3) return para;
+            // Find and fix runs of 3+ consecutive same-start sentences
+            let i = 0;
+            while (i < sentences.length) {
+              const firstWord = sentences[i].match(/^([A-Za-z]+)/)?.[1]?.toLowerCase() ?? "";
+              if (!firstWord) { i++; continue; }
+              let runEnd = i + 1;
+              while (runEnd < sentences.length && (sentences[runEnd].match(/^([A-Za-z]+)/)?.[1]?.toLowerCase() ?? "") === firstWord) {
+                runEnd++;
+              }
+              const runLength = runEnd - i;
+              if (runLength >= 3) {
+                // Fix the third sentence in the run by prepending a transition word
+                const fixIdx = i + 2;
+                const transition = REPAIR_TRANSITIONS[repairIdx % REPAIR_TRANSITIONS.length];
+                repairIdx++;
+                // Only prepend if the sentence doesn't already start with a transition
+                const alreadyHasTransition = /^(However|Therefore|Furthermore|Additionally|Moreover|Meanwhile|Consequently|That said|In fact|Notably|Importantly|Ultimately|Essentially|In practice|First|Second|Third|Finally|In addition|For example|In contrast|Because|Although|Since|While|After|Before|Despite)/i.test(sentences[fixIdx]);
+                if (!alreadyHasTransition) {
+                  // Lowercase the first word of the original sentence
+                  sentences[fixIdx] = transition + " " + sentences[fixIdx].charAt(0).toLowerCase() + sentences[fixIdx].slice(1);
+                  console.log(`[ReadabilityRepair] Fixed run of ${runLength} '${firstWord}' starts at sentence ${fixIdx}`);
+                }
+                i = fixIdx + 1; // skip past the fixed run
+              } else {
+                i++;
+              }
+            }
+            return sentences.join(" ");
+          });
+          articleBody = repairedParagraphs.join("\n\n");
+        } catch (repairErr) {
+          console.warn("[ReadabilityRepair] Auto-repair failed (non-fatal):", repairErr);
+        }
         // ── PASS 2: Extract metadata from the completed article ───────────────────
         // Now that we have the full article, ask the LLM to extract the SEO fields.
         // This is a short structured call — no risk of truncation.

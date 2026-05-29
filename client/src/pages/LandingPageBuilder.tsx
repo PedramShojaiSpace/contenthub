@@ -218,12 +218,21 @@ export default function LandingPageBuilder() {
 
   const { data: pages = [], refetch } = trpc.hostedLp.list.useQuery();
 
+  // Track whether this session started from a LandingPageGenerator handoff
+  // (fromLpId in URL) — used to keep user in builder after save instead of
+  // bouncing them to the list view.
+  const [cameFromLpGenerator] = useState(() => fromLpId !== null);
+
   const createMutation = trpc.hostedLp.create.useMutation({
     onSuccess: (data) => {
-      toast.success("Page created!");
+      toast.success("Page created! Review and publish when ready.");
       refetch();
       setEditingId(data.id);
-      setView("list");
+      // If we came from LandingPageGenerator, stay in builder so user can
+      // immediately review and publish — don't drop them on the list page.
+      if (!cameFromLpGenerator) {
+        setView("list");
+      }
     },
     onError: (e) => toast.error(e.message),
   });
@@ -232,7 +241,10 @@ export default function LandingPageBuilder() {
     onSuccess: () => {
       toast.success("Page saved!");
       refetch();
-      setView("list");
+      // Same: stay in builder if we came from LandingPageGenerator
+      if (!cameFromLpGenerator) {
+        setView("list");
+      }
     },
     onError: (e) => toast.error(e.message),
   });

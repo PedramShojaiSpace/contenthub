@@ -3661,3 +3661,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] LandingPageBuilder: handles from=webinar&id=X — fetches webinar feed, pre-fills form + AI prompt, opens AI panel automatically
 - [x] LandingPageBuilder: shows "Pre-filled from Webinar: ..." badge in builder header
 - [x] LandingPageBuilder: loading skeleton shown while webinar query is in-flight
+
+## CH Pages Handoff Fix (from LandingPageGenerator)
+- [x] Fix race condition: await handleSaveCopy() before navigate() in both CH Pages buttons in LandingPageGenerator
+- [x] Fix template: webinar-origin pages use 'sales' template, not 'optin'
+- [x] Fix bounce-to-list: createMutation/updateMutation onSuccess now stays in builder when cameFromLpGenerator is true
+- [x] Fix webinar campaign public route: added 'webinar' to /:campaign(lo|gut|sleep|webinar)/:slug route in server/_core/index.ts

@@ -49,6 +49,7 @@ import {
   Globe2,
   Share2,
   Send,
+  ImageIcon,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ type PostRow = {
   trendDelta: number | null;
   health: "green" | "amber" | "red";
   topicCluster: string | null;
+  imageUrl: string | null;
 };
 
 type Recommendation = {
@@ -775,15 +777,18 @@ function QuickShareDialog({
   post,
   open,
   onClose,
+  initialImageUrl,
 }: {
   post: { id: number; title: string; publishUrl: string | null; focusKeyword: string | null } | null;
   open: boolean;
   onClose: () => void;
+  initialImageUrl?: string | null;
 }) {
   const [selectedPlatform, setSelectedPlatform] = useState<"linkedin" | "twitter" | "facebook" | "instagram">("linkedin");
   const [generatedCopy, setGeneratedCopy] = useState("");
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(initialImageUrl ?? null);
 
   const channelsQuery = trpc.syndication.getProfiles.useQuery(undefined, { enabled: open });
   const generateShareCopy = trpc.blog.generateShareCopy.useMutation({
@@ -846,6 +851,7 @@ function QuickShareDialog({
       profileIds: selectedChannels,
       platform: selectedPlatform,
       channelServiceMap,
+      imageUrl: attachedImageUrl ?? undefined,
     });
   };
 
@@ -879,6 +885,20 @@ function QuickShareDialog({
             <div className="text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1.5 flex items-center gap-1.5">
               <Globe2 className="w-3 h-3 shrink-0" />
               <span className="truncate">{post.publishUrl}</span>
+            </div>
+          )}
+          {attachedImageUrl && (
+            <div className="relative rounded-md overflow-hidden border border-border">
+              <img src={attachedImageUrl} alt="Social image" className="w-full h-32 object-cover" />
+              <div className="absolute top-1.5 right-1.5 flex gap-1">
+                <span className="text-xs bg-green-500/90 text-white px-2 py-0.5 rounded-full font-medium">Image attached</span>
+                <button
+                  onClick={() => setAttachedImageUrl(null)}
+                  className="text-xs bg-black/60 text-white px-2 py-0.5 rounded-full hover:bg-black/80 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           )}
           <Button
@@ -1132,6 +1152,8 @@ export default function Scoreboard() {
   const [sortBy, setSortBy] = useState<"publishedAt" | "clicks" | "position" | "health" | "trend">("publishedAt");
   const [autoSolveOpen, setAutoSolveOpen] = useState(false);
   const [sharePost, setSharePost] = useState<PostRow | null>(null);
+  const [imagePost, setImagePost] = useState<PostRow | null>(null);
+  const [generatingImageFor, setGeneratingImageFor] = useState<number | null>(null);
 
   const postsQuery = trpc.scoreboard.getPublishedPosts.useQuery(undefined, { retry: false });
   const clusterCoverageQuery = trpc.scoreboard.getClusterCoverage.useQuery(undefined, { retry: false });
@@ -1141,6 +1163,23 @@ export default function Scoreboard() {
       utils.scoreboard.getPublishedPosts.invalidate();
     },
     onError: (e) => toast.error(e.message),
+  });
+
+  const generateSocialImage = trpc.scoreboard.generateSocialImage.useMutation({
+    onSuccess: (data, variables) => {
+      setGeneratingImageFor(null);
+      utils.scoreboard.getPublishedPosts.invalidate();
+      // Find the post and open Share dialog with the generated image pre-attached
+      const post = posts.find((p) => p.id === variables.contentItemId);
+      if (post) {
+        setSharePost({ ...post, imageUrl: data.imageUrl });
+      }
+      toast.success("Social image generated — opening Share dialog");
+    },
+    onError: (e) => {
+      setGeneratingImageFor(null);
+      toast.error("Image generation failed: " + e.message);
+    },
   });
 
   const posts: PostRow[] = (postsQuery.data ?? []) as PostRow[];
@@ -1490,6 +1529,37 @@ export default function Scoreboard() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      className={`h-7 px-2 text-xs gap-1 transition-colors ${
+                        post.imageUrl
+                          ? "text-emerald-500 hover:text-emerald-400"
+                          : "text-muted-foreground hover:text-violet-400"
+                      }`}
+                      disabled={generatingImageFor === post.id}
+                      onClick={() => {
+                        setGeneratingImageFor(post.id);
+                        generateSocialImage.mutate({
+                          contentItemId: post.id,
+                          title: post.title,
+                          focusKeyword: post.focusKeyword ?? undefined,
+                          platform: "instagram",
+                        });
+                      }}
+                      title={post.imageUrl ? "Regenerate social image" : "Generate social image for this post"}
+                    >
+                      {generatingImageFor === post.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-3 h-3" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {generatingImageFor === post.id ? "Generating..." : post.imageUrl ? "Re-Image" : "Image"}
+                      </span>
+                    </Button>
+                  )}
+                  {post.publishUrl && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
                       onClick={() => setSharePost(post)}
                       title="Quick Share to Social"
@@ -1538,6 +1608,7 @@ export default function Scoreboard() {
         post={sharePost}
         open={sharePost !== null}
         onClose={() => setSharePost(null)}
+        initialImageUrl={sharePost?.imageUrl}
       />
     </div>
     </DashboardLayout>

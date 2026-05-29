@@ -3555,3 +3555,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] followUpCronTaskUid column added to backlink_prospects schema + db:push
 - [ ] Heartbeat job created via manus-heartbeat CLI (runs daily at 08:00 UTC)
 - [ ] Bulk Request Indexing button in Scoreboard GSC panel: submits all un-indexed posts in one click (up to 10 at a time)
+
+## YouTube → Blog Closed-Loop Pipeline (May 2026)
+- [x] youtubeVideoId and linkedBlogItemId columns added to content_items schema, migration applied
+- [x] videoToBlogRouter.ts: fetchVideoInfo (Supadata transcript), generateBlogFromVideo (LLM + embed), publishToWordPress (WP draft), updateYouTubeDescription (googleapis), listVideoBlogs
+- [x] VideoToBlog.tsx: 4-step pipeline UI with step indicators, video preview, article preview, WP publish, YouTube description update
+- [x] Navigation: YouTube → Blog added under Video Production group in sidebar
+- [x] TypeScript: 0 errors, 417 tests pass

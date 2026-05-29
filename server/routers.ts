@@ -107,6 +107,7 @@ import { keywordStrategyRouter } from "./keywordStrategyRouter";
 import { hostedLandingPagesRouter } from "./hostedLandingPagesRouter";
 import { testimonialsRouter } from "./testimonialsRouter";
 import { kajabiOptIn } from "./kajabiApi";
+import { videoToBlogRouter } from "./videoToBlogRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 
@@ -435,6 +436,7 @@ export const appRouter = router({
   kwStrategy: keywordStrategyRouter,
   hostedLp: hostedLandingPagesRouter,
   testimonials: testimonialsRouter,
+  videoToBlog: videoToBlogRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

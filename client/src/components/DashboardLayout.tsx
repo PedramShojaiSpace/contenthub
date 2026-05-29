@@ -61,6 +61,7 @@ import {
   Target,
   Trophy,
   Layout,
+  Youtube,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -111,6 +112,7 @@ const videoItems = [
   { icon: Video, label: "Video Production", path: "/video-production" },
   { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
   { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
+  { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
 ];
 
 const videoPaths = new Set(videoItems.map((i) => i.path));

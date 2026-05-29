@@ -47,6 +47,7 @@ const KeywordStrategy = lazy(() => import("./pages/KeywordStrategy"));
 const Scoreboard = lazy(() => import("./pages/Scoreboard"));
 const LandingPageBuilder = lazy(() => import("./pages/LandingPageBuilder"));
 const BacklinkOutreach = lazy(() => import("./pages/BacklinkOutreach"));
+const VideoToBlog = lazy(() => import("./pages/VideoToBlog"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -101,6 +102,7 @@ function Router() {
         <Route path={"/keyword-strategy"} component={KeywordStrategy} />
         <Route path={"/ch-pages"} component={LandingPageBuilder} />
         <Route path={"/backlink-outreach"} component={BacklinkOutreach} />
+        <Route path={"/video-to-blog"} component={VideoToBlog} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

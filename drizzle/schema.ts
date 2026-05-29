@@ -104,6 +104,10 @@ export const contentItems = mysqlTable("content_items", {
   // Video Delivery Hub: finished video uploaded by edit team
   videoUrl: text("videoUrl"),   // S3 public URL of the finished video file
   videoKey: text("videoKey"),   // S3 key for deletion/management
+  // YouTube ↔ Blog closed-loop: YouTube video ID this blog post was generated from
+  youtubeVideoId: varchar("youtubeVideoId", { length: 64 }),
+  // YouTube ↔ Blog closed-loop: content_items.id of the blog post generated from a YouTube video
+  linkedBlogItemId: int("linkedBlogItemId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

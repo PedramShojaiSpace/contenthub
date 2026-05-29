@@ -77,7 +77,6 @@ const topNavItems = [
   { icon: Video, label: "Create Webinar", path: "/webinar" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
-  { icon: Target, label: "Keyword Strategy", path: "/keyword-strategy" },
 ];
 
 // Libraries sub-items
@@ -93,6 +92,7 @@ const librariesPaths = new Set(librariesItems.map((i) => i.path));
 const seoItems = [
   { icon: Trophy, label: "Content Scoreboard", path: "/scoreboard" },
   { icon: Search, label: "SEO Dashboard", path: "/seo" },
+  { icon: Target, label: "Keyword Strategy", path: "/keyword-strategy" },
   { icon: Link2, label: "Backlink Outreach", path: "/backlink-outreach" },
 ];
 

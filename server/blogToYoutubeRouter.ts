@@ -19,6 +19,9 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
 import { createWpPost, fetchAllWpPosts, findRelevantPosts } from "./wordpress";
+import { resolveOutboundLinkPlaceholders } from "./linkResolver";
+import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
+import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
 
 // ── Full Yoast-optimized blog system prompt (mirrors BLOG_CONTENT_RULES in routers.ts) ────────
 const BLOG_CONTENT_RULES = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
@@ -732,11 +735,27 @@ Be specific enough that someone who has never done this before can follow along.
         throw new Error("Blog generation failed — output was too short.");
       }
 
-      // Strip any JSON wrapper if the model returned JSON instead of Markdown
+            // Strip any JSON wrapper if the model returned JSON instead of Markdown
       if (articleBody.startsWith("```") || articleBody.startsWith("{")) {
         const mdStart = articleBody.indexOf("#");
         if (mdStart > 0) articleBody = articleBody.slice(mdStart);
       }
+
+      // ── Safety net: resolve outbound link placeholders to real URLs ─────────
+      try {
+        articleBody = await resolveOutboundLinkPlaceholders(articleBody);
+      } catch {}
+
+      // ── Safety net: scrub hallucinated theurbanmonk.com URLs ──────────────
+      let internalPostSummaries: Array<{ title: string; url: string }> = [];
+      try {
+        const { wpPostIndex } = await import("../drizzle/schema");
+        const posts = await db.select().from(wpPostIndex).limit(300);
+        internalPostSummaries = posts.map((p: any) => ({ title: p.title, url: p.url }));
+      } catch {}
+      const scrubResult = scrubHallucinatedUrls(articleBody, internalPostSummaries.map(p => p.url));
+      const resolveResult = resolvePlaceholderLinks(scrubResult.body, internalPostSummaries);
+      articleBody = resolveResult.body;
 
       // ── 5. Extract SEO metadata ───────────────────────────────────────────
       const metaResponse = await invokeLLM({
@@ -810,15 +829,36 @@ Be specific enough that someone who has never done this before can follow along.
       let wpDraftUrl: string | undefined;
       if (input.publishToDraft) {
         try {
+          // Convert Markdown to proper WordPress HTML
+          const wpHtmlContent = markdownToWpHtml(articleBody);
+
+          // Resolve WP categories and tags
+          const categories = DEFAULT_WP_CATEGORIES;
+          let tagIds: number[] = [];
+          try {
+            if (metaData.focusKeyword) {
+              const wpUrl = process.env.WORDPRESS_URL ?? "https://theurbanmonk.com";
+          const wpUser = process.env.WORDPRESS_USERNAME ?? "";
+          const wpPass = process.env.WORDPRESS_APP_PASSWORD ?? "";
+          const authHeader = `Basic ${Buffer.from(`${wpUser}:${wpPass}`).toString("base64")}`;
+          tagIds = await resolveOrCreateWpTags([
+                metaData.focusKeyword,
+                "Urban Monk",
+                "Pedram Shojai",
+                ...(metaData.semanticKeywords?.slice(0, 3) ?? []),
+              ], authHeader, wpUrl);
+            }
+          } catch {}
+
           const wpResult = await createWpPost({
             title: metaData.title,
-            content: articleBody,
+            content: wpHtmlContent,
             status: "draft",
             slug: metaData.slug,
             metaDescription: metaData.metaDescription,
             focusKeyword: metaData.focusKeyword,
-            categories: [],
-            tags: [],
+            categories,
+            tags: tagIds,
           });
           wpDraftPostId = wpResult.id;
           wpDraftUrl = wpResult.link;

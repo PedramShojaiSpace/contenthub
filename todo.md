@@ -3602,3 +3602,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Update generateVideoPackage LLM prompt: focus keyword, meta description, SEO title, subheadings with keyword, transition words, passive voice reduction, sentence length, internal links, image alt text suggestions
 - [ ] Update BlogToYoutube.tsx Video Package tab: show SEO fields panel (focus keyword, meta description, Yoast checklist items)
 - [ ] Ensure WordPress publish includes Yoast meta fields (yoast_wpseo_focuskw, yoast_wpseo_metadesc, yoast_wpseo_title)
+
+## YouTube OAuth (Push Blog URL to YouTube Description)
+- [x] Add youtubeRefreshToken column to userCredentials schema + db:push
+- [x] Create server/youtubeOAuth.ts helper (getYouTubeAuthUrl, exchangeYouTubeCode, isYouTubeAuthorized)
+- [x] Add /api/youtube/auth-url and /api/youtube/callback Express routes to server/_core/index.ts
+- [x] Add getYouTubeStatus and getYouTubeAuthUrl tRPC procedures to videoToBlogRouter
+- [x] Update updateYouTubeDescription to use youtubeRefreshToken from userCredentials (not googleRefreshToken)
+- [x] Add YouTube connect banner to VideoToBlog.tsx page (before Step 4)
+- [x] Reuse GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET for YouTube OAuth (same Google Cloud project)

@@ -364,6 +364,65 @@ async function startServer() {
     }
   });
 
+  // ── YouTube Data API OAuth ──────────────────────────────────────────────────
+  // GET /api/youtube/auth-url — returns the OAuth URL for the channel owner to authorize
+  app.get("/api/youtube/auth-url", async (req, res) => {
+    try {
+      await sdk.authenticateRequest(req);
+      const { getYouTubeAuthUrl } = await import("../youtubeOAuth");
+      const url = getYouTubeAuthUrl();
+      return res.json({ url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(400).json({ error: msg });
+    }
+  });
+  // GET /api/youtube/callback — Google redirects here after authorization
+  app.get("/api/youtube/callback", async (req, res) => {
+    const code = req.query.code as string;
+    if (!code) return res.status(400).send("Missing authorization code");
+    try {
+      const { exchangeYouTubeCode } = await import("../youtubeOAuth");
+      const { refreshToken, channelTitle } = await exchangeYouTubeCode(code);
+      // Store in process.env so the current server process can use it immediately
+      process.env.YOUTUBE_REFRESH_TOKEN = refreshToken;
+      // Also persist in DB so it survives restarts
+      const db = await getDb();
+      if (db) {
+        const { userCredentials } = await import("../../drizzle/schema");
+        const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, 1));
+        if (existing) {
+          await db.update(userCredentials)
+            .set({ youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle } as any)
+            .where(eq(userCredentials.userId, 1));
+        } else {
+          await db.insert(userCredentials).values({ userId: 1, youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle } as any);
+        }
+      }
+      return res.send(`
+        <html><body style="font-family:sans-serif;padding:40px;max-width:600px">
+          <h2>&#x2705; YouTube Connected!</h2>
+          <p>Channel: <strong>${channelTitle}</strong></p>
+          <p>The tool can now push blog URLs directly to YouTube video descriptions.</p>
+          <p><a href="/video-to-blog">&larr; Return to YouTube &rarr; Blog Pipeline</a></p>
+          <script>setTimeout(() => { window.location.href = '/video-to-blog'; }, 2000);</script>
+        </body></html>
+      `);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>&#x274c; Authorization failed</h2><p>${msg}</p></body></html>`);
+    }
+  });
+  // GET /api/youtube/status — check if YouTube is authorized
+  app.get("/api/youtube/status", async (req, res) => {
+    try {
+      await sdk.authenticateRequest(req);
+      return res.json({ authorized: !!process.env.YOUTUBE_REFRESH_TOKEN });
+    } catch {
+      return res.json({ authorized: false });
+    }
+  });
+
   // ── Book PDF upload endpoints ────────────────────────────────────────────────
   // POST /api/books/upload — accepts PDF + bookId, extracts text, uploads to S3
   const pdfUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });

@@ -715,6 +715,13 @@
       "when": 1780064611729,
       "tag": "0101_black_frog_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "5",
+      "when": 1780065700612,
+      "tag": "0102_icy_vulcan",
+      "breakpoints": true
     }
   ]
 }

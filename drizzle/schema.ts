@@ -1824,3 +1824,56 @@ export const backlinkEmails = mysqlTable("backlink_emails", {
 });
 export type BacklinkEmail = typeof backlinkEmails.$inferSelect;
 export type InsertBacklinkEmail = typeof backlinkEmails.$inferInsert;
+
+// ─── Blog → YouTube Backlog ───────────────────────────────────────────────────
+// Tracks the pipeline of converting existing blog posts into YouTube videos.
+// Each row represents one blog post being turned into a video.
+
+export const blogToYoutubeStatusEnum = mysqlEnum("blogToYoutubeStatus", [
+  "backlog",        // Added to backlog, no script yet
+  "scripted",       // Script generated and ready to review/edit
+  "recorded",       // Script approved, video recorded (not yet uploaded)
+  "uploaded",       // Video uploaded to YouTube
+  "live",           // Video published and linked back to blog
+]);
+
+export const blogToYoutubeItems = mysqlTable("blog_to_youtube_items", {
+  id: int("id").autoincrement().primaryKey(),
+
+  // Source blog post (from wpPostIndex)
+  wpPostId: int("wpPostId"),                              // FK → wp_post_index.wpPostId
+  blogTitle: varchar("blogTitle", { length: 512 }).notNull(),
+  blogUrl: varchar("blogUrl", { length: 1024 }).notNull(),
+  blogExcerpt: text("blogExcerpt"),
+  blogCategories: text("blogCategories"),                 // JSON: string[]
+
+  // Generated video script
+  script: longtext("script"),                             // Full spoken script for Pedram
+  scriptWordCount: int("scriptWordCount"),
+  scriptGeneratedAt: timestamp("scriptGeneratedAt"),
+
+  // Video package (title, description, thumbnail options)
+  videoTitle: varchar("videoTitle", { length: 255 }),
+  ytDescription: longtext("ytDescription"),               // Full SEO description with UTM footer
+  thumbnailTextOptions: text("thumbnailTextOptions"),     // JSON: string[] — 3 thumbnail text options
+  vaInstructions: longtext("vaInstructions"),             // Step-by-step VA instructions for title cards
+
+  // Production tracking
+  status: blogToYoutubeStatusEnum.notNull().default("backlog"),
+  productionNotes: text("productionNotes"),               // Free-form notes from Pedram
+  recordedAt: timestamp("recordedAt"),
+
+  // Upload tracking
+  youtubeVideoId: varchar("youtubeVideoId", { length: 64 }),  // Set after upload
+  youtubeUrl: varchar("youtubeUrl", { length: 512 }),
+  uploadedAt: timestamp("uploadedAt"),
+
+  // Link-back confirmation
+  descriptionUpdatedAt: timestamp("descriptionUpdatedAt"),  // When blog URL was pushed to YT description
+  blogUpdatedWithVideoAt: timestamp("blogUpdatedWithVideoAt"), // When video embed was added to blog
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BlogToYoutubeItem = typeof blogToYoutubeItems.$inferSelect;
+export type InsertBlogToYoutubeItem = typeof blogToYoutubeItems.$inferInsert;

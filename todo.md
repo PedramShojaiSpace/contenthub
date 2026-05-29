@@ -3570,3 +3570,27 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Step 5 card in VideoToBlog.tsx: generate, preview/edit in textarea, copy to clipboard, open YouTube Studio link
 - [x] Blog prompt updated: reciprocal CTA pointing back to YouTube video in blog body
 - [x] TypeScript 0 errors, 417 tests passing
+
+## Blog → YouTube Backlog Feature (May 2026)
+- [x] Add blogToYoutubeItems table: wpPostId, blogTitle, blogUrl, script, videoTitle, ytDescription, thumbnailText, vaInstructions, status, youtubeVideoId, uploadedAt
+- [x] Run db:push after schema addition (migration 0102_icy_vulcan.sql)
+- [x] blogToYoutubeRouter: listAvailableBlogPosts (all wpPostIndex posts not yet in backlog)
+- [x] blogToYoutubeRouter: listBacklogItems (all items with status filter)
+- [x] blogToYoutubeRouter: addToBacklog (create backlog item from wpPost)
+- [x] blogToYoutubeRouter: generateScript (LLM: fetches full WP content, generates spoken script in Pedram's voice, ~130 wpm)
+- [x] blogToYoutubeRouter: generateVideoPackage (LLM: 3 SEO title options, full description with UTM footer, 3 thumbnail text options, VA instructions for title cards/end screens/pinned comment)
+- [x] blogToYoutubeRouter: updateScript (save edited script)
+- [x] blogToYoutubeRouter: updateProductionNotes (save notes + advance status)
+- [x] blogToYoutubeRouter: markVideoUploaded (save YouTube video ID, update status to uploaded)
+- [x] blogToYoutubeRouter: markLive, deleteItem, getItem procedures
+- [x] BlogToYoutube.tsx page: blog backlog browser with search/filter
+- [x] BlogToYoutube.tsx: pipeline overview (5 status columns with counts)
+- [x] BlogToYoutube.tsx: "Add to Backlog" button per blog post
+- [x] BlogToYoutube.tsx: detail dialog with 4 tabs: Script, Video Package, VA Instructions, Production
+- [x] BlogToYoutube.tsx: script editor with editable textarea, word count, copy, regenerate
+- [x] BlogToYoutube.tsx: video package panel (3 SEO title options, thumbnail text, editable description)
+- [x] BlogToYoutube.tsx: VA instructions sheet (step-by-step for title cards, end screens, pinned comment)
+- [x] BlogToYoutube.tsx: "Mark as Uploaded" dialog to save YouTube video ID
+- [x] BlogToYoutube.tsx: status tracking (backlog → scripted → recorded → uploaded → live)
+- [x] Wire navigation under Video Production group in DashboardLayout (Blog → YouTube)
+- [x] TypeScript 0 errors, 417 tests passing

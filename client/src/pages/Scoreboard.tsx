@@ -791,6 +791,8 @@ function QuickShareDialog({
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(initialImageUrl ?? null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [showChannelSelector, setShowChannelSelector] = useState(false);
+  const [showFbGroupReminder, setShowFbGroupReminder] = useState(false);
+  const [pushedToFbPage, setPushedToFbPage] = useState(false);
 
   // Reset state when dialog opens with a new post
   const [lastPostId, setLastPostId] = useState<number | null>(null);
@@ -829,7 +831,12 @@ function QuickShareDialog({
   const pushMutation = trpc.syndication.push.useMutation({
     onSuccess: () => {
       toast.success("Post queued in Buffer!");
-      onClose();
+      // If we pushed to a Facebook Page (not a group), show a reminder to share to the Urban Monks group
+      if (pushedToFbPage) {
+        setShowFbGroupReminder(true);
+      } else {
+        onClose();
+      }
     },
     onError: (err: any) => toast.error("Push failed: " + err.message),
   });
@@ -870,6 +877,13 @@ function QuickShareDialog({
     metaPostType?: "post" | "story" | "reel";
   }) => {
     if (!post || !generatedCopy) return;
+    // Check if any selected channel is a Facebook Page (service=facebook, not a group)
+    const hasFbPage = params.selectedIds.some((id) => {
+      const svc = params.channelServiceMap[id]?.toLowerCase();
+      const profile = allProfiles.find((p) => p.id === id) as { id: string; platform: string; name: string; service: string; channelType?: string | null; isNotificationOnly?: boolean } | undefined;
+      return svc === "facebook" && !profile?.isNotificationOnly;
+    });
+    setPushedToFbPage(hasFbPage);
     pushMutation.mutate({
       contentItemId: post.id,
       text: generatedCopy,
@@ -1004,6 +1018,52 @@ function QuickShareDialog({
         isPushing={pushMutation.isPending}
         onConfirm={handlePushConfirm}
       />
+
+      {/* Facebook Page → Group share reminder */}
+      <Dialog open={showFbGroupReminder} onOpenChange={(v) => { if (!v) { setShowFbGroupReminder(false); onClose(); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <span className="text-blue-600">📢</span>
+              Share to Urban Monks Group
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Your post was queued to the <strong>Urban Monk Facebook Page</strong>. Once it goes live, share it to the <strong>Urban Monks group</strong> to reach your community there too.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="text-xs text-muted-foreground bg-muted/40 rounded-md p-3 space-y-1.5">
+              <p className="font-medium text-foreground">How to share in 30 seconds:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Open the Urban Monk Facebook Page</li>
+                <li>Find the post Buffer just published</li>
+                <li>Tap <strong>Share → Share to a Group</strong></li>
+                <li>Select <strong>Urban Monks</strong> and post</li>
+              </ol>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  window.open("https://www.facebook.com/theurbanmonk", "_blank");
+                  setShowFbGroupReminder(false);
+                  onClose();
+                }}
+              >
+                Open Facebook Page
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setShowFbGroupReminder(false); onClose(); }}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

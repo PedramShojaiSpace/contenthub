@@ -508,8 +508,19 @@ export default function LandingPageGenerator() {
       setContentAngle(webinarFeed.contentAngle);
       setSelectedOffer("lights_on_webinar");
       setPrefillLabel(`Webinar: "${webinarFeed.webinarTopic}"`);
-      window.history.replaceState({}, "", window.location.pathname);
+      // Auto-select best persona: try to match personaName hint from webinar session,
+      // otherwise fall back to "Burnout Recovery Seeker" (best fit for Lights On webinar)
+      if (!selectedPersona) {
+        const hint = (webinarFeed.personaName ?? "").toLowerCase();
+        const matched = hint
+          ? PERSONAS.find((p) => p.name.toLowerCase().includes(hint) || hint.includes(p.name.toLowerCase().split(" ")[0]))
+          : null;
+        setSelectedPersona(matched ?? PERSONAS.find((p) => p.name === "Burnout Recovery Seeker") ?? PERSONAS[0]);
+      }
+      // NOTE: Do NOT clear URL params here — keep them until the user generates copy
+      // so that sourceWebinarId is still available in handleGenerateCopy
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromModule, webinarFeed]);
 
   useEffect(() => {
@@ -558,6 +569,8 @@ export default function LandingPageGenerator() {
       setGammaError(null);
       setIsPolling(false);
       setStep("preview");
+      // Now that copy is generated and sourceWebinarId has been captured, clear URL params
+      window.history.replaceState({}, "", window.location.pathname);
       toast.success("Copy generated! Review and edit before publishing to Gamma.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Copy generation failed");

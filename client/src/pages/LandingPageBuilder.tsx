@@ -140,6 +140,10 @@ export default function LandingPageBuilder() {
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
   const fromLpId = searchParams.get("fromLpId") ? Number(searchParams.get("fromLpId")) : null;
+  // from=webinar&id=X — pre-fill builder from a webinar session
+  const fromWebinarId = searchParams.get("from") === "webinar" && searchParams.get("id")
+    ? Number(searchParams.get("id"))
+    : null;
   const urlCampaign = searchParams.get("campaign") as Campaign | null;
   const urlTemplate = searchParams.get("template") as Template | null;
 
@@ -148,6 +152,8 @@ export default function LandingPageBuilder() {
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [fromLpPopulated, setFromLpPopulated] = useState(false);
+  const [fromWebinarPopulated, setFromWebinarPopulated] = useState(false);
+  const [webinarPrefillLabel, setWebinarPrefillLabel] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     hero: true,
     optin: true,
@@ -345,6 +351,12 @@ export default function LandingPageBuilder() {
     { enabled: fromLpId !== null && !fromLpPopulated, retry: 2 }
   );
 
+  // Fetch webinar feed when opened with ?from=webinar&id=X (from WebinarBuilder)
+  const fromWebinarQuery = trpc.crossModule.webinarToLandingPage.useQuery(
+    { webinarSessionId: fromWebinarId! },
+    { enabled: fromWebinarId !== null && !fromWebinarPopulated, retry: 2 }
+  );
+
   useEffect(() => {
     if (previewQuery.data?.html) {
       setPreviewHtml(previewQuery.data.html);
@@ -352,7 +364,7 @@ export default function LandingPageBuilder() {
   }, [previewQuery.data]);
 
   // Auto-populate form from URL params (campaign, template) — runs once on mount
-  // Also auto-open builder if fromLpId is present (even before data loads)
+  // Also auto-open builder if fromLpId or fromWebinarId is present (even before data loads)
   useEffect(() => {
     if (urlCampaign || urlTemplate) {
       setForm(f => ({
@@ -361,9 +373,8 @@ export default function LandingPageBuilder() {
         ...(urlTemplate ? { template: urlTemplate } : {}),
       }));
     }
-    // If navigated here with a fromLpId, open the builder immediately so the user
-    // isn't stuck on the list view while the query loads.
-    if (fromLpId !== null) {
+    // If navigated here with a fromLpId or fromWebinarId, open the builder immediately
+    if (fromLpId !== null || fromWebinarId !== null) {
       setView("builder");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -401,6 +412,42 @@ export default function LandingPageBuilder() {
       setFromLpPopulated(true); // prevent re-triggering
     }
   }, [fromLpQuery.error, fromLpPopulated, fromLpId]);
+
+  // Auto-populate form from webinar session (one-time, from WebinarBuilder)
+  useEffect(() => {
+    if (fromWebinarQuery.data && !fromWebinarPopulated) {
+      const src = fromWebinarQuery.data;
+      const topic = src.webinarTopic ?? "";
+      const autoSlug = topic
+        ? `webinar-${topic.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").substring(0, 50)}`
+        : "webinar-landing-page";
+      setForm(f => ({
+        ...f,
+        title: src.title || f.title,
+        slug: f.slug || autoSlug,
+        campaign: (urlCampaign ?? "webinar") as Campaign,
+        template: (urlTemplate ?? "sales") as Template,
+        ctaText: src.ctaText || f.ctaText,
+        ctaUrl: src.ctaUrl || f.ctaUrl,
+      }));
+      // Pre-fill the AI prompt so the user can click Generate Copy immediately
+      setAiPrompt(src.aiPrompt || "");
+      setShowAiPanel(true);
+      setWebinarPrefillLabel(`Webinar: "${topic}"`);
+      setFromWebinarPopulated(true);
+      // Clear URL params to prevent re-triggering on refresh
+      window.history.replaceState({}, "", window.location.pathname);
+      toast.success(`Webinar context loaded — review the AI prompt and click Generate Copy!`);
+    }
+  }, [fromWebinarQuery.data, fromWebinarPopulated]);
+
+  // Handle fromWebinar query error
+  useEffect(() => {
+    if (fromWebinarQuery.error && !fromWebinarPopulated && fromWebinarId !== null) {
+      toast.error("Could not load webinar context. You can still fill in the form manually.");
+      setFromWebinarPopulated(true);
+    }
+  }, [fromWebinarQuery.error, fromWebinarPopulated, fromWebinarId]);
 
   // ── Form helpers ──────────────────────────────────────────────────────────
 
@@ -563,8 +610,9 @@ export default function LandingPageBuilder() {
 
   if (view === "builder") {
     const isSaving = createMutation.isPending || updateMutation.isPending;
-    // Show loading skeleton while fromLpId query is in-flight
-    const isLoadingSource = fromLpId !== null && !fromLpPopulated && fromLpQuery.isLoading;
+    // Show loading skeleton while fromLpId or fromWebinarId query is in-flight
+    const isLoadingSource = (fromLpId !== null && !fromLpPopulated && fromLpQuery.isLoading)
+      || (fromWebinarId !== null && !fromWebinarPopulated && fromWebinarQuery.isLoading);
     if (isLoadingSource) {
       return (
         <div className="min-h-screen bg-background">
@@ -614,6 +662,12 @@ export default function LandingPageBuilder() {
                 <ArrowUpRight className="w-3 h-3" />
                 View source in Landing Page Generator
               </a>
+            )}
+            {/* Webinar source badge */}
+            {webinarPrefillLabel && (
+              <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded px-2 py-0.5 mt-0.5 inline-flex items-center gap-1">
+                <span>📡</span> Pre-filled from {webinarPrefillLabel}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">

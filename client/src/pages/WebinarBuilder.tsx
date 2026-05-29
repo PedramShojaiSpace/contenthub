@@ -1571,7 +1571,17 @@ export default function WebinarBuilder() {
                   onClick={() => navigate(`/landing-pages?from=webinar&id=${activeWebinarId}`)}
                 >
                   <LayoutTemplate className="h-3.5 w-3.5 text-primary" />
-                  Create Landing Page from this Webinar
+                  Landing Page → Gamma
+                  <ArrowUpRight className="h-3 w-3 ml-auto text-muted-foreground" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start text-xs gap-2 bg-background"
+                  onClick={() => navigate(`/ch-pages?from=webinar&id=${activeWebinarId}`)}
+                >
+                  <LayoutTemplate className="h-3.5 w-3.5 text-green-600" />
+                  Landing Page → CH Page Builder
                   <ArrowUpRight className="h-3 w-3 ml-auto text-muted-foreground" />
                 </Button>
               </div>

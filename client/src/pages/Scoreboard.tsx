@@ -9,6 +9,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { BufferChannelSelector } from "@/components/BufferChannelSelector";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -786,11 +787,22 @@ function QuickShareDialog({
 }) {
   const [selectedPlatform, setSelectedPlatform] = useState<"linkedin" | "twitter" | "facebook" | "instagram">("linkedin");
   const [generatedCopy, setGeneratedCopy] = useState("");
-  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(initialImageUrl ?? null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [showChannelSelector, setShowChannelSelector] = useState(false);
+
+  // Reset state when dialog opens with a new post
+  const [lastPostId, setLastPostId] = useState<number | null>(null);
+  if (open && post && post.id !== lastPostId) {
+    setLastPostId(post.id);
+    setGeneratedCopy("");
+    setAttachedImageUrl(initialImageUrl ?? null);
+  }
 
   const channelsQuery = trpc.syndication.getProfiles.useQuery(undefined, { enabled: open });
+  const allProfiles = (channelsQuery.data ?? []) as { id: string; platform: string; name: string; service: string }[];
+
   const generateShareCopy = trpc.blog.generateShareCopy.useMutation({
     onSuccess: (data) => {
       setGeneratedCopy(data.copy);
@@ -801,6 +813,19 @@ function QuickShareDialog({
       toast.error("Failed to generate copy: " + err.message);
     },
   });
+
+  const generateImageMutation = trpc.scoreboard.generateSocialImage.useMutation({
+    onSuccess: (data) => {
+      setIsGeneratingImage(false);
+      setAttachedImageUrl(data.imageUrl ?? null);
+      toast.success("Social image generated and attached!");
+    },
+    onError: (err) => {
+      setIsGeneratingImage(false);
+      toast.error("Image generation failed: " + err.message);
+    },
+  });
+
   const pushMutation = trpc.syndication.push.useMutation({
     onSuccess: () => {
       toast.success("Post queued in Buffer!");
@@ -816,15 +841,6 @@ function QuickShareDialog({
     { id: "instagram" as const, label: "Instagram" },
   ];
 
-  const channelsForPlatform = (channelsQuery.data ?? []).filter((c: any) => {
-    const svc = (c.service ?? "").toLowerCase();
-    if (selectedPlatform === "linkedin") return svc === "linkedin";
-    if (selectedPlatform === "twitter") return svc === "twitter";
-    if (selectedPlatform === "facebook") return svc === "facebook";
-    if (selectedPlatform === "instagram") return svc === "instagram";
-    return false;
-  });
-
   const handleGenerate = () => {
     if (!post) return;
     setIsGenerating(true);
@@ -838,126 +854,157 @@ function QuickShareDialog({
     });
   };
 
-  const handlePush = () => {
-    if (!post || !generatedCopy || selectedChannels.length === 0) return;
-    const allChannels = channelsQuery.data ?? [];
-    const channelServiceMap: Record<string, string> = {};
-    for (const ch of allChannels as any[]) {
-      if (selectedChannels.includes(ch.id)) channelServiceMap[ch.id] = ch.service;
-    }
-    pushMutation.mutate({
+  const handleGenerateImage = () => {
+    if (!post) return;
+    setIsGeneratingImage(true);
+    generateImageMutation.mutate({
       contentItemId: post.id,
-      text: generatedCopy,
-      profileIds: selectedChannels,
-      platform: selectedPlatform,
-      channelServiceMap,
-      imageUrl: attachedImageUrl ?? undefined,
+      title: post.title,
+      focusKeyword: post.focusKeyword ?? "",
     });
   };
 
+  const handlePushConfirm = (params: {
+    selectedIds: string[];
+    channelServiceMap: Record<string, string>;
+    metaPostType?: "post" | "story" | "reel";
+  }) => {
+    if (!post || !generatedCopy) return;
+    pushMutation.mutate({
+      contentItemId: post.id,
+      text: generatedCopy,
+      profileIds: params.selectedIds,
+      platform: selectedPlatform,
+      channelServiceMap: params.channelServiceMap,
+      imageUrl: attachedImageUrl ?? undefined,
+    });
+    setShowChannelSelector(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Share2 className="w-4 h-4 text-primary" />
-            Quick Share to Social
-          </DialogTitle>
-          <DialogDescription className="text-xs">
-            Generate a platform-optimized post with a link to the blog, then push to Buffer.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            {platforms.map((p) => (
-              <Button
-                key={p.id}
-                size="sm"
-                variant={selectedPlatform === p.id ? "default" : "outline"}
-                onClick={() => { setSelectedPlatform(p.id); setGeneratedCopy(""); }}
-                className="h-7 text-xs"
-              >
-                {p.label}
-              </Button>
-            ))}
-          </div>
-          {post?.publishUrl && (
-            <div className="text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1.5 flex items-center gap-1.5">
-              <Globe2 className="w-3 h-3 shrink-0" />
-              <span className="truncate">{post.publishUrl}</span>
-            </div>
-          )}
-          {attachedImageUrl && (
-            <div className="relative rounded-md overflow-hidden border border-border">
-              <img src={attachedImageUrl} alt="Social image" className="w-full h-32 object-cover" />
-              <div className="absolute top-1.5 right-1.5 flex gap-1">
-                <span className="text-xs bg-green-500/90 text-white px-2 py-0.5 rounded-full font-medium">Image attached</span>
-                <button
-                  onClick={() => setAttachedImageUrl(null)}
-                  className="text-xs bg-black/60 text-white px-2 py-0.5 rounded-full hover:bg-black/80 transition-colors"
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="w-4 h-4 text-primary" />
+              Quick Share to Social
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Generate copy, attach a social image, then choose which Buffer accounts to push to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Platform tabs */}
+            <div className="flex gap-2 flex-wrap">
+              {platforms.map((p) => (
+                <Button
+                  key={p.id}
+                  size="sm"
+                  variant={selectedPlatform === p.id ? "default" : "outline"}
+                  onClick={() => { setSelectedPlatform(p.id); setGeneratedCopy(""); }}
+                  className="h-7 text-xs"
                 >
-                  Remove
-                </button>
+                  {p.label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Blog URL */}
+            {post?.publishUrl && (
+              <div className="text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1.5 flex items-center gap-1.5">
+                <Globe2 className="w-3 h-3 shrink-0" />
+                <span className="truncate">{post.publishUrl}</span>
               </div>
-            </div>
-          )}
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating || !post?.publishUrl}
-            className="w-full gap-2"
-            size="sm"
-          >
-            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            {generatedCopy ? "Regenerate Copy" : "Generate Copy"}
-          </Button>
-          {generatedCopy && (
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Edit before posting:</label>
-              <textarea
-                className="w-full min-h-[120px] text-sm bg-muted/30 border border-border rounded-md p-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
-                value={generatedCopy}
-                onChange={(e) => setGeneratedCopy(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground text-right">{generatedCopy.length} chars</p>
-            </div>
-          )}
-          {generatedCopy && channelsForPlatform.length > 0 && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Push to channels:</label>
-              <div className="flex flex-wrap gap-2">
-                {channelsForPlatform.map((ch: any) => (
+            )}
+
+            {/* Image section */}
+            {attachedImageUrl ? (
+              <div className="relative rounded-md overflow-hidden border border-border">
+                <img src={attachedImageUrl} alt="Social image" className="w-full h-36 object-cover" />
+                <div className="absolute top-1.5 right-1.5 flex gap-1">
+                  <span className="text-xs bg-green-500/90 text-white px-2 py-0.5 rounded-full font-medium">✓ Image attached</span>
                   <button
-                    key={ch.id}
-                    onClick={() =>
-                      setSelectedChannels((prev) =>
-                        prev.includes(ch.id) ? prev.filter((id) => id !== ch.id) : [...prev, ch.id]
-                      )
-                    }
-                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                      selectedChannels.includes(ch.id)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-muted-foreground hover:border-primary/50"
-                    }`}
+                    onClick={handleGenerateImage}
+                    disabled={isGeneratingImage}
+                    className="text-xs bg-black/60 text-white px-2 py-0.5 rounded-full hover:bg-black/80 transition-colors"
                   >
-                    {ch.name}
+                    {isGeneratingImage ? "Generating..." : "Regenerate"}
                   </button>
-                ))}
+                  <button
+                    onClick={() => setAttachedImageUrl(null)}
+                    className="text-xs bg-black/60 text-white px-2 py-0.5 rounded-full hover:bg-black/80 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-          {generatedCopy && (
+            ) : (
+              <Button
+                onClick={handleGenerateImage}
+                disabled={isGeneratingImage || !post}
+                variant="outline"
+                className="w-full gap-2 border-dashed"
+                size="sm"
+              >
+                {isGeneratingImage ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-4 h-4 text-violet-500" />
+                )}
+                {isGeneratingImage ? "Generating social image..." : "Generate Social Image"}
+              </Button>
+            )}
+
+            {/* Copy generation */}
             <Button
-              onClick={handlePush}
-              disabled={selectedChannels.length === 0 || pushMutation.isPending}
+              onClick={handleGenerate}
+              disabled={isGenerating || !post?.publishUrl}
               className="w-full gap-2"
+              size="sm"
             >
-              {pushMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Push to Buffer ({selectedChannels.length} channel{selectedChannels.length !== 1 ? "s" : ""})
+              {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {generatedCopy ? "Regenerate Copy" : "Generate Copy"}
             </Button>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+
+            {/* Editable copy */}
+            {generatedCopy && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Edit before posting:</label>
+                <textarea
+                  className="w-full min-h-[120px] text-sm bg-muted/30 border border-border rounded-md p-2.5 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={generatedCopy}
+                  onChange={(e) => setGeneratedCopy(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground text-right">{generatedCopy.length} chars</p>
+              </div>
+            )}
+
+            {/* Push button — opens BufferChannelSelector */}
+            {generatedCopy && (
+              <Button
+                onClick={() => setShowChannelSelector(true)}
+                disabled={pushMutation.isPending || allProfiles.length === 0}
+                className="w-full gap-2"
+              >
+                {pushMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {pushMutation.isPending ? "Pushing to Buffer..." : "Choose Accounts & Push to Buffer"}
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full account selector — shows ALL Buffer accounts grouped by service */}
+      <BufferChannelSelector
+        open={showChannelSelector}
+        onClose={() => setShowChannelSelector(false)}
+        profiles={allProfiles}
+        contentPlatform={selectedPlatform === "twitter" ? "x" : selectedPlatform}
+        isPushing={pushMutation.isPending}
+        onConfirm={handlePushConfirm}
+      />
+    </>
   );
 }
 

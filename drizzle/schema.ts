@@ -1868,6 +1868,15 @@ export const blogToYoutubeItems = mysqlTable("blog_to_youtube_items", {
   youtubeUrl: varchar("youtubeUrl", { length: 512 }),
   uploadedAt: timestamp("uploadedAt"),
 
+  // Generated blog post (SEO-optimized, separate from the source blog)
+  generatedBlogContent: longtext("generatedBlogContent"),   // Full Yoast-optimized blog article (Markdown)
+  generatedBlogTitle: varchar("generatedBlogTitle", { length: 255 }), // SEO title (≤48 chars)
+  focusKeyword: varchar("focusKeyword", { length: 255 }),   // Yoast focus keyword
+  metaDescription: varchar("metaDescription", { length: 512 }), // Yoast meta description (140-150 chars)
+  seoTitle: varchar("seoTitle", { length: 255 }),           // Yoast SEO title override
+  wpDraftPostId: int("wpDraftPostId"),                      // WP post ID after publishing as draft
+  wpDraftPostUrl: varchar("wpDraftPostUrl", { length: 1024 }), // WP draft URL
+  blogGeneratedAt: timestamp("blogGeneratedAt"),
   // Link-back confirmation
   descriptionUpdatedAt: timestamp("descriptionUpdatedAt"),  // When blog URL was pushed to YT description
   blogUpdatedWithVideoAt: timestamp("blogUpdatedWithVideoAt"), // When video embed was added to blog

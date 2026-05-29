@@ -5739,6 +5739,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           trendDelta,
           health,
           topicCluster: dbCluster,
+          imageUrl: (post as any).imageUrl ?? null,
         };
       });
     }),
@@ -6096,6 +6097,48 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
 
       return result.sort((a, b) => b.count - a.count);
     }),
+
+    /**
+     * Generate a social-media-ready image for a published blog post.
+     * Uses the post title + focus keyword to craft a prompt, then calls
+     * the image generation service. The resulting URL is stored on the
+     * content item so the QuickShareDialog can attach it automatically.
+     */
+    generateSocialImage: protectedProcedure
+      .input(
+        z.object({
+          contentItemId: z.number(),
+          title: z.string().min(1),
+          focusKeyword: z.string().optional(),
+          platform: z.enum(["instagram", "facebook", "twitter", "linkedin"]).default("instagram"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const keyword = input.focusKeyword ?? input.title;
+        const platformStyles: Record<string, string> = {
+          instagram: "warm golden-hour light, editorial wellness lifestyle, sage greens and warm earth tones, cinematic depth of field, aspirational and serene",
+          facebook: "warm, inviting, editorial wellness, natural light, clean composition, approachable and trustworthy",
+          twitter: "bold, high-contrast, clean typographic composition, striking visual metaphor, modern wellness aesthetic",
+          linkedin: "professional editorial, soft natural light, authoritative wellness expert, clean minimalist composition, warm neutrals",
+        };
+        const style = platformStyles[input.platform] ?? platformStyles.instagram;
+
+        const prompt = [
+          `A compelling social media hero image for a wellness article titled "${input.title}".`,
+          `The image should visually represent the concept of "${keyword}" through symbolic, editorial imagery.`,
+          `Style: ${style}.`,
+          `No text overlays. No logos. Photorealistic or high-quality editorial illustration.`,
+          `Dr. Pedram Shojai's Urban Monk brand: ancient wisdom meets modern science, calm confidence, natural world.`,
+          `Aspect ratio: square (1:1). High resolution.`,
+        ].join(" ");
+
+        const { url } = await generateImage({ prompt });
+
+        // Persist the generated image URL on the content item so the Share dialog can use it
+        await updateContentItem(input.contentItemId, { imageUrl: url });
+
+        return { imageUrl: url };
+      }),
   }),
 
   optin: router({

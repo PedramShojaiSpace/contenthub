@@ -3618,3 +3618,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Strengthen meta extraction prompt: SEO title MUST start with exact keyphrase, meta description MUST contain keyphrase
 - [x] Strengthen blog generation prompt: at least one H2 MUST contain exact keyphrase, outbound links MUST be real Markdown links
 - [x] Add fallback outbound links (PubMed/NIH) if resolveOutboundLinkPlaceholders returns no real links
+
+## Scoreboard Image Generation Button
+- [x] Add generateSocialImage tRPC procedure to scoreboard router (uses generateImage helper, stores imageUrl on contentItem)
+- [x] Add "Image" button to Scoreboard table row (between Yoast and Share)
+- [x] Image button shows spinner while generating, green tint when image exists, violet hover when not
+- [x] After generation: auto-opens Share dialog with image pre-attached and preview shown
+- [x] QuickShareDialog: accepts initialImageUrl prop, shows image preview with Remove option
+- [x] QuickShareDialog: passes imageUrl to syndication.push mutation for Buffer
+- [x] imageUrl returned from getPublishedPosts scoreboard query

@@ -21,6 +21,8 @@ import {
   Link2,
   ChevronDown,
   ChevronUp,
+  AlignLeft,
+  Copy,
 } from "lucide-react";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
@@ -126,6 +128,7 @@ export default function VideoToBlog() {
     error?: string;
   } | null>(null);
 
+  const [ytDescResult, setYtDescResult] = useState<{ description: string } | null>(null);
   const [showArticlePreview, setShowArticlePreview] = useState(false);
 
   // tRPC mutations
@@ -169,11 +172,20 @@ export default function VideoToBlog() {
     onError: (err) => toast.error(err.message),
   });
 
+  const generateYtDesc = trpc.videoToBlog.generateYouTubeDescription.useMutation({
+    onSuccess: (data) => {
+      setYtDescResult(data);
+      toast.success("YouTube description generated — ready to copy!");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   // Step statuses
   const step1Status: StepStatus = fetchVideoInfo.isPending ? "active" : videoInfo ? "done" : "pending";
   const step2Status: StepStatus = generateBlog.isPending ? "active" : blogResult ? "done" : videoInfo ? "pending" : "pending";
   const step3Status: StepStatus = publishToWP.isPending ? "active" : wpResult ? "done" : blogResult ? "pending" : "pending";
   const step4Status: StepStatus = updateYtDesc.isPending ? "active" : ytUpdateResult?.success ? "done" : ytUpdateResult?.error ? "error" : wpResult ? "pending" : "pending";
+  const step5Status: StepStatus = generateYtDesc.isPending ? "active" : ytDescResult ? "done" : videoInfo ? "pending" : "pending";
 
   const handleReset = () => {
     setYoutubeUrl("");
@@ -181,12 +193,14 @@ export default function VideoToBlog() {
     setBlogResult(null);
     setWpResult(null);
     setYtUpdateResult(null);
+    setYtDescResult(null);
     setCustomInstructions("");
     setFocusKeyword("");
     fetchVideoInfo.reset();
     generateBlog.reset();
     publishToWP.reset();
     updateYtDesc.reset();
+    generateYtDesc.reset();
   };
 
   return (
@@ -211,12 +225,13 @@ export default function VideoToBlog() {
       </div>
 
       {/* Pipeline Steps Overview */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         {[
           { step: 1, label: "Fetch Video", icon: Youtube, status: step1Status },
           { step: 2, label: "Generate Blog", icon: FileText, status: step2Status },
           { step: 3, label: "Publish to WP", icon: Globe, status: step3Status },
           { step: 4, label: "Update YouTube", icon: Link2, status: step4Status },
+          { step: 5, label: "YT Description", icon: AlignLeft, status: step5Status },
         ].map(({ step, label, icon: Icon, status }) => (
           <div
             key={step}
@@ -559,6 +574,96 @@ export default function VideoToBlog() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 5: Generate SEO YouTube Description */}
+      {videoInfo && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <StepBadge step={5} status={step5Status} />
+              Generate SEO YouTube Description
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Generate a fully optimized YouTube description using the Urban Monk framework (Hook → Body → Timestamps → Channel Footer).
+              {wpResult && " The blog post URL will be automatically injected as a CTA."}
+            </p>
+            {!ytDescResult ? (
+              <Button
+                onClick={() =>
+                  generateYtDesc.mutate({
+                    videoId: videoInfo.videoId,
+                    videoTitle: videoInfo.title,
+                    transcript: videoInfo.transcript,
+                    blogUrl: wpResult?.link,
+                    blogTitle: blogResult?.title,
+                  })
+                }
+                disabled={generateYtDesc.isPending}
+                className="w-full"
+              >
+                {generateYtDesc.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Generating description…</>
+                ) : (
+                  <><AlignLeft className="w-4 h-4 mr-1.5" />Generate YouTube Description</>
+                )}
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" /> Description ready
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(ytDescResult.description);
+                      toast.success("Copied to clipboard!");
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5 mr-1.5" />
+                    Copy to Clipboard
+                  </Button>
+                </div>
+                <Textarea
+                  value={ytDescResult.description}
+                  onChange={(e) => setYtDescResult({ description: e.target.value })}
+                  className="font-mono text-xs min-h-[320px] resize-y"
+                  placeholder="Generated description will appear here…"
+                />
+                <div className="flex gap-2 flex-wrap">
+                  <a
+                    href={`https://studio.youtube.com/video/${videoInfo.videoId}/edit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="outline" size="sm">
+                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                      Open YouTube Studio
+                    </Button>
+                  </a>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setYtDescResult(null);
+                      generateYtDesc.reset();
+                    }}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                    Regenerate
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You can edit the description above before copying. Click "Open YouTube Studio" to paste it directly into your video.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

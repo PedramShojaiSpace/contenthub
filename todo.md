@@ -3634,3 +3634,30 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Updated getBufferProfiles in buffer.ts to fetch `type` field from Buffer GraphQL API and expose `channelType` + `isNotificationOnly` on BufferProfile
 - [x] Added "notify" badge in BufferChannelSelector for channels where isNotificationOnly=true (Facebook groups)
 - [x] Added warning banner in BufferChannelSelector explaining notification-only behavior when a Facebook group is selected
+
+## Facebook Page-to-Group Share Reminder
+
+- [ ] After a successful Buffer push to a Facebook Page channel, show a toast/dialog reminding the user to manually share the post to the Urban Monks Facebook group
+- [ ] The reminder should include a direct link to the Facebook Page so the user can open it and tap Share → Share to Group in one click
+
+## Webinar-to-Landing-Page Pipeline Fix
+
+- [ ] Audit the webinar-to-landing-page pipeline to identify where webinar context (transcript, key points, CTA) is dropped
+- [ ] Fix the pipeline so webinar intelligence flows end-to-end into the landing page builder
+- [ ] Landing page builder must receive: webinar title, key takeaways, CTA, offer details, and speaker bio
+- [ ] Generated landing page must be fully production-ready (headline, hero, benefits, social proof, CTA sections)
+- [ ] Landing page must be deployable to ch.theurbanmonk.com subdomain
+
+## Facebook Page-to-Group Share Reminder
+- [x] Add showFbGroupReminder state and pushedToFbPage tracking in QuickShareDialog
+- [x] After successful push to Facebook Page (non-group), show reminder dialog to share to Urban Monks group
+- [x] Reminder dialog includes direct link to Facebook and step-by-step instructions
+
+## Webinar-to-Landing-Page Pipeline Fix
+- [x] crossModuleRouter.webinarToLandingPage now returns: personaName, intelligenceSummary, aiPrompt, ctaText, ctaUrl
+- [x] LandingPageGenerator: auto-selects best persona from webinar personaName hint (falls back to Burnout Recovery Seeker)
+- [x] LandingPageGenerator: URL params preserved until copy is generated (not cleared on prefill)
+- [x] WebinarBuilder: single "Create Landing Page" button split into two: "Landing Page → Gamma" and "Landing Page → CH Page Builder"
+- [x] LandingPageBuilder: handles from=webinar&id=X — fetches webinar feed, pre-fills form + AI prompt, opens AI panel automatically
+- [x] LandingPageBuilder: shows "Pre-filled from Webinar: ..." badge in builder header
+- [x] LandingPageBuilder: loading skeleton shown while webinar query is in-flight

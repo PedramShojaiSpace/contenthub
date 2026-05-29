@@ -132,19 +132,48 @@ export const crossModuleRouter = router({
         .where(eq(webinarSessions.id, input.webinarSessionId));
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar session not found" });
 
-      // Build content angle from webinar topic + CTA
+      // Resolve persona name from personaIds JSON
+      const personaName = resolvePersonaName(session.personaIds);
+
+      // Pull any webinar intelligence records for richer context
+      const intelligenceRecords = await db
+        .select()
+        .from(webinarIntelligence)
+        .where(eq(webinarIntelligence.webinarSessionId, input.webinarSessionId))
+        .orderBy(desc(webinarIntelligence.importedAt))
+        .limit(3);
+      const intelligenceSummary = buildIntelligenceSummary(intelligenceRecords);
+
+      // Build content angle from webinar topic + CTA + outline + intelligence
       const contentAngle = [
         `Based on the webinar: "${session.topic}"`,
         session.cta ? `Primary CTA: ${session.cta}` : null,
-        session.outline ? `Key points covered:\n${session.outline.slice(0, 500)}` : null,
+        session.outline ? `Key points covered:\n${session.outline.slice(0, 600)}` : null,
+        intelligenceSummary ? `Audience intelligence:\n${intelligenceSummary.slice(0, 400)}` : null,
       ].filter(Boolean).join("\n\n");
 
+      // Build a rich AI prompt for the CH page builder's generateCopy endpoint
+      const aiPrompt = [
+        `Webinar: "${session.topic}"`,
+        session.cta ? `CTA: ${session.cta}` : null,
+        session.registrationUrl ? `Registration URL: ${session.registrationUrl}` : null,
+        session.webinarDate ? `Date: ${session.webinarDate}${session.webinarTime ? ` at ${session.webinarTime} ${session.webinarTimezone ?? 'ET'}` : ''}` : null,
+        session.outline ? `Outline highlights: ${session.outline.slice(0, 300)}` : null,
+        intelligenceSummary ? `Audience intelligence: ${intelligenceSummary.slice(0, 300)}` : null,
+      ].filter(Boolean).join(". ");
+
       return {
-        // Pre-fill fields for LandingPageGenerator
+        // Pre-fill fields for LandingPageGenerator (Gamma path)
         title: `${session.topic} — Landing Page`,
         contentAngle,
         offer: "lights_on_webinar" as const,
         webinarSessionId: session.id,
+        // Pre-fill fields for LandingPageBuilder (CH path)
+        aiPrompt,
+        ctaText: session.cta || "Register Free",
+        ctaUrl: session.registrationUrl || "",
+        // Persona hint for auto-selection in LandingPageGenerator
+        personaName,
         // Metadata
         webinarTopic: session.topic,
         webinarDate: session.webinarDate,

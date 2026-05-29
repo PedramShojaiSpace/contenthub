@@ -23,6 +23,7 @@ import { Supadata } from "@supadata/js";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
+import { getYouTubeAuthUrl, isYouTubeAuthorized, getYouTubeClient } from "./youtubeOAuth";
 
 // ── Full Yoast-optimized blog system prompt (identical to BLOG_CONTENT_RULES in routers.ts) ──
 const BLOG_CONTENT_RULES = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
@@ -182,7 +183,8 @@ async function fetchTranscript(videoId: string): Promise<string> {
 
 /**
  * Update a YouTube video description by prepending the blog URL.
- * Requires a valid YouTube OAuth refresh token stored in userCredentials.
+ * Requires a valid YouTube OAuth refresh token stored in userCredentials.youtubeRefreshToken.
+ * Authorize once via /api/youtube/auth-url.
  */
 async function updateYouTubeDescription(
   videoId: string,
@@ -201,23 +203,16 @@ async function updateYouTubeDescription(
       .from(userCredentials)
       .where(eq(userCredentials.userId, userId));
 
-    const refreshToken = (creds as any)?.googleRefreshToken;
+    // Prefer DB-stored token; fall back to env var (set by /api/youtube/callback)
+    const refreshToken = (creds as any)?.youtubeRefreshToken ?? process.env.YOUTUBE_REFRESH_TOKEN;
     if (!refreshToken) {
       return {
         success: false,
-        error: "No Google OAuth token found. Please connect your Google account in Settings.",
+        error: "No YouTube OAuth token found. Please connect your YouTube account using the 'Connect YouTube' button above.",
       };
     }
 
-    const { google } = await import("googleapis");
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_DRIVE_CLIENT_ID,
-      process.env.GOOGLE_DRIVE_CLIENT_SECRET,
-      `${process.env.WORDPRESS_URL ?? "https://content.theurbanmonk.com"}/api/google/callback`
-    );
-    oauth2Client.setCredentials({ refresh_token: refreshToken });
-
-    const youtube = google.youtube({ version: "v3", auth: oauth2Client });
+    const youtube = getYouTubeClient(refreshToken);
 
     // 1. Fetch current video details to get existing description
     const videoRes = await youtube.videos.list({
@@ -675,6 +670,39 @@ ${channelFooter}`;
 
       return { description };
     }),
+
+  /**
+   * Check if YouTube is authorized (refresh token present).
+   */
+  getYouTubeStatus: protectedProcedure.query(async ({ ctx }) => {
+    // Check env var first (set by /api/youtube/callback in the same process)
+    if (process.env.YOUTUBE_REFRESH_TOKEN) return { authorized: true, channelTitle: undefined as string | undefined };
+    // Fall back to DB
+    const db = await getDb();
+    if (!db) return { authorized: false, channelTitle: undefined as string | undefined };
+    const { userCredentials } = await import("../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
+    const hasToken = !!(creds as any)?.youtubeRefreshToken;
+    if (hasToken && (creds as any)?.youtubeRefreshToken) {
+      // Seed env var so subsequent calls in this process don't need DB
+      process.env.YOUTUBE_REFRESH_TOKEN = (creds as any).youtubeRefreshToken;
+    }
+    return { authorized: hasToken, channelTitle: (creds as any)?.youtubeChannelTitle as string | undefined };
+  }),
+
+  /**
+   * Get the YouTube OAuth authorization URL for the channel owner to authorize.
+   */
+  getYouTubeAuthUrl: protectedProcedure.query(() => {
+    try {
+      const url = getYouTubeAuthUrl();
+      return { url };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(msg);
+    }
+  }),
 
   /**
    * List recent YouTube → Blog items from the content_items table.

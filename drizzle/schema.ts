@@ -1101,6 +1101,9 @@ export const userCredentials = mysqlTable("user_credentials", {
   // Gmail OAuth (Backlink Outreach Engine — Alyzza@theurbanmonk.com)
   gmailRefreshToken: text("gmailRefreshToken"),
   gmailEmail: varchar("gmailEmail", { length: 256 }),
+  // YouTube Data API OAuth (for pushing blog URLs to YouTube descriptions)
+  youtubeRefreshToken: text("youtubeRefreshToken"),
+  youtubeChannelTitle: varchar("youtubeChannelTitle", { length: 256 }),
   updatedAt: timestamp("uc_updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type UserCredentials = typeof userCredentials.$inferSelect;

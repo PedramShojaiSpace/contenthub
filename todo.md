@@ -3611,3 +3611,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Update updateYouTubeDescription to use youtubeRefreshToken from userCredentials (not googleRefreshToken)
 - [x] Add YouTube connect banner to VideoToBlog.tsx page (before Step 4)
 - [x] Reuse GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET for YouTube OAuth (same Google Cloud project)
+
+## Yoast SEO Fixes (VideoToBlog Pipeline)
+- [x] Upload YouTube thumbnail as featured image with keyphrase alt text in publishToWordPress
+- [x] Pass seoTitle (from meta extraction) to createWpPost separately from post title
+- [x] Strengthen meta extraction prompt: SEO title MUST start with exact keyphrase, meta description MUST contain keyphrase
+- [x] Strengthen blog generation prompt: at least one H2 MUST contain exact keyphrase, outbound links MUST be real Markdown links
+- [x] Add fallback outbound links (PubMed/NIH) if resolveOutboundLinkPlaceholders returns no real links

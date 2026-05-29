@@ -1172,7 +1172,7 @@ export default function Scoreboard() {
       // Find the post and open Share dialog with the generated image pre-attached
       const post = posts.find((p) => p.id === variables.contentItemId);
       if (post) {
-        setSharePost({ ...post, imageUrl: data.imageUrl });
+        setSharePost({ ...post, imageUrl: data.imageUrl ?? null });
       }
       toast.success("Social image generated — opening Share dialog");
     },

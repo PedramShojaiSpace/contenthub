@@ -16,6 +16,10 @@ export type BufferProfile = {
   platform: "linkedin" | "meta" | "x" | "youtube" | "tiktok" | "other";
   name: string;
   service: string;
+  /** Buffer ChannelType — e.g. "page", "group", "profile", "account". Null if not returned. */
+  channelType?: string | null;
+  /** True if this channel uses notification publishing (cannot auto-post). Facebook groups are always notification-only. */
+  isNotificationOnly?: boolean;
 };
 
 export type BufferUpdateResult = {
@@ -111,13 +115,14 @@ export async function getBufferProfiles(): Promise<BufferProfile[]> {
 
   try {
     const result = await bufferGql<{
-      channels: Array<{ id: string; service: string; name: string }>;
+      channels: Array<{ id: string; service: string; name: string; type: string | null }>;
     }>(`
       query GetChannels($orgId: OrganizationId!) {
         channels(input: { organizationId: $orgId }) {
           id
           service
           name
+          type
         }
       }
     `, { orgId: UMP_ORG_ID });
@@ -128,12 +133,21 @@ export async function getBufferProfiles(): Promise<BufferProfile[]> {
     }
 
     const channels = result.data?.channels ?? [];
-    return channels.map((ch) => ({
-      id: ch.id,
-      platform: mapBufferService(ch.service),
-      name: ch.name,
-      service: ch.service,
-    }));
+    return channels.map((ch) => {
+      const channelType = (ch.type ?? "").toLowerCase();
+      // Facebook groups cannot auto-post — Meta removed the Groups API in April 2024.
+      // Buffer uses notification publishing for groups: it queues the post and sends
+      // a mobile push notification prompting the user to manually copy-paste into the group.
+      const isNotificationOnly = ch.service === "facebook" && channelType === "group";
+      return {
+        id: ch.id,
+        platform: mapBufferService(ch.service),
+        name: ch.name,
+        service: ch.service,
+        channelType: ch.type ?? null,
+        isNotificationOnly,
+      };
+    });
   } catch (err) {
     console.warn("[Buffer] Error fetching channels:", err);
     return [];

@@ -3627,3 +3627,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] QuickShareDialog: accepts initialImageUrl prop, shows image preview with Remove option
 - [x] QuickShareDialog: passes imageUrl to syndication.push mutation for Buffer
 - [x] imageUrl returned from getPublishedPosts scoreboard query
+
+## Facebook Group Buffer Fix
+
+- [x] Diagnosed Facebook group "Urban Monks" not posting automatically — Meta removed the Facebook Groups API in April 2024; Buffer uses notification publishing for groups (mobile push notification, manual copy-paste required)
+- [x] Updated getBufferProfiles in buffer.ts to fetch `type` field from Buffer GraphQL API and expose `channelType` + `isNotificationOnly` on BufferProfile
+- [x] Added "notify" badge in BufferChannelSelector for channels where isNotificationOnly=true (Facebook groups)
+- [x] Added warning banner in BufferChannelSelector explaining notification-only behavior when a Facebook group is selected

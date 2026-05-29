@@ -47,6 +47,10 @@ export type BufferProfile = {
   platform: string;
   name: string;
   service: string;
+  /** Buffer ChannelType — e.g. "page", "group", "profile". Null if not returned. */
+  channelType?: string | null;
+  /** True if this channel uses notification publishing (cannot auto-post). Facebook groups are always notification-only. */
+  isNotificationOnly?: boolean;
 };
 
 type Props = {
@@ -203,6 +207,11 @@ export function BufferChannelSelector({
     });
   };
 
+  // Check if any selected channels are notification-only (Facebook groups)
+  const hasNotificationOnlySelected = profiles.some(
+    (p) => selected.has(p.id) && p.isNotificationOnly
+  );
+
   const nativeServices = PLATFORM_NATIVE_SERVICES[contentPlatform] ?? [];
   const selectedCount = selected.size;
 
@@ -227,6 +236,16 @@ export function BufferChannelSelector({
             </Link>
           </div>
         </DialogHeader>
+
+        {/* Warning banner when a notification-only channel (Facebook group) is selected */}
+        {hasNotificationOnlySelected && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-xs">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-600" />
+            <span>
+              <strong>Facebook Group uses notification publishing.</strong> Buffer will queue this post and send a push notification to your phone. Open the Buffer app to copy-paste it into the group manually — Meta no longer allows automatic group posting.
+            </span>
+          </div>
+        )}
 
         <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
           {sortedServices.length === 0 && (
@@ -295,6 +314,11 @@ export function BufferChannelSelector({
                           )}
                         </div>
                         <span className="text-sm truncate">{profile.name}</span>
+                        {profile.isNotificationOnly && (
+                          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 font-medium">
+                            notify
+                          </span>
+                        )}
                         <span className="ml-auto text-[10px] text-muted-foreground font-mono truncate max-w-[80px]">
                           {profile.id.slice(-6)}
                         </span>

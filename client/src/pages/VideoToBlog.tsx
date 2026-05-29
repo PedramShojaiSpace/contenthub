@@ -466,15 +466,16 @@ export default function VideoToBlog() {
                 <Button
                   onClick={() =>
                     publishToWP.mutate({
-                      contentItemId: blogResult.contentItemId,
-                      videoId: blogResult.videoId,
-                      title: blogResult.title,
-                      slug: blogResult.slug,
-                      article: blogResult.article,
-                      embedHtml: blogResult.embedHtml,
-                      metaDescription: blogResult.metaDescription,
-                      focusKeyword: blogResult.focusKeyword,
-                    })
+                       contentItemId: blogResult.contentItemId,
+                       videoId: blogResult.videoId,
+                       title: blogResult.title,
+                       slug: blogResult.slug,
+                       article: blogResult.article,
+                       embedHtml: blogResult.embedHtml,
+                       metaDescription: blogResult.metaDescription,
+                       focusKeyword: blogResult.focusKeyword,
+                       thumbnailUrl: videoInfo?.thumbnail,
+                     })
                   }
                   disabled={publishToWP.isPending}
                   className="w-full"

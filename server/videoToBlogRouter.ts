@@ -18,7 +18,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
-import { createWpPost, fetchAllWpPosts, findRelevantPosts } from "./wordpress";
+import { createWpPost, fetchAllWpPosts, findRelevantPosts, uploadMediaFromUrl } from "./wordpress";
 import { Supadata } from "@supadata/js";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
@@ -477,40 +477,143 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
         embedHtml: z.string(),
         metaDescription: z.string().optional(),
         focusKeyword: z.string().optional(),
+        thumbnailUrl: z.string().optional(), // YouTube thumbnail for featured image
       })
     )
     .mutation(async ({ input }) => {
-      // Convert Markdown to proper WordPress HTML (handles headings, bold, blockquotes, links)
+      const wpBaseUrl = (process.env.WORDPRESS_URL ?? "https://theurbanmonk.com").replace(/\/$/, "");
+
+      // ── Step 1: Upload YouTube thumbnail as featured image ────────────────────
+      let featuredMediaId: number | undefined;
+      if (input.thumbnailUrl) {
+        try {
+          const altText = input.focusKeyword
+            ? `${input.focusKeyword} — ${input.title}`
+            : `${input.title} — The Urban Monk`;
+          const media = await uploadMediaFromUrl(
+            input.thumbnailUrl,
+            `${input.slug}-featured.jpg`,
+            altText
+          );
+          featuredMediaId = media.id;
+        } catch (err) {
+          console.error("[VideoToBlog] Featured image upload failed (non-fatal):", err);
+        }
+      }
+
+      // ── Step 2: Convert Markdown → WordPress HTML ─────────────────────────────
       const articleHtml = markdownToWpHtml(input.article);
 
       // Prepend the YouTube embed block
-      const fullContent = input.embedHtml + "\n\n" + articleHtml;
+      let wpHtmlBody = input.embedHtml + "\n\n" + articleHtml;
 
-      // Resolve WP categories and tags
+      // ── Step 3: H2/H3 keyphrase auto-fix (Yoast subheading check) ─────────────
+      // Yoast requires the focus keyphrase to appear as an EXACT PHRASE in at least
+      // one H2 or H3. We inject it into the 3rd H2 (or 2nd, or 1st) if missing.
+      if (input.focusKeyword) {
+        const kw = input.focusKeyword.toLowerCase();
+        const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
+        const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>((?:[\s\S])*?)<\/h[23]>/gi;
+        const htmlHeadings = Array.from(wpHtmlBody.matchAll(htmlHeadingRegex));
+        const htmlH2s = htmlHeadings.filter((m) => m[1].toLowerCase() === "h2");
+        const stripTags = (s: string) => s.replace(/<[^>]+>/g, "").trim();
+        const keyphraseInSubheading = htmlHeadings.some((m) => kwRegex.test(stripTags(m[3])));
+        if (!keyphraseInSubheading) {
+          const targetIndex = htmlH2s.length >= 3 ? 2 : htmlH2s.length >= 2 ? 1 : 0;
+          const targetMatch = htmlH2s[targetIndex] ?? htmlHeadings[0];
+          if (targetMatch) {
+            const originalTag = targetMatch[0];
+            const tagName = targetMatch[1];
+            const tagAttrs = targetMatch[2] ?? "";
+            const headingText = stripTags(targetMatch[3]);
+            const kwCapitalised = input.focusKeyword.charAt(0).toUpperCase() + input.focusKeyword.slice(1);
+            const candidateText = `${kwCapitalised}: ${headingText}`;
+            const finalText = candidateText.length <= 80 ? candidateText : kwCapitalised;
+            const finalTag = `<${tagName}${tagAttrs}>${finalText}</${tagName}>`;
+            const escapedOriginal = originalTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            wpHtmlBody = wpHtmlBody.replace(new RegExp(escapedOriginal), finalTag);
+          }
+        }
+      }
+
+      // ── Step 4: Build SEO title (keyphrase-first, ≤60 chars) ─────────────────
+      let seoTitle: string;
+      if (input.focusKeyword) {
+        const kw = input.focusKeyword;
+        const kwCapitalised = kw.charAt(0).toUpperCase() + kw.slice(1);
+        seoTitle = input.title.toLowerCase().startsWith(kw.toLowerCase())
+          ? `${input.title} | The Urban Monk`
+          : `${kwCapitalised}: ${input.title} | The Urban Monk`;
+        if (seoTitle.length > 60) {
+          const shortTitle = `${kwCapitalised} | The Urban Monk`;
+          seoTitle = shortTitle.length <= 60 ? shortTitle : `${kwCapitalised.slice(0, 60 - " | The Urban Monk".length)} | The Urban Monk`;
+        }
+      } else {
+        seoTitle = `${input.title} | The Urban Monk`;
+        if (seoTitle.length > 60) {
+          let trimmed = seoTitle.slice(0, 57);
+          const lastSpace = trimmed.lastIndexOf(" ");
+          if (lastSpace > 20) trimmed = trimmed.slice(0, lastSpace);
+          seoTitle = trimmed.trimEnd() + "...";
+        }
+      }
+
+      // ── Step 5: Enforce keyphrase in meta description + hard length limit ─────
+      const trimToWordBoundary = (s: string, maxLen: number): string => {
+        if (s.length <= maxLen) return s;
+        let t = s.slice(0, maxLen);
+        const sp = t.lastIndexOf(" ");
+        if (sp > 0) t = t.slice(0, sp);
+        return t.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+      };
+      let metaDesc = input.metaDescription ?? "";
+      if (input.focusKeyword && metaDesc) {
+        const kwLower = input.focusKeyword.toLowerCase();
+        if (!metaDesc.toLowerCase().includes(kwLower)) {
+          const prefix = `${input.focusKeyword}: `;
+          const maxBodyLen = 148 - prefix.length;
+          metaDesc = (prefix + trimToWordBoundary(metaDesc, maxBodyLen)).trimEnd().replace(/[,;:\-–—]$/, "").trimEnd();
+        } else {
+          metaDesc = trimToWordBoundary(metaDesc, 148);
+        }
+      } else {
+        metaDesc = trimToWordBoundary(metaDesc, 148);
+      }
+      if (metaDesc.length > 155) {
+        const sp = metaDesc.slice(0, 148).lastIndexOf(" ");
+        metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 148)).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+      }
+
+      // ── Step 6: Resolve WP categories and tags ────────────────────────────────
       const categories = DEFAULT_WP_CATEGORIES;
       let tagIds: number[] = [];
       try {
         if (input.focusKeyword) {
-          const wpUrl = process.env.WORDPRESS_URL ?? "https://theurbanmonk.com";
           const wpUser = process.env.WORDPRESS_USERNAME ?? "";
           const wpPass = process.env.WORDPRESS_APP_PASSWORD ?? "";
           const authHeader = `Basic ${Buffer.from(`${wpUser}:${wpPass}`).toString("base64")}`;
-          tagIds = await resolveOrCreateWpTags([input.focusKeyword, "Urban Monk", "Pedram Shojai"], authHeader, wpUrl);
+          tagIds = await resolveOrCreateWpTags([input.focusKeyword, "Urban Monk", "Pedram Shojai"], authHeader, wpBaseUrl);
         }
       } catch {}
 
+      // ── Step 7: Create WordPress post with full Yoast SEO metadata ────────────
       const wpResult = await createWpPost({
         title: input.title,
         slug: input.slug,
-        content: fullContent,
+        content: wpHtmlBody,
+        excerpt: metaDesc,
         status: "draft",
-        metaDescription: input.metaDescription,
+        featuredMediaId,
+        metaDescription: metaDesc,
         focusKeyword: input.focusKeyword,
+        seoTitle,
+        canonicalUrl: `${wpBaseUrl}/${input.slug}/`,
         categories,
         tags: tagIds,
       });
 
-      // Update the content_item with the WP post ID
+      // ── Step 8: Update the content_item with the WP post ID ──────────────────
       if (input.contentItemId) {
         const db = await getDb();
         if (db) {

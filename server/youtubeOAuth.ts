@@ -33,10 +33,10 @@ function getYouTubeOAuthClient() {
     );
   }
 
-  const redirectUri =
-    process.env.NODE_ENV === "production"
-      ? "https://content.theurbanmonk.com/api/youtube/callback"
-      : "http://localhost:3000/api/youtube/callback";
+  // Always use the production callback URL — this OAuth flow is only used in production.
+  // Using a dynamic origin would require passing it from the frontend, which adds complexity
+  // for a one-time owner-only authorization flow.
+  const redirectUri = process.env.YOUTUBE_REDIRECT_URI ?? "https://content.theurbanmonk.com/api/youtube/callback";
 
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }

@@ -3594,3 +3594,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] BlogToYoutube.tsx: status tracking (backlog → scripted → recorded → uploaded → live)
 - [x] Wire navigation under Video Production group in DashboardLayout (Blog → YouTube)
 - [x] TypeScript 0 errors, 417 tests passing
+
+## Blog → YouTube — Yoast SEO Optimization (May 2026)
+- [ ] Port full Yoast + readability prompt from routers.ts generateBlog into blogToYoutubeRouter generateVideoPackage
+- [ ] Add SEO fields to blogToYoutubeItems schema: focusKeyword, metaDescription, seoTitle, readabilityScore, yoastChecklist (JSON)
+- [ ] Run db:push after schema update
+- [ ] Update generateVideoPackage LLM prompt: focus keyword, meta description, SEO title, subheadings with keyword, transition words, passive voice reduction, sentence length, internal links, image alt text suggestions
+- [ ] Update BlogToYoutube.tsx Video Package tab: show SEO fields panel (focus keyword, meta description, Yoast checklist items)
+- [ ] Ensure WordPress publish includes Yoast meta fields (yoast_wpseo_focuskw, yoast_wpseo_metadesc, yoast_wpseo_title)

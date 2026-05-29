@@ -90,6 +90,9 @@ export default function BlogToYoutube() {
   const [customInstructions, setCustomInstructions] = useState("");
   const [selectedTitleIdx, setSelectedTitleIdx] = useState(0);
   const [generatedPackage, setGeneratedPackage] = useState<any>(null);
+  const [blogFocusKeyword, setBlogFocusKeyword] = useState("");
+  const [blogCustomInstructions, setBlogCustomInstructions] = useState("");
+  const [generatedBlog, setGeneratedBlog] = useState<any>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -191,6 +194,24 @@ export default function BlogToYoutube() {
     onError: (e) => toast.error(e.message),
   });
 
+  const generateBlogMut = trpc.blogToYoutube.generateBlogFromScript.useMutation({
+    onSuccess: (data) => {
+      setGeneratedBlog(data);
+      toast.success("Yoast-optimized blog post generated!");
+      utils.blogToYoutube.listBacklogItems.invalidate();
+      if (selectedItem) {
+        setSelectedItem((prev: any) => ({
+          ...prev,
+          generatedBlogContent: data.articleBody,
+          focusKeyword: data.focusKeyword,
+          metaDescription: data.metaDescription,
+          seoTitle: data.title,
+        }));
+      }
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const deleteItemMut = trpc.blogToYoutube.deleteItem.useMutation({
     onSuccess: () => {
       toast.success("Removed from backlog");
@@ -207,6 +228,18 @@ export default function BlogToYoutube() {
     setSelectedItem(item);
     setEditedScript(item.script ?? "");
     setProductionNotes(item.productionNotes ?? "");
+    setBlogFocusKeyword(item.focusKeyword ?? "");
+    setBlogCustomInstructions("");
+    setGeneratedBlog(
+      item.generatedBlogContent
+        ? {
+            articleBody: item.generatedBlogContent,
+            title: item.seoTitle ?? item.blogTitle,
+            metaDescription: item.metaDescription ?? "",
+            focusKeyword: item.focusKeyword ?? "",
+          }
+        : null
+    );
     setGeneratedPackage(
       item.videoTitle
         ? {
@@ -487,6 +520,10 @@ export default function BlogToYoutube() {
                   <TabsTrigger value="production" className="flex-1">
                     <Video className="w-4 h-4 mr-1" />
                     Production
+                  </TabsTrigger>
+                  <TabsTrigger value="blog" className="flex-1">
+                    <BookOpen className="w-4 h-4 mr-1" />
+                    Blog Post
                   </TabsTrigger>
                 </TabsList>
 
@@ -852,6 +889,183 @@ export default function BlogToYoutube() {
                       Remove from Backlog
                     </Button>
                   </div>
+                </TabsContent>
+
+                {/* ── Blog Post Tab ── */}
+                <TabsContent value="blog" className="space-y-4 mt-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                    <p className="font-medium mb-1">Yoast-Optimized Blog from Script</p>
+                    <p className="text-xs">Generates a full 1,600–2,200 word blog post using the same Yoast SEO + readability rules as the Content Pipeline — with the YouTube video embedded at the top and internal links injected automatically.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Focus Keyword (optional)</label>
+                      <Input
+                        value={blogFocusKeyword}
+                        onChange={(e) => setBlogFocusKeyword(e.target.value)}
+                        placeholder="e.g. gut health inflammation"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Custom Instructions (optional)</label>
+                      <Input
+                        value={blogCustomInstructions}
+                        onChange={(e) => setBlogCustomInstructions(e.target.value)}
+                        placeholder="e.g. Emphasize the fasting protocol"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() =>
+                        generateBlogMut.mutate({
+                          itemId: selectedItem.id,
+                          blogTitle: selectedItem.blogTitle,
+                          blogUrl: selectedItem.blogUrl,
+                          script: editedScript || selectedItem.script || "",
+                          youtubeVideoId: selectedItem.youtubeVideoId ?? undefined,
+                          focusKeyword: blogFocusKeyword || undefined,
+                          customInstructions: blogCustomInstructions || undefined,
+                          publishToDraft: false,
+                        })
+                      }
+                      disabled={generateBlogMut.isPending || !editedScript && !selectedItem.script}
+                    >
+                      {generateBlogMut.isPending ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
+                      ) : (
+                        <><BookOpen className="w-4 h-4 mr-2" />Generate Yoast Blog Post</>
+                      )}
+                    </Button>
+
+                    {generatedBlog && (
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          generateBlogMut.mutate({
+                            itemId: selectedItem.id,
+                            blogTitle: selectedItem.blogTitle,
+                            blogUrl: selectedItem.blogUrl,
+                            script: editedScript || selectedItem.script || "",
+                            youtubeVideoId: selectedItem.youtubeVideoId ?? undefined,
+                            focusKeyword: blogFocusKeyword || undefined,
+                            customInstructions: blogCustomInstructions || undefined,
+                            publishToDraft: true,
+                          })
+                        }
+                        disabled={generateBlogMut.isPending}
+                      >
+                        {generateBlogMut.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4 mr-2" />
+                        )}
+                        Regenerate & Publish as WP Draft
+                      </Button>
+                    )}
+
+                    {!generatedBlog && selectedItem.generatedBlogContent && (
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          generateBlogMut.mutate({
+                            itemId: selectedItem.id,
+                            blogTitle: selectedItem.blogTitle,
+                            blogUrl: selectedItem.blogUrl,
+                            script: editedScript || selectedItem.script || "",
+                            youtubeVideoId: selectedItem.youtubeVideoId ?? undefined,
+                            focusKeyword: blogFocusKeyword || undefined,
+                            publishToDraft: true,
+                          })
+                        }
+                        disabled={generateBlogMut.isPending}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Publish as WP Draft
+                      </Button>
+                    )}
+                  </div>
+
+                  {generatedBlog && (
+                    <div className="space-y-3">
+                      {/* SEO Metadata Summary */}
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
+                        <p className="text-sm font-semibold text-green-800">SEO Metadata</p>
+                        <div className="grid grid-cols-1 gap-1 text-xs">
+                          <div><span className="font-medium">Title ({generatedBlog.title?.length ?? 0} chars):</span> {generatedBlog.title}</div>
+                          <div><span className="font-medium">Focus Keyword:</span> {generatedBlog.focusKeyword}</div>
+                          <div><span className="font-medium">Meta Description ({generatedBlog.metaDescription?.length ?? 0} chars):</span> {generatedBlog.metaDescription}</div>
+                          {generatedBlog.semanticKeywords?.length > 0 && (
+                            <div><span className="font-medium">Semantic Keywords:</span> {generatedBlog.semanticKeywords.join(", ")}</div>
+                          )}
+                        </div>
+                        {generatedBlog.wpDraftUrl && (
+                          <a href={generatedBlog.wpDraftUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 underline flex items-center gap-1 mt-1">
+                            <ExternalLink className="w-3 h-3" />View WordPress Draft
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Article Preview */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-sm font-medium">Article Body</label>
+                          <div className="flex gap-2">
+                            <span className="text-xs text-muted-foreground">{generatedBlog.articleBody?.split(/\s+/).length ?? 0} words</span>
+                            <Button size="sm" variant="outline" onClick={() => copyToClipboard(generatedBlog.articleBody, "Article")}>
+                              <Copy className="w-3 h-3 mr-1" />Copy
+                            </Button>
+                          </div>
+                        </div>
+                        <Textarea
+                          value={generatedBlog.articleBody ?? ""}
+                          readOnly
+                          className="min-h-[300px] font-mono text-xs"
+                        />
+                      </div>
+
+                      {/* Publish Button */}
+                      <Button
+                        className="w-full"
+                        onClick={() =>
+                          generateBlogMut.mutate({
+                            itemId: selectedItem.id,
+                            blogTitle: selectedItem.blogTitle,
+                            blogUrl: selectedItem.blogUrl,
+                            script: editedScript || selectedItem.script || "",
+                            youtubeVideoId: selectedItem.youtubeVideoId ?? undefined,
+                            focusKeyword: blogFocusKeyword || undefined,
+                            publishToDraft: true,
+                          })
+                        }
+                        disabled={generateBlogMut.isPending}
+                      >
+                        {generateBlogMut.isPending ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Publishing...</>
+                        ) : (
+                          <><Upload className="w-4 h-4 mr-2" />Publish to WordPress as Draft</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {!generatedBlog && selectedItem.generatedBlogContent && (
+                    <div className="bg-slate-50 border rounded-lg p-3 text-sm text-slate-600">
+                      <p className="font-medium mb-1">Previously Generated Blog</p>
+                      <p className="text-xs">A blog post was generated for this item. Click "Generate Yoast Blog Post" to regenerate with updated settings.</p>
+                      {selectedItem.seoTitle && <p className="text-xs mt-1"><span className="font-medium">Title:</span> {selectedItem.seoTitle}</p>}
+                      {selectedItem.focusKeyword && <p className="text-xs"><span className="font-medium">Focus Keyword:</span> {selectedItem.focusKeyword}</p>}
+                    </div>
+                  )}
+
+                  {!generatedBlog && !selectedItem.generatedBlogContent && !editedScript && !selectedItem.script && (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                      <p>Generate a script first (Script tab), then come back here to create the Yoast-optimized blog post.</p>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </>

@@ -18,6 +18,70 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
+import { createWpPost, fetchAllWpPosts, findRelevantPosts } from "./wordpress";
+
+// ── Full Yoast-optimized blog system prompt (mirrors BLOG_CONTENT_RULES in routers.ts) ────────
+const BLOG_CONTENT_RULES = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
+⚠️ YOAST READABILITY HARD STOPS — READ THESE FIRST, BEFORE WRITING A SINGLE SENTENCE:
+HARD STOP 1 — TRANSITION WORDS (≥30% of all sentences REQUIRED):
+Yoast scans every sentence in the article body and counts how many contain a transition word or phrase. The minimum passing threshold is 30%. Below 30% = RED FAIL. You MUST target 35% to pass comfortably.
+WHAT COUNTS AS A TRANSITION WORD: However, Therefore, As a result, In addition, Furthermore, Meanwhile, For example, In contrast, Consequently, First, Second, Third, Finally, In fact, Specifically, Most importantly, In other words, That said, Even so, Because of this, At the same time, To be clear, In practice, Over time, In short, Additionally, Moreover, Notably, Instead, Still, Yet, Thus, Hence, Indeed, Otherwise, Likewise, Similarly, Afterward, Previously, Ultimately, Essentially, Particularly, Importantly, Fortunately, Unfortunately, Surprisingly, Although, Because, Since, While, When, After, Before, Once, Unless, Until, Despite, Rather than, Not only, As long as, As soon as.
+HOW TO COMPLY:
+1. Every paragraph of 3+ sentences MUST contain at least one transition word.
+2. NEVER write 3 consecutive sentences without a transition word appearing somewhere in one of them.
+3. After writing the full article, count: (sentences with a transition) ÷ (total sentences). If below 35%, add transitions to the weakest paragraphs before outputting.
+HARD STOP 2 — CONSECUTIVE SENTENCE STARTS (ZERO TOLERANCE):
+NEVER begin 3 or more consecutive sentences with the same word. After writing each paragraph, scan the FIRST WORD of every sentence. If the same word opens 3 or more sentences in a row, rewrite at least one of them.
+AUDIENCE: Educated, health-conscious adults aged 30-55. Ambitious professionals, parents, and seekers who are serious about optimizing their biology, reducing chronic stress, and integrating ancient wisdom with modern science.
+VOICE (GhostLink OS B6 Voice Rules — non-negotiable):
+- Sentences ≤18 words average. Break anything longer.
+- No adverbs modifying verbs. Pick a stronger verb.
+- BANNED WORDS: leverage, strategic, solutions, stakeholder, ecosystem, robust, synergy, paradigm, best-in-class, world-class, empowering, transforming, revolutionizing, unlocking, perhaps, maybe, kind of, sort of, in today's world, at the end of the day
+- Concrete nouns over abstract nouns. Every bold claim has a receipt within 2 sentences.
+ARTICLE STRUCTURE (follow exactly — GhostLink OS Written Pillar Architecture):
+1. H1 TITLE (from metadata — do NOT repeat in the body)
+2. HOOK (first 2-3 paragraphs, no heading): Specific tension, counterintuitive claim, or vivid scenario. Answer the core question within the first 300 words.
+3. MECHANISM SECTION (H2): The science or root cause
+4. FRAMEWORK (H2 + H3 steps): Pedram's named protocol (3-7 steps). Each step gets its own H3.
+5. PROOF SECTION (H2): Case study, clinical example, or process walkthrough
+6. TRANSFORMATION VISION (H2): What life looks like after implementing this
+7. CTA SECTION (H2): Soft sell — Urban Monk Academy or email capture. Friction level T3.
+8. FAQ SECTION (H2 "Frequently Asked Questions"): 4-6 PAA-style questions with direct answers
+INTERNAL & EXTERNAL LINKS:
+- You MUST use ONLY the internal link URLs explicitly provided in the VERIFIED INTERNAL LINK LIST in the user message. Do NOT invent or guess any theurbanmonk.com URL not in that list.
+- Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH).
+- E-E-A-T signals: weave Pedram's credentials (OMD, Taoist monk, filmmaker, author) naturally into the body.
+ABSOLUTE RULES — NEVER VIOLATE:
+- NEVER use the URL urbanmonk.com — the ONLY correct domain is theurbanmonk.com
+- NEVER invent, guess, or construct a theurbanmonk.com URL not in the provided list
+- NEVER fabricate media citations
+- NEVER add hashtags anywhere in the article
+- NEVER include a TL;DR block or summary box
+TOTAL ARTICLE LENGTH: 1,600-2,200 words (body only, not counting FAQ).
+FORMATTING RULES (YOAST READABILITY — NON-NEGOTIABLE):
+- Use ## for H2 section headings (compelling, specific, keyword-rich)
+- Use ### for H3 sub-headings within the framework steps
+- SUBHEADING DISTRIBUTION: Every block of text MUST have an H2 or H3 heading within every 300 words.
+- PARAGRAPH LENGTH: Every paragraph must be 150 words or fewer (3-5 sentences max).
+- TRANSITION WORDS: At least 30% of ALL sentences must contain a transition word. Target 35%.
+- CONSECUTIVE SENTENCE STARTS: NEVER begin 3 or more consecutive sentences with the same word.
+- Use **bold** for key terms or critical insights (2-4 per section maximum)
+- Use > blockquote for ONE powerful pull-quote per article only
+- No bullet lists in the main body — write in flowing prose
+- No em-dashes used as bullet substitutes
+QUALITY GATE (self-check before outputting):
+- YOAST SEO CHECK #1: Does the focus keyword appear in the FIRST or SECOND SENTENCE of the article body?
+- YOAST SEO CHECK #2: Does the focus keyword appear at least 10 times total?
+- YOAST SEO CHECK #3: Does at least ONE H2 heading contain the focus keyword or a very close synonym?
+- YOAST SEO CHECK #4: Are there at least 3 internal links from the provided list?
+- YOAST SEO CHECK #5: Is the title 48 characters or fewer?
+- YOAST SEO CHECK #6: Is the meta description EXACTLY 140-150 characters?
+- YOAST SEO CHECK #7: Is the focus keyword a specific long-tail phrase (not a generic head term)?
+- YOAST READABILITY: Every prose block under 300 words before the next heading?
+- YOAST READABILITY: Every paragraph under 150 words?
+- YOAST READABILITY: Transition words ≥30% of all sentences?
+- YOAST READABILITY: No run of 3+ consecutive sentences starting with the same word?
+CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Taoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
@@ -583,5 +647,200 @@ Be specific enough that someone who has never done this before can follow along.
         .where(eq(blogToYoutubeItems.id, input.itemId));
 
       return item ?? null;
+    }),
+
+  /**
+   * Generate a fully Yoast-optimized blog post from the video script.
+   * Uses the same BLOG_CONTENT_RULES prompt as the main generateBlog procedure,
+   * with the YouTube video embedded at the top and the blog URL pointing back to the video.
+   * Optionally publishes to WordPress as a draft.
+   */
+  generateBlogFromScript: protectedProcedure
+    .input(
+      z.object({
+        itemId: z.number(),
+        blogTitle: z.string().min(1),
+        blogUrl: z.string().url(),
+        script: z.string().min(100),
+        youtubeVideoId: z.string().optional(),
+        focusKeyword: z.string().optional(),
+        customInstructions: z.string().optional(),
+        publishToDraft: z.boolean().default(false),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      // ── 1. Build internal link block from wpPostIndex ──────────────────────
+      const foundationLinks = [
+        `- [The Urban Monk Academy — Holistic Health & Wellness Training](https://theurbanmonk.com/urban-monk-academy/)`,
+        `- [The Urban Monk — Dr. Pedram Shojai's Official Site](https://theurbanmonk.com/)`,
+        `- [Well.org — Wellness Community & Resources](https://well.org/)`,
+        `- [Urban Monk Nutrition — Supplements & Wellness Products](https://theurbanmonk.com/urban-monk-nutrition/)`,
+      ];
+
+      let internalLinkBlock = "";
+      try {
+        const allPosts = await fetchAllWpPosts();
+        if (allPosts.length > 0) {
+          const relevant = findRelevantPosts(allPosts, input.blogTitle, 6);
+          const relevantLinks = relevant.map(
+            (p: any) => `- [${p.title}](${p.url}) — ${(p.excerpt ?? "").slice(0, 100)}`
+          );
+          const merged = Array.from(new Set([...relevantLinks, ...foundationLinks])).slice(0, 12);
+          internalLinkBlock = `\nVERIFIED INTERNAL LINK LIST — use ONLY these URLs for internal links. Do NOT invent any theurbanmonk.com URL not in this list:\n${merged.join("\n")}`;
+        } else {
+          internalLinkBlock = `\nVERIFIED INTERNAL LINK LIST:\n${foundationLinks.join("\n")}`;
+        }
+      } catch {
+        internalLinkBlock = `\nVERIFIED INTERNAL LINK LIST:\n${foundationLinks.join("\n")}`;
+      }
+
+      // ── 2. Build the video embed block ────────────────────────────────────
+      const videoEmbedBlock = input.youtubeVideoId
+        ? `\n\nIMPORTANT: This blog post was created from a YouTube video. At the very beginning of the article body (after the hook, before the first H2), insert this exact YouTube embed shortcode on its own line:\n[embed]https://www.youtube.com/watch?v=${input.youtubeVideoId}[/embed]\n\nAlso include a natural sentence near the embed like: "Watch the full video above, then read on for the complete written breakdown."`
+        : "";
+
+      // ── 3. Build focus keyword note ───────────────────────────────────────
+      const kwNote = input.focusKeyword
+        ? `\nSEO NOTE: The target focus keyword for this article is "${input.focusKeyword}". Use it naturally in the opening paragraph, at least one H2 heading, and 3-5 times throughout the body.`
+        : "";
+
+      const userMessage = [
+        `Raw idea: ${input.blogTitle}`,
+        kwNote,
+        videoEmbedBlock,
+        input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
+        `\n\nSOURCE MATERIAL (video script — use as the factual basis for the article, but rewrite entirely in long-form blog style):\n${input.script.slice(0, 6000)}`,
+        internalLinkBlock,
+        `\n\nCTA LINK: Direct readers to the Urban Monk Academy at https://theurbanmonk.com/urban-monk-academy/ in the CTA section.`,
+      ]
+        .filter(Boolean)
+        .join("");
+
+      // ── 4. Generate the article body ──────────────────────────────────────
+      const articleResponse = await invokeLLM({
+        messages: [
+          { role: "system", content: BLOG_CONTENT_RULES },
+          { role: "user", content: userMessage },
+        ],
+      });
+
+      let articleBody = String(articleResponse.choices?.[0]?.message?.content ?? "").trim();
+      if (!articleBody || articleBody.length < 500) {
+        throw new Error("Blog generation failed — output was too short.");
+      }
+
+      // Strip any JSON wrapper if the model returned JSON instead of Markdown
+      if (articleBody.startsWith("```") || articleBody.startsWith("{")) {
+        const mdStart = articleBody.indexOf("#");
+        if (mdStart > 0) articleBody = articleBody.slice(mdStart);
+      }
+
+      // ── 5. Extract SEO metadata ───────────────────────────────────────────
+      const metaResponse = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `Extract SEO metadata from this article. Return ONLY valid JSON matching the schema. No preamble.`,
+          },
+          {
+            role: "user",
+            content: `Article topic: ${input.blogTitle}\n\nARTICLE:\n${articleBody.slice(0, 3000)}`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "blog_metadata",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "H1 headline, HARD MAX 48 chars including spaces, must contain primary keyword" },
+                slug: { type: "string", description: "URL-friendly slug, max 60 chars" },
+                metaDescription: { type: "string", description: "Meta description: STRICT 130-148 chars. Start with the focus keyword. Never end with ellipsis." },
+                focusKeyword: { type: "string", description: "Primary SEO keyword phrase, 2-4 words" },
+                semanticKeywords: { type: "array", items: { type: "string" }, description: "3-5 semantic keyword variants" },
+                faqSection: { type: "string", description: "Markdown FAQ section with 4-6 PAA questions" },
+              },
+              required: ["title", "slug", "metaDescription", "focusKeyword", "semanticKeywords", "faqSection"],
+              additionalProperties: false,
+            },
+          },
+        },
+      } as any);
+
+      let metaData = {
+        title: input.blogTitle.slice(0, 80),
+        slug: input.blogTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),
+        metaDescription: "",
+        focusKeyword: input.focusKeyword ?? "",
+        semanticKeywords: [] as string[],
+        faqSection: "",
+      };
+      try {
+        const raw = String(metaResponse.choices?.[0]?.message?.content ?? "{}");
+        const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+        const parsed = JSON.parse(cleaned);
+        metaData = { ...metaData, ...parsed };
+      } catch {}
+
+      // Append FAQ section if not already in article
+      if (metaData.faqSection && !articleBody.includes("Frequently Asked Questions")) {
+        articleBody = articleBody + "\n\n" + metaData.faqSection;
+      }
+
+      // ── 6. Save to DB ─────────────────────────────────────────────────────
+      const { blogToYoutubeItems } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      await db
+        .update(blogToYoutubeItems)
+        .set({
+          generatedBlogContent: articleBody,
+          focusKeyword: metaData.focusKeyword,
+          metaDescription: metaData.metaDescription,
+          seoTitle: metaData.title,
+        })
+        .where(eq(blogToYoutubeItems.id, input.itemId));
+
+      // ── 7. Optionally publish to WordPress as draft ───────────────────────
+      let wpDraftPostId: number | undefined;
+      let wpDraftUrl: string | undefined;
+      if (input.publishToDraft) {
+        try {
+          const wpResult = await createWpPost({
+            title: metaData.title,
+            content: articleBody,
+            status: "draft",
+            slug: metaData.slug,
+            metaDescription: metaData.metaDescription,
+            focusKeyword: metaData.focusKeyword,
+            categories: [],
+            tags: [],
+          });
+          wpDraftPostId = wpResult.id;
+          wpDraftUrl = wpResult.link;
+          await db
+            .update(blogToYoutubeItems)
+            .set({ wpDraftPostId: wpDraftPostId ?? null })
+            .where(eq(blogToYoutubeItems.id, input.itemId));
+        } catch (err) {
+          console.warn("[BlogToYoutube] WordPress draft publish failed:", err);
+        }
+      }
+
+      return {
+        articleBody,
+        title: metaData.title,
+        slug: metaData.slug,
+        metaDescription: metaData.metaDescription,
+        focusKeyword: metaData.focusKeyword,
+        semanticKeywords: metaData.semanticKeywords,
+        faqSection: metaData.faqSection,
+        wpDraftPostId,
+        wpDraftUrl,
+      };
     }),
 });

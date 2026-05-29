@@ -3562,3 +3562,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] VideoToBlog.tsx: 4-step pipeline UI with step indicators, video preview, article preview, WP publish, YouTube description update
 - [x] Navigation: YouTube → Blog added under Video Production group in sidebar
 - [x] TypeScript: 0 errors, 417 tests pass
+
+## YouTube → Blog Pipeline — Phase 2 (May 2026)
+- [x] generateYouTubeDescription procedure: Hook → Body → Timestamps → Channel Footer using Urban Monk prompt framework
+- [x] Auto-injects blog post URL as CTA when blog is published (step 4 done before step 5)
+- [x] Channel footer pasted verbatim (Upstream Masterclass, Lights On, InterConnected, UrbanMonk.com UTM links)
+- [x] Step 5 card in VideoToBlog.tsx: generate, preview/edit in textarea, copy to clipboard, open YouTube Studio link
+- [x] Blog prompt updated: reciprocal CTA pointing back to YouTube video in blog body
+- [x] TypeScript 0 errors, 417 tests passing

@@ -487,6 +487,106 @@ ${transcriptSnippet}`;
     }),
 
   /**
+   * Step 2b: Generate an SEO-optimized YouTube description for the video.
+   * Uses the Urban Monk description framework:
+   *   Hook → Body → Timestamps → Channel Footer
+   * Automatically injects the blog post URL (if available) as a CTA
+   * and points the blog post back to the video.
+   */
+  generateYouTubeDescription: protectedProcedure
+    .input(
+      z.object({
+        videoId: z.string().min(1),
+        videoTitle: z.string().min(1),
+        transcript: z.string(),
+        blogUrl: z.string().url().optional(), // injected after blog is published
+        blogTitle: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const transcriptSnippet = input.transcript.slice(0, 6000);
+
+      const blogCta = input.blogUrl
+        ? `\n📝 Read the full article: ${input.blogTitle ?? "Full Blog Post"}\n${input.blogUrl}\n`
+        : "";
+
+      const systemPrompt = `You are an expert YouTube SEO strategist for The Urban Monk channel. Your job is to write a fully optimized YouTube video description. Always refer to the host as Dr. Pedram Shojai.
+
+Write the description using EXACTLY this structure:
+
+1. HOOK (first 2-3 sentences):
+   - Must contain the primary keyword or topic of the video
+   - Written to appear in YouTube search previews
+   - Describes what the viewer will learn or gain
+   - Do NOT start with "In this video"
+
+2. BODY (150-200 words):
+   - Expand on the key topics, insights, and takeaways from the video
+   - Use natural language that includes relevant search keywords
+   - Write in second person (you/your) addressing the viewer directly
+   - Mention Dr. Pedram Shojai / The Urban Monk at least once
+   - If a blog post URL is provided, include a natural CTA line pointing to it (e.g. "For the full breakdown, read the companion article below.")
+
+3. TIMESTAMPS (if the transcript contains clear topic shifts):
+   - List 4-6 chapter markers in format: 00:00 - Topic Name
+   - If the transcript does not have enough detail to identify timestamps, skip this section entirely
+
+4. BLOG LINK (only if blog URL provided):
+   - Insert the blog CTA block exactly as given
+
+5. CHANNEL FOOTER:
+   - Paste the footer EXACTLY as provided, with no changes
+
+FORMAT RULES:
+- Output only the final description text, ready to paste into YouTube Studio
+- Do not include any commentary, notes, or explanation before or after
+- Do not use markdown formatting (no asterisks, no pound signs)
+- Do not alter the footer section in any way
+- Total description length should be 300-500 words before the footer`;
+
+      const channelFooter = `---
+Welcome to The Urban Monk channel! If you enjoyed this video, make sure to Like, Subscribe, and hit the Notification Bell so you never miss an update. We have a massive library of resources designed to help you optimize your health, mind, and spirit. Ready to take the next step? Explore our core programs and free resources below:
+
+🚀 Stop Guessing, Start Healing: The Upstream Masterclass
+Tired of chasing symptoms? Join our free masterclass to discover the exact framework we use to help high-performers optimize their gut health, regain their energy, and build a personalized protocol that actually works.
+👉 Watch the Free Upstream Masterclass: https://upstream.theurbanmonk.com?utm_source=youtube&utm_medium=video&utm_campaign=upstream-bundle&utm_content=video-description&utm_term=youtube_cold_upstream
+
+💡 Level Up Your Life: The Lights On Course
+If you are passionate about personal development and want a structured path to waking up and living with purpose, this is for you. Lights On is our foundational program designed to help you break through the noise and optimize your mind, body, and spirit.
+👉 Explore the Lights On Course: https://lightson.theurbanmonk.com?utm_source=youtube&utm_medium=video&utm_campaign=lights-on&utm_content=video-description&utm_term=youtube_cold_LO
+
+🌿 Discover the Root Cause: InterConnected Free Screening
+Is the root of your health issues hiding in your gut? In this groundbreaking documentary series, we uncover the hidden truths about our microbiome and how modern life is impacting our overall health.
+👉 Watch the Free InterConnected Screening: https://theacademy.theurbanmonk.com/ic-interconnected-free-screening-Meta?utm_source=youtube&utm_medium=video&utm_campaign=ic-free-screening&utm_content=video-description&utm_term=youtube_cold_IC
+
+📚 Explore The Urban Monk Ecosystem
+Want to dive deeper into the philosophy, science, and practices of The Urban Monk? We have a ton more interviews, articles, and resources waiting for you.
+👉 Visit The Urban Monk: https://www.theurbanmonk.com?utm_source=youtube&utm_medium=video&utm_campaign=brand-awareness&utm_content=video-description&utm_term=youtube_cold_UM`;
+
+      const userMessage = `VIDEO TITLE: ${input.videoTitle}
+
+TRANSCRIPT:
+${transcriptSnippet}${blogCta ? `\n\nBLOG CTA TO INJECT (insert in Body section and in step 4):\n${blogCta}` : ""}
+
+CHANNEL FOOTER (paste EXACTLY at the end):
+${channelFooter}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+      });
+
+      const description = String(response.choices?.[0]?.message?.content ?? "").trim();
+      if (!description || description.length < 200) {
+        throw new Error("Description generation failed — output was too short.");
+      }
+
+      return { description };
+    }),
+
+  /**
    * List recent YouTube → Blog items from the content_items table.
    */
   listVideoBlogs: protectedProcedure.query(async () => {

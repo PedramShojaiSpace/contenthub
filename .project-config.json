@@ -13,10 +13,10 @@
   "experiments": null,
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZH4WVLN64",
-    "secret_access_key": "ag03gTdtvhXynNmAmzTWS9V0I1B/tktMpiXxk69p",
-    "session_token": "IQoJb3JpZ2luX2VjEOj//////////wEaCXVzLWVhc3QtMSJHMEUCIBvxI2HEYrjx0LYzNlRLIR9n4R1TSHo3sfCnlYkhYNWPAiEArFdhKCLQDgElmWN/HHp5UtjZXwBVo8zzxqWQ7c2BODsq/gMIsf//////////ARAEGgw2NjUzODYwOTg4NjYiDLubeT/LoceVbI7ckSrSA50tLscpARQeGWJJ2YyQD38r683l9X+8n2fKI3VDM16PsUrhaIRvvYV2KZxcPYG6di+Pd29ne936vNvxIreh4ItV8a3NQA09nH/HUnj+YmcHmKWaJfG7TOOYZ4hl4zNl8pMkbFhooqde5YqAJWb/WsvQgRRQ3Ag/QCoKXN4cPe5s3jCP+PSXC1uGKzjKjrrHFg7T+jND3LoYQoepTufpZSU9RI8v6RaJK8+Vg+ZCFGWV1u2FBKo2W2urlbpVvXW4moGA3EK72B+YxCTlT5pEvRtKAx2eoQMeBxfZR+BviilJbT198/YboVs/YjhKVhIgKL12+LFehtfphSnJK4u1C+BFEcv5w3Ej0tqjWUdDHklGqTLbwM8FMCdcoTAiUEN87gObHTg1+xizKJT2FtXOdxeNHXi4x4Uz73r+xZkBBSUe7Q5NPdHNNe9/zdSgLR0JTFghSL/oQyKh4lQjtnSTlUrNIMt2XqqaeGCHoHHmtjb21fEXWzDl3yE9s8y/5argioU55N+jV+wBGvk/hBHRgRS6MWTpFKlWWCYWuDKHgP8Iz317tP/j+puPeXWoMNtK7mic3OT6l/GalTA8GHUzVnox6wOIxxg+IEFoLwfIrYzH6OgwiMnh0AY6nQF0PfM8lGHxbnd6vh0jd9VIjP7XAcolHlYxP+QuzLHUKK9y2zjnLm9Lqgfvn/r91TXT+9J84Q+QV+JbiVbWPE2KDiPI+ZlimnqsiSWbEY27cjr8rtLkCLUh/ICmg4OSv7jqKfew2qpBzfLiqla/7rpUBtkbJ14YVKyCFBD2hoM/ygMEsH7j8vIigM1mAqZjZeusRBg9t16ZyPCTA9/8",
-    "expiration": "2026-05-29T03:51:36.000Z"
+    "access_key_id": "ASIAZV3A2ECZA4IG55OH",
+    "secret_access_key": "ekrThWS2w4HmrU0CNe8gySkAKjxOaWBzQ3B7KOOn",
+    "session_token": "IQoJb3JpZ2luX2VjEAMaCXVzLWVhc3QtMSJHMEUCIEZS4dD4CKkSP1Uyzpc2n0418A+70T2/EcRPZJPlzuGxAiEAk4hoU+J07nMQXOmcsyNpLIYVZqA3rJELThjGQWH3mxcq/gMIzP//////////ARAEGgw2NjUzODYwOTg4NjYiDIpUDXdFdutDe0IFwirSA1MddohZ0JF/pMZBz3TSAf4zFl8fpbLplKs1Yz1RV+mnlR5m2N4fI1W2E6qfY/gHWIUH7seVuLeJqgOgyOUa3ZpucLwnjgreqKnyt+TC8y/0DOlLqTMB03f8Y7mMYKzhPB0N4DLi51V73+voGn5lR4vUcVJ+9inYDMaEPg2w7RSSAZQ+End6/RbEe6I51LnkLLlCmbnYas2F/0hZDl5+aJoah3V0Va8T+asKmZdL/vHpe9Q1t/w6qvV16mmSeJww7bEi5Ov9XqJscjweFlAThbtL4G7kXAetC6G4/fZkfhDKF/zJ3WjC0kD1MbJ1SF414u/B5BRawsKHLDBVM84jtCZQMWFj28qWRIu4FNrCtrp3ymGWJtIxs87Sm77m0EMo4E7ZDqcttQVl0GheNkNx+rSVyAuMzg5Rz1/l3cw4DAHZ5OUWEJNZGJ5rHH/yUdmmgNFjOlJ4PnjPYfiEpGd8eJL6xd7s5AzL8YLitPwJ4KtFndlLTsZQaHq9SwJUdM72tix7HUCgPPlTy8v9q3u1UR7d+wtmXFlVvBLKMJUWuHmHPT4nEExQLl5GEjXn/dDHJtGIxWOiEZNKE8cvuPhGIZ9UKrLzaLgMjCAUfFQsklc3d18w8sLn0AY6nQGZzWeIGJEEkBKwOMLg9JHWn07l+B43DDbcm8BrB81zprZ1LGoXNxeJU+/B8kelZWK56UEw9Dpz65TlTy+Fc/OrrgedgMzw7uDGMsxV59Ex1W8yj0Nbe4BY1Ht1SqF4pkctheEtAlmAw2n4w/X9tyl8rO7McX2cuoon12VEpxUwf5ZDf8txD5SIoP3gsoejA5Z6T2vhMe+8vBus2bIb",
+    "expiration": "2026-05-30T06:56:50.000Z"
   },
   "name": "lights-on-optin",
   "path": "/home/ubuntu/lights-on-optin",
@@ -29,8 +29,8 @@
     "DATAFORSEO_LOGIN": "pedram@theurbanmonk.com",
     "DATAFORSEO_PASSWORD": "493c0fae4c2bc846",
     "GAMMA_API_KEY": "sk-gamma-xVJyxS6NKqNCDAh9z7Pqf5QNojKxWirVyXoYaFVFjgg",
-    "GMAIL_CLIENT_ID": "877945805124-d9qjjssrnpdbjp655a9dfmncgtbnkdud.apps.googleusercontent.com",
-    "GMAIL_CLIENT_SECRET": "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",
+    "GMAIL_CLIENT_ID": "887893080822-5363mc9a50c995a33j01h7gtmivj71df.apps.googleusercontent.com",
+    "GMAIL_CLIENT_SECRET": "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",
     "GOOGLE_DRIVE_CLIENT_ID": "877945805124-l9e6l0pop2mgpvlg4qpta5l3vjphuo8i.apps.googleusercontent.com",
     "GOOGLE_DRIVE_CLIENT_SECRET": "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",
     "GOOGLE_SEARCH_CONSOLE_CLIENT_ID": "877945805124-3am7b4d62fs5ov4109aohrlmeusls5tt.apps.googleusercontent.com",

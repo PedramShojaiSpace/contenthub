@@ -1043,8 +1043,10 @@ export default function LandingPageGenerator() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => {
-                      handleSaveCopy();
+                    onClick={async () => {
+                      // MUST await save before navigating — otherwise the DB record
+                      // won't have the latest copy when LandingPageBuilder fetches it
+                      await handleSaveCopy();
                       const params = new URLSearchParams();
                       if (generatedPageId) params.set("fromLpId", String(generatedPageId));
                       // Infer campaign from offer so CH builder pre-selects the right campaign
@@ -1056,7 +1058,9 @@ export default function LandingPageGenerator() {
                       };
                       const campaign = offerCampaignMap[selectedOffer] ?? "lo";
                       params.set("campaign", campaign);
-                      params.set("template", "optin");
+                      // Use 'sales' template for webinar/vsl content, 'optin' for lead magnets
+                      const isWebinarOffer = ["lights_on_webinar", "deep_sleep_webinar", "homesick_screening", "interconnected_screening"].includes(selectedOffer);
+                      params.set("template", isWebinarOffer ? "sales" : "optin");
                       navigate(`/ch-pages?${params.toString()}`);
                     }}
                     className="bg-[oklch(0.45_0.18_140)] hover:bg-[oklch(0.38_0.18_140)] text-white font-semibold"
@@ -1197,8 +1201,9 @@ export default function LandingPageGenerator() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={() => {
-                    handleSaveCopy();
+                  onClick={async () => {
+                    // Await save before navigating to prevent race condition
+                    await handleSaveCopy();
                     const params = new URLSearchParams();
                     if (generatedPageId) params.set("fromLpId", String(generatedPageId));
                     const offerCampaignMap2: Record<string, string> = {
@@ -1208,7 +1213,8 @@ export default function LandingPageGenerator() {
                       homesick_screening: "webinar", interconnected_screening: "webinar",
                     };
                     params.set("campaign", offerCampaignMap2[selectedOffer] ?? "lo");
-                    params.set("template", "optin");
+                    const isWebinarOffer2 = ["lights_on_webinar", "deep_sleep_webinar", "homesick_screening", "interconnected_screening"].includes(selectedOffer);
+                    params.set("template", isWebinarOffer2 ? "sales" : "optin");
                     navigate(`/ch-pages?${params.toString()}`);
                   }}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"

@@ -1651,7 +1651,8 @@ export const hostedLandingPages = mysqlTable("hosted_landing_pages", {
   heroImageKey: text("hlp_hero_image_key"),
 
   // VSL section (vsl + sales templates)
-  videoEmbedCode: text("hlp_video_embed_code"),   // full iframe/script embed
+  videoEmbedCode: text("hlp_video_embed_code"),   // full iframe/script embed (YouTube, Vimeo, etc.)
+  wistiaEmbedCode: text("hlp_wistia_embed_code"), // Wistia-specific embed code (inline or popover)
   videoThumbnailUrl: text("hlp_video_thumbnail_url"),
 
   // Body copy (markdown — rendered to HTML at serve time)

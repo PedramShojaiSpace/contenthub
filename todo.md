@@ -3667,3 +3667,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix template: webinar-origin pages use 'sales' template, not 'optin'
 - [x] Fix bounce-to-list: createMutation/updateMutation onSuccess now stays in builder when cameFromLpGenerator is true
 - [x] Fix webinar campaign public route: added 'webinar' to /:campaign(lo|gut|sleep|webinar)/:slug route in server/_core/index.ts
+
+## Wistia Video Embed in CH Page Builder
+- [ ] Add wistiaEmbedCode field to hostedLandingPages schema in drizzle/schema.ts
+- [ ] Run pnpm db:push to migrate
+- [ ] Add wistiaEmbedCode to pageContentSchema in hostedLandingPagesRouter.ts (create/update/list)
+- [ ] Add Wistia embed textarea field in LandingPageBuilder.tsx (Hero Section, below videoEmbedCode)
+- [ ] Render Wistia embed in renderLandingPageHtml for VSL and Sales templates
+- [ ] Add Wistia embed preview in the builder preview iframe

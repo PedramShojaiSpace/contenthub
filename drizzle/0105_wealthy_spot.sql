@@ -1,0 +1,1 @@
+ALTER TABLE `hosted_landing_pages` ADD `hlp_wistia_embed_code` text;

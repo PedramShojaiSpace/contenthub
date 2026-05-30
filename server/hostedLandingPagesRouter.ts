@@ -44,6 +44,7 @@ const pageContentSchema = z.object({
   heroImageUrl: z.string().optional(),
 
   videoEmbedCode: z.string().optional(),
+  wistiaEmbedCode: z.string().optional(),
   videoThumbnailUrl: z.string().optional(),
 
   bodyCopy: z.string().optional(),
@@ -318,9 +319,11 @@ function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtm
   </div>
 
   <div class="video-wrapper" style="max-width:760px;margin:0 auto 48px;">
-    ${page.videoEmbedCode
-      ? page.videoEmbedCode
-      : `<div class="video-placeholder">Video embed code not yet configured</div>`}
+    ${page.wistiaEmbedCode
+      ? page.wistiaEmbedCode
+      : page.videoEmbedCode
+        ? page.videoEmbedCode
+        : `<div class="video-placeholder">Video embed code not yet configured</div>`}
   </div>
 
   ${(page.ctaText || page.ctaUrl) ? `
@@ -418,6 +421,13 @@ function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
       ${page.heroImageUrl ? `<img src="${page.heroImageUrl}" alt="" class="hero-img">` : ""}
     </div>
   </section>
+
+  ${(page.wistiaEmbedCode || page.videoEmbedCode) ? `
+  <div style="max-width:760px;margin:0 auto 48px;padding:0 24px;">
+    ${page.wistiaEmbedCode
+      ? page.wistiaEmbedCode
+      : page.videoEmbedCode || ""}
+  </div>` : ""}
 
   <div class="sales-body">
     ${bodyHtml}
@@ -567,6 +577,7 @@ export const hostedLandingPagesRouter = router({
         subheadline: input.subheadline,
         heroImageUrl: input.heroImageUrl,
         videoEmbedCode: input.videoEmbedCode,
+        wistiaEmbedCode: input.wistiaEmbedCode,
         videoThumbnailUrl: input.videoThumbnailUrl,
         bodyCopy: input.bodyCopy,
         optinHeadline: input.optinHeadline,

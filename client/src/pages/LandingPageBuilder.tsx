@@ -54,6 +54,7 @@ interface LandingPage {
   subheadline?: string | null;
   heroImageUrl?: string | null;
   videoEmbedCode?: string | null;
+  wistiaEmbedCode?: string | null;
   bodyCopy?: string | null;
   optinHeadline?: string | null;
   optinButtonText?: string | null;
@@ -104,6 +105,7 @@ const EMPTY_FORM = {
   subheadline: "",
   heroImageUrl: "",
   videoEmbedCode: "",
+  wistiaEmbedCode: "",
   bodyCopy: "",
   optinHeadline: "",
   optinButtonText: "Yes, Send It To Me!",
@@ -191,6 +193,7 @@ export default function LandingPageBuilder() {
       subheadline: page.subheadline || "",
       heroImageUrl: page.heroImageUrl || "",
       videoEmbedCode: page.videoEmbedCode || "",
+      wistiaEmbedCode: (page as any).wistiaEmbedCode || "",
       bodyCopy: page.bodyCopy || "",
       optinHeadline: page.optinHeadline || "",
       optinButtonText: page.optinButtonText || "Yes, Send It To Me!",
@@ -535,6 +538,7 @@ export default function LandingPageBuilder() {
       subheadline: page.subheadline || "",
       heroImageUrl: page.heroImageUrl || "",
       videoEmbedCode: page.videoEmbedCode || "",
+      wistiaEmbedCode: (page as any).wistiaEmbedCode || "",
       bodyCopy: page.bodyCopy || "",
       optinHeadline: page.optinHeadline || "",
       optinButtonText: page.optinButtonText || "Yes, Send It To Me!",
@@ -565,6 +569,7 @@ export default function LandingPageBuilder() {
       internalLabel: form.internalLabel || undefined,
       heroImageUrl: form.heroImageUrl || undefined,
       videoEmbedCode: form.videoEmbedCode || undefined,
+      wistiaEmbedCode: (form as any).wistiaEmbedCode || undefined,
       bodyCopy: form.bodyCopy || undefined,
       optinHeadline: form.optinHeadline || undefined,
       optinLeadMagnet: form.optinLeadMagnet || undefined,
@@ -992,11 +997,28 @@ export default function LandingPageBuilder() {
             </Section>
           )}
 
-          {/* VSL embed (vsl template) */}
-          {form.template === "vsl" && (
+          {/* VSL / Sales video embed */}
+          {(form.template === "vsl" || form.template === "sales") && (
             <Section id="optin" title="Video Embed">
-              <div>
-                <Label>Video Embed Code</Label>
+              {/* Wistia Embed — preferred for Urban Monk videos */}
+              <div className="space-y-1">
+                <Label className="flex items-center gap-2">
+                  <span>Wistia Embed Code</span>
+                  <span className="text-xs font-normal bg-amber-100 text-amber-800 border border-amber-200 rounded px-1.5 py-0.5">Recommended</span>
+                </Label>
+                <Textarea
+                  value={(form as any).wistiaEmbedCode ?? ""}
+                  onChange={e => setForm(f => ({ ...f, wistiaEmbedCode: e.target.value } as any))}
+                  placeholder={`Paste your Wistia embed code here.\nExample:\n<script src="https://fast.wistia.com/embed/medias/abc123.jsonp" async></script>\n<script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>\n<div class="wistia_embed wistia_async_abc123" style="height:360px;width:640px">&nbsp;</div>`}
+                  rows={6}
+                  className="mt-1 font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">Paste the full Wistia embed snippet (inline or popover). Get it from Wistia → Media → Embed &amp; Share → Inline Embed.</p>
+              </div>
+
+              {/* Generic video fallback (YouTube / Vimeo / other) */}
+              <div className="space-y-1 pt-2 border-t border-border">
+                <Label className="text-muted-foreground">Other Video Embed Code <span className="font-normal text-xs">(YouTube, Vimeo, etc.)</span></Label>
                 <Textarea
                   value={form.videoEmbedCode}
                   onChange={e => setForm(f => ({ ...f, videoEmbedCode: e.target.value }))}
@@ -1004,7 +1026,7 @@ export default function LandingPageBuilder() {
                   rows={4}
                   className="mt-1 font-mono text-xs"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Paste the full iframe/script embed from Vimeo, Wistia, or YouTube.</p>
+                <p className="text-xs text-muted-foreground">Used only if no Wistia embed is provided above.</p>
               </div>
             </Section>
           )}

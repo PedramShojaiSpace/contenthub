@@ -392,6 +392,9 @@ export default function LandingPageBuilder() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Track whether auto-create has been triggered to prevent duplicate creates
+  const [autoCreateTriggered, setAutoCreateTriggered] = useState(false);
+
   // Auto-populate form from fromLpId source page (one-time, from LandingPageGenerator)
   useEffect(() => {
     if (fromLpQuery.data && !fromLpPopulated) {
@@ -400,6 +403,8 @@ export default function LandingPageBuilder() {
       const autoSlug = src.title
         ? src.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").substring(0, 60)
         : "";
+      const inferredCampaign = (urlCampaign ?? src.campaign ?? "lo") as Campaign;
+      const inferredTemplate = (urlTemplate ?? src.template ?? "optin") as Template;
       setForm(f => ({
         ...f,
         title: src.title || f.title,
@@ -408,14 +413,63 @@ export default function LandingPageBuilder() {
         headline: src.headline || f.headline,
         subheadline: src.subheadline || f.subheadline,
         bodyCopy: src.bodyCopy || f.bodyCopy,
-        // Use inferred campaign from the offer type unless URL param overrides
-        campaign: (urlCampaign ?? src.campaign ?? f.campaign) as Campaign,
-        ...(urlTemplate ? { template: urlTemplate } : {}),
+        campaign: inferredCampaign,
+        template: inferredTemplate,
       }));
       setFromLpPopulated(true);
-      toast.success("Copy imported from Landing Page Generator — review and publish when ready!");
     }
   }, [fromLpQuery.data, fromLpPopulated]);
+
+  // Auto-create the hosted page as a draft immediately after form is populated
+  // from LandingPageGenerator, so editingId is set and Publish button appears.
+  useEffect(() => {
+    if (
+      cameFromLpGenerator &&
+      fromLpPopulated &&
+      !autoCreateTriggered &&
+      !editingId &&
+      !createMutation.isPending &&
+      fromLpQuery.data &&
+      form.title &&
+      form.slug
+    ) {
+      setAutoCreateTriggered(true);
+      const src = fromLpQuery.data;
+      const autoSlug = src.title
+        ? src.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").substring(0, 60)
+        : "";
+      const payload = {
+        ...form,
+        title: src.title || form.title,
+        slug: form.slug || autoSlug,
+        headline: src.headline || form.headline,
+        subheadline: src.subheadline || form.subheadline,
+        bodyCopy: src.bodyCopy || form.bodyCopy,
+        campaign: ((urlCampaign ?? src.campaign ?? form.campaign) as Campaign),
+        template: ((urlTemplate ?? src.template ?? form.template) as Template),
+        testimonials: [],
+        internalLabel: undefined,
+        heroImageUrl: undefined,
+        videoEmbedCode: undefined,
+        optinHeadline: undefined,
+        optinLeadMagnet: undefined,
+        kajabiFormUrl: undefined,
+        thankYouUrl: undefined,
+        ctaText: src.ctaText || undefined,
+        ctaUrl: src.ctaUrl || undefined,
+        ctaSubtext: undefined,
+        ga4MeasurementId: undefined,
+        customHeadScripts: undefined,
+        accentColor: undefined,
+      };
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          toast.success("Draft saved — review copy and click Publish when ready!");
+        },
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameFromLpGenerator, fromLpPopulated, autoCreateTriggered, editingId, form.title, form.slug]);
 
   // Handle fromLpId query error — show toast and stay in builder
   useEffect(() => {
@@ -622,9 +676,11 @@ export default function LandingPageBuilder() {
 
   if (view === "builder") {
     const isSaving = createMutation.isPending || updateMutation.isPending;
-    // Show loading skeleton while fromLpId or fromWebinarId query is in-flight
+    // Show loading skeleton while fromLpId or fromWebinarId query is in-flight,
+    // or while the auto-create is pending (so user doesn't see a form without Publish button)
     const isLoadingSource = (fromLpId !== null && !fromLpPopulated && fromLpQuery.isLoading)
-      || (fromWebinarId !== null && !fromWebinarPopulated && fromWebinarQuery.isLoading);
+      || (fromWebinarId !== null && !fromWebinarPopulated && fromWebinarQuery.isLoading)
+      || (cameFromLpGenerator && fromLpPopulated && !editingId && createMutation.isPending);
     if (isLoadingSource) {
       return (
         <div className="min-h-screen bg-background">
@@ -638,7 +694,7 @@ export default function LandingPageBuilder() {
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Loading copy from Landing Page Generator…
+              Importing copy from Landing Page Generator…
             </div>
             {[1, 2, 3].map(i => (
               <div key={i} className="border border-border rounded-lg p-4 space-y-3">

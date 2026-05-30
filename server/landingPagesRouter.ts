@@ -692,6 +692,26 @@ Rules:
       };
       const campaign = offerToCampaign[page.offer] ?? "lo";
 
+      // Infer template from offer type
+      const offerToTemplate: Record<string, string> = {
+        lights_on_webinar: "sales",
+        upstream_bundle: "sales",
+        upstream_course: "sales",
+        explorer_tier: "sales",
+        deep_sleep_webinar: "sales",
+        kbmo_testing: "sales",
+        gateway_health: "sales",
+        homesick_screening: "sales",
+        interconnected_screening: "sales",
+      };
+      const template = offerToTemplate[page.offer] ?? "optin";
+
+      // Extract CTA text and URL from copy if present
+      const ctaLine = lines.find(l => /\[.*?\]\(https?:\/\//.test(l));
+      const ctaMatch = ctaLine?.match(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/);
+      const ctaText = ctaMatch?.[1] ?? "";
+      const ctaUrl = ctaMatch?.[2] ?? "";
+
       return {
         id: page.id,
         title: page.title ?? "",
@@ -699,6 +719,9 @@ Rules:
         subheadline,
         bodyCopy,
         campaign,
+        template,
+        ctaText,
+        ctaUrl,
         offer: page.offer,
         personaName: page.personaName ?? "",
       };

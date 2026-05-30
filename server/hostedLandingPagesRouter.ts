@@ -290,8 +290,14 @@ function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtm
     .campaign-badge { display: inline-block; background: var(--accent); color: white; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 20px; margin-bottom: 20px; }
     .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(26px, 4.5vw, 48px); line-height: 1.2; margin-bottom: 16px; }
     .hero p { font-size: clamp(15px, 2vw, 18px); color: #555; max-width: 640px; margin: 0 auto 32px; }
-    .video-wrapper { max-width: 760px; margin: 0 auto 48px; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.15); background: #000; aspect-ratio: 16/9; position: relative; }
-    .video-wrapper iframe, .video-wrapper video { width: 100%; height: 100%; border: none; }
+    .video-wrapper { max-width: 760px; margin: 0 auto 48px; border-radius: 12px; overflow: visible; box-shadow: 0 20px 60px rgba(0,0,0,0.15); position: relative; }
+    /* For standard iframes (YouTube/Vimeo) use 16:9 aspect ratio */
+    .video-wrapper.iframe-video { background: #000; aspect-ratio: 16/9; overflow: hidden; }
+    .video-wrapper.iframe-video iframe, .video-wrapper.iframe-video video { width: 100%; height: 100%; border: none; }
+    /* Wistia responsive wrapper */
+    .wistia_responsive_padding { padding: 56.25% 0 0 0; position: relative; }
+    .wistia_responsive_wrapper { height: 100%; left: 0; position: absolute; top: 0; width: 100%; }
+    .wistia_embed { height: 100%; width: 100%; }
     .video-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; color: #555; font-size: 14px; }
     .cta-section { text-align: center; padding: 40px 24px; }
     .cta-btn { display: inline-block; background: var(--accent); color: white; text-decoration: none; padding: 20px 48px; border-radius: 8px; font-size: 20px; font-weight: 700; font-family: inherit; border: none; cursor: pointer; transition: opacity 0.2s, transform 0.1s; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
@@ -318,12 +324,12 @@ function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtm
     ${page.subheadline ? `<p>${page.subheadline}</p>` : ""}
   </div>
 
-  <div class="video-wrapper" style="max-width:760px;margin:0 auto 48px;">
+  <div class="video-wrapper${page.wistiaEmbedCode ? '' : ' iframe-video'}" style="max-width:760px;margin:0 auto 48px;">
     ${page.wistiaEmbedCode
       ? page.wistiaEmbedCode
       : page.videoEmbedCode
         ? page.videoEmbedCode
-        : `<div class="video-placeholder">Video embed code not yet configured</div>`}
+        : `<div class="video-placeholder" style="min-height:360px;">Video embed code not yet configured</div>`}
   </div>
 
   ${(page.ctaText || page.ctaUrl) ? `
@@ -393,6 +399,12 @@ function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
     .sales-body p { margin-bottom: 18px; color: #333; font-size: 17px; }
     .sales-body ul, .sales-body ol { padding-left: 24px; margin-bottom: 18px; }
     .sales-body li { margin-bottom: 8px; color: #333; font-size: 17px; }
+    .video-wrapper { max-width: 760px; margin: 0 auto 48px; border-radius: 12px; overflow: visible; box-shadow: 0 20px 60px rgba(0,0,0,0.15); position: relative; }
+    .video-wrapper.iframe-video { background: #000; aspect-ratio: 16/9; overflow: hidden; }
+    .video-wrapper.iframe-video iframe, .video-wrapper.iframe-video video { width: 100%; height: 100%; border: none; }
+    .wistia_responsive_padding { padding: 56.25% 0 0 0; position: relative; }
+    .wistia_responsive_wrapper { height: 100%; left: 0; position: absolute; top: 0; width: 100%; }
+    .wistia_embed { height: 100%; width: 100%; }
     .cta-block { background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%); color: white; border-radius: 16px; padding: 48px 40px; text-align: center; margin: 48px 0; }
     .cta-block h2 { font-family: 'Playfair Display', serif; font-size: 28px; margin-bottom: 12px; }
     .cta-block p { opacity: 0.8; margin-bottom: 28px; }
@@ -423,7 +435,7 @@ function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
   </section>
 
   ${(page.wistiaEmbedCode || page.videoEmbedCode) ? `
-  <div style="max-width:760px;margin:0 auto 48px;padding:0 24px;">
+  <div class="video-wrapper${page.wistiaEmbedCode ? '' : ' iframe-video'}" style="max-width:760px;margin:0 auto 48px;">
     ${page.wistiaEmbedCode
       ? page.wistiaEmbedCode
       : page.videoEmbedCode || ""}

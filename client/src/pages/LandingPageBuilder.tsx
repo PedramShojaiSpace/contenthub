@@ -425,6 +425,17 @@ export default function LandingPageBuilder() {
 
   // Auto-create the hosted page as a draft immediately after form is populated
   // from LandingPageGenerator, so editingId is set and Publish button appears.
+  // IMPORTANT: We use a ref to capture the form snapshot at population time so
+  // this effect fires exactly once and does NOT re-run when the user types.
+  const autoCreateFormRef = useRef<typeof form | null>(null);
+  useEffect(() => {
+    if (fromLpPopulated && !autoCreateTriggered && autoCreateFormRef.current === null) {
+      // Snapshot the form at the moment it was populated
+      autoCreateFormRef.current = { ...form };
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromLpPopulated]);
+
   useEffect(() => {
     if (
       cameFromLpGenerator &&
@@ -433,23 +444,24 @@ export default function LandingPageBuilder() {
       !editingId &&
       !createMutation.isPending &&
       fromLpQuery.data &&
-      form.title &&
-      form.slug
+      autoCreateFormRef.current?.title &&
+      autoCreateFormRef.current?.slug
     ) {
       setAutoCreateTriggered(true);
       const src = fromLpQuery.data;
+      const snapshot = autoCreateFormRef.current!;
       const autoSlug = src.title
         ? src.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").substring(0, 60)
         : "";
       const payload = {
-        ...form,
-        title: src.title || form.title,
-        slug: form.slug || autoSlug,
-        headline: src.headline || form.headline,
-        subheadline: src.subheadline || form.subheadline,
-        bodyCopy: src.bodyCopy || form.bodyCopy,
-        campaign: ((urlCampaign ?? src.campaign ?? form.campaign) as Campaign),
-        template: ((urlTemplate ?? src.template ?? form.template) as Template),
+        ...snapshot,
+        title: src.title || snapshot.title,
+        slug: snapshot.slug || autoSlug,
+        headline: src.headline || snapshot.headline,
+        subheadline: src.subheadline || snapshot.subheadline,
+        bodyCopy: src.bodyCopy || snapshot.bodyCopy,
+        campaign: ((urlCampaign ?? src.campaign ?? snapshot.campaign) as Campaign),
+        template: ((urlTemplate ?? src.template ?? snapshot.template) as Template),
         testimonials: [],
         internalLabel: undefined,
         heroImageUrl: undefined,
@@ -472,7 +484,7 @@ export default function LandingPageBuilder() {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameFromLpGenerator, fromLpPopulated, autoCreateTriggered, editingId, form.title, form.slug]);
+  }, [cameFromLpGenerator, fromLpPopulated, autoCreateTriggered, editingId]);
 
   // Handle fromLpId query error — show toast and stay in builder
   useEffect(() => {

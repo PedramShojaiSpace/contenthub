@@ -3691,3 +3691,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Add "Sync Analytics" button to Published column header in Kanban
 - [ ] Show last-synced timestamp per card after sync
 - [ ] Add analytics source badge (YouTube / WordPress) on synced cards
+
+## Internal Link Optimizer (Auto-Inject on Publish)
+- [x] Write server/internalLinkOptimizer.ts module: identifies keyword campaign, pillar post, and sibling cluster posts
+- [x] Inject 2–3 contextual anchor-text links into new post HTML body (first occurrence of each focusKeyword phrase)
+- [x] Update pillar page in WordPress: append new post to Related Reading section (creates section if not present)
+- [x] Wire runInternalLinkOptimizer() into blog.publish procedure in routers.ts (Step 9b, fire-and-forget, non-blocking)
+- [x] Add ctx destructuring to blog.publish mutation handler to expose ctx.user.id
+- [x] TypeScript: 0 errors

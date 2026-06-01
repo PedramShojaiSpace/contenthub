@@ -383,7 +383,11 @@ export const newsfeedRouter = router({
       if (!article) throw new Error("Article not found");
       if (!article.commentary) throw new Error("Article has no commentary yet");
 
-      if (article.xVersion) return { xVersion: article.xVersion };
+      // Return cached version only if it looks clean (not truncated mid-sentence).
+      // If it ends with '…' it was cut by the old hard-truncation fallback — regenerate it.
+      if (article.xVersion && !article.xVersion.trim().endsWith('…') && !article.xVersion.trim().endsWith('...')) {
+        return { xVersion: article.xVersion };
+      }
 
       const xVersion = await wrapLLM(() => generateXVersion(article.commentary!, article.url));
       await database
@@ -434,11 +438,11 @@ export const newsfeedRouter = router({
         messages: [
           {
             role: "system",
-            content: "You are a social media editor. Your only job is to shorten X/Twitter posts to fit within a strict character limit while preserving the core insight. Be ruthless — cut filler, merge ideas, use shorter synonyms. Never add new ideas.",
+            content: "You are a social media editor. Your only job is to shorten X/Twitter posts to fit within a strict character limit while preserving the core insight. Be ruthless — cut filler, merge ideas, use shorter synonyms. Never add new ideas. Always end with a complete sentence — never truncate mid-thought or use ellipsis.",
           },
           {
             role: "user",
-            content: `This X/Twitter post is too long. Shorten it to STRICTLY ≤${STRICT_BUDGET} characters. Preserve the sharpest insight. No hashtags, no emojis, no URL.\n\nCURRENT TEXT (${textOnly.length} chars):\n${textOnly}\n\nWrite ONLY the shortened text. Count every character.`,
+            content: `This X/Twitter post is too long. Shorten it to STRICTLY ≤${STRICT_BUDGET} characters. Preserve the sharpest insight. No hashtags, no emojis, no URL. End with a complete sentence.\n\nCURRENT TEXT (${textOnly.length} chars):\n${textOnly}\n\nWrite ONLY the shortened text. Count every character. If your first draft is over ${STRICT_BUDGET} chars, rewrite it shorter until it fits.`,
           },
         ],
       });
@@ -447,9 +451,22 @@ export const newsfeedRouter = router({
       if (!content) throw new Error("LLM returned empty response");
       let shortened = typeof content === "string" ? content.trim() : JSON.stringify(content);
 
-      // Hard safety truncation
+      // Hard safety truncation — cut at sentence boundary to avoid mid-thought cuts
       if (shortened.length > STRICT_BUDGET) {
-        shortened = shortened.slice(0, STRICT_BUDGET - 1).replace(/\s+\S*$/, "") + "…";
+        const truncated = shortened.slice(0, STRICT_BUDGET);
+        const lastSentenceEnd = Math.max(
+          truncated.lastIndexOf('. '),
+          truncated.lastIndexOf('! '),
+          truncated.lastIndexOf('? '),
+          truncated.lastIndexOf('.'),
+          truncated.lastIndexOf('!'),
+          truncated.lastIndexOf('?'),
+        );
+        if (lastSentenceEnd > STRICT_BUDGET * 0.5) {
+          shortened = shortened.slice(0, lastSentenceEnd + 1).trim();
+        } else {
+          shortened = shortened.slice(0, STRICT_BUDGET).replace(/\s+\S*$/, "").trim();
+        }
       }
 
       // X posts do not include the URL in the body — Buffer attaches it as a link card.

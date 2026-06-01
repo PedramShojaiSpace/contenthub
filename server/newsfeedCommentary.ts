@@ -173,13 +173,14 @@ IMPORTANT: Do NOT include the article URL anywhere in the post — it will be ap
 const X_VERSION_SYSTEM = `You are Dr. Pedram Shojai, OMD. You write punchy, high-signal X/Twitter posts.
 
 Rules:
-- Maximum 257 characters of text (NOT counting the URL — it will be appended separately)
+- HARD LIMIT: 240 characters maximum (count every single character before responding)
 - Extract the single sharpest insight from the LinkedIn post
 - Direct, confident, no filler words
 - No hashtags
 - No emojis
 - Do NOT include the URL in your response — Buffer attaches it as a link card automatically
-- End with a period or natural sentence ending`;
+- End with a complete sentence — never cut off mid-thought
+- If you are over 240 characters, rewrite the sentence shorter — do NOT truncate with ellipsis`;
 
 export async function generateXVersion(
   linkedInCommentary: string,
@@ -187,14 +188,19 @@ export async function generateXVersion(
 ): Promise<string> {
   // X posts do not include the URL in the body — Buffer attaches it as a link card.
   // Full 280-char budget is available for the tweet text.
-  // We target ≤250 to leave a comfortable safety buffer.
-  const TEXT_BUDGET = 250;
-  const userPrompt = `Here is a LinkedIn post I wrote. Condense it into a single punchy X/Twitter post of ≤${TEXT_BUDGET} characters that captures the sharpest insight.
+  // We target ≤240 to leave a comfortable safety buffer and ensure the LLM writes a complete sentence.
+  const TEXT_BUDGET = 240;
+  const userPrompt = `Here is a LinkedIn post I wrote. Condense it into a single punchy X/Twitter post that captures the sharpest insight.
 
 LINKEDIN POST:
 ${linkedInCommentary}
 
-Write ONLY the tweet text (no URL, no hashtags). Maximum ${TEXT_BUDGET} characters. Count carefully — this is a hard limit.`;
+Rules:
+- Maximum ${TEXT_BUDGET} characters (count every character)
+- Write ONLY the tweet text (no URL, no hashtags)
+- End with a complete sentence — never end mid-thought or with ellipsis
+- If your first draft is over ${TEXT_BUDGET} chars, rewrite it shorter until it fits
+- After writing, count the characters yourself and confirm it is ≤${TEXT_BUDGET}`;
 
   const response = await invokeLLM({
     messages: [
@@ -207,9 +213,26 @@ Write ONLY the tweet text (no URL, no hashtags). Maximum ${TEXT_BUDGET} characte
   if (!content) throw new Error("LLM returned empty X version");
   let tweet = typeof content === "string" ? content.trim() : JSON.stringify(content);
 
-  // Hard truncate at TEXT_BUDGET chars if LLM went over (safety net)
+  // Hard truncate at TEXT_BUDGET chars if LLM went over (safety net).
+  // Truncate at the last complete sentence to avoid mid-thought cuts.
   if (tweet.length > TEXT_BUDGET) {
-    tweet = tweet.slice(0, TEXT_BUDGET - 1).replace(/\s+\S*$/, "") + "…";
+    // Try to find the last sentence boundary (. ! ?) within budget
+    const truncated = tweet.slice(0, TEXT_BUDGET);
+    const lastSentenceEnd = Math.max(
+      truncated.lastIndexOf('. '),
+      truncated.lastIndexOf('! '),
+      truncated.lastIndexOf('? '),
+      truncated.lastIndexOf('.'),
+      truncated.lastIndexOf('!'),
+      truncated.lastIndexOf('?'),
+    );
+    if (lastSentenceEnd > TEXT_BUDGET * 0.5) {
+      // Cut at sentence boundary (include the punctuation)
+      tweet = tweet.slice(0, lastSentenceEnd + 1).trim();
+    } else {
+      // No good sentence boundary — cut at last word boundary
+      tweet = tweet.slice(0, TEXT_BUDGET).replace(/\s+\S*$/, "").trim();
+    }
   }
 
   // Do NOT append the URL to X posts.

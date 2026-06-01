@@ -5112,8 +5112,11 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           return t.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
         };
 
-        for (const item of published) {
-          if (!item.wpPostId || !item.focusKeyword) continue;
+        // Process a single post — returns a BulkResult
+        const processPost = async (item: (typeof published)[number]): Promise<BulkResult> => {
+          if (!item.wpPostId || !item.focusKeyword) {
+            return { id: item.id, title: item.title, wpPostId: item.wpPostId ?? 0, status: "already_ok", fixed: [] };
+          }
           const fixedFields: string[] = [];
           try {
             const livePost = await fetchSingleWpPost(item.wpPostId);
@@ -5127,7 +5130,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
               const kw = focusKw.toLowerCase();
               const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
               const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
-              const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>((?:[\s\S])*?)<\/h[23]>/gi;
+              const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>((?: [\s\S])*?)<\/h[23]>/gi;
               const htmlHeadings = Array.from(wpHtmlBody.matchAll(htmlHeadingRegex));
               const htmlH2s = htmlHeadings.filter((m) => m[1].toLowerCase() === "h2");
               const stripTags = (s: string) => s.replace(/<[^>]+>/g, "").trim();
@@ -5175,48 +5178,46 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
               fixedFields.push("meta_desc_force_truncated");
             }
 
-            // Push to WordPress
-            await updateWpPostContent(item.wpPostId, wpHtmlBody);
-            const yoastResult = await updateWpPostYoast({
-              wpPostId: item.wpPostId,
-              seoTitle: seoTitle || undefined,
-              metaDescription: metaDesc || undefined,
-              focusKeyword: focusKw || undefined,
-            });
-
-            // Mark as fixed in DB — yoastFixedAt lets the scoreboard show amber
-            // immediately even before Yoast recalculates _yoast_wpseo_linkdex.
+            // Push to WordPress — run content + Yoast updates in parallel
             const now = Date.now();
+            await Promise.all([
+              updateWpPostContent(item.wpPostId, wpHtmlBody),
+              updateWpPostYoast({
+                wpPostId: item.wpPostId,
+                seoTitle: seoTitle || undefined,
+                metaDescription: metaDesc || undefined,
+                focusKeyword: focusKw || undefined,
+              }),
+            ]);
+
+            // Mark as fixed in DB
             await updateContentItem(item.id, {
               yoastMetaDescription: metaDesc,
               yoastFixedAt: now,
             });
 
-            // Try to re-fetch the Yoast score immediately — Yoast may have
-            // recalculated linkdex if the snippet is installed.
-            try {
-              const { getWpYoastScore } = await import("./wordpress");
-              const { seoScore } = await getWpYoastScore(item.wpPostId);
-              if (seoScore) {
-                await updateContentItem(item.id, {
-                  yoastScore: seoScore,
-                  yoastScoreFetchedAt: now,
-                });
-                if (seoScore === "good") fixedFields.push("score_now_green");
-              }
-            } catch { /* non-fatal */ }
-
-            if (fixedFields.filter(f => !f.startsWith("score_")).length === 0) {
-              alreadyOkCount++;
-              results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, status: "already_ok", fixed: [] });
+            if (fixedFields.length === 0) {
+              return { id: item.id, title: item.title, wpPostId: item.wpPostId, status: "already_ok", fixed: [] };
             } else {
-              fixedCount++;
-              results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId, status: "fixed", fixed: fixedFields });
+              return { id: item.id, title: item.title, wpPostId: item.wpPostId, status: "fixed", fixed: fixedFields };
             }
           } catch (err: unknown) {
-            errorCount++;
             const msg = err instanceof Error ? err.message : String(err);
-            results.push({ id: item.id, title: item.title, wpPostId: item.wpPostId ?? 0, status: "error", fixed: [], error: msg });
+            return { id: item.id, title: item.title, wpPostId: item.wpPostId ?? 0, status: "error", fixed: [], error: msg };
+          }
+        };
+
+        // Process in parallel batches of 5 to stay well within gateway timeouts
+        // (5 posts × ~2s each = ~10s per batch; 69 posts / 5 = ~14 batches = ~140s total)
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < published.length; i += BATCH_SIZE) {
+          const batch = published.slice(i, i + BATCH_SIZE);
+          const batchResults = await Promise.all(batch.map(processPost));
+          for (const r of batchResults) {
+            results.push(r);
+            if (r.status === "fixed") fixedCount++;
+            else if (r.status === "already_ok") alreadyOkCount++;
+            else errorCount++;
           }
         }
 

@@ -129,6 +129,7 @@ type ContentItem = {
   readabilityTransitionPct: number | null;
   readabilityMaxRun: number | null;
   readabilityUpdatedAt: number | null;
+  youtubeVideoId: string | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -266,6 +267,38 @@ function AnalyticsPanel({
   const [comments, setComments] = useState(String(item.analyticsComments ?? 0));
   const [shares, setShares] = useState(String(item.analyticsShares ?? 0));
   const [editing, setEditing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const utils = trpc.useUtils();
+
+  // Determine analytics source for this item
+  const hasYouTube = !!(item as any).youtubeVideoId;
+  const hasWP = !!(item as any).wpPostId;
+  const syncSource: "youtube" | "wordpress" | null = hasYouTube ? "youtube" : hasWP ? "wordpress" : null;
+
+  const syncMutation = trpc.analyticsSync.syncAll.useMutation({
+    onSuccess: (result) => {
+      setIsSyncing(false);
+      const detail = result.details.find((d: any) => d.id === item.id);
+      if (detail && !detail.error) {
+        if (detail.views !== null) setViews(String(detail.views));
+        if (detail.likes !== null) setLikes(String(detail.likes));
+        if (detail.comments !== null) setComments(String(detail.comments));
+        onUpdate(item.id, {
+          analyticsViews: detail.views ?? undefined,
+          analyticsLikes: detail.likes ?? undefined,
+          analyticsComments: detail.comments ?? undefined,
+        });
+        utils.content.list.invalidate();
+      }
+    },
+    onError: () => setIsSyncing(false),
+  });
+
+  const handleSync = () => {
+    if (!syncSource) return;
+    setIsSyncing(true);
+    syncMutation.mutate({ ids: [item.id] });
+  };
 
   const handleSave = () => {
     onUpdate(item.id, {
@@ -282,31 +315,64 @@ function AnalyticsPanel({
     ? ((totalEngagement / (parseInt(views) || 1)) * 100).toFixed(1)
     : "0.0";
 
+  // Metrics available per source:
+  // YouTube: views, likes, comments (no shares — YT API doesn't expose share count)
+  // WordPress: comments only (no views/likes without Jetpack)
+  // None: all metrics are manual-only
+  const metricConfig = [
+    { key: "views", label: "Views", value: views, setter: setViews, icon: <BarChart2 className="h-3 w-3" />, syncable: hasYouTube },
+    { key: "likes", label: "Likes", value: likes, setter: setLikes, icon: <Heart className="h-3 w-3" />, syncable: hasYouTube },
+    { key: "comments", label: "Comments", value: comments, setter: setComments, icon: <MessageCircle className="h-3 w-3" />, syncable: hasYouTube || hasWP },
+    { key: "shares", label: "Shares", value: shares, setter: setShares, icon: <Repeat2 className="h-3 w-3" />, syncable: false },
+  ];
+
   return (
     <div className="mt-3 p-3 rounded-lg bg-muted/20 border border-border/50 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <BarChart2 className="h-3 w-3" />
           Analytics
+          {syncSource === "youtube" && (
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-100 text-red-700 border border-red-200">YouTube</span>
+          )}
+          {syncSource === "wordpress" && (
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">WordPress</span>
+          )}
+          {!syncSource && (
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted text-muted-foreground border border-border">manual</span>
+          )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={() => editing ? handleSave() : setEditing(true)}
-        >
-          {editing ? "Save" : "Edit"}
-        </Button>
+        <div className="flex items-center gap-1">
+          {syncSource && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-primary hover:text-primary"
+              onClick={handleSync}
+              disabled={isSyncing}
+              title={`Sync from ${syncSource === "youtube" ? "YouTube" : "WordPress"}`}
+            >
+              {isSyncing ? (
+                <span className="h-3 w-3 border border-primary border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => editing ? handleSave() : setEditing(true)}
+          >
+            {editing ? "Save" : "Edit"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-2">
-        {[
-          { label: "Views", value: views, setter: setViews, icon: <BarChart2 className="h-3 w-3" /> },
-          { label: "Likes", value: likes, setter: setLikes, icon: <Heart className="h-3 w-3" /> },
-          { label: "Comments", value: comments, setter: setComments, icon: <MessageCircle className="h-3 w-3" /> },
-          { label: "Shares", value: shares, setter: setShares, icon: <Repeat2 className="h-3 w-3" /> },
-        ].map(({ label, value, setter, icon }) => (
-          <div key={label} className="text-center">
+        {metricConfig.map(({ key, label, value, setter, icon, syncable }) => (
+          <div key={key} className="text-center">
             <div className="flex items-center justify-center gap-0.5 text-muted-foreground mb-1">
               {icon}
             </div>
@@ -319,8 +385,8 @@ function AnalyticsPanel({
                 min="0"
               />
             ) : (
-              <div className="text-base font-bold text-foreground">
-                {parseInt(value).toLocaleString()}
+              <div className={`text-base font-bold ${!syncable && !syncSource ? "text-muted-foreground/40" : "text-foreground"}`}>
+                {!syncable && !syncSource ? "—" : parseInt(value).toLocaleString()}
               </div>
             )}
             <div className="text-[10px] text-muted-foreground">{label}</div>
@@ -1669,6 +1735,40 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
+
+// --- Sync All Analytics Button ---
+function SyncAllAnalyticsButton({ count }: { count: number }) {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastResult, setLastResult] = useState<{ updated: number; errors: number } | null>(null);
+  const utils = trpc.useUtils();
+
+  const syncMutation = trpc.analyticsSync.syncAll.useMutation({
+    onSuccess: (result) => {
+      setIsSyncing(false);
+      setLastResult({ updated: result.updated, errors: result.errors });
+      utils.content.list.invalidate();
+    },
+    onError: () => setIsSyncing(false),
+  });
+
+  return (
+    <button
+      onClick={() => { setIsSyncing(true); setLastResult(null); syncMutation.mutate({}); }}
+      disabled={isSyncing}
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-sky-600/50 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors disabled:opacity-50"
+      title="Pull real views/likes/comments from YouTube and WordPress for all published items"
+    >
+      {isSyncing ? (
+        <><span className="h-3 w-3 border border-sky-600 border-t-transparent rounded-full animate-spin" />Syncing analytics...</>
+      ) : lastResult ? (
+        <><RefreshCw className="h-3 w-3" /> Synced {lastResult.updated} items{lastResult.errors > 0 ? ` (${lastResult.errors} errors)` : ""}</>
+      ) : (
+        <><RefreshCw className="h-3 w-3" /> Sync Analytics ({count})</>
+      )}
+    </button>
+  );
+}
+
 export default function CommandCenter() {
   const [, setLocation] = useLocation();
   const search = useSearch();
@@ -3093,6 +3193,12 @@ export default function CommandCenter() {
                     <span className="ml-1 opacity-70">✕</span>
                   )}
                 </button>
+              )}
+              {/* Sync All Analytics — syncs YouTube + WP published items */}
+              {items.filter((i) => i.status === "published" && ((i as any).youtubeVideoId || i.wpPostId)).length > 0 && (
+                <SyncAllAnalyticsButton
+                  count={items.filter((i) => i.status === "published" && ((i as any).youtubeVideoId || i.wpPostId)).length}
+                />
               )}
               {/* Batch Publish Approved button */}
               {items.filter((i) => i.status === "approved").length > 0 && (

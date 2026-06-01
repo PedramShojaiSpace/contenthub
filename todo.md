@@ -3699,3 +3699,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Wire runInternalLinkOptimizer() into blog.publish procedure in routers.ts (Step 9b, fire-and-forget, non-blocking)
 - [x] Add ctx destructuring to blog.publish mutation handler to expose ctx.user.id
 - [x] TypeScript: 0 errors
+
+## Content Scoreboard Auto-Fix Performance Fix
+- [x] Fix bulkFixYoastIssues timeout error ("AI is not able to generate the fix") — root cause was sequential processing of 69 posts (207 WP API calls, 6+ min) exceeding gateway timeout
+- [x] Rewrite to parallel batches of 5 posts — reduces total time from 6+ min to ~140s
+- [x] Run content + Yoast WP updates in parallel per post (Promise.all)
+- [x] Remove blocking getWpYoastScore re-fetch from the hot path (non-critical, was adding 4th API call per post)
+- [x] All 429 tests pass after changes

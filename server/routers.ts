@@ -5480,6 +5480,41 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         return { copy: cleaned };
       }),
 
+    /**
+     * Returns all focus keywords already used on published blog posts.
+     * Used by the Keyword Strategy UI to flag keyphrase cannibalization
+     * before a new post is created — so you never compete with yourself.
+     */
+    getUsedFocusKeywords: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { keywords: [] };
+      const { contentItems } = await import("../drizzle/schema");
+      const { eq, and, isNotNull } = await import("drizzle-orm");
+      const rows = await db
+        .select({
+          focusKeyword: contentItems.focusKeyword,
+          title: contentItems.title,
+          publishUrl: contentItems.publishUrl,
+          wpPostId: contentItems.wpPostId,
+        })
+        .from(contentItems)
+        .where(
+          and(
+            eq(contentItems.platform, "blog"),
+            isNotNull(contentItems.focusKeyword)
+          )
+        );
+      // Return normalised lowercase keywords with their post context
+      const keywords = rows
+        .filter((r: any) => r.focusKeyword)
+        .map((r: any) => ({
+          keyword: (r.focusKeyword as string).toLowerCase().trim(),
+          title: r.title as string,
+          publishUrl: r.publishUrl as string | null,
+        }));
+      return { keywords };
+    }),
+
   }),
 
   personas: personasRouter,

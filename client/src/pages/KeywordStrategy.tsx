@@ -416,6 +416,8 @@ function TargetRow({
   rankHistory = [],
   onUpdate,
   onRemove,
+  usedKeywords = new Set(),
+  usedKeywordDetails = [],
 }: {
   target: {
     id: number;
@@ -435,6 +437,8 @@ function TargetRow({
   rankHistory?: Array<{ position: number | null; weekLabel: string }>;
   onUpdate: (id: number, updates: Record<string, unknown>) => void;
   onRemove: (id: number) => void;
+  usedKeywords?: Set<string>;
+  usedKeywordDetails?: Array<{ keyword: string; title: string; publishUrl: string | null }>;
 }) {
   const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(false);
@@ -455,6 +459,12 @@ function TargetRow({
       ? "text-amber-600"
       : "text-rose-600";
 
+  // Keyphrase cannibalization check: flag if this exact keyword is already
+  // used as a focus keyphrase on a published post.
+  const kwNorm = target.keyword.toLowerCase().trim();
+  const isCannibalizing = usedKeywords.has(kwNorm);
+  const conflictPost = usedKeywordDetails.find((k) => k.keyword === kwNorm);
+
   return (
     <div className="border border-border rounded-lg bg-card hover:bg-muted/30 transition-all">
       <div className="flex items-center gap-3 px-4 py-3">
@@ -474,7 +484,17 @@ function TargetRow({
 
         {/* Keyword */}
         <div className="flex-1 min-w-0">
-          <span className="text-sm text-foreground font-medium truncate block">{target.keyword}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm text-foreground font-medium truncate">{target.keyword}</span>
+            {isCannibalizing && (
+              <span
+                className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-700 border border-rose-300"
+                title={conflictPost ? `Keyphrase already used on: "${conflictPost.title}" — Yoast will flag this as a duplicate. Use a more specific long-tail variant.` : "Keyphrase already used on a published post — Yoast will flag this as a duplicate."}
+              >
+                ⚠ Duplicate KW
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Type badge */}
@@ -524,10 +544,17 @@ function TargetRow({
               const params = new URLSearchParams({
                 keyword: target.keyword,
                 platform: "blog",
+                // Always pass focusKeyword so the blog generator uses the exact
+                // cluster keyword — not a random keyphrase the AI invents.
+                focusKeyword: target.keyword,
               });
               if (target.currentPosition) {
-                params.set("focusKeyword", target.keyword);
                 params.set("currentPosition", target.currentPosition);
+              }
+              if (target.notes) {
+                // Pass the content angle notes so the AI can derive a unique
+                // long-tail keyphrase variant rather than reusing the pillar.
+                params.set("contentAngle", target.notes);
               }
               setLocation(`/studio?${params.toString()}`);
             }}
@@ -713,6 +740,12 @@ export default function KeywordStrategy() {
   const historyByTarget = rankHistoryData?.historyByTarget ?? {};
 
   const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
+
+  // Fetch all focus keywords already used on published blog posts
+  // so we can flag keyphrase cannibalization before a new post is created.
+  const { data: usedKwData } = trpc.blog.getUsedFocusKeywords.useQuery();
+  const usedKeywords = new Set((usedKwData?.keywords ?? []).map((k: { keyword: string }) => k.keyword));
+  const usedKeywordDetails = usedKwData?.keywords ?? [];
 
   const addTargetMut = trpc.kwStrategy.addTarget.useMutation({
     onSuccess: () => {
@@ -1106,6 +1139,8 @@ export default function KeywordStrategy() {
                                 rankHistory={historyByTarget[t.id] ?? []}
                                 onUpdate={(id, updates) => updateTargetMut.mutate({ id, ...updates } as Parameters<typeof updateTargetMut.mutate>[0])}
                                 onRemove={(id) => removeTargetMut.mutate({ id })}
+                                usedKeywords={usedKeywords}
+                                usedKeywordDetails={usedKeywordDetails}
                               />
                             ))}
                           </div>

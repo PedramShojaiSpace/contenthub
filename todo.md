@@ -3683,3 +3683,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Strengthen outbound links instruction in BLOG_CONTENT_RULES to MANDATORY HARD REQUIREMENT
 - [x] Add Yoast SEO CHECK #4b to quality gate: verify at least 2 outbound link placeholders before outputting
 - [x] Add post-generation outbound link audit: if no external links resolved, inject fallback PubMed citation before FAQ section
+
+## Analytics Sync (Real Data Only)
+- [ ] Build analyticsSync tRPC procedure: sync YouTube stats (views/likes/comments) for items with youtubeVideoId
+- [ ] Build analyticsSync tRPC procedure: sync WordPress comment count for items with wpPostId
+- [ ] Hide analytics display on Kanban cards that have neither wpPostId nor youtubeVideoId (no fake zeros)
+- [ ] Add "Sync Analytics" button to Published column header in Kanban
+- [ ] Show last-synced timestamp per card after sync
+- [ ] Add analytics source badge (YouTube / WordPress) on synced cards

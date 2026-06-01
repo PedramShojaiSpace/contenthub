@@ -109,6 +109,7 @@ import { testimonialsRouter } from "./testimonialsRouter";
 import { kajabiOptIn } from "./kajabiApi";
 import { videoToBlogRouter } from "./videoToBlogRouter";
 import { blogToYoutubeRouter } from "./blogToYoutubeRouter";
+import { analyticsSyncRouter } from "./analyticsSyncRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 
@@ -439,6 +440,7 @@ export const appRouter = router({
   testimonials: testimonialsRouter,
   videoToBlog: videoToBlogRouter,
   blogToYoutube: blogToYoutubeRouter,
+  analyticsSync: analyticsSyncRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

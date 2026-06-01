@@ -143,6 +143,13 @@ export default function VideoToBlog() {
   const fetchVideoInfo = trpc.videoToBlog.fetchVideoInfo.useMutation({
     onSuccess: (data) => {
       setVideoInfo(data);
+      // Auto-suggest a focus keyword from the video title if none entered yet
+      if (!focusKeyword && data.title) {
+        // Strip channel suffix (" | The Urban Monk", " | Urban Monk", etc.) and take first 4 words
+        const cleanTitle = data.title.replace(/\s*[|\-–—].*$/, "").trim();
+        const words = cleanTitle.split(/\s+/).slice(0, 4).join(" ").toLowerCase();
+        setFocusKeyword(words);
+      }
       if (!data.hasTranscript) {
         toast.warning("No transcript found for this video. The blog will be generated from the title and description only.");
       } else {
@@ -359,13 +366,21 @@ export default function VideoToBlog() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Focus Keyword <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <label className="text-sm font-medium">
+                Focus Keyword
+                <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">(required for Yoast SEO)</span>
+              </label>
               <Input
-                placeholder="e.g. intermittent fasting benefits"
+                placeholder="e.g. kung fu philosophy, intermittent fasting benefits"
                 value={focusKeyword}
                 onChange={(e) => setFocusKeyword(e.target.value)}
                 disabled={generateBlog.isPending || !!blogResult}
+                className={!focusKeyword && videoInfo ? "border-amber-400 ring-1 ring-amber-400/50" : ""}
               />
+              <p className="text-xs text-muted-foreground">
+                2–4 words. Used by Yoast to check your intro, subheadings, and meta description.
+                {videoInfo && !focusKeyword && <span className="text-amber-600 dark:text-amber-400 font-medium"> — auto-suggested from title, please review.</span>}
+              </p>
             </div>
 
             <button
@@ -391,15 +406,18 @@ export default function VideoToBlog() {
 
             {!blogResult ? (
               <Button
-                onClick={() =>
+                onClick={() => {
+                  if (!focusKeyword.trim()) {
+                    toast.warning("No focus keyword set — Yoast SEO checks will be skipped. Add a 2–4 word keyword for best results.");
+                  }
                   generateBlog.mutate({
                     videoId: videoInfo.videoId,
                     videoTitle: videoInfo.title,
                     transcript: videoInfo.transcript,
                     customInstructions: customInstructions || undefined,
-                    focusKeyword: focusKeyword || undefined,
-                  })
-                }
+                    focusKeyword: focusKeyword.trim() || undefined,
+                  });
+                }}
                 disabled={generateBlog.isPending}
                 className="w-full"
               >

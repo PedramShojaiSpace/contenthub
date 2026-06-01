@@ -112,6 +112,7 @@ import { blogToYoutubeRouter } from "./blogToYoutubeRouter";
 import { analyticsSyncRouter } from "./analyticsSyncRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
+import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
 
 /**
  * cleanSocialCopy — post-processing guard that strips structural labels the LLM
@@ -3015,7 +3016,7 @@ Return BOTH in this exact format:
           wpCategoryOverride: z.number().optional(),    // Manual WP category ID override (subcategory)
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const wpBaseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
 
         // Step 0a: Sanitize and guarantee a clean permalink slug
@@ -3505,6 +3506,23 @@ Return BOTH in this exact format:
             // Non-fatal — keyword strategy publish-back failure should not block the publish
             console.error("[WP] Keyword target publish-back failed (non-fatal):", kErr);
           }
+        }
+
+        // Step 9b: Internal Link Optimizer — fire-and-forget (non-blocking)
+        // Injects 2–3 contextual internal links into the new post and adds the new post
+        // to the Related Reading section of the pillar page in the same keyword campaign.
+        if (newStatus !== "scheduled" && publishInput.focusKeyword && wpHtmlBody) {
+          runInternalLinkOptimizer({
+            newPostWpId: post.id,
+            newPostHtmlBody: wpHtmlBody,
+            newPostFocusKeyword: publishInput.focusKeyword,
+            newPostTitle: publishInput.title ?? "",
+            newPostUrl: post.link ?? "",
+            userId: ctx.user.id,
+          }).then((linkResult) => {
+            console.log(`[InternalLinks] Injected ${linkResult.linksInjected} links, pillarUpdated=${linkResult.pillarUpdated}`);
+            if (linkResult.errors.length > 0) console.warn("[InternalLinks] Errors:", linkResult.errors);
+          }).catch((e) => console.error("[InternalLinks] Fatal error:", e));
         }
 
         // Step 9: Upsert wp_post_index with topicCluster so the scoreboard badge

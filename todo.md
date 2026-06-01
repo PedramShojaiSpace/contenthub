@@ -3675,3 +3675,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Add Wistia embed textarea field in LandingPageBuilder.tsx (Hero Section, below videoEmbedCode)
 - [ ] Render Wistia embed in renderLandingPageHtml for VSL and Sales templates
 - [ ] Add Wistia embed preview in the builder preview iframe
+
+## YouTube-to-Blog Yoast SEO Improvements
+- [x] Auto-suggest focus keyword from video title when video is fetched (strips channel suffix, takes first 4 words)
+- [x] Label focus keyword field as "required for Yoast SEO" with amber highlight when empty
+- [x] Show warning toast if user clicks Generate without a focus keyword
+- [x] Strengthen outbound links instruction in BLOG_CONTENT_RULES to MANDATORY HARD REQUIREMENT
+- [x] Add Yoast SEO CHECK #4b to quality gate: verify at least 2 outbound link placeholders before outputting
+- [x] Add post-generation outbound link audit: if no external links resolved, inject fallback PubMed citation before FAQ section

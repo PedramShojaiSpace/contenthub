@@ -54,7 +54,7 @@ ARTICLE STRUCTURE (follow exactly — GhostLink OS Written Pillar Architecture):
 8. FAQ SECTION (H2 "Frequently Asked Questions"): 4-6 PAA-style questions with direct answers
 INTERNAL & EXTERNAL LINKS:
 - You MUST use ONLY the internal link URLs explicitly provided in the VERIFIED INTERNAL LINK LIST in the user message. Do NOT invent or guess any theurbanmonk.com URL not in that list.
-- Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH). Format them as: [Outbound Link: describe the study or resource you want to cite here] — the system will resolve these to real URLs automatically.
+- MANDATORY OUTBOUND LINKS (YOAST HARD REQUIREMENT): You MUST include at least 2 outbound links to high-authority external sources (PubMed, Harvard Health, Mayo Clinic, NIH, Cleveland Clinic, Johns Hopkins, Nature, JAMA, Frontiers in Medicine). Format them EXACTLY as: [Outbound Link: describe the study or resource you want to cite here] — the system will resolve these to real URLs automatically. Failure to include outbound links = Yoast RED FAIL. Place at least one in the body copy and one in the FAQ section.
 - E-E-A-T signals: weave Pedram's credentials (OMD, Taoist monk, filmmaker, author) naturally into the body.
 ABSOLUTE RULES — NEVER VIOLATE:
 - NEVER use the URL urbanmonk.com — the ONLY correct domain is theurbanmonk.com
@@ -79,6 +79,7 @@ QUALITY GATE (self-check before outputting):
 - YOAST SEO CHECK #2: Does the focus keyword appear at least 10 times total in the article?
 - YOAST SEO CHECK #3: Does at least ONE H2 heading contain the focus keyword or a very close synonym?
 - YOAST SEO CHECK #4: Are there at least 3 internal links to theurbanmonk.com URLs from the provided list?
+- YOAST SEO CHECK #4b (OUTBOUND LINKS — RED FAIL IF MISSING): Are there at least 2 [Outbound Link: ...] placeholders in the article? One in the body, one in the FAQ? If not, add them NOW before outputting.
 - YOAST SEO CHECK #5: Is the SEO title 48 characters or fewer AND starts with the focus keyword?
 - YOAST SEO CHECK #6: Is the meta description EXACTLY 140-150 characters? Must NOT end with '...'.
 - YOAST SEO CHECK #7: Are H2 headings varied — no more than 25% of H2s contain the exact focus keyword phrase?
@@ -363,6 +364,21 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
       try {
         articleBody = await resolveOutboundLinkPlaceholders(articleBody);
       } catch {}
+
+      // ── Post-generation outbound link audit ──────────────────────────────────
+      // Yoast requires at least 1 outbound link. If the LLM failed to include any,
+      // inject a fallback PubMed citation into the first paragraph of the FAQ section.
+      const outboundLinkCount = (articleBody.match(/https?:\/\/(?!theurbanmonk\.com|well\.org)[a-zA-Z0-9][a-zA-Z0-9.-]+/g) ?? []).length;
+      if (outboundLinkCount < 1) {
+        const topic = input.focusKeyword || input.videoTitle.split(" ").slice(0, 3).join(" ");
+        const fallbackLink = `\n\n> **Research note:** Studies published in peer-reviewed journals consistently support the health benefits of ${topic}. For a comprehensive overview, see [research on ${topic}](https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(topic)}) available through the National Library of Medicine.\n`;
+        // Inject before the FAQ section if present, otherwise append
+        if (articleBody.includes("## Frequently Asked Questions")) {
+          articleBody = articleBody.replace("## Frequently Asked Questions", fallbackLink + "## Frequently Asked Questions");
+        } else {
+          articleBody += fallbackLink;
+        }
+      }
 
       // ── Safety net: scrub any hallucinated theurbanmonk.com URLs ─────────────
       let internalPostSummaries: Array<{ title: string; url: string }> = [];

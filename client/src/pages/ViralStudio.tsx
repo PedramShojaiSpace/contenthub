@@ -3,7 +3,7 @@ import { useSearch } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Zap, FileText, RefreshCw, TrendingUp, MessageSquare, BarChart2, FlaskConical, Flame, Film } from "lucide-react";
+import { Zap, FileText, RefreshCw, TrendingUp, MessageSquare, BarChart2, FlaskConical, Flame, Film, Youtube } from "lucide-react";
 import HookGenerator from "./viral/HookGenerator";
 import ScriptGenerator from "./viral/ScriptGenerator";
 import RepurposeEngine from "./viral/RepurposeEngine";
@@ -13,6 +13,7 @@ import AnalyticsDashboard from "./viral/AnalyticsDashboard";
 import ABTestLab from "./viral/ABTestLab";
 import PerformanceSignal from "./viral/PerformanceSignal";
 import VideoDeliveryHub from "./viral/VideoDeliveryHub";
+import YouTubeIntelligence from "./viral/YouTubeIntelligence";
 
 const TABS = [
   { id: "hooks", label: "Hook Generator", icon: Zap, badge: "Core" },
@@ -23,6 +24,7 @@ const TABS = [
   { id: "dm", label: "DM Playbooks", icon: MessageSquare, badge: "Growth" },
   { id: "analytics", label: "Analytics", icon: BarChart2, badge: "Insights" },
   { id: "abtest", label: "A/B Test Lab", icon: FlaskConical, badge: "Testing" },
+  { id: "yt-intel", label: "YT Intelligence", icon: Youtube, badge: "New" },
 ];
 
 // Map URL tab param values to tab IDs
@@ -41,6 +43,9 @@ const TAB_PARAM_MAP: Record<string, string> = {
   ab: "abtest",
   signals: "signals",
   signal: "signals",
+  "yt-intel": "yt-intel",
+  youtube: "yt-intel",
+  ytintel: "yt-intel",
 };
 
 export default function ViralStudio() {
@@ -121,6 +126,9 @@ export default function ViralStudio() {
             </TabsContent>
             <TabsContent value="signals" className="m-0 h-full">
               <PerformanceSignal />
+            </TabsContent>
+            <TabsContent value="yt-intel" className="m-0 h-full">
+              <YouTubeIntelligence />
             </TabsContent>
           </div>
         </Tabs>

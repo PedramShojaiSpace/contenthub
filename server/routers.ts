@@ -3533,9 +3533,10 @@ Return BOTH in this exact format:
             try {
               const { userCredentials: ucTable } = await import("../drizzle/schema");
               const { requestIndexing } = await import("./googleSearchConsole");
+              const { eq: eqGsc } = await import("drizzle-orm");
               const db9c = await getDb();
               if (db9c) {
-                const [creds] = await db9c.select().from(ucTable).where(eq(ucTable.userId, ctx.user.id));
+                const [creds] = await db9c.select().from(ucTable).where(eqGsc(ucTable.userId, ctx.user.id));
                 if (creds?.gscRefreshToken) {
                   const result = await requestIndexing(creds.gscRefreshToken, post.link);
                   console.log(`[GSC] Indexing ping for ${post.link}: ${result.message}`);

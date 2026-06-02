@@ -189,7 +189,9 @@ export async function handleIngestResearchReport(req: Request, res: Response) {
       return res.status(500).json({ ok: false, error: "Ingest not configured" });
     }
     if (!body.secret || body.secret !== expectedSecret) {
-      console.warn("[ingest] Invalid secret from", req.ip);
+      // Temporary debug: log the incoming secret length and first/last 2 chars to help diagnose mismatch
+      const incoming = body.secret ?? "(none)";
+      console.warn(`[ingest] Invalid secret from ${req.ip} — incoming length=${incoming.length}, starts=${incoming.slice(0,2)}, ends=${incoming.slice(-2)}`);
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 

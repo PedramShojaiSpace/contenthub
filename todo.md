@@ -3706,3 +3706,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Run content + Yoast WP updates in parallel per post (Promise.all)
 - [x] Remove blocking getWpYoastScore re-fetch from the hot path (non-critical, was adding 4th API call per post)
 - [x] All 429 tests pass after changes
+
+## Keith SEO Recommendations (from call June 2, 2026)
+
+- [x] Item 2: GSC auto-indexing — ping Google Search Console Indexing API on every WordPress publish
+- [x] Item 3: Subcategory enforcement — assign correct WordPress subcategory during blog generation (campaign → WP category mapping) + backfilled 181 early posts
+- [x] Item 1: Vertical chain linking — replaced cross-silo link optimizer with silo-contained vertical chain model using WP subcategory as silo boundary
+- [ ] Item 4: YouTube Intelligence tool in Viral Studio — pull top 10 videos by topic, extract transcripts, synthesize into script framework
+- [ ] Item 5: Human review gate — add pending_review status and review queue before publish
+- [ ] Item 6: Article → YouTube embed automation — auto-embed matching YouTube video into blog post

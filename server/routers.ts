@@ -3525,6 +3525,30 @@ Return BOTH in this exact format:
           }).catch((e) => console.error("[InternalLinks] Fatal error:", e));
         }
 
+        // Step 9c: GSC Auto-Indexing — fire-and-forget (non-blocking)
+        // Pings Google Search Console Indexing API so the new post is crawled immediately
+        // rather than waiting for Google's natural crawl schedule (can take days).
+        if (newStatus !== "scheduled" && post.link) {
+          (async () => {
+            try {
+              const { userCredentials: ucTable } = await import("../drizzle/schema");
+              const { requestIndexing } = await import("./googleSearchConsole");
+              const db9c = await getDb();
+              if (db9c) {
+                const [creds] = await db9c.select().from(ucTable).where(eq(ucTable.userId, ctx.user.id));
+                if (creds?.gscRefreshToken) {
+                  const result = await requestIndexing(creds.gscRefreshToken, post.link);
+                  console.log(`[GSC] Indexing ping for ${post.link}: ${result.message}`);
+                } else {
+                  console.log("[GSC] No GSC refresh token — skipping indexing ping (connect GSC in settings)");
+                }
+              }
+            } catch (e) {
+              console.error("[GSC] Indexing ping failed (non-fatal):", e);
+            }
+          })();
+        }
+
         // Step 9: Upsert wp_post_index with topicCluster so the scoreboard badge
         // survives page refreshes without re-running keyword matching on the client.
         if (newStatus !== "scheduled") {

@@ -123,7 +123,11 @@ function GeneratePanel({ report }: { report: IngestReport }) {
   const generateMutation = trpc.ingest.generateFromReport.useMutation({
     onSuccess: (data) => {
       setGenerated(data);
-      toast.success("Content generated for all 6 channels!");
+      if (data.partialFailures && data.partialFailures > 0) {
+        toast.warning(`Content generated — ${7 - data.partialFailures} of 7 channels succeeded. ${data.partialFailures} channel(s) failed and will show empty. You can edit them manually.`);
+      } else {
+        toast.success("Content generated for all 7 channels!");
+      }
     },
     onError: (err) => {
       toast.error(`Generation failed: ${err.message}`);

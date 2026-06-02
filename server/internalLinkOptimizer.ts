@@ -4,14 +4,23 @@
  * Automatically injects contextual internal links into newly published blog posts
  * and back-links the pillar page to the new supporting post.
  *
- * Strategy:
- * 1. Find the keyword campaign that owns the new post's focusKeyword
- * 2. Identify the pillar post for that campaign (keywordType = "pillar")
- * 3. Find all other published posts in the same campaign
- *    — resolves WP post IDs via: contentItemId → URL match → WP REST API slug lookup
- * 4. Inject contextual anchor-text links into the new post's HTML body
- *    — uses smart phrase matching: exact keyword → content-word phrases → single distinctive word
- * 5. Update the pillar page in WordPress to add the new post to its Related Reading section
+ * Strategy (Keith's vertical chain / silo model):
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 1. Determine the new post's WordPress subcategory (silo).
+ * 2. Find all other published posts in the SAME subcategory (silo-contained).
+ *    — NEVER link across silos (e.g. gut health post never links to sleep post)
+ * 3. Identify the silo's pillar post (keywordType="pillar" in keyword campaign,
+ *    or the post with the shortest/most generic focus keyword as fallback).
+ * 4. Inject contextual anchor-text links into the new post's HTML body:
+ *    — Link UP to the pillar (always)
+ *    — Link to 1-2 sibling cluster posts (same silo)
+ * 5. Update the pillar page to add the new post to its Related Reading section.
+ *
+ * Silo resolution order:
+ *   a. WordPress subcategory ID (fetched from WP REST API for the new post)
+ *   b. Keyword campaign (if post belongs to one)
+ *   c. detectCluster() from wpContentUtils (keyword-based fallback)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import { getDb } from "./db";
@@ -27,6 +36,7 @@ export interface InternalLinkResult {
   linksInjected: number;
   pillarUpdated: boolean;
   pillarWpPostId?: number;
+  siloSlug?: string;
   linkedPosts: Array<{ title: string; url: string; anchorText: string }>;
   errors: string[];
 }
@@ -59,13 +69,66 @@ async function wpFetch(url: string, options: RequestInit = {}): Promise<Response
 }
 
 /**
+ * Get the WordPress subcategory IDs for a post (children of parent ID 19).
+ * Returns the first subcategory found, or null if only the parent category is assigned.
+ */
+async function getPostSubcategoryId(wpPostId: number): Promise<number | null> {
+  try {
+    const res = await wpFetch(
+      `${WP_BASE_URL}/wp-json/wp/v2/posts/${wpPostId}?_fields=categories`,
+      { headers: { Authorization: `Basic ${WP_AUTH}` } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json() as { categories?: number[] };
+    const cats = data.categories ?? [];
+    // ID 19 is the parent "Health and Wellness" — we want a child subcategory
+    const subcatId = cats.find((id) => id !== 19 && id !== 941);
+    return subcatId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get all published posts in a given WordPress subcategory.
+ * Returns up to 100 posts with their IDs, titles, slugs, and Yoast focus keywords.
+ */
+async function getPostsInSubcategory(subcategoryId: number): Promise<Array<{
+  id: number;
+  title: string;
+  link: string;
+  focusKeyword: string;
+}>> {
+  try {
+    const res = await wpFetch(
+      `${WP_BASE_URL}/wp-json/wp/v2/posts?categories=${subcategoryId}&status=publish&per_page=100&_fields=id,title,link,meta`,
+      { headers: { Authorization: `Basic ${WP_AUTH}` } }
+    );
+    if (!res.ok) return [];
+    const posts = await res.json() as Array<{
+      id: number;
+      title: { rendered: string };
+      link: string;
+      meta: Record<string, unknown>;
+    }>;
+    return posts.map((p) => ({
+      id: p.id,
+      title: p.title?.rendered ?? "",
+      link: p.link ?? "",
+      focusKeyword: (p.meta?._yoast_wpseo_focuskw as string) ?? "",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Resolve a WP post ID from a published URL.
  * Tries ?p=XXXX first, then slug-based REST API lookup.
  */
 async function resolveWpPostIdFromUrl(publishedUrl: string): Promise<{ wpPostId: number; title: string } | null> {
   if (!publishedUrl) return null;
 
-  // Handle ?p=XXXX style URLs
   const pMatch = publishedUrl.match(/[?&]p=(\d+)/);
   if (pMatch) {
     const wpPostId = parseInt(pMatch[1]);
@@ -82,7 +145,6 @@ async function resolveWpPostIdFromUrl(publishedUrl: string): Promise<{ wpPostId:
     return { wpPostId, title: "" };
   }
 
-  // Extract slug from URL
   try {
     const urlObj = new URL(publishedUrl);
     const slug = urlObj.pathname.replace(/^\/|\/$/g, "").split("/").pop();
@@ -130,7 +192,7 @@ function buildAnchorCandidates(focusKeyword: string): string[] {
   return Array.from(new Set(candidates));
 }
 
-function injectLink(
+export function injectLink(
   html: string,
   anchorText: string,
   targetUrl: string
@@ -158,7 +220,7 @@ function smartInjectLink(
   for (const candidate of candidates) {
     const result = injectLink(html, candidate, targetUrl);
     if (result.success) return result;
-    if (html.includes(targetUrl)) return { success: false, html }; // URL already present
+    if (html.includes(targetUrl)) return { success: false, html };
   }
   return { success: false, html };
 }
@@ -167,14 +229,13 @@ function smartInjectLink(
 // Related Reading section helpers
 // ---------------------------------------------------------------------------
 
-function addRelatedReadingEntry(
+export function addRelatedReadingEntry(
   pillarHtml: string,
   newPostTitle: string,
   newPostUrl: string
 ): string {
   const newEntry = `<li><a href="${newPostUrl}">${newPostTitle}</a></li>`;
 
-  // If a Related Reading section already exists, append to its <ul>
   const relatedReadingRegex = /(<!-- related-reading -->[\s\S]*?<ul[^>]*>)([\s\S]*?)(<\/ul>)/i;
   if (relatedReadingRegex.test(pillarHtml)) {
     return pillarHtml.replace(
@@ -186,7 +247,6 @@ function addRelatedReadingEntry(
     );
   }
 
-  // No Related Reading section yet — create one
   const relatedSection = `
 <!-- related-reading -->
 <div class="related-reading" style="margin-top:2rem;padding:1.5rem;background:#f9f5f0;border-left:4px solid #c8a96e;border-radius:4px;">
@@ -237,11 +297,38 @@ export async function runInternalLinkOptimizer(params: {
   }
 
   try {
-    // -----------------------------------------------------------------------
-    // Step 1: Find the keyword campaign that owns this post's focusKeyword
-    // -----------------------------------------------------------------------
+    // ─────────────────────────────────────────────────────────────────────────
+    // Step 1: Determine the silo — get the new post's WordPress subcategory ID
+    // ─────────────────────────────────────────────────────────────────────────
+    const siloSubcategoryId = await getPostSubcategoryId(newPostWpId);
+
+    if (!siloSubcategoryId) {
+      result.errors.push(
+        `Post WP#${newPostWpId} has no subcategory — cannot determine silo. ` +
+        `Assign a subcategory in WordPress first.`
+      );
+      return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Step 2: Get all published posts in the SAME subcategory (same silo only)
+    // ─────────────────────────────────────────────────────────────────────────
+    const siloPostsRaw = await getPostsInSubcategory(siloSubcategoryId);
+    const siloPosts = siloPostsRaw.filter((p) => p.id !== newPostWpId);
+
+    if (siloPosts.length === 0) {
+      result.errors.push(`No other posts found in subcategory ID ${siloSubcategoryId}`);
+      return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Step 3: Identify the pillar post within this silo
+    //   Priority: keywordType="pillar" in keyword campaign → shortest focusKeyword
+    // ─────────────────────────────────────────────────────────────────────────
     const kw = newPostFocusKeyword.toLowerCase().trim();
 
+    // Try to find the campaign for this silo
+    let campaignId: number | null = null;
     const matchingTargets = await db
       .select({ campaignId: keywordTargets.campaignId })
       .from(keywordTargets)
@@ -253,12 +340,9 @@ export async function runInternalLinkOptimizer(params: {
       )
       .limit(1);
 
-    let campaignId: number | null = null;
-
     if (matchingTargets.length > 0) {
       campaignId = matchingTargets[0].campaignId;
     } else {
-      // Fallback: match via pillarKeyword
       const campaigns = await db
         .select({ id: keywordCampaigns.id, pillarKeyword: keywordCampaigns.pillarKeyword })
         .from(keywordCampaigns)
@@ -275,118 +359,33 @@ export async function runInternalLinkOptimizer(params: {
       }
     }
 
-    if (!campaignId) {
-      result.errors.push(`No keyword campaign found for: "${newPostFocusKeyword}"`);
-      return result;
-    }
-
-    // -----------------------------------------------------------------------
-    // Step 2: Get all published targets in this campaign (excluding new post)
-    // -----------------------------------------------------------------------
-    const rawTargets = await db
-      .select({
-        targetId: keywordTargets.id,
-        keyword: keywordTargets.keyword,
-        keywordType: keywordTargets.keywordType,
-        contentItemId: keywordTargets.contentItemId,
-        publishedUrl: keywordTargets.publishedUrl,
-      })
-      .from(keywordTargets)
-      .where(
-        and(
-          eq(keywordTargets.campaignId, campaignId),
-          eq(keywordTargets.userId, userId),
-          eq(keywordTargets.contentStatus, "published"),
-          isNotNull(keywordTargets.publishedUrl),
-          ne(keywordTargets.keyword, kw) // exclude the new post itself
-        )
-      );
-
-    // -----------------------------------------------------------------------
-    // Step 3: Resolve WP post IDs for each sibling target
-    //   Priority: contentItemId → URL match in content_items → WP REST API slug
-    // -----------------------------------------------------------------------
-    const resolvedPosts: ResolvedPost[] = [];
-
-    for (const target of rawTargets) {
-      if (!target.publishedUrl) continue;
-
-      let wpPostId: number | null = null;
-      let title: string = target.keyword;
-
-      // Try contentItemId first
-      if (target.contentItemId) {
-        const ciRows = await db
-          .select({ wpPostId: contentItems.wpPostId, title: contentItems.title })
-          .from(contentItems)
-          .where(
-            and(
-              eq(contentItems.id, target.contentItemId),
-              isNotNull(contentItems.wpPostId)
-            )
+    // Build a map of focusKeyword → keywordType from the campaign
+    const campaignKeywordTypes = new Map<string, string>();
+    if (campaignId) {
+      const campaignTargets = await db
+        .select({ keyword: keywordTargets.keyword, keywordType: keywordTargets.keywordType })
+        .from(keywordTargets)
+        .where(
+          and(
+            eq(keywordTargets.campaignId, campaignId),
+            eq(keywordTargets.userId, userId)
           )
-          .limit(1);
-        if (ciRows.length > 0 && ciRows[0].wpPostId) {
-          wpPostId = ciRows[0].wpPostId;
-          title = ciRows[0].title ?? title;
-        }
-      }
-
-      // Try URL match in content_items
-      if (!wpPostId) {
-        const normUrl = target.publishedUrl.replace(/\/$/, "");
-        const ciRows = await db
-          .select({ wpPostId: contentItems.wpPostId, title: contentItems.title })
-          .from(contentItems)
-          .where(isNotNull(contentItems.wpPostId))
-          .limit(50); // fetch a batch and filter in JS to avoid complex SQL
-
-        const match = ciRows.find(
-          (r) =>
-            r.wpPostId &&
-            (
-              (contentItems as unknown as { publishUrl?: string }).publishUrl === normUrl ||
-              (contentItems as unknown as { publishUrl?: string }).publishUrl === normUrl + "/"
-            )
         );
-        if (match?.wpPostId) {
-          wpPostId = match.wpPostId;
-          title = match.title ?? title;
-        }
+      for (const t of campaignTargets) {
+        campaignKeywordTypes.set(t.keyword.toLowerCase(), t.keywordType);
       }
-
-      // Fallback: WP REST API slug lookup
-      if (!wpPostId) {
-        try {
-          const resolved = await resolveWpPostIdFromUrl(target.publishedUrl);
-          if (resolved) {
-            wpPostId = resolved.wpPostId;
-            if (resolved.title) title = resolved.title;
-          }
-        } catch (e) {
-          result.errors.push(`WP lookup failed for "${target.keyword}": ${String(e)}`);
-        }
-      }
-
-      if (!wpPostId || wpPostId === newPostWpId) continue;
-
-      resolvedPosts.push({
-        wpPostId,
-        title,
-        url: target.publishedUrl,
-        focusKeyword: target.keyword,
-        keywordType: target.keywordType,
-      });
     }
 
-    if (resolvedPosts.length === 0) {
-      result.errors.push("No sibling posts resolved — nothing to link to");
-      return result;
-    }
+    // Map silo posts to ResolvedPost format
+    const resolvedPosts: ResolvedPost[] = siloPosts.map((p) => ({
+      wpPostId: p.id,
+      title: p.title,
+      url: p.link,
+      focusKeyword: p.focusKeyword || p.title,
+      keywordType: campaignKeywordTypes.get((p.focusKeyword || "").toLowerCase()) ?? "cluster",
+    }));
 
-    // -----------------------------------------------------------------------
-    // Step 4: Identify pillar post
-    // -----------------------------------------------------------------------
+    // Identify pillar: explicit keywordType="pillar" first, then shortest focusKeyword
     let pillarPost = resolvedPosts.find((p) => p.keywordType === "pillar");
     if (!pillarPost) {
       pillarPost = resolvedPosts.reduce((a, b) =>
@@ -394,10 +393,16 @@ export async function runInternalLinkOptimizer(params: {
       );
     }
 
-    // -----------------------------------------------------------------------
-    // Step 5: Inject contextual links into the new post
-    // -----------------------------------------------------------------------
-    const others = resolvedPosts.filter((p) => p.wpPostId !== pillarPost!.wpPostId).slice(0, 2);
+    result.siloSlug = `subcategory-${siloSubcategoryId}`;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Step 4: Inject contextual links into the new post (silo-contained only)
+    //   - Link UP to pillar (always)
+    //   - Link to up to 2 sibling cluster posts (same silo)
+    // ─────────────────────────────────────────────────────────────────────────
+    const others = resolvedPosts
+      .filter((p) => p.wpPostId !== pillarPost!.wpPostId)
+      .slice(0, 2);
     const linkCandidates: ResolvedPost[] = [pillarPost, ...others];
 
     let updatedHtml = newPostHtmlBody;
@@ -419,13 +424,13 @@ export async function runInternalLinkOptimizer(params: {
       try {
         await updateWpPostContent(newPostWpId, updatedHtml);
       } catch (e) {
-        result.errors.push(`Failed to update new post in WordPress: ${String(e)}`);
+        result.errors.push(`Failed to update new post WP#${newPostWpId}: ${String(e)}`);
       }
     }
 
-    // -----------------------------------------------------------------------
-    // Step 6: Update the pillar page Related Reading section
-    // -----------------------------------------------------------------------
+    // ─────────────────────────────────────────────────────────────────────────
+    // Step 5: Update the pillar page Related Reading section
+    // ─────────────────────────────────────────────────────────────────────────
     if (pillarPost.wpPostId !== newPostWpId) {
       try {
         const pillarData = await fetchSingleWpPost(pillarPost.wpPostId);
@@ -443,6 +448,7 @@ export async function runInternalLinkOptimizer(params: {
         result.errors.push(`Failed to update pillar page: ${String(e)}`);
       }
     }
+
   } catch (e) {
     result.errors.push(`Internal link optimizer error: ${String(e)}`);
   }

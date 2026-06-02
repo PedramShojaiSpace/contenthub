@@ -196,8 +196,9 @@ ${report.narrativeHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slic
 ${input.customInstructions ? `\nADDITIONAL INSTRUCTIONS: ${input.customInstructions}` : ""}
 `.trim();
 
-      // 4. Generate all 7 content types in parallel (Facebook + Instagram separately)
-      const [linkedinResult, xResult, facebookResult, instagramResult, youtubeResult, blogResult, emailResult] = await Promise.all([
+      // 4. Generate all 7 content types in parallel (Facebook + Instagram separately).
+      // Use allSettled so one failing LLM call doesn't kill all 7 — partial results are returned.
+      const [linkedinSettled, xSettled, facebookSettled, instagramSettled, youtubeSettled, blogSettled, emailSettled] = await Promise.allSettled([
         // LinkedIn
         wrapLLM(() => invokeLLM({
           messages: [
@@ -284,8 +285,26 @@ HASHTAGS: None — this is a blog post.`,
         })),
       ]);
 
-      const extractText = (result: any): string =>
-        result?.choices?.[0]?.message?.content ?? "";
+      // Extract text from a settled promise result — returns empty string on failure and logs the error
+      const extractSettled = (settled: PromiseSettledResult<any>, label: string): string => {
+        if (settled.status === "fulfilled") {
+          return settled.value?.choices?.[0]?.message?.content ?? "";
+        }
+        console.error(`[generateFromReport] ${label} generation failed:`, settled.reason?.message ?? settled.reason);
+        return "";
+      };
+
+      const linkedin = extractSettled(linkedinSettled, "LinkedIn");
+      const x = extractSettled(xSettled, "X/Twitter");
+      const facebook = extractSettled(facebookSettled, "Facebook");
+      const instagram = extractSettled(instagramSettled, "Instagram");
+      const youtube = extractSettled(youtubeSettled, "YouTube");
+      const blog = extractSettled(blogSettled, "Blog");
+      const email = extractSettled(emailSettled, "Email");
+
+      // Count how many failed so the client can show a warning
+      const failedCount = [linkedinSettled, xSettled, facebookSettled, instagramSettled, youtubeSettled, blogSettled, emailSettled]
+        .filter(s => s.status === "rejected").length;
 
       return {
         reportId: report.id,
@@ -293,15 +312,16 @@ HASHTAGS: None — this is a blog post.`,
         topic: report.topic,
         ctaLabel: cta.label,
         campaign,
-        linkedin: extractText(linkedinResult),
-        x: extractText(xResult),
-        facebook: extractText(facebookResult),
-        instagram: extractText(instagramResult),
+        linkedin,
+        x,
+        facebook,
+        instagram,
         // Keep meta as Facebook for backward compat (saveGenerated uses meta platform)
-        meta: extractText(facebookResult),
-        youtube: extractText(youtubeResult),
-        blog: extractText(blogResult),
-        email: extractText(emailResult),
+        meta: facebook,
+        youtube,
+        blog,
+        email,
+        partialFailures: failedCount,
       };
     }),
 

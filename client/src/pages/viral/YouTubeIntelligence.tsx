@@ -315,6 +315,10 @@ function CompetitorSearchTab() {
   const saveMut = trpc.youtube.saveToScript.useMutation();
   const scriptMut = trpc.youtube.generateTeleprompterScript.useMutation();
 
+  // Avatar intelligence status — check if personas are loaded
+  const avatarStatsQuery = trpc.avatar.getStats.useQuery(undefined, { staleTime: 60_000 });
+  const avatarActive = (avatarStatsQuery.data?.totalPersonas ?? 0) > 0;
+
   const handleSearch = async () => {
     if (!query.trim()) { toast.error("Enter a topic to search"); return; }
     setVideos([]); setSelectedIds(new Set()); setTranscripts({}); setOutlines({}); setBrief("");
@@ -467,6 +471,19 @@ function CompetitorSearchTab() {
               </CardTitle>
               {brief && (
                 <div className="flex flex-col gap-2 w-full mt-2">
+                  {/* Avatar Intelligence indicator */}
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      avatarActive
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                        : "bg-muted text-muted-foreground border-border"
+                    }`}>
+                      <Target className="w-2.5 h-2.5" />
+                      {avatarActive
+                        ? `Avatar Intel Active — ${avatarStatsQuery.data?.totalPersonas} persona${(avatarStatsQuery.data?.totalPersonas ?? 0) !== 1 ? "s" : ""}, ${avatarStatsQuery.data?.totalPainPoints} pain points injected`
+                        : "Avatar Intel: No personas loaded — add personas in Avatar Intelligence to enhance scripts"}
+                    </div>
+                  </div>
                   {/* Platform selector */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs text-muted-foreground font-medium">Platform:</span>

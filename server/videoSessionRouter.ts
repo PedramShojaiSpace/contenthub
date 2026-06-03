@@ -400,23 +400,20 @@ export const videoSessionRouter = router({
       return { ok: true };
     }),
 
-  regenerateCta: protectedProcedure
+    regenerateCta: protectedProcedure
     .input(z.object({ sessionId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const session = await getSessionOrThrow(input.sessionId, ctx.user.openId);
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-
       // Generate a fresh CTA using the session's keyword and idea
       const generated = await generateScriptsFromIdea(session.idea, session.platform, session.ctaKeyword);
-
       // Delete only the existing CTA script(s) for this session
       await db.delete(sessionScripts)
         .where(and(
           eq(sessionScripts.sessionId, input.sessionId),
           eq(sessionScripts.scriptType, "cta")
         ));
-
       // Insert the fresh CTA — auto-approved since the user explicitly requested regeneration
       await db.insert(sessionScripts).values({
         sessionId: input.sessionId,
@@ -426,7 +423,253 @@ export const videoSessionRouter = router({
         approved: true,
         approvedAt: new Date(),
       });
-
       return { ok: true };
     }),
+
+  // ─── Publish Package: YouTube Metadata ──────────────────────────────────────
+  generateYouTubeMetadata: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getSessionOrThrow(input.sessionId, ctx.user.openId);
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+
+      // Gather all approved scripts
+      const scripts = await db
+        .select()
+        .from(sessionScripts)
+        .where(eq(sessionScripts.sessionId, input.sessionId));
+      const approvedHooks = scripts.filter(s => s.scriptType === "hook" && s.approved).map(s => s.scriptText);
+      const body = scripts.find(s => s.scriptType === "body")?.scriptText ?? "";
+      const cta = scripts.find(s => s.scriptType === "cta")?.scriptText ?? "";
+      const fullScript = [...approvedHooks, body, cta].join("\n\n");
+
+      // Avatar context
+      const { getAvatarContextBlock } = await import("./avatarRouter");
+      const avatarContext = await getAvatarContextBlock(session.idea).catch(() => "");
+
+      const channelFooter = `---
+Welcome to The Urban Monk channel! If you enjoyed this video, make sure to Like, Subscribe, and hit the Notification Bell so you never miss an update.
+🚀 Free Upstream Masterclass: https://upstream.theurbanmonk.com?utm_source=youtube&utm_medium=video&utm_campaign=upstream-bundle
+💡 Lights On Course: https://lightson.theurbanmonk.com?utm_source=youtube&utm_medium=video&utm_campaign=lights-on
+🌿 InterConnected Free Screening: https://theacademy.theurbanmonk.com/ic-interconnected-free-screening-Meta?utm_source=youtube&utm_medium=video&utm_campaign=ic-free-screening
+📚 The Urban Monk: https://www.theurbanmonk.com?utm_source=youtube&utm_medium=video&utm_campaign=brand-awareness`;
+
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert YouTube SEO strategist for The Urban Monk channel (Dr. Pedram Shojai). Your job is to generate a complete YouTube publish package.
+
+ALWAYS output valid JSON matching this exact schema:
+{
+  "titleOptions": ["Title 1", "Title 2", "Title 3", "Title 4", "Title 5"],
+  "description": "Full YouTube description (plain text, no markdown, 300-500 words before footer)",
+  "tags": ["tag1", "tag2", ...],
+  "primaryKeyword": "main SEO keyword"
+}
+
+Title rules: 5 options, 50-60 chars each, include primary keyword, no clickbait, no "In this video", no quotes.
+Description rules: Hook (2-3 sentences with primary keyword) + Body (150-200 words, second person, mention Dr. Pedram Shojai) + Timestamps (4-6 if identifiable) + Channel footer EXACTLY as provided.
+Tags rules: 25-30 tags, mix of broad (gut health) + specific (leaky gut symptoms) + branded (urban monk, pedram shojai) + long-tail (how to fix gut health naturally). No hashtags in tags.
+
+${avatarContext ? `AUDIENCE INTELLIGENCE (use to inform keyword choices and title angles):
+${avatarContext}` : ""}`,
+          },
+          {
+            role: "user",
+            content: `VIDEO IDEA: ${session.idea}\nPLATFORM: ${session.platform}\n\nAPPROVED SCRIPT:\n${fullScript.slice(0, 4000)}\n\nCHANNEL FOOTER (paste EXACTLY at end of description):\n${channelFooter}`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "youtube_metadata",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                titleOptions: { type: "array", items: { type: "string" } },
+                description: { type: "string" },
+                tags: { type: "array", items: { type: "string" } },
+                primaryKeyword: { type: "string" },
+              },
+              required: ["titleOptions", "description", "tags", "primaryKeyword"],
+              additionalProperties: false,
+            },
+          },
+        } as any,
+      });
+
+      const raw = String(response.choices?.[0]?.message?.content ?? "{}");
+      const meta = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
+      return {
+        titleOptions: (meta.titleOptions ?? []) as string[],
+        description: (meta.description ?? "") as string,
+        tags: (meta.tags ?? []) as string[],
+        primaryKeyword: (meta.primaryKeyword ?? session.idea) as string,
+      };
+    }),
+
+  // ─── Publish Package: Social Captions ───────────────────────────────────────
+  generateSocialCaptions: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getSessionOrThrow(input.sessionId, ctx.user.openId);
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+
+      const scripts = await db
+        .select()
+        .from(sessionScripts)
+        .where(eq(sessionScripts.sessionId, input.sessionId));
+      const approvedHooks = scripts.filter(s => s.scriptType === "hook" && s.approved).map(s => s.scriptText);
+      const body = scripts.find(s => s.scriptType === "body")?.scriptText ?? "";
+      const cta = scripts.find(s => s.scriptType === "cta")?.scriptText ?? "";
+      const fullScript = [...approvedHooks, body, cta].join("\n\n");
+
+      const { getAvatarContextBlock } = await import("./avatarRouter");
+      const avatarContext = await getAvatarContextBlock(session.idea).catch(() => "");
+
+      const ctaInfo = session.ctaKeyword && CTA_KEYWORD_MAP[session.ctaKeyword]
+        ? CTA_KEYWORD_MAP[session.ctaKeyword]
+        : CTA_KEYWORD_MAP["UPSTREAM"];
+
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are a social media ghostwriter for Dr. Pedram Shojai (The Urban Monk). Generate platform-specific social media captions for a new video.
+
+CTA rule: Every caption must end with a ManyChat keyword CTA. The viewer comments the keyword "${ctaInfo.keyword}" to receive the link via DM. Example: "Comment ${ctaInfo.keyword} below and I'll send you the link directly."
+
+Platform rules:
+- Instagram: 150-200 words, conversational, 3-5 line breaks, 15-20 hashtags at end, warm and personal tone
+- TikTok: 80-120 words, punchy, one idea per line, 5-8 hashtags, hook in first line, Gen Z-friendly but not cringe
+- LinkedIn: 200-250 words, professional, thought-leadership angle, 3-5 hashtags, no emojis except sparingly, cite the science
+- X (Twitter): 240 chars max, punchy hook + CTA, 2-3 hashtags max, no filler words
+
+Output valid JSON:
+{
+  "instagram": { "caption": "...", "hashtags": ["#tag1", ...] },
+  "tiktok": { "caption": "...", "hashtags": ["#tag1", ...] },
+  "linkedin": { "caption": "...", "hashtags": ["#tag1", ...] },
+  "x": { "caption": "...", "hashtags": ["#tag1", ...] }
+}
+
+${avatarContext ? `AUDIENCE INTELLIGENCE:\n${avatarContext}` : ""}`,
+          },
+          {
+            role: "user",
+            content: `VIDEO IDEA: ${session.idea}\nPLATFORM: ${session.platform}\n\nSCRIPT SUMMARY:\n${fullScript.slice(0, 3000)}`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "social_captions",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                instagram: { type: "object", properties: { caption: { type: "string" }, hashtags: { type: "array", items: { type: "string" } } }, required: ["caption", "hashtags"], additionalProperties: false },
+                tiktok: { type: "object", properties: { caption: { type: "string" }, hashtags: { type: "array", items: { type: "string" } } }, required: ["caption", "hashtags"], additionalProperties: false },
+                linkedin: { type: "object", properties: { caption: { type: "string" }, hashtags: { type: "array", items: { type: "string" } } }, required: ["caption", "hashtags"], additionalProperties: false },
+                x: { type: "object", properties: { caption: { type: "string" }, hashtags: { type: "array", items: { type: "string" } } }, required: ["caption", "hashtags"], additionalProperties: false },
+              },
+              required: ["instagram", "tiktok", "linkedin", "x"],
+              additionalProperties: false,
+            },
+          },
+        } as any,
+      });
+
+      const raw = String(response.choices?.[0]?.message?.content ?? "{}");
+      const captions = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
+      return captions as {
+        instagram: { caption: string; hashtags: string[] };
+        tiktok: { caption: string; hashtags: string[] };
+        linkedin: { caption: string; hashtags: string[] };
+        x: { caption: string; hashtags: string[] };
+      };
+    }),
+
+  // ─── Publish Package: Generate Blog from Script ──────────────────────────────
+  generateBlogFromScript: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getSessionOrThrow(input.sessionId, ctx.user.openId);
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+
+      const scripts = await db
+        .select()
+        .from(sessionScripts)
+        .where(eq(sessionScripts.sessionId, input.sessionId));
+      const approvedHooks = scripts.filter(s => s.scriptType === "hook" && s.approved).map(s => s.scriptText);
+      const body = scripts.find(s => s.scriptType === "body")?.scriptText ?? "";
+      const cta = scripts.find(s => s.scriptType === "cta")?.scriptText ?? "";
+      const fullScript = [...approvedHooks, body, cta].join("\n\n");
+
+      if (!fullScript.trim()) throw new Error("No approved scripts found in this session");
+
+      // Delegate to the existing blog generation procedure via direct LLM call
+      const { getAvatarContextBlock } = await import("./avatarRouter");
+      const avatarContext = await getAvatarContextBlock(session.idea).catch(() => "");
+
+      const { contentItems } = await import("../drizzle/schema");
+
+      // Generate blog post from the script
+      const blogResponse = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are a content writer for The Urban Monk (Dr. Pedram Shojai). Convert a video script into a full SEO-optimized blog post.
+
+Rules:
+- 800-1200 words
+- Use H2 and H3 subheadings (markdown format)
+- Write in second person (you/your)
+- Expand on the script — add context, research references, and practical steps not in the script
+- Do NOT include hashtags
+- End with a soft CTA to the Urban Monk Academy or Upstream program
+- Include a meta description (155 chars max) at the very top in format: META: [description]
+
+${avatarContext ? `AUDIENCE INTELLIGENCE:\n${avatarContext}` : ""}`,
+          },
+          {
+            role: "user",
+            content: `VIDEO IDEA: ${session.idea}\n\nVIDEO SCRIPT:\n${fullScript.slice(0, 5000)}`,
+          },
+        ],
+      });
+
+      const blogContent = String(blogResponse.choices?.[0]?.message?.content ?? "").trim();
+      const metaMatch = blogContent.match(/^META:\s*(.+)/m);
+      const metaDescription = metaMatch ? metaMatch[1].trim() : "";
+      const cleanContent = blogContent.replace(/^META:\s*.+\n?/m, "").trim();
+
+      // Extract a title from the first H1 or H2 line
+      const titleMatch = cleanContent.match(/^#{1,2}\s+(.+)/m);
+      const blogTitle = titleMatch ? titleMatch[1].trim() : session.idea;
+
+      // Save to content_items as a draft blog post
+      const [inserted] = await db.insert(contentItems).values({
+        userId: ctx.user.id,
+        platform: "blog",
+        title: blogTitle,
+        content: cleanContent,
+        metaDescription,
+        focusKeyword: session.idea,
+        status: "drafting",
+        sourceType: "video_script",
+      } as any);
+
+      return {
+        contentItemId: (inserted as any)?.insertId ?? null,
+        title: blogTitle,
+        preview: cleanContent.slice(0, 300),
+      };
+    }),
 });
+

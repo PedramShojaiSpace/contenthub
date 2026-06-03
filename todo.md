@@ -3779,3 +3779,28 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Frontend: Add "Content Flywheel" panel to SEO Dashboard showing top 10 ranking movers with position delta badges
 - [ ] Frontend: Each mover card has "Suggest Follow-Up" button that triggers LLM and adds idea to Command Center queue
 - [ ] Frontend: Show last-checked timestamp and a Refresh button to re-pull GSC data
+
+## Full Content Pipeline — End-to-End Wiring
+
+### Gap Analysis (June 2026)
+# What exists:
+# - YouTube Intelligence: trend search, competitor analysis, differentiation brief, teleprompter script (4 platforms)
+# - Video Production Session: scripts (hook/body/cta), teleprompter export, recording upload, stitching
+# - blogToYoutubeRouter.generateVideoPackage: YouTube title options, description, VA instructions (for blog→video flow)
+# - videoToBlogRouter.generateYouTubeDescription: YouTube description (for video→blog flow)
+# - videoToBlogRouter.generateBlogFromVideo: blog from video transcript
+# What's MISSING from Video Production Session:
+# - YouTube title options (3-5 SEO-optimized choices)
+# - YouTube tags/keywords list (20-30 tags)
+# - Social captions: Instagram, TikTok, LinkedIn, X — each platform-specific
+# - Blog generation trigger from the session script
+# - One unified "Publish Package" panel showing all outputs together
+
+- [ ] Backend: videoSession.generateYouTubeMetadata — title options (5), description, tags (25), keywords from approved script + avatar intel
+- [ ] Backend: videoSession.generateSocialCaptions — Instagram, TikTok, LinkedIn, X captions with hashtags from approved script
+- [ ] Backend: videoSession.generateBlogFromScript — trigger blog post generation from session script, save to content_items
+- [ ] Frontend: Add "Publish Package" tab to VideoProductionSession — appears when status = ready_to_record or done
+- [ ] Frontend: YouTube Metadata panel — 5 title options (click to select), description (copy button), 25 tags (copy as comma list)
+- [ ] Frontend: Social Captions panel — 4 platform tabs (Instagram/TikTok/LinkedIn/X), each with caption + hashtags + copy button
+- [ ] Frontend: Blog Generation panel — "Generate Blog Post" button, shows status/link when done
+- [ ] Frontend: All panels inject avatar intel and use approved script content

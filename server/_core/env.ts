@@ -9,4 +9,5 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   ingestSecret: process.env.INGEST_SECRET ?? "",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
+  vidiqApiKey: process.env.VIDIQ_API_KEY ?? "",
 };

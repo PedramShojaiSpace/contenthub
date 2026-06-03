@@ -59,6 +59,7 @@ import {
   ArrowLeft,
   Copy,
   Link2,
+  BarChart2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -343,6 +344,14 @@ function NewSessionForm({ onCreated, initialKeyword = "" }: { onCreated: (id: nu
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [ctaKeyword, setCtaKeyword] = useState<"UPSTREAM" | "LIGHTSON" | "TEST" | "SLEEP" | "">("UPSTREAM");
 
+  // vidIQ keyword research
+  const [vidiqKeyword, setVidiqKeyword] = useState(initialKeyword);
+  const [showVidiqPanel, setShowVidiqPanel] = useState(!!initialKeyword);
+  const vidiqResearch = trpc.vidiq.keywordResearch.useQuery(
+    { keyword: vidiqKeyword, includeRelated: true },
+    { enabled: vidiqKeyword.length > 2, staleTime: 5 * 60 * 1000 }
+  );
+
   const CTA_KEYWORD_OPTIONS = [
     { value: "UPSTREAM", label: "UPSTREAM — Upstream Program" },
     { value: "LIGHTSON", label: "LIGHTSON — Lights On Program" },
@@ -403,6 +412,89 @@ function NewSessionForm({ onCreated, initialKeyword = "" }: { onCreated: (id: nu
             onChange={(e) => setIdea(e.target.value)}
             className="min-h-[120px] bg-background border-border text-foreground placeholder:text-muted-foreground resize-none"
           />
+        </div>
+
+        {/* vidIQ Keyword Research */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-foreground/70 text-sm font-medium block">vidIQ Keyword Research</label>
+            {vidiqResearch.isLoading && <span className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</span>}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. Shaolin Temple meditation, qi gong morning routine"
+              value={vidiqKeyword}
+              onChange={(e) => setVidiqKeyword(e.target.value)}
+              className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setShowVidiqPanel(true)}
+              disabled={vidiqKeyword.length < 3}
+            >
+              <BarChart2 className="w-3.5 h-3.5 mr-1" /> Research
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Enter a keyword to see YouTube search volume, competition, and related keyword opportunities from vidIQ before creating your session.</p>
+
+          {showVidiqPanel && vidiqResearch.data && (
+            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">vidIQ — "{vidiqResearch.data.keyword}"</span>
+                <button onClick={() => setShowVidiqPanel(false)} className="text-xs text-muted-foreground hover:text-foreground">× close</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md bg-background border border-border p-2">
+                  <div className="text-lg font-bold text-foreground">{Math.round(vidiqResearch.data.volume)}</div>
+                  <div className="text-xs text-muted-foreground">Volume</div>
+                </div>
+                <div className="rounded-md bg-background border border-border p-2">
+                  <div className="text-lg font-bold text-foreground">{Math.round(vidiqResearch.data.competition)}</div>
+                  <div className="text-xs text-muted-foreground">Competition</div>
+                </div>
+                <div className={`rounded-md border p-2 ${
+                  vidiqResearch.data.overall >= 60 ? "bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700" :
+                  vidiqResearch.data.overall >= 40 ? "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700" :
+                  "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-700"
+                }`}>
+                  <div className={`text-lg font-bold ${
+                    vidiqResearch.data.overall >= 60 ? "text-green-700 dark:text-green-400" :
+                    vidiqResearch.data.overall >= 40 ? "text-amber-700 dark:text-amber-400" :
+                    "text-red-700 dark:text-red-400"
+                  }`}>{Math.round(vidiqResearch.data.overall)}</div>
+                  <div className="text-xs text-muted-foreground">Opportunity</div>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">~{vidiqResearch.data.estimatedMonthlySearch.toLocaleString()} searches/month</div>
+              {vidiqResearch.data.related.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Related keywords — click to use as session keyword:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {vidiqResearch.data.related.slice(0, 8).map((r) => (
+                      <button
+                        key={r.keyword}
+                        onClick={() => {
+                          setVidiqKeyword(r.keyword);
+                          setName(`${r.keyword} — Video`);
+                        }}
+                        className={`text-xs px-2 py-0.5 rounded-full border transition-colors hover:bg-primary hover:text-primary-foreground ${
+                          vidiqKeyword === r.keyword
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-border text-foreground"
+                        }`}
+                        title={`Volume: ${Math.round(r.volume)} | Competition: ${Math.round(r.competition)} | Score: ${Math.round(r.overall)}`}
+                      >
+                        {r.keyword} <span className="opacity-60">{Math.round(r.overall)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div>

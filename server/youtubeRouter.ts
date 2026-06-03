@@ -957,7 +957,7 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
     .input(
       z.object({
         topic: z.string().min(3).max(300),
-        brief: z.string().min(10).max(12000),
+        brief: z.string().min(10).max(15000),
         durationMinutes: z.number().min(1).max(30).default(8),
         platform: z.enum(["youtube", "youtube_short", "instagram", "tiktok"]).default("youtube"),
       })

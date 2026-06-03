@@ -370,8 +370,11 @@ function CompetitorSearchTab() {
     if (!brief) return;
     setTeleprompterScript("");
     setShowTeleprompter(true);
+    // Truncate brief to stay within the 12,000 char server limit — keep the most
+    // actionable first ~11,000 chars (the brief structure always front-loads the key insights)
+    const safeBrief = brief.length > 11000 ? brief.slice(0, 11000) + "\n\n[Brief truncated for script generation]" : brief;
     try {
-      const result = await scriptMut.mutateAsync({ topic: query, brief, durationMinutes, platform });
+      const result = await scriptMut.mutateAsync({ topic: query, brief: safeBrief, durationMinutes, platform });
       setTeleprompterScript(result.script);
       setTeleprompterWordCount(result.wordCount);
       setTeleprompterMinutes(result.estimatedMinutes);

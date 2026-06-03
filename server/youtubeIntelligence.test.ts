@@ -366,3 +366,77 @@ describe("teleprompter word count and duration estimate", () => {
     expect(wordCount).toBe(3);
   });
 });
+
+describe("platform script configuration", () => {
+  type Platform = "youtube" | "youtube_short" | "instagram" | "tiktok";
+
+  // Mirror the platform config logic from the backend for unit testing
+  function getPlatformTargetWords(platform: Platform, durationMinutes: number): number {
+    const wpm = 130;
+    switch (platform) {
+      case "youtube": return durationMinutes * wpm;
+      case "youtube_short": return 100;
+      case "instagram": return 120;
+      case "tiktok": return 130;
+    }
+  }
+
+  function getPlatformLabel(platform: Platform): string {
+    switch (platform) {
+      case "youtube": return "YouTube (Long-Form)";
+      case "youtube_short": return "YouTube Short";
+      case "instagram": return "Instagram Reel";
+      case "tiktok": return "TikTok";
+    }
+  }
+
+  function isShortFormPlatform(platform: Platform): boolean {
+    return platform !== "youtube";
+  }
+
+  it("youtube uses durationMinutes to calculate target words", () => {
+    expect(getPlatformTargetWords("youtube", 8)).toBe(1040);
+    expect(getPlatformTargetWords("youtube", 5)).toBe(650);
+    expect(getPlatformTargetWords("youtube", 15)).toBe(1950);
+  });
+
+  it("youtube_short has fixed 100 word target", () => {
+    expect(getPlatformTargetWords("youtube_short", 8)).toBe(100);
+    expect(getPlatformTargetWords("youtube_short", 1)).toBe(100);
+  });
+
+  it("instagram has fixed 120 word target", () => {
+    expect(getPlatformTargetWords("instagram", 8)).toBe(120);
+  });
+
+  it("tiktok has fixed 130 word target", () => {
+    expect(getPlatformTargetWords("tiktok", 8)).toBe(130);
+  });
+
+  it("returns correct platform labels", () => {
+    expect(getPlatformLabel("youtube")).toBe("YouTube (Long-Form)");
+    expect(getPlatformLabel("youtube_short")).toBe("YouTube Short");
+    expect(getPlatformLabel("instagram")).toBe("Instagram Reel");
+    expect(getPlatformLabel("tiktok")).toBe("TikTok");
+  });
+
+  it("correctly identifies short-form platforms", () => {
+    expect(isShortFormPlatform("youtube")).toBe(false);
+    expect(isShortFormPlatform("youtube_short")).toBe(true);
+    expect(isShortFormPlatform("instagram")).toBe(true);
+    expect(isShortFormPlatform("tiktok")).toBe(true);
+  });
+
+  it("short-form platforms have word counts under 150", () => {
+    const shortPlatforms: Platform[] = ["youtube_short", "instagram", "tiktok"];
+    for (const p of shortPlatforms) {
+      expect(getPlatformTargetWords(p, 8)).toBeLessThan(150);
+    }
+  });
+
+  it("youtube long-form at 8 min has significantly more words than short-form", () => {
+    const youtubeWords = getPlatformTargetWords("youtube", 8);
+    const shortWords = getPlatformTargetWords("youtube_short", 8);
+    expect(youtubeWords).toBeGreaterThan(shortWords * 5);
+  });
+});

@@ -3585,6 +3585,100 @@ Return BOTH in this exact format:
           }
         }
 
+        // Step 9d: YouTube Embed Auto-Trigger — fire-and-forget (non-blocking)
+        // After the post is live on WordPress, automatically search Pedram's YouTube channel
+        // for a video matching the focus keyword and embed it into the article body.
+        // This closes the article-video triangle: article → YouTube embed → GSC signal.
+        let youtubeEmbedResult: { embedded: boolean; videoId?: string; videoTitle?: string; message: string } = { embedded: false, message: "skipped" };
+        if (newStatus !== "scheduled" && post.id && publishInput.focusKeyword) {
+          try {
+            const searchQuery = publishInput.focusKeyword;
+            // Search Pedram's channel for a matching video using Supadata
+            const { getSupadata } = await import("./youtubeRouter");
+            const supadata = getSupadata();
+            if (supadata) {
+              const searchResults = await supadata.youtube.search({
+                query: `${searchQuery} Urban Monk Pedram Shojai`,
+                lang: "en",
+                limit: 5,
+              });
+              const videos = (searchResults as any)?.results ?? [];
+              // Find the first video from Pedram's channel (UCxxx) or best match
+              const bestVideo = videos.find((v: any) =>
+                v.channelId === "UCFjivNnMnVAMvHBvHJnBqRg" || // Urban Monk channel ID
+                (v.channelTitle ?? "").toLowerCase().includes("urban monk") ||
+                (v.channelTitle ?? "").toLowerCase().includes("pedram")
+              ) ?? videos[0];
+
+              if (bestVideo?.id) {
+                const videoId = bestVideo.id;
+                const embedBlock = `\n\n<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper"><iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" title="${(bestVideo.title ?? "").replace(/"/g, "&quot;")}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></figure>\n\n`;
+
+                // Inject after the second </p> tag for maximum dwell time
+                const wpBaseUrl2 = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+                const u2 = process.env.WORDPRESS_USERNAME ?? "";
+                const p2 = process.env.WORDPRESS_APP_PASSWORD ?? "";
+                const authHeader2 = "Basic " + Buffer.from(`${u2}:${p2}`).toString("base64");
+
+                // Fetch current post content and inject embed
+                const wpPostRes = await fetch(`${wpBaseUrl2}/wp-json/wp/v2/posts/${post.id}`, {
+                  headers: { Authorization: authHeader2 },
+                });
+                if (wpPostRes.ok) {
+                  const wpPostData = await wpPostRes.json() as any;
+                  const currentContent: string = wpPostData?.content?.raw ?? wpPostData?.content?.rendered ?? "";
+                  // Find second </p> and inject after it
+                  let injectedContent = currentContent;
+                  const secondPClose = (() => {
+                    let count = 0;
+                    let idx = 0;
+                    while (idx < currentContent.length) {
+                      const found = currentContent.indexOf("</p>", idx);
+                      if (found === -1) break;
+                      count++;
+                      if (count === 2) return found + 4;
+                      idx = found + 4;
+                    }
+                    return -1;
+                  })();
+                  if (secondPClose > 0) {
+                    injectedContent = currentContent.slice(0, secondPClose) + embedBlock + currentContent.slice(secondPClose);
+                  } else {
+                    injectedContent = currentContent + embedBlock;
+                  }
+
+                  // Update the WP post with the embed
+                  await fetch(`${wpBaseUrl2}/wp-json/wp/v2/posts/${post.id}`, {
+                    method: "POST",
+                    headers: { Authorization: authHeader2, "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: injectedContent }),
+                  });
+
+                  // Save embed status to DB
+                  const db9d = await getDb();
+                  if (db9d) {
+                    const { contentItems: ciTable9d } = await import("../drizzle/schema");
+                    const { eq: eq9d } = await import("drizzle-orm");
+                    await db9d.update(ciTable9d).set({
+                      embeddedYoutubeVideoId: videoId,
+                      embeddedYoutubeEmbedStatus: "embedded",
+                    }).where(eq9d(ciTable9d.id, publishInput.contentItemId));
+                  }
+
+                  youtubeEmbedResult = { embedded: true, videoId, videoTitle: bestVideo.title ?? "", message: `Embedded: ${bestVideo.title}` };
+                  console.log(`[YT Embed] Auto-embedded video ${videoId} into post ${post.id}`);
+                }
+              } else {
+                youtubeEmbedResult = { embedded: false, message: "No matching video found on channel" };
+              }
+            }
+          } catch (ytEmbedErr) {
+            // Non-fatal — embed failure should never block the publish response
+            console.error("[YT Embed] Auto-embed failed (non-fatal):", ytEmbedErr);
+            youtubeEmbedResult = { embedded: false, message: "Embed search failed" };
+          }
+        }
+
         return {
           success: true,
           postId: post.id,
@@ -3597,6 +3691,7 @@ Return BOTH in this exact format:
           keyphraseAlreadyUsed,
           keyphraseConflictUrl,
           wpCategories: wpCategoryIds,
+          youtubeEmbedResult,
         };
       }),
 

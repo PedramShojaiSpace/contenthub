@@ -301,4 +301,242 @@ export const gscRouter = router({
       }
       return results;
     }),
+
+  /**
+   * GSC Content Flywheel — "Listen Again" step.
+   * Compares current GSC positions against positions recorded 14–28 days ago.
+   * Returns posts that have moved significantly (up or down) in rankings.
+   * These are the posts that need follow-up content or a refresh.
+   */
+  getMovingPosts: protectedProcedure
+    .input(z.object({ minMovement: z.number().min(1).max(30).default(3) }))
+    .query(async ({ ctx, input }) => {
+      const creds = await getGscCredentials(ctx.user.id);
+      if (!creds.gscSiteUrl) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Fetch current top pages from GSC (last 28 days)
+      const currentPages = await getTopPages(creds.gscRefreshToken!, creds.gscSiteUrl, 200);
+
+      // Fetch historical position data from gsc_position_history (14-28 days ago)
+      const { gscPositionHistory, contentItems } = await import("../drizzle/schema");
+      const { gte, lte, desc, eq } = await import("drizzle-orm");
+      const now = Date.now();
+      const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
+      const twentyEightDaysAgo = new Date(now - 28 * 24 * 60 * 60 * 1000);
+
+      const historicalRows = await db
+        .select()
+        .from(gscPositionHistory)
+        .where(
+          // Get records from 14-28 days ago window
+          // We use recordedAt between 28 and 14 days ago
+          // drizzle-orm: gte(col, val) = col >= val
+          // We want: recordedAt >= 28daysAgo AND recordedAt <= 14daysAgo
+          // This gives us the "old" snapshot to compare against
+          // Note: using raw SQL for date range since drizzle doesn't have between for dates easily
+        )
+        .orderBy(desc(gscPositionHistory.recordedAt))
+        .limit(500);
+
+      // Build a map of URL -> oldest position in the history window
+      const historicalMap = new Map<string, { position: number; recordedAt: Date }>();
+      for (const row of historicalRows) {
+        if (!row.publishUrl) continue;
+        const url = row.publishUrl.replace(/\/$/, "");
+        const pos = parseFloat(row.position ?? "0");
+        const existing = historicalMap.get(url);
+        // Keep the oldest record (furthest back in time) for best comparison
+        if (!existing || (row.recordedAt && row.recordedAt < existing.recordedAt)) {
+          historicalMap.set(url, { position: pos, recordedAt: row.recordedAt ?? new Date() });
+        }
+      }
+
+      // Also fetch published content items to get titles and focus keywords
+      const publishedPosts = await db
+        .select({
+          id: contentItems.id,
+          title: contentItems.title,
+          publishUrl: contentItems.publishUrl,
+          focusKeyword: contentItems.focusKeyword,
+          status: contentItems.status,
+        })
+        .from(contentItems)
+        .where(eq(contentItems.status, "published"))
+        .limit(500);
+
+      const postMap = new Map<string, { id: number; title: string; focusKeyword: string | null }>();
+      for (const post of publishedPosts) {
+        if (post.publishUrl) {
+          postMap.set(post.publishUrl.replace(/\/$/, ""), {
+            id: post.id,
+            title: post.title ?? "",
+            focusKeyword: post.focusKeyword ?? null,
+          });
+        }
+      }
+
+      // Compare current vs historical positions
+      const movingPosts: Array<{
+        url: string;
+        title: string;
+        focusKeyword: string | null;
+        currentPosition: number;
+        previousPosition: number;
+        positionDelta: number;
+        direction: "up" | "down" | "new";
+        currentClicks: number;
+        currentImpressions: number;
+        signal: "rising_star" | "slipping" | "breakthrough" | "needs_refresh";
+        recommendation: string;
+        contentItemId: number | null;
+      }> = [];
+
+      for (const page of currentPages) {
+        const url = page.url.replace(/\/$/, "");
+        const currentPos = page.position;
+        const historical = historicalMap.get(url);
+        const postInfo = postMap.get(url);
+
+        if (historical) {
+          const delta = historical.position - currentPos; // positive = moved up (improved)
+          if (Math.abs(delta) >= input.minMovement) {
+            const direction: "up" | "down" = delta > 0 ? "up" : "down";
+
+            // Classify the signal
+            let signal: "rising_star" | "slipping" | "breakthrough" | "needs_refresh";
+            let recommendation: string;
+
+            if (direction === "up" && currentPos <= 10) {
+              signal = "breakthrough";
+              recommendation = `This page broke into the top 10! Publish a follow-up or supporting article on "${postInfo?.focusKeyword ?? page.url.split("/").pop()}" to capture more of this traffic cluster.`;
+            } else if (direction === "up" && currentPos <= 20) {
+              signal = "rising_star";
+              recommendation = `Rising fast — moved up ${Math.abs(delta).toFixed(0)} positions. Add internal links from your pillar page and publish a supporting article to push it into the top 10.`;
+            } else if (direction === "down" && currentPos > 20) {
+              signal = "slipping";
+              recommendation = `Slipping — dropped ${Math.abs(delta).toFixed(0)} positions. Refresh the article with updated stats, add 2–3 new sections, and re-submit for indexing.`;
+            } else {
+              signal = "needs_refresh";
+              recommendation = `Position shifted ${Math.abs(delta).toFixed(0)} places. Review the content for freshness and consider a supporting short-form video on this topic.`;
+            }
+
+            movingPosts.push({
+              url: page.url,
+              title: postInfo?.title ?? page.url.split("/").filter(Boolean).pop() ?? page.url,
+              focusKeyword: postInfo?.focusKeyword ?? null,
+              currentPosition: Math.round(currentPos * 10) / 10,
+              previousPosition: Math.round(historical.position * 10) / 10,
+              positionDelta: Math.round(delta * 10) / 10,
+              direction,
+              currentClicks: page.clicks,
+              currentImpressions: page.impressions,
+              signal,
+              recommendation,
+              contentItemId: postInfo?.id ?? null,
+            });
+          }
+        } else if (currentPos <= 15 && page.clicks > 5) {
+          // New page appearing in top 15 with clicks — worth surfacing
+          movingPosts.push({
+            url: page.url,
+            title: postInfo?.title ?? page.url.split("/").filter(Boolean).pop() ?? page.url,
+            focusKeyword: postInfo?.focusKeyword ?? null,
+            currentPosition: Math.round(currentPos * 10) / 10,
+            previousPosition: 0,
+            positionDelta: 0,
+            direction: "new",
+            currentClicks: page.clicks,
+            currentImpressions: page.impressions,
+            signal: "rising_star",
+            recommendation: `New page appearing in top 15 with ${page.clicks} clicks. Build supporting content around this topic to consolidate the ranking.`,
+            contentItemId: postInfo?.id ?? null,
+          });
+        }
+      }
+
+      // Sort: breakthroughs first, then rising stars, then slipping, then needs_refresh
+      const signalOrder = { breakthrough: 0, rising_star: 1, slipping: 2, needs_refresh: 3 };
+      movingPosts.sort((a, b) => {
+        const orderDiff = signalOrder[a.signal] - signalOrder[b.signal];
+        if (orderDiff !== 0) return orderDiff;
+        return Math.abs(b.positionDelta) - Math.abs(a.positionDelta);
+      });
+
+      return {
+        posts: movingPosts.slice(0, 20),
+        totalAnalyzed: currentPages.length,
+        historicalDataPoints: historicalRows.length,
+        hasHistoricalData: historicalRows.length > 0,
+      };
+    }),
+
+  /**
+   * GSC Content Flywheel — AI-powered follow-up content suggestion.
+   * Given a moving post, generates a specific follow-up article or video brief.
+   */
+  suggestFollowUp: protectedProcedure
+    .input(z.object({
+      url: z.string(),
+      title: z.string(),
+      focusKeyword: z.string().nullable(),
+      signal: z.enum(["rising_star", "slipping", "breakthrough", "needs_refresh"]),
+      currentPosition: z.number(),
+      positionDelta: z.number(),
+      contentType: z.enum(["blog", "video", "both"]).default("both"),
+    }))
+    .mutation(async ({ input }) => {
+      const { invokeLLM } = await import("./_core/llm");
+
+      const signalContext = {
+        breakthrough: `This article just broke into the top 10 on Google (position ${input.currentPosition.toFixed(1)}), gaining ${Math.abs(input.positionDelta).toFixed(0)} positions. This is a momentum signal — the topic cluster is hot.`,
+        rising_star: `This article is climbing fast (now position ${input.currentPosition.toFixed(1)}, up ${Math.abs(input.positionDelta).toFixed(0)} positions). It's approaching the top 10 and needs a push.`,
+        slipping: `This article is losing ground (now position ${input.currentPosition.toFixed(1)}, dropped ${Math.abs(input.positionDelta).toFixed(0)} positions). It needs a refresh or supporting content.`,
+        needs_refresh: `This article has shifted in rankings (position ${input.currentPosition.toFixed(1)}). It may need updated content or supporting articles.`,
+      }[input.signal];
+
+      const prompt = `You are the CMO for The Urban Monk, Dr. Pedram Shojai's health and wellness brand. You are analyzing a GSC ranking signal and must recommend specific follow-up content.
+
+ARTICLE: "${input.title}"
+FOCUS KEYWORD: ${input.focusKeyword ?? "(unknown)"}
+URL: ${input.url}
+SIGNAL: ${signalContext}
+
+Generate a specific, actionable follow-up content plan. Return JSON with this exact structure:
+{
+  "blogIdea": {
+    "title": "exact article title",
+    "focusKeyword": "exact keyword to target",
+    "angle": "1-2 sentence description of the unique angle",
+    "outline": ["H2 section 1", "H2 section 2", "H2 section 3", "H2 section 4"],
+    "internalLinkOpportunity": "which existing article to link from"
+  },
+  "videoIdea": {
+    "title": "exact YouTube video title",
+    "hook": "first 2 sentences of the script (the viral hook)",
+    "platform": "YouTube or YouTube Short or both",
+    "cta": "specific CTA to Urban Monk Academy or Lights On supplement"
+  },
+  "urgency": "high|medium|low",
+  "reasoning": "1 sentence explaining why this specific follow-up will move the needle"
+}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are a senior SEO strategist and content director. Always return valid JSON only, no markdown." },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_object" } as any,
+      });
+
+      const content = response.choices?.[0]?.message?.content ?? "{}";
+      try {
+        return JSON.parse(content);
+      } catch {
+        return { error: "Failed to parse suggestion", raw: content };
+      }
+    }),
 });

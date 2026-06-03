@@ -25,6 +25,14 @@ import {
   PenSquare,
   Video,
   Pencil,
+  Repeat2,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownRight,
+  Flame,
+  Star,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 function StatCard({
@@ -600,9 +608,284 @@ export default function SeoDashboard() {
               </CardContent>
             </Card>
           </div>
+        {/* ─── Content Flywheel Panel ─────────────────────────────────────────── */}
+        {isConnected && (
+          <ContentFlywheelPanel setLocation={setLocation} />
+        )}
         </>
       )}
     </div>
     </DashboardLayout>
+  );
+}
+
+// ─── Content Flywheel Component ──────────────────────────────────────────────
+type MovingPost = {
+  url: string;
+  title: string;
+  focusKeyword: string | null;
+  currentPosition: number;
+  previousPosition: number;
+  positionDelta: number;
+  direction: "up" | "down" | "new";
+  currentClicks: number;
+  currentImpressions: number;
+  signal: "rising_star" | "slipping" | "breakthrough" | "needs_refresh";
+  recommendation: string;
+  contentItemId: number | null;
+};
+
+function ContentFlywheelPanel({ setLocation }: { setLocation: (path: string) => void }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<Record<string, any>>({});
+  const [loadingSuggestion, setLoadingSuggestion] = useState<string | null>(null);
+
+  const movingQuery = trpc.gsc.getMovingPosts.useQuery({ minMovement: 3 }, {
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const suggestMutation = trpc.gsc.suggestFollowUp.useMutation({
+    onSuccess: (data, variables) => {
+      setSuggestions(prev => ({ ...prev, [variables.url]: data }));
+      setLoadingSuggestion(null);
+    },
+    onError: () => {
+      setLoadingSuggestion(null);
+      toast.error("Failed to generate suggestion");
+    },
+  });
+
+  const handleSuggest = (post: MovingPost) => {
+    setLoadingSuggestion(post.url);
+    setExpandedId(post.url);
+    suggestMutation.mutate({
+      url: post.url,
+      title: post.title,
+      focusKeyword: post.focusKeyword,
+      signal: post.signal,
+      currentPosition: post.currentPosition,
+      positionDelta: post.positionDelta,
+      contentType: "both",
+    });
+  };
+
+  const signalConfig = {
+    breakthrough: { label: "Breakthrough", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25", icon: <Flame className="w-3 h-3" /> },
+    rising_star: { label: "Rising Star", color: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/25", icon: <Star className="w-3 h-3" /> },
+    slipping: { label: "Slipping", color: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/25", icon: <TrendingDown className="w-3 h-3" /> },
+    needs_refresh: { label: "Needs Refresh", color: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/25", icon: <RefreshCw className="w-3 h-3" /> },
+  };
+
+  const posts: MovingPost[] = movingQuery.data?.posts ?? [];
+  const hasHistoricalData = movingQuery.data?.hasHistoricalData ?? false;
+
+  return (
+    <Card className="mt-6 border-primary/20">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Repeat2 className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Content Flywheel</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Posts moving in Google rankings — act on momentum signals</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => movingQuery.refetch()}
+            disabled={movingQuery.isFetching}
+            className="text-xs"
+          >
+            <RefreshCw className={`w-3 h-3 mr-1 ${movingQuery.isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {movingQuery.isLoading ? (
+          <div className="space-y-2">
+            {[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+          </div>
+        ) : movingQuery.error ? (
+          <div className="text-sm text-muted-foreground text-center py-6">
+            <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            Connect Google Search Console to enable the Content Flywheel.
+          </div>
+        ) : !hasHistoricalData ? (
+          <div className="text-sm text-muted-foreground text-center py-6 space-y-2">
+            <Repeat2 className="w-8 h-8 mx-auto opacity-30" />
+            <p className="font-medium">Building your position history...</p>
+            <p className="text-xs max-w-sm mx-auto">The flywheel needs 14+ days of GSC position snapshots to detect movement. Check back in 2 weeks. Position data is recorded automatically each time you visit the SEO Dashboard.</p>
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-6">
+            <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p>No significant ranking movements detected in the last 28 days.</p>
+            <p className="text-xs mt-1">Posts need to move 3+ positions to appear here.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {posts.length} post{posts.length !== 1 ? "s" : ""} with significant ranking movement — analyzed {movingQuery.data?.totalAnalyzed ?? 0} pages
+            </p>
+            {posts.map((post) => {
+              const cfg = signalConfig[post.signal];
+              const isExpanded = expandedId === post.url;
+              const suggestion = suggestions[post.url];
+              const isLoadingThis = loadingSuggestion === post.url;
+
+              return (
+                <div key={post.url} className="border border-border rounded-lg overflow-hidden">
+                  {/* Post row */}
+                  <div className="p-3 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cfg.color}`}>
+                          {cfg.icon} {cfg.label}
+                        </span>
+                        <span className="text-sm font-medium truncate max-w-xs">{post.title}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          {post.direction === "up" ? (
+                            <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+                          ) : post.direction === "down" ? (
+                            <ArrowDownRight className="w-3 h-3 text-orange-500" />
+                          ) : (
+                            <Star className="w-3 h-3 text-blue-500" />
+                          )}
+                          Pos {post.currentPosition}
+                          {post.previousPosition > 0 && (
+                            <span className={post.direction === "up" ? "text-emerald-500" : "text-orange-500"}>
+                              {post.direction === "up" ? " ▲" : " ▼"}{Math.abs(post.positionDelta).toFixed(0)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex items-center gap-1"><MousePointerClick className="w-3 h-3" />{post.currentClicks} clicks</span>
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{post.currentImpressions.toLocaleString()} impr.</span>
+                        {post.focusKeyword && (
+                          <span className="flex items-center gap-1"><Target className="w-3 h-3" />{post.focusKeyword}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{post.recommendation}</p>
+                    </div>
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 px-2"
+                        onClick={() => handleSuggest(post)}
+                        disabled={isLoadingThis}
+                      >
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        {isLoadingThis ? "Thinking..." : "AI Brief"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7 px-2"
+                        onClick={() => {
+                          const encoded = encodeURIComponent(post.focusKeyword ?? post.title);
+                          setLocation(`/studio?keyword=${encoded}&platform=blog`);
+                        }}
+                      >
+                        <PenSquare className="w-3 h-3 mr-1" /> Blog
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7 px-2"
+                        onClick={() => {
+                          const encoded = encodeURIComponent(post.focusKeyword ?? post.title);
+                          setLocation(`/video-production?keyword=${encoded}`);
+                        }}
+                      >
+                        <Video className="w-3 h-3 mr-1" /> Video
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* AI Suggestion Panel */}
+                  {isExpanded && (
+                    <div className="border-t border-border bg-muted/30 p-3">
+                      {isLoadingThis ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-4 w-1/2" />
+                          <Skeleton className="h-4 w-2/3" />
+                        </div>
+                      ) : suggestion ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                          {/* Blog Idea */}
+                          {suggestion.blogIdea && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                <PenSquare className="w-3 h-3" /> Blog Follow-Up
+                              </div>
+                              <p className="font-medium">{suggestion.blogIdea.title}</p>
+                              <p className="text-muted-foreground">Keyword: <span className="text-foreground">{suggestion.blogIdea.focusKeyword}</span></p>
+                              <p className="text-muted-foreground leading-relaxed">{suggestion.blogIdea.angle}</p>
+                              {suggestion.blogIdea.outline?.length > 0 && (
+                                <div className="mt-1 space-y-0.5">
+                                  {suggestion.blogIdea.outline.map((h: string, i: number) => (
+                                    <div key={i} className="text-muted-foreground">• {h}</div>
+                                  ))}
+                                </div>
+                              )}
+                              <Button
+                                size="sm"
+                                className="mt-2 h-6 text-[10px] px-2"
+                                onClick={() => {
+                                  const encoded = encodeURIComponent(suggestion.blogIdea.focusKeyword ?? "");
+                                  setLocation(`/studio?keyword=${encoded}&platform=blog`);
+                                }}
+                              >
+                                <PenSquare className="w-2.5 h-2.5 mr-1" /> Generate This Blog
+                              </Button>
+                            </div>
+                          )}
+                          {/* Video Idea */}
+                          {suggestion.videoIdea && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1 font-semibold text-primary">
+                                <Video className="w-3 h-3" /> Video Follow-Up
+                              </div>
+                              <p className="font-medium">{suggestion.videoIdea.title}</p>
+                              <p className="text-muted-foreground">Platform: <span className="text-foreground">{suggestion.videoIdea.platform}</span></p>
+                              <p className="text-muted-foreground italic leading-relaxed">"{suggestion.videoIdea.hook}"</p>
+                              <p className="text-muted-foreground">CTA: {suggestion.videoIdea.cta}</p>
+                              <Button
+                                size="sm"
+                                className="mt-2 h-6 text-[10px] px-2"
+                                onClick={() => {
+                                  const encoded = encodeURIComponent(suggestion.videoIdea.title ?? "");
+                                  setLocation(`/video-production?keyword=${encoded}`);
+                                }}
+                              >
+                                <Video className="w-2.5 h-2.5 mr-1" /> Create Video Script
+                              </Button>
+                            </div>
+                          )}
+                          {/* Reasoning */}
+                          {suggestion.reasoning && (
+                            <div className="md:col-span-2 text-muted-foreground border-t border-border pt-2 mt-1">
+                              <span className="font-medium text-foreground">Why this works: </span>{suggestion.reasoning}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

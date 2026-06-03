@@ -15,7 +15,7 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// Content status workflow: idea -> pending_approval -> drafting -> review -> approved -> scheduled -> published
+// Content status workflow: idea -> pending_approval -> drafting -> review -> approved -> scheduled -> published -> pending_review (human gate before WP publish)
 export const contentStatusEnum = mysqlEnum("status", [
   "idea",
   "pending_approval",
@@ -24,6 +24,7 @@ export const contentStatusEnum = mysqlEnum("status", [
   "approved",
   "scheduled",
   "published",
+  "pending_review",
 ]);
 
 export const platformEnum = mysqlEnum("platform", [
@@ -108,6 +109,11 @@ export const contentItems = mysqlTable("content_items", {
   youtubeVideoId: varchar("youtubeVideoId", { length: 64 }),
   // YouTube ↔ Blog closed-loop: content_items.id of the blog post generated from a YouTube video
   linkedBlogItemId: int("linkedBlogItemId"),
+  // Human review gate: reviewer notes when rejecting or approving a post
+  reviewNotes: text("reviewNotes"),
+  // YouTube embed: video ID embedded into the published WP post
+  embeddedYoutubeVideoId: varchar("embeddedYoutubeVideoId", { length: 64 }),
+  embeddedYoutubeEmbedStatus: mysqlEnum("embeddedYoutubeEmbedStatus", ["pending", "embedded", "skipped", "no_match"]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

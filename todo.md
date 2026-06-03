@@ -3728,3 +3728,29 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Frontend: Topic Trends tab — 10 videos ranked by view velocity
 - [ ] Frontend: Title Pattern Analyzer — 10 title examples + LLM pattern extraction
 - [ ] Frontend: Similar Channels panel — 10 competitor channels for a topic
+
+## Keith Item 5 — Human Review Gate (v21)
+
+- [ ] DB: Add `pending_review` to production_status enum in drizzle schema
+- [ ] DB: Add `reviewNotes` text column to scripts table (reviewer feedback)
+- [ ] DB: Run db:push
+- [ ] Backend: blog.submitForReview mutation — move script to pending_review status
+- [ ] Backend: blog.approveForPublish mutation — approve and trigger WP publish
+- [ ] Backend: blog.rejectReview mutation — reject with notes, move back to drafting
+- [ ] Backend: blog.listPendingReview query — list all scripts in pending_review
+- [ ] Frontend: Add "Submit for Review" button on blog Kanban cards (replaces direct Publish)
+- [ ] Frontend: New "Review Queue" page accessible from sidebar
+- [ ] Frontend: Review Queue shows full article preview (title, meta, body, hero image)
+- [ ] Frontend: Approve button → triggers WP publish + moves to Published
+- [ ] Frontend: Reject button → opens notes dialog, moves back to Drafting with feedback
+- [ ] Frontend: Badge count on sidebar nav item showing pending review count
+- [ ] Blog generation flow: auto-submit to review instead of direct publish
+
+## Keith Item 6 — Article → YouTube Embed Automation (v21)
+
+- [ ] Backend: youtube.findMatchingVideo — search Pedram's channel for a video matching article topic
+- [ ] Backend: blog.embedYouTubeVideo mutation — inject YouTube embed into WP post body
+- [ ] Backend: Auto-trigger embed search on WP publish (after article is live)
+- [ ] Frontend: Show "Embed YouTube Video" panel on Published blog cards
+- [ ] Frontend: Display matched video title + thumbnail with Confirm/Skip buttons
+- [ ] Frontend: Show embed status on published card (embedded / no match / skipped)

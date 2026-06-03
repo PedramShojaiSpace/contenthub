@@ -96,9 +96,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { YouTubeEmbedPanel } from "@/components/YouTubeEmbedPanel";
+import { SubmitForReviewButton } from "@/components/SubmitForReviewButton";
 
 type Platform = "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel";
-type Status = "idea" | "pending_approval" | "drafting" | "review" | "approved" | "scheduled" | "published";
+type Status = "idea" | "pending_approval" | "drafting" | "review" | "approved" | "scheduled" | "published" | "pending_review";
 
 type ContentItem = {
   id: number;
@@ -130,6 +132,10 @@ type ContentItem = {
   readabilityMaxRun: number | null;
   readabilityUpdatedAt: number | null;
   youtubeVideoId: string | null;
+  reviewNotes: string | null;
+  embeddedYoutubeVideoId: string | null;
+  embeddedYoutubeEmbedStatus: string | null;
+  ctaBlockLabel: string | null;
 };
 
 const STATUSES: { key: Status; label: string; color: string }[] = [
@@ -139,6 +145,7 @@ const STATUSES: { key: Status; label: string; color: string }[] = [
   { key: "approved", label: "Approved", color: "bg-green-950/30 border-green-800/30" },
   { key: "scheduled", label: "Scheduled", color: "bg-purple-950/30 border-purple-800/30" },
   { key: "published", label: "Published", color: "bg-primary/10 border-primary/20" },
+  { key: "pending_review", label: "Pending Review", color: "bg-amber-950/30 border-amber-600/40" },
 ];
 
 const PLATFORM_ICONS: Record<string, React.ReactNode> = {
@@ -2172,7 +2179,7 @@ export default function CommandCenter() {
   // Proceed with the actual WP publish after pre-flight check is passed
   const doPublishToWP = (item: ContentItem) => {
     setWpPublishingId(item.id);
-    const previousStatus = item.status as "idea" | "pending_approval" | "drafting" | "review" | "approved" | "scheduled" | "published";
+    const previousStatus = item.status as "idea" | "pending_approval" | "drafting" | "review" | "approved" | "scheduled" | "published" | "pending_review";
     const slug = item.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80);
     let semanticKeywords: string[] | undefined;
     try {
@@ -4664,6 +4671,26 @@ export default function CommandCenter() {
                     </div>
                   );
                 })()}
+
+                {/* Keith Item 5: Submit for Review gate — shown for approved posts not yet published */}
+                {(selectedItem.status === "approved" || selectedItem.status === "review" || selectedItem.status === "drafting") && (
+                  <SubmitForReviewButton contentItemId={selectedItem.id} title={selectedItem.title} />
+                )}
+
+                {/* Keith Item 6: YouTube Embed Panel — shown for published posts */}
+                {selectedItem.status === "published" && selectedItem.wpPostId && (
+                  <div className="rounded-lg border border-red-600/20 bg-red-950/10 p-3">
+                    <YouTubeEmbedPanel
+                      contentItemId={selectedItem.id}
+                      title={selectedItem.title}
+                      focusKeyword={selectedItem.focusKeyword}
+                      embeddedYoutubeVideoId={selectedItem.embeddedYoutubeVideoId}
+                      embeddedYoutubeEmbedStatus={selectedItem.embeddedYoutubeEmbedStatus}
+                      wpPostId={selectedItem.wpPostId}
+                      onEmbedSuccess={() => refetch()}
+                    />
+                  </div>
+                )}
 
                 {/* WordPress Publish actions */}
                 <div className="flex items-center gap-2 flex-wrap">

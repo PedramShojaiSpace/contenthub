@@ -36,7 +36,7 @@ function getSupadata() {
  * Get an authenticated YouTube client from the stored refresh token.
  * Falls back to env var YOUTUBE_REFRESH_TOKEN if DB lookup is unavailable.
  */
-async function getYTClient() {
+export async function getYTClient() {
   // Try DB first
   try {
     const db = await getDb();

@@ -609,7 +609,7 @@ export default function SeoDashboard() {
             </Card>
           </div>
         {/* ─── Content Flywheel Panel ─────────────────────────────────────────── */}
-        {isConnected && (
+        {statusQuery.data?.connected && (
           <ContentFlywheelPanel setLocation={setLocation} />
         )}
         </>

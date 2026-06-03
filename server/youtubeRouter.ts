@@ -226,7 +226,6 @@ export const youtubeRouter = router({
         limit: input.limit,
         sortBy: input.sortBy,
         uploadDate: input.uploadDate === "all" ? undefined : input.uploadDate,
-        features: ["subtitles"],
       });
 
       const videos = (results.results ?? [])

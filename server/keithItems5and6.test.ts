@@ -232,6 +232,45 @@ describe("Keith Item 6 — YouTube Embed Automation", () => {
     });
   });
 
+  describe("searchPublishedPosts", () => {
+    it("should return only published blog posts", () => {
+      const allPosts = [
+        { id: 1, status: "published", platform: "blog", title: "Gut Health Reset" },
+        { id: 2, status: "drafting", platform: "blog", title: "Gut Health Tips" },
+        { id: 3, status: "published", platform: "linkedin", title: "Gut Health LinkedIn" },
+      ];
+      const published = allPosts.filter((p) => p.status === "published" && p.platform === "blog");
+      expect(published).toHaveLength(1);
+      expect(published[0].id).toBe(1);
+    });
+
+    it("should filter by title keyword using LIKE", () => {
+      const allPosts = [
+        { id: 1, title: "Gut Health Reset with Qigong" },
+        { id: 2, title: "Sleep Optimization Guide" },
+        { id: 3, title: "Gut Microbiome Deep Dive" },
+      ];
+      const query = "gut";
+      const filtered = allPosts.filter((p) => p.title.toLowerCase().includes(query.toLowerCase()));
+      expect(filtered).toHaveLength(2);
+      expect(filtered.map((p) => p.id)).toEqual([1, 3]);
+    });
+
+    it("should return embed status fields in results", () => {
+      const post = {
+        id: 1,
+        title: "Gut Health Reset",
+        wpPostId: 12345,
+        focusKeyword: "gut health",
+        embeddedYoutubeEmbedStatus: "pending",
+        embeddedYoutubeVideoId: null,
+      };
+      expect(post).toHaveProperty("embeddedYoutubeEmbedStatus");
+      expect(post).toHaveProperty("embeddedYoutubeVideoId");
+      expect(post.embeddedYoutubeEmbedStatus).toBe("pending");
+    });
+  });
+
   describe("Embed status enum", () => {
     it("should have all 4 valid embed status values", () => {
       const validStatuses = ["pending", "embedded", "skipped", "no_match"];

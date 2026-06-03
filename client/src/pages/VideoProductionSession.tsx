@@ -12,6 +12,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { YouTubeEmbedPanel } from "@/components/YouTubeEmbedPanel";
 import { useSearch } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
@@ -719,6 +720,11 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
         </div>
       )}
 
+      {/* Keith Item 6: YouTube → Blog Embed Panel */}
+      {(session.status === "ready_to_record" || session.status === "uploading" || session.status === "stitching" || session.status === "done") && (
+        <BlogEmbedSection sessionIdea={session.idea} ctaKeyword={session.ctaKeyword} />
+      )}
+
       {/* Next step callout */}
       {session.status === "ready_to_record" && (
         <div className="bg-amber-50 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
@@ -756,6 +762,137 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
           title={teleprompterData.title}
           onClose={() => setTeleprompterData(null)}
         />
+      )}
+    </div>
+  );
+}
+
+// ─── Blog Embed Section (Keith Item 6) ──────────────────────────────────────
+
+/**
+ * BlogEmbedSection — shown inside a Video Production session once scripts are
+ * approved. Lets Pedram search for the matching published blog post and embed
+ * the YouTube video directly into it from within the video workflow.
+ */
+function BlogEmbedSection({ sessionIdea, ctaKeyword }: { sessionIdea: string; ctaKeyword: string | null }) {
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [selectedWpPostId, setSelectedWpPostId] = useState<number | null>(null);
+  const [selectedTitle, setSelectedTitle] = useState("");
+  const [selectedFocusKeyword, setSelectedFocusKeyword] = useState("");
+  const [selectedEmbedStatus, setSelectedEmbedStatus] = useState<string | null>(null);
+  const [selectedEmbedVideoId, setSelectedEmbedVideoId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState(ctaKeyword ?? sessionIdea.slice(0, 60));
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const searchMutation = trpc.blog.searchPublishedPosts.useMutation({
+    onSuccess: () => setHasSearched(true),
+  });
+
+  const posts = (searchMutation.data?.posts ?? []) as Array<{
+    id: number;
+    title: string;
+    wpPostId: number | null;
+    focusKeyword: string | null;
+    embeddedYoutubeEmbedStatus: string | null;
+    embeddedYoutubeVideoId: string | null;
+  }>;
+
+  return (
+    <div className="rounded-xl border border-red-600/20 bg-red-950/10 p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-red-500" />
+        <h3 className="text-sm font-semibold text-foreground">Embed in Blog Post</h3>
+        <span className="text-xs text-muted-foreground">Link this video to a published article on WordPress</span>
+      </div>
+
+      {!selectedPostId ? (
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              className="flex-1 h-8 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="Search published blog posts by keyword…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && searchMutation.mutate({ query: searchQuery })}
+            />
+            <Button
+              size="sm"
+              className="h-8 bg-red-600 hover:bg-red-700 text-white shrink-0"
+              disabled={searchMutation.isPending || !searchQuery.trim()}
+              onClick={() => searchMutation.mutate({ query: searchQuery })}
+            >
+              {searchMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Search"}
+            </Button>
+          </div>
+
+          {hasSearched && posts.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-2">No published blog posts found for that keyword.</p>
+          )}
+
+          {posts.length > 0 && (
+            <div className="space-y-1.5">
+              {posts.map((post) => (
+                <div
+                  key={post.id}
+                  className="flex items-center justify-between gap-2 bg-card border border-border rounded-lg px-3 py-2 cursor-pointer hover:border-red-500/40 transition-colors"
+                  onClick={() => {
+                    if (!post.wpPostId) return;
+                    setSelectedPostId(post.id);
+                    setSelectedWpPostId(post.wpPostId);
+                    setSelectedTitle(post.title);
+                    setSelectedFocusKeyword(post.focusKeyword ?? "");
+                    setSelectedEmbedStatus(post.embeddedYoutubeEmbedStatus);
+                    setSelectedEmbedVideoId(post.embeddedYoutubeVideoId);
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{post.title}</p>
+                    {post.focusKeyword && (
+                      <p className="text-xs text-muted-foreground truncate">#{post.focusKeyword}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {post.embeddedYoutubeEmbedStatus === "embedded" && (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">Embedded</span>
+                    )}
+                    {post.embeddedYoutubeEmbedStatus === "skipped" && (
+                      <span className="text-[10px] bg-muted text-muted-foreground rounded px-1.5 py-0.5">Skipped</span>
+                    )}
+                    {!post.wpPostId && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 rounded px-1.5 py-0.5">Not on WP</span>
+                    )}
+                    {post.wpPostId && post.embeddedYoutubeEmbedStatus !== "embedded" && (
+                      <span className="text-[10px] bg-red-100 text-red-700 rounded px-1.5 py-0.5">Select →</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-foreground truncate flex-1">{selectedTitle}</p>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs text-muted-foreground hover:text-foreground shrink-0"
+              onClick={() => setSelectedPostId(null)}
+            >
+              ← Change
+            </Button>
+          </div>
+          <YouTubeEmbedPanel
+            contentItemId={selectedPostId}
+            title={selectedTitle}
+            focusKeyword={selectedFocusKeyword || ctaKeyword || sessionIdea.slice(0, 60)}
+            embeddedYoutubeVideoId={selectedEmbedVideoId}
+            embeddedYoutubeEmbedStatus={selectedEmbedStatus}
+            wpPostId={selectedWpPostId!}
+            onEmbedSuccess={() => setSelectedPostId(null)}
+          />
+        </div>
       )}
     </div>
   );

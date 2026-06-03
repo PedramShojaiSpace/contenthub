@@ -5744,6 +5744,34 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
       return { keywords };
     }),
 
+    // Keith Item 6: Search published blog posts by keyword for the Video Production embed flow
+    searchPublishedPosts: protectedProcedure
+      .input(z.object({ query: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { posts: [] };
+        const { like, eq, and, isNotNull } = await import("drizzle-orm");
+        const rows = await db
+          .select({
+            id: contentItems.id,
+            title: contentItems.title,
+            wpPostId: contentItems.wpPostId,
+            focusKeyword: contentItems.focusKeyword,
+            embeddedYoutubeEmbedStatus: contentItems.embeddedYoutubeEmbedStatus,
+            embeddedYoutubeVideoId: contentItems.embeddedYoutubeVideoId,
+          })
+          .from(contentItems)
+          .where(
+            and(
+              eq(contentItems.platform, "blog"),
+              eq(contentItems.status, "published"),
+              like(contentItems.title, `%${input.query}%`)
+            )
+          )
+          .limit(10);
+        return { posts: rows };
+      }),
+
   }),
 
   personas: personasRouter,

@@ -62,6 +62,7 @@ import {
   Trophy,
   Layout,
   Youtube,
+  Clock,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -78,6 +79,7 @@ const topNavItems = [
   { icon: Video, label: "Create Webinar", path: "/webinar" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
+  { icon: Clock, label: "Review Queue", path: "/review-queue" },
 ];
 
 // Libraries sub-items

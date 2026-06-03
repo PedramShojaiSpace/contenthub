@@ -5529,6 +5529,191 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
      * Used by the Keyword Strategy UI to flag keyphrase cannibalization
      * before a new post is created — so you never compete with yourself.
      */
+    // ── Keith Item 5: Human Review Gate ─────────────────────────────────────────
+    // Submit a blog post for human review before it goes to WordPress.
+    // Moves the content item to pending_review status.
+    submitForReview: protectedProcedure
+      .input(z.object({ contentItemId: z.number() }))
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+        await updateContentItem(input.contentItemId, { status: "pending_review" });
+        // Notify owner that a post is awaiting review
+        const { notifyOwner } = await import("./_core/notification");
+        await notifyOwner({
+          title: `Blog Post Awaiting Review: ${item.title}`,
+          content: `A new blog post is ready for your review before publishing to WordPress.\n\n**Title:** ${item.title}\n**Focus Keyword:** ${item.focusKeyword ?? "(not set)"}\n\nLog in to the Content Hub to approve or reject it.`,
+        });
+        return { success: true, newStatus: "pending_review" };
+      }),
+
+    // List all content items in pending_review status
+    listPendingReview: protectedProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { items: [] };
+      const { contentItems } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const items = await db.select().from(contentItems).where(eq(contentItems.status, "pending_review"));
+      return { items };
+    }),
+
+    // Approve a pending_review post and trigger WordPress publish
+    // This is a thin wrapper — it moves status to approved so the existing
+    // blog.publish flow can be triggered from the review queue UI.
+    approveForPublish: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        reviewNotes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+        await updateContentItem(input.contentItemId, {
+          status: "approved",
+          reviewNotes: input.reviewNotes ?? "Approved for publish",
+        });
+        return { success: true, newStatus: "approved" };
+      }),
+
+    // Reject a pending_review post and send it back to drafting with feedback
+    rejectReview: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        reviewNotes: z.string().min(1, "Please provide rejection notes"),
+      }))
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+        await updateContentItem(input.contentItemId, {
+          status: "drafting",
+          reviewNotes: input.reviewNotes,
+        });
+        return { success: true, newStatus: "drafting", reviewNotes: input.reviewNotes };
+      }),
+
+    // ── Keith Item 6: Article → YouTube Embed Automation ─────────────────────────
+    // Search Pedram's YouTube channel for a video matching the article topic.
+    // Uses the YouTube Data API v3 search endpoint.
+    findMatchingVideo: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        searchQuery: z.string().min(3).max(200),
+      }))
+      .mutation(async ({ input }) => {
+        const { getYTClient } = await import("./youtubeRouter");
+        const yt = await getYTClient();
+
+        // Search Pedram's channel specifically
+        const PEDRAM_CHANNEL_ID = "UCfh9ouEHMBBCGMSJBMiGPrQ"; // The Urban Monk channel
+
+        const searchRes = await yt.search.list({
+          part: ["snippet"],
+          q: input.searchQuery,
+          type: ["video"],
+          channelId: PEDRAM_CHANNEL_ID,
+          maxResults: 5,
+          order: "relevance",
+        });
+
+        const items = searchRes.data.items ?? [];
+        if (items.length === 0) {
+          // Also try a broader search without channel filter
+          const broadRes = await yt.search.list({
+            part: ["snippet"],
+            q: `${input.searchQuery} Pedram Shojai Urban Monk`,
+            type: ["video"],
+            maxResults: 5,
+            order: "relevance",
+          });
+          const broadItems = broadRes.data.items ?? [];
+          if (broadItems.length === 0) {
+            await updateContentItem(input.contentItemId, { embeddedYoutubeEmbedStatus: "no_match" });
+            return { found: false, videos: [] };
+          }
+          const videos = broadItems.map((v: any) => ({
+            videoId: v.id?.videoId ?? "",
+            title: v.snippet?.title ?? "",
+            channelTitle: v.snippet?.channelTitle ?? "",
+            thumbnail: v.snippet?.thumbnails?.medium?.url ?? "",
+            publishedAt: v.snippet?.publishedAt ?? "",
+            url: `https://www.youtube.com/watch?v=${v.id?.videoId}`,
+          })).filter((v: any) => v.videoId);
+          return { found: videos.length > 0, videos };
+        }
+
+        const videos = items.map((v: any) => ({
+          videoId: v.id?.videoId ?? "",
+          title: v.snippet?.title ?? "",
+          channelTitle: v.snippet?.channelTitle ?? "",
+          thumbnail: v.snippet?.thumbnails?.medium?.url ?? "",
+          publishedAt: v.snippet?.publishedAt ?? "",
+          url: `https://www.youtube.com/watch?v=${v.id?.videoId}`,
+        })).filter((v: any) => v.videoId);
+
+        return { found: videos.length > 0, videos };
+      }),
+
+    // Embed a YouTube video into an already-published WordPress post.
+    // Injects a responsive YouTube embed block before the first H2 heading.
+    embedYouTubeVideo: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        videoId: z.string().min(5).max(20),
+        videoTitle: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const item = await getContentItem(input.contentItemId);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Content item not found" });
+        if (!item.wpPostId) throw new TRPCError({ code: "BAD_REQUEST", message: "This post has not been published to WordPress yet" });
+
+        const { fetchSingleWpPost, updateWpPostContent } = await import("./wordpress");
+
+        // Fetch the current live post HTML from WordPress
+        const livePost = await fetchSingleWpPost(item.wpPostId);
+        let html = livePost.content ?? "";
+
+        // Build a responsive YouTube embed block
+        const embedHtml = `\n<!-- YouTube Embed: ${input.videoTitle ?? input.videoId} -->\n<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">\nhttps://www.youtube.com/watch?v=${input.videoId}\n</div></figure>\n`;
+
+        // Inject before the first <h2> heading (after the intro paragraph)
+        const h2Match = html.match(/<h2[\s>]/);
+        if (h2Match && h2Match.index !== undefined && h2Match.index > 100) {
+          html = html.slice(0, h2Match.index) + embedHtml + html.slice(h2Match.index);
+        } else {
+          // Fallback: inject after the first </p>
+          const pMatch = html.match(/<\/p>/);
+          if (pMatch && pMatch.index !== undefined) {
+            html = html.slice(0, pMatch.index + 4) + embedHtml + html.slice(pMatch.index + 4);
+          } else {
+            html = embedHtml + html;
+          }
+        }
+
+        // Push updated HTML to WordPress
+        await updateWpPostContent(item.wpPostId, html);
+
+        // Persist embed status to DB
+        await updateContentItem(input.contentItemId, {
+          embeddedYoutubeVideoId: input.videoId,
+          embeddedYoutubeEmbedStatus: "embedded",
+        });
+
+        return {
+          success: true,
+          videoId: input.videoId,
+          wpPostId: item.wpPostId,
+          embedUrl: `https://www.youtube.com/watch?v=${input.videoId}`,
+        };
+      }),
+
+    // Mark a post as skipped for YouTube embed (user chose not to embed)
+    skipYouTubeEmbed: protectedProcedure
+      .input(z.object({ contentItemId: z.number() }))
+      .mutation(async ({ input }) => {
+        await updateContentItem(input.contentItemId, { embeddedYoutubeEmbedStatus: "skipped" });
+        return { success: true };
+      }),
+
     getUsedFocusKeywords: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) return { keywords: [] };

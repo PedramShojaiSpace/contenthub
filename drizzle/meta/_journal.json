@@ -743,6 +743,13 @@
       "when": 1780107297775,
       "tag": "0105_wealthy_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "5",
+      "when": 1780445725544,
+      "tag": "0106_sudden_clea",
+      "breakpoints": true
     }
   ]
 }

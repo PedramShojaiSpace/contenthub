@@ -5,6 +5,7 @@ import { wrapLLM } from "./llmUtils";
 import { publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { getYouTubeClient } from "./youtubeOAuth";
+import { getAvatarContextBlock } from "./avatarRouter";
 
 // Pedram's voice guide injected into the differentiation analysis
 const PEDRAM_VOICE_GUIDE = `
@@ -329,6 +330,9 @@ export const youtubeRouter = router({
       })
     )
     .mutation(async ({ input }) => {
+      // Fetch avatar intelligence for this topic
+      const avatarContext = await getAvatarContextBlock(input.idea).catch(() => "");
+
       const videoSummaries = input.videos
         .map((v, i) => {
           const transcriptSnippet = v.transcript
@@ -351,6 +355,8 @@ Your job is to analyze competitor YouTube videos on a topic and produce a differ
 TOPIC / IDEA: ${input.idea}
 
 ${PEDRAM_VOICE_GUIDE}
+
+${avatarContext ? avatarContext + "\n\nUSE THE AVATAR INTELLIGENCE ABOVE to:\n- Identify which competitor gaps align with the audience's deepest pain points\n- Ensure Pedram's differentiation angle speaks directly to the audience's emotional state\n- Recommend hook language that mirrors the audience's exact internal monologue\n- Flag any competitor content that accidentally triggers the audience's top objections" : ""}
 
 COMPETITOR VIDEOS:
 ${videoSummaries}
@@ -959,6 +965,9 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
     .mutation(async ({ input }) => {
       const wordsPerMinute = 130;
 
+      // Fetch avatar intelligence for this topic (non-blocking — falls back to empty string)
+      const avatarContext = await getAvatarContextBlock(input.topic).catch(() => "");
+
       // ── Platform-specific config ──────────────────────────────────────────────
       type PlatformConfig = {
         label: string;
@@ -1068,6 +1077,8 @@ ${PEDRAM_VOICE_GUIDE}
 
 COMPETITOR ANALYSIS BRIEF (use this to inform the script — especially the differentiation angle):
 ${input.brief.slice(0, 4000)}
+
+${avatarContext ? avatarContext + "\n\nCRITICAL: Use the Avatar Intelligence above to:\n- Open with language that mirrors the audience's EXACT internal monologue\n- Address their specific pain points and emotional hooks throughout the script\n- Use the messaging framework structure to build trust before offering solutions\n- Preemptively handle the top objections naturally within the script flow\n- Close with transformation language (reclaim, restore, finally, root cause) — NOT management language" : ""}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL RULES FOR THIS ${cfg.label.toUpperCase()} SCRIPT:

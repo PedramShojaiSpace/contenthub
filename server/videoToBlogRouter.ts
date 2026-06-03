@@ -275,10 +275,36 @@ export const videoToBlogRouter = router({
         throw new Error("Invalid YouTube URL. Please paste a valid youtube.com or youtu.be link.");
       }
 
-      const [metadata, transcript] = await Promise.all([
-        fetchVideoMetadata(videoId),
-        fetchTranscript(videoId),
-      ]);
+      // Sequential fetch: metadata first, then transcript.
+      // Parallel calls to Supadata trigger "Limit Exceeded" on the transcript endpoint.
+      const metadata = await fetchVideoMetadata(videoId);
+      // Small delay to avoid back-to-back rate limiting
+      await new Promise((r) => setTimeout(r, 300));
+      const transcript = await fetchTranscript(videoId);
+
+      // Use LLM to suggest a clean SEO focus keyword from the transcript + title
+      let suggestedKeyword = "";
+      try {
+        const kwSource = transcript.length > 200
+          ? transcript.slice(0, 1500)
+          : metadata.title;
+        const kwResponse = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: "You are an SEO expert for The Urban Monk (Dr. Pedram Shojai). Given a video title and transcript excerpt, suggest ONE concise focus keyword phrase (2-4 words) that is: (a) the core topic of the video, (b) searchable on Google, (c) relevant to health/wellness/spirituality. Respond with ONLY the keyword phrase — no explanation, no punctuation, no quotes.",
+            },
+            {
+              role: "user",
+              content: `Video title: ${metadata.title}\n\nTranscript excerpt:\n${kwSource}`,
+            },
+          ],
+        });
+        suggestedKeyword = ((kwResponse.choices?.[0]?.message?.content as string) ?? "").trim().toLowerCase();
+      } catch {
+        // Fall back to title-based suggestion on the frontend
+        suggestedKeyword = "";
+      }
 
       return {
         videoId,
@@ -289,6 +315,7 @@ export const videoToBlogRouter = router({
         transcript: transcript.slice(0, 8000), // cap for display
         transcriptLength: transcript.length,
         hasTranscript: transcript.length > 100,
+        suggestedKeyword,
       };
     }),
 

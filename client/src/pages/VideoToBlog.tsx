@@ -143,12 +143,16 @@ export default function VideoToBlog() {
   const fetchVideoInfo = trpc.videoToBlog.fetchVideoInfo.useMutation({
     onSuccess: (data) => {
       setVideoInfo(data);
-      // Auto-suggest a focus keyword from the video title if none entered yet
-      if (!focusKeyword && data.title) {
-        // Strip channel suffix (" | The Urban Monk", " | Urban Monk", etc.) and take first 4 words
-        const cleanTitle = data.title.replace(/\s*[|\-–—].*$/, "").trim();
-        const words = cleanTitle.split(/\s+/).slice(0, 4).join(" ").toLowerCase();
-        setFocusKeyword(words);
+      // Use LLM-suggested keyword from server if available; fall back to title-based suggestion
+      if (!focusKeyword) {
+        if (data.suggestedKeyword && data.suggestedKeyword.length > 2) {
+          setFocusKeyword(data.suggestedKeyword);
+        } else if (data.title) {
+          // Strip channel suffix (" | The Urban Monk", " | Urban Monk", etc.) and take first 4 words
+          const cleanTitle = data.title.replace(/\s*[|\-–—].*$/, "").trim();
+          const words = cleanTitle.split(/\s+/).slice(0, 4).join(" ").toLowerCase();
+          setFocusKeyword(words);
+        }
       }
       if (!data.hasTranscript) {
         toast.warning("No transcript found for this video. The blog will be generated from the title and description only.");
@@ -379,7 +383,7 @@ export default function VideoToBlog() {
               />
               <p className="text-xs text-muted-foreground">
                 2–4 words. Used by Yoast to check your intro, subheadings, and meta description.
-                {videoInfo && !focusKeyword && <span className="text-amber-600 dark:text-amber-400 font-medium"> — auto-suggested from title, please review.</span>}
+                {videoInfo && focusKeyword && <span className="text-green-600 dark:text-green-400 font-medium"> — AI-suggested from transcript, edit if needed.</span>}
               </p>
             </div>
 

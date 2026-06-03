@@ -3754,3 +3754,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Frontend: Show "Embed YouTube Video" panel on Published blog cards
 - [ ] Frontend: Display matched video title + thumbnail with Confirm/Skip buttons
 - [ ] Frontend: Show embed status on published card (embedded / no match / skipped)
+
+## Teleprompter Script Generator
+- [ ] Backend: youtube.generateTeleprompterScript — takes outline + topic, returns full spoken script (no markdown)
+- [ ] Frontend: "Generate Script" button after brief/outline is ready in Competitor Search tab
+- [ ] Frontend: Teleprompter script modal with large readable text, one-click copy button
+- [ ] Frontend: Script formatted for teleprompter — no markdown symbols, clean spoken sentences, natural paragraph breaks

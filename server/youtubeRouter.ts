@@ -944,4 +944,93 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
 
       return { channels };
     }),
+
+  // ── NEW: Teleprompter Script Generator ───────────────────────────────────────
+
+  generateTeleprompterScript: publicProcedure
+    .input(
+      z.object({
+        topic: z.string().min(3).max(300),
+        brief: z.string().min(10).max(12000),
+        durationMinutes: z.number().min(1).max(30).default(8),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const wordsPerMinute = 130; // comfortable teleprompter reading pace
+      const targetWords = input.durationMinutes * wordsPerMinute;
+
+      const prompt = `You are a world-class YouTube scriptwriter for Dr. Pedram Shojai (The Urban Monk).
+
+Your task: Write a COMPLETE, TELEPROMPTER-READY spoken script for a YouTube video.
+
+TOPIC: ${input.topic}
+TARGET LENGTH: approximately ${targetWords} words (${input.durationMinutes} minutes at easy teleprompter pace)
+
+${PEDRAM_VOICE_GUIDE}
+
+COMPETITOR ANALYSIS BRIEF (use this to inform the script — especially the differentiation angle and outline):
+${input.brief.slice(0, 6000)}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL RULES FOR THIS SCRIPT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. VIRAL HOOK (first 30 seconds — the most important part):
+   Study the competitor hooks from the brief. Then write a BETTER hook using ONE of these proven YouTube hook formulas:
+   - PATTERN INTERRUPT: Start with a shocking, counterintuitive statement that stops the scroll (e.g., "Most doctors are wrong about this...")
+   - CURIOSITY GAP: Tease something the viewer desperately wants to know but doesn't yet (e.g., "There's a reason you wake up exhausted no matter how much you sleep — and it has nothing to do with sleep.")
+   - BOLD CLAIM + PROOF PROMISE: Make a strong claim and immediately promise to back it up (e.g., "I reversed my gut damage in 90 days using a 2,000-year-old protocol. Here's exactly what I did.")
+   - STORY HOOK: Open mid-story at the most dramatic moment (e.g., "I was standing in a monastery in China when the master said something that changed everything I thought I knew about health.")
+   The hook must be in Pedram's authentic voice — warm, authoritative, grounded. NOT clickbait. NOT fear-based.
+
+2. TELEPROMPTER FORMAT RULES (NON-NEGOTIABLE):
+   - NO markdown symbols: no #, *, -, [], or ** anywhere in the script
+   - NO section headers or labels (no "Hook:", "Section 1:", "CTA:", "[Pause here]")
+   - NO bullet points or numbered lists
+   - Write in natural spoken paragraphs — exactly how Pedram would say it out loud
+   - Short sentences. Conversational rhythm. Easy to read while looking at a camera.
+   - Use ellipses (...) for natural pauses where needed
+   - Paragraph breaks = natural breath points
+
+3. SCRIPT STRUCTURE (flow naturally — no labels):
+   Opening hook (30 sec) → Brief personal credibility moment (30 sec) → Core problem/insight (2-3 min) → The Urban Monk solution/framework (3-4 min) → Practical takeaways (1-2 min) → Closing CTA to Academy or Lights On course (30 sec)
+
+4. CTA (last 30 seconds):
+   Warm, non-pushy invitation to the Urban Monk Academy or lightson.theurbanmonk.com
+   Example tone: "If you want to go deeper on this, I've put together a complete program inside the Urban Monk Academy..."
+
+5. VOICE CONSISTENCY:
+   Pedram speaks like a wise, warm teacher — not a hype marketer. He references Qi, life energy, ancient wisdom, and modern science in the same breath. He uses "we" and "you" — never lectures down.
+
+Now write the complete teleprompter script. Start directly with the hook — no preamble, no title, no intro text. Just the spoken words Pedram will read.`;
+
+      const response = await wrapLLM(() => invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert YouTube scriptwriter specializing in health, wellness, and personal development content. You write scripts that are warm, authoritative, and immediately engaging. You never use markdown formatting in teleprompter scripts.",
+          },
+          { role: "user", content: prompt },
+        ],
+      }));
+
+      const script = response.choices?.[0]?.message?.content ?? "";
+
+      // Strip any residual markdown that the LLM might have snuck in
+      const cleanScript = script
+        .replace(/^#{1,6}\s+/gm, "")          // remove heading markers
+        .replace(/\*\*([^*]+)\*\*/g, "$1")    // remove bold
+        .replace(/\*([^*]+)\*/g, "$1")         // remove italic
+        .replace(/^[-*+]\s+/gm, "")            // remove bullet points
+        .replace(/^\d+\.\s+/gm, "")            // remove numbered lists
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // remove links
+        .replace(/`([^`]+)`/g, "$1")            // remove code
+        .replace(/^(Hook|CTA|Section|Intro|Outro|Opening|Closing|Bridge|Transition):\s*/gim, "") // remove labels
+        .trim();
+
+      const wordCount = cleanScript.split(/\s+/).filter(Boolean).length;
+      const estimatedMinutes = Math.round(wordCount / wordsPerMinute);
+
+      return { script: cleanScript, wordCount, estimatedMinutes };
+    }),
 });

@@ -273,3 +273,96 @@ describe("longs vs shorts breakdown calculation", () => {
     expect(result.shortsAvgViews).toBe(0);
   });
 });
+
+describe("teleprompter script markdown stripper", () => {
+  function stripMarkdown(script: string): string {
+    return script
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/^[-*+]\s+/gm, "")
+      .replace(/^\d+\.\s+/gm, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/^(Hook|CTA|Section|Intro|Outro|Opening|Closing|Bridge|Transition):\s*/gim, "")
+      .trim();
+  }
+
+  it("removes heading markers", () => {
+    expect(stripMarkdown("## Section Title\nSome text")).toBe("Section Title\nSome text");
+    expect(stripMarkdown("# Hook\nOpening line")).toBe("Hook\nOpening line");
+  });
+
+  it("removes bold markdown", () => {
+    expect(stripMarkdown("This is **important** text")).toBe("This is important text");
+  });
+
+  it("removes italic markdown", () => {
+    expect(stripMarkdown("This is *emphasized* text")).toBe("This is emphasized text");
+  });
+
+  it("removes bullet points", () => {
+    expect(stripMarkdown("- First point\n- Second point")).toBe("First point\nSecond point");
+  });
+
+  it("removes numbered lists", () => {
+    expect(stripMarkdown("1. First\n2. Second")).toBe("First\nSecond");
+  });
+
+  it("removes section labels like Hook: and CTA:", () => {
+    expect(stripMarkdown("Hook: This is the opening")).toBe("This is the opening");
+    expect(stripMarkdown("CTA: Visit the Academy")).toBe("Visit the Academy");
+  });
+
+  it("removes markdown links", () => {
+    expect(stripMarkdown("Visit [Urban Monk Academy](https://example.com)")).toBe("Visit Urban Monk Academy");
+  });
+
+  it("preserves clean spoken text unchanged", () => {
+    const clean = "There is a reason you wake up exhausted every morning... and it has nothing to do with sleep.";
+    expect(stripMarkdown(clean)).toBe(clean);
+  });
+
+  it("preserves ellipses for natural pauses", () => {
+    const text = "You see... the body is not a machine. It is a garden.";
+    expect(stripMarkdown(text)).toBe(text);
+  });
+});
+
+describe("teleprompter word count and duration estimate", () => {
+  function estimateDuration(script: string, wpm = 130): { wordCount: number; estimatedMinutes: number } {
+    const wordCount = script.split(/\s+/).filter(Boolean).length;
+    const estimatedMinutes = Math.round(wordCount / wpm);
+    return { wordCount, estimatedMinutes };
+  }
+
+  it("correctly counts words in a script", () => {
+    const script = "This is a test script with exactly ten words here.";
+    const { wordCount } = estimateDuration(script);
+    expect(wordCount).toBe(10);
+  });
+
+  it("estimates 1 minute for 130 words at 130 wpm", () => {
+    const script = Array(130).fill("word").join(" ");
+    const { estimatedMinutes } = estimateDuration(script);
+    expect(estimatedMinutes).toBe(1);
+  });
+
+  it("estimates 8 minutes for 1040 words at 130 wpm", () => {
+    const script = Array(1040).fill("word").join(" ");
+    const { estimatedMinutes } = estimateDuration(script);
+    expect(estimatedMinutes).toBe(8);
+  });
+
+  it("handles empty script", () => {
+    const { wordCount, estimatedMinutes } = estimateDuration("");
+    expect(wordCount).toBe(0);
+    expect(estimatedMinutes).toBe(0);
+  });
+
+  it("handles script with extra whitespace", () => {
+    const script = "  word1   word2  word3  ";
+    const { wordCount } = estimateDuration(script);
+    expect(wordCount).toBe(3);
+  });
+});

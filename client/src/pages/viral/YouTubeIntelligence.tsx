@@ -299,12 +299,19 @@ function CompetitorSearchTab() {
   const [outlineLoading, setOutlineLoading] = useState<Record<string, boolean>>({});
   const [brief, setBrief] = useState("");
   const [savedTitle, setSavedTitle] = useState("");
+  const [teleprompterScript, setTeleprompterScript] = useState("");
+  const [teleprompterWordCount, setTeleprompterWordCount] = useState(0);
+  const [teleprompterMinutes, setTeleprompterMinutes] = useState(0);
+  const [showTeleprompter, setShowTeleprompter] = useState(false);
+  const [durationMinutes, setDurationMinutes] = useState(8);
+  const [scriptCopied, setScriptCopied] = useState(false);
 
   const searchMut = trpc.youtube.searchSimilar.useMutation();
   const transcriptMut = trpc.youtube.fetchTranscripts.useMutation();
   const summarizeMut = trpc.youtube.summarizeVideo.useMutation();
   const analyzeMut = trpc.youtube.analyzeCompetitors.useMutation();
   const saveMut = trpc.youtube.saveToScript.useMutation();
+  const scriptMut = trpc.youtube.generateTeleprompterScript.useMutation();
 
   const handleSearch = async () => {
     if (!query.trim()) { toast.error("Enter a topic to search"); return; }
@@ -351,6 +358,28 @@ function CompetitorSearchTab() {
       setBrief(typeof result.brief === "string" ? result.brief : String(result.brief ?? ""));
       setSavedTitle(`YouTube CI: ${query}`);
     } catch (err: any) { toast.error(err?.message ?? "Analysis failed"); }
+  };
+
+  const handleGenerateScript = async () => {
+    if (!brief) return;
+    setTeleprompterScript("");
+    try {
+      const result = await scriptMut.mutateAsync({ topic: query, brief, durationMinutes });
+      setTeleprompterScript(result.script);
+      setTeleprompterWordCount(result.wordCount);
+      setTeleprompterMinutes(result.estimatedMinutes);
+      setShowTeleprompter(true);
+    } catch (err: any) { toast.error(err?.message ?? "Script generation failed"); }
+  };
+
+  const handleCopyScript = async () => {
+    if (!teleprompterScript) return;
+    try {
+      await navigator.clipboard.writeText(teleprompterScript);
+      setScriptCopied(true);
+      toast.success("Script copied to clipboard — paste into your teleprompter app");
+      setTimeout(() => setScriptCopied(false), 3000);
+    } catch { toast.error("Copy failed — please select and copy manually"); }
   };
 
   const handleSave = async () => {
@@ -434,11 +463,20 @@ function CompetitorSearchTab() {
                 Differentiation Brief
               </CardTitle>
               {brief && (
-                <div className="flex items-center gap-2">
-                  <Input value={savedTitle} onChange={(e) => setSavedTitle(e.target.value)} className="h-8 text-sm w-64" placeholder="Script title…" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">Duration:</span>
+                    {([3, 5, 8, 10, 15] as const).map((m) => (
+                      <button key={m} onClick={() => setDurationMinutes(m)} className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${durationMinutes === m ? "bg-violet-100 border-violet-300 text-violet-700 font-medium" : "border-border text-muted-foreground hover:border-violet-200"}`}>{m}m</button>
+                    ))}
+                  </div>
+                  <Button onClick={handleGenerateScript} disabled={scriptMut.isPending} className="bg-red-600 hover:bg-red-700 text-white h-8 text-sm">
+                    {scriptMut.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Writing Script…</> : <><Film className="w-3.5 h-3.5 mr-1.5" />Generate Teleprompter Script</>}
+                  </Button>
+                  <Input value={savedTitle} onChange={(e) => setSavedTitle(e.target.value)} className="h-8 text-sm w-52" placeholder="Script title…" />
                   <Button onClick={handleSave} disabled={saveMut.isPending} variant="outline" className="h-8 text-sm">
                     {saveMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    <span className="ml-1.5">Save to Script Library</span>
+                    <span className="ml-1.5">Save Brief</span>
                   </Button>
                 </div>
               )}
@@ -468,6 +506,70 @@ function CompetitorSearchTab() {
             {["gut health probiotics", "sleep optimization", "cortisol stress", "qigong for beginners", "heavy metal detox"].map((t) => (
               <button key={t} onClick={() => setQuery(t)} className="text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-violet-50 hover:text-violet-700 border border-border hover:border-violet-200 transition-colors">{t}</button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Teleprompter Script Modal ── */}
+      {showTeleprompter && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" onClick={(e) => { if (e.target === e.currentTarget) setShowTeleprompter(false); }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
+                <Film className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-semibold text-sm">Teleprompter Script</h2>
+                <p className="text-white/50 text-xs">{teleprompterWordCount.toLocaleString()} words · ~{teleprompterMinutes} min · {query}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleCopyScript}
+                className={`h-9 px-4 text-sm font-medium transition-all ${scriptCopied ? "bg-green-600 hover:bg-green-600 text-white" : "bg-red-600 hover:bg-red-700 text-white"}`}
+              >
+                {scriptCopied ? (
+                  <><CheckCircle2 className="w-4 h-4 mr-2" />Copied!</>
+                ) : (
+                  <><FileText className="w-4 h-4 mr-2" />Copy to Clipboard</>
+                )}
+              </Button>
+              <button
+                onClick={() => setShowTeleprompter(false)}
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors text-lg font-light"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+
+          {/* Script body — teleprompter-optimized */}
+          <div className="flex-1 overflow-y-auto px-8 py-8 md:px-24 lg:px-48">
+            {scriptMut.isPending ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4">
+                <Loader2 className="w-10 h-10 animate-spin text-red-500" />
+                <p className="text-white/60 text-sm">Writing your teleprompter script with a viral hook…</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {teleprompterScript.split(/\n\n+/).filter(Boolean).map((paragraph, i) => (
+                  <p
+                    key={i}
+                    className="text-white leading-relaxed text-2xl md:text-3xl font-light tracking-wide"
+                    style={{ lineHeight: "1.75" }}
+                  >
+                    {paragraph.trim()}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer hint */}
+          <div className="px-6 py-3 border-t border-white/10 bg-black flex items-center justify-between">
+            <p className="text-white/30 text-xs">Scroll to read · Large text optimized for teleprompter display</p>
+            <p className="text-white/30 text-xs">Click outside or × to close</p>
           </div>
         </div>
       )}

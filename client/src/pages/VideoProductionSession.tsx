@@ -720,6 +720,11 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
         </div>
       )}
 
+      {/* Publish Package Panel — YouTube metadata, social captions, blog generation */}
+      {(session.status === "ready_to_record" || session.status === "uploading" || session.status === "stitching" || session.status === "done") && (
+        <PublishPackagePanel sessionId={session.id} />
+      )}
+
       {/* Keith Item 6: YouTube → Blog Embed Panel */}
       {(session.status === "ready_to_record" || session.status === "uploading" || session.status === "stitching" || session.status === "done") && (
         <BlogEmbedSection sessionIdea={session.idea} ctaKeyword={session.ctaKeyword} />
@@ -892,6 +897,293 @@ function BlogEmbedSection({ sessionIdea, ctaKeyword }: { sessionIdea: string; ct
             wpPostId={selectedWpPostId!}
             onEmbedSuccess={() => setSelectedPostId(null)}
           />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Publish Package Panel ──────────────────────────────────────────────────────
+
+/**
+ * PublishPackagePanel — shown in a Video Production session once scripts are approved.
+ * Generates YouTube metadata (5 title options, description, 25 tags) +
+ * social captions (Instagram, TikTok, LinkedIn, X) + blog post from the script.
+ */
+function PublishPackagePanel({ sessionId }: { sessionId: number }) {
+  const [activeTab, setActiveTab] = useState<"youtube" | "social" | "blog">("youtube");
+  const [ytMeta, setYtMeta] = useState<{
+    titleOptions: string[];
+    description: string;
+    tags: string[];
+    primaryKeyword: string;
+  } | null>(null);
+  const [selectedTitle, setSelectedTitle] = useState("");
+  const [socialCaptions, setSocialCaptions] = useState<{
+    instagram: { caption: string; hashtags: string[] };
+    tiktok: { caption: string; hashtags: string[] };
+    linkedin: { caption: string; hashtags: string[] };
+    x: { caption: string; hashtags: string[] };
+  } | null>(null);
+  const [socialPlatform, setSocialPlatform] = useState<"instagram" | "tiktok" | "linkedin" | "x">("instagram");
+  const [blogResult, setBlogResult] = useState<{ title: string; preview: string; contentItemId: number | null } | null>(null);
+
+  const ytMetaMutation = trpc.videoSession.generateYouTubeMetadata.useMutation({
+    onSuccess: (data) => {
+      setYtMeta(data);
+      if (data.titleOptions[0]) setSelectedTitle(data.titleOptions[0]);
+      toast.success("YouTube metadata generated!");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const socialMutation = trpc.videoSession.generateSocialCaptions.useMutation({
+    onSuccess: (data) => {
+      setSocialCaptions(data);
+      toast.success("Social captions generated!");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const blogMutation = trpc.videoSession.generateBlogFromScript.useMutation({
+    onSuccess: (data) => {
+      setBlogResult(data);
+      toast.success("Blog post created in Command Center!");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success(`${label} copied!`));
+  };
+
+  const tabs = [
+    { key: "youtube" as const, label: "🎬 YouTube", desc: "Title, description, tags" },
+    { key: "social" as const, label: "📱 Social", desc: "Instagram, TikTok, LinkedIn, X" },
+    { key: "blog" as const, label: "📝 Blog", desc: "Generate companion article" },
+  ];
+
+  return (
+    <div className="rounded-xl border border-violet-600/30 bg-violet-950/10 p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-violet-500" />
+        <h3 className="text-sm font-semibold text-foreground">Publish Package</h3>
+        <span className="text-xs text-muted-foreground">Generate everything you need to publish this video</span>
+      </div>
+
+      {/* Tab selector */}
+      <div className="flex gap-1 bg-muted/40 rounded-lg p-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 text-xs font-medium px-2 py-1.5 rounded-md transition-colors ${
+              activeTab === tab.key
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* YouTube Metadata Tab */}
+      {activeTab === "youtube" && (
+        <div className="space-y-3">
+          {!ytMeta ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground mb-3">Generate 5 SEO-optimized title options, a full YouTube description with timestamps and channel footer, and 25 tags — all from your approved script.</p>
+              <Button
+                size="sm"
+                className="bg-violet-600 hover:bg-violet-700 text-white"
+                disabled={ytMetaMutation.isPending}
+                onClick={() => ytMetaMutation.mutate({ sessionId })}
+              >
+                {ytMetaMutation.isPending ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 mr-1.5" />Generate YouTube Package</>}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Title options */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-foreground">Title Options <span className="text-muted-foreground font-normal">(click to select)</span></p>
+                  <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => ytMetaMutation.mutate({ sessionId })}>
+                    <RotateCcw className="w-3 h-3 mr-1" />Regenerate
+                  </Button>
+                </div>
+                <div className="space-y-1.5">
+                  {ytMeta.titleOptions.map((title, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setSelectedTitle(title)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-sm ${
+                        selectedTitle === title
+                          ? "border-violet-500 bg-violet-500/10 text-foreground"
+                          : "border-border hover:border-violet-500/40 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span className="w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                        selectedTitle === title ? 'border-violet-500' : 'border-muted-foreground'
+                      }">
+                        {selectedTitle === title && <span className="w-2 h-2 rounded-full bg-violet-500" />}
+                      </span>
+                      <span className="flex-1">{title}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); copyToClipboard(title, "Title"); }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-foreground">Tags <span className="text-muted-foreground font-normal">({ytMeta.tags.length} tags)</span></p>
+                  <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => copyToClipboard(ytMeta.tags.join(", "), "Tags")}>
+                    <Copy className="w-3 h-3 mr-1" />Copy All
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {ytMeta.tags.map((tag, i) => (
+                    <span key={i} className="text-[10px] bg-muted text-muted-foreground rounded px-2 py-0.5">{tag}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-foreground">Description</p>
+                  <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => copyToClipboard(ytMeta.description, "Description")}>
+                    <Copy className="w-3 h-3 mr-1" />Copy
+                  </Button>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground whitespace-pre-wrap max-h-48 overflow-y-auto">
+                  {ytMeta.description}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Social Captions Tab */}
+      {activeTab === "social" && (
+        <div className="space-y-3">
+          {!socialCaptions ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground mb-3">Generate platform-specific captions for Instagram, TikTok, LinkedIn, and X — each with the right tone, length, hashtags, and ManyChat CTA.</p>
+              <Button
+                size="sm"
+                className="bg-violet-600 hover:bg-violet-700 text-white"
+                disabled={socialMutation.isPending}
+                onClick={() => socialMutation.mutate({ sessionId })}
+              >
+                {socialMutation.isPending ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 mr-1.5" />Generate Social Captions</>}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Platform tabs */}
+              <div className="flex gap-1 bg-muted/40 rounded-lg p-1">
+                {(["instagram", "tiktok", "linkedin", "x"] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setSocialPlatform(p)}
+                    className={`flex-1 text-xs font-medium px-2 py-1.5 rounded-md transition-colors ${
+                      socialPlatform === p
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {p === "instagram" ? "📸 IG" : p === "tiktok" ? "🎵 TT" : p === "linkedin" ? "💼 LI" : "✖ X"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Caption + hashtags */}
+              {(() => {
+                const data = socialCaptions[socialPlatform];
+                const fullText = data.caption + "\n\n" + data.hashtags.join(" ");
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-foreground capitalize">{socialPlatform} Caption</p>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => copyToClipboard(fullText, `${socialPlatform} caption`)}>
+                          <Copy className="w-3 h-3 mr-1" />Copy All
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => socialMutation.mutate({ sessionId })}>
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="bg-muted/30 rounded-lg p-3 text-xs text-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
+                      {data.caption}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {data.hashtags.map((h, i) => (
+                        <span key={i} className="text-[10px] bg-violet-500/10 text-violet-600 rounded px-1.5 py-0.5">{h}</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Blog Generation Tab */}
+      {activeTab === "blog" && (
+        <div className="space-y-3">
+          {!blogResult ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground mb-3">Generate a full SEO-optimized blog post from your video script. It will appear in the Command Center as a draft ready to edit and publish.</p>
+              <Button
+                size="sm"
+                className="bg-violet-600 hover:bg-violet-700 text-white"
+                disabled={blogMutation.isPending}
+                onClick={() => blogMutation.mutate({ sessionId })}
+              >
+                {blogMutation.isPending ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Generating blog post...</> : <><Sparkles className="w-3 h-3 mr-1.5" />Generate Blog Post</>}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-emerald-600">
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="text-sm font-semibold">Blog post created!</span>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                <p className="text-sm font-medium text-foreground">{blogResult.title}</p>
+                <p className="text-xs text-muted-foreground line-clamp-3">{blogResult.preview}...</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-8"
+                  onClick={() => window.location.href = "/command-center"}
+                >
+                  <ArrowRight className="w-3 h-3 mr-1" />Open in Command Center
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={() => { setBlogResult(null); blogMutation.mutate({ sessionId }); }}
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />Regenerate
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

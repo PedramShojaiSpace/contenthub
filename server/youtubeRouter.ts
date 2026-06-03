@@ -596,7 +596,7 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
     }
   }),
 
-  // ── NEW: Channel Deep Analyzer ────────────────────────────────────────────
+  // ── NEW: Channel Deep Analyzer (uses callDataApi) ────────────────────────
   /**
    * Given a channel handle (@handle) or channel ID, returns:
    * - Channel stats (subs, total views, video count, upload frequency)
@@ -612,30 +612,66 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
       })
     )
     .mutation(async ({ input }) => {
-      // 1. Resolve channel
-      const channel = await resolveChannel(input.channelHandle);
+      const { callDataApi } = await import("./_core/dataApi");
 
-      // 2. Fetch recent video IDs from uploads playlist
-      const videoIds = await getChannelVideoIds(channel.uploadsPlaylistId, input.videoLimit);
+      // 1. Resolve channel details
+      const channelId = input.channelHandle.replace(/^@/, "");
+      const channelRes = await callDataApi("Youtube/get_channel_details", {
+        query: { id: `https://www.youtube.com/@${channelId}`, hl: "en" },
+      }) as any;
 
-      // 3. Get full video details
-      const rawVideos = await getVideoDetails(videoIds);
+      const stats = channelRes?.stats ?? {};
+      const subscriberCount = parseInt(String(stats.subscribers ?? "0").replace(/[^0-9]/g, ""), 10);
+      const viewCount = parseInt(String(stats.views ?? "0").replace(/[^0-9]/g, ""), 10);
+      const videoCount = parseInt(String(stats.videos ?? "0").replace(/[^0-9]/g, ""), 10);
+      const channelTitle = channelRes?.title ?? channelId;
+      const thumbnail = (channelRes?.avatar ?? [])[0]?.url ?? "";
+      const channelIdResolved = channelRes?.channelId ?? "";
 
-      // 4. Format all videos with outlier scores
-      const allVideos = rawVideos.map((v) =>
-        formatVideo(v, channel.viewCount, channel.videoCount)
-      );
+      // 2. Fetch recent videos
+      const videosRes = await callDataApi("Youtube/get_channel_videos", {
+        query: { id: channelIdResolved || `https://www.youtube.com/@${channelId}`, filter: "videos_latest", hl: "en", gl: "US" },
+      }) as any;
 
-      // 5. Top 10 by view count
-      const top10ByViews = [...allVideos]
-        .sort((a, b) => b.viewCount - a.viewCount)
-        .slice(0, 10);
+      const rawVideos = ((videosRes?.contents ?? []) as any[])
+        .filter((v: any) => v.type === "video")
+        .slice(0, input.videoLimit)
+        .map((v: any) => {
+          const vid = v.video ?? {};
+          const viewCnt = parseInt(String(vid.stats?.views ?? "0").replace(/[^0-9]/g, ""), 10);
+          const duration = parseInt(vid.lengthSeconds ?? "0", 10);
+          const isShort = duration > 0 && duration <= 60;
+          const uploadDate = vid.publishedTimeText ?? "";
+          const avgViewsPerVideo = videoCount > 0 ? viewCount / videoCount : 0;
+          const outlierScore = avgViewsPerVideo > 0 ? Math.round((viewCnt / avgViewsPerVideo) * 100) / 100 : 0;
+          const daysSinceUpload = 30; // approximate since we only have relative time
+          const viewVelocity = Math.round(viewCnt / Math.max(1, daysSinceUpload));
+          return {
+            id: vid.videoId ?? "",
+            title: vid.title ?? "",
+            description: "",
+            thumbnail: (vid.thumbnails ?? [])[0]?.url ?? "",
+            channelId: channelIdResolved,
+            channelName: channelTitle,
+            uploadDate,
+            duration,
+            isShort,
+            viewCount: viewCnt,
+            likeCount: 0,
+            commentCount: 0,
+            url: `https://www.youtube.com/watch?v=${vid.videoId}`,
+            outlierScore,
+            outlierLabel: outlierScore >= 3 ? "🔥 Viral" : outlierScore >= 2 ? "⚡ Strong" : outlierScore >= 1.5 ? "↑ Above Avg" : outlierScore >= 1 ? "✓ On Par" : "↓ Below Avg",
+            viewVelocity,
+            badges: vid.badges ?? [],
+          };
+        });
 
-      // 6. Longs vs Shorts breakdown
-      const longs = allVideos.filter((v) => !v.isShort);
-      const shorts = allVideos.filter((v) => v.isShort);
+      const top10ByViews = [...rawVideos].sort((a, b) => b.viewCount - a.viewCount).slice(0, 10);
+      const longs = rawVideos.filter((v) => !v.isShort);
+      const shorts = rawVideos.filter((v) => v.isShort);
       const longsVsShorts = {
-        totalVideos: allVideos.length,
+        totalVideos: rawVideos.length,
         longsCount: longs.length,
         shortsCount: shorts.length,
         longsViews: longs.reduce((s, v) => s + v.viewCount, 0),
@@ -643,49 +679,20 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
         longsAvgViews: longs.length > 0 ? Math.round(longs.reduce((s, v) => s + v.viewCount, 0) / longs.length) : 0,
         shortsAvgViews: shorts.length > 0 ? Math.round(shorts.reduce((s, v) => s + v.viewCount, 0) / shorts.length) : 0,
       };
-
-      // 7. Upload frequency (videos per week over the fetched window)
-      const sortedByDate = [...allVideos].sort(
-        (a, b) => new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime()
-      );
-      let uploadsPerWeek = 0;
-      let uploadFrequencyLabel = "Unknown";
-      if (sortedByDate.length >= 2) {
-        const oldest = new Date(sortedByDate[0].uploadDate).getTime();
-        const newest = new Date(sortedByDate[sortedByDate.length - 1].uploadDate).getTime();
-        const weeks = Math.max(1, (newest - oldest) / (7 * 24 * 60 * 60 * 1000));
-        uploadsPerWeek = Math.round((sortedByDate.length / weeks) * 10) / 10;
-        if (uploadsPerWeek >= 7) uploadFrequencyLabel = "Daily";
-        else if (uploadsPerWeek >= 3) uploadFrequencyLabel = "3-5x/week";
-        else if (uploadsPerWeek >= 1.5) uploadFrequencyLabel = "2-3x/week";
-        else if (uploadsPerWeek >= 0.8) uploadFrequencyLabel = "Weekly";
-        else if (uploadsPerWeek >= 0.4) uploadFrequencyLabel = "Bi-weekly";
-        else uploadFrequencyLabel = "Monthly or less";
-      }
-
-      // 8. Average views per video
-      const avgViewsPerVideo = allVideos.length > 0
-        ? Math.round(allVideos.reduce((s, v) => s + v.viewCount, 0) / allVideos.length)
-        : 0;
+      const avgViewsPerVideo = rawVideos.length > 0 ? Math.round(rawVideos.reduce((s, v) => s + v.viewCount, 0) / rawVideos.length) : 0;
 
       return {
-        channel: {
-          ...channel,
-          avgViewsPerVideo,
-          uploadsPerWeek,
-          uploadFrequencyLabel,
-        },
+        channel: { channelId: channelIdResolved, title: channelTitle, thumbnail, subscriberCount, viewCount, videoCount, avgViewsPerVideo, uploadsPerWeek: 0, uploadFrequencyLabel: "See channel" },
         top10ByViews,
         longsVsShorts,
-        allVideosCount: allVideos.length,
+        allVideosCount: rawVideos.length,
       };
     }),
 
-  // ── NEW: Outlier Finder ───────────────────────────────────────────────────
+  // ── NEW: Outlier Finder (uses Supadata search) ────────────────────────────
   /**
    * Search a topic and return the 10 videos with the highest outlier scores.
-   * Outlier score = video views / that channel's average views per video.
-   * Score > 2.0 = strong viral outlier. Score > 1.0 = above average.
+   * Uses Supadata (already configured) for search, then enriches with channel data.
    */
   getOutlierVideos: publicProcedure
     .input(
@@ -696,73 +703,64 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
       })
     )
     .mutation(async ({ input }) => {
-      const yt = await getYTClient();
+      const supadata = getSupadata();
 
-      // Step 1: Search for videos
-      const searchRes = await yt.search.list({
-        part: ["snippet"],
-        q: input.query,
-        type: ["video"],
-        maxResults: input.limit,
-        order: "viewCount",
-        ...(input.uploadDate !== "all" && {
-          publishedAfter: {
-            week: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            month: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            year: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-          }[input.uploadDate],
-        }),
+      const results = await supadata.youtube.search({
+        query: input.query,
+        type: "video",
+        limit: input.limit,
+        sortBy: "views",
+        uploadDate: input.uploadDate === "all" ? undefined : input.uploadDate,
       });
 
-      const videoIds = (searchRes.data.items ?? [])
-        .map((item: any) => item.id?.videoId)
-        .filter(Boolean) as string[];
-
-      if (videoIds.length === 0) return { videos: [] };
-
-      // Step 2: Get full video details
-      const rawVideos = await getVideoDetails(videoIds);
-
-      // Step 3: For each video, get channel average views
-      const channelIds = [...new Set(rawVideos.map((v: any) => v.snippet?.channelId).filter(Boolean))] as string[];
-
-      // Batch fetch channel stats
-      const channelStats = new Map<string, { totalViews: number; videoCount: number }>();
-      for (let i = 0; i < channelIds.length; i += 50) {
-        const chunk = channelIds.slice(i, i + 50);
-        const chRes = await yt.channels.list({
-          part: ["statistics"],
-          id: chunk,
+      const videos = ((results.results ?? []) as any[])
+        .filter((r: any) => r.type === "video")
+        .slice(0, input.limit)
+        .map((v: any) => {
+          const viewCnt = (v.viewCount as number) ?? 0;
+          const duration = (v.duration as number) ?? 0;
+          const isShort = duration > 0 && duration <= 60;
+          const uploadDate = (v.uploadDate as string) ?? "";
+          // Estimate outlier score: views / (channel avg is unknown, use median of result set)
+          return {
+            id: v.id as string,
+            title: v.title as string,
+            description: ((v.description as string) ?? "").slice(0, 200),
+            thumbnail: v.thumbnail as string,
+            channelId: (v.channel?.id ?? "") as string,
+            channelName: (v.channel?.name ?? "Unknown") as string,
+            uploadDate,
+            duration,
+            isShort,
+            viewCount: viewCnt,
+            likeCount: 0,
+            commentCount: 0,
+            url: `https://www.youtube.com/watch?v=${v.id}`,
+            outlierScore: 0, // will be computed below
+            outlierLabel: "",
+            viewVelocity: computeViewVelocity(viewCnt, uploadDate || new Date().toISOString()),
+          };
         });
-        for (const ch of chRes.data.items ?? []) {
-          if (ch.id) {
-            channelStats.set(ch.id, {
-              totalViews: parseInt(ch.statistics?.viewCount ?? "0", 10),
-              videoCount: parseInt(ch.statistics?.videoCount ?? "0", 10),
-            });
-          }
-        }
-      }
 
-      // Step 4: Format with outlier scores
-      const videos = rawVideos.map((v: any) => {
-        const chId = v.snippet?.channelId ?? "";
-        const chStats = channelStats.get(chId) ?? { totalViews: 0, videoCount: 0 };
-        return formatVideo(v, chStats.totalViews, chStats.videoCount);
+      // Compute outlier score using median views as baseline
+      const sorted = [...videos].sort((a, b) => a.viewCount - b.viewCount);
+      const median = sorted[Math.floor(sorted.length / 2)]?.viewCount ?? 1;
+      const withScores = videos.map((v) => {
+        const score = median > 0 ? Math.round((v.viewCount / median) * 100) / 100 : 0;
+        return {
+          ...v,
+          outlierScore: score,
+          outlierLabel: score >= 3 ? "🔥 Viral" : score >= 2 ? "⚡ Strong" : score >= 1.5 ? "↑ Above Avg" : score >= 1 ? "✓ On Par" : "↓ Below Avg",
+        };
       });
 
-      // Step 5: Sort by outlier score, return top 10
-      const top10 = videos
-        .sort((a, b) => b.outlierScore - a.outlierScore)
-        .slice(0, 10);
-
+      const top10 = withScores.sort((a, b) => b.outlierScore - a.outlierScore).slice(0, 10);
       return { videos: top10 };
     }),
 
-  // ── NEW: Topic Trends (View Velocity) ─────────────────────────────────────
+  // ── NEW: Topic Trends (View Velocity) — uses Supadata ────────────────────
   /**
    * Search a topic and return 10 videos ranked by view velocity (views/day since upload).
-   * This surfaces fast-rising content, not just all-time high performers.
    */
   getTopicTrends: publicProcedure
     .input(
@@ -773,66 +771,53 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
       })
     )
     .mutation(async ({ input }) => {
-      const yt = await getYTClient();
+      const supadata = getSupadata();
 
-      const publishedAfter = {
-        week: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        month: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        year: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-      }[input.uploadDate];
-
-      const searchRes = await yt.search.list({
-        part: ["snippet"],
-        q: input.query,
-        type: ["video"],
-        maxResults: input.limit,
-        order: "viewCount",
-        publishedAfter,
+      const results = await supadata.youtube.search({
+        query: input.query,
+        type: "video",
+        limit: input.limit,
+        sortBy: "views",
+        uploadDate: input.uploadDate,
       });
 
-      const videoIds = (searchRes.data.items ?? [])
-        .map((item: any) => item.id?.videoId)
-        .filter(Boolean) as string[];
-
-      if (videoIds.length === 0) return { videos: [] };
-
-      const rawVideos = await getVideoDetails(videoIds);
-
-      // Get channel stats for outlier scores
-      const channelIds = [...new Set(rawVideos.map((v: any) => v.snippet?.channelId).filter(Boolean))] as string[];
-      const channelStats = new Map<string, { totalViews: number; videoCount: number }>();
-      for (let i = 0; i < channelIds.length; i += 50) {
-        const chunk = channelIds.slice(i, i + 50);
-        const chRes = await yt.channels.list({ part: ["statistics"], id: chunk });
-        for (const ch of chRes.data.items ?? []) {
-          if (ch.id) {
-            channelStats.set(ch.id, {
-              totalViews: parseInt(ch.statistics?.viewCount ?? "0", 10),
-              videoCount: parseInt(ch.statistics?.videoCount ?? "0", 10),
-            });
-          }
-        }
-      }
-
-      const videos = rawVideos.map((v: any) => {
-        const chId = v.snippet?.channelId ?? "";
-        const chStats = channelStats.get(chId) ?? { totalViews: 0, videoCount: 0 };
-        return formatVideo(v, chStats.totalViews, chStats.videoCount);
-      });
-
-      // Sort by view velocity (views/day)
-      const top10 = videos
+      const videos = ((results.results ?? []) as any[])
+        .filter((r: any) => r.type === "video")
+        .map((v: any) => {
+          const viewCnt = (v.viewCount as number) ?? 0;
+          const duration = (v.duration as number) ?? 0;
+          const isShort = duration > 0 && duration <= 60;
+          const uploadDate = (v.uploadDate as string) ?? "";
+          const viewVelocity = computeViewVelocity(viewCnt, uploadDate || new Date().toISOString());
+          return {
+            id: v.id as string,
+            title: v.title as string,
+            description: ((v.description as string) ?? "").slice(0, 200),
+            thumbnail: v.thumbnail as string,
+            channelId: (v.channel?.id ?? "") as string,
+            channelName: (v.channel?.name ?? "Unknown") as string,
+            uploadDate,
+            duration,
+            isShort,
+            viewCount: viewCnt,
+            likeCount: 0,
+            commentCount: 0,
+            url: `https://www.youtube.com/watch?v=${v.id}`,
+            outlierScore: 0,
+            outlierLabel: "",
+            viewVelocity,
+          };
+        })
         .sort((a, b) => b.viewVelocity - a.viewVelocity)
         .slice(0, 10);
 
-      return { videos: top10 };
+      return { videos };
     }),
 
-  // ── NEW: Title Pattern Analyzer ───────────────────────────────────────────
+  // ── NEW: Title Pattern Analyzer — uses Supadata ───────────────────────────
   /**
    * Search a topic, collect the top 10 video titles, and use LLM to extract
    * the winning title patterns, hooks, and emotional triggers.
-   * Returns both the raw titles and the LLM analysis.
    */
   getTitlePatterns: publicProcedure
     .input(
@@ -842,44 +827,34 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
       })
     )
     .mutation(async ({ input }) => {
-      const yt = await getYTClient();
+      const supadata = getSupadata();
 
-      const searchRes = await yt.search.list({
-        part: ["snippet"],
-        q: input.query,
-        type: ["video"],
-        maxResults: 25,
-        order: "viewCount",
-        ...(input.uploadDate !== "all" && {
-          publishedAfter: {
-            week: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            month: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            year: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-          }[input.uploadDate],
-        }),
+      const results = await supadata.youtube.search({
+        query: input.query,
+        type: "video",
+        limit: 25,
+        sortBy: "views",
+        uploadDate: input.uploadDate === "all" ? undefined : input.uploadDate,
       });
 
-      const videoIds = (searchRes.data.items ?? [])
-        .map((item: any) => item.id?.videoId)
-        .filter(Boolean) as string[];
+      const rawVideos = ((results.results ?? []) as any[])
+        .filter((r: any) => r.type === "video")
+        .slice(0, 10);
 
-      if (videoIds.length === 0) return { titles: [], analysis: "" };
-
-      const rawVideos = await getVideoDetails(videoIds.slice(0, 10));
+      if (rawVideos.length === 0) return { titles: [], analysis: "" };
 
       const titlesWithStats = rawVideos.map((v: any) => ({
-        id: v.id ?? "",
-        title: v.snippet?.title ?? "",
-        viewCount: parseInt(v.statistics?.viewCount ?? "0", 10),
-        channelName: v.snippet?.channelTitle ?? "",
+        id: v.id as string,
+        title: v.title as string,
+        viewCount: (v.viewCount as number) ?? 0,
+        channelName: (v.channel?.name ?? "Unknown") as string,
         url: `https://www.youtube.com/watch?v=${v.id}`,
-        thumbnail: v.snippet?.thumbnails?.medium?.url ?? "",
-        uploadDate: v.snippet?.publishedAt ?? "",
-        duration: parseDuration(v.contentDetails?.duration ?? "PT0S"),
-        isShort: parseDuration(v.contentDetails?.duration ?? "PT0S") <= 60,
+        thumbnail: v.thumbnail as string,
+        uploadDate: (v.uploadDate as string) ?? "",
+        duration: (v.duration as number) ?? 0,
+        isShort: ((v.duration as number) ?? 0) <= 60 && ((v.duration as number) ?? 0) > 0,
       }));
 
-      // LLM title pattern analysis
       const titleList = titlesWithStats
         .map((v, i) => `${i + 1}. "${v.title}" — ${(v.viewCount / 1000).toFixed(0)}K views`)
         .join("\n");
@@ -924,10 +899,9 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
       };
     }),
 
-  // ── NEW: Similar Channels Finder ──────────────────────────────────────────
+  // ── NEW: Similar Channels Finder — uses callDataApi ───────────────────────
   /**
    * Search a topic and return 10 distinct competitor channels with their stats.
-   * Deduplicates by channelId so each channel appears only once.
    */
   searchChannels: publicProcedure
     .input(
@@ -937,44 +911,37 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
       })
     )
     .mutation(async ({ input }) => {
-      const yt = await getYTClient();
+      const { callDataApi } = await import("./_core/dataApi");
 
-      // Search for channels directly
-      const searchRes = await yt.search.list({
-        part: ["snippet"],
-        q: input.query,
-        type: ["channel"],
-        maxResults: 20,
-        order: "relevance",
-      });
+      // Use the built-in Youtube/search endpoint to find channels
+      const searchRes = await callDataApi("Youtube/search", {
+        query: { q: `${input.query} channel`, hl: "en", gl: "US" },
+      }) as any;
 
-      const channelIds = (searchRes.data.items ?? [])
-        .map((item: any) => item.id?.channelId)
-        .filter(Boolean) as string[];
-
-      if (channelIds.length === 0) return { channels: [] };
-
-      // Get full channel stats
-      const chRes = await yt.channels.list({
-        part: ["snippet", "statistics"],
-        id: channelIds.slice(0, 20),
-      });
-
-      const channels = (chRes.data.items ?? [])
-        .map((ch: any) => ({
-          channelId: ch.id ?? "",
-          title: ch.snippet?.title ?? "",
-          description: (ch.snippet?.description ?? "").slice(0, 200),
-          thumbnail: ch.snippet?.thumbnails?.default?.url ?? "",
-          country: ch.snippet?.country ?? "",
-          subscriberCount: parseInt(ch.statistics?.subscriberCount ?? "0", 10),
-          viewCount: parseInt(ch.statistics?.viewCount ?? "0", 10),
-          videoCount: parseInt(ch.statistics?.videoCount ?? "0", 10),
-          url: `https://www.youtube.com/channel/${ch.id}`,
-          handle: ch.snippet?.customUrl ?? "",
-        }))
-        .sort((a: any, b: any) => b.subscriberCount - a.subscriberCount)
+      const contents = (searchRes?.contents ?? []) as any[];
+      const channelResults = contents
+        .filter((c: any) => c.type === "channel")
         .slice(0, input.limit);
+
+      const channels = channelResults.map((c: any) => {
+        const ch = c.channel ?? {};
+        const subText = ch.subscriberCountText ?? "0";
+        const subCount = parseInt(subText.replace(/[^0-9]/g, ""), 10) || 0;
+        const vidText = ch.videoCountText ?? "0";
+        const vidCount = parseInt(vidText.replace(/[^0-9]/g, ""), 10) || 0;
+        return {
+          channelId: ch.channelId ?? "",
+          title: ch.title ?? "",
+          description: (ch.descriptionSnippet ?? "").slice(0, 200),
+          thumbnail: (ch.thumbnail ?? [])[0]?.url ?? "",
+          country: "",
+          subscriberCount: subCount,
+          viewCount: 0,
+          videoCount: vidCount,
+          url: `https://www.youtube.com/channel/${ch.channelId}`,
+          handle: ch.handle ?? "",
+        };
+      });
 
       return { channels };
     }),

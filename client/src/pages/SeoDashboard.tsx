@@ -33,6 +33,10 @@ import {
   Star,
   ChevronDown,
   ChevronUp,
+  CheckCircle2,
+  XCircle,
+  Database,
+  Loader2,
 } from "lucide-react";
 
 function StatCard({
@@ -608,6 +612,11 @@ export default function SeoDashboard() {
               </CardContent>
             </Card>
           </div>
+        {/* ─── GSC Indexing Status Panel ────────────────────────────────────── */}
+        {statusQuery.data?.connected && (
+          <IndexingStatusPanel />
+        )}
+
         {/* ─── Content Flywheel Panel ─────────────────────────────────────────── */}
         {statusQuery.data?.connected && (
           <ContentFlywheelPanel setLocation={setLocation} />
@@ -883,6 +892,145 @@ function ContentFlywheelPanel({ setLocation }: { setLocation: (path: string) => 
                 </div>
               );
             })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── GSC Indexing Status Panel ────────────────────────────────────────────────
+function IndexingStatusPanel() {
+  const utils = trpc.useUtils();
+  const [showLog, setShowLog] = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<{
+    totalPublished: number;
+    alreadySubmitted: number;
+    toSubmit: number;
+  } | null>(null);
+
+  const logQuery = trpc.gsc.getIndexingLog.useQuery(
+    { limit: 20, source: "all" },
+    { enabled: showLog, staleTime: 60 * 1000 }
+  );
+
+  const dryRun = trpc.gsc.backfillIndexing.useMutation({
+    onSuccess: (data) => {
+      setDryRunResult({ totalPublished: data.totalPublished, alreadySubmitted: data.alreadySubmitted, toSubmit: data.toSubmit });
+    },
+    onError: (err) => toast.error(`Dry run failed: ${err.message}`),
+  });
+
+  const backfill = trpc.gsc.backfillIndexing.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Backfill complete — ${data.succeeded} submitted, ${data.failed} failed`);
+      setDryRunResult(null);
+      utils.gsc.getIndexingLog.invalidate();
+    },
+    onError: (err) => toast.error(`Backfill failed: ${err.message}`),
+  });
+
+  const isRunning = dryRun.isPending || backfill.isPending;
+
+  return (
+    <Card className="mt-2 border-border">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Database className="w-4 h-4 text-primary" />
+            Google Indexing Status
+          </CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7"
+              disabled={isRunning}
+              onClick={() => dryRun.mutate({ dryRun: true })}
+            >
+              {dryRun.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Search className="w-3 h-3 mr-1" />}
+              Check Missing
+            </Button>
+            {dryRunResult && dryRunResult.toSubmit > 0 && (
+              <Button
+                size="sm"
+                className="text-xs h-7 bg-primary text-primary-foreground"
+                disabled={isRunning}
+                onClick={() => backfill.mutate({ dryRun: false })}
+              >
+                {backfill.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Zap className="w-3 h-3 mr-1" />}
+                Submit {dryRunResult.toSubmit} to Google
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => setShowLog(!showLog)}
+            >
+              {showLog ? "Hide Log" : "View Log"}
+            </Button>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Every time you publish a blog post, it is automatically pinged to Google's Indexing API for immediate crawling.
+          Use "Check Missing" to find posts that were published before auto-indexing was enabled, then submit them all at once.
+        </p>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Dry run result summary */}
+        {dryRunResult && (
+          <div className="rounded-lg border border-border bg-muted/40 p-3 grid grid-cols-3 gap-3 text-center text-sm">
+            <div>
+              <div className="text-lg font-bold text-foreground">{dryRunResult.totalPublished}</div>
+              <div className="text-xs text-muted-foreground">Total published posts</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold text-green-600 dark:text-green-400">{dryRunResult.alreadySubmitted}</div>
+              <div className="text-xs text-muted-foreground">Already submitted</div>
+            </div>
+            <div className={`${dryRunResult.toSubmit > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
+              <div className="text-lg font-bold">{dryRunResult.toSubmit}</div>
+              <div className="text-xs text-muted-foreground">{dryRunResult.toSubmit > 0 ? "Need to submit" : "All submitted ✓"}</div>
+            </div>
+          </div>
+        )}
+
+        {backfill.isPending && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Submitting URLs to Google Indexing API… this may take a minute for large batches.
+          </div>
+        )}
+
+        {/* Indexing log */}
+        {showLog && (
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent Indexing Submissions</div>
+            {logQuery.isLoading ? (
+              <div className="space-y-1">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8" />)}</div>
+            ) : logQuery.data?.rows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No indexing submissions logged yet. Click "Check Missing" to find posts that need to be submitted.</p>
+            ) : (
+              <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                {logQuery.data?.rows.map((row) => (
+                  <div key={row.id} className="flex items-center gap-3 px-3 py-2 text-xs bg-card">
+                    {row.success
+                      ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                      : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                    }
+                    <span className="flex-1 truncate text-foreground">{row.url}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                      {row.source === "auto_publish" ? "auto" : row.source === "backfill" ? "backfill" : "manual"}
+                    </Badge>
+                    <span className="text-muted-foreground shrink-0">
+                      {new Date(row.submittedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </CardContent>

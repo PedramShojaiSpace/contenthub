@@ -1896,3 +1896,22 @@ export const blogToYoutubeItems = mysqlTable("blog_to_youtube_items", {
 });
 export type BlogToYoutubeItem = typeof blogToYoutubeItems.$inferSelect;
 export type InsertBlogToYoutubeItem = typeof blogToYoutubeItems.$inferInsert;
+
+// ─── GSC Indexing Log ──────────────────────────────────────────────────────────
+// Tracks every URL submitted to the Google Indexing API so we can:
+//   1. Verify which posts have been submitted
+//   2. Avoid re-submitting the same URL within 24 hours
+//   3. Backfill any posts that were published before auto-indexing was wired up
+export const gscIndexingLog = mysqlTable("gsc_indexing_log", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  url: varchar("url", { length: 1024 }).notNull(),
+  wpPostId: int("wpPostId"),                                    // Optional — set when triggered by a WP publish
+  success: boolean("success").notNull().default(false),
+  message: text("message"),
+  source: mysqlEnum("source", ["auto_publish", "backfill", "manual"]).notNull().default("auto_publish"),
+  submittedAt: bigint("submittedAt", { mode: "number" }).notNull(), // Unix ms
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GscIndexingLog = typeof gscIndexingLog.$inferSelect;
+export type InsertGscIndexingLog = typeof gscIndexingLog.$inferInsert;

@@ -3715,3 +3715,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Item 4: YouTube Intelligence tool in Viral Studio — pull top 10 videos by topic, extract transcripts, synthesize into script framework
 - [ ] Item 5: Human review gate — add pending_review status and review queue before publish
 - [ ] Item 6: Article → YouTube embed automation — auto-embed matching YouTube video into blog post
+
+## YouTube Intelligence — ViewStats-Level Upgrade (v20)
+
+- [ ] Backend: youtube.analyzeChannel — fetch channel stats, top 10 videos with outlier scores, upload frequency, longs vs shorts
+- [ ] Backend: youtube.searchChannels — find 10 similar/competitor channels by topic keyword
+- [ ] Backend: youtube.getOutlierVideos — search topic, return 10 videos ranked by outlier score
+- [ ] Backend: youtube.getTopicTrends — search topic, return 10 videos ranked by view velocity (views/day)
+- [ ] Backend: youtube.getTitlePatterns — LLM analysis of 10 top video titles for winning patterns
+- [ ] Frontend: Channel Analyzer tab — channel handle input, full stats + 10 top videos with outlier scores
+- [ ] Frontend: Outlier Finder tab — topic search, 10 highest-outlier videos
+- [ ] Frontend: Topic Trends tab — 10 videos ranked by view velocity
+- [ ] Frontend: Title Pattern Analyzer — 10 title examples + LLM pattern extraction
+- [ ] Frontend: Similar Channels panel — 10 competitor channels for a topic

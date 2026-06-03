@@ -159,8 +159,6 @@ async function fetchTranscript(videoId: string): Promise<string> {
     const result = await supadata.transcript({
       url,
       text: true,
-      lang: "en",
-      mode: "native",
     });
 
     if ("jobId" in result) {

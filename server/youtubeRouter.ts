@@ -272,8 +272,6 @@ export const youtubeRouter = router({
           const result = await supadata.transcript({
             url,
             text: true,
-            lang: "en",
-            mode: "native",
           });
 
           if ("jobId" in result) {

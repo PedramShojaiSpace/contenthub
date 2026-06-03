@@ -539,7 +539,7 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number(),
-           status: z.enum(["idea", "pending_approval", "drafting", "review", "approved", "scheduled", "published"]),
+           status: z.enum(["idea", "pending_approval", "drafting", "review", "approved", "scheduled", "published", "pending_review"]),
         })
       )
       .mutation(async ({ input }) => {
@@ -3599,7 +3599,6 @@ Return BOTH in this exact format:
             if (supadata) {
               const searchResults = await supadata.youtube.search({
                 query: `${searchQuery} Urban Monk Pedram Shojai`,
-                lang: "en",
                 limit: 5,
               });
               const videos = (searchResults as any)?.results ?? [];
@@ -5846,6 +5845,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         const db = await getDb();
         if (!db) return { posts: [] };
         const { like, eq, and, isNotNull } = await import("drizzle-orm");
+        const { contentItems } = await import("../drizzle/schema");
         const rows = await db
           .select({
             id: contentItems.id,

@@ -325,33 +325,32 @@ export const gscRouter = router({
       const { gscPositionHistory, contentItems } = await import("../drizzle/schema");
       const { gte, lte, desc, eq } = await import("drizzle-orm");
       const now = Date.now();
-      const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
-      const twentyEightDaysAgo = new Date(now - 28 * 24 * 60 * 60 * 1000);
+      const fourteenDaysAgoMs = now - 14 * 24 * 60 * 60 * 1000;
+      const twentyEightDaysAgoMs = now - 28 * 24 * 60 * 60 * 1000;
 
       const historicalRows = await db
         .select()
         .from(gscPositionHistory)
         .where(
-          // Get records from 14-28 days ago window
-          // We use recordedAt between 28 and 14 days ago
-          // drizzle-orm: gte(col, val) = col >= val
-          // We want: recordedAt >= 28daysAgo AND recordedAt <= 14daysAgo
-          // This gives us the "old" snapshot to compare against
-          // Note: using raw SQL for date range since drizzle doesn't have between for dates easily
+          // recordedAt is stored as bigint Unix ms
+          // We want records from 14-28 days ago (the "old" snapshot)
+          // Using gte/lte on the bigint column
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (gte as any)(gscPositionHistory.recordedAt, twentyEightDaysAgoMs)
         )
         .orderBy(desc(gscPositionHistory.recordedAt))
         .limit(500);
 
       // Build a map of URL -> oldest position in the history window
-      const historicalMap = new Map<string, { position: number; recordedAt: Date }>();
+      const historicalMap = new Map<string, { position: number; recordedAt: number }>();
       for (const row of historicalRows) {
-        if (!row.publishUrl) continue;
-        const url = row.publishUrl.replace(/\/$/, "");
+        if (!row.url) continue;
+        const normalUrl = row.url.replace(/\/$/, "");
         const pos = parseFloat(row.position ?? "0");
-        const existing = historicalMap.get(url);
-        // Keep the oldest record (furthest back in time) for best comparison
-        if (!existing || (row.recordedAt && row.recordedAt < existing.recordedAt)) {
-          historicalMap.set(url, { position: pos, recordedAt: row.recordedAt ?? new Date() });
+        const existing = historicalMap.get(normalUrl);
+        // Keep the oldest record (furthest back in time = smallest timestamp) for best comparison
+        if (!existing || row.recordedAt < existing.recordedAt) {
+          historicalMap.set(normalUrl, { position: pos, recordedAt: row.recordedAt });
         }
       }
 
@@ -396,7 +395,8 @@ export const gscRouter = router({
       }> = [];
 
       for (const page of currentPages) {
-        const url = page.url.replace(/\/$/, "");
+        const pageUrl = page.page; // PageRow uses 'page' field, not 'url'
+        const url = pageUrl.replace(/\/$/, "");
         const currentPos = page.position;
         const historical = historicalMap.get(url);
         const postInfo = postMap.get(url);
@@ -412,7 +412,7 @@ export const gscRouter = router({
 
             if (direction === "up" && currentPos <= 10) {
               signal = "breakthrough";
-              recommendation = `This page broke into the top 10! Publish a follow-up or supporting article on "${postInfo?.focusKeyword ?? page.url.split("/").pop()}" to capture more of this traffic cluster.`;
+              recommendation = `This page broke into the top 10! Publish a follow-up or supporting article on "${postInfo?.focusKeyword ?? pageUrl.split("/").pop()}" to capture more of this traffic cluster.`;
             } else if (direction === "up" && currentPos <= 20) {
               signal = "rising_star";
               recommendation = `Rising fast — moved up ${Math.abs(delta).toFixed(0)} positions. Add internal links from your pillar page and publish a supporting article to push it into the top 10.`;
@@ -425,8 +425,8 @@ export const gscRouter = router({
             }
 
             movingPosts.push({
-              url: page.url,
-              title: postInfo?.title ?? page.url.split("/").filter(Boolean).pop() ?? page.url,
+              url: pageUrl,
+              title: postInfo?.title ?? pageUrl.split("/").filter(Boolean).pop() ?? pageUrl,
               focusKeyword: postInfo?.focusKeyword ?? null,
               currentPosition: Math.round(currentPos * 10) / 10,
               previousPosition: Math.round(historical.position * 10) / 10,
@@ -442,8 +442,8 @@ export const gscRouter = router({
         } else if (currentPos <= 15 && page.clicks > 5) {
           // New page appearing in top 15 with clicks — worth surfacing
           movingPosts.push({
-            url: page.url,
-            title: postInfo?.title ?? page.url.split("/").filter(Boolean).pop() ?? page.url,
+            url: pageUrl,
+            title: postInfo?.title ?? pageUrl.split("/").filter(Boolean).pop() ?? pageUrl,
             focusKeyword: postInfo?.focusKeyword ?? null,
             currentPosition: Math.round(currentPos * 10) / 10,
             previousPosition: 0,
@@ -532,7 +532,7 @@ Generate a specific, actionable follow-up content plan. Return JSON with this ex
         response_format: { type: "json_object" } as any,
       });
 
-      const content = response.choices?.[0]?.message?.content ?? "{}";
+      const content = (response.choices?.[0]?.message?.content as string) ?? "{}";
       try {
         return JSON.parse(content);
       } catch {

@@ -25,7 +25,7 @@ Pedram Shojai (The Urban Monk) voice & positioning guide:
 - Content pillars: sleep, gut health, oral health, detox, stress/energy, longevity, Qigong
 `;
 
-function getSupadata() {
+export function getSupadata() {
   const apiKey = process.env.SUPADATA_API_KEY;
   if (!apiKey) throw new Error("SUPADATA_API_KEY is not configured");
   return new Supadata({ apiKey });
@@ -1111,7 +1111,7 @@ Now write the complete script. Start DIRECTLY with the hook — no preamble, no 
         ],
       }));
 
-      const script = response.choices?.[0]?.message?.content ?? "";
+      const script = (response.choices?.[0]?.message?.content as string) ?? "";
 
       // Strip any residual markdown
       const cleanScript = script

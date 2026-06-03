@@ -134,7 +134,7 @@ async function fetchVideoMetadata(videoId: string): Promise<{
 }> {
   try {
     const supadata = getSupadata();
-    const result = await (supadata as any).youtube.video({ videoId });
+    const result = await (supadata as any).youtube.video({ id: videoId });
     return {
       title: result?.title ?? `YouTube Video ${videoId}`,
       description: (result?.description ?? "").slice(0, 1000),

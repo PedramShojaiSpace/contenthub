@@ -43,7 +43,6 @@ export function YouTubeEmbedPanel({
   wpPostId,
   onEmbedSuccess,
 }: Props) {
-  const { toast } = useToast();
   const [query, setQuery] = useState(focusKeyword ?? title.slice(0, 60));
   const [videos, setVideos] = useState<VideoResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -81,16 +80,16 @@ export function YouTubeEmbedPanel({
   // Already embedded
   if (embeddedYoutubeEmbedStatus === "embedded" && embeddedYoutubeVideoId) {
     return (
-      <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-4">
-        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-          <CheckCircle2 className="w-4 h-4" />
-          <span className="text-sm font-medium">YouTube video embedded</span>
-        </div>
+      <div className="rounded-lg border border-emerald-600/30 bg-emerald-950/10 p-3">
+        <p className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
+          <CheckCircle2 className="w-3 h-3" />
+          YouTube video embedded
+        </p>
         <a
           href={`https://www.youtube.com/watch?v=${embeddedYoutubeVideoId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
+          className="text-xs text-blue-400 hover:underline flex items-center gap-1 mt-1"
         >
           <ExternalLink className="w-3 h-3" />
           youtube.com/watch?v={embeddedYoutubeVideoId}

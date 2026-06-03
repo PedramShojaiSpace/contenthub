@@ -3530,18 +3530,31 @@ Return BOTH in this exact format:
         // Step 9c: GSC Auto-Indexing — fire-and-forget (non-blocking)
         // Pings Google Search Console Indexing API so the new post is crawled immediately
         // rather than waiting for Google's natural crawl schedule (can take days).
+        // Every submission (success or failure) is logged to gsc_indexing_log for auditability.
         if (newStatus !== "scheduled" && post.link) {
           (async () => {
             try {
-              const { userCredentials: ucTable } = await import("../drizzle/schema");
+              const { userCredentials: ucTable, gscIndexingLog: gscLogTable } = await import("../drizzle/schema");
               const { requestIndexing } = await import("./googleSearchConsole");
               const { eq: eqGsc } = await import("drizzle-orm");
               const db9c = await getDb();
               if (db9c) {
                 const [creds] = await db9c.select().from(ucTable).where(eqGsc(ucTable.userId, ctx.user.id));
                 if (creds?.gscRefreshToken) {
-                  const result = await requestIndexing(creds.gscRefreshToken, post.link);
+                  const result = await requestIndexing(creds.gscRefreshToken, post.link!);
                   console.log(`[GSC] Indexing ping for ${post.link}: ${result.message}`);
+                  // Log the submission so we can audit what was indexed
+                  await db9c.insert(gscLogTable).values({
+                    userId: String(ctx.user.id),
+                    url: post.link!,
+                    wpPostId: post.id ?? undefined,
+                    success: result.success,
+                    message: result.message,
+                    source: "auto_publish",
+                    submittedAt: Date.now(),
+                  }).catch((logErr: unknown) => {
+                    console.warn("[GSC] Failed to write indexing log (non-fatal):", logErr);
+                  });
                 } else {
                   console.log("[GSC] No GSC refresh token — skipping indexing ping (connect GSC in settings)");
                 }

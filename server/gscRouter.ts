@@ -283,23 +283,147 @@ export const gscRouter = router({
 
   /**
    * Bulk request indexing for multiple URLs.
-   * Processes up to 10 URLs sequentially.
+   * Processes up to 10 URLs sequentially with logging.
    */
   bulkRequestIndexing: protectedProcedure
     .input(z.object({ urls: z.array(z.string().url()).min(1).max(10) }))
     .mutation(async ({ ctx, input }) => {
       const creds = await getGscCredentials(ctx.user.id);
+      const db = await getDb();
+      const { gscIndexingLog } = await import("../drizzle/schema");
       const results = [];
       for (const url of input.urls) {
         try {
           const result = await requestIndexing(creds.gscRefreshToken!, url);
           results.push({ url, ...result });
+          if (db) {
+            await db.insert(gscIndexingLog).values({
+              userId: String(ctx.user.id),
+              url,
+              success: result.success,
+              message: result.message,
+              source: "manual",
+              submittedAt: Date.now(),
+            });
+          }
         } catch (err: any) {
           results.push({ url, success: false, message: err?.message ?? "Request failed" });
         }
         await new Promise((r) => setTimeout(r, 300));
       }
       return results;
+    }),
+
+  /**
+   * Backfill indexing — submit all published posts in wp_post_index that have
+   * not yet been logged in gsc_indexing_log. Processes in batches of 200 with
+   * a 300ms delay between each to respect Google's rate limits.
+   * Returns a summary of how many were submitted and how many succeeded.
+   */
+  backfillIndexing: protectedProcedure
+    .input(z.object({ dryRun: z.boolean().default(false) }))
+    .mutation(async ({ ctx, input }) => {
+      const creds = await getGscCredentials(ctx.user.id);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const { wpPostIndex, gscIndexingLog } = await import("../drizzle/schema");
+      const { notInArray, isNotNull, ne } = await import("drizzle-orm");
+
+      // Get all published post URLs from wp_post_index
+      const allPosts = await db
+        .select({ wpPostId: wpPostIndex.wpPostId, url: wpPostIndex.url, title: wpPostIndex.title })
+        .from(wpPostIndex)
+        .where(isNotNull(wpPostIndex.url));
+
+      // Get all URLs already logged
+      const alreadyLogged = await db
+        .select({ url: gscIndexingLog.url })
+        .from(gscIndexingLog)
+        .where(ne(gscIndexingLog.url, ""));
+
+      const loggedUrls = new Set(alreadyLogged.map((r) => r.url));
+      const unsubmitted = allPosts.filter(
+        (p) => p.url && !loggedUrls.has(p.url)
+      );
+
+      if (input.dryRun) {
+        return {
+          dryRun: true,
+          totalPublished: allPosts.length,
+          alreadySubmitted: loggedUrls.size,
+          toSubmit: unsubmitted.length,
+          urls: unsubmitted.slice(0, 20).map((p) => p.url),
+          submitted: 0,
+          succeeded: 0,
+          failed: 0,
+        };
+      }
+
+      let submitted = 0;
+      let succeeded = 0;
+      let failed = 0;
+
+      for (const post of unsubmitted) {
+        if (!post.url) continue;
+        try {
+          const result = await requestIndexing(creds.gscRefreshToken!, post.url);
+          await db.insert(gscIndexingLog).values({
+            userId: String(ctx.user.id),
+            url: post.url,
+            wpPostId: post.wpPostId ?? undefined,
+            success: result.success,
+            message: result.message,
+            source: "backfill",
+            submittedAt: Date.now(),
+          });
+          submitted++;
+          if (result.success) succeeded++;
+          else failed++;
+        } catch (err: any) {
+          failed++;
+          await db.insert(gscIndexingLog).values({
+            userId: String(ctx.user.id),
+            url: post.url,
+            wpPostId: post.wpPostId ?? undefined,
+            success: false,
+            message: err?.message ?? "Request failed",
+            source: "backfill",
+            submittedAt: Date.now(),
+          }).catch(() => {});
+        }
+        // 300ms delay to respect Google Indexing API rate limits
+        await new Promise((r) => setTimeout(r, 300));
+      }
+
+      return {
+        dryRun: false,
+        totalPublished: allPosts.length,
+        alreadySubmitted: loggedUrls.size,
+        toSubmit: unsubmitted.length,
+        submitted,
+        succeeded,
+        failed,
+      };
+    }),
+
+  /**
+   * Get indexing log — shows which URLs have been submitted and their status.
+   */
+  getIndexingLog: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(200).default(50), source: z.enum(["auto_publish", "backfill", "manual", "all"]).default("all") }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { gscIndexingLog } = await import("../drizzle/schema");
+      const { desc, eq } = await import("drizzle-orm");
+
+      const rows = input.source === "all"
+        ? await db.select().from(gscIndexingLog).orderBy(desc(gscIndexingLog.submittedAt)).limit(input.limit)
+        : await db.select().from(gscIndexingLog).where(eq(gscIndexingLog.source, input.source as "auto_publish" | "backfill" | "manual")).orderBy(desc(gscIndexingLog.submittedAt)).limit(input.limit);
+
+      const total = await db.select({ count: gscIndexingLog.id }).from(gscIndexingLog);
+      return { rows, total: total.length };
     }),
 
   /**

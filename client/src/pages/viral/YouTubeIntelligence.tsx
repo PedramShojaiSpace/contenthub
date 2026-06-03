@@ -305,6 +305,8 @@ function CompetitorSearchTab() {
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState(8);
   const [scriptCopied, setScriptCopied] = useState(false);
+  const [platform, setPlatform] = useState<"youtube" | "youtube_short" | "instagram" | "tiktok">("youtube");
+  const [platformLabel, setPlatformLabel] = useState("YouTube (Long-Form)");
 
   const searchMut = trpc.youtube.searchSimilar.useMutation();
   const transcriptMut = trpc.youtube.fetchTranscripts.useMutation();
@@ -363,13 +365,14 @@ function CompetitorSearchTab() {
   const handleGenerateScript = async () => {
     if (!brief) return;
     setTeleprompterScript("");
+    setShowTeleprompter(true);
     try {
-      const result = await scriptMut.mutateAsync({ topic: query, brief, durationMinutes });
+      const result = await scriptMut.mutateAsync({ topic: query, brief, durationMinutes, platform });
       setTeleprompterScript(result.script);
       setTeleprompterWordCount(result.wordCount);
       setTeleprompterMinutes(result.estimatedMinutes);
-      setShowTeleprompter(true);
-    } catch (err: any) { toast.error(err?.message ?? "Script generation failed"); }
+      setPlatformLabel(result.platformLabel);
+    } catch (err: any) { setShowTeleprompter(false); toast.error(err?.message ?? "Script generation failed"); }
   };
 
   const handleCopyScript = async () => {
@@ -463,21 +466,57 @@ function CompetitorSearchTab() {
                 Differentiation Brief
               </CardTitle>
               {brief && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground">Duration:</span>
-                    {([3, 5, 8, 10, 15] as const).map((m) => (
-                      <button key={m} onClick={() => setDurationMinutes(m)} className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${durationMinutes === m ? "bg-violet-100 border-violet-300 text-violet-700 font-medium" : "border-border text-muted-foreground hover:border-violet-200"}`}>{m}m</button>
+                <div className="flex flex-col gap-2 w-full mt-2">
+                  {/* Platform selector */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground font-medium">Platform:</span>
+                    {([
+                      { id: "youtube", label: "YouTube", icon: "🎬", color: "red" },
+                      { id: "youtube_short", label: "YT Short", icon: "⚡", color: "orange" },
+                      { id: "instagram", label: "Instagram", icon: "📸", color: "pink" },
+                      { id: "tiktok", label: "TikTok", icon: "🎵", color: "purple" },
+                    ] as const).map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setPlatform(p.id as typeof platform)}
+                        className={`text-xs px-3 py-1 rounded-full border transition-all font-medium flex items-center gap-1 ${
+                          platform === p.id
+                            ? p.color === "red" ? "bg-red-100 border-red-300 text-red-700"
+                            : p.color === "orange" ? "bg-orange-100 border-orange-300 text-orange-700"
+                            : p.color === "pink" ? "bg-pink-100 border-pink-300 text-pink-700"
+                            : "bg-purple-100 border-purple-300 text-purple-700"
+                            : "border-border text-muted-foreground hover:border-violet-200 hover:text-violet-700"
+                        }`}
+                      >
+                        <span>{p.icon}</span> {p.label}
+                      </button>
                     ))}
+                    {/* Duration only for long-form YouTube */}
+                    {platform === "youtube" && (
+                      <>
+                        <span className="text-xs text-muted-foreground ml-2">Duration:</span>
+                        {([3, 5, 8, 10, 15] as const).map((m) => (
+                          <button key={m} onClick={() => setDurationMinutes(m)} className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${durationMinutes === m ? "bg-violet-100 border-violet-300 text-violet-700 font-medium" : "border-border text-muted-foreground hover:border-violet-200"}`}>{m}m</button>
+                        ))}
+                      </>
+                    )}
+                    {platform !== "youtube" && (
+                      <span className="text-xs text-muted-foreground ml-2 italic">
+                        {platform === "youtube_short" ? "≤60 sec" : "60-90 sec"}
+                      </span>
+                    )}
                   </div>
-                  <Button onClick={handleGenerateScript} disabled={scriptMut.isPending} className="bg-red-600 hover:bg-red-700 text-white h-8 text-sm">
-                    {scriptMut.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Writing Script…</> : <><Film className="w-3.5 h-3.5 mr-1.5" />Generate Teleprompter Script</>}
-                  </Button>
-                  <Input value={savedTitle} onChange={(e) => setSavedTitle(e.target.value)} className="h-8 text-sm w-52" placeholder="Script title…" />
-                  <Button onClick={handleSave} disabled={saveMut.isPending} variant="outline" className="h-8 text-sm">
-                    {saveMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    <span className="ml-1.5">Save Brief</span>
-                  </Button>
+                  {/* Action row */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button onClick={handleGenerateScript} disabled={scriptMut.isPending} className="bg-red-600 hover:bg-red-700 text-white h-8 text-sm">
+                      {scriptMut.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Writing Script…</> : <><Film className="w-3.5 h-3.5 mr-1.5" />Generate Script</>}
+                    </Button>
+                    <Input value={savedTitle} onChange={(e) => setSavedTitle(e.target.value)} className="h-8 text-sm w-52" placeholder="Script title…" />
+                    <Button onClick={handleSave} disabled={saveMut.isPending} variant="outline" className="h-8 text-sm">
+                      {saveMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      <span className="ml-1.5">Save Brief</span>
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -520,7 +559,7 @@ function CompetitorSearchTab() {
                 <Film className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h2 className="text-white font-semibold text-sm">Teleprompter Script</h2>
+                <h2 className="text-white font-semibold text-sm">{platformLabel} Script</h2>
                 <p className="text-white/50 text-xs">{teleprompterWordCount.toLocaleString()} words · ~{teleprompterMinutes} min · {query}</p>
               </div>
             </div>

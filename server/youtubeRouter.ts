@@ -953,84 +953,175 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
         topic: z.string().min(3).max(300),
         brief: z.string().min(10).max(12000),
         durationMinutes: z.number().min(1).max(30).default(8),
+        platform: z.enum(["youtube", "youtube_short", "instagram", "tiktok"]).default("youtube"),
       })
     )
     .mutation(async ({ input }) => {
-      const wordsPerMinute = 130; // comfortable teleprompter reading pace
-      const targetWords = input.durationMinutes * wordsPerMinute;
+      const wordsPerMinute = 130;
 
-      const prompt = `You are a world-class YouTube scriptwriter for Dr. Pedram Shojai (The Urban Monk).
+      // ── Platform-specific config ──────────────────────────────────────────────
+      type PlatformConfig = {
+        label: string;
+        targetWords: number;
+        durationLabel: string;
+        hookStyle: string;
+        structureRules: string;
+        ctaRule: string;
+        formatRules: string;
+        systemPrompt: string;
+      };
 
-Your task: Write a COMPLETE, TELEPROMPTER-READY spoken script for a YouTube video.
+      const platformConfigs: Record<string, PlatformConfig> = {
+        youtube: {
+          label: "YouTube (Long-Form)",
+          targetWords: input.durationMinutes * wordsPerMinute,
+          durationLabel: `${input.durationMinutes} minutes`,
+          hookStyle: `Write a BETTER hook using ONE of these proven YouTube hook formulas:
+   - PATTERN INTERRUPT: Start with a shocking, counterintuitive statement that stops the scroll (e.g., "Most doctors are wrong about this...")
+   - CURIOSITY GAP: Tease something the viewer desperately wants to know (e.g., "There's a reason you wake up exhausted no matter how much you sleep — and it has nothing to do with sleep.")
+   - BOLD CLAIM + PROOF PROMISE: Make a strong claim and immediately promise to back it up (e.g., "I reversed my gut damage in 90 days using a 2,000-year-old protocol. Here's exactly what I did.")
+   - STORY HOOK: Open mid-story at the most dramatic moment (e.g., "I was standing in a monastery in China when the master said something that changed everything I thought I knew about health.")`,
+          structureRules: `SCRIPT STRUCTURE (flow naturally — no labels):
+   Opening hook (30 sec) → Brief personal credibility moment (30 sec) → Core problem/insight (2-3 min) → The Urban Monk solution/framework (3-4 min) → Practical takeaways (1-2 min) → Closing CTA (30 sec)`,
+          ctaRule: `Warm, non-pushy invitation to the Urban Monk Academy or lightson.theurbanmonk.com. Example: "If you want to go deeper on this, I've put together a complete program inside the Urban Monk Academy..."`,
+          formatRules: `- Write in natural spoken paragraphs — exactly how Pedram would say it out loud
+   - Short sentences. Conversational rhythm. Easy to read while looking at a camera.
+   - Use ellipses (...) for natural pauses
+   - Paragraph breaks = natural breath points`,
+          systemPrompt: "You are an expert YouTube scriptwriter specializing in health, wellness, and personal development content. You write scripts that are warm, authoritative, and immediately engaging. You never use markdown formatting in teleprompter scripts.",
+        },
 
+        youtube_short: {
+          label: "YouTube Short",
+          targetWords: 100,
+          durationLabel: "under 60 seconds",
+          hookStyle: `Write a SINGLE-SENTENCE PATTERN INTERRUPT hook that stops the scroll in the first 2 seconds. It must be one bold, counterintuitive statement that makes the viewer need to keep watching. Examples:
+   - "Your morning routine is destroying your cortisol."
+   - "The supplement everyone's taking is making your gut worse."
+   - "Ancient monks knew something about sleep that modern science just confirmed."`,
+          structureRules: `STRUCTURE (must fit in 60 seconds total — no labels, no filler):
+   1-sentence hook → 1-sentence context/why it matters → 2-3 sentences of the core insight or tip → 1-sentence CTA
+   Every sentence must earn its place. Cut anything that doesn't drive toward the single insight.`,
+          ctaRule: `One punchy sentence directing to the Urban Monk Academy or Lights On. Example: "Link in bio for the full protocol." or "Follow for more."`,
+          formatRules: `- MAXIMUM 100 words total — this is a Short, not a full video
+   - Every sentence is its own paragraph (one sentence per line)
+   - Ultra-short sentences — 5 to 10 words each
+   - No filler words, no "So today we're going to talk about..."
+   - Punchy, direct, high-energy but still Pedram's warm voice`,
+          systemPrompt: "You are an expert short-form video scriptwriter for health and wellness creators. You write punchy, scroll-stopping YouTube Shorts scripts that deliver one powerful insight in under 60 seconds. You never use markdown formatting.",
+        },
+
+        instagram: {
+          label: "Instagram Reel",
+          targetWords: 120,
+          durationLabel: "60-90 seconds",
+          hookStyle: `Write a VISUAL + VERBAL hook designed for Instagram's scroll-stop culture. The first line must work as both a spoken hook AND an on-screen text overlay. Use ONE of:
+   - RELATABLE PAIN POINT: "If you're waking up tired every morning, this is why."
+   - BOLD CLAIM: "I stopped taking probiotics for 30 days. Here's what happened."
+   - CURIOSITY + NUMBER: "3 things your gut is trying to tell you right now."
+   - DIRECT CHALLENGE: "You've been breathing wrong your entire life."`,
+          structureRules: `STRUCTURE (Instagram Reel — 60-90 seconds, no labels):
+   Hook (5 sec, 1-2 sentences) → Problem/relatable moment (10 sec) → Core value/insight — 2-3 actionable points (30-40 sec) → Transformation promise (10 sec) → CTA (5 sec)
+   Think: hook them, relate to them, teach them one thing, invite them deeper.`,
+          ctaRule: `Warm Instagram-native CTA. Examples: "Save this for later." / "Follow for more ancient wisdom meets modern science." / "Link in bio for the full program."`,
+          formatRules: `- 120 words maximum
+   - Each thought is its own short paragraph (2-3 sentences max per paragraph)
+   - Conversational, warm, slightly faster pace than YouTube
+   - Use ellipses (...) for dramatic pauses
+   - Avoid jargon — speak to a general wellness audience
+   - The script should feel like Pedram is talking directly to ONE person`,
+          systemPrompt: "You are an expert Instagram Reels scriptwriter for health and wellness creators. You write warm, engaging, scroll-stopping scripts that feel personal and authentic. You never use markdown formatting.",
+        },
+
+        tiktok: {
+          label: "TikTok",
+          targetWords: 130,
+          durationLabel: "60-90 seconds",
+          hookStyle: `Write a TikTok-native hook that works in the FIRST 1-2 SECONDS before the viewer swipes. TikTok hooks are more direct and trend-aware than YouTube. Use ONE of:
+   - DIRECT ADDRESS: "POV: You've been doing intermittent fasting wrong." (use sparingly — only if natural)
+   - BOLD FACT DROP: "Your gut has more neurons than your spinal cord. Here's why that matters."
+   - PATTERN INTERRUPT QUESTION: "What if everything you know about stress is backwards?"
+   - STORY TEASE: "A Taoist master told me something about sleep that changed my life. Here it is."`,
+          structureRules: `STRUCTURE (TikTok — 60-90 seconds, fast-paced, no labels):
+   Instant hook (2 sec) → Fast context — why should I care? (5 sec) → Core insight broken into 2-3 fast beats (30-40 sec) → Surprising or memorable close (10 sec) → CTA (5 sec)
+   TikTok viewers decide in 2 seconds. Every sentence must pull them forward.`,
+          ctaRule: `TikTok-native CTA. Examples: "Follow for more." / "Comment 'MONK' and I'll send you the full protocol." / "Link in bio."`,
+          formatRules: `- 130 words maximum
+   - Very short sentences — 5 to 8 words each
+   - Each sentence is its own line/paragraph
+   - Fast, punchy rhythm — imagine Pedram speaking at 1.2x speed
+   - Still warm and authentic — NOT hype-bro energy
+   - Avoid long explanations — one idea per sentence`,
+          systemPrompt: "You are an expert TikTok scriptwriter for health and wellness creators. You write fast-paced, scroll-stopping scripts that deliver maximum value in minimum time. You never use markdown formatting.",
+        },
+      };
+
+      const cfg = platformConfigs[input.platform];
+
+      const prompt = `You are a world-class social media scriptwriter for Dr. Pedram Shojai (The Urban Monk).
+
+PLATFORM: ${cfg.label}
 TOPIC: ${input.topic}
-TARGET LENGTH: approximately ${targetWords} words (${input.durationMinutes} minutes at easy teleprompter pace)
+TARGET LENGTH: approximately ${cfg.targetWords} words (${cfg.durationLabel})
 
 ${PEDRAM_VOICE_GUIDE}
 
-COMPETITOR ANALYSIS BRIEF (use this to inform the script — especially the differentiation angle and outline):
-${input.brief.slice(0, 6000)}
+COMPETITOR ANALYSIS BRIEF (use this to inform the script — especially the differentiation angle):
+${input.brief.slice(0, 4000)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CRITICAL RULES FOR THIS SCRIPT:
+CRITICAL RULES FOR THIS ${cfg.label.toUpperCase()} SCRIPT:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. VIRAL HOOK (first 30 seconds — the most important part):
-   Study the competitor hooks from the brief. Then write a BETTER hook using ONE of these proven YouTube hook formulas:
-   - PATTERN INTERRUPT: Start with a shocking, counterintuitive statement that stops the scroll (e.g., "Most doctors are wrong about this...")
-   - CURIOSITY GAP: Tease something the viewer desperately wants to know but doesn't yet (e.g., "There's a reason you wake up exhausted no matter how much you sleep — and it has nothing to do with sleep.")
-   - BOLD CLAIM + PROOF PROMISE: Make a strong claim and immediately promise to back it up (e.g., "I reversed my gut damage in 90 days using a 2,000-year-old protocol. Here's exactly what I did.")
-   - STORY HOOK: Open mid-story at the most dramatic moment (e.g., "I was standing in a monastery in China when the master said something that changed everything I thought I knew about health.")
+1. VIRAL HOOK (the most important part — make it better than every competitor):
+   ${cfg.hookStyle}
    The hook must be in Pedram's authentic voice — warm, authoritative, grounded. NOT clickbait. NOT fear-based.
 
-2. TELEPROMPTER FORMAT RULES (NON-NEGOTIABLE):
+2. FORMAT RULES (NON-NEGOTIABLE):
    - NO markdown symbols: no #, *, -, [], or ** anywhere in the script
-   - NO section headers or labels (no "Hook:", "Section 1:", "CTA:", "[Pause here]")
+   - NO section headers or labels (no "Hook:", "CTA:", "[Pause here]", "Section 1:")
    - NO bullet points or numbered lists
-   - Write in natural spoken paragraphs — exactly how Pedram would say it out loud
-   - Short sentences. Conversational rhythm. Easy to read while looking at a camera.
-   - Use ellipses (...) for natural pauses where needed
-   - Paragraph breaks = natural breath points
+   ${cfg.formatRules}
 
-3. SCRIPT STRUCTURE (flow naturally — no labels):
-   Opening hook (30 sec) → Brief personal credibility moment (30 sec) → Core problem/insight (2-3 min) → The Urban Monk solution/framework (3-4 min) → Practical takeaways (1-2 min) → Closing CTA to Academy or Lights On course (30 sec)
+3. ${cfg.structureRules}
 
-4. CTA (last 30 seconds):
-   Warm, non-pushy invitation to the Urban Monk Academy or lightson.theurbanmonk.com
-   Example tone: "If you want to go deeper on this, I've put together a complete program inside the Urban Monk Academy..."
+4. CTA:
+   ${cfg.ctaRule}
 
 5. VOICE CONSISTENCY:
    Pedram speaks like a wise, warm teacher — not a hype marketer. He references Qi, life energy, ancient wisdom, and modern science in the same breath. He uses "we" and "you" — never lectures down.
 
-Now write the complete teleprompter script. Start directly with the hook — no preamble, no title, no intro text. Just the spoken words Pedram will read.`;
+Now write the complete script. Start DIRECTLY with the hook — no preamble, no title, no intro text. Just the spoken words Pedram will read.`;
 
       const response = await wrapLLM(() => invokeLLM({
         messages: [
-          {
-            role: "system",
-            content: "You are an expert YouTube scriptwriter specializing in health, wellness, and personal development content. You write scripts that are warm, authoritative, and immediately engaging. You never use markdown formatting in teleprompter scripts.",
-          },
+          { role: "system", content: cfg.systemPrompt },
           { role: "user", content: prompt },
         ],
       }));
 
       const script = response.choices?.[0]?.message?.content ?? "";
 
-      // Strip any residual markdown that the LLM might have snuck in
+      // Strip any residual markdown
       const cleanScript = script
-        .replace(/^#{1,6}\s+/gm, "")          // remove heading markers
-        .replace(/\*\*([^*]+)\*\*/g, "$1")    // remove bold
-        .replace(/\*([^*]+)\*/g, "$1")         // remove italic
-        .replace(/^[-*+]\s+/gm, "")            // remove bullet points
-        .replace(/^\d+\.\s+/gm, "")            // remove numbered lists
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // remove links
-        .replace(/`([^`]+)`/g, "$1")            // remove code
-        .replace(/^(Hook|CTA|Section|Intro|Outro|Opening|Closing|Bridge|Transition):\s*/gim, "") // remove labels
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/\*\*([^*]+)\*\*/g, "$1")
+        .replace(/\*([^*]+)\*/g, "$1")
+        .replace(/^[-*+]\s+/gm, "")
+        .replace(/^\d+\.\s+/gm, "")
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/^(Hook|CTA|Section|Intro|Outro|Opening|Closing|Bridge|Transition|POV label):\s*/gim, "")
         .trim();
 
       const wordCount = cleanScript.split(/\s+/).filter(Boolean).length;
+      const estimatedSeconds = input.platform === "youtube"
+        ? input.durationMinutes * 60
+        : input.platform === "youtube_short" ? 55
+        : input.platform === "instagram" ? 75
+        : 75; // tiktok
       const estimatedMinutes = Math.round(wordCount / wordsPerMinute);
 
-      return { script: cleanScript, wordCount, estimatedMinutes };
+      return { script: cleanScript, wordCount, estimatedMinutes, estimatedSeconds, platform: input.platform, platformLabel: cfg.label };
     }),
 });

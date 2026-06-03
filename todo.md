@@ -3760,3 +3760,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Frontend: "Generate Script" button after brief/outline is ready in Competitor Search tab
 - [ ] Frontend: Teleprompter script modal with large readable text, one-click copy button
 - [ ] Frontend: Script formatted for teleprompter — no markdown symbols, clean spoken sentences, natural paragraph breaks
+
+## Platform Script Formats
+- [ ] Backend: update generateTeleprompterScript to accept platform param (instagram | tiktok | youtube_short | youtube)
+- [ ] Backend: platform-specific prompt rules — Instagram (60s, hook+value+CTA), TikTok (60-90s, trend hook, fast cuts), YouTube Short (≤60s, single insight), YouTube (5-15min, full structure)
+- [ ] Frontend: platform selector UI in teleprompter section (4 buttons with icons)
+- [ ] Frontend: duration selector only shown for YouTube long-form; auto-set for short platforms

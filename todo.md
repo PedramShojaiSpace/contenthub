@@ -3766,3 +3766,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Backend: platform-specific prompt rules — Instagram (60s, hook+value+CTA), TikTok (60-90s, trend hook, fast cuts), YouTube Short (≤60s, single insight), YouTube (5-15min, full structure)
 - [ ] Frontend: platform selector UI in teleprompter section (4 buttons with icons)
 - [ ] Frontend: duration selector only shown for YouTube long-form; auto-set for short platforms
+
+## Keith Gap 2 — YouTube Embed Auto-Trigger in Blog Publish Flow
+- [ ] Wire YouTube embed step into blog.publish procedure — after WordPress post is created, auto-search Pedram's channel for matching video and embed it
+- [ ] Add embedYoutubeOnPublish flag to blog.publish input so it can be toggled on/off
+- [ ] Show embed result in the publish success toast (embedded / no match found)
+- [ ] Add "Auto-embed YouTube video" toggle to the blog publish button UI in CommandCenter
+
+## Keith Gap 1 — Closed-Loop GSC Feedback Flywheel
+- [ ] Backend: blog.getMovingPosts — query GSC for posts that moved in ranking in last 14 days, return top 10 movers with position delta
+- [ ] Backend: blog.suggestFollowUp — for a given moving post, use LLM to suggest 3 follow-up article ideas that would strengthen the silo
+- [ ] Frontend: Add "Content Flywheel" panel to SEO Dashboard showing top 10 ranking movers with position delta badges
+- [ ] Frontend: Each mover card has "Suggest Follow-Up" button that triggers LLM and adds idea to Command Center queue
+- [ ] Frontend: Show last-checked timestamp and a Refresh button to re-pull GSC data

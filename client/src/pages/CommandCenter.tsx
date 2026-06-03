@@ -2213,6 +2213,10 @@ export default function CommandCenter() {
           setWpPublishingId(null);
           if (data.imageUploaded === false && item.imageUrl) {
             toast.warning("Moved to Published! Hero image failed to upload — add it manually in WP.");
+          } else if (data.youtubeEmbedResult?.embedded) {
+            toast.success(`Published to WordPress! YouTube video embedded: "${data.youtubeEmbedResult.videoTitle?.slice(0, 50)}"`, { duration: 6000 });
+          } else if (data.youtubeEmbedResult && !data.youtubeEmbedResult.embedded && data.youtubeEmbedResult.message !== "skipped") {
+            toast.success(`Published to WordPress! (No matching YouTube video found — embed manually if needed)`, { duration: 5000 });
           } else {
             toast.success("Moved to Published and sent to WordPress!");
           }

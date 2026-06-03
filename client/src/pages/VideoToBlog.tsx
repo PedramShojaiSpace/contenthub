@@ -24,6 +24,7 @@ import {
   AlignLeft,
   Copy,
   ShieldCheck,
+  BarChart2,
 } from "lucide-react";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
@@ -92,6 +93,10 @@ export default function VideoToBlog() {
   const [focusKeyword, setFocusKeyword] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // vidIQ keyword research state
+  const [vidiqKeyword, setVidiqKeyword] = useState(""); // triggers the query
+  const [showVidiqPanel, setShowVidiqPanel] = useState(false);
+
   // Pipeline state
   const [videoInfo, setVideoInfo] = useState<{
     videoId: string;
@@ -158,6 +163,13 @@ export default function VideoToBlog() {
         toast.warning("No transcript found for this video. The blog will be generated from the title and description only.");
       } else {
         toast.success(`Transcript fetched — ${data.transcriptLength.toLocaleString()} characters`);
+        // Kick off vidIQ keyword optimization using the LLM-suggested keyword
+        if (data.suggestedKeyword && data.suggestedKeyword.length > 2) {
+          vidiqSuggest.mutate({
+            videoTitle: data.title,
+            suggestedKeyword: data.suggestedKeyword,
+          });
+        }
       }
     },
     onError: (err) => toast.error(err.message),
@@ -189,6 +201,27 @@ export default function VideoToBlog() {
       }
     },
     onError: (err) => toast.error(err.message),
+  });
+
+  // vidIQ keyword research — fires when vidiqKeyword is set
+  const vidiqResearch = trpc.vidiq.keywordResearch.useQuery(
+    { keyword: vidiqKeyword, includeRelated: true },
+    { enabled: vidiqKeyword.length > 2, staleTime: 5 * 60 * 1000 }
+  );
+
+  // vidIQ suggest best focus keyword from transcript
+  const vidiqSuggest = trpc.vidiq.suggestFocusKeyword.useMutation({
+    onSuccess: (data) => {
+      if (data.recommended.keyword) {
+        setFocusKeyword(data.recommended.keyword);
+        setVidiqKeyword(data.recommended.keyword);
+        setShowVidiqPanel(true);
+        toast.success(`vidIQ: best keyword is "${data.recommended.keyword}" (score ${Math.round(data.recommended.overall)}/100)`);
+      }
+    },
+    onError: () => {
+      // silently fall back — LLM suggestion already set
+    },
   });
 
   const generateYtDesc = trpc.videoToBlog.generateYouTubeDescription.useMutation({
@@ -370,21 +403,121 @@ export default function VideoToBlog() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Focus Keyword
-                <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">(required for Yoast SEO)</span>
-              </label>
-              <Input
-                placeholder="e.g. kung fu philosophy, intermittent fasting benefits"
-                value={focusKeyword}
-                onChange={(e) => setFocusKeyword(e.target.value)}
-                disabled={generateBlog.isPending || !!blogResult}
-                className={!focusKeyword && videoInfo ? "border-amber-400 ring-1 ring-amber-400/50" : ""}
-              />
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  Focus Keyword
+                  <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">(required for Yoast SEO)</span>
+                </label>
+                {vidiqSuggest.isPending && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Checking vidIQ…
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. kung fu philosophy, intermittent fasting benefits"
+                  value={focusKeyword}
+                  onChange={(e) => {
+                    setFocusKeyword(e.target.value);
+                    setVidiqKeyword(e.target.value);
+                  }}
+                  disabled={generateBlog.isPending || !!blogResult}
+                  className={!focusKeyword && videoInfo ? "border-amber-400 ring-1 ring-amber-400/50" : ""}
+                />
+                {focusKeyword.length > 2 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 text-xs"
+                    onClick={() => {
+                      setVidiqKeyword(focusKeyword);
+                      setShowVidiqPanel(true);
+                    }}
+                    title="Research this keyword in vidIQ"
+                  >
+                    <BarChart2 className="w-3.5 h-3.5 mr-1" />
+                    vidIQ
+                  </Button>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
                 2–4 words. Used by Yoast to check your intro, subheadings, and meta description.
-                {videoInfo && focusKeyword && <span className="text-green-600 dark:text-green-400 font-medium"> — AI-suggested from transcript, edit if needed.</span>}
+                {videoInfo && focusKeyword && !vidiqSuggest.isPending && (
+                  <span className="text-green-600 dark:text-green-400 font-medium"> — vidIQ-optimized keyword.</span>
+                )}
               </p>
+
+              {/* vidIQ Keyword Research Panel */}
+              {showVidiqPanel && vidiqResearch.data && (
+                <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">vidIQ Keyword Data</span>
+                    <button onClick={() => setShowVidiqPanel(false)} className="text-xs text-muted-foreground hover:text-foreground">× close</button>
+                  </div>
+
+                  {/* Primary keyword scores */}
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-md bg-background border border-border p-2">
+                      <div className="text-lg font-bold text-foreground">{Math.round(vidiqResearch.data.volume)}</div>
+                      <div className="text-xs text-muted-foreground">Volume</div>
+                    </div>
+                    <div className="rounded-md bg-background border border-border p-2">
+                      <div className="text-lg font-bold text-foreground">{Math.round(vidiqResearch.data.competition)}</div>
+                      <div className="text-xs text-muted-foreground">Competition</div>
+                    </div>
+                    <div className={`rounded-md border p-2 ${
+                      vidiqResearch.data.overall >= 60 ? "bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700" :
+                      vidiqResearch.data.overall >= 40 ? "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700" :
+                      "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-700"
+                    }`}>
+                      <div className={`text-lg font-bold ${
+                        vidiqResearch.data.overall >= 60 ? "text-green-700 dark:text-green-400" :
+                        vidiqResearch.data.overall >= 40 ? "text-amber-700 dark:text-amber-400" :
+                        "text-red-700 dark:text-red-400"
+                      }`}>{Math.round(vidiqResearch.data.overall)}</div>
+                      <div className="text-xs text-muted-foreground">Opportunity</div>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground">
+                    ~{vidiqResearch.data.estimatedMonthlySearch.toLocaleString()} searches/month
+                  </div>
+
+                  {/* Related keywords */}
+                  {vidiqResearch.data.related.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground">Related keywords — click to use:</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {vidiqResearch.data.related.slice(0, 8).map((r) => (
+                          <button
+                            key={r.keyword}
+                            onClick={() => {
+                              setFocusKeyword(r.keyword);
+                              setVidiqKeyword(r.keyword);
+                            }}
+                            className={`text-xs px-2 py-0.5 rounded-full border transition-colors hover:bg-primary hover:text-primary-foreground ${
+                              focusKeyword === r.keyword
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background border-border text-foreground"
+                            }`}
+                            title={`Volume: ${Math.round(r.volume)} | Competition: ${Math.round(r.competition)} | Score: ${Math.round(r.overall)}`}
+                          >
+                            {r.keyword} <span className="opacity-60">{Math.round(r.overall)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {showVidiqPanel && vidiqResearch.isLoading && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Loading vidIQ data…
+                </div>
+              )}
             </div>
 
             <button

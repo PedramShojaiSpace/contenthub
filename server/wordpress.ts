@@ -166,12 +166,22 @@ function buildArticleSchema(params: {
   const now = params.datePublished ?? new Date().toISOString();
   const schema = {
     "@context": "https://schema.org",
-    "@type": "Article",
+    // BlogPosting is a subtype of Article — it explicitly signals to Google that
+    // this is a blog post, which is the correct type for theurbanmonk.com content.
+    // This replaces the need for a /blog/ URL prefix in the path structure.
+    "@type": "BlogPosting",
     headline: params.title,
     description: params.metaDescription,
     url,
     datePublished: now,
     dateModified: now,
+    // isPartOf signals this post belongs to the Urban Monk blog
+    isPartOf: {
+      "@type": "Blog",
+      "@id": "https://theurbanmonk.com/#blog",
+      name: "The Urban Monk Blog",
+      url: "https://theurbanmonk.com",
+    },
     author: {
       "@type": "Person",
       name: "Dr. Pedram Shojai",

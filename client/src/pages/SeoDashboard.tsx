@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -903,16 +903,37 @@ function ContentFlywheelPanel({ setLocation }: { setLocation: (path: string) => 
 function IndexingStatusPanel() {
   const utils = trpc.useUtils();
   const [showLog, setShowLog] = useState(false);
+  const [jobRunning, setJobRunning] = useState(false);
+  const [jobTarget, setJobTarget] = useState(0);
   const [dryRunResult, setDryRunResult] = useState<{
     totalPublished: number;
     alreadySubmitted: number;
     toSubmit: number;
   } | null>(null);
 
+  // Always fetch the log so we can count progress; poll every 3s when job is running
   const logQuery = trpc.gsc.getIndexingLog.useQuery(
-    { limit: 20, source: "all" },
-    { enabled: showLog, staleTime: 60 * 1000 }
+    { limit: 200, source: "backfill" },
+    { refetchInterval: jobRunning ? 3000 : false, staleTime: 10 * 1000 }
   );
+
+  const logDisplayQuery = trpc.gsc.getIndexingLog.useQuery(
+    { limit: 20, source: "all" },
+    { enabled: showLog, staleTime: 30 * 1000 }
+  );
+
+  // Count how many backfill entries are in the log (progress indicator)
+  const backfillCount = logQuery.data?.rows.length ?? 0;
+
+  // Stop polling once we've hit the target (must be in useEffect to avoid setState-in-render)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (jobRunning && jobTarget > 0 && backfillCount >= jobTarget) {
+      setJobRunning(false);
+      toast.success(`Backfill complete — ${backfillCount} URLs submitted to Google`);
+      utils.gsc.getIndexingLog.invalidate();
+    }
+  }, [jobRunning, jobTarget, backfillCount]);
 
   const dryRun = trpc.gsc.backfillIndexing.useMutation({
     onSuccess: (data) => {
@@ -923,9 +944,15 @@ function IndexingStatusPanel() {
 
   const backfill = trpc.gsc.backfillIndexing.useMutation({
     onSuccess: (data) => {
-      toast.success(`Backfill complete — ${data.succeeded} submitted, ${data.failed} failed`);
-      setDryRunResult(null);
-      utils.gsc.getIndexingLog.invalidate();
+      if (data.jobStarted) {
+        setJobRunning(true);
+        setJobTarget((dryRunResult?.toSubmit ?? data.toSubmit));
+        setDryRunResult(null);
+        toast.success(`Backfill started — ${data.toSubmit} URLs queued. Progress updates every 3 seconds.`);
+      } else {
+        toast.success("All posts already submitted to Google.");
+        setDryRunResult(null);
+      }
     },
     onError: (err) => toast.error(`Backfill failed: ${err.message}`),
   });
@@ -997,10 +1024,23 @@ function IndexingStatusPanel() {
           </div>
         )}
 
-        {backfill.isPending && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Submitting URLs to Google Indexing API… this may take a minute for large batches.
+        {/* Live progress bar when backfill job is running */}
+        {jobRunning && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span>Submitting to Google Indexing API…</span>
+              </div>
+              <span className="text-foreground font-medium">{backfillCount} / {jobTarget}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-500"
+                style={{ width: jobTarget > 0 ? `${Math.min(100, (backfillCount / jobTarget) * 100)}%` : "0%" }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Running in the background — you can navigate away. This page auto-updates every 3 seconds.</p>
           </div>
         )}
 
@@ -1008,13 +1048,13 @@ function IndexingStatusPanel() {
         {showLog && (
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent Indexing Submissions</div>
-            {logQuery.isLoading ? (
+            {logDisplayQuery.isLoading ? (
               <div className="space-y-1">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8" />)}</div>
-            ) : logQuery.data?.rows.length === 0 ? (
+            ) : logDisplayQuery.data?.rows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No indexing submissions logged yet. Click "Check Missing" to find posts that need to be submitted.</p>
             ) : (
               <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-                {logQuery.data?.rows.map((row) => (
+                {logDisplayQuery.data?.rows.map((row) => (
                   <div key={row.id} className="flex items-center gap-3 px-3 py-2 text-xs bg-card">
                     {row.success
                       ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />

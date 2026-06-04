@@ -617,6 +617,9 @@ export default function SeoDashboard() {
           <IndexingStatusPanel />
         )}
 
+        {/* ─── Schema Backfill Panel ──────────────────────────────────────────── */}
+        <SchemaBackfillPanel />
+
         {/* ─── Content Flywheel Panel ─────────────────────────────────────────── */}
         {statusQuery.data?.connected && (
           <ContentFlywheelPanel setLocation={setLocation} />
@@ -1072,6 +1075,120 @@ function IndexingStatusPanel() {
               </div>
             )}
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Schema Backfill Panel
+// Injects BlogPosting JSON-LD into existing WordPress posts that were published
+// before structured data was added. Runs as a background job with live progress.
+// ─────────────────────────────────────────────────────────────────────────────
+function SchemaBackfillPanel() {
+  const [jobRunning, setJobRunning] = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<{ totalPosts: number; toProcess: number } | null>(null);
+  const [jobDone, setJobDone] = useState(false);
+
+  const dryRunMutation = trpc.gsc.schemaBackfill.useMutation({
+    onSuccess: (data) => {
+      setDryRunResult({ totalPosts: data.totalPosts, toProcess: data.toProcess });
+    },
+  });
+
+  const startMutation = trpc.gsc.schemaBackfill.useMutation({
+    onSuccess: () => {
+      setJobRunning(true);
+    },
+  });
+
+  const progressQuery = trpc.gsc.getSchemaBackfillProgress.useQuery(undefined, {
+    enabled: jobRunning,
+    refetchInterval: jobRunning ? 3000 : false,
+  });
+
+  useEffect(() => {
+    if (progressQuery.data?.done && jobRunning) {
+      setJobRunning(false);
+      setJobDone(true);
+    }
+  }, [progressQuery.data?.done, jobRunning]);
+
+  const progress = progressQuery.data;
+  const pct = progress && progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Database className="w-4 h-4 text-primary" />
+          BlogPosting Schema Backfill
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          Injects <code className="bg-muted px-1 rounded text-[11px]">BlogPosting</code> JSON-LD structured data into existing WordPress posts.
+          This tells Google each post is a blog post without needing a <code className="bg-muted px-1 rounded text-[11px]">/blog/</code> URL prefix.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {jobDone && progress && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-700 dark:text-green-400">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>Done! {progress.updated} posts updated · {progress.skipped} already had schema · {progress.failed} failed</span>
+          </div>
+        )}
+
+        {jobRunning && progress && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Processing posts…</span>
+              <span>{progress.processed} / {progress.total} ({pct}%)</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="flex gap-4 text-xs text-muted-foreground">
+              <span className="text-green-600">✓ {progress.updated} updated</span>
+              <span className="text-blue-500">↷ {progress.skipped} skipped</span>
+              {progress.failed > 0 && <span className="text-red-500">✗ {progress.failed} failed</span>}
+            </div>
+          </div>
+        )}
+
+        {!jobRunning && !jobDone && (
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => dryRunMutation.mutate({ dryRun: true })}
+              disabled={dryRunMutation.isPending}
+            >
+              {dryRunMutation.isPending ? "Checking…" : "Check Posts"}
+            </Button>
+            {dryRunResult && (
+              <Button
+                size="sm"
+                onClick={() => startMutation.mutate({ dryRun: false })}
+                disabled={startMutation.isPending || dryRunResult.toProcess === 0}
+                className="bg-primary text-primary-foreground"
+              >
+                {startMutation.isPending
+                  ? "Starting…"
+                  : dryRunResult.toProcess === 0
+                  ? "All posts already have schema ✓"
+                  : `Inject Schema into ${dryRunResult.toProcess} Posts`}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {dryRunResult && !jobRunning && !jobDone && (
+          <p className="text-xs text-muted-foreground">
+            {dryRunResult.totalPosts} total posts · {dryRunResult.toProcess} need schema injection
+          </p>
         )}
       </CardContent>
     </Card>

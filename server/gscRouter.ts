@@ -32,6 +32,9 @@ async function getGscCredentials(userId: number) {
   return creds;
 }
 
+// In-memory progress tracker for the schema backfill background job
+const schemaBackfillProgress = new Map<number, { total: number; processed: number; updated: number; skipped: number; failed: number; done: boolean }>();
+
 export const gscRouter = router({
   /** Check if GSC is connected and return the configured site URL */
   status: protectedProcedure.query(async ({ ctx }) => {
@@ -680,4 +683,125 @@ Generate a specific, actionable follow-up content plan. Return JSON with this ex
         return { error: "Failed to parse suggestion", raw: content };
       }
     }),
+
+  /**
+   * Schema Backfill — inject BlogPosting JSON-LD into existing WordPress posts
+   * that were published before the structured data was added.
+   *
+   * dryRun=true  → returns counts only, no changes made.
+   * dryRun=false → kicks off a fire-and-forget background job and returns
+   *                immediately so the HTTP request doesn't time out.
+   *                Poll getSchemaBackfillProgress to watch progress.
+   */
+  schemaBackfill: protectedProcedure
+    .input(z.object({ dryRun: z.boolean().default(false) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const { wpPostIndex } = await import("../drizzle/schema");
+      const { isNotNull } = await import("drizzle-orm");
+
+      // Get all published posts with their WP post IDs
+      const allPosts = await db
+        .select({ wpPostId: wpPostIndex.wpPostId, url: wpPostIndex.url, title: wpPostIndex.title, slug: wpPostIndex.slug })
+        .from(wpPostIndex)
+        .where(isNotNull(wpPostIndex.wpPostId));
+
+      const toProcess = allPosts.filter((p) => p.wpPostId != null);
+
+      if (input.dryRun) {
+        return {
+          dryRun: true,
+          totalPosts: allPosts.length,
+          toProcess: toProcess.length,
+          jobStarted: false,
+          processed: 0,
+          updated: 0,
+          skipped: 0,
+          failed: 0,
+        };
+      }
+
+      if (toProcess.length === 0) {
+        return {
+          dryRun: false,
+          totalPosts: 0,
+          toProcess: 0,
+          jobStarted: false,
+          processed: 0,
+          updated: 0,
+          skipped: 0,
+          failed: 0,
+        };
+      }
+
+      // Store job progress in a simple in-memory map keyed by userId
+      // (good enough for a one-time backfill; resets on server restart)
+      const userId = ctx.user.id;
+      schemaBackfillProgress.set(userId, { total: toProcess.length, processed: 0, updated: 0, skipped: 0, failed: 0, done: false });
+
+      setImmediate(async () => {
+        const { fetchSingleWpPost, updateWpPostContent, buildBlogSchemas } = await import("./wordpress");
+        const baseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+        const progress = schemaBackfillProgress.get(userId)!;
+
+        for (const post of toProcess) {
+          if (!post.wpPostId) continue;
+          try {
+            const { content } = await fetchSingleWpPost(post.wpPostId);
+
+            // Skip if BlogPosting schema already present
+            if (content.includes('"BlogPosting"') || content.includes("'BlogPosting'")) {
+              progress.skipped++;
+              progress.processed++;
+              continue;
+            }
+
+            // Build fresh BlogPosting schema for this post
+            const slug = post.slug ?? (post.url ?? "").replace(/.*\/([^/]+)\/?$/, "$1");
+            const { articleSchema } = buildBlogSchemas({
+              title: post.title ?? slug,
+              slug,
+              metaDescription: "",
+              baseUrl,
+            });
+
+            // Inject schema as a hidden div at the END of the post content
+            // (same strategy as FAQ schema — non-intrusive, invisible to readers)
+            const updatedContent = content + `\n\n<div class="schema-blogposting-data" aria-hidden="true" style="display:none;">${articleSchema}</div>`;
+
+            await updateWpPostContent(post.wpPostId, updatedContent);
+            progress.updated++;
+            progress.processed++;
+          } catch (err: any) {
+            console.warn(`[Schema Backfill] Failed for post ${post.wpPostId}:`, err?.message);
+            progress.failed++;
+            progress.processed++;
+          }
+          // 500ms gap between requests to avoid overwhelming WordPress
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        progress.done = true;
+        console.log(`[Schema Backfill] Completed for user ${userId}: ${progress.updated} updated, ${progress.skipped} skipped, ${progress.failed} failed`);
+      });
+
+      return {
+        dryRun: false,
+        totalPosts: allPosts.length,
+        toProcess: toProcess.length,
+        jobStarted: true,
+        processed: 0,
+        updated: 0,
+        skipped: 0,
+        failed: 0,
+      };
+    }),
+
+  /** Poll schema backfill progress */
+  getSchemaBackfillProgress: protectedProcedure.query(async ({ ctx }) => {
+    const progress = schemaBackfillProgress.get(ctx.user.id);
+    if (!progress) return { running: false, total: 0, processed: 0, updated: 0, skipped: 0, failed: 0, done: false };
+    return { running: !progress.done, ...progress };
+  }),
 });

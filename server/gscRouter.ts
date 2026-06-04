@@ -316,9 +316,12 @@ export const gscRouter = router({
 
   /**
    * Backfill indexing — submit all published posts in wp_post_index that have
-   * not yet been logged in gsc_indexing_log. Processes in batches of 200 with
-   * a 300ms delay between each to respect Google's rate limits.
-   * Returns a summary of how many were submitted and how many succeeded.
+   * not yet been logged in gsc_indexing_log.
+   *
+   * dryRun=true  → returns counts only, no submissions made
+   * dryRun=false → kicks off a fire-and-forget background job and returns
+   *                immediately so the HTTP request doesn't time out.
+   *                Poll getIndexingLog to watch progress.
    */
   backfillIndexing: protectedProcedure
     .input(z.object({ dryRun: z.boolean().default(false) }))
@@ -328,7 +331,7 @@ export const gscRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
       const { wpPostIndex, gscIndexingLog } = await import("../drizzle/schema");
-      const { notInArray, isNotNull, ne } = await import("drizzle-orm");
+      const { isNotNull, ne } = await import("drizzle-orm");
 
       // Get all published post URLs from wp_post_index
       const allPosts = await db
@@ -343,9 +346,7 @@ export const gscRouter = router({
         .where(ne(gscIndexingLog.url, ""));
 
       const loggedUrls = new Set(alreadyLogged.map((r) => r.url));
-      const unsubmitted = allPosts.filter(
-        (p) => p.url && !loggedUrls.has(p.url)
-      );
+      const unsubmitted = allPosts.filter((p) => p.url && !loggedUrls.has(p.url));
 
       if (input.dryRun) {
         return {
@@ -357,53 +358,69 @@ export const gscRouter = router({
           submitted: 0,
           succeeded: 0,
           failed: 0,
+          jobStarted: false,
         };
       }
 
-      let submitted = 0;
-      let succeeded = 0;
-      let failed = 0;
-
-      for (const post of unsubmitted) {
-        if (!post.url) continue;
-        try {
-          const result = await requestIndexing(creds.gscRefreshToken!, post.url);
-          await db.insert(gscIndexingLog).values({
-            userId: String(ctx.user.id),
-            url: post.url,
-            wpPostId: post.wpPostId ?? undefined,
-            success: result.success,
-            message: result.message,
-            source: "backfill",
-            submittedAt: Date.now(),
-          });
-          submitted++;
-          if (result.success) succeeded++;
-          else failed++;
-        } catch (err: any) {
-          failed++;
-          await db.insert(gscIndexingLog).values({
-            userId: String(ctx.user.id),
-            url: post.url,
-            wpPostId: post.wpPostId ?? undefined,
-            success: false,
-            message: err?.message ?? "Request failed",
-            source: "backfill",
-            submittedAt: Date.now(),
-          }).catch(() => {});
-        }
-        // 300ms delay to respect Google Indexing API rate limits
-        await new Promise((r) => setTimeout(r, 300));
+      if (unsubmitted.length === 0) {
+        return {
+          dryRun: false,
+          totalPublished: allPosts.length,
+          alreadySubmitted: loggedUrls.size,
+          toSubmit: 0,
+          submitted: 0,
+          succeeded: 0,
+          failed: 0,
+          jobStarted: false,
+        };
       }
+
+      // Fire-and-forget background job — returns immediately so HTTP doesn't time out.
+      // The job runs in the background; poll getIndexingLog to watch progress.
+      const userId = ctx.user.id;
+      const refreshToken = creds.gscRefreshToken!;
+      const toSubmit = [...unsubmitted]; // snapshot
+
+      setImmediate(async () => {
+        for (const post of toSubmit) {
+          if (!post.url) continue;
+          try {
+            const result = await requestIndexing(refreshToken, post.url);
+            await db!.insert(gscIndexingLog).values({
+              userId: String(userId),
+              url: post.url,
+              wpPostId: post.wpPostId ?? undefined,
+              success: result.success,
+              message: result.message,
+              source: "backfill",
+              submittedAt: Date.now(),
+            }).catch(() => {});
+          } catch (err: any) {
+            await db!.insert(gscIndexingLog).values({
+              userId: String(userId),
+              url: post.url,
+              wpPostId: post.wpPostId ?? undefined,
+              success: false,
+              message: err?.message ?? "Request failed",
+              source: "backfill",
+              submittedAt: Date.now(),
+            }).catch(() => {});
+          }
+          // 300ms gap between requests to respect Google Indexing API rate limits
+          await new Promise((r) => setTimeout(r, 300));
+        }
+        console.log(`[GSC Backfill] Completed: ${toSubmit.length} URLs processed for user ${userId}`);
+      });
 
       return {
         dryRun: false,
         totalPublished: allPosts.length,
         alreadySubmitted: loggedUrls.size,
         toSubmit: unsubmitted.length,
-        submitted,
-        succeeded,
-        failed,
+        submitted: 0,
+        succeeded: 0,
+        failed: 0,
+        jobStarted: true,
       };
     }),
 

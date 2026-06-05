@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -86,6 +88,8 @@ import {
   MousePointerClick,
   RotateCcw,
   PenLine,
+  Edit3,
+  Save,
 } from "lucide-react";  
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -714,6 +718,7 @@ function DraggableCard({
   bufferError,
   onClearBufferError,
   readabilityBadge,
+  onEditInHub,
 }: {
   item: ContentItem;
   onStatusChange: (id: number, status: Status) => void;
@@ -733,6 +738,7 @@ function DraggableCard({
   bufferError?: string;
   onClearBufferError?: () => void;
   readabilityBadge?: "green" | "amber" | "red" | null;
+  onEditInHub?: (item: ContentItem) => void;
 }) {
    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `card-${item.id}`,
@@ -998,6 +1004,17 @@ function DraggableCard({
             {/* Pre-publish SEO validator — compact dot + tooltip for blog cards */}
             <SeoValidatorPanel item={item} compact={true} />
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Edit in Hub — opens the in-app HTML editor modal (published posts only) */}
+              {item.status === "published" && onEditInHub && (
+                <button
+                  className="flex items-center gap-1 text-[10px] text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
+                  onClick={(e) => { e.stopPropagation(); onEditInHub(item); }}
+                  title="Edit post content in the Hub and sync back to WordPress"
+                >
+                  <Edit3 className="h-2.5 w-2.5" />
+                  Edit in Hub
+                </button>
+              )}
               <a
                 href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${item.wpPostId}&action=edit`)}`}
                 target="_blank"
@@ -1856,6 +1873,60 @@ export default function CommandCenter() {
 
   // SEO Edit dialog state — tracks whether the detail dialog was opened via Edit SEO button
   const [scrollToSeoOnOpen, setScrollToSeoOnOpen] = useState(false);
+
+  // ── Edit-and-Sync state ─────────────────────────────────────────────────────
+  // editHubItem: the published blog card that triggered the Edit-in-Hub modal
+  const [editHubItem, setEditHubItem] = useState<ContentItem | null>(null);
+  // Local edit buffers for the modal (seeded from WP on open)
+  const [editHubHtml, setEditHubHtml] = useState("");
+  const [editHubFocusKw, setEditHubFocusKw] = useState("");
+  const [editHubMetaDesc, setEditHubMetaDesc] = useState("");
+  const [editHubSeoTitle, setEditHubSeoTitle] = useState("");
+  const [isSyncingToWP, setIsSyncingToWP] = useState(false);
+
+  // Fetch live WP content when the modal opens
+  const { data: wpContentData, isLoading: isLoadingWpContent, error: wpContentError } = trpc.blog.getWpContent.useQuery(
+    { contentItemId: editHubItem?.id ?? 0 },
+    {
+      enabled: !!editHubItem,
+      staleTime: 0, // Always fetch fresh content from WP when the modal opens
+    }
+  );
+
+  // Seed local edit buffers when WP content arrives
+  useEffect(() => {
+    if (wpContentData) {
+      setEditHubHtml(wpContentData.content ?? "");
+      setEditHubFocusKw(wpContentData.focusKeyword ?? "");
+      setEditHubMetaDesc(wpContentData.metaDescription ?? "");
+      setEditHubSeoTitle(wpContentData.seoTitle ?? "");
+    }
+  }, [wpContentData]);
+
+  const syncToWordPressMutation = trpc.blog.syncToWordPress.useMutation({
+    onSuccess: () => {
+      setIsSyncingToWP(false);
+      setEditHubItem(null);
+      refetch();
+      toast.success("Post synced to WordPress!");
+    },
+    onError: (err) => {
+      setIsSyncingToWP(false);
+      toast.error("Sync failed: " + err.message);
+    },
+  });
+
+  const handleSyncToWordPress = () => {
+    if (!editHubItem) return;
+    setIsSyncingToWP(true);
+    syncToWordPressMutation.mutate({
+      contentItemId: editHubItem.id,
+      htmlContent: editHubHtml,
+      focusKeyword: editHubFocusKw || undefined,
+      metaDescription: editHubMetaDesc || undefined,
+      seoTitle: editHubSeoTitle || undefined,
+    });
+  };
 
   // GA4 campaign auto-fix state
   const [campaignWarning, setCampaignWarning] = useState<string | null>(null);
@@ -3282,6 +3353,7 @@ export default function CommandCenter() {
                               bufferError={bufferErrors[(item as ContentItem).id]}
                               onClearBufferError={() => setBufferErrors((prev) => { const next = { ...prev }; delete next[(item as ContentItem).id]; return next; })}
                               readabilityBadge={readabilityMap[(item as ContentItem).id] ?? null}
+                              onEditInHub={(ci) => setEditHubItem(ci)}
                             />
                           </div>
                         ))}
@@ -4860,6 +4932,155 @@ export default function CommandCenter() {
         dbDefaults={bufferChannelDefaults}
         onConfirm={handleChannelSelectorConfirm}
       />
+
+      {/* ── Edit-and-Sync Modal ─────────────────────────────────────────────────────────────────────────────── */}
+      <Dialog
+        open={!!editHubItem}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditHubItem(null);
+            setEditHubHtml("");
+            setEditHubFocusKw("");
+            setEditHubMetaDesc("");
+            setEditHubSeoTitle("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-0 gap-0">
+          {/* Header */}
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/50 shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Edit3 className="h-4 w-4 text-emerald-600" />
+              Edit Post
+              {editHubItem && (
+                <span className="text-muted-foreground font-normal text-sm ml-1 truncate max-w-[400px]">
+                  — {editHubItem.title}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Loading state */}
+          {isLoadingWpContent && (
+            <div className="flex-1 flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Fetching post from WordPress…</span>
+            </div>
+          )}
+
+          {/* Error state */}
+          {wpContentError && !isLoadingWpContent && (
+            <div className="flex-1 flex items-center justify-center py-16 px-6">
+              <div className="text-center space-y-2">
+                <AlertCircle className="h-8 w-8 text-red-500 mx-auto" />
+                <p className="text-sm text-red-600 font-medium">Failed to load post</p>
+                <p className="text-xs text-muted-foreground">{wpContentError.message}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Editor body */}
+          {!isLoadingWpContent && !wpContentError && wpContentData && (
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="px-6 py-4 space-y-5">
+                {/* SEO fields row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Focus Keyword</Label>
+                    <Input
+                      value={editHubFocusKw}
+                      onChange={(e) => setEditHubFocusKw(e.target.value)}
+                      placeholder="e.g. gut health tips"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">SEO Title</Label>
+                    <Input
+                      value={editHubSeoTitle}
+                      onChange={(e) => setEditHubSeoTitle(e.target.value)}
+                      placeholder="Yoast SEO title (leave blank to use post title)"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Meta Description</Label>
+                    <Input
+                      value={editHubMetaDesc}
+                      onChange={(e) => setEditHubMetaDesc(e.target.value)}
+                      placeholder="155–160 character meta description"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* HTML content editor */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Post Content (HTML)</Label>
+                    <span className="text-[10px] text-muted-foreground">
+                      {editHubHtml.length.toLocaleString()} chars
+                    </span>
+                  </div>
+                  <div className="rounded-md border border-border bg-muted/20 overflow-hidden">
+                    <Textarea
+                      value={editHubHtml}
+                      onChange={(e) => setEditHubHtml(e.target.value)}
+                      className="min-h-[420px] font-mono text-xs leading-relaxed border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                      placeholder="WordPress HTML content will appear here…"
+                      spellCheck={false}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Tip: Use Wispr Flow to dictate voice injections, then paste them here after a claim that feels too textbook. 2–4 sentences per injection works best.
+                  </p>
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+
+          {/* Footer */}
+          <DialogFooter className="px-6 py-4 border-t border-border/50 shrink-0 bg-muted/10">
+            <div className="flex items-center justify-between w-full gap-3">
+              <div className="flex items-center gap-2">
+                {editHubItem?.wpPostId && (
+                  <a
+                    href={`https://theurbanmonk.com/wp-login.php?redirect_to=${encodeURIComponent(`/wp-admin/post.php?post=${editHubItem.wpPostId}&action=edit`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open in WordPress
+                  </a>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditHubItem(null)}
+                  disabled={isSyncingToWP}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                  onClick={handleSyncToWordPress}
+                  disabled={isSyncingToWP || isLoadingWpContent || !editHubHtml}
+                >
+                  {isSyncingToWP ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Syncing…</>
+                  ) : (
+                    <><Save className="h-3.5 w-3.5" /> Sync to WordPress</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Yoast Pre-Flight Warning Dialog */}
       <Dialog open={showYoastWarning} onOpenChange={(open) => { if (!open) { setShowYoastWarning(false); setYoastPreflightItem(null); } }}>

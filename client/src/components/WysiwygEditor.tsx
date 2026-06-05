@@ -147,7 +147,7 @@ export function WysiwygEditor({ value, onChange, disabled }: WysiwygEditorProps)
       {/* Editor area */}
       <EditorContent
         editor={editor}
-        className="flex-1 overflow-y-auto px-4 py-3 min-h-[420px] max-h-[520px] blog-prose max-w-none focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[400px] [&_.ProseMirror]:focus:outline-none"
+        className="flex-1 overflow-y-auto px-4 py-3 blog-prose max-w-none focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:focus:outline-none"
       />
     </div>
   );

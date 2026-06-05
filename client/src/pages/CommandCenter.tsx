@@ -1884,6 +1884,26 @@ export default function CommandCenter() {
   const [editHubMetaDesc, setEditHubMetaDesc] = useState("");
   const [editHubSeoTitle, setEditHubSeoTitle] = useState("");
   const [isSyncingToWP, setIsSyncingToWP] = useState(false);
+  // Track whether the user has made any edits since the modal opened
+  const [editHubDirty, setEditHubDirty] = useState(false);
+
+  // Helper to clear all edit-hub state
+  const clearEditHub = () => {
+    setEditHubItem(null);
+    setEditHubHtml("");
+    setEditHubFocusKw("");
+    setEditHubMetaDesc("");
+    setEditHubSeoTitle("");
+    setEditHubDirty(false);
+  };
+
+  // Guard: prompt user before discarding unsaved edits
+  const tryCloseEditHub = () => {
+    if (editHubDirty) {
+      if (!window.confirm("You have unsaved changes. Close without syncing to WordPress?")) return;
+    }
+    clearEditHub();
+  };
 
   // Fetch live WP content when the modal opens
   const { data: wpContentData, isLoading: isLoadingWpContent, error: wpContentError } = trpc.blog.getWpContent.useQuery(
@@ -1894,20 +1914,21 @@ export default function CommandCenter() {
     }
   );
 
-  // Seed local edit buffers when WP content arrives
+  // Seed local edit buffers when WP content arrives — also resets dirty flag
   useEffect(() => {
     if (wpContentData) {
       setEditHubHtml(wpContentData.content ?? "");
       setEditHubFocusKw(wpContentData.focusKeyword ?? "");
       setEditHubMetaDesc(wpContentData.metaDescription ?? "");
       setEditHubSeoTitle(wpContentData.seoTitle ?? "");
+      setEditHubDirty(false); // fresh seed — not yet dirty
     }
   }, [wpContentData]);
 
   const syncToWordPressMutation = trpc.blog.syncToWordPress.useMutation({
     onSuccess: () => {
       setIsSyncingToWP(false);
-      setEditHubItem(null);
+      clearEditHub();
       refetch();
       toast.success("Post synced to WordPress!");
     },
@@ -4937,15 +4958,7 @@ export default function CommandCenter() {
       {/* ── Edit-and-Sync Modal ─────────────────────────────────────────────────────────────────────────────── */}
       <Dialog
         open={!!editHubItem}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditHubItem(null);
-            setEditHubHtml("");
-            setEditHubFocusKw("");
-            setEditHubMetaDesc("");
-            setEditHubSeoTitle("");
-          }
-        }}
+        onOpenChange={(open) => { if (!open) tryCloseEditHub(); }}
       >
         <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-0 gap-0">
           {/* Header */}
@@ -4990,7 +5003,7 @@ export default function CommandCenter() {
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Focus Keyword</Label>
                     <Input
                       value={editHubFocusKw}
-                      onChange={(e) => setEditHubFocusKw(e.target.value)}
+                      onChange={(e) => { setEditHubFocusKw(e.target.value); setEditHubDirty(true); }}
                       placeholder="e.g. gut health tips"
                       className="h-8 text-sm"
                     />
@@ -4999,7 +5012,7 @@ export default function CommandCenter() {
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">SEO Title</Label>
                     <Input
                       value={editHubSeoTitle}
-                      onChange={(e) => setEditHubSeoTitle(e.target.value)}
+                      onChange={(e) => { setEditHubSeoTitle(e.target.value); setEditHubDirty(true); }}
                       placeholder="Yoast SEO title (leave blank to use post title)"
                       className="h-8 text-sm"
                     />
@@ -5008,7 +5021,7 @@ export default function CommandCenter() {
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Meta Description</Label>
                     <Input
                       value={editHubMetaDesc}
-                      onChange={(e) => setEditHubMetaDesc(e.target.value)}
+                      onChange={(e) => { setEditHubMetaDesc(e.target.value); setEditHubDirty(true); }}
                       placeholder="155–160 character meta description"
                       className="h-8 text-sm"
                     />
@@ -5020,7 +5033,7 @@ export default function CommandCenter() {
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Post Content</Label>
                   <WysiwygEditor
                     value={editHubHtml}
-                    onChange={setEditHubHtml}
+                    onChange={(html) => { setEditHubHtml(html); setEditHubDirty(true); }}
                   />
                   <p className="text-[10px] text-muted-foreground">
                     Tip: Use Wispr Flow to dictate voice injections directly into the editor. 2–4 sentences per injection works best.
@@ -5050,7 +5063,7 @@ export default function CommandCenter() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setEditHubItem(null)}
+                  onClick={tryCloseEditHub}
                   disabled={isSyncingToWP}
                 >
                   Cancel
@@ -5059,7 +5072,7 @@ export default function CommandCenter() {
                   size="sm"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
                   onClick={handleSyncToWordPress}
-                  disabled={isSyncingToWP || isLoadingWpContent || !editHubHtml}
+                  disabled={isSyncingToWP || isLoadingWpContent}
                 >
                   {isSyncingToWP ? (
                     <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Syncing…</>

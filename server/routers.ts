@@ -4851,6 +4851,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         }
 
         // 4. Keyphrase in H2 subheadings (green: at least 1 H2 contains it, red: none do)
+        // Supports both Markdown (## heading) and HTML (<h2>/<h3>) content
         if (!focusKw) {
           checks.push({
             status: "red",
@@ -4861,15 +4862,23 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         } else {
           const body = item.textContent ?? "";
           const kwLower = focusKw.toLowerCase();
-          const h2Lines = body.split("\n").filter((l) => l.startsWith("## "));
-          const keyphraseInH2 = h2Lines.some((l) => l.toLowerCase().includes(kwLower));
+          // Check Markdown headings (## and ###)
+          const mdH2Lines = body.split("\n").filter((l) => l.startsWith("## ") || l.startsWith("### "));
+          const keyphraseInMdH2 = mdH2Lines.some((l) => l.toLowerCase().includes(kwLower));
+          // Check HTML headings (<h2> and <h3>)
+          const htmlHeadingRegex = /<h[23][^>]*>(.*?)<\/h[23]>/gi;
+          const htmlHeadingTexts = Array.from(body.matchAll(htmlHeadingRegex)).map((m) =>
+            m[1].replace(/<[^>]+>/g, "").toLowerCase()
+          );
+          const keyphraseInHtmlH2 = htmlHeadingTexts.some((t) => t.includes(kwLower));
+          const keyphraseInH2 = keyphraseInMdH2 || keyphraseInHtmlH2;
           checks.push({
             status: keyphraseInH2 ? "green" : "red",
             label: "H2 Subheading",
             value: keyphraseInH2 ? "found" : "missing",
             message: keyphraseInH2
               ? "Keyphrase found in at least one H2"
-              : "Keyphrase missing from all H2 headings — auto-fixed at publish time",
+              : "Keyphrase missing from all H2 headings — click Fix Now to auto-inject",
           });
         }
 
@@ -5035,22 +5044,61 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           fixed.push("meta_desc_keyphrase_added");
         }
 
-        // Fix 4: H2 keyphrase injection (same logic as Step 2c in blog.publish)
+        // Fix 4: H2 keyphrase injection
+        // For published posts (wpPostId present): fetch live HTML from WP and patch HTML headings.
+        // For draft posts: patch the Markdown in textContent.
+        let patchedWpHtml: string | null = null;
         if (focusKw && patchedBody) {
           const kw = focusKw.toLowerCase();
-          const h2Regex = /^## .+$/gm;
-          const h2Matches = Array.from(patchedBody.matchAll(h2Regex));
-          const keyphraseInH2 = h2Matches.some((m) => m[0].toLowerCase().includes(kw));
-          if (!keyphraseInH2 && h2Matches.length >= 2) {
-            const targetIndex = h2Matches.length >= 3 ? 2 : 1;
-            const originalH2 = h2Matches[targetIndex][0];
-            const headingText = originalH2.replace(/^## /, "").trim();
-            const kwCapitalised = focusKw.charAt(0).toUpperCase() + focusKw.slice(1);
-            const newHeading = `## ${kwCapitalised}: ${headingText}`;
-            const finalHeading = newHeading.length <= 80 ? newHeading : `## How ${kwCapitalised} ${headingText}`;
-            const escapedOriginal = originalH2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            patchedBody = patchedBody.replace(new RegExp(escapedOriginal, "m"), finalHeading);
-            fixed.push("h2_keyphrase_injected");
+          const kwEsc = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEsc}(?:[^a-z0-9]|$)`, "i");
+
+          if (item.wpPostId) {
+            // Published post — fetch live HTML and patch HTML headings
+            try {
+              const { fetchSingleWpPost } = await import("./wordpress");
+              const livePost = await fetchSingleWpPost(item.wpPostId);
+              let wpHtml = livePost.content;
+              const htmlHeadingRegex = /<(h[23])(\s[^>]*)?>((?:[\s\S])*?)<\/h[23]>/gi;
+              const htmlHeadings = Array.from(wpHtml.matchAll(htmlHeadingRegex));
+              const stripTags = (s: string) => s.replace(/<[^>]+>/g, "").trim();
+              const keyphraseInHtmlH2 = htmlHeadings.some((m) => kwRegex.test(stripTags(m[3])));
+              if (!keyphraseInHtmlH2 && htmlHeadings.length > 0) {
+                const htmlH2s = htmlHeadings.filter((m) => m[1].toLowerCase() === "h2");
+                const targetIndex = htmlH2s.length >= 3 ? 2 : htmlH2s.length >= 2 ? 1 : 0;
+                const targetMatch = htmlH2s[targetIndex] ?? htmlHeadings[0];
+                const originalTag = targetMatch[0];
+                const tagName = targetMatch[1];
+                const tagAttrs = targetMatch[2] ?? "";
+                const headingText = stripTags(targetMatch[3]);
+                const kwCapitalised = focusKw.charAt(0).toUpperCase() + focusKw.slice(1);
+                const candidateText = `${kwCapitalised}: ${headingText}`;
+                const finalText = candidateText.length <= 80 ? candidateText : kwCapitalised;
+                const finalTag = `<${tagName}${tagAttrs}>${finalText}</${tagName}>`;
+                const escapedOriginal = originalTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                wpHtml = wpHtml.replace(new RegExp(escapedOriginal), finalTag);
+                patchedWpHtml = wpHtml;
+                fixed.push("h2_keyphrase_injected");
+              }
+            } catch (e) {
+              console.warn("[fixSeoIssues] Could not fetch live WP post for H2 fix:", e);
+            }
+          } else {
+            // Draft post — patch Markdown headings in textContent
+            const h2Regex = /^## .+$/gm;
+            const h2Matches = Array.from(patchedBody.matchAll(h2Regex));
+            const keyphraseInH2 = h2Matches.some((m) => m[0].toLowerCase().includes(kw));
+            if (!keyphraseInH2 && h2Matches.length >= 2) {
+              const targetIndex = h2Matches.length >= 3 ? 2 : 1;
+              const originalH2 = h2Matches[targetIndex][0];
+              const headingText = originalH2.replace(/^## /, "").trim();
+              const kwCapitalised = focusKw.charAt(0).toUpperCase() + focusKw.slice(1);
+              const newHeading = `## ${kwCapitalised}: ${headingText}`;
+              const finalHeading = newHeading.length <= 80 ? newHeading : `## How ${kwCapitalised} ${headingText}`;
+              const escapedOriginal = originalH2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              patchedBody = patchedBody.replace(new RegExp(escapedOriginal, "m"), finalHeading);
+              fixed.push("h2_keyphrase_injected");
+            }
           }
         }
 
@@ -5062,7 +5110,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         await updateContentItem(item.id, {
           yoastSeoTitle: seoTitle,
           yoastMetaDescription: metaDesc,
-          ...(fixed.includes("h2_keyphrase_injected") ? { textContent: patchedBody } : {}),
+          ...(!item.wpPostId && fixed.includes("h2_keyphrase_injected") ? { textContent: patchedBody } : {}),
         });
 
         // Push to WordPress if the post is already published there
@@ -5073,9 +5121,8 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
             metaDescription: metaDesc,
             focusKeyword: focusKw ?? undefined,
           });
-          if (fixed.includes("h2_keyphrase_injected")) {
-            const patchedHtml = markdownToWpHtml(patchedBody);
-            await updateWpPostContent(item.wpPostId, patchedHtml);
+          if (patchedWpHtml) {
+            await updateWpPostContent(item.wpPostId, patchedWpHtml);
           }
         }
 

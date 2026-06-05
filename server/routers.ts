@@ -5882,6 +5882,63 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         return { posts: rows };
       }),
 
+    // ── Edit & Sync: fetch live WP content into the Hub editor ──────────────────
+    getWpContent: protectedProcedure
+      .input(z.object({ contentItemId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { contentItems } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [item] = await db.select({ wpPostId: contentItems.wpPostId, title: contentItems.title })
+          .from(contentItems).where(eq(contentItems.id, input.contentItemId)).limit(1);
+        if (!item?.wpPostId) throw new TRPCError({ code: "NOT_FOUND", message: "No WordPress post linked to this item" });
+        const { fetchSingleWpPost } = await import("./wordpress");
+        const wpData = await fetchSingleWpPost(item.wpPostId);
+        return {
+          wpPostId: item.wpPostId,
+          title: item.title,
+          content: wpData.content,
+          focusKeyword: wpData.focusKeyword,
+          metaDescription: wpData.metaDescription,
+          seoTitle: wpData.seoTitle,
+        };
+      }),
+
+    // ── Edit & Sync: push edited content back to WordPress ──────────────────────
+    syncToWordPress: protectedProcedure
+      .input(z.object({
+        contentItemId: z.number(),
+        htmlContent: z.string(),
+        focusKeyword: z.string().optional(),
+        metaDescription: z.string().optional(),
+        seoTitle: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { contentItems } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [item] = await db.select({ wpPostId: contentItems.wpPostId })
+          .from(contentItems).where(eq(contentItems.id, input.contentItemId)).limit(1);
+        if (!item?.wpPostId) throw new TRPCError({ code: "NOT_FOUND", message: "No WordPress post linked to this item" });
+        const { updateWpPostContent, updateWpPostYoast } = await import("./wordpress");
+        await updateWpPostContent(item.wpPostId, input.htmlContent);
+        if (input.focusKeyword !== undefined || input.metaDescription !== undefined || input.seoTitle !== undefined) {
+          await updateWpPostYoast({
+            wpPostId: item.wpPostId,
+            focusKeyword: input.focusKeyword,
+            metaDescription: input.metaDescription,
+            seoTitle: input.seoTitle,
+          });
+        }
+        // Keep the local content item in sync
+        await db.update(contentItems)
+          .set({ textContent: input.htmlContent })
+          .where(eq(contentItems.id, input.contentItemId));
+        return { success: true, wpPostId: item.wpPostId };
+      }),
+
   }),
 
   personas: personasRouter,

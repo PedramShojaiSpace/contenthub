@@ -3804,3 +3804,19 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Frontend: Social Captions panel — 4 platform tabs (Instagram/TikTok/LinkedIn/X), each with caption + hashtags + copy button
 - [ ] Frontend: Blog Generation panel — "Generate Blog Post" button, shows status/link when done
 - [ ] Frontend: All panels inject avatar intel and use approved script content
+
+## Edit-and-Sync (Option A — June 2026)
+- [x] Backend: blog.getWpContent — fetch live post HTML + Yoast meta from WP REST API for a given contentItemId
+- [x] Backend: blog.syncToWordPress — push edited HTML + SEO fields back to the live WP post via REST API
+- [x] Frontend: "Edit in Hub" button on published blog Kanban cards (emerald green, Edit3 icon)
+- [x] Frontend: Edit-and-Sync modal — large dialog (max-w-5xl) with ScrollArea body
+- [x] Frontend: Modal fetches live WP content on open (staleTime: 0 to always get fresh data)
+- [x] Frontend: useEffect seeds local edit buffers (HTML, focusKw, metaDesc, seoTitle) when WP data arrives
+- [x] Frontend: SEO fields row (Focus Keyword, SEO Title, Meta Description) — editable inputs
+- [x] Frontend: HTML textarea (monospace, 420px min-height) with char counter
+- [x] Frontend: Loading state (spinner) while fetching from WP
+- [x] Frontend: Error state with AlertCircle if WP fetch fails
+- [x] Frontend: "Sync to WordPress" button (emerald) triggers syncToWordPress mutation
+- [x] Frontend: "Open in WordPress" deep-link in modal footer
+- [x] Frontend: Modal clears all buffers on close
+- [x] TypeScript clean (0 errors), 548 tests pass

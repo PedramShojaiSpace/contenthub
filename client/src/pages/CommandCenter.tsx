@@ -4960,7 +4960,7 @@ export default function CommandCenter() {
         open={!!editHubItem}
         onOpenChange={(open) => { if (!open) tryCloseEditHub(); }}
       >
-        <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
           {/* Header */}
           <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/50 shrink-0">
             <DialogTitle className="flex items-center gap-2 text-base">
@@ -4993,9 +4993,9 @@ export default function CommandCenter() {
             </div>
           )}
 
-          {/* Editor body */}
-          {!isLoadingWpContent && !wpContentError && wpContentData && (
-            <ScrollArea className="flex-1 min-h-0">
+          {/* Editor body — scrollable, takes remaining height */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {!isLoadingWpContent && !wpContentError && wpContentData && (
               <div className="px-6 py-4 space-y-5">
                 {/* SEO fields row */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -5040,10 +5040,10 @@ export default function CommandCenter() {
                   </p>
                 </div>
               </div>
-            </ScrollArea>
-          )}
+            )}
+          </div>
 
-          {/* Footer */}
+          {/* Footer — always pinned to the bottom, never pushed off-screen */}
           <DialogFooter className="px-6 py-4 border-t border-border/50 shrink-0 bg-muted/10">
             <div className="flex items-center justify-between w-full gap-3">
               <div className="flex items-center gap-2">

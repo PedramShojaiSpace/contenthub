@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import { WysiwygEditor } from "@/components/WysiwygEditor";
 import { PersonasView } from "@/components/PersonasView";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -5014,25 +5015,15 @@ export default function CommandCenter() {
                   </div>
                 </div>
 
-                {/* HTML content editor */}
+                {/* WYSIWYG content editor */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Post Content (HTML)</Label>
-                    <span className="text-[10px] text-muted-foreground">
-                      {editHubHtml.length.toLocaleString()} chars
-                    </span>
-                  </div>
-                  <div className="rounded-md border border-border bg-muted/20 overflow-hidden">
-                    <Textarea
-                      value={editHubHtml}
-                      onChange={(e) => setEditHubHtml(e.target.value)}
-                      className="min-h-[420px] font-mono text-xs leading-relaxed border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
-                      placeholder="WordPress HTML content will appear here…"
-                      spellCheck={false}
-                    />
-                  </div>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Post Content</Label>
+                  <WysiwygEditor
+                    value={editHubHtml}
+                    onChange={setEditHubHtml}
+                  />
                   <p className="text-[10px] text-muted-foreground">
-                    Tip: Use Wispr Flow to dictate voice injections, then paste them here after a claim that feels too textbook. 2–4 sentences per injection works best.
+                    Tip: Use Wispr Flow to dictate voice injections directly into the editor. 2–4 sentences per injection works best.
                   </p>
                 </div>
               </div>

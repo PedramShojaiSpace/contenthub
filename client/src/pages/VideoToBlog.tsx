@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import {
   Copy,
   ShieldCheck,
   BarChart2,
+  AlertTriangle,
 } from "lucide-react";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
@@ -142,6 +143,20 @@ export default function VideoToBlog() {
   const { data: ytAuthUrlData } = trpc.videoToBlog.getYouTubeAuthUrl.useQuery(
     undefined,
     { enabled: ytStatus !== undefined && !ytStatus?.authorized }
+  );
+
+  // Duplicate detection: debounce the URL input by 600ms, then query the DB
+  const [debouncedUrl, setDebouncedUrl] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedUrl(youtubeUrl), 600);
+    return () => clearTimeout(t);
+  }, [youtubeUrl]);
+
+  // Only run the check when the URL looks like a valid YouTube URL
+  const looksLikeYouTubeUrl = debouncedUrl.includes("youtube.com") || debouncedUrl.includes("youtu.be");
+  const { data: duplicateCheck } = trpc.videoToBlog.checkYouTubeDuplicate.useQuery(
+    { youtubeUrl: debouncedUrl },
+    { enabled: looksLikeYouTubeUrl && !videoInfo, staleTime: 30_000 }
   );
 
   // tRPC mutations
@@ -358,6 +373,49 @@ export default function VideoToBlog() {
               )}
             </Button>
           </div>
+
+          {/* Duplicate detection warning */}
+          {duplicateCheck?.duplicate && !videoInfo && (
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-400/60 bg-amber-50 dark:bg-amber-950/30">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                  Already done — this video has been converted to a blog post.
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 line-clamp-1">
+                  <span className="font-medium">{duplicateCheck.duplicate.title}</span>
+                  {duplicateCheck.duplicate.focusKeyword && (
+                    <span className="ml-2 opacity-75">· 🎯 {duplicateCheck.duplicate.focusKeyword}</span>
+                  )}
+                  <span className="ml-2 opacity-75">
+                    · {new Date(duplicateCheck.duplicate.createdAt).toLocaleDateString()}
+                  </span>
+                </p>
+                <div className="flex items-center gap-3 mt-2">
+                  <Badge
+                    variant={duplicateCheck.duplicate.status === "published" ? "default" : "secondary"}
+                    className="text-xs capitalize"
+                  >
+                    {duplicateCheck.duplicate.status}
+                  </Badge>
+                  {duplicateCheck.duplicate.publishUrl && (
+                    <a
+                      href={duplicateCheck.duplicate.publishUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View live post
+                    </a>
+                  )}
+                  <span className="text-xs text-amber-600 dark:text-amber-500">
+                    You can still proceed to generate a new version.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {videoInfo && (
             <div className="flex gap-4 p-4 rounded-lg bg-muted/30 border border-border">

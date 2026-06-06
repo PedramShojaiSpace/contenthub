@@ -3820,3 +3820,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Frontend: "Open in WordPress" deep-link in modal footer
 - [x] Frontend: Modal clears all buffers on close
 - [x] TypeScript clean (0 errors), 548 tests pass
+
+## YouTube → Blog Duplicate Detection
+- [x] Add `blog.checkYouTubeDuplicate` tRPC query: extract video ID from URL, search contentItems for matching sourceUrl, return match if found
+- [x] In the YouTube → Blog form, debounce-query on URL input change and show a yellow warning banner with title + link to existing Kanban card if a duplicate is found
+- [x] Allow proceeding past the warning (user can still generate if they choose) but make it visually prominent

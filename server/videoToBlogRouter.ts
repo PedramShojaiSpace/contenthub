@@ -849,6 +849,75 @@ ${channelFooter}`;
   }),
 
   /**
+   * Check if a YouTube video has already been turned into a blog post.
+   * Extracts the video ID from the URL and queries the DB for any matching content item.
+   * Returns null if no duplicate found, or the existing item's details.
+   */
+  checkYouTubeDuplicate: protectedProcedure
+    .input(z.object({ youtubeUrl: z.string() }))
+    .query(async ({ input }) => {
+      // Extract video ID from any YouTube URL format
+      const extractVideoId = (url: string): string | null => {
+        try {
+          const u = new URL(url.trim());
+          // Standard: youtube.com/watch?v=ID
+          if (u.hostname.includes("youtube.com")) {
+            const v = u.searchParams.get("v");
+            if (v) return v;
+            // Shorts: youtube.com/shorts/ID
+            const shortsMatch = u.pathname.match(/^\/shorts\/([a-zA-Z0-9_-]{11})/);
+            if (shortsMatch) return shortsMatch[1];
+          }
+          // Short URL: youtu.be/ID
+          if (u.hostname === "youtu.be") {
+            const id = u.pathname.replace(/^\//, "").split("?")[0];
+            if (id.length >= 11) return id.slice(0, 11);
+          }
+        } catch { /* invalid URL */ }
+        return null;
+      };
+
+      const videoId = extractVideoId(input.youtubeUrl);
+      if (!videoId) return { duplicate: null };
+
+      const db = await getDb();
+      if (!db) return { duplicate: null };
+
+      const { contentItems } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [existing] = await db
+        .select({
+          id: contentItems.id,
+          title: contentItems.title,
+          status: contentItems.status,
+          wpPostId: contentItems.wpPostId,
+          publishUrl: contentItems.publishUrl,
+          // publishUrl is the live post URL (set after WP publish)
+          focusKeyword: contentItems.focusKeyword,
+          createdAt: contentItems.createdAt,
+        })
+        .from(contentItems)
+        .where(eq(contentItems.youtubeVideoId, videoId))
+        .limit(1);
+
+      if (!existing) return { duplicate: null, videoId };
+
+      return {
+        duplicate: {
+          id: existing.id,
+          title: existing.title,
+          status: existing.status,
+          wpPostId: existing.wpPostId,
+          publishUrl: existing.publishUrl,
+          focusKeyword: existing.focusKeyword,
+          createdAt: existing.createdAt,
+        },
+        videoId,
+      };
+    }),
+
+  /**
    * List recent YouTube → Blog items from the content_items table.
    */
   listVideoBlogs: protectedProcedure.query(async () => {

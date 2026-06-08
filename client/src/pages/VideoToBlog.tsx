@@ -143,7 +143,7 @@ export default function VideoToBlog() {
   const { data: ytStatus } = trpc.videoToBlog.getYouTubeStatus.useQuery();
   const { data: ytAuthUrlData } = trpc.videoToBlog.getYouTubeAuthUrl.useQuery(
     undefined,
-    { enabled: ytStatus !== undefined && !ytStatus?.authorized }
+    { enabled: ytStatus !== undefined } // always fetch so Reconnect button works even when connected
   );
 
   // Duplicate detection: debounce the URL input by 600ms, then query the DB
@@ -321,10 +321,22 @@ export default function VideoToBlog() {
       )}
       {ytStatus?.authorized && (
         <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg dark:bg-green-950/30 dark:border-green-800">
-          <CheckCircle2 className="w-4 h-4 text-green-600" />
-          <p className="text-xs text-green-800 dark:text-green-300 font-medium">
+          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+          <p className="text-xs text-green-800 dark:text-green-300 font-medium flex-1">
             YouTube connected{ytStatus.channelTitle ? ` — ${ytStatus.channelTitle}` : ""} — Step 4 will push blog URLs automatically
           </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 text-xs h-7 px-2 border-green-400 text-green-800 hover:bg-green-100 dark:text-green-300 dark:border-green-700 dark:hover:bg-green-900/40"
+            onClick={() => {
+              if (ytAuthUrlData?.url) window.location.href = ytAuthUrlData.url;
+              else toast.error("Could not get YouTube auth URL — check that GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET are set in Secrets.");
+            }}
+          >
+            <RefreshCw className="w-3 h-3 mr-1" />
+            Reconnect
+          </Button>
         </div>
       )}
 

@@ -133,6 +133,7 @@ export default function VideoToBlog() {
   const [ytUpdateResult, setYtUpdateResult] = useState<{
     success: boolean;
     error?: string;
+    needsReauth?: boolean;
   } | null>(null);
 
   const [ytDescResult, setYtDescResult] = useState<{ description: string } | null>(null);
@@ -206,11 +207,17 @@ export default function VideoToBlog() {
     onError: (err) => toast.error(err.message),
   });
 
+  const utils = trpc.useUtils();
   const updateYtDesc = trpc.videoToBlog.updateYouTubeDescription.useMutation({
     onSuccess: (data) => {
       setYtUpdateResult(data);
       if (data.success) {
         toast.success("Blog URL pushed to YouTube description!");
+      } else if (data.needsReauth) {
+        // Token was cleared on the server — refetch status so the reconnect banner appears
+        utils.videoToBlog.getYouTubeStatus.invalidate();
+        utils.videoToBlog.getYouTubeAuthUrl.invalidate();
+        toast.error("YouTube token expired — please reconnect your account.");
       } else {
         toast.error(data.error ?? "YouTube description update failed");
       }
@@ -781,18 +788,22 @@ export default function VideoToBlog() {
               <div className="space-y-3">
                 <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
                   <p className="text-sm font-medium text-amber-700 dark:text-amber-400">YouTube update failed</p>
-                  <p className="text-xs text-muted-foreground mt-1">{ytUpdateResult.error}</p>
-                  {ytStatus && !ytStatus.authorized && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {ytUpdateResult.needsReauth
+                      ? "Your YouTube authorization has expired. Please reconnect to continue."
+                      : ytUpdateResult.error}
+                  </p>
+                  {(ytUpdateResult.needsReauth || (ytStatus && !ytStatus.authorized)) && (
                     <Button
                       size="sm"
                       className="mt-3 bg-blue-600 hover:bg-blue-700 text-white"
                       onClick={() => {
                         if (ytAuthUrlData?.url) window.location.href = ytAuthUrlData.url;
-                        else toast.error("Could not get YouTube auth URL");
+                        else toast.error("Could not get YouTube auth URL — check that GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET are set in Secrets.");
                       }}
                     >
                       <Youtube className="w-3.5 h-3.5 mr-1.5" />
-                      Connect YouTube Account
+                      Reconnect YouTube Account
                     </Button>
                   )}
                   <p className="text-xs text-muted-foreground mt-3">

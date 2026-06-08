@@ -117,25 +117,66 @@ export async function vidiqKeywordResearch(
   keyword: string,
   includeRelated = true
 ): Promise<VidIQKeywordResearch> {
+  // The VidIQ MCP API returns { seedKeyword: {...}, relatedKeywords: [...] }
+  // NOT a flat object — we must read from seedKeyword.
   const raw = await callVidIQTool<{
-    keyword: string;
-    volume: number;
-    competition: number;
-    overall: number;
-    estimatedMonthlySearch: number;
+    // New structure (actual API)
+    seedKeyword?: {
+      keyword: string;
+      volume: number;
+      competition: number;
+      overall: number;
+      estimatedMonthlySearch: number;
+      topMarkets?: { country: string; pct: number }[];
+    };
+    relatedKeywords?: VidIQKeywordResult[];
+    // Legacy flat structure (kept for safety)
+    keyword?: string;
+    volume?: number;
+    competition?: number;
+    overall?: number;
+    estimatedMonthlySearch?: number;
     related?: VidIQKeywordResult[];
   }>("vidiq_keyword_research", { keyword, includeRelated });
 
-  return {
-    keyword: raw.keyword,
+  // Normalise: prefer seedKeyword object, fall back to flat fields
+  const seed = raw.seedKeyword ?? {
+    keyword: raw.keyword ?? keyword,
     volume: raw.volume ?? 0,
     competition: raw.competition ?? 0,
     overall: raw.overall ?? 0,
     estimatedMonthlySearch: raw.estimatedMonthlySearch ?? 0,
-    related: (raw.related ?? [])
-      .filter((r) => r.overall != null && r.overall > 0)
-      .sort((a, b) => b.overall - a.overall)
-      .slice(0, 10),
+  };
+
+  const relatedRaw: VidIQKeywordResult[] = (
+    raw.relatedKeywords ?? raw.related ?? []
+  ) as VidIQKeywordResult[];
+
+  const related = relatedRaw
+    .filter((r) => r.overall != null && r.overall > 0)
+    .sort((a, b) => b.overall - a.overall)
+    .slice(0, 10);
+
+  // If the seed keyword has 0 volume/overall (common for niche terms),
+  // surface the best related keyword's numbers as the "effective" score
+  // so the UI shows something useful instead of all zeros.
+  const bestRelated = related[0];
+  const effectiveVolume =
+    seed.volume > 0 ? seed.volume : (bestRelated?.volume ?? 0);
+  const effectiveOverall =
+    seed.overall > 0 ? seed.overall : (bestRelated?.overall ?? 0);
+  const effectiveSearch =
+    seed.estimatedMonthlySearch > 0
+      ? seed.estimatedMonthlySearch
+      : (bestRelated?.estimatedMonthlySearch ?? 0);
+
+  return {
+    keyword: seed.keyword,
+    volume: effectiveVolume,
+    competition: seed.competition,
+    overall: effectiveOverall,
+    estimatedMonthlySearch: effectiveSearch,
+    related,
   };
 }
 

@@ -190,7 +190,7 @@ async function updateYouTubeDescription(
   blogUrl: string,
   blogTitle: string,
   userId: number
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; needsReauth?: boolean }> {
   try {
     const db = await getDb();
     if (!db) return { success: false, error: "Database unavailable" };
@@ -249,9 +249,30 @@ async function updateYouTubeDescription(
     return { success: true };
   } catch (err: any) {
     console.error("[VideoToBlog] YouTube description update failed:", err?.message);
+    const msg: string = err?.message ?? "YouTube description update failed";
+    const isInvalidGrant = msg.includes("invalid_grant") || msg.includes("Token has been expired") || msg.includes("Invalid Credentials");
+    if (isInvalidGrant) {
+      // Clear the stale token so the UI shows the re-connect button
+      process.env.YOUTUBE_REFRESH_TOKEN = "";
+      try {
+        const db = await getDb();
+        if (db) {
+          const { userCredentials } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          await db.update(userCredentials)
+            .set({ youtubeRefreshToken: null } as any)
+            .where(eq(userCredentials.userId, userId));
+        }
+      } catch { /* non-fatal */ }
+      return {
+        success: false,
+        error: "invalid_grant",
+        needsReauth: true,
+      };
+    }
     return {
       success: false,
-      error: err?.message ?? "YouTube description update failed",
+      error: msg,
     };
   }
 }

@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 /**
  * LinkedInNewsfeed.tsx — Doovo replacement.
  *
@@ -40,6 +41,7 @@ import {
   Loader2,
   Send,
   Twitter,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -789,6 +791,7 @@ function ArticleDetailDialog({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function LinkedInNewsfeed() {
+  const [, navigate] = useLocation();
   const [topicFilter, setTopicFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "dismissed">("pending");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
@@ -921,6 +924,10 @@ export default function LinkedInNewsfeed() {
               <Newspaper size={16} className="text-white" />
             </div>
             <div>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to Hub
+              </Button>
               <h1 className="text-lg font-bold text-slate-900">LinkedIn Newsfeed</h1>
               <p className="text-xs text-slate-500">
                 Google News + PubMed → Pedram's voice → LinkedIn (link preview) + optional X → Buffer

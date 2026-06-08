@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Link } from "wouter";
+import { Link , useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +41,7 @@ import {
   Zap,
   LayoutGrid,
   BookMarked,
+  ArrowLeft,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { slidesToDataUrls, type CarouselSlideData, type SlideType } from "@/components/CarouselSlideRenderer";
@@ -143,6 +144,7 @@ const PLATFORM_STYLE_LABELS: Record<string, { label: string; description: string
 };
 
 export default function CreationStudio() {
+  const [, navigate] = useLocation();
   const [idea, setIdea] = useState("");
   const [platform, setPlatform] = useState<Platform>("all");
   const [customInstructions, setCustomInstructions] = useState("");
@@ -1405,6 +1407,10 @@ export default function CreationStudio() {
       <div className="p-6 space-y-6">
         {/* Header */}
         <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Hub
+          </Button>
           <h1 className="text-2xl font-serif font-bold text-foreground">Creation Studio</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Drop an idea. Generate voice-matched content and on-brand visuals for every platform — automatically.

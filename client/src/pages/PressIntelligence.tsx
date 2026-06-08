@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,8 @@ import { toast } from "sonner";
 import {
   Newspaper, Star, TrendingUp, Globe, Mic, Tv, Radio,
   BookOpen, Search, Copy, Sparkles, ChevronLeft, ChevronRight,
-  ExternalLink, BarChart3, Tag, Award, Zap
+  ExternalLink, BarChart3, Tag, Award, Zap,
+  ArrowLeft,
 } from "lucide-react";
 
 const TIER_COLORS: Record<string, string> = {
@@ -36,6 +38,7 @@ const MEDIUM_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function PressIntelligence() {
+  const [, navigate] = useLocation();
   const [page, setPage] = useState(1);
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [mediumFilter, setMediumFilter] = useState<string>("all");
@@ -76,6 +79,10 @@ export default function PressIntelligence() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Hub
+            </Button>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <Award className="w-6 h-6 text-yellow-400" />
               Press Intelligence

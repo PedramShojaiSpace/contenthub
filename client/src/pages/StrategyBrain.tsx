@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Facebook, Linkedin, Loader2, Megaphone, Plus, Save, Trash2, Twitter, Youtube } from "lucide-react";
+import { Facebook, Linkedin, Loader2, Megaphone, Plus, Save, Trash2, Twitter, Youtube, ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -320,6 +321,7 @@ function CtaLibraryTab({ editing, setEditing }: CtaLibraryTabProps) {
 }
 
 export default function StrategyBrain() {
+  const [, navigate] = useLocation();
   // Lift editing state to parent so it survives Radix TabsContent remounts
   const [ctaEditing, setCtaEditing] = useState<Partial<CtaBlock> | null>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
@@ -337,6 +339,10 @@ export default function StrategyBrain() {
     <DashboardLayout>
       <div className="p-6 space-y-6">
         <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Hub
+          </Button>
           <h1 className="text-2xl font-serif font-bold text-foreground">Strategy Brain</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Define your voice, audience, and messaging pillars for each platform. These guidelines

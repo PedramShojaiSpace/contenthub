@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Trash2, Link2, Zap, Download, MessageSquare } from "lucide-react";
+import { Copy, Check, Trash2, Link2, Zap, Download, MessageSquare, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── UTM TAXONOMY ─────────────────────────────────────────────────────────────
@@ -208,6 +209,7 @@ function buildUTM(params: {
 }
 
 export default function UTMGenerator() {
+  const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const [source, setSource] = useState("instagram");
   const [medium, setMedium] = useState("organic-social");
@@ -293,6 +295,10 @@ export default function UTMGenerator() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Link2 className="h-5 w-5 text-primary" />
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Hub
+            </Button>
             <h1 className="text-2xl font-serif font-bold text-foreground">UTM Builder</h1>
           </div>
           <p className="text-sm text-muted-foreground">

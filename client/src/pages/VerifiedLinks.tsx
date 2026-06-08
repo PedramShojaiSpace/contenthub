@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import { useLocation } from "wouter";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
   ExternalLink,
   ShieldCheck,
   Info,
+  ArrowLeft,
 } from "lucide-react";
 
 interface LinkRow {
@@ -60,6 +62,7 @@ const emptyForm = (): LinkForm => ({
 });
 
 export default function VerifiedLinks() {
+  const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: links = [], isLoading } = trpc.verifiedLinks.list.useQuery();
 
@@ -155,6 +158,10 @@ export default function VerifiedLinks() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Hub
+          </Button>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-emerald-500" />
             Verified Internal Links

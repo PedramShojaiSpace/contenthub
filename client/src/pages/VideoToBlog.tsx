@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import {
   FileText,
   Globe,
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
   Loader2,
   ExternalLink,
@@ -88,6 +90,7 @@ function RecentVideoBlogs() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function VideoToBlog() {
+  const [, navigate] = useLocation();
   // Form state
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [customInstructions, setCustomInstructions] = useState("");
@@ -282,6 +285,10 @@ export default function VideoToBlog() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Hub
+          </Button>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Youtube className="w-6 h-6 text-red-500" />
             YouTube → Blog Pipeline

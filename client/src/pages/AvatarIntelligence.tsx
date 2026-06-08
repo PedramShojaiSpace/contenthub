@@ -1,4 +1,6 @@
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   Quote,
+  ArrowLeft,
 } from "lucide-react";
 
 // ── Stage config ──────────────────────────────────────────────────────────────
@@ -231,6 +234,7 @@ function ObjectionCard({ obj }: { obj: any }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AvatarIntelligence() {
+  const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
 
@@ -256,6 +260,10 @@ export default function AvatarIntelligence() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Hub
+          </Button>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Brain className="w-6 h-6 text-primary" />
             Avatar Intelligence Engine

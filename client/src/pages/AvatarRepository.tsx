@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   CheckCircle2,
   BookOpen,
   Zap,
+  ArrowLeft,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -542,6 +544,7 @@ function AvatarProfileCard({ profile }: { profile: AvatarProfile }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AvatarRepositoryPage() {
+  const [, navigate] = useLocation();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const { data: profiles = [], isLoading } = trpc.webinarIntelligence.listAvatarProfiles.useQuery();
@@ -552,6 +555,10 @@ export default function AvatarRepositoryPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Hub
+            </Button>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-primary" />
               Avatar Intelligence Repository

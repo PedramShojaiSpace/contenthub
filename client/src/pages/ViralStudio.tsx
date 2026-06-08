@@ -1,9 +1,10 @@
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { useSearch } from "wouter";
+import { useSearch , useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Zap, FileText, RefreshCw, TrendingUp, MessageSquare, BarChart2, FlaskConical, Flame, Film, Youtube } from "lucide-react";
+import { Zap, FileText, RefreshCw, TrendingUp, MessageSquare, BarChart2, FlaskConical, Flame, Film, Youtube, ArrowLeft } from "lucide-react";
 import HookGenerator from "./viral/HookGenerator";
 import ScriptGenerator from "./viral/ScriptGenerator";
 import RepurposeEngine from "./viral/RepurposeEngine";
@@ -49,6 +50,7 @@ const TAB_PARAM_MAP: Record<string, string> = {
 };
 
 export default function ViralStudio() {
+  const [, navigate] = useLocation();
   // useSearch() from wouter re-renders whenever the URL search string changes
   const search = useSearch();
   const tabParam = new URLSearchParams(search).get("tab") ?? "";
@@ -72,6 +74,10 @@ export default function ViralStudio() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Hub
+            </Button>
             <h1 className="text-2xl font-bold text-foreground">Viral Studio</h1>
             <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 border-violet-200">
               7 Tools

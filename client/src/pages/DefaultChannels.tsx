@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 /**
  * Default Channels Settings
  *
@@ -23,6 +24,7 @@ import {
   Save,
   AlertCircle,
   CheckCircle2,
+  ArrowLeft,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -80,6 +82,7 @@ type BufferProfile = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DefaultChannels() {
+  const [, navigate] = useLocation();
   const { data: profilesData, isLoading: profilesLoading } =
     trpc.syndication.getProfiles.useQuery();
 
@@ -198,6 +201,10 @@ export default function DefaultChannels() {
             <Settings2 className="h-4 w-4 text-amber-700" />
           </div>
           <div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Hub
+            </Button>
             <h1 className="text-lg font-semibold text-foreground">Default Buffer Channels</h1>
             <p className="text-sm text-muted-foreground">
               Set which accounts are pre-checked when you push content to Buffer.

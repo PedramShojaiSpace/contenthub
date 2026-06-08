@@ -30,8 +30,9 @@ import {
   Users,
   Zap,
   ExternalLink,
+  ArrowLeft,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link , useLocation } from "wouter";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,7 @@ function scoreLabel(score: number): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function IntelligenceDashboard() {
+  const [, navigate] = useLocation();
   const { data: enrichmentSummary = [], isLoading: loadingPersonas, refetch: refetchPersonas } =
     trpc.personas.getEnrichmentSummary.useQuery();
 
@@ -133,6 +135,10 @@ export default function IntelligenceDashboard() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Hub
+            </Button>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Brain className="w-6 h-6 text-primary" />
               Intelligence Dashboard

@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 /**
  * Media Vault — Pedram's full media authority catalog
  *
@@ -29,6 +30,7 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  ArrowLeft,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -211,6 +213,7 @@ function AssetCard({ asset, onToggle }: { asset: MediaAsset; onToggle: (id: numb
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MediaVault() {
+  const [, navigate] = useLocation();
   const [activeType, setActiveType] = useState<MediaType | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -254,6 +257,10 @@ export default function MediaVault() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to Hub
+              </Button>
               <h1 className="text-2xl font-bold text-stone-900">Media Vault</h1>
               <p className="text-sm text-stone-700 mt-0.5">
                 Pedram's full media catalog — automatically injected into AI-generated content to build LLM authority

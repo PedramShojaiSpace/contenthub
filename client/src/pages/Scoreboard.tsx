@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 /**
  * Content Scoreboard
  * ──────────────────
@@ -51,6 +52,7 @@ import {
   Share2,
   Send,
   ImageIcon,
+  ArrowLeft,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1252,6 +1254,7 @@ function PublishNextPanel() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Scoreboard() {
+  const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "green" | "amber" | "red">("all");
@@ -1357,6 +1360,10 @@ export default function Scoreboard() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Hub
+          </Button>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-primary" />
             Content Scoreboard

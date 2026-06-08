@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import {
   Rss,
   Trash2,
   Youtube,
+  ArrowLeft,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -31,6 +33,7 @@ interface NewUpload {
 }
 
 export default function ChannelWatchlist() {
+  const [, navigate] = useLocation();
   // ── Add channel form ────────────────────────────────────────────────────────
   const [showAddForm, setShowAddForm] = useState(false);
   const [channelId, setChannelId] = useState("");
@@ -120,6 +123,10 @@ export default function ChannelWatchlist() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Hub
+            </Button>
             <h1 className="text-2xl font-serif font-bold text-foreground flex items-center gap-2">
               <Rss className="h-6 w-6 text-red-500" />
               Competitor Channel Watchlist

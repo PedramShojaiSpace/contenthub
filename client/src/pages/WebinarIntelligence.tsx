@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import {
   BookOpen,
   Copy,
   ExternalLink,
+  ArrowLeft,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -549,6 +551,7 @@ function TypeformQuickImport({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WebinarIntelligencePage() {
+  const [, navigate] = useLocation();
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [showImportForm, setShowImportForm] = useState(false);
   const [showTypeformImport, setShowTypeformImport] = useState(false);
@@ -602,6 +605,10 @@ export default function WebinarIntelligencePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Hub
+            </Button>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Brain className="w-6 h-6 text-primary" />
               Webinar Intelligence

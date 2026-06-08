@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 /**
  * Blog → YouTube Backlog
  *
@@ -44,6 +45,7 @@ import {
   Video,
   Upload,
   Info,
+  ArrowLeft,
 } from "lucide-react";
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
@@ -79,6 +81,7 @@ function copyToClipboard(text: string, label: string) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function BlogToYoutube() {
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"backlog" | "browse">("backlog");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -273,6 +276,10 @@ export default function BlogToYoutube() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Hub
+          </Button>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Youtube className="w-7 h-7 text-red-500" />
             Blog → YouTube Backlog

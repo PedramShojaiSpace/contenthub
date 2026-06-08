@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 /**
  * Backlink Outreach Engine
  *
@@ -51,6 +52,7 @@ import {
   RefreshCw,
   ShieldCheck,
   AlertTriangle,
+  ArrowLeft,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -788,6 +790,7 @@ function StatusUpdateDialog({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function BacklinkOutreach() {
+  const [, navigate] = useLocation();
   const [keyword, setKeyword] = useState("");
   const [outreachType, setOutreachType] = useState<OutreachType>("guest_post");
   const [activeTab, setActiveTab] = useState("discover");
@@ -915,6 +918,10 @@ export default function BacklinkOutreach() {
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="mb-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Hub
+          </Button>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Link2 className="w-6 h-6 text-primary" />
             Backlink Outreach Engine

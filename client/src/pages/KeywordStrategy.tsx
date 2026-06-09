@@ -474,9 +474,11 @@ function TargetRow({
       : "text-rose-600";
 
   // Keyphrase cannibalization check: flag if this exact keyword is already
-  // used as a focus keyphrase on a published post.
+  // used as a focus keyphrase on a published post — BUT only if this strategy
+  // row itself is NOT already marked as published (which would mean it IS that
+  // published post, not a competing one).
   const kwNorm = target.keyword.toLowerCase().trim();
-  const isCannibalizing = usedKeywords.has(kwNorm);
+  const isCannibalizing = usedKeywords.has(kwNorm) && target.contentStatus !== "published";
   const conflictPost = usedKeywordDetails.find((k) => k.keyword === kwNorm);
 
   return (

@@ -440,6 +440,58 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
       const resolveResult = resolvePlaceholderLinks(scrubResult.body, internalPostSummaries);
       articleBody = resolveResult.body;
 
+      // ── Post-generation internal link audit ──────────────────────────────────
+      // Yoast requires at least 3 internal links. If the LLM missed them, inject
+      // the foundation links as a "Further Reading" block before the FAQ.
+      const internalLinkMatches = articleBody.match(/https?:\/\/(?:theurbanmonk\.com|well\.org)[^\s)"'<>]*/g) ?? [];
+      if (internalLinkMatches.length < 3) {
+        const fallbackLinks = [
+          `[The Urban Monk Academy](https://theurbanmonk.com/urban-monk-academy/)`,
+          `[Urban Monk Nutrition](https://theurbanmonk.com/urban-monk-nutrition/)`,
+          `[Well.org](https://well.org/)`,
+          `[The Urban Monk](https://theurbanmonk.com/)`,
+        ];
+        // Only add links not already present
+        const needed = fallbackLinks.filter(l => {
+          const urlMatch = l.match(/\(([^)]+)\)/);
+          return urlMatch ? !articleBody.includes(urlMatch[1]) : true;
+        }).slice(0, 3 - internalLinkMatches.length);
+        if (needed.length > 0) {
+          const furtherReadingBlock = `\n\n## Further Reading\n\n${needed.map(l => `- ${l}`).join("\n")}\n`;
+          if (articleBody.includes("## Frequently Asked Questions")) {
+            articleBody = articleBody.replace("## Frequently Asked Questions", furtherReadingBlock + "## Frequently Asked Questions");
+          } else {
+            articleBody += furtherReadingBlock;
+          }
+        }
+      }
+
+      // ── Post-generation keyphrase-in-subheading fix (Markdown) ───────────────
+      // Run the same fix here so the preview is already clean before publish.
+      if (input.focusKeyword) {
+        const kw = input.focusKeyword.toLowerCase();
+        const kwEscaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const kwRegex = new RegExp(`(?:^|[^a-z0-9])${kwEscaped}(?:[^a-z0-9]|$)`, "i");
+        const mdHeadingRegex = /^(#{2,3})\s+(.+)$/gm;
+        const mdHeadings = Array.from(articleBody.matchAll(mdHeadingRegex));
+        const keyphraseInSubheading = mdHeadings.some(m => kwRegex.test(m[2]));
+        if (!keyphraseInSubheading && mdHeadings.length > 0) {
+          // Inject into the 3rd H2, or 2nd, or 1st available heading
+          const h2s = mdHeadings.filter(m => m[1] === "##");
+          const target = h2s[2] ?? h2s[1] ?? h2s[0] ?? mdHeadings[0];
+          if (target) {
+            const kwCapitalised = input.focusKeyword.charAt(0).toUpperCase() + input.focusKeyword.slice(1);
+            const originalHeading = target[0];
+            const headingLevel = target[1];
+            const headingText = target[2];
+            const candidate = `${kwCapitalised}: ${headingText}`;
+            const newText = candidate.length <= 80 ? candidate : kwCapitalised;
+            const newHeading = `${headingLevel} ${newText}`;
+            articleBody = articleBody.replace(originalHeading, newHeading);
+          }
+        }
+      }
+
       // ── Extract SEO metadata via structured JSON ──────────────────────────────
       const metaResponse = await invokeLLM({
         messages: [
@@ -486,6 +538,14 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
         const parsed = JSON.parse(cleaned);
         meta = { ...meta, ...parsed };
       } catch {}
+
+      // ── Hard-cap meta description at 155 chars (Yoast max is 156) ─────────────────
+      if (meta.metaDescription && meta.metaDescription.length > 155) {
+        let md = meta.metaDescription.slice(0, 152);
+        const lastSpace = md.lastIndexOf(" ");
+        if (lastSpace > 80) md = md.slice(0, lastSpace);
+        meta.metaDescription = md.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+      }
 
       // Prepend the YouTube embed to the article body
       const articleWithEmbed = embedHtml + "\n\n" + articleBody;

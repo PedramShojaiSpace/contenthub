@@ -17,7 +17,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
-import { getDb } from "./db";
+import { getDb, getOwnerCredentials } from "./db";
 import { createWpPost, fetchAllWpPosts, findRelevantPosts, uploadMediaFromUrl } from "./wordpress";
 import { Supadata } from "@supadata/js";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
@@ -195,15 +195,9 @@ async function updateYouTubeDescription(
     const db = await getDb();
     if (!db) return { success: false, error: "Database unavailable" };
 
-    const { userCredentials } = await import("../drizzle/schema");
-    const { eq } = await import("drizzle-orm");
-    const [creds] = await db
-      .select()
-      .from(userCredentials)
-      .where(eq(userCredentials.userId, userId));
-
-    // Prefer DB-stored token; fall back to env var (set by /api/youtube/callback)
-    const refreshToken = (creds as any)?.youtubeRefreshToken ?? process.env.YOUTUBE_REFRESH_TOKEN;
+    // Always use the owner's YouTube token — YouTube is a company account
+    const ownerCreds = await getOwnerCredentials();
+    const refreshToken = (ownerCreds as any)?.youtubeRefreshToken ?? process.env.YOUTUBE_REFRESH_TOKEN;
     if (!refreshToken) {
       return {
         success: false,
@@ -256,12 +250,13 @@ async function updateYouTubeDescription(
       process.env.YOUTUBE_REFRESH_TOKEN = "";
       try {
         const db = await getDb();
-        if (db) {
+        const ownerRow = await getOwnerCredentials();
+        if (db && ownerRow) {
           const { userCredentials } = await import("../drizzle/schema");
           const { eq } = await import("drizzle-orm");
           await db.update(userCredentials)
             .set({ youtubeRefreshToken: null } as any)
-            .where(eq(userCredentials.userId, userId));
+            .where(eq(userCredentials.userId, ownerRow.userId));
         }
       } catch { /* non-fatal */ }
       return {
@@ -903,17 +898,14 @@ ${channelFooter}`;
     // Check env var first (set by /api/youtube/callback in the same process)
     if (process.env.YOUTUBE_REFRESH_TOKEN) return { authorized: true, channelTitle: undefined as string | undefined };
     // Fall back to DB
-    const db = await getDb();
-    if (!db) return { authorized: false, channelTitle: undefined as string | undefined };
-    const { userCredentials } = await import("../drizzle/schema");
-    const { eq } = await import("drizzle-orm");
-    const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
-    const hasToken = !!(creds as any)?.youtubeRefreshToken;
-    if (hasToken && (creds as any)?.youtubeRefreshToken) {
+    // Always check the owner's YouTube token — YouTube is a company account
+    const ownerCreds = await getOwnerCredentials();
+    const hasToken = !!(ownerCreds as any)?.youtubeRefreshToken;
+    if (hasToken && (ownerCreds as any)?.youtubeRefreshToken) {
       // Seed env var so subsequent calls in this process don't need DB
-      process.env.YOUTUBE_REFRESH_TOKEN = (creds as any).youtubeRefreshToken;
+      process.env.YOUTUBE_REFRESH_TOKEN = (ownerCreds as any).youtubeRefreshToken;
     }
-    return { authorized: hasToken, channelTitle: (creds as any)?.youtubeChannelTitle as string | undefined };
+    return { authorized: hasToken, channelTitle: (ownerCreds as any)?.youtubeChannelTitle as string | undefined };
   }),
 
   /**

@@ -163,3 +163,23 @@ export async function listGeneratedImages(contentItemId?: number) {
   }
   return db.select().from(generatedImages).orderBy(desc(generatedImages.createdAt));
 }
+
+// ─── Owner Credentials ────────────────────────────────────────────────────────
+// All OAuth integrations (GSC, YouTube, Gmail) are company accounts owned by
+// Pedram. Non-owner admin users (e.g. Jim) should transparently use the owner's
+// tokens rather than being asked to connect their own accounts.
+// This helper always returns the credentials row for the platform owner.
+
+export async function getOwnerCredentials() {
+  const db = await getDb();
+  if (!db) return null;
+  const { userCredentials, users } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const ownerOpenId = process.env.OWNER_OPEN_ID;
+  if (!ownerOpenId) return null;
+  // Look up the owner's numeric userId from the users table
+  const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.openId, ownerOpenId));
+  if (!owner) return null;
+  const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, owner.id));
+  return creds ?? null;
+}

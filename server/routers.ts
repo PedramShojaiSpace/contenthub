@@ -6131,7 +6131,8 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
       let gscPageMap: Map<string, { clicks: number; impressions: number; ctr: number; position: number }> = new Map();
       let gscConnected = false;
       try {
-        const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
+        const { getOwnerCredentials } = await import("./db");
+        const creds = await getOwnerCredentials();
         if (creds?.gscRefreshToken && creds?.gscSiteUrl) {
           gscConnected = true;
           const { getTopPages: gscGetTopPages } = await import("./googleSearchConsole");
@@ -6283,7 +6284,8 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
       // Fetch GSC striking-distance keywords (pos 4-20, impressions > 50)
       let strikingKeywords: { keyword: string; position: number; impressions: number; clicks: number }[] = [];
       try {
-        const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
+        const { getOwnerCredentials } = await import("./db");
+        const creds = await getOwnerCredentials();
         if (creds?.gscRefreshToken && creds?.gscSiteUrl) {
           const { getTopQueries: gscGetTopQueries } = await import("./googleSearchConsole");
           const allKws = await gscGetTopQueries(creds.gscRefreshToken, creds.gscSiteUrl, 200);

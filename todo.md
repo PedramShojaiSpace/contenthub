@@ -3825,3 +3825,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add `blog.checkYouTubeDuplicate` tRPC query: extract video ID from URL, search contentItems for matching sourceUrl, return match if found
 - [x] In the YouTube → Blog form, debounce-query on URL input change and show a yellow warning banner with title + link to existing Kanban card if a duplicate is found
 - [x] Allow proceeding past the warning (user can still generate if they choose) but make it visually prominent
+
+## Shared Owner Credentials (GSC, YouTube, Gmail)
+- [x] Add `getOwnerCredentials()` helper in db.ts that always fetches userCredentials for the owner (looked up via OWNER_OPEN_ID), so non-owner admins like Jim use the company tokens
+- [x] Update gscRouter `getGscCredentials()` and `status` query to use owner credentials instead of ctx.user.id
+- [x] Update videoToBlogRouter YouTube credential lookups to use owner credentials
+- [x] Update routers.ts GSC reads (Scoreboard + Keyword Strategy) to use owner credentials
+- [x] Gmail credential reads confirmed owner-only (only written in index.ts with userId:1, no per-user reads in routers)
+- [x] Update GSC OAuth callback (index.ts) already stores to userId:1 (owner row)

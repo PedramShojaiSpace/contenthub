@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { getDb } from "./db";
+import { getDb, getOwnerCredentials } from "./db";
 import {
   getTopQueries,
   getTopPages,
@@ -17,12 +17,9 @@ import {
   requestIndexing,
 } from "./googleSearchConsole";
 
-async function getGscCredentials(userId: number) {
-  const db = await getDb();
-  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-  const { userCredentials } = await import("../drizzle/schema");
-  const { eq } = await import("drizzle-orm");
-  const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, userId));
+async function getGscCredentials(_userId?: number) {
+  // Always use the owner's GSC token — GSC is a company account, not per-user
+  const creds = await getOwnerCredentials();
   if (!creds?.gscRefreshToken) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -37,12 +34,9 @@ const schemaBackfillProgress = new Map<number, { total: number; processed: numbe
 
 export const gscRouter = router({
   /** Check if GSC is connected and return the configured site URL */
-  status: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return { connected: false, siteUrl: null };
-    const { userCredentials } = await import("../drizzle/schema");
-    const { eq } = await import("drizzle-orm");
-    const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
+  status: protectedProcedure.query(async () => {
+    // Always check the owner's GSC token — GSC is a company account
+    const creds = await getOwnerCredentials();
     return {
       connected: !!creds?.gscRefreshToken,
       siteUrl: creds?.gscSiteUrl ?? null,
@@ -51,7 +45,7 @@ export const gscRouter = router({
 
   /** List all Search Console properties available to the authorized account */
   listSites: protectedProcedure.query(async ({ ctx }) => {
-    const creds = await getGscCredentials(ctx.user.id);
+    const creds = await getGscCredentials();
     const sites = await listGscSites(creds.gscRefreshToken!);
     return { sites };
   }),
@@ -59,35 +53,36 @@ export const gscRouter = router({
   /** Set the active site URL to query */
   setSiteUrl: protectedProcedure
     .input(z.object({ siteUrl: z.string().url() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
+      // Always write to the owner's credentials row
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const ownerCreds = await getOwnerCredentials();
+      if (!ownerCreds) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Owner credentials not found" });
       const { userCredentials } = await import("../drizzle/schema");
       const { eq } = await import("drizzle-orm");
-      const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ctx.user.id));
-      if (existing) {
-        await db.update(userCredentials).set({ gscSiteUrl: input.siteUrl }).where(eq(userCredentials.userId, ctx.user.id));
-      } else {
-        await db.insert(userCredentials).values({ userId: ctx.user.id, gscSiteUrl: input.siteUrl });
-      }
+      await db.update(userCredentials).set({ gscSiteUrl: input.siteUrl }).where(eq(userCredentials.userId, ownerCreds.userId));
       return { success: true };
     }),
 
   /** Disconnect GSC by clearing the stored refresh token */
-  disconnect: protectedProcedure.mutation(async ({ ctx }) => {
+  disconnect: protectedProcedure.mutation(async () => {
+    // Always clear the owner's credentials row
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const ownerCreds = await getOwnerCredentials();
+    if (!ownerCreds) return { success: true };
     const { userCredentials } = await import("../drizzle/schema");
     const { eq } = await import("drizzle-orm");
     await db.update(userCredentials)
       .set({ gscRefreshToken: null, gscSiteUrl: null })
-      .where(eq(userCredentials.userId, ctx.user.id));
+      .where(eq(userCredentials.userId, ownerCreds.userId));
     return { success: true };
   }),
 
   /** Week-over-week summary: clicks and impressions delta */
   weekOverWeek: protectedProcedure.query(async ({ ctx }) => {
-    const creds = await getGscCredentials(ctx.user.id);
+    const creds = await getGscCredentials();
     if (!creds.gscSiteUrl) {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured. Please select a site first." });
     }
@@ -98,7 +93,7 @@ export const gscRouter = router({
   topQueries: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(100).default(20) }))
     .query(async ({ ctx, input }) => {
-      const creds = await getGscCredentials(ctx.user.id);
+      const creds = await getGscCredentials();
       if (!creds.gscSiteUrl) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
       }
@@ -109,7 +104,7 @@ export const gscRouter = router({
   topPages: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(100).default(20) }))
     .query(async ({ ctx, input }) => {
-      const creds = await getGscCredentials(ctx.user.id);
+      const creds = await getGscCredentials();
       if (!creds.gscSiteUrl) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
       }
@@ -118,7 +113,7 @@ export const gscRouter = router({
 
   /** Striking-distance keywords: positions 11-20 with >50 impressions */
   strikingDistance: protectedProcedure.query(async ({ ctx }) => {
-    const creds = await getGscCredentials(ctx.user.id);
+    const creds = await getGscCredentials();
     if (!creds.gscSiteUrl) {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
     }
@@ -173,7 +168,7 @@ export const gscRouter = router({
    * Returns counts of matched and unmatched targets.
    */
   syncPositionsToKeywordTargets: protectedProcedure.mutation(async ({ ctx }) => {
-    const creds = await getGscCredentials(ctx.user.id);
+    const creds = await getGscCredentials();
     if (!creds.gscSiteUrl) {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
     }
@@ -240,7 +235,7 @@ export const gscRouter = router({
   inspectUrl: protectedProcedure
     .input(z.object({ url: z.string().url() }))
     .query(async ({ ctx, input }) => {
-      const creds = await getGscCredentials(ctx.user.id);
+      const creds = await getGscCredentials();
       if (!creds.gscSiteUrl) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
       }
@@ -254,7 +249,7 @@ export const gscRouter = router({
   bulkInspectUrls: protectedProcedure
     .input(z.object({ urls: z.array(z.string().url()).min(1).max(20) }))
     .mutation(async ({ ctx, input }) => {
-      const creds = await getGscCredentials(ctx.user.id);
+      const creds = await getGscCredentials();
       if (!creds.gscSiteUrl) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
       }
@@ -280,7 +275,7 @@ export const gscRouter = router({
   requestIndexing: protectedProcedure
     .input(z.object({ url: z.string().url() }))
     .mutation(async ({ ctx, input }) => {
-      const creds = await getGscCredentials(ctx.user.id);
+      const creds = await getGscCredentials();
       return requestIndexing(creds.gscRefreshToken!, input.url);
     }),
 
@@ -291,7 +286,7 @@ export const gscRouter = router({
   bulkRequestIndexing: protectedProcedure
     .input(z.object({ urls: z.array(z.string().url()).min(1).max(10) }))
     .mutation(async ({ ctx, input }) => {
-      const creds = await getGscCredentials(ctx.user.id);
+      const creds = await getGscCredentials();
       const db = await getDb();
       const { gscIndexingLog } = await import("../drizzle/schema");
       const results = [];
@@ -329,7 +324,7 @@ export const gscRouter = router({
   backfillIndexing: protectedProcedure
     .input(z.object({ dryRun: z.boolean().default(false) }))
     .mutation(async ({ ctx, input }) => {
-      const creds = await getGscCredentials(ctx.user.id);
+      const creds = await getGscCredentials();
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
@@ -455,7 +450,7 @@ export const gscRouter = router({
   getMovingPosts: protectedProcedure
     .input(z.object({ minMovement: z.number().min(1).max(30).default(3) }))
     .query(async ({ ctx, input }) => {
-      const creds = await getGscCredentials(ctx.user.id);
+      const creds = await getGscCredentials();
       if (!creds.gscSiteUrl) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
       }

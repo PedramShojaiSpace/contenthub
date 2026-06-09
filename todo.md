@@ -3833,3 +3833,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Update routers.ts GSC reads (Scoreboard + Keyword Strategy) to use owner credentials
 - [x] Gmail credential reads confirmed owner-only (only written in index.ts with userId:1, no per-user reads in routers)
 - [x] Update GSC OAuth callback (index.ts) already stores to userId:1 (owner row)
+
+## Blog → YouTube Script (Full Circle)
+- [x] Add `generateYouTubeScriptFromBlog` procedure in routers.ts that takes blog title, focusKeyword, and article body and generates a YouTube teleprompter script adapted from the blog content
+- [x] Add state variables in CreationStudio for blog-specific YouTube script (blogYtScript, generatingBlogYtScript, blogYtScriptSaved)
+- [x] Add "Generate YouTube Script" button in the WordPress publish section (appears after save/publish)
+- [x] Show generated script inline below the publish section with Copy, Download, Save to Library actions
+- [x] Wire Save to Library to save the script to the Script Library with platform=youtube

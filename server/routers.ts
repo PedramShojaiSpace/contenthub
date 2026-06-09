@@ -2891,6 +2891,65 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
           script: typeof rawContent === "string" ? rawContent : "Script generation failed.",
         };
       }),
+    // AI: generate a YouTube teleprompter script adapted FROM an existing blog post.
+    // Unlike generateTeleprompterScript (which works from a title/topic), this procedure
+    // receives the full article body and uses it as the authoritative source material so
+    // the video script is tightly aligned with the published post.
+    generateYouTubeScriptFromBlog: protectedProcedure
+      .input(
+        z.object({
+          title: z.string(),
+          focusKeyword: z.string().optional(),
+          articleBody: z.string(),
+          publishUrl: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Taoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
+
+Your task: Adapt the blog post below into a FULL teleprompter-ready YouTube video script. The blog post is the authoritative source — use its structure, insights, and examples. Do NOT invent new claims; stay true to the article's content while making it feel natural and conversational for video.
+
+Blog Post Title: "${input.title}"
+${input.focusKeyword ? `Focus Keyword / Topic: "${input.focusKeyword}"` : ""}
+
+SCRIPT REQUIREMENTS:
+- Open with a compelling hook (first 15 seconds are critical for retention) — adapt the blog's opening hook for video
+- Use teleprompter formatting: short paragraphs, natural speech rhythm, no jargon
+- Include [PAUSE] markers for emphasis at natural breath points
+- Include [B-ROLL: description] cues for the editor at key visual moments
+- Structure mirrors the blog: Hook → Problem → Pedram's unique insight → Evidence/story → Practical steps → CTA
+- CTA must mention the Urban Monk Academy or a relevant resource${input.publishUrl ? ` — reference the full blog post at: ${input.publishUrl}` : ""}
+- Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
+- Voice: conversational, like Pedram is talking directly to one person
+- Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
+- Format with clear section headers in [BRACKETS] for the teleprompter operator
+
+IMPORTANT: This is a VIDEO script, not a blog post. Convert written prose into spoken language. Break up long sentences. Add natural transitions ("Now, here's the thing...", "Let me give you an example...", "So what does this mean for you?").`;
+
+        const articleExcerpt = input.articleBody.slice(0, 6000);
+
+        let ctaInjection = "";
+        try {
+          const { getCtaForTopic } = await import("./ctaRouter");
+          const cta = await getCtaForTopic(input.focusKeyword ?? input.title);
+          if (cta?.ctaText && cta?.url) {
+            ctaInjection = `\n\n[CTA BLOCK \u2014 ${cta.label}]\n${cta.ctaText}\n[END CTA BLOCK]\nIMPORTANT: Include this CTA naturally at the end of the script. Use EXACTLY this URL: ${cta.url}`;
+          }
+        } catch {
+          // CTA not available — proceed without it
+        }
+
+        const response = await safeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Adapt this blog post into a YouTube teleprompter script:\n\n---\n${articleExcerpt}\n---${ctaInjection}` },
+          ],
+        });
+        const rawContent = response.choices?.[0]?.message?.content;
+        return {
+          script: typeof rawContent === "string" ? rawContent : "Script generation failed.",
+        };
+      }),
     // AI: generate a social post caption + image prompt from a gap query or video topicpic
     generatePostAndImage: protectedProcedure
       .input(

@@ -794,10 +794,30 @@ export default function KeywordStrategy() {
 
   const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
 
-  // Fetch all focus keywords already used on published blog posts
+  // Fetch all focus keywords already used on PUBLISHED blog posts
   // so we can flag keyphrase cannibalization before a new post is created.
+  // Note: only published posts (wpPostId set) are returned by the backend.
   const { data: usedKwData } = trpc.blog.getUsedFocusKeywords.useQuery();
-  const usedKeywords = new Set((usedKwData?.keywords ?? []).map((k: { keyword: string }) => k.keyword));
+
+  // Build the set of published-post keywords
+  const publishedKeywords = new Set((usedKwData?.keywords ?? []).map((k: { keyword: string }) => k.keyword));
+
+  // Also detect duplicates WITHIN the keyword strategy list itself
+  // (two rows in the same campaign with the exact same keyword).
+  const kwFrequency = new Map<string, number>();
+  for (const t of targets) {
+    const norm = t.keyword.toLowerCase().trim();
+    kwFrequency.set(norm, (kwFrequency.get(norm) ?? 0) + 1);
+  }
+  const withinListDuplicates = new Set(
+    Array.from(kwFrequency.entries())
+      .filter(([, count]) => count > 1)
+      .map(([kw]) => kw)
+  );
+
+  // Merge both sets — a keyword is flagged if it appears on a live WP post
+  // OR appears more than once in the current strategy list.
+  const usedKeywords = new Set([...Array.from(publishedKeywords), ...Array.from(withinListDuplicates)]);
   const usedKeywordDetails = usedKwData?.keywords ?? [];
 
   const addTargetMut = trpc.kwStrategy.addTarget.useMutation({

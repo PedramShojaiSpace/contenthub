@@ -41,6 +41,9 @@ import {
   ArrowUp,
   ArrowDown,
   Activity,
+  Edit2,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -444,6 +447,17 @@ function TargetRow({
   const [expanded, setExpanded] = useState(false);
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlDraft, setUrlDraft] = useState(target.publishedUrl ?? "");
+  const [fixingDuplicate, setFixingDuplicate] = useState(false);
+  const [kwDraft, setKwDraft] = useState(target.keyword);
+
+  const renameTargetMut = trpc.kwStrategy.renameTarget.useMutation({
+    onSuccess: () => {
+      setFixingDuplicate(false);
+      onUpdate(target.id, { keyword: kwDraft });
+      toast.success("Keyword updated — duplicate resolved!");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const funnel = FUNNEL_LABELS[target.funnelStage as FunnelStage];
   const type = TYPE_LABELS[target.keywordType as KeywordType];
@@ -484,17 +498,56 @@ function TargetRow({
 
         {/* Keyword */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm text-foreground font-medium truncate">{target.keyword}</span>
-            {isCannibalizing && (
-              <span
-                className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-700 border border-rose-300"
-                title={conflictPost ? `Keyphrase already used on: "${conflictPost.title}" — Yoast will flag this as a duplicate. Use a more specific long-tail variant.` : "Keyphrase already used on a published post — Yoast will flag this as a duplicate."}
+          {fixingDuplicate ? (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Input
+                autoFocus
+                value={kwDraft}
+                onChange={(e) => setKwDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && kwDraft.trim() && kwDraft.trim() !== target.keyword) {
+                    renameTargetMut.mutate({ id: target.id, keyword: kwDraft.trim() });
+                  }
+                  if (e.key === "Escape") { setFixingDuplicate(false); setKwDraft(target.keyword); }
+                }}
+                className="h-7 text-sm px-2 flex-1 min-w-0"
+                placeholder="Enter a more specific long-tail variant…"
+              />
+              <button
+                onClick={() => {
+                  if (kwDraft.trim() && kwDraft.trim() !== target.keyword) {
+                    renameTargetMut.mutate({ id: target.id, keyword: kwDraft.trim() });
+                  }
+                }}
+                disabled={!kwDraft.trim() || kwDraft.trim() === target.keyword || renameTargetMut.isPending}
+                title="Save new keyword"
+                className="p-1 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-40 shrink-0"
               >
-                ⚠ Duplicate KW
-              </span>
-            )}
-          </div>
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => { setFixingDuplicate(false); setKwDraft(target.keyword); }}
+                title="Cancel"
+                className="p-1 rounded text-muted-foreground hover:bg-muted shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm text-foreground font-medium truncate">{target.keyword}</span>
+              {isCannibalizing && (
+                <button
+                  onClick={() => { setFixingDuplicate(true); setKwDraft(target.keyword); }}
+                  className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-700 border border-rose-300 hover:bg-rose-200 transition-colors cursor-pointer"
+                  title={conflictPost ? `Keyphrase already used on: "${conflictPost.title}" — click to rename to a unique long-tail variant` : "Keyphrase already used on a published post — click to rename"}
+                >
+                  <Edit2 className="w-2.5 h-2.5" />
+                  Fix Duplicate KW
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Type badge */}

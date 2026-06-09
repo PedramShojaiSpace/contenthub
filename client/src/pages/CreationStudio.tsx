@@ -176,6 +176,11 @@ export default function CreationStudio() {
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
 
+  // Blog → YouTube script state (generated after WP publish)
+  const [blogYtScript, setBlogYtScript] = useState<string | null>(null);
+  const [generatingBlogYtScript, setGeneratingBlogYtScript] = useState(false);
+  const [blogYtScriptSaved, setBlogYtScriptSaved] = useState(false);
+
   // TikTok 60-second script state
   const [tiktokScript60, setTiktokScript60] = useState<string | null>(null);
   const [generatingTiktok60, setGeneratingTiktok60] = useState(false);
@@ -713,6 +718,52 @@ export default function CreationStudio() {
       productionStatus: "scripted",
       scriptBody: teleprompterScript,
       linkedContentItemId: savedItemIds["youtube"] ?? undefined,
+    });
+  };
+
+  // ── Blog → YouTube Script: mutation + handler ──────────────────────────────
+  const blogYtScriptMutation = trpc.research.generateYouTubeScriptFromBlog.useMutation({
+    onSuccess: (data) => {
+      setBlogYtScript(data.script);
+      setGeneratingBlogYtScript(false);
+      toast.success("YouTube script ready! Copy, download, or save to Script Library.");
+    },
+    onError: (err) => {
+      setGeneratingBlogYtScript(false);
+      toast.error("Script generation failed: " + err.message);
+    },
+  });
+
+  const saveBlogYtScriptMutation = trpc.scripts.create.useMutation({
+    onSuccess: () => {
+      setBlogYtScriptSaved(true);
+      toast.success("Script saved to Script Library!");
+      setTimeout(() => setBlogYtScriptSaved(false), 3000);
+    },
+    onError: (err) => toast.error("Save failed: " + err.message),
+  });
+
+  const handleGenerateBlogYtScript = () => {
+    if (!blogContent) return;
+    setGeneratingBlogYtScript(true);
+    setBlogYtScript(null);
+    blogYtScriptMutation.mutate({
+      title: blogContent.title,
+      focusKeyword: blogContent.focusKeyword ?? undefined,
+      articleBody: blogContent.body,
+      publishUrl: wpPublishResult?.postUrl ?? undefined,
+    });
+  };
+
+  const handleSaveBlogYtScriptToLibrary = () => {
+    if (!blogYtScript || !blogContent) return;
+    saveBlogYtScriptMutation.mutate({
+      title: `YT Script: ${blogContent.title}`,
+      scriptType: "video",
+      platform: "youtube",
+      productionStatus: "scripted",
+      scriptBody: blogYtScript,
+      linkedContentItemId: savedItemIds["blog"] ?? undefined,
     });
   };
 
@@ -3028,6 +3079,108 @@ export default function CreationStudio() {
                   <p className="text-xs text-muted-foreground">Save to Kanban first to enable WordPress publish.</p>
                 )}
               </div>
+
+              {/* ── Blog → YouTube Script ── */}
+              {blogContent && (savedItemIds["blog"] || wpPublishResult) && (
+                <div className="space-y-3 p-4 rounded-lg bg-red-950/20 border border-red-900/40">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Youtube className="h-4 w-4 text-red-400" />
+                      <p className="text-sm font-medium text-foreground">Generate YouTube Script</p>
+                      <Badge variant="outline" className="text-[10px] border-red-500/40 text-red-400">From this blog post</Badge>
+                    </div>
+                    {blogYtScript && (
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            navigator.clipboard.writeText(blogYtScript);
+                            toast.success("Script copied to clipboard!");
+                          }}
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            const blob = new Blob([blogYtScript], { type: "text/plain" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `yt-script-${(blogContent?.slug ?? "script").slice(0, 40)}.txt`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Download
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-green-400 hover:text-green-300"
+                          onClick={handleSaveBlogYtScriptToLibrary}
+                          disabled={saveBlogYtScriptMutation.isPending || blogYtScriptSaved}
+                        >
+                          {saveBlogYtScriptMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : blogYtScriptSaved ? (
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                          ) : (
+                            <BookMarked className="h-3 w-3 mr-1" />
+                          )}
+                          {blogYtScriptSaved ? "Saved!" : "Save to Library"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-red-400 hover:text-red-300"
+                          onClick={handleGenerateBlogYtScript}
+                          disabled={generatingBlogYtScript}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Regenerate
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {!blogYtScript && !generatingBlogYtScript && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Turn this blog post into a full teleprompter-ready YouTube script — adapted from the article content, with B-roll cues and a CTA.
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={handleGenerateBlogYtScript}
+                        disabled={generatingBlogYtScript}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white text-xs gap-1.5"
+                      >
+                        <Youtube className="h-3.5 w-3.5" />
+                        Generate YouTube Script
+                      </Button>
+                    </div>
+                  )}
+                  {generatingBlogYtScript && (
+                    <div className="flex items-center justify-center py-8 gap-3">
+                      <Loader2 className="h-5 w-5 animate-spin text-red-400" />
+                      <span className="text-sm text-muted-foreground">Writing your YouTube script from the blog post… about 30 seconds.</span>
+                    </div>
+                  )}
+                  {blogYtScript && !generatingBlogYtScript && (
+                    <div className="bg-black/20 rounded-lg p-4 border border-red-900/30">
+                      <p className="text-xs text-red-400/70 mb-3 font-medium uppercase tracking-wider">Teleprompter Script — YouTube Ready</p>
+                      <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
+                        {blogYtScript}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

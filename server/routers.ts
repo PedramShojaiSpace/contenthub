@@ -5886,7 +5886,10 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
         .where(
           and(
             eq(contentItems.platform, "blog"),
-            isNotNull(contentItems.focusKeyword)
+            isNotNull(contentItems.focusKeyword),
+            // Only flag keywords that are on PUBLISHED posts (live on WordPress).
+            // Drafts and in-progress posts should not count as duplicates.
+            isNotNull(contentItems.wpPostId)
           )
         );
       // Return normalised lowercase keywords with their post context

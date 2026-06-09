@@ -525,4 +525,24 @@ Rules:
         keywords: allKeywords,
       };
     }),
+
+  /**
+   * Rename a keyword target to resolve a duplicate-KW conflict.
+   * Updates the keyword text in the database.
+   */
+  renameTarget: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        keyword: z.string().min(1).max(256).trim(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      await db!
+        .update(keywordTargets)
+        .set({ keyword: input.keyword })
+        .where(and(eq(keywordTargets.id, input.id), eq(keywordTargets.userId, ctx.user.id)));
+      return { ok: true };
+    }),
 });

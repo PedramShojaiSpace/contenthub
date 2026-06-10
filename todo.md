@@ -3840,3 +3840,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add "Generate YouTube Script" button in the WordPress publish section (appears after save/publish)
 - [x] Show generated script inline below the publish section with Copy, Download, Save to Library actions
 - [x] Wire Save to Library to save the script to the Script Library with platform=youtube
+
+## Lights On Content Assets Loading
+- [x] Add `seedLightsOnPosts` procedure to scriptsRouter.ts to bulk-insert 30 content_items with platform, archetype, scheduled dates, CTA, and imageUrl
+- [x] Add `seedLightsOnVSL` procedure to scriptsRouter.ts to insert the VSL script into the Script Library
+- [x] Upload Facebook ad creative PNG to CDN and insert as a content_item with imageUrl set
+- [x] All 30 posts have CTA pointing to lightson.theurbanmonk.com
+- [x] VSL script linked to video production queue with productionStatus: "scripted"
+- [x] "Load Lights On (30 posts)" button added to Command Center toolbar
+- [x] "Lights On VSL Script" button added to Script Library seed panel

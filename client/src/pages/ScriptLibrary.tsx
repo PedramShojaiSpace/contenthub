@@ -839,6 +839,11 @@ export default function ScriptLibrary() {
     onError: (e) => toast.error(e.message),
   });
 
+  const seedLightsOnVSLMutation = trpc.scripts.seedLightsOnVSL.useMutation({
+    onSuccess: (r) => { utils.scripts.list.invalidate(); toast.success(r.message); },
+    onError: (e) => toast.error(e.message),
+  });
+
   const handleAdvance = (id: number, nextStatus: ProductionStatus) => {
     advanceMutation.mutate({ id, productionStatus: nextStatus });
   };
@@ -1182,6 +1187,9 @@ export default function ScriptLibrary() {
               </Button>
               <Button size="sm" variant="outline" onClick={() => seedXMutation.mutate()} disabled={seedXMutation.isPending} className="text-foreground border-border hover:bg-muted">
                 <Twitter className="w-3.5 h-3.5 mr-1.5" /> X Threads (10)
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => seedLightsOnVSLMutation.mutate()} disabled={seedLightsOnVSLMutation.isPending} className="text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                <Youtube className="w-3.5 h-3.5 mr-1.5" /> Lights On VSL Script
               </Button>
             </div>
             <Button

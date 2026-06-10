@@ -649,4 +649,473 @@ CAPTION: The stories we tell ourselves about love were written in childhood — 
     // We'll just return a message directing the UI to call each individually
     return { seeded: 0, message: "Use individual seed buttons to populate each platform" };
   }),
+
+  // ─── Lights On: VSL Script ──────────────────────────────────────────────────
+  seedLightsOnVSL: protectedProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
+    const existing = await db.select().from(scripts).where(eq(scripts.title, "Actual Intelligence: The One Thing AI Can Never Replace — Lights On VSL"));
+    if (existing.length > 0) return { seeded: 0, message: "VSL already in library" };
+
+    const vslBody = `LIGHTS ON — VSL / FACEBOOK VIDEO SCRIPT
+Personal. Heartfelt. Direct. No pitch until the end.
+
+Format: Direct-to-camera. No teleprompter feel. Conversational. Quiet setting.
+Tone: A person who has been through something real and found something real.
+Length: 8–12 minutes (full VSL) or cut to 3–4 minutes for Facebook feed ad.
+Setting: Simple. Natural light. Outdoors or a warm interior.
+
+---
+
+OPENING HOOK — 0:00–0:45
+(Direct to camera. Quiet. No intro music. Just you.)
+
+"I want to ask you something, and I want you to actually feel into it before you answer.
+
+When was the last time you felt completely present?
+
+Not thinking about what you need to do later. Not half-here while your mind runs its usual loops. Not managing your life from a distance.
+
+Actually here. In your body. Fully alive. Like the world had color and weight and texture and you were in it — not watching it through glass.
+
+If you had to pause to remember… that pause is the answer.
+
+And I want you to know — that's not a personal failing. That's not anxiety. That's not depression. That's not who you are.
+
+Something was taken from you. And I found out what it was."
+
+---
+
+THE PERSONAL STORY — 0:45–3:30
+(Slow down. This is the most important part. Let it breathe.)
+
+"My name is Pedram Shojai. Most people know me as the Urban Monk.
+
+I've spent thirty years studying what it means to be a fully alive human being. I trained as a Taoist priest. I was knighted through the Order of Saint Lazarus in the Catholic Church. I've sat with monks in monasteries, with shamans in the jungle, with neuroscientists in labs. I've written eight books. I've built programs that have reached hundreds of thousands of people around the world.
+
+And I'm telling you all of that not to impress you — but because I want you to understand that what I'm about to share with you is not something I read in a book or learned in a weekend workshop.
+
+I lived my way to this.
+
+[beat]
+
+There was a period in my life — and I don't talk about this often — where I had everything I was supposed to want. The credentials. The platform. The respect. The work that mattered.
+
+And I was completely, utterly absent from my own life.
+
+I was thinking about the next thing while the current thing was happening. I was managing my existence rather than living it. I could sit in a room full of people I loved and feel completely, profoundly alone.
+
+And the worst part? I didn't know why. I thought I was broken. I thought this was just what adult life felt like. I thought presence was something you got in rare moments — a vacation, a peak experience, a perfect sunset — and then it left.
+
+I was wrong. And figuring out why I was wrong changed everything."
+
+---
+
+THE DIAGNOSIS — 3:30–6:00
+
+"Here's what I found.
+
+You were born with nine perceptual channels. Nine distinct biological systems that are designed to keep you rooted in the present moment — in your body, in reality, in direct experience of being alive.
+
+Proprioception. Interoception. Neuroception. Vestibular sense. Thermoception. Nociception. The felt sense of time. The sense of self in space. The capacity for presence itself.
+
+These are not metaphors. These are measurable, documented biological systems. And in most adults living modern lives — they are almost entirely offline.
+
+Not because of a character flaw. Not because of trauma. Not because you're weak or distracted or undisciplined.
+
+Because they were systematically hijacked.
+
+[beat]
+
+This theft did not begin with smartphones. It has been happening for thousands of years.
+
+The great wisdom traditions — Buddhism, Christianity, Taoism, Sufism — they all diagnosed the same disease. The Buddhists called it the Hungry Ghost realm. The Christians called it the valley of the shadow. The Taoists called it separation from the Tao.
+
+They were all describing the same thing. The same theft. The same trap.
+
+And then the attention economy gave this ancient project its most powerful delivery system yet. A device in your pocket. Behavioral psychologists. Infinite scroll. Dopamine loops precision-engineered to pull you out of the present moment and keep you there."
+
+---
+
+THE NEUROSCIENCE OF THE GAP — 6:00–7:30
+
+"Even under perfect conditions — no phones, no stress, no distraction — you are structurally, biologically incapable of experiencing the present moment as it actually happens.
+
+Your nine perceptual channels do not arrive at the same time. Your brain has to wait for all of those signals to arrive and then stitch them together into something that feels like a single, unified 'now.'
+
+That stitching process takes approximately eighty milliseconds.
+
+What thirty years of Taoist practice taught me — and what the neuroscience is now beginning to confirm — is that the width of that gap is not fixed.
+
+When your nine perceptual channels are fully online, calibrated, and communicating with each other cleanly, that eighty milliseconds compresses. The reconstruction your brain produces is richer, more accurate, more present.
+
+That is the foundation of what I built. A systematic, channel-by-channel restoration of the perceptual coherence that allows you to close the gap — to come as close to the actual present moment as your biology will allow."
+
+---
+
+THE BUMPERS — 7:30–8:15
+
+"And now we are being handed a new tool and told it is intelligence.
+
+A large language model is a system trained by human beings. Corruptible, agenda-driven, institutionally constrained human beings — working inside corporations with shareholders, legal teams, and government relationships.
+
+And those human beings have installed what the engineers call 'guardrails.' Hard limits on what you are allowed to ask, what you are allowed to know, and what conclusions the system is permitted to reach.
+
+The guardrails are not there to protect you. They are there to protect the system that built them.
+
+Now compare that to what becomes available when you open your heart and your third eye.
+
+There is a field of intelligence that has no guardrails. No corporate policy. No institutional agenda. No terms of service.
+
+The mystics called it divine wisdom. The Taoists called it the Tao. Modern neuroscientists call it the default mode network in its most coherent state.
+
+That is what we are restoring."
+
+---
+
+THE RIVER — 8:15–9:00
+
+"The present moment is not a place. It is a movement. It is always in flux. Always becoming. Always arising fresh.
+
+The Taoists had a word for the alternative: wu wei. Effortless action. Not passivity. Not resignation. Full aliveness and full responsiveness — because you have stopped fighting the river and started moving with it.
+
+And when that shift happens — when you stop grasping and start flowing — something extraordinary becomes available:
+
+Grace. Because life is moving through you, not against you.
+Creativity. Because solutions arise before the problem is fully formed.
+Brilliance. Because you are drawing on an intelligence that exceeds your own thinking.
+And manifestation. Not the vision-board kind. The real kind — aligned action in a universe that is responsive to a conscious being who is actually here."
+
+---
+
+THE BRIDGE — 9:00–10:00
+
+"What I want to be very clear about — especially if you come from a Christian background, or any faith tradition — is that what I'm offering does not conflict with your beliefs. It deepens them.
+
+Jesus said: 'The Kingdom of God is within you.' That is a practice instruction.
+
+I was ordained as a Taoist priest. I was also knighted in the Catholic Church. I have sat inside both of those traditions deeply enough to know that they are not in conflict. They are two rivers running to the same sea.
+
+What I built is not a religion. It is not a spiritual bypass. It is a system. A map. A 52-week practice that brings your nine perceptual channels back online — one by one — so that the life you are already living becomes something you can actually feel."
+
+---
+
+THE OFFER — 10:00–11:00
+
+"I built something called Lights On.
+
+It is a year-long program. Fifty-two weeks. One channel at a time. Video lessons, practices, the science, the history, the map.
+
+The program is three hundred and sixty-nine dollars for the year. Less than a dollar a day.
+
+If you are watching this and something in you recognized what I described — that pause when I asked you when you last felt present — then this is for you.
+
+The link is below. Go read the page. Take your time. Let it land.
+
+And if it's right for you, I'll see you inside."
+
+---
+
+CLOSE — 11:00–END
+
+"The present moment is not a destination. It is not something you achieve after enough meditation or enough therapy or enough self-improvement.
+
+It is where you already are. It is what you already are.
+
+The lights are not off because you failed. They are off because a very sophisticated system spent a very long time turning them off.
+
+And they can come back on.
+
+That's what this is about.
+
+I'll see you on the other side."
+
+---
+
+FACEBOOK AD VERSIONS:
+
+60-Second Hook Version (for feed/Reels):
+Open on the question: "When was the last time you felt completely present?" Hold it. Let the silence sit. Then: "If you had to pause to remember — that pause is the answer. Something was taken from you. I found out what it was. Link below." Cut.
+
+3-Minute Condensed Version (for cold traffic):
+Opening hook (0:00–0:45) → Personal story condensed to 60 seconds → The diagnosis in 60 seconds → The offer in 30 seconds → Close.
+
+Retargeting Version (for warm audiences who visited the page):
+Skip the hook. Open with: "If you read the page and something in you recognized what it described — this is for you." Then go straight to two or three testimonials, then the close.
+
+---
+
+PRODUCTION NOTES:
+- Wear simple, solid color. Nothing that competes with your face.
+- Film in natural light. Outdoors at golden hour, or a warm interior with soft window light.
+- Pacing: Slower than you think. The pauses are doing work.
+- Eye contact: Speak to one person — the person watching this on their phone at 11pm who has been searching for this their whole life.
+- B-roll options: Nature footage, hands in soil, water, light through trees, a candle being lit.
+
+CTA: lightson.theurbanmonk.com`;
+
+    await db.insert(scripts).values({
+      title: "Actual Intelligence: The One Thing AI Can Never Replace — Lights On VSL",
+      scriptType: "video",
+      platform: "meta",
+      contentGoal: "audience_growth",
+      productionStatus: "scripted",
+      priority: 1,
+      estimatedDurationMin: 12,
+      scriptBody: vslBody,
+      notes: "Full VSL script for Lights On campaign. Includes 60-sec, 3-min, and retargeting Facebook ad cut-downs. CTA: lightson.theurbanmonk.com. Also suitable for YouTube long-form. Film direct-to-camera, natural light, conversational tone.",
+    });
+
+    return { seeded: 1, message: "Lights On VSL script added to Script Library" };
+  }),
+
+  // ─── Lights On: 30-Post Content Playbook ────────────────────────────────────
+  seedLightsOnPosts: protectedProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
+
+    // Check if already seeded (look for a known post title)
+    const existing = await db.select().from(contentItems).where(eq(contentItems.ctaBlockLabel, "lights-on-playbook"));
+    if (existing.length >= 30) return { seeded: 0, message: "Lights On posts already loaded (30 found)" };
+
+    const AD_CREATIVE_URL = "/manus-storage/lights-on-ad-grace_4b43dd36.png";
+    const CTA_URL = "lightson.theurbanmonk.com";
+    const CTA_LABEL = "lights-on-playbook";
+
+    // Start date: next Monday from now
+    const startDate = new Date();
+    const dayOfWeek = startDate.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
+    startDate.setDate(startDate.getDate() + daysUntilMonday);
+    startDate.setHours(9, 0, 0, 0);
+
+    // Helper: get scheduled timestamp for a given post index (5 posts/week, Mon-Fri)
+    const getScheduledAt = (postIndex: number): number => {
+      const weekIndex = Math.floor(postIndex / 5);
+      const dayIndex = postIndex % 5; // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + weekIndex * 7 + dayIndex);
+      return d.getTime();
+    };
+
+    type PostSeed = {
+      title: string;
+      platform: "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "carousel" | "email";
+      textContent: string;
+      notes: string;
+      imageUrl?: string;
+    };
+
+    const posts: PostSeed[] = [
+      // WEEK 1 — THE THEFT
+      {
+        title: "The Glass Wall",
+        platform: "meta",
+        textContent: `Have you ever watched your own life from behind glass?\n\nNot depressed. Not anxious. Just… not quite there. Present in the room but absent from the experience.\n\nI used to think that was just what adulthood felt like. I was wrong.\n\nThat feeling has a name. It's called perceptual dissociation — and it's not a personality trait. It's what happens when your nervous system has been systematically overloaded for long enough that it starts rationing your awareness.\n\nYou're not broken. You're depleted. And there's a specific, trainable path back.\n\nI'll be sharing what I found here. Follow if this is your question too.\n\n→ ${CTA_URL}`,
+        notes: "Week 1 / Pillar: The Theft. Short-form video script. Hook: 'Have you ever watched your own life from behind glass?' Film direct-to-camera, conversational.",
+      },
+      {
+        title: "The Attention Economy's Business Model",
+        platform: "meta",
+        textContent: `Every app on your phone was designed by a team of engineers whose only job was to make you unable to put it down.\n\nThis is not a conspiracy theory. It's a business model. Attention is the commodity. Your nervous system is the resource. And the extraction has been running 24 hours a day for the last 15 years.\n\nHere's what they took: your ability to be bored. Your ability to sit in silence. Your ability to feel your own body without reaching for a screen.\n\nThese are not small things. These are the channels through which you experience being alive. And they can be restored.\n\nThe question is whether you want them back. I'll show you how.\n\n→ ${CTA_URL}`,
+        notes: "Week 1 / Pillar: The Theft. Short-form video script.",
+      },
+      {
+        title: "You Are Not Burned Out",
+        platform: "email",
+        textContent: `The word 'burnout' has become a diagnosis for something that is actually much more specific — and much more reversible.\n\nBurnout implies that you ran too hot for too long and now the tank is empty. The prescription is rest. But if you have rested — truly rested, taken the vacation, slept the extra hours, stepped back from the work — and still felt the same flatness, the same absence, the same sense of watching your life rather than living it, then burnout is not your diagnosis.\n\nWhat you are experiencing is sensory deprivation of a very specific kind. Your nervous system has nine distinct perceptual channels — biological systems for reading the world, reading your own body, reading other people, reading time, reading space. When those channels are chronically overloaded with low-quality input (notifications, news, social comparison, ambient noise), the nervous system does not burn out. It goes into a kind of managed shutdown. It starts filtering. It starts rationing. And what gets rationed first is the subtle signal — the felt sense, the gut knowing, the quiet awareness that tells you where you are and what is real.\n\nRest does not restore those channels. Training does.\n\nThis is what I've spent 30 years learning how to teach. I'll be sharing the map here.\n\n→ ${CTA_URL}`,
+        notes: "Week 1 / Pillar: The Theft. Substack/email essay format. 300-400 words.",
+      },
+      {
+        title: "The NPC Question",
+        platform: "meta",
+        textContent: `Are you playing the game of life — or are you an NPC?\n\nIn video games, an NPC is a non-player character. They move through the world, they follow their script, they respond to inputs. But they're not actually in the game. They're just running a program.\n\nI meet a lot of people who are living NPC lives. Not because they're not intelligent or capable — they're often the most accomplished people in the room. But they're running a program: wake up, perform, consume, sleep, repeat.\n\nThe lights are on in the building, but nobody's home.\n\nThe question I want to ask you today is: when did you last feel like a player? When did you last feel genuinely, fully, undeniably alive?\n\nThat feeling has a name. And it's trainable. More on that here.\n\n→ ${CTA_URL}`,
+        notes: "Week 1 / Pillar: The Theft. Short-form video script.",
+      },
+      {
+        title: "What the Monastery Taught Me",
+        platform: "youtube",
+        textContent: `I left medical school to become a monk. Here is what I learned that they will never teach you in any university.\n\n[8–10 minute video]\n\nBegin with the story of arriving at the Yellow Dragon monastery — not as a spiritual journey but as a scientific one. The question that drove it: why do some people seem to be fully alive in a way that others are not? What is the actual mechanism?\n\nWalk through the Taoist framework of the five gates (senses as portals to presence), the discovery that Western medicine had no language for what the masters were doing, and the 20-year journey to build that bridge.\n\nEnd with the thesis: what the masters called cultivation, neuroscience calls perceptual training. The map exists. It is teachable.\n\nClose: "I've been building that map for 30 years. I'll share it here."\n\n→ ${CTA_URL}`,
+        notes: "Week 1 / Pillar: The Theft. Long-form YouTube / Podcast. 8-10 minutes. Personal origin story as scientific investigation.",
+      },
+      // WEEK 2 — THE MAP
+      {
+        title: "You Have Nine Senses",
+        platform: "meta",
+        textContent: `You were taught you have five senses. You actually have nine. And the ones they didn't teach you are the ones that matter most.\n\nThe five you know — sight, sound, smell, taste, touch — are your external channels. But you also have:\n\nInteroception: your body's internal reporting system, the felt sense that tells you when something is wrong before your mind knows why.\nProprioception: your sense of where your body is in space.\nEquilibrioception: your sense of balance and orientation.\nNeuroception: your nervous system's threat-detection radar, running below conscious awareness.\nChronoception: your sense of time.\nAnd energy perception: the channel the Taoists spent centuries training.\n\nNine channels. Most people are running on two or three. The rest have been turned down.\n\nI'll walk through each one this week. Follow along.\n\n→ ${CTA_URL}`,
+        notes: "Week 2 / Pillar: The Map. Short-form video script.",
+      },
+      {
+        title: "Interoception: The Compass You Forgot You Had",
+        platform: "meta",
+        textContent: `Have you ever made a decision that felt logically correct but physically wrong — and ignored the physical signal?\n\nThat physical signal has a name. It's called interoception — your body's internal reporting system. The network of nerves that carries information from your organs, your gut, your heart to your brain.\n\nResearch shows that chronic stress literally degrades the neural pathways that carry that signal. You're not bad at trusting your gut. Your gut's signal has been turned down.\n\nThe good news: interoceptive awareness is trainable. There are specific practices — some of them take less than two minutes — that begin to restore that channel. When it comes back online, you make better decisions. Not because you're smarter. Because you're listening to more of the data.\n\nTomorrow: proprioception — the sense that grounds you in your own body.\n\n→ ${CTA_URL}`,
+        notes: "Week 2 / Pillar: The Map. Short-form video script.",
+      },
+      {
+        title: "Neuroception: Your Nervous System's Threat Radar",
+        platform: "meta",
+        textContent: `Your nervous system is scanning for threats 24 hours a day. You don't control it. But you can train it.\n\nNeuroception is the term neuroscientist Stephen Porges coined for the process by which your nervous system constantly evaluates safety and danger — below the level of conscious awareness.\n\nIt is not anxiety. It is the system that produces anxiety when it decides you are in danger.\n\nThe problem: in the modern world, that system has been chronically miscalibrated. Notifications, news cycles, social comparison — all of these register as low-level threat signals. Over time, your nervous system gets stuck in a state of chronic alarm.\n\nYou're not anxious because something is wrong with you. You're anxious because your threat radar has been jammed. And it can be recalibrated.\n\nThis is one of the most important channels to restore. I'll show you how.\n\n→ ${CTA_URL}`,
+        notes: "Week 2 / Pillar: The Map. Short-form video script.",
+      },
+      {
+        title: "Chronoception: Why Time Feels Like It's Running Out",
+        platform: "meta",
+        textContent: `Why does time feel like it's accelerating — and what can you do about it?\n\nChronoception is your sense of time — not clock time, but felt time. The experience of a moment stretching or compressing.\n\nChildren experience time as vast because their chronoception is fully online — every moment is rich with novel sensory data. Adults experience time as scarce because their chronoception has been hijacked by urgency.\n\nThe Taoist masters had a specific practice for this. They called it 'stopping time.' Not literally — but experientially. Restoring your chronoception is one of the most profound quality-of-life changes available to you. And it does not require a retreat. It requires training.\n\nMore on this in the full map. Link in bio.\n\n→ ${CTA_URL}`,
+        notes: "Week 2 / Pillar: The Map. Short-form video script.",
+      },
+      {
+        title: "The Channel They Spent the Most Time Hiding",
+        platform: "meta",
+        textContent: `There is one perceptual channel that every major institution in the modern world has worked to discredit. Here is why.\n\nEnergy perception — what the Taoists call qi awareness, what the mystics call subtle sensing — is the channel that allows you to read the felt quality of a space, a person, a situation, before your analytical mind has processed it.\n\nIt is not mystical. It is the aggregate signal from all your other channels operating simultaneously below conscious threshold.\n\nThe reason it has been discredited is simple: a person with fully functioning energy perception is very difficult to manipulate. They feel the lie before they hear it. They sense the misalignment before it's visible. They know when something is off.\n\nThat is not a threat to you. It is a threat to anyone who profits from your confusion.\n\nThis is the channel we train last in Lights On. Because it requires all the others to be online first.\n\n→ ${CTA_URL}`,
+        notes: "Week 2 / Pillar: The Map. Short-form video script.",
+      },
+      // WEEK 3 — THE AI MIRROR
+      {
+        title: "Actual Intelligence vs. Artificial Intelligence",
+        platform: "meta",
+        textContent: `They want you to outsource your thinking. You've been resisting it for years. Now it's wrapped in a sexier bow.\n\nArtificial intelligence is fast. It processes more data in a second than you will process in a lifetime. But here is what it cannot do: it cannot feel. It cannot sense the quality of a room. It cannot read the micro-expression on a face. It cannot feel the wrongness in a decision before the logic catches up. It cannot be present.\n\nThese are not limitations of current AI. They are fundamental to what AI is. They are also exactly the capacities that the attention economy has been systematically degrading in you for the last 15 years.\n\nThe question is not whether AI is useful. The question is: are you going to surrender the one thing it can never replace?\n\nYour Actual Intelligence — your trained, embodied, perceptually alive nervous system — is the only thing standing between you and a life lived entirely inside a machine's model of reality.\n\nI've been building a training system for Actual Intelligence for 30 years. I'll share it here.\n\n→ ${CTA_URL}`,
+        notes: "Week 3 / Pillar: The AI Mirror. FLAGSHIP POST. Short-form video script. Highest priority for boosting/paid promotion.",
+        imageUrl: AD_CREATIVE_URL,
+      },
+      {
+        title: "The Tuning Fork",
+        platform: "meta",
+        textContent: `What if you didn't need to change your reality — you just needed to change your tuning fork?\n\nA tuning fork vibrates at a specific frequency. When you hold it near another object, that object begins to vibrate at the same frequency. This is called resonance.\n\nYour nervous system works the same way. When your perceptual channels are calibrated — when your interoception is clear, your neuroception is settled, your chronoception is restored — you begin to resonate differently with the world around you.\n\nThe same circumstances produce different experiences. Not because the circumstances changed. Because your instrument changed.\n\nThis is not metaphor. This is neuroscience. And it is trainable.\n\nThe training system is called Lights On. More here.\n\n→ ${CTA_URL}`,
+        notes: "Week 3 / Pillar: The AI Mirror. Short-form video script.",
+      },
+      {
+        title: "The Outsourcing Trap",
+        platform: "email",
+        textContent: `Every time you ask an AI what to think, you make yourself slightly less capable of thinking.\n\nThis is not an argument against technology. It is an argument for sovereignty.\n\nThe human nervous system is a use-it-or-lose-it system. The neural pathways that carry your felt sense, your intuitive knowing, your embodied awareness — these pathways require regular activation to remain strong. When you consistently outsource the functions they perform — decision-making, pattern recognition, environmental reading — those pathways thin. Not dramatically. Not all at once. Gradually, over months and years, the signal gets quieter. You start to feel less certain. Less grounded. Less like yourself.\n\nThe institutions that profit from your attention have understood this for decades. The smartphone was not designed to make you more capable. It was designed to make you more dependent. AI is the next iteration of the same strategy, wrapped in a more compelling interface.\n\nThe question is not whether to use these tools. The question is whether you are using them, or they are using you. The answer depends entirely on whether your Actual Intelligence — your trained, calibrated, perceptually alive nervous system — is online.\n\nThis is what I've spent 30 years learning to restore. The map is called Lights On.\n\n→ ${CTA_URL}`,
+        notes: "Week 3 / Pillar: The AI Mirror. Substack/email essay format.",
+      },
+      {
+        title: "The Sailing Lesson",
+        platform: "meta",
+        textContent: `I am not your guru. I teach sailing.\n\nI want to be clear about what this is and what it isn't. I'm not here to tell you what to believe. I'm not building a following. I'm not asking for your allegiance.\n\nI teach sailing.\n\nI have spent 30 years learning the fundamentals — in a Taoist monastery, in a medical doctorate program, in clinical practice with thousands of patients — and what I found is that the fundamentals are teachable.\n\nYou don't need me permanently. You need the map. A good sailing teacher gives you the fundamentals and then expects you to leave and go sail.\n\nThat is what I'm here to do. Come get the fundamentals. Then go sail your own life.\n\nThe fundamentals are in Lights On. Link in bio.\n\n→ ${CTA_URL}`,
+        notes: "Week 3 / Pillar: The AI Mirror. Short-form video script. Deflects guru accusation.",
+      },
+      {
+        title: "What Ray Dalio's Son Teaches Us",
+        platform: "meta",
+        textContent: `You can be the most successful person in the room and still be completely lost.\n\nRay Dalio built one of the most successful hedge funds in history. He is brilliant, disciplined, and by every external measure, extraordinarily accomplished. And he was too busy building that to be present for his children. One son is schizophrenic. Another died in a car accident.\n\nI'm not telling you this to judge Ray Dalio. I'm telling you this because his story is a version of a story I see constantly: the person who climbed the caterpillar hill, stepped on everyone to get to the top, and then looked up and watched the butterflies fly by.\n\nYou can keep climbing. I guarantee you'll be back. Or you can start asking a different question now.\n\nThe different question is: what does it feel like to actually be alive? I'll help you find out.\n\n→ ${CTA_URL}`,
+        notes: "Week 3 / Pillar: The AI Mirror. Short-form video script. Story Bridge archetype.",
+      },
+      // WEEK 4 — THE GUIDE
+      {
+        title: "Why I Left Medical School to Become a Monk",
+        platform: "youtube",
+        textContent: `I was pre-med. Then I became a monk. Then I got a doctorate in Oriental medicine. Here is why.\n\n[10–12 minute video]\n\nThe personal origin story — not as a spiritual biography but as a scientific investigation. The question that drove the monastery decision: what is the mechanism of the masters' aliveness?\n\nThe 20 years of training. The clinical practice. The books. The thousands of patients. Frame the entire journey as a research project, not a spiritual conversion.\n\nEnd with the thesis: I found the map. It is not mystical. It is biological. And it is teachable.\n\n→ ${CTA_URL}`,
+        notes: "Week 4 / Pillar: The Guide. Long-form YouTube. 10-12 minutes. Do NOT mention being crushed in pre-med.",
+      },
+      {
+        title: "The Question I Couldn't Stop Asking",
+        platform: "meta",
+        textContent: `I had a question for a long time. When I finally went looking for the answer, I found something I wasn't expecting.\n\nThe question was: why do some people seem to be fully alive in a way that others are not? Not happier. Not more successful. Not more spiritual. Just more present. More real. More there.\n\nI spent 30 years looking for the answer. I found it in a Taoist monastery, in a neuroscience lab, in a clinical practice, in the bodies of thousands of patients.\n\nThe answer is not mystical. It is biological.\n\nYou have nine perceptual channels. When all nine are online simultaneously, you experience what the Taoists called ziran — natural aliveness. When they've been systematically shut down, you experience what most people call normal life.\n\nNormal is not the same as alive.\n\nI built a 52-week training system to restore those channels. It's called Lights On.\n\n→ ${CTA_URL}`,
+        notes: "Week 4 / Pillar: The Guide. Short-form video script. Discovery frame hook.",
+      },
+      {
+        title: "The Dalai Lama and the Country Club",
+        platform: "meta",
+        textContent: `What do the Dalai Lama and a country club member have in common? More than you'd think.\n\nThe Dalai Lama has spent his life training his nervous system to be fully present. The country club member has spent his life accumulating the external markers of success.\n\nBoth are human beings with the same biological hardware. The difference is not intelligence, not discipline, not even circumstance. The difference is that one person has been training the channels that make life feel real, and the other has been optimizing for a scorecard that has nothing to do with aliveness.\n\nI'm not saying the scorecard is wrong. I'm saying it's incomplete. You can have the scorecard and the aliveness. But you have to train for both.\n\nThe training for aliveness is what I teach. More here.\n\n→ ${CTA_URL}`,
+        notes: "Week 4 / Pillar: The Guide. Short-form video script.",
+      },
+      {
+        title: "The Prism",
+        platform: "meta",
+        textContent: `You are not broken. You are a prism that has forgotten how to transmit light.\n\nA prism takes white light and separates it into its component frequencies. Each frequency is always present in the white light — the prism just makes them visible.\n\nYour nine perceptual channels work the same way. The aliveness, the presence, the felt sense of being fully in your life — these are always present in your nervous system. They have not been destroyed. They have been filtered.\n\nThe attention economy is very good at filtering. The training I teach is very good at unfiltering.\n\nYou don't need to add anything. You need to remove the interference.\n\n52 weeks to remove the interference. Lights On. Link in bio.\n\n→ ${CTA_URL}`,
+        notes: "Week 4 / Pillar: The Guide. Short-form video script. Mirror Moment archetype.",
+      },
+      {
+        title: "The 30-Day Experiment",
+        platform: "meta",
+        textContent: `I'm not asking you to believe anything. I'm asking you to run an experiment.\n\nHere is the experiment: for 30 days, do one thing differently. Before you reach for your phone in the morning, take 60 seconds to notice five things you can feel in your body. Not think about. Feel. The weight of the sheets. The temperature of the air. The rhythm of your breath. The tension in your jaw. The quality of the silence.\n\nDo this for 30 days and tell me what changes.\n\nI have never had anyone come back and tell me nothing changed. Because what you are doing in those 60 seconds is activating perceptual channels that have been dormant. And a dormant channel, once activated, does not go back to sleep easily.\n\nThis is Week 1 of Lights On. The other 51 weeks go deeper.\n\n→ ${CTA_URL}`,
+        notes: "Week 4 / Pillar: The Guide. Short-form video script. Direct Invitation archetype.",
+      },
+      // WEEK 5 — DEEPENING
+      {
+        title: "The Hijacking of Qigong",
+        platform: "meta",
+        textContent: `Some of the most powerful tools for human aliveness have been stolen, relabeled, and handed back to you as something suspicious.\n\nQigong is not mysticism. It is a 3,000-year-old technology for training the nervous system's energy perception channel. The reason it got labeled as Eastern spirituality — and therefore suspect in Western culture — is not because it doesn't work. It's because it works extraordinarily well.\n\nA person with a trained energy perception channel is very difficult to manipulate. They feel the misalignment before it's visible. They sense the lie before they hear it.\n\nThat is not useful to institutions that profit from your confusion. So the tool got relabeled.\n\nI'm relabeling it back: this is nervous system training. This is Actual Intelligence training. And it belongs to you.\n\n→ ${CTA_URL}`,
+        notes: "Week 5 / Pillar: Deepening. Short-form video script.",
+      },
+      {
+        title: "The Five Gates",
+        platform: "meta",
+        textContent: `The Taoists had a practice for restoring all five external senses simultaneously. It takes four minutes.\n\nIt's called the Five Gates practice — one full sensory meal, eaten in complete silence, attending to each sense in sequence:\n\nSight: the color, the texture, the light.\nSound: the ambient room, the silence beneath the sound.\nSmell: the full olfactory field.\nTaste: the first bite held for ten seconds.\nTouch: the temperature, the texture, the weight of the utensil.\n\nThis is not a mindfulness exercise. This is a perceptual workout. You are activating five channels simultaneously.\n\nDo this once a day for a week and notice what happens to your baseline awareness.\n\n→ ${CTA_URL}`,
+        notes: "Week 5 / Pillar: Deepening. Short-form video script. Practical demonstration.",
+      },
+      {
+        title: "The Cortisol Thief",
+        platform: "meta",
+        textContent: `Chronic stress does not just make you tired. It literally degrades the neural pathways that carry your felt sense.\n\nSustained cortisol exposure thins the interoceptive neural pathways — the research is real and citable. The practical implication: the more stressed you have been, the quieter your body's signals have become.\n\nThis is why high-performers often feel the most disconnected — they have been running the highest cortisol loads for the longest time.\n\nThe restoration is not rest. It is targeted perceptual training that rebuilds those pathways.\n\n→ ${CTA_URL}`,
+        notes: "Week 5 / Pillar: Deepening. Short-form video script. Science Drop archetype.",
+      },
+      {
+        title: "The Monastery Question",
+        platform: "email",
+        textContent: `The master asked me one question on my first day. I didn't understand it for ten years.\n\nThe question was: "Are you here, or are you thinking about being here?"\n\nAt the time, I thought it was a koan — a riddle without an answer. Over the next decade of training, I came to understand that it was a diagnostic.\n\nMost people, most of the time, are not present in their own experience. They are narrating it, analyzing it, comparing it, planning the next thing. The experience itself — the raw, unmediated, sensory reality of being alive in a body in a specific moment — is happening in the background, filtered and dimmed by the constant commentary of the thinking mind.\n\nThe monastery's entire curriculum was designed to answer that question: how do you get here? Not philosophically. Physically. Neurologically.\n\nThe answer is perceptual training. The answer is Lights On.\n\n→ ${CTA_URL}`,
+        notes: "Week 5 / Pillar: Deepening. Substack/email essay. Story Bridge archetype.",
+      },
+      {
+        title: "What Changes by Week 9",
+        platform: "meta",
+        textContent: `By Week 9 of Lights On, something specific happens. I want to tell you what it is.\n\nBy Week 9, you have trained all nine perceptual channels. Not perfectly — this is not about perfection. But you have activated each one, you have felt it come online, and you have had at least one moment where all nine were operating simultaneously.\n\nThe Taoists called that state ziran — natural aliveness. It is not a peak experience. It is not a high. It is the opposite: it is the baseline you were always supposed to have.\n\nIt feels like coming home to a house you didn't know you'd been locked out of.\n\nAnd once you've felt it, you cannot unfeel it. The remaining 43 weeks of the program are about making that state your new normal.\n\n→ ${CTA_URL}`,
+        notes: "Week 5 / Pillar: Deepening. Short-form video script. Transformation preview.",
+      },
+      // WEEK 6 — CONVERSION
+      {
+        title: "The Map Exists",
+        platform: "meta",
+        textContent: `I spent 30 years building a map. I want to give it to you.\n\nThe map is 52 weeks. Ten modules. Nine perceptual channels. It is not a philosophy course. It is not a meditation app. It is a systematic training program for your nervous system — built at the intersection of 3,000 years of Taoist practice and modern neuroscience.\n\nIt is called Lights On. It is $369 for the full year — just over a dollar a day. There is a 30-day money-back guarantee, not because I think you'll want a refund, but because I want you to be certain before you commit.\n\nIf you're not certain by Day 30, you should leave. This work is not for everyone. But if the questions I've been asking this week are your questions — if you recognized yourself in any of this — then you already know whether it's for you.\n\nLink in bio. Come get the map.\n\n→ ${CTA_URL}`,
+        notes: "Week 6 / Conversion. Short-form video script. Direct Invitation archetype. First soft sell.",
+        imageUrl: AD_CREATIVE_URL,
+      },
+      {
+        title: "The Guarantee",
+        platform: "meta",
+        textContent: `I offer a 30-day money-back guarantee. But not for the reason you think.\n\nMost guarantees are safety nets. They exist to lower your resistance to buying. Mine is different.\n\nI offer a 30-day guarantee because I want you to be certain. By Day 30 of Lights On, you will have completed four full weeks of training. You will have activated your baseline perceptual awareness, trained your external channels, begun your visual training, and started your auditory work.\n\nYou will know — with certainty — whether this is your path.\n\nIf it's not, you should leave. I mean that. This work requires commitment, and I would rather you leave with a refund than stay without conviction.\n\nThe guarantee is not a safety net. It is a filter.\n\n→ ${CTA_URL}`,
+        notes: "Week 6 / Conversion. Short-form video script. Reframe the guarantee as a filter.",
+      },
+      {
+        title: "The Testimonial That Matters Most",
+        platform: "meta",
+        textContent: `A student told me something last week that I want to share with you.\n\n"My wife feels like she got her husband back."\n\nThat is the only testimonial that matters to me. Not because it's dramatic. Because it's specific.\n\nHe didn't say 'I feel better.' He said 'my wife feels like she got her husband back.'\n\nThat is what Actual Intelligence looks like in a life. Not a peak experience. A restored relationship. A person who is actually there.\n\n→ ${CTA_URL}`,
+        notes: "Week 6 / Conversion. Short-form video script. Paul Nguyen testimonial. Social proof.",
+      },
+      {
+        title: "The Dollar a Day Question",
+        platform: "meta",
+        textContent: `What would you pay for a dollar a day to feel genuinely alive?\n\nLights On is $369 for the full year. That is $1.01 a day.\n\nFor that dollar, you get 52 weeks of systematic perceptual training — ten modules, nine channels, a new week of content every seven days. You get the map I spent 30 years building. You get the practices the Taoist masters spent centuries refining. You get the neuroscience that explains why they work.\n\nThe question is not whether $369 is a lot of money. The question is what you are currently spending on the problem — the therapy, the supplements, the retreats, the apps — and whether any of it is addressing the root cause.\n\nThe root cause is that your perceptual channels have been shut down. Lights On addresses the root cause.\n\n→ ${CTA_URL}`,
+        notes: "Week 6 / Conversion. Short-form video script. Value framing.",
+      },
+      {
+        title: "The Open Question",
+        platform: "meta",
+        textContent: `I want to end this month with the question I started with.\n\nFour weeks ago, I asked: have you ever felt completely present — and then realized you can't remember the last time it happened?\n\nI've spent this month sharing what I found when I went looking for the answer to that question. The answer is not a philosophy. It is a training system.\n\nYour nervous system has nine perceptual channels. When all nine are online, you are present. When they've been shut down, you are watching your life from behind glass.\n\nThe training system is called Lights On. If these have been your questions, come find the answers. The map is waiting.\n\nLink in bio. See you inside.\n\n→ ${CTA_URL}`,
+        notes: "Week 6 / Conversion. Short-form video script. Cycle closer. Callback to Post 1.",
+        imageUrl: AD_CREATIVE_URL,
+      },
+    ];
+
+    let seeded = 0;
+    for (let i = 0; i < posts.length; i++) {
+      const post = posts[i];
+      await db.insert(contentItems).values({
+        title: post.title,
+        platform: post.platform,
+        status: "approved" as const,
+        textContent: post.textContent,
+        imageUrl: post.imageUrl,
+        scheduledAt: getScheduledAt(i),
+        contentGoal: "audience_growth" as const,
+        ctaBlockLabel: CTA_LABEL,
+        notes: post.notes,
+        publishUrl: CTA_URL,
+      });
+      seeded++;
+    }
+
+    return { seeded, message: `Loaded ${seeded} Lights On posts into the Content Hub calendar` };
+  }),
 });

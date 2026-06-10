@@ -2113,6 +2113,13 @@ export default function CommandCenter() {
   // Save to Script Library
   const utils = trpc.useUtils();
   const linkContentMutation = trpc.content.update.useMutation();
+
+  // Lights On: seed 30 posts into the calendar
+  const seedLightsOnPostsMutation = trpc.scripts.seedLightsOnPosts.useMutation({
+    onSuccess: (r) => { utils.content.list.invalidate(); toast.success(r.message); },
+    onError: (e) => toast.error(e.message),
+  });
+
   const saveScriptMutation = trpc.scripts.create.useMutation({
     onSuccess: (created, variables) => {
       toast.success("Script saved to Script Library!");
@@ -2883,6 +2890,20 @@ export default function CommandCenter() {
                   )}
                 </Button>
               )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs border-emerald-500/40 text-emerald-700 hover:bg-emerald-50"
+                disabled={seedLightsOnPostsMutation.isPending}
+                onClick={() => seedLightsOnPostsMutation.mutate()}
+                title="Load the 30-post Lights On content playbook into the calendar queue"
+              >
+                {seedLightsOnPostsMutation.isPending ? (
+                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading…</>
+                ) : (
+                  <><Zap className="h-3 w-3 mr-1" /> Load Lights On (30 posts)</>
+                )}
+              </Button>
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">

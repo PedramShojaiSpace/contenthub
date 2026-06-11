@@ -113,8 +113,10 @@ export async function publishToSubstack(
     free_unlock: false,
   };
 
+  // NOTE: The correct publish endpoint is /api/v1/drafts/{id}/publish, NOT /api/v1/posts/{id}/publish.
+  // The posts endpoint returns 404 for unpublished drafts. Confirmed via live API probing (Jun 2026).
   const publishRes = await fetch(
-    `${baseUrl}/api/v1/posts/${draftId}/publish`,
+    `${baseUrl}/api/v1/drafts/${draftId}/publish`,
     {
       method: "POST",
       headers,

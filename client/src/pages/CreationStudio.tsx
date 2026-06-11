@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
@@ -180,6 +181,10 @@ export default function CreationStudio() {
   const [blogYtScript, setBlogYtScript] = useState<string | null>(null);
   const [generatingBlogYtScript, setGeneratingBlogYtScript] = useState(false);
   const [blogYtScriptSaved, setBlogYtScriptSaved] = useState(false);
+
+  // Substack toggle: whether to cross-post this blog to Substack on WP publish
+  const [sendToSubstack, setSendToSubstack] = useState(false);
+  const [substackPublishResult, setSubstackPublishResult] = useState<{ postUrl: string; postId: string } | null>(null);
 
   // TikTok 60-second script state
   const [tiktokScript60, setTiktokScript60] = useState<string | null>(null);
@@ -1374,6 +1379,13 @@ export default function CreationStudio() {
           { duration: 10000 }
         );
       }
+      // Show Substack result if it was published
+      if (data.substackResult?.published && data.substackResult.postUrl && data.substackResult.postId) {
+        setSubstackPublishResult({ postUrl: data.substackResult.postUrl, postId: data.substackResult.postId });
+        toast.success("Also published to Substack!", { duration: 5000 });
+      } else if (data.substackResult && !data.substackResult.published && data.substackResult.message !== "skipped" && data.substackResult.message !== "Already published to Substack") {
+        toast.warning(`Substack: ${data.substackResult.message}`, { duration: 8000 });
+      }
       utils.content.list.invalidate();
     },
     onError: (err) => {
@@ -1406,7 +1418,12 @@ export default function CreationStudio() {
     }
     setIsPublishingToWP(true);
     setWpPublishResult(null);
+    setSubstackPublishResult(null);
     setWpPublishStatus(status);
+    // Persist the sendToSubstack flag to the DB so the backend can read it during publish
+    if (sendToSubstack) {
+      updateContentMutation.mutate({ id: contentItemId, sendToSubstack: true });
+    }
     publishToWPMutation.mutate({
       contentItemId,
       title: blogContent.title,
@@ -3017,9 +3034,23 @@ export default function CreationStudio() {
               </div>
 
               <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-medium text-foreground">Publish to theurbanmonk.com</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium text-foreground">Publish to theurbanmonk.com</p>
+                  </div>
+                  {/* Substack cross-post toggle */}
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="substack-toggle"
+                      checked={sendToSubstack}
+                      onCheckedChange={setSendToSubstack}
+                      disabled={!!wpPublishResult}
+                    />
+                    <Label htmlFor="substack-toggle" className="text-xs text-muted-foreground cursor-pointer select-none">
+                      Also post to Substack
+                    </Label>
+                  </div>
                 </div>
                 {wpPublishResult ? (
                   <div className="space-y-2">
@@ -3045,6 +3076,19 @@ export default function CreationStudio() {
                         <ExternalLink className="h-3 w-3" /> Edit in WP Admin
                       </a>
                     </div>
+                    {substackPublishResult && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-emerald-500 font-medium">Also published to Substack</span>
+                        <a
+                          href={substackPublishResult.postUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" /> View on Substack
+                        </a>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex gap-2">

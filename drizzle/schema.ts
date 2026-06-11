@@ -114,6 +114,12 @@ export const contentItems = mysqlTable("content_items", {
   // YouTube embed: video ID embedded into the published WP post
   embeddedYoutubeVideoId: varchar("embeddedYoutubeVideoId", { length: 64 }),
   embeddedYoutubeEmbedStatus: mysqlEnum("embeddedYoutubeEmbedStatus", ["pending", "embedded", "skipped", "no_match"]),
+  // Substack integration: toggle to publish this post to Substack in addition to WordPress
+  sendToSubstack: boolean("sendToSubstack").default(false),
+  // Substack post ID returned after successful publish (for dedup and link)
+  substackPostId: varchar("substackPostId", { length: 128 }),
+  // URL of the published Substack post
+  substackPostUrl: text("substackPostUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

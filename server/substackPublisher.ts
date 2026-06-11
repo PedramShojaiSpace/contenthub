@@ -174,6 +174,31 @@ export async function validateSubstackSession(): Promise<{
 }
 
 /**
+ * Decode common HTML entities into their plain-text equivalents.
+ * This must be applied to all text nodes before sending to Substack,
+ * otherwise entities like &#39; and &quot; render as literal strings.
+ */
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&mdash;/g, "\u2014")
+    .replace(/&ndash;/g, "\u2013")
+    .replace(/&hellip;/g, "\u2026")
+    .replace(/&ldquo;/g, "\u201C")
+    .replace(/&rdquo;/g, "\u201D")
+    .replace(/&lsquo;/g, "\u2018")
+    .replace(/&rsquo;/g, "\u2019")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+/**
  * Convert a simple HTML string into Substack's ProseMirror-style JSON document.
  * Substack's draft_body field expects a JSON-stringified ProseMirror doc.
  */
@@ -242,21 +267,22 @@ function parseInline(html: string): object[] {
     if (!part) continue;
 
     if (/^<strong>|^<b>/i.test(part)) {
-      const text = part.replace(/<\/?(?:strong|b)>/gi, "");
+      const text = decodeHtmlEntities(part.replace(/<\/?(?:strong|b)>/gi, ""));
       nodes.push({ type: "text", text, marks: [{ type: "strong" }] });
     } else if (/^<em>|^<i>/i.test(part)) {
-      const text = part.replace(/<\/?(?:em|i)>/gi, "");
+      const text = decodeHtmlEntities(part.replace(/<\/?(?:em|i)>/gi, ""));
       nodes.push({ type: "text", text, marks: [{ type: "em" }] });
     } else if (/^<a /i.test(part)) {
-      const href = part.match(/href="([^"]+)"/)?.[1] ?? "";
-      const text = part.replace(/<[^>]+>/g, "");
+      const rawHref = part.match(/href="([^"]+)"/)?.[ 1] ?? "";
+      const href = decodeHtmlEntities(rawHref);
+      const text = decodeHtmlEntities(part.replace(/<[^>]+>/g, ""));
       nodes.push({
         type: "text",
         text,
         marks: [{ type: "link", attrs: { href, target: "_blank" } }],
       });
     } else {
-      const text = part.replace(/<[^>]+>/g, "");
+      const text = decodeHtmlEntities(part.replace(/<[^>]+>/g, ""));
       if (text) nodes.push({ type: "text", text });
     }
   }

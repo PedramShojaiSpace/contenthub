@@ -3860,3 +3860,23 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add "Also post to Substack" toggle (Switch) to WordPress publish panel header
 - [x] Persist `sendToSubstack` flag via `updateContentMutation` before WP publish fires
 - [x] Show "Also published to Substack" link after successful cross-post
+
+## Ask the Urban Monk Chatbot
+- [x] Add `askUrbanMonk` tRPC procedure in bookLibraryRouter.ts — RAG over uploaded_books extractedText using Claude
+- [x] Build system prompt that channels Pedram's voice, references specific books, stays grounded in actual text
+- [x] Add chat history tables in schema (urban_monk_chat_sessions, urban_monk_chat_messages)
+- [x] Run pnpm db:push for new tables
+- [x] Add AskUrbanMonk.tsx page with full chat UI using AIChatBox component
+- [x] Register /ask-urban-monk route in App.tsx
+- [x] Add "Ask the Urban Monk" link in sidebar navigation (Libraries section)
+- [x] Add vitest for the askUrbanMonk procedure (askUrbanMonk.test.ts — 9 tests)
+
+## Presence Assessment Quiz
+- [ ] Add presence_assessment_results table to schema (userId, scores JSON, primaryResult, createdAt)
+- [ ] Run pnpm db:push for new table
+- [ ] Add presenceAssessment tRPC router (submitAssessment, getMyResults)
+- [ ] Build PresenceAssessment.tsx — 9-question quiz, one per channel (sleep, stress, gut, energy, focus, movement, connection, purpose, environment)
+- [ ] Score each channel 1-5, show personalized results with suppressed channels highlighted
+- [ ] Register /presence-assessment route in App.tsx
+- [ ] Add "Presence Assessment" link in sidebar navigation
+- [ ] Add vitest for the presenceAssessment procedure

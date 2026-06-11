@@ -1,69 +1,32 @@
 /**
  * Substack Publisher
  *
- * Uses Substack's unofficial internal API (the same endpoints the web app uses)
- * authenticated via email/password session cookie.
+ * Uses Substack's unofficial internal API authenticated via a pre-stored
+ * session cookie (SUBSTACK_SESSION_COOKIE env var).
  *
- * Auth flow:
- *   POST https://substack.com/api/v1/email-login  →  sets "substack.sid" cookie
+ * The session cookie is the value of the "substack.sid" cookie from an
+ * authenticated browser session. It lasts several months and can be refreshed
+ * by re-extracting it from the browser when it expires.
+ *
+ * API flow:
  *   POST https://{pub}.substack.com/api/v1/drafts  →  creates a draft
  *   POST https://{pub}.substack.com/api/v1/posts/{id}/publish  →  publishes it
- *
- * The session cookie is cached in memory for the lifetime of the server process
- * and refreshed on 401 responses.
  */
 
 import { ENV } from "./_core/env";
 
-interface SubstackSession {
-  cookie: string;
-  expiresAt: number; // unix ms
-}
-
-let cachedSession: SubstackSession | null = null;
-
-async function getSession(): Promise<string> {
-  const now = Date.now();
-  if (cachedSession && cachedSession.expiresAt > now + 60_000) {
-    return cachedSession.cookie;
-  }
-
-  const email = ENV.substackEmail;
-  const password = ENV.substackPassword;
-
-  if (!email || !password) {
+function getSessionCookie(): string {
+  const cookie = ENV.substackSessionCookie;
+  if (!cookie) {
     throw new Error(
-      "SUBSTACK_EMAIL and SUBSTACK_PASSWORD must be set in environment variables."
+      "SUBSTACK_SESSION_COOKIE is not set. Please add it via the secrets manager."
     );
   }
-
-  const res = await fetch("https://substack.com/api/v1/email-login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": "Mozilla/5.0 (compatible; UrbanMonkContentHub/1.0)",
-      Origin: "https://substack.com",
-      Referer: "https://substack.com/sign-in",
-    },
-    body: JSON.stringify({ email, password, captcha_response: null }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Substack login failed (${res.status}): ${body}`);
+  // Ensure it's in the correct cookie header format
+  if (cookie.startsWith("substack.sid=")) {
+    return cookie;
   }
-
-  // Extract the session cookie from Set-Cookie header
-  const setCookie = res.headers.get("set-cookie") ?? "";
-  const sidMatch = setCookie.match(/substack\.sid=([^;]+)/);
-  if (!sidMatch) {
-    throw new Error("Substack login succeeded but no session cookie was returned.");
-  }
-
-  const cookie = `substack.sid=${sidMatch[1]}`;
-  // Cache for 23 hours (Substack sessions last ~24h)
-  cachedSession = { cookie, expiresAt: now + 23 * 60 * 60 * 1000 };
-  return cookie;
+  return `substack.sid=${cookie}`;
 }
 
 export interface SubstackPostInput {
@@ -93,15 +56,16 @@ export async function publishToSubstack(
     throw new Error("SUBSTACK_PUBLICATION_URL is not set.");
   }
 
-  // Normalise: strip trailing slash, ensure no protocol prefix
+  // Normalise: strip trailing slash, ensure https
   const pubHost = pubUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
   const baseUrl = `https://${pubHost}`;
 
-  const cookie = await getSession();
+  const cookie = getSessionCookie();
 
-  const headers = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "User-Agent": "Mozilla/5.0 (compatible; UrbanMonkContentHub/1.0)",
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
     Origin: baseUrl,
     Referer: `${baseUrl}/publish/post`,
     Cookie: cookie,
@@ -123,10 +87,10 @@ export async function publishToSubstack(
     body: JSON.stringify(draftBody),
   });
 
-  if (draftRes.status === 401) {
-    // Session expired — clear cache and retry once
-    cachedSession = null;
-    return publishToSubstack(input);
+  if (draftRes.status === 401 || draftRes.status === 403) {
+    throw new Error(
+      `Substack session expired or invalid (${draftRes.status}). Please refresh SUBSTACK_SESSION_COOKIE in the secrets manager.`
+    );
   }
 
   if (!draftRes.ok) {
@@ -174,18 +138,43 @@ export async function publishToSubstack(
 }
 
 /**
+ * Validate the session cookie by calling the Substack user info endpoint.
+ * Returns true if the session is valid, false otherwise.
+ */
+export async function validateSubstackSession(): Promise<{
+  valid: boolean;
+  email?: string;
+  error?: string;
+}> {
+  try {
+    const cookie = getSessionCookie();
+    const res = await fetch("https://substack.com/api/v1/user/login", {
+      method: "GET",
+      headers: {
+        Cookie: cookie,
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { email?: string };
+      return { valid: true, email: data.email };
+    }
+    return { valid: false, error: `HTTP ${res.status}` };
+  } catch (err: unknown) {
+    return { valid: false, error: String(err) };
+  }
+}
+
+/**
  * Convert a simple HTML string into Substack's ProseMirror-style JSON document.
  * Substack's draft_body field expects a JSON-stringified ProseMirror doc.
- * This is a lightweight converter that handles the common cases produced by
- * the Content Hub blog generator (headings, paragraphs, bold, italic, links).
  */
 function htmlToSubstackDoc(html: string): object {
-  // Strip script/style tags for safety
   const clean = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
 
-  // Split into block-level elements
   const blocks = clean
     .split(/(?=<h[1-6]|<p|<ul|<ol|<blockquote|<hr)/i)
     .filter(Boolean);
@@ -222,12 +211,10 @@ function htmlToSubstackDoc(html: string): object {
         content: [{ type: "paragraph", content: inlineContent }],
       });
     } else {
-      // paragraph (default)
       content.push({ type: "paragraph", content: inlineContent });
     }
   }
 
-  // Ensure there's at least one paragraph
   if (content.length === 0) {
     content.push({
       type: "paragraph",
@@ -240,7 +227,6 @@ function htmlToSubstackDoc(html: string): object {
 
 function parseInline(html: string): object[] {
   const nodes: object[] = [];
-  // Simple regex-based inline parser for bold, italic, links
   const parts = html.split(
     /(<strong>[\s\S]*?<\/strong>|<b>[\s\S]*?<\/b>|<em>[\s\S]*?<\/em>|<i>[\s\S]*?<\/i>|<a[^>]*>[\s\S]*?<\/a>)/i
   );
@@ -263,7 +249,6 @@ function parseInline(html: string): object[] {
         marks: [{ type: "link", attrs: { href, target: "_blank" } }],
       });
     } else {
-      // Strip any remaining tags and treat as plain text
       const text = part.replace(/<[^>]+>/g, "");
       if (text) nodes.push({ type: "text", text });
     }

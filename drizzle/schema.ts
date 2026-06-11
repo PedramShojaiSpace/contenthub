@@ -1951,3 +1951,28 @@ export const urbanMonkChatMessages = mysqlTable("urban_monk_chat_messages", {
 
 export type UrbanMonkChatMessage = typeof urbanMonkChatMessages.$inferSelect;
 export type InsertUrbanMonkChatMessage = typeof urbanMonkChatMessages.$inferInsert;
+
+// ─── Presence Assessment Quiz ─────────────────────────────────────────────────
+// 9-question quiz assessing which of the 9 "presence channels" are suppressed.
+// Primary lead magnet for the Lights On campaign.
+// Each channel is scored 1-5; channels scoring ≤2 are flagged as suppressed.
+
+export const presenceAssessmentResults = mysqlTable("presence_assessment_results", {
+  id: int("id").autoincrement().primaryKey(),
+  // Nullable — allows anonymous quiz takers (future: capture email for lead gen)
+  userId: int("par_user_id"),
+  // JSON object: { sleep: 3, stress: 1, gut: 4, energy: 2, focus: 5, movement: 3, connection: 2, purpose: 4, environment: 1 }
+  scores: text("par_scores").notNull(),
+  // Comma-separated list of suppressed channels (score ≤ 2), e.g. "stress,energy,environment"
+  suppressedChannels: varchar("par_suppressed_channels", { length: 512 }),
+  // Primary result label: "Highly Suppressed" | "Partially Suppressed" | "Well-Resourced"
+  primaryResult: varchar("par_primary_result", { length: 64 }).notNull(),
+  // Overall score (average of all 9 channels × 20 to give 0-100)
+  overallScore: int("par_overall_score").notNull().default(0),
+  // Email captured for lead gen (optional)
+  email: varchar("par_email", { length: 320 }),
+  createdAt: timestamp("par_created_at").defaultNow().notNull(),
+});
+
+export type PresenceAssessmentResult = typeof presenceAssessmentResults.$inferSelect;
+export type InsertPresenceAssessmentResult = typeof presenceAssessmentResults.$inferInsert;

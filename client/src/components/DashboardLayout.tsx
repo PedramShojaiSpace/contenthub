@@ -88,6 +88,7 @@ const librariesItems = [
   { icon: BookOpen, label: "Book Library", path: "/book-library" },
   { icon: Image, label: "Asset Library", path: "/assets" },
   { icon: MessageSquare, label: "Ask the Urban Monk", path: "/ask-urban-monk" },
+  { icon: Target, label: "Presence Assessment", path: "/presence-assessment" },
 ];
 
 const librariesPaths = new Set(librariesItems.map((i) => i.path));

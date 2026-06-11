@@ -96,6 +96,7 @@ import { viralStudioRouter } from "./viralStudioRouter";
 import { videoVariantRouter } from "./videoVariantRouter";
 import { videoSessionRouter } from "./videoSessionRouter";
 import { bookLibraryRouter } from "./bookLibraryRouter";
+import { presenceAssessmentRouter } from "./presenceAssessmentRouter";
 import { ebookRouter } from "./ebookRouter";
 import { gscRouter } from "./gscRouter";
 import { backlinkRouter } from "./backlinkRouter";
@@ -430,6 +431,7 @@ const DEFAULT_IMAGE_STYLE = PLATFORM_IMAGE_STYLES.all;
 export const appRouter = router({
   system: systemRouter,
   bookLibrary: bookLibraryRouter,
+  presenceAssessment: presenceAssessmentRouter,
   ebook: ebookRouter,
   gsc: gscRouter,
   backlink: backlinkRouter,

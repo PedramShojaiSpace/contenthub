@@ -3712,48 +3712,48 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Item 2: GSC auto-indexing — ping Google Search Console Indexing API on every WordPress publish
 - [x] Item 3: Subcategory enforcement — assign correct WordPress subcategory during blog generation (campaign → WP category mapping) + backfilled 181 early posts
 - [x] Item 1: Vertical chain linking — replaced cross-silo link optimizer with silo-contained vertical chain model using WP subcategory as silo boundary
-- [ ] Item 4: YouTube Intelligence tool in Viral Studio — pull top 10 videos by topic, extract transcripts, synthesize into script framework
-- [ ] Item 5: Human review gate — add pending_review status and review queue before publish
-- [ ] Item 6: Article → YouTube embed automation — auto-embed matching YouTube video into blog post
+- [x] Item 4: YouTube Intelligence tool in Viral Studio — pull top 10 videos by topic, extract transcripts, synthesize into script framework
+- [x] Item 5: Human review gate — add pending_review status and review queue before publish
+- [x] Item 6: Article → YouTube embed automation — auto-embed matching YouTube video into blog post
 
 ## YouTube Intelligence — ViewStats-Level Upgrade (v20)
 
-- [ ] Backend: youtube.analyzeChannel — fetch channel stats, top 10 videos with outlier scores, upload frequency, longs vs shorts
-- [ ] Backend: youtube.searchChannels — find 10 similar/competitor channels by topic keyword
-- [ ] Backend: youtube.getOutlierVideos — search topic, return 10 videos ranked by outlier score
-- [ ] Backend: youtube.getTopicTrends — search topic, return 10 videos ranked by view velocity (views/day)
-- [ ] Backend: youtube.getTitlePatterns — LLM analysis of 10 top video titles for winning patterns
-- [ ] Frontend: Channel Analyzer tab — channel handle input, full stats + 10 top videos with outlier scores
-- [ ] Frontend: Outlier Finder tab — topic search, 10 highest-outlier videos
-- [ ] Frontend: Topic Trends tab — 10 videos ranked by view velocity
-- [ ] Frontend: Title Pattern Analyzer — 10 title examples + LLM pattern extraction
-- [ ] Frontend: Similar Channels panel — 10 competitor channels for a topic
+- [x] Backend: youtube.analyzeChannel — fetch channel stats, top 10 videos with outlier scores, upload frequency, longs vs shorts
+- [x] Backend: youtube.searchChannels — find 10 similar/competitor channels by topic keyword
+- [x] Backend: youtube.getOutlierVideos — search topic, return 10 videos ranked by outlier score
+- [x] Backend: youtube.getTopicTrends — search topic, return 10 videos ranked by view velocity (views/day)
+- [x] Backend: youtube.getTitlePatterns — LLM analysis of 10 top video titles for winning patterns
+- [x] Frontend: Channel Analyzer tab — channel handle input, full stats + 10 top videos with outlier scores
+- [x] Frontend: Outlier Finder tab — topic search, 10 highest-outlier videos
+- [x] Frontend: Topic Trends tab — 10 videos ranked by view velocity
+- [x] Frontend: Title Pattern Analyzer — 10 title examples + LLM pattern extraction
+- [x] Frontend: Similar Channels panel — 10 competitor channels for a topic
 
 ## Keith Item 5 — Human Review Gate (v21)
 
-- [ ] DB: Add `pending_review` to production_status enum in drizzle schema
-- [ ] DB: Add `reviewNotes` text column to scripts table (reviewer feedback)
-- [ ] DB: Run db:push
-- [ ] Backend: blog.submitForReview mutation — move script to pending_review status
-- [ ] Backend: blog.approveForPublish mutation — approve and trigger WP publish
-- [ ] Backend: blog.rejectReview mutation — reject with notes, move back to drafting
-- [ ] Backend: blog.listPendingReview query — list all scripts in pending_review
-- [ ] Frontend: Add "Submit for Review" button on blog Kanban cards (replaces direct Publish)
-- [ ] Frontend: New "Review Queue" page accessible from sidebar
-- [ ] Frontend: Review Queue shows full article preview (title, meta, body, hero image)
-- [ ] Frontend: Approve button → triggers WP publish + moves to Published
-- [ ] Frontend: Reject button → opens notes dialog, moves back to Drafting with feedback
-- [ ] Frontend: Badge count on sidebar nav item showing pending review count
-- [ ] Blog generation flow: auto-submit to review instead of direct publish
+- [x] DB: Add `pending_review` to production_status enum in drizzle schema
+- [x] DB: Add `reviewNotes` text column to scripts table (reviewer feedback)
+- [x] DB: Run db:push
+- [x] Backend: blog.submitForReview mutation — move script to pending_review status
+- [x] Backend: blog.approveForPublish mutation — approve and trigger WP publish
+- [x] Backend: blog.rejectReview mutation — reject with notes, move back to drafting
+- [x] Backend: blog.listPendingReview query — list all scripts in pending_review
+- [x] Frontend: Add "Submit for Review" button on blog Kanban cards (replaces direct Publish)
+- [x] Frontend: New "Review Queue" page accessible from sidebar
+- [x] Frontend: Review Queue shows full article preview (title, meta, body, hero image)
+- [x] Frontend: Approve button → triggers WP publish + moves to Published
+- [x] Frontend: Reject button → opens notes dialog, moves back to Drafting with feedback
+- [x] Frontend: Badge count on sidebar nav item showing pending review count
+- [x] Blog generation flow: auto-submit to review instead of direct publish
 
 ## Keith Item 6 — Article → YouTube Embed Automation (v21)
 
-- [ ] Backend: youtube.findMatchingVideo — search Pedram's channel for a video matching article topic
-- [ ] Backend: blog.embedYouTubeVideo mutation — inject YouTube embed into WP post body
-- [ ] Backend: Auto-trigger embed search on WP publish (after article is live)
-- [ ] Frontend: Show "Embed YouTube Video" panel on Published blog cards
-- [ ] Frontend: Display matched video title + thumbnail with Confirm/Skip buttons
-- [ ] Frontend: Show embed status on published card (embedded / no match / skipped)
+- [x] Backend: youtube.findMatchingVideo — search Pedram's channel for a video matching article topic
+- [x] Backend: blog.embedYouTubeVideo mutation — inject YouTube embed into WP post body
+- [x] Backend: Auto-trigger embed search on WP publish (after article is live)
+- [x] Frontend: Show "Embed YouTube Video" panel on Published blog cards
+- [x] Frontend: Display matched video title + thumbnail with Confirm/Skip buttons
+- [x] Frontend: Show embed status on published card (embedded / no match / skipped)
 
 ## Teleprompter Script Generator
 - [ ] Backend: youtube.generateTeleprompterScript — takes outline + topic, returns full spoken script (no markdown)
@@ -3883,3 +3883,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Substack Fix (Jun 11 2026)
 - [x] Fix Substack publish 400 error: add `draft_bylines: null` to draft creation body (undocumented Substack private API requirement — field must be explicitly null, not absent)
+
+## Ron's Socratic Pull Strategy — Platform Alignment (Jun 11 2026)
+- [x] Webinar outline prompt: replace Section 1-5 structure with Socratic Pull 4-act structure (Opening Question → The Theft → The Map → Guide Not Guru → Invitation)
+- [x] Webinar outline prompt: add Socratic Pull opening hook template ("Have you ever been in a room full of people and felt completely alone?")
+- [x] Webinar outline prompt: add "Actual Intelligence vs AI" hook as recommended title option
+- [x] Webinar outline prompt: add sailing teacher frame to Act III / credentials section
+- [x] Social content prompts: update LinkedIn/Meta/X/TikTok to lead with a QUESTION not a statement (Socratic Pull rule)
+- [x] Social content prompts: add discovery narrative format ("I had this question. I went looking. Here is what I found.")
+- [x] Social content prompts: add NPC/Actual Intelligence framing as content pillar
+- [x] Landing page generator: update hero headline formula to Socratic Pull question format
+- [x] Landing page generator: add Socratic Pull architecture option (Question → Recognition → Discovery → Invitation)
+- [x] Landing page generator: add "sailing teacher" positioning block to bridge section
+- [x] Landing page generator: update default Lights On webinar title to "Actual Intelligence: How to Reclaim the One Thing AI Can't Replace"
+- [x] Save checkpoint after all prompt updates

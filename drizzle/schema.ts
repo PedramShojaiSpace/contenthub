@@ -1921,3 +1921,33 @@ export const gscIndexingLog = mysqlTable("gsc_indexing_log", {
 });
 export type GscIndexingLog = typeof gscIndexingLog.$inferSelect;
 export type InsertGscIndexingLog = typeof gscIndexingLog.$inferInsert;
+
+// ─── Ask the Urban Monk — Chat Tables ────────────────────────────────────────
+// Stores conversation sessions and messages for the AI chatbot that answers
+// questions grounded in Dr. Pedram Shojai's uploaded books.
+
+export const urbanMonkChatSessions = mysqlTable("urban_monk_chat_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("umcs_user_id").notNull(),
+  // Auto-generated title from the first user message (truncated to 100 chars)
+  title: varchar("umcs_title", { length: 255 }).notNull().default("New Conversation"),
+  createdAt: timestamp("umcs_created_at").defaultNow().notNull(),
+  updatedAt: timestamp("umcs_updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UrbanMonkChatSession = typeof urbanMonkChatSessions.$inferSelect;
+export type InsertUrbanMonkChatSession = typeof urbanMonkChatSessions.$inferInsert;
+
+export const urbanMonkChatMessageRoleEnum = mysqlEnum("umcm_role", ["user", "assistant"]);
+
+export const urbanMonkChatMessages = mysqlTable("urban_monk_chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("umcm_session_id").notNull(),
+  role: urbanMonkChatMessageRoleEnum.notNull(),
+  // Full message content — can be long for assistant responses with citations
+  content: longtext("umcm_content").notNull(),
+  createdAt: timestamp("umcm_created_at").defaultNow().notNull(),
+});
+
+export type UrbanMonkChatMessage = typeof urbanMonkChatMessages.$inferSelect;
+export type InsertUrbanMonkChatMessage = typeof urbanMonkChatMessages.$inferInsert;

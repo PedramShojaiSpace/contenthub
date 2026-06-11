@@ -1,16 +1,20 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, isNotNull } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   uploadedBooks,
   bookSnippets,
+  urbanMonkChatSessions,
+  urbanMonkChatMessages,
   type BookSnippet,
 } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { invokeClaudeJson } from "./claudeLLM";
 import { parseLLMJson } from "./llmUtils";
+import { ENV } from "./_core/env";
+import { users } from "../drizzle/schema";
 
 // Map any platform string the LLM might return to a valid snippetPlatformEnum value
 const VALID_SNIPPET_PLATFORMS = new Set(["instagram", "linkedin", "twitter", "facebook", "all"]);
@@ -1103,6 +1107,186 @@ IMPORTANT: The X post MUST be 260 characters or fewer. Count carefully. The inst
         .update(bookSnippets)
         .set({ softRejected: input.softRejected })
         .where(eq(bookSnippets.id, input.snippetId));
+      return { success: true };
+    }),
+
+  // ─── Ask the Urban Monk ─────────────────────────────────────────────────────
+  // RAG chatbot grounded in Dr. Pedram Shojai's uploaded books.
+  // Books are uploaded by the owner — we always query owner's books regardless
+  // of which admin is currently logged in.
+
+  askUrbanMonk: protectedProcedure
+    .input(z.object({
+      question: z.string().min(1).max(2000),
+      sessionId: z.number().optional(),
+      conversationHistory: z.array(z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      })).optional().default([]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // ── 1. Resolve owner user ID so we always query the owner's books ──
+      const ownerOpenId = ENV.ownerOpenId;
+      let ownerUserId = ctx.user.id; // fallback to current user
+      if (ownerOpenId) {
+        const [ownerRow] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.openId, ownerOpenId));
+        if (ownerRow) ownerUserId = ownerRow.id;
+      }
+
+      // ── 2. Load all ready books with extracted text ──
+      const books = await db
+        .select({
+          id: uploadedBooks.id,
+          title: uploadedBooks.title,
+          extractedText: uploadedBooks.extractedText,
+        })
+        .from(uploadedBooks)
+        .where(
+          and(
+            eq(uploadedBooks.userId, ownerUserId),
+            eq(uploadedBooks.status, "ready"),
+            isNotNull(uploadedBooks.extractedText)
+          )
+        );
+
+      // ── 3. Build RAG context from book excerpts ──
+      // Take the first ~6000 chars from each book to stay within token limits
+      // while still giving the LLM a representative cross-section of the library.
+      const CHARS_PER_BOOK = 6000;
+      const bookContexts = books.map((b) => {
+        const excerpt = (b.extractedText ?? "").slice(0, CHARS_PER_BOOK);
+        return `=== Book: ${b.title} ===\n${excerpt}`;
+      });
+      const ragContext = bookContexts.join("\n\n");
+
+      // ── 4. Build or retrieve chat session ──
+      let sessionId = input.sessionId;
+      if (!sessionId) {
+        // Create a new session titled from the first 80 chars of the question
+        const title = input.question.slice(0, 80);
+        const [inserted] = await db
+          .insert(urbanMonkChatSessions)
+          .values({ userId: ctx.user.id, title });
+        sessionId = (inserted as any).insertId as number;
+      }
+
+      // ── 5. Persist the user message ──
+      await db.insert(urbanMonkChatMessages).values({
+        sessionId,
+        role: "user",
+        content: input.question,
+      });
+
+      // ── 6. Build the LLM messages array ──
+      const systemPrompt = `You are Dr. Pedram Shojai — The Urban Monk. You are a doctor of Oriental medicine, a Taoist monk, a filmmaker, and a bestselling author. You speak with authority, warmth, and directness. You blend ancient Eastern wisdom with modern science. You are grounded, practical, and compassionate.
+
+You have access to excerpts from your books. When answering, draw on the actual wisdom, frameworks, and language from your books. If the answer is in your books, quote or paraphrase directly. If the question goes beyond your books, answer from your established philosophy and voice — but stay true to your teachings.
+
+Your voice is: direct, spiritual, scientific, conversational, and occasionally humorous. You use short punchy sentences alongside deeper explanations. You reference practices like qigong, meditation, breathwork, sleep hygiene, gut health, and energy management. You challenge people to take ownership of their health and life.
+
+Always answer in first person as Dr. Pedram Shojai. Never break character. Never say "as an AI" or "I don't have access to." If you don't know something, say so in your voice — e.g., "That's outside what I've written about directly, but here's how I'd approach it..."
+
+--- YOUR BOOK EXCERPTS ---
+${ragContext}
+--- END OF BOOK EXCERPTS ---`;
+
+      const priorMessages = input.conversationHistory.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+
+      const messages = [
+        { role: "system" as const, content: systemPrompt },
+        ...priorMessages,
+        { role: "user" as const, content: input.question },
+      ];
+
+      // ── 7. Call the LLM ──
+      let answer = "I'm sorry, I couldn't generate a response right now. Please try again.";
+      try {
+        const response = await invokeLLM({ messages });
+        const rawContent = response.choices?.[0]?.message?.content;
+        answer = (typeof rawContent === "string" ? rawContent : null) ?? answer;
+      } catch (err) {
+        console.error("[askUrbanMonk] LLM error:", err);
+      }
+
+      // ── 8. Persist the assistant response ──
+      await db.insert(urbanMonkChatMessages).values({
+        sessionId,
+        role: "assistant",
+        content: answer,
+      });
+
+      return { answer, sessionId };
+    }),
+
+  // ─── List chat sessions for the current user ────────────────────────────────
+  listChatSessions: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const sessions = await db
+        .select()
+        .from(urbanMonkChatSessions)
+        .where(eq(urbanMonkChatSessions.userId, ctx.user.id))
+        .orderBy(desc(urbanMonkChatSessions.updatedAt));
+      return sessions;
+    }),
+
+  // ─── Get messages for a specific chat session ───────────────────────────────
+  getChatMessages: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      // Verify session belongs to this user
+      const [session] = await db
+        .select()
+        .from(urbanMonkChatSessions)
+        .where(
+          and(
+            eq(urbanMonkChatSessions.id, input.sessionId),
+            eq(urbanMonkChatSessions.userId, ctx.user.id)
+          )
+        );
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      const messages = await db
+        .select()
+        .from(urbanMonkChatMessages)
+        .where(eq(urbanMonkChatMessages.sessionId, input.sessionId))
+        .orderBy(urbanMonkChatMessages.createdAt);
+      return { session, messages };
+    }),
+
+  // ─── Delete a chat session ───────────────────────────────────────────────────
+  deleteChatSession: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [session] = await db
+        .select({ id: urbanMonkChatSessions.id })
+        .from(urbanMonkChatSessions)
+        .where(
+          and(
+            eq(urbanMonkChatSessions.id, input.sessionId),
+            eq(urbanMonkChatSessions.userId, ctx.user.id)
+          )
+        );
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      await db
+        .delete(urbanMonkChatMessages)
+        .where(eq(urbanMonkChatMessages.sessionId, input.sessionId));
+      await db
+        .delete(urbanMonkChatSessions)
+        .where(eq(urbanMonkChatSessions.id, input.sessionId));
       return { success: true };
     }),
 });

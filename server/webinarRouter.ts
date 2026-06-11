@@ -312,51 +312,66 @@ ${input.webinarDate ? `WEBINAR DATE: ${input.webinarDate}` : ""}
 ${input.webinarTime ? `WEBINAR TIME: ${input.webinarTime} ${input.webinarTimezone ?? "ET"}` : ""}
 ${input.webinarDate && input.webinarTime ? `FULL DATE/TIME: ${input.webinarDate} at ${input.webinarTime} ${input.webinarTimezone ?? "ET"} — use this EXACT date and time in all urgency copy, countdown references, and promotion angles` : ""}
 
-Generate a complete, professional webinar outline. Structure it as follows:
+Generate a complete, professional webinar outline using the SOCRATIC PULL METHOD. This is a discovery narrative format — Pedram is not a teacher delivering content, he is a fellow traveler sharing what he found. Every major section begins with a question the audience is already half-asking themselves.
+
+TITLE GUIDANCE: Consider these proven title options and choose the most appropriate for the topic:
+- "Actual Intelligence: How to Reclaim the One Thing AI Can't Replace" (timely, professional audience)
+- "Are You an NPC?" (provocative, tech-adjacent younger audience)
+- "The Question I Couldn't Stop Asking" (broad, discovery-led)
+- "What If Your Senses Are Lying to You?" (neuroscience-curious, health audience)
+- "The Sailing Lesson Nobody Gave You" (warm, Academy/community audience)
+
+POSITIONING FRAME: Pedram is the sailing teacher, not the boat captain. He is not building a following — he is building capability. He teaches sailing and expects students to leave and go sail on their own. This deflects the guru accusation, sets honest expectations, and invites skeptics in.
+
+Structure the outline as follows:
 
 ## 🎯 Webinar Title
-(Compelling title that speaks to the audience's pain)
+(Use the Socratic Pull title format — a question or discovery frame, not a statement)
 
-## 🪝 Opening Hook (0–5 min)
-(The first 5 minutes — pattern interrupt, bold claim, or story that grabs attention)
+## 🪝 OPENING — The Question (0–5 min)
+Begin NOT with credentials, NOT with an agenda slide, NOT with a welcome. Begin with a single question delivered directly to camera that the audience is already half-asking themselves. The question IS the credential. Example opening: "Have you ever been in a room full of people — people you love, people you chose to be around — and felt completely, inexplicably alone? Not sad. Not angry. Just absent. Like you were watching your own life through glass?"
 
-## 📖 Hook Script
-(Write the actual word-for-word opening hook script — 3–5 paragraphs in Pedram's voice)
+## 📖 Opening Hook Script
+(Write the actual word-for-word opening — 3–5 paragraphs in Pedram's voice. Start with the question. Then: "I had that question for a long time. And when I finally went looking for the answer, I found something I was not expecting. I want to share it with you today — not as a teacher, but as someone who went looking and found a map." No credentials. No bio. No agenda.)
 
 ## 📋 Webinar Outline
 
-### Section 1: The Problem (5–15 min)
-- Key points to cover
-- Stories or data to use
-- Audience engagement moment
+### ACT I: The Theft — What Was Taken and How (5–15 min)
+Deliver the diagnosis as a DISCOVERY, not a lecture. Ask the audience to notice something in their own experience BEFORE naming it. Walk through the attention economy argument using the Socratic method. Key move: do NOT explain the solution yet — name it as a mystery. The audience's curiosity is the mechanism that pulls them forward.
+- Opening recognition question for this act
+- The discovery narrative (what Pedram found when he went looking)
+- The mechanism of the theft — specific, surprising, not what they expected
+- One question that lands the diagnosis without stating it
 
-### Section 2: The Root Cause Reveal (15–30 min)
-- The "aha moment" — what most people miss
-- Pedram's unique framework
-- Science + wisdom integration
+### ACT II: The Map — The Framework as a Discovery (15–35 min)
+Reveal the core framework one element at a time — NOT as a list, but as a series of questions the audience answers about themselves. For each element: (1) Ask a question that reveals its absence. (2) Name the element. (3) Give one concrete, surprising fact about how it has been hijacked. (4) Give one 30-second practice that begins to restore it. By the end of this act, the audience has essentially diagnosed themselves.
+- 3–5 framework elements revealed as discoveries
+- Each element: recognition question → name → hijack mechanism → restoration practice
+- The NPC reframe if appropriate: "You're not a player. You're not in the game of life."
+- The AI counternarrative if appropriate: Actual Intelligence vs. Artificial Intelligence
 
-### Section 3: The Solution Framework (30–45 min)
-- The methodology / approach
-- What makes this different from everything else they've tried
-- Proof points and case examples
+### ACT III: The Guide, Not the Guru (35–45 min)
+Introduce Pedram — but ONLY after the audience has already been on a journey with him. Use the sailing teacher frame: "I teach sailing. I'm not your boat captain. I expect you to leave here and go sail." Brief bio framed as the journey, not the credentials: Yellow Dragon monastery, medical doctorate, clinical practice — all framed as "here is the journey I went on to find this map."
+- The sailing teacher positioning statement
+- Journey bio (monastery → clinic → books → patients → this map)
+- Why this works when everything else has failed
+- Implicit objection handling through framing
 
-### Section 4: The Offer (45–55 min)
-- Transition to the offer
-- What's included, what it costs, why now
-- Objection handling (3 key objections)
+### ACT IV: The Invitation — Not a Sales Pitch (45–${input.targetLengthMinutes} min)
+The close is an honest invitation framed as a decision point, not a sales pitch. "If what I've shared today resonated — if you recognized yourself in those questions — then you already know the answer to whether this is for you." End with a QUESTION, not a statement: "Do you want to keep asking it? Or do you want to find out what's on the other side?"
+- The decision-point invitation (not a pitch)
+- Offer details: what it is, what it costs, the 30-day guarantee framed as confidence not fear
+- The final question (not a statement) that closes the webinar
+- Q&A
 
-### Section 5: Q&A + Close (55–${input.targetLengthMinutes} min)
-- Anticipated questions
-- Final CTA push
-
-## 💡 Key Teaching Points
-(5–7 bullet points — the core ideas the audience will walk away with)
+## 💡 Key Discovery Points
+(5–7 questions the audience will be able to answer about themselves by the end — framed as recognitions, not teachings)
 
 ## 🚨 Urgency & Scarcity Angles
-(2–3 legitimate reasons to act now)
+(2–3 legitimate reasons to act now — framed as opportunity, not pressure)
 
-## 📣 Pre-Webinar Promotion Angles
-(3 social media / email hooks to drive registrations)`;
+## 📣 Pre-Webinar Promotion Angles — Socratic Pull Format
+(3 social media / email hooks using the discovery narrative format: "I had this question. I went looking. Here is what I found. If this resonates, join me [date].")`
 
       const response = await invokeLLM({
         messages: [

@@ -51,9 +51,9 @@ const OFFER_DETAILS: Record<string, { label: string; price: string; cta: string;
     label: "Lights On Webinar",
     price: "Free",
     url: "https://lightson.theurbanmonk.com/",
-    cta: "Reserve Your Free Seat",
+    cta: "Reserve Your Free Seat — It's Free",
     description:
-      "A free live webinar with Dr. Pedram Shojai — 'Something Has Been Stolen From You' — discover what's draining your energy and vitality and how to get it back.",
+      "A free live webinar with Dr. Pedram Shojai — 'Actual Intelligence: How to Reclaim the One Thing AI Can't Replace' — discover how the attention economy has hijacked your 9 perceptual channels and what to do about it. Includes the Perceptual Baseline Quiz.",
   },
   deep_sleep_webinar: {
     label: "Deep Sleep Solution Webinar",
@@ -145,18 +145,25 @@ CRITICAL INSTRUCTIONS FOR OBJECTION HANDLING:
 - Use the "Response Framework" and "Key Insight" from each objection to craft language that preempts hesitation before it arises.
 - Use the "Emotional Hook" and real customer quotes from pain points as hooks in the Opening Story and The Problem sections.
 
+SOCRATIC PULL ARCHITECTURE (REQUIRED for Lights On and webinar offers; optional but preferred for all others):
+This landing page uses the Socratic Pull Method. The visitor is not sold to — they are invited to recognize their own question in Pedram's journey. The structure is: Question → Recognition → Discovery → Invitation.
+- The headline is a QUESTION the visitor is already half-asking themselves, not a statement about the product.
+- The opening story begins with Pedram's own question, not with credentials or a problem statement.
+- The bridge introduces Pedram as the sailing teacher: "I teach sailing. I'm not your boat captain. I expect you to leave here and go sail on your own."
+- The close is an invitation framed as a decision point, not a sales pitch: "If this resonated — if you recognized yourself in that question — then you already know whether this is for you."
+
 LANDING PAGE STRUCTURE (write in this exact order, using Markdown):
-1. **Headline** — A bold, pattern-interrupting headline that speaks directly to the avatar's deepest pain or desire. Max 12 words. Use the Headline Formula from Avatar Intelligence if provided.
-2. **Subheadline** — One sentence that expands the headline and introduces the solution. Max 25 words.
-3. **Opening Story** (2-3 short paragraphs) — Pedram speaks directly to the avatar. Acknowledge their pain using the real customer quotes and emotional hooks from Avatar Intelligence. Show you understand their world. Build empathy and credibility.
-4. **The Problem** (2-3 bullet points) — Name the root causes of their struggle. Use clinical insight + ancient wisdom framing. Draw from the pain point descriptions in Avatar Intelligence.
-5. **The Bridge** (1-2 paragraphs) — Introduce the offer as the solution. Explain WHY this works when everything else has failed. Implicitly address the top objection (e.g., "I've tried everything") by explaining what makes this different. Reference Pedram's credentials naturally.
-6. **What You Get** (3-5 bullet points) — Specific, tangible benefits of the offer. Outcomes, not features.
-7. **Who This Is For** (3-4 bullet points) — Describe the ideal buyer using the persona profile from Avatar Intelligence. Make them feel seen and called.
-8. **Social Proof Placeholder** — Write 2 sample testimonial quotes in the voice of the avatar (clearly marked as examples for real testimonials to replace). Use the messaging framework's emotional job to guide the transformation arc in each quote.
-9. **Offer Summary** — Restate the offer name, price, and what's included in 2-3 sentences.
-10. **CTA Block** — A compelling call to action paragraph (2-3 sentences) followed by the CTA button text in bold. Address the affordability/time objection implicitly (e.g., frame the cost against the cost of inaction).
-11. **Closing Reassurance** — 1-2 sentences addressing the main objection or hesitation. Use the response framework from Avatar Intelligence to build final trust.
+1. **Headline** — A question the visitor is already half-asking themselves. Max 12 words. Use the Socratic Pull format: "What if [the thing they've been told is wrong]?" or "Have you ever [the experience that reveals the problem]?" or "[The thing they want] — what if you already have it?" Use the Headline Formula from Avatar Intelligence if provided, but reframe it as a question.
+2. **Subheadline** — One sentence that names what Pedram found when he went looking. Max 25 words. Frame as discovery, not promise.
+3. **Opening Story** (2-3 short paragraphs) — Pedram begins with HIS question, not the avatar's pain. "I had a question I couldn't stop asking. I went looking. Here is what I found." Then bridge to the avatar's experience using real customer quotes and emotional hooks from Avatar Intelligence.
+4. **The Recognition** (2-3 bullet points) — Name the root causes as things the avatar will RECOGNIZE in themselves, not problems being diagnosed. "You've probably noticed that..." / "If you've ever felt..." Draw from Avatar Intelligence pain points.
+5. **The Bridge — The Sailing Teacher** (1-2 paragraphs) — Introduce Pedram's credentials through the sailing teacher frame: "I teach sailing. I'm not your boat captain. I expect you to leave here and go sail on your own." Explain what makes this different by explaining what Pedram is NOT (a guru, a dependency, a quick fix) and what he IS (a map-giver, a fellow traveler who found something).
+6. **What You Will Discover** (3-5 bullet points) — Frame as questions the avatar will be able to answer after the offer. "Why your [symptom] isn't what you think it is." Outcomes as discoveries, not features.
+7. **Who This Is For** (3-4 bullet points) — Describe the ideal buyer as someone who is already asking the right questions. "This is for you if you've ever wondered..." Make them feel recognized, not targeted.
+8. **Social Proof Placeholder** — Write 2 sample testimonial quotes in the voice of the avatar (clearly marked as examples for real testimonials to replace). Frame as discovery narratives: "I came in with a question. I left with a map."
+9. **Offer Summary** — Restate the offer name, price, and what's included in 2-3 sentences. Frame as "what you get access to," not "what you buy."
+10. **The Invitation** (replaces CTA Block) — A decision-point paragraph (2-3 sentences) that ends with a QUESTION, not a command: "If what I've shared resonated — if you recognized yourself in that question — then you already know whether this is for you. The question is: do you want to find out what's on the other side?" Then the CTA button text in bold.
+11. **Closing Reassurance** — 1-2 sentences. Frame as confidence, not fear: "30-day guarantee — not because I'm worried you won't love it, but because I'm confident enough in this work to make that promise."
 
 VOICE RULES:
 - Write as Pedram speaking directly to the reader ("you", "your")
@@ -166,6 +173,7 @@ VOICE RULES:
 - No bullet points in the opening story or bridge sections — use flowing prose
 - The copy must feel personal, not like a sales page template
 - Use transformation language: "reclaim," "restore," "finally," "root cause" — never "manage" or "cope"
+- NEVER use guru language: "I will show you," "I will teach you," "follow me" — use sailing teacher language instead: "I went looking," "here is what I found," "here is the map"
 
 OUTPUT: Return ONLY the landing page copy in clean Markdown. No meta-commentary, no labels outside the structure above, no "Here is your landing page:" preamble.`;
 }

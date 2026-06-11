@@ -309,11 +309,11 @@ const OFFERS = [
   },
   {
     id: "lights_on_webinar",
-    label: "Lights On Course",
+    label: "Lights On Webinar",
     price: "Free",
     url: "https://lightson.theurbanmonk.com/",
     icon: <Star className="h-5 w-5" />,
-    description: "Free webinar — 'Something Has Been Stolen From You' — energy & vitality",
+    description: "Free webinar — 'Actual Intelligence: How to Reclaim the One Thing AI Can't Replace' — the 9 perceptual channels, the attention economy theft, and the Perceptual Baseline Quiz",
     color: "border-yellow-300 bg-yellow-50 hover:bg-yellow-100",
   },
   {

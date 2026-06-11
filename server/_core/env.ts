@@ -10,7 +10,6 @@ export const ENV = {
   ingestSecret: process.env.INGEST_SECRET ?? "",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   vidiqApiKey: process.env.VIDIQ_API_KEY ?? "",
-  substackEmail: process.env.SUBSTACK_EMAIL ?? "",
-  substackPassword: process.env.SUBSTACK_PASSWORD ?? "",
-  substackPublicationUrl: process.env.SUBSTACK_PUBLICATION_URL ?? "", // e.g. "urbanmonkletter.substack.com"
+  substackSessionCookie: process.env.SUBSTACK_SESSION_COOKIE ?? "",
+  substackPublicationUrl: process.env.SUBSTACK_PUBLICATION_URL ?? "", // e.g. "drpedramshojai.substack.com"
 };

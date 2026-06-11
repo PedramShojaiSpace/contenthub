@@ -444,6 +444,15 @@ export const appRouter = router({
   blogToYoutube: blogToYoutubeRouter,
   vidiq: vidiqRouter,
   analyticsSync: analyticsSyncRouter,
+
+  // ─── Substack ────────────────────────────────────────────────────────────────
+  substack: router({
+    validateSession: protectedProcedure.query(async () => {
+      const { validateSubstackSession } = await import("./substackPublisher");
+      return validateSubstackSession();
+    }),
+  }),
+
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

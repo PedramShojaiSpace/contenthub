@@ -13,10 +13,10 @@
   "experiments": null,
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZGNNDF2SM",
-    "secret_access_key": "BB7+8m2Yfz9FQGMAI8LsKWKpcMGBw2nzaIpcrfYa",
-    "session_token": "IQoJb3JpZ2luX2VjEHcaCXVzLWVhc3QtMSJHMEUCICZBUsD6YghytmrlWXrymAzJdb1lgtNgutPNMuqQN71yAiEAtMz6tJ9VaphKOEHysOl0Yo/beWVWXQaGSLW16wGu0A8q9QMIPxAEGgw2NjUzODYwOTg4NjYiDC2PD8dI9gyPWHPXRSrSA32hwqR8qN2AYVXcm6M5f/hJmlouhk6ut97PsfppjHhB323xeFFRE8lVEx5w1LSK8S8tsLP0Afhi/t4ARsM9FICKbNmeYcSllniIbdLhsvpJDF6yFR74ZtAxkmX7drvS0RN2HEYe7V/SuGCSFGWFtSSJcl7lM/gIkXahz07z5zTd27HA62bYHFI40GA0zbFFQ0+Xssm65zh3iZt0RTLr92Ttu02F626FX8FuVET7wsARaJAUcNz/lW96sNrwW7hAXsePJyOS/VGxU5t2xWF2HEkAhK6RzGhYPqsZuTjPUdPux3gf8HtQJ0VbektoJLcyvuL2PeWv00hkVuvQaIYXqvsc1zqVYo4NLe0mrtw/i2NxnI1XT7zbT8Cz1Xj2bNkftzSCynpCZFa2pYsi21kwtE6nypcCthWSGdlWIJe9uu5SyvL420P+BgwXq0GrFQVpXmXnYeeYVFHvhL4BYtl5xT3aYiPvcue50zX+rcFsNnsyFRZgJDg3USpFTKp6nPV7RSWe18rXgUFXIvHjSG+tAimbJy+V1KPFfd/H8BgTG+sqgLNExz1B+HFUsbM+Ew8qHPRe0N5akCYwypK81OQqsSmz7gqt/kYnY16IYATejNQ8/QMw++uA0QY6nQFUekOQwdP2jFF4Onx3Mw1Cz2zPKSp/geGQiBP/4Tie9jtBGQIOL+uXcFSs9lU1hrII1p7XIxydmHhqL/mD+txCBzXJCKKgmYKcoBybcneCTTycqA5iNtHk8dITpAUFCdVokSSero19fyseH4ysj8pq8VFv3meEXy11dFp34mD+OEcOxdxSfBcO5GNU4s+r0DX8qF+encZDGttJtJH2",
-    "expiration": "2026-06-04T02:11:07.000Z"
+    "access_key_id": "ASIAZV3A2ECZKQEZN4RP",
+    "secret_access_key": "8vBs7/izM4ABhX+/jgGwownJSgbVv/mmbgSpg/LP",
+    "session_token": "IQoJb3JpZ2luX2VjEDoaCXVzLWVhc3QtMSJHMEUCIHFS4VaVTH+OLHzF73u34li3mfL9siTNmCSTxOL+1EZHAiEAzNJv2ZQP/G7hKORKyRlNEEXqeJkZ06egTbcfCHXx1TQq9QMIAxAEGgw2NjUzODYwOTg4NjYiDH+2C33qoVHYNTTqNyrSAzusVdR1m81zkiQA5RwpMem/FRUsFXBXKTOzjvfVOYpDhKlM1RcsSqMTxthxcfRhu+DvIiLXcU3LREtVr4qs6kukI9uF5Y854sAe+c82z4D5w3OokyPDTqZQtbcTqxYcRV4+3DGjilqfF22ZAGZEW7srTOSVgNrmYddi9HGg/PJQYCJ2CQkdr9Zo7P1dEFsN7jofNF/6wVlX61LPfNMTBcZZyCSXB7Hp1IDmuzx5tt/2O+BHmkGVLTyCO2VKjteEbKmjH3al089bsj2cohCHszWqQBO3FYfHA2QMZMlSqD1l/tT3EEQ8QS7O/thXHlcB2Yb0Fs/KbCPffZ3+dgreA+SS4Srb5UNJTmhBUW9KTImw545PWyAv4x/D1cZKxSs2sWzV5wMwI4uTRow0914llbt5jWPYLyXIpu3nIRqAE5G2w9ti4w0uWzgj+VlMdTne9Q8wyJlwr7hVwd0KzdtQ2CYXHO9eE0gLC9fjVr+8sfJNtwSnM1rs0KnDU0I/fhZMdTH+dfW8G3XcY6fJZ0MUJ0hlc7AS26DXSv7SM4n21rG5wE7BZdjehh4J4ueOVdkhbI//pe+xE08ReymgJ48kjY9m5R7BurAegSWI/EoSSUbxU8Iw5Oyr0QY6nQG1Fbu+qxL7KdnCNB1/ttMRu/vevPP3zotmTqtu+aOdruWnsfp9uzJfQ0SvNy8+6exuaifED+RSw/u/MLRul3BXw7Wq8olwkN3WoUTlyLIbreVpcIVNunks3jZWrF+Yb3FOTQ4kJ+0dfu6h2Q9BRR5bibGaEUqQVIHTItsHjiomOw9DC+7RNQuzlPISmkVTCMpFHAOKgeY/YDQrelkX",
+    "expiration": "2026-06-12T05:54:44.000Z"
   },
   "name": "lights-on-optin",
   "path": "/home/ubuntu/lights-on-optin",
@@ -42,6 +42,8 @@
     "OAUTH_SERVER_URL": "https://api.manus.im",
     "OWNER_NAME": "Pedram Shojai",
     "OWNER_OPEN_ID": "6Efk5Rs3uA46PG9TgoeUmf",
+    "SUBSTACK_PUBLICATION_URL": "https://drpedramshojai.substack.com",
+    "SUBSTACK_SESSION_COOKIE": "s%3APN2ap3Lt-6J6rxueGFBBDQu38lko44aW.h3cFg9pbxtmj4RNRbHg6jX9QHvtqJFjPDQDkUntEEKI",
     "SUPADATA_API_KEY": "sd_6a7ed1d5513cf44dee12d7edd468578b",
     "TYPEFORM_API_KEY": "tfp_HhhBqn3jf8hWm2fE8UfnRh6NUuMYaCxZxaht5BJpMiv1_3pYNYiC35kAcpA",
     "VIDIQ_API_KEY": "vidiq_EJjuw3rlkyGjpNhBNR_70xljsFpRbSudoQlHtubj",

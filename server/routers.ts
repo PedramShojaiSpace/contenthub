@@ -523,6 +523,7 @@ export const appRouter = router({
           yoastSeoTitle: z.string().optional(),        // Yoast SEO title (shown in SERPs)
           yoastMetaDescription: z.string().optional(), // Yoast meta description (150-160 chars)
           ctaBannerUrl: z.string().optional(),           // AI-generated CTA banner image URL
+          sendToSubstack: z.boolean().optional(),          // Cross-post to Substack on WP publish
         })
       )
       .mutation(async ({ input }) => {
@@ -3752,6 +3753,42 @@ Return BOTH in this exact format:
           }
         }
 
+        // Step 9e: Substack publish — fire if sendToSubstack is toggled on this content item
+        let substackResult: { published: boolean; postUrl?: string; postId?: string; message: string } = { published: false, message: "skipped" };
+        if (newStatus !== "scheduled") {
+          try {
+            const db9e = await getDb();
+            if (db9e) {
+              const { contentItems: ciTable9e } = await import("../drizzle/schema");
+              const { eq: eq9e } = await import("drizzle-orm");
+              const [ci9e] = await db9e.select({ sendToSubstack: ciTable9e.sendToSubstack, substackPostId: ciTable9e.substackPostId })
+                .from(ciTable9e)
+                .where(eq9e(ciTable9e.id, publishInput.contentItemId));
+              if (ci9e?.sendToSubstack && !ci9e.substackPostId) {
+                const { publishToSubstack } = await import("./substackPublisher");
+                const substackRes = await publishToSubstack({
+                  title: publishInput.title,
+                  bodyHtml: wpHtmlBody,
+                  subtitle: publishInput.metaDescription,
+                  sendEmail: true,
+                });
+                await db9e.update(ciTable9e).set({
+                  substackPostId: substackRes.postId,
+                  substackPostUrl: substackRes.postUrl,
+                }).where(eq9e(ciTable9e.id, publishInput.contentItemId));
+                substackResult = { published: true, postUrl: substackRes.postUrl, postId: substackRes.postId, message: `Published to Substack: ${substackRes.postUrl}` };
+                console.log(`[Substack] Published post ${substackRes.postId}: ${substackRes.postUrl}`);
+              } else if (ci9e?.substackPostId) {
+                substackResult = { published: false, message: "Already published to Substack" };
+              }
+            }
+          } catch (subErr) {
+            // Non-fatal — Substack publish failure should never block the WP publish response
+            console.error("[Substack] Publish failed (non-fatal):", subErr);
+            substackResult = { published: false, message: `Substack publish failed: ${(subErr as Error).message}` };
+          }
+        }
+
         return {
           success: true,
           postId: post.id,
@@ -3765,6 +3802,7 @@ Return BOTH in this exact format:
           keyphraseConflictUrl,
           wpCategories: wpCategoryIds,
           youtubeEmbedResult,
+          substackResult,
         };
       }),
 

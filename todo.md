@@ -3849,3 +3849,14 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] VSL script linked to video production queue with productionStatus: "scripted"
 - [x] "Load Lights On (30 posts)" button added to Command Center toolbar
 - [x] "Lights On VSL Script" button added to Script Library seed panel
+
+## Substack Integration (Arthur Brooks Strategy)
+- [x] Add `sendToSubstack` and `substackPostId`/`substackPostUrl` columns to content_items schema + db:push migration
+- [x] Add `SUBSTACK_EMAIL`, `SUBSTACK_PASSWORD`, `SUBSTACK_PUBLICATION_URL` to env.ts
+- [x] Create `server/substackPublisher.ts` helper (session auth + draft + publish via Substack API)
+- [x] Add Step 9e to `blog.publish` mutation: reads `sendToSubstack` flag from DB, calls `publishToSubstack()`, saves `substackPostId`/`substackPostUrl` back to DB
+- [x] Add `sendToSubstack` field to `content.update` procedure input schema
+- [x] Add `sendToSubstack` state + `substackPublishResult` state to CreationStudio
+- [x] Add "Also post to Substack" toggle (Switch) to WordPress publish panel header
+- [x] Persist `sendToSubstack` flag via `updateContentMutation` before WP publish fires
+- [x] Show "Also published to Substack" link after successful cross-post

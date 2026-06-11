@@ -51,6 +51,7 @@ const VideoToBlog = lazy(() => import("./pages/VideoToBlog"));
 const BlogToYoutube = lazy(() => import("./pages/BlogToYoutube"));
 const ReviewQueue = lazy(() => import("./pages/ReviewQueue"));
 const AskUrbanMonk = lazy(() => import("./pages/AskUrbanMonk"));
+const PresenceAssessment = lazy(() => import("./pages/PresenceAssessment"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -109,6 +110,7 @@ function Router() {
         <Route path={"/blog-to-youtube"} component={BlogToYoutube} />
         <Route path={"/review-queue"} component={ReviewQueue} />
         <Route path={"/ask-urban-monk"} component={AskUrbanMonk} />
+        <Route path={"/presence-assessment"} component={PresenceAssessment} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

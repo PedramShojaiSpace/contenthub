@@ -3872,11 +3872,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add vitest for the askUrbanMonk procedure (askUrbanMonk.test.ts — 9 tests)
 
 ## Presence Assessment Quiz
-- [ ] Add presence_assessment_results table to schema (userId, scores JSON, primaryResult, createdAt)
-- [ ] Run pnpm db:push for new table
-- [ ] Add presenceAssessment tRPC router (submitAssessment, getMyResults)
-- [ ] Build PresenceAssessment.tsx — 9-question quiz, one per channel (sleep, stress, gut, energy, focus, movement, connection, purpose, environment)
-- [ ] Score each channel 1-5, show personalized results with suppressed channels highlighted
-- [ ] Register /presence-assessment route in App.tsx
-- [ ] Add "Presence Assessment" link in sidebar navigation
-- [ ] Add vitest for the presenceAssessment procedure
+- [x] Add presence_assessment_results table to schema (userId, scores JSON, primaryResult, createdAt)
+- [x] Run pnpm db:push for new table
+- [x] Add presenceAssessment tRPC router (submitAssessment, getMyResults, getResultById)
+- [x] Build PresenceAssessment.tsx — 9-question quiz, one per channel (sleep, stress, gut, energy, focus, movement, connection, purpose, environment)
+- [x] Score each channel 1-5, show personalized results with suppressed channels highlighted
+- [x] Register /presence-assessment route in App.tsx
+- [x] Add "Presence Assessment" link in sidebar navigation (Libraries section)
+- [x] Add vitest for the presenceAssessment procedure (presenceAssessment.test.ts — 16 tests)

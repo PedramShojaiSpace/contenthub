@@ -72,10 +72,14 @@ export async function publishToSubstack(
   };
 
   // Step 1: Create a draft
+  // NOTE: draft_bylines must be explicitly set to null on creation.
+  // Substack's API returns 400 "Invalid value" if this field is absent or an empty array.
+  // This is an undocumented quirk of the private API (confirmed via reverse engineering).
   const draftBody = {
     draft_title: input.title,
     draft_subtitle: input.subtitle ?? "",
     draft_body: JSON.stringify(htmlToSubstackDoc(input.bodyHtml)),
+    draft_bylines: null,
     type: "newsletter",
     draft_section_id: null,
     audience: "everyone",

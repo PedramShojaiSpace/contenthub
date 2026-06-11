@@ -3880,3 +3880,6 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Register /presence-assessment route in App.tsx
 - [x] Add "Presence Assessment" link in sidebar navigation (Libraries section)
 - [x] Add vitest for the presenceAssessment procedure (presenceAssessment.test.ts — 16 tests)
+
+## Substack Fix (Jun 11 2026)
+- [x] Fix Substack publish 400 error: add `draft_bylines: null` to draft creation body (undocumented Substack private API requirement — field must be explicitly null, not absent)

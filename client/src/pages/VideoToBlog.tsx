@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,9 @@ import {
   ShieldCheck,
   BarChart2,
   AlertTriangle,
+  Upload,
+  FileUp,
+  X,
 } from "lucide-react";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
@@ -96,6 +99,11 @@ export default function VideoToBlog() {
   const [customInstructions, setCustomInstructions] = useState("");
   const [focusKeyword, setFocusKeyword] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Manual transcript upload state (fallback when YouTube has no transcript)
+  const [manualTranscript, setManualTranscript] = useState("");
+  const [showTranscriptUpload, setShowTranscriptUpload] = useState(false);
+  const transcriptFileRef = useRef<HTMLInputElement>(null);
 
   // vidIQ keyword research state
   const [vidiqKeyword, setVidiqKeyword] = useState(""); // triggers the query
@@ -273,6 +281,8 @@ export default function VideoToBlog() {
     setYtDescResult(null);
     setCustomInstructions("");
     setFocusKeyword("");
+    setManualTranscript("");
+    setShowTranscriptUpload(false);
     fetchVideoInfo.reset();
     generateBlog.reset();
     publishToWP.reset();
@@ -444,33 +454,150 @@ export default function VideoToBlog() {
           )}
 
           {videoInfo && (
-            <div className="flex gap-4 p-4 rounded-lg bg-muted/30 border border-border">
-              <img
-                src={videoInfo.thumbnail}
-                alt={videoInfo.title}
-                className="w-32 h-20 object-cover rounded-md shrink-0"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-              <div className="min-w-0">
-                <p className="font-semibold text-sm line-clamp-2">{videoInfo.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{videoInfo.channelName}</p>
-                <div className="flex items-center gap-3 mt-2">
-                  <Badge variant={videoInfo.hasTranscript ? "default" : "secondary"} className="text-xs">
-                    {videoInfo.hasTranscript
-                      ? `✓ Transcript (${(videoInfo.transcriptLength / 1000).toFixed(1)}k chars)`
-                      : "No transcript"}
-                  </Badge>
-                  <a
-                    href={`https://www.youtube.com/watch?v=${videoInfo.videoId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    View on YouTube
-                  </a>
+            <div className="space-y-3">
+              <div className="flex gap-4 p-4 rounded-lg bg-muted/30 border border-border">
+                <img
+                  src={videoInfo.thumbnail}
+                  alt={videoInfo.title}
+                  className="w-32 h-20 object-cover rounded-md shrink-0"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm line-clamp-2">{videoInfo.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{videoInfo.channelName}</p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <Badge variant={videoInfo.hasTranscript ? "default" : "secondary"} className="text-xs">
+                      {videoInfo.hasTranscript
+                        ? `✓ Transcript (${(videoInfo.transcriptLength / 1000).toFixed(1)}k chars)`
+                        : manualTranscript
+                          ? `✓ Manual transcript (${(manualTranscript.length / 1000).toFixed(1)}k chars)`
+                          : "No transcript"}
+                    </Badge>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${videoInfo.videoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View on YouTube
+                    </a>
+                  </div>
                 </div>
               </div>
+
+              {/* Manual transcript upload — shown when YouTube has no transcript */}
+              {!videoInfo.hasTranscript && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-200">No transcript found on YouTube</p>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                          Upload or paste the transcript below to generate a full blog post.
+                        </p>
+                      </div>
+                    </div>
+                    {manualTranscript && (
+                      <button
+                        onClick={() => { setManualTranscript(""); setShowTranscriptUpload(false); }}
+                        className="text-xs text-amber-600 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200 flex items-center gap-1 shrink-0"
+                      >
+                        <X className="w-3 h-3" /> Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {!showTranscriptUpload && !manualTranscript && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                        onClick={() => transcriptFileRef.current?.click()}
+                      >
+                        <FileUp className="w-4 h-4 mr-2" />
+                        Upload .txt / .srt file
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                        onClick={() => setShowTranscriptUpload(true)}
+                      >
+                        <AlignLeft className="w-4 h-4 mr-2" />
+                        Paste transcript
+                      </Button>
+                      <input
+                        ref={transcriptFileRef}
+                        type="file"
+                        accept=".txt,.srt,.vtt,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const text = ev.target?.result as string;
+                            setManualTranscript(text.trim());
+                            setShowTranscriptUpload(false);
+                            toast.success(`Transcript loaded — ${(text.length / 1000).toFixed(1)}k characters`);
+                          };
+                          reader.readAsText(file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {showTranscriptUpload && !manualTranscript && (
+                    <div className="space-y-2">
+                      <Textarea
+                        placeholder="Paste the full transcript here…"
+                        rows={8}
+                        className="text-sm font-mono resize-y bg-white dark:bg-gray-900 border-amber-300 dark:border-amber-700"
+                        autoFocus
+                        onBlur={(e) => {
+                          if (e.target.value.trim()) {
+                            setManualTranscript(e.target.value.trim());
+                            setShowTranscriptUpload(false);
+                            toast.success(`Transcript saved — ${(e.target.value.trim().length / 1000).toFixed(1)}k characters`);
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="bg-amber-600 hover:bg-amber-700 text-white"
+                          onClick={(e) => {
+                            const ta = (e.currentTarget.closest('.space-y-2') as HTMLElement)?.querySelector('textarea') as HTMLTextAreaElement;
+                            if (ta?.value.trim()) {
+                              setManualTranscript(ta.value.trim());
+                              setShowTranscriptUpload(false);
+                              toast.success(`Transcript saved — ${(ta.value.trim().length / 1000).toFixed(1)}k characters`);
+                            } else {
+                              toast.error("Transcript is empty");
+                            }
+                          }}
+                        >
+                          <Upload className="w-3.5 h-3.5 mr-1.5" /> Save Transcript
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setShowTranscriptUpload(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {manualTranscript && (
+                    <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Transcript ready — {(manualTranscript.length / 1000).toFixed(1)}k characters. Blog generation will use this transcript.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -634,7 +761,7 @@ export default function VideoToBlog() {
                   generateBlog.mutate({
                     videoId: videoInfo.videoId,
                     videoTitle: videoInfo.title,
-                    transcript: videoInfo.transcript,
+                    transcript: manualTranscript || videoInfo.transcript,
                     customInstructions: customInstructions || undefined,
                     focusKeyword: focusKeyword.trim() || undefined,
                   });

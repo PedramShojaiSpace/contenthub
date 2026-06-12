@@ -160,7 +160,7 @@ function ScriptDisplay({ result, onCopy, autoSaved }: { result: ScriptResult; on
     saveToKanbanMutation.mutate({
       items: [
         {
-          title: (result.topic ?? "").length > 80 ? (result.topic ?? "").slice(0, 80) + "…" : (result.topic ?? "Untitled Script"),
+          title: ((result.topic || "").trim().slice(0, 80) || "Untitled Script"),
           platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
           status: "drafting" as const,
           textContent: result.fullScript,
@@ -552,7 +552,7 @@ function BatchQueuePanel({
     const kanbanPlatform = PLATFORM_MAP_BATCH[platform] ?? "tiktok";
     saveAllMutation.mutate({
       items: doneItems.map((q) => ({
-        title: q.result!.hook.slice(0, 80),
+        title: ((q.result!.hook || q.result!.topic || "Untitled Script").trim().slice(0, 80)) || "Untitled Script",
         rawIdea: q.result!.hook,
         platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
         status: "drafting" as const,
@@ -642,7 +642,7 @@ function BatchQueuePanel({
     if (freshResults.length > 0) {
       saveAllMutation.mutate({
         items: freshResults.map((r) => ({
-          title: (r.hook ?? "").slice(0, 80),
+          title: ((r.hook || r.topic || "Untitled Script").trim().slice(0, 80)) || "Untitled Script",
           rawIdea: r.hook,
           platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
           status: "drafting" as const,

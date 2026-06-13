@@ -184,16 +184,12 @@ export async function getJobStatus(jobId: string): Promise<DescriptJobStatusResp
 export async function exportProject(params: {
   projectId: string;
   compositionId?: string;
-  format?: "mp4" | "mov";
-  resolution?: "1080p" | "720p" | "4k";
 }): Promise<DescriptExportResponse> {
   return descriptFetch<DescriptExportResponse>("/jobs/publish", {
     method: "POST",
     body: JSON.stringify({
       project_id: params.projectId,
       ...(params.compositionId ? { composition_id: params.compositionId } : {}),
-      format: params.format ?? "mp4",
-      resolution: params.resolution ?? "1080p",
     }),
   });
 }

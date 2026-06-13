@@ -395,6 +395,30 @@ export default function BlogToYoutube() {
                       >
                         {STATUS_LABELS[item.status] ?? item.status}
                       </span>
+                      {item.script && item.script.length >= 50 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs border-red-300 text-red-700 hover:bg-red-50 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sendToDescriptMut.mutate({
+                              contentItemId: item.id,
+                              scriptTitle: item.blogTitle,
+                              scriptText: item.script,
+                            });
+                          }}
+                          disabled={sendToDescriptMut.isPending}
+                          title="Send script to Descript for video production"
+                        >
+                          {sendToDescriptMut.isPending ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Send className="w-3 h-3" />
+                          )}
+                          <span className="ml-1 hidden sm:inline">Descript</span>
+                        </Button>
+                      )}
                       <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     </div>
                   </CardContent>

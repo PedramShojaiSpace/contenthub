@@ -62,6 +62,8 @@ export async function processVideoJob(jobId: number): Promise<void> {
         projectName,
         scriptText: job.scriptText,
         voiceName: "Pedram Shojai",
+        ctaText: job.ctaText ?? undefined,
+        ctaUrl: job.ctaUrl ?? undefined,
       });
 
       await db.update(videoJobs).set({
@@ -90,8 +92,12 @@ export async function processVideoJob(jobId: number): Promise<void> {
       }
 
       // Creation done — now run a second agent pass for B-roll/captions if we have a prompt
-      const brollPrompt = job.brollPrompt ??
-        "MANDATORY B-ROLL RULE: Place a new B-roll clip at EVERY 5 to 8 seconds — non-negotiable. No single shot may stay on screen longer than 8 seconds. Cut to a new clip immediately at the 8-second mark throughout the ENTIRE video from start to finish with zero gaps. Also: remove filler words and long pauses, add auto-captions, use stock footage that matches the content being discussed.";
+      const ctaSuffix = job.ctaText
+        ? `\n\nEND SCREEN CTA (last 5 seconds): Add a title card at the very end of the video with this exact text: "${job.ctaText}" and the URL: "${job.ctaUrl ?? 'theurbanmonk.com'}". The card should be white text on a dark background and stay visible for 5 seconds.`
+        : "";
+
+      const brollPrompt = (job.brollPrompt ??
+        "MANDATORY B-ROLL RULE: Place a new B-roll clip at EVERY 5 to 8 seconds — non-negotiable. No single shot may stay on screen longer than 8 seconds. Cut to a new clip immediately at the 8-second mark throughout the ENTIRE video from start to finish with zero gaps. Also: remove filler words and long pauses, add auto-captions, use stock footage that matches the content being discussed.") + ctaSuffix;
 
       const editResult = await runUnderlordAgent({
         projectId: job.descriptProjectId!,

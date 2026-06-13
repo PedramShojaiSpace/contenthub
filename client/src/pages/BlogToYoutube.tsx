@@ -97,6 +97,7 @@ export default function BlogToYoutube() {
   const [blogFocusKeyword, setBlogFocusKeyword] = useState("");
   const [blogCustomInstructions, setBlogCustomInstructions] = useState("");
   const [generatedBlog, setGeneratedBlog] = useState<any>(null);
+  const [selectedCtaId, setSelectedCtaId] = useState<number | null>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,8 @@ export default function BlogToYoutube() {
     search: searchQuery || undefined,
     limit: 100,
   });
+
+  const ctaListQuery = trpc.cta.list.useQuery();
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
 
@@ -625,40 +628,68 @@ export default function BlogToYoutube() {
                   />
 
                   {editedScript && (
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <Button
-                        onClick={() =>
-                          updateScriptMut.mutate({
-                            itemId: selectedItem.id,
-                            script: editedScript,
-                          })
-                        }
-                        disabled={updateScriptMut.isPending}
-                      >
-                        {updateScriptMut.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : null}
-                        Save Script
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="border-red-400 text-red-700 hover:bg-red-50"
-                        disabled={sendToDescriptMut.isPending || editedScript.length < 50}
-                        onClick={() =>
-                          sendToDescriptMut.mutate({
-                            contentItemId: selectedItem.id,
-                            scriptTitle: selectedItem.blogTitle,
-                            scriptText: editedScript,
-                          })
-                        }
-                      >
-                        {sendToDescriptMut.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4 mr-2" />
-                        )}
-                        Send to Descript
-                      </Button>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">CTA for this video:</label>
+                        <select
+                          className="flex-1 text-xs border rounded px-2 py-1.5 bg-background text-foreground"
+                          value={selectedCtaId ?? ""}
+                          onChange={(e) => setSelectedCtaId(e.target.value ? Number(e.target.value) : null)}
+                        >
+                          <option value="">— Auto-detect from topic —</option>
+                          {(ctaListQuery.data ?? []).map((cta: any) => (
+                            <option key={cta.id} value={cta.id}>{cta.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {selectedCtaId && (() => {
+                        const cta = (ctaListQuery.data ?? []).find((c: any) => c.id === selectedCtaId);
+                        return cta ? (
+                          <p className="text-xs text-muted-foreground bg-muted/40 rounded px-2 py-1.5 line-clamp-2">
+                            <span className="font-medium">CTA:</span> {cta.ctaText}
+                          </p>
+                        ) : null;
+                      })()}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Button
+                          onClick={() =>
+                            updateScriptMut.mutate({
+                              itemId: selectedItem.id,
+                              script: editedScript,
+                            })
+                          }
+                          disabled={updateScriptMut.isPending}
+                        >
+                          {updateScriptMut.isPending ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : null}
+                          Save Script
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="border-red-400 text-red-700 hover:bg-red-50"
+                          disabled={sendToDescriptMut.isPending || editedScript.length < 50}
+                          onClick={() => {
+                            const cta = selectedCtaId ? (ctaListQuery.data ?? []).find((c: any) => c.id === selectedCtaId) : null;
+                            sendToDescriptMut.mutate({
+                              contentItemId: selectedItem.id,
+                              scriptTitle: selectedItem.blogTitle,
+                              scriptText: editedScript,
+                              ctaId: cta?.id,
+                              ctaLabel: cta?.label,
+                              ctaText: cta?.ctaText,
+                              ctaUrl: cta?.url ?? undefined,
+                            });
+                          }}
+                        >
+                          {sendToDescriptMut.isPending ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4 mr-2" />
+                          )}
+                          Send to Descript
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </TabsContent>

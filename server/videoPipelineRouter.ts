@@ -24,6 +24,10 @@ export const videoPipelineRouter = router({
       scriptText: z.string().min(1),
       topic: z.string().optional(),
       keywords: z.array(z.string()).optional(),
+      ctaId: z.number().optional(),
+      ctaLabel: z.string().optional(),
+      ctaText: z.string().optional(),
+      ctaUrl: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -34,6 +38,10 @@ export const videoPipelineRouter = router({
         scriptText: input.scriptText,
         youtubeTitle: input.scriptTitle.substring(0, 512),
         youtubeTags: input.keywords ? JSON.stringify(input.keywords) : null,
+        ctaId: input.ctaId ?? null,
+        ctaLabel: input.ctaLabel ?? null,
+        ctaText: input.ctaText ?? null,
+        ctaUrl: input.ctaUrl ?? null,
         status: "pending",
       });
 

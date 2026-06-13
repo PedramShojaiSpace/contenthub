@@ -1,6 +1,14 @@
 /**
  * Descript Video Pipeline Orchestrator
- * Uses actual descriptClient.ts exports: createProjectFromScript, getJobStatus, runUnderlordAgent, exportProject
+ *
+ * Simplified flow using the Descript agent endpoint:
+ *   1. Generate B-roll prompt + YouTube metadata via AI
+ *   2. Create Descript project via agent — Underlord narrates with "Pedram Shojai" AI voice
+ *   3. Poll agent job until stopped
+ *   4. Export project to MP4
+ *   5. Poll export job until stopped, download video, upload to S3
+ *   6. Mark ready_for_review
+ *
  * DB status enum: pending|importing|editing|rendering|ready_for_review|approved|uploading|published|failed|rejected
  */
 
@@ -10,9 +18,9 @@ import { videoJobs } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { generateBrollPrompt } from "./brollPromptGenerator";
 import {
-  createProjectFromScript,
-  getJobStatus,
+  createProjectWithVoice,
   runUnderlordAgent,
+  getJobStatus,
   exportProject,
 } from "./descriptClient";
 
@@ -25,7 +33,7 @@ export async function processVideoJob(jobId: number): Promise<void> {
   let job = rows[0];
 
   try {
-    // Step 1: Generate B-roll prompt + seed YouTube metadata
+    // ── Step 1: Generate B-roll prompt + seed YouTube metadata ───────────────
     if (!job.brollPrompt) {
       const brollResult = await generateBrollPrompt({
         scriptTitle: job.youtubeTitle ?? "Urban Monk Video",
@@ -46,51 +54,68 @@ export async function processVideoJob(jobId: number): Promise<void> {
       job = r[0];
     }
 
-    // Step 2: Start Descript import
+    // ── Step 2: Create Descript project via agent (Pedram Shojai AI voice) ───
+    // We use descriptImportJobId to store the agent job_id for the creation step
     if (!job.descriptImportJobId) {
-      const importResult = await createProjectFromScript({
-        projectName: (job.youtubeTitle ?? "Urban Monk Video").substring(0, 100),
+      const projectName = (job.youtubeTitle ?? "Urban Monk Video").substring(0, 100);
+      const agentResult = await createProjectWithVoice({
+        projectName,
         scriptText: job.scriptText,
+        voiceName: "Pedram Shojai",
       });
 
       await db.update(videoJobs).set({
-        descriptImportJobId: importResult.job_id,
-        descriptProjectId: importResult.project_id,
+        descriptImportJobId: agentResult.job_id,
+        descriptProjectId: agentResult.project_id,
+        descriptShareUrl: agentResult.project_url,
         status: "importing",
       }).where(eq(videoJobs.id, jobId));
 
-      job = { ...job, descriptImportJobId: importResult.job_id, descriptProjectId: importResult.project_id, status: "importing" };
+      job = {
+        ...job,
+        descriptImportJobId: agentResult.job_id,
+        descriptProjectId: agentResult.project_id,
+        descriptShareUrl: agentResult.project_url,
+        status: "importing",
+      };
     }
 
-    // Step 3: Poll import — start Underlord when done
+    // ── Step 3: Poll creation agent job ──────────────────────────────────────
     if (job.status === "importing" && job.descriptImportJobId && !job.descriptAgentJobId) {
-      const importStatus = await getJobStatus(job.descriptImportJobId);
+      const jobStatus = await getJobStatus(job.descriptImportJobId);
 
-      if (importStatus.status === "pending" || importStatus.status === "processing") return;
-      if (importStatus.status === "failed") throw new Error(`Import failed: ${importStatus.error ?? "unknown"}`);
+      if (jobStatus.job_state === "running") return; // still processing, come back next cron
+      if (jobStatus.job_state === "cancelled" || (jobStatus.result && jobStatus.result.status === "failed")) {
+        throw new Error(`Descript project creation failed: ${jobStatus.result?.agent_response ?? "unknown"}`);
+      }
 
-      const projectId = importStatus.result?.project_id ?? job.descriptProjectId!;
-      const agentResult = await runUnderlordAgent({
-        projectId,
-        prompt: job.brollPrompt ?? "Remove filler words, add captions, and improve audio quality.",
+      // Creation done — now run a second agent pass for B-roll/captions if we have a prompt
+      const brollPrompt = job.brollPrompt ??
+        "Remove filler words, add Studio Sound to enhance audio quality, and add captions.";
+
+      const editResult = await runUnderlordAgent({
+        projectId: job.descriptProjectId!,
+        prompt: brollPrompt,
       });
 
       await db.update(videoJobs).set({
-        descriptProjectId: projectId,
-        descriptAgentJobId: agentResult.job_id,
+        descriptAgentJobId: editResult.job_id,
         status: "editing",
       }).where(eq(videoJobs.id, jobId));
 
-      job = { ...job, descriptProjectId: projectId, descriptAgentJobId: agentResult.job_id, status: "editing" };
+      job = { ...job, descriptAgentJobId: editResult.job_id, status: "editing" };
     }
 
-    // Step 4: Poll Underlord — start export when done
+    // ── Step 4: Poll editing agent job ───────────────────────────────────────
     if (job.status === "editing" && job.descriptAgentJobId && !job.descriptPublishJobId) {
       const agentStatus = await getJobStatus(job.descriptAgentJobId);
 
-      if (agentStatus.status === "pending" || agentStatus.status === "processing") return;
-      if (agentStatus.status === "failed") throw new Error(`Agent failed: ${agentStatus.error ?? "unknown"}`);
+      if (agentStatus.job_state === "running") return;
+      if (agentStatus.job_state === "cancelled" || (agentStatus.result && agentStatus.result.status === "failed")) {
+        throw new Error(`Underlord editing failed: ${agentStatus.result?.agent_response ?? "unknown"}`);
+      }
 
+      // Editing done — start export
       const exportResult = await exportProject({
         projectId: job.descriptProjectId!,
         format: "mp4",
@@ -105,18 +130,20 @@ export async function processVideoJob(jobId: number): Promise<void> {
       job = { ...job, descriptPublishJobId: exportResult.job_id, status: "rendering" };
     }
 
-    // Step 5: Poll export — upload to S3 when done
+    // ── Step 5: Poll export job — download + upload to S3 ────────────────────
     if (job.status === "rendering" && job.descriptPublishJobId) {
       const exportStatus = await getJobStatus(job.descriptPublishJobId);
 
-      if (exportStatus.status === "pending" || exportStatus.status === "processing") return;
-      if (exportStatus.status === "failed") throw new Error(`Export failed: ${exportStatus.error ?? "unknown"}`);
+      if (exportStatus.job_state === "running") return;
+      if (exportStatus.job_state === "cancelled" || (exportStatus.result && exportStatus.result.status === "failed")) {
+        throw new Error(`Export failed: ${exportStatus.result?.agent_response ?? "unknown"}`);
+      }
 
-      const downloadUrl = (exportStatus as any).download_url ?? exportStatus.result?.project_url;
-      if (!downloadUrl) throw new Error("Export completed but no download URL");
+      const downloadUrl = exportStatus.result?.download_url ?? exportStatus.result?.share_url;
+      if (!downloadUrl) throw new Error("Export completed but no download URL in result");
 
       const videoResponse = await fetch(downloadUrl);
-      if (!videoResponse.ok) throw new Error(`Failed to download video: ${videoResponse.status}`);
+      if (!videoResponse.ok) throw new Error(`Failed to download video from Descript: ${videoResponse.status}`);
 
       const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
       const s3Key = `video-pipeline/${jobId}-${Date.now()}.mp4`;

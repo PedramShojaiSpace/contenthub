@@ -91,7 +91,7 @@ export async function processVideoJob(jobId: number): Promise<void> {
 
       // Creation done — now run a second agent pass for B-roll/captions if we have a prompt
       const brollPrompt = job.brollPrompt ??
-        "Remove filler words, add Studio Sound to enhance audio quality, and add captions.";
+        "Remove filler words and long pauses. Add auto-captions. Insert HEAVY B-roll from the stock library — CRITICAL: cut to a new B-roll clip every 5 to 12 seconds throughout the ENTIRE video with NO exceptions, never linger on a single shot longer than 12 seconds. Use a high density of B-roll cuts to maintain visual momentum and viewer engagement.";
 
       const editResult = await runUnderlordAgent({
         projectId: job.descriptProjectId!,

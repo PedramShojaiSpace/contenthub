@@ -620,6 +620,19 @@ async function startServer() {
     }
   });
 
+  // ── Video Pipeline cron — every 15 minutes, polls Descript jobs ────────────
+  app.post("/api/scheduled/video-pipeline", async (req, res) => {
+    try {
+      const { processScheduledVideoJobs } = await import("../descriptPipeline");
+      const result = await processScheduledVideoJobs();
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Video Pipeline Cron] Handler error:", msg);
+      res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
+    }
+  });
+
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
   // Campaigns: lo | gut | sleep | webinar

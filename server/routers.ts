@@ -113,6 +113,7 @@ import { videoToBlogRouter } from "./videoToBlogRouter";
 import { blogToYoutubeRouter } from "./blogToYoutubeRouter";
 import { vidiqRouter } from "./vidiqRouter";
 import { analyticsSyncRouter } from "./analyticsSyncRouter";
+import { videoPipelineRouter } from "./videoPipelineRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -461,6 +462,7 @@ export const appRouter = router({
   blogToYoutube: blogToYoutubeRouter,
   vidiq: vidiqRouter,
   analyticsSync: analyticsSyncRouter,
+  videoPipeline: videoPipelineRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

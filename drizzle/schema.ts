@@ -2023,3 +2023,49 @@ export const syndicationJobs = mysqlTable("syndication_jobs", {
 
 export type SyndicationJob = typeof syndicationJobs.$inferSelect;
 export type InsertSyndicationJob = typeof syndicationJobs.$inferInsert;
+
+// ── Video Pipeline (Descript → YouTube) ──────────────────────────────────────
+export const videoJobStatusEnum = mysqlEnum("video_job_status", [
+  "queued",
+  "importing",
+  "processing",
+  "rendering",
+  "ready_for_review",
+  "approved",
+  "publishing",
+  "published",
+  "failed",
+  "skipped",
+]);
+
+export const videoJobs = mysqlTable("video_jobs", {
+  id: int("vj_id").primaryKey().autoincrement(),
+  contentItemId: int("vj_content_item_id").notNull(),
+  scriptTitle: varchar("vj_script_title", { length: 512 }).notNull(),
+  scriptText: text("vj_script_text").notNull(),
+  brollPrompt: text("vj_broll_prompt"),
+  descriptProjectId: varchar("vj_descript_project_id", { length: 256 }),
+  descriptProjectUrl: text("vj_descript_project_url"),
+  descriptDriveId: varchar("vj_descript_drive_id", { length: 256 }),
+  descriptJobId: varchar("vj_descript_job_id", { length: 256 }),
+  renderJobId: varchar("vj_render_job_id", { length: 256 }),
+  videoDownloadUrl: text("vj_video_download_url"),
+  videoS3Key: text("vj_video_s3_key"),
+  videoS3Url: text("vj_video_s3_url"),
+  youtubeThumbnailUrl: text("vj_youtube_thumbnail_url"),
+  youtubeTitle: varchar("vj_youtube_title", { length: 100 }),
+  youtubeDescription: text("vj_youtube_description"),
+  youtubeTags: text("vj_youtube_tags"),
+  youtubeVideoId: varchar("vj_youtube_video_id", { length: 64 }),
+  youtubeVideoUrl: text("vj_youtube_video_url"),
+  status: videoJobStatusEnum.notNull().default("queued"),
+  errorMessage: text("vj_error_message"),
+  retryCount: int("vj_retry_count").default(0),
+  vaApprovedAt: bigint("vj_va_approved_at", { mode: "number" }),
+  publishedAt: bigint("vj_published_at", { mode: "number" }),
+  createdAt: timestamp("vj_created_at").defaultNow().notNull(),
+  updatedAt: timestamp("vj_updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type VideoJob = typeof videoJobs.$inferSelect;
+export type InsertVideoJob = typeof videoJobs.$inferInsert;

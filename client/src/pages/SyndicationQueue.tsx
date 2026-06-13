@@ -2,7 +2,7 @@
  * Syndication Queue
  *
  * Shows the staggered multi-platform syndication pipeline for all published WordPress posts.
- * Each post generates 3 jobs: Substack (Day 1), Medium (Day 2), Quora (Day 3).
+ * Each post generates 4 jobs: Substack (Day 1), Medium (Day 2), Quora (Day 3), Reddit (Day 4).
  *
  * The team can:
  * - View the status of each job (pending → adapting → ready → published / failed / skipped)
@@ -38,7 +38,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SyndicationStatus = "pending" | "adapting" | "ready" | "published" | "failed" | "skipped";
-type SyndicationPlatform = "substack" | "medium" | "quora";
+type SyndicationPlatform = "substack" | "medium" | "quora" | "reddit";
 
 interface SyndicationJob {
   id: number;
@@ -62,18 +62,21 @@ const PLATFORM_ICONS: Record<SyndicationPlatform, React.ReactNode> = {
   substack: <Rss className="w-4 h-4" />,
   medium: <BookOpen className="w-4 h-4" />,
   quora: <MessageSquare className="w-4 h-4" />,
+  reddit: <MessageSquare className="w-4 h-4" />,
 };
 
 const PLATFORM_LABELS: Record<SyndicationPlatform, string> = {
   substack: "Substack",
   medium: "Medium",
   quora: "Quora",
+  reddit: "Reddit",
 };
 
 const PLATFORM_COLORS: Record<SyndicationPlatform, string> = {
   substack: "bg-orange-500/10 text-orange-400 border-orange-500/20",
   medium: "bg-green-500/10 text-green-400 border-green-500/20",
   quora: "bg-red-500/10 text-red-400 border-red-500/20",
+  reddit: "bg-orange-600/10 text-orange-300 border-orange-600/20",
 };
 
 const STATUS_CONFIG: Record<SyndicationStatus, { label: string; color: string; icon: React.ReactNode }> = {
@@ -112,7 +115,7 @@ function JobRow({ job, onRefresh }: { job: SyndicationJob; onRefresh: () => void
   });
 
   const previewMutation = trpc.syndicationPipeline.previewAdaptation.useMutation({
-    onSuccess: (data: { content: Record<string, string> }) => {
+    onSuccess: (data: { ok: boolean; content: Record<string, unknown> }) => {
       setPreviewContent(data.content as Record<string, string>);
       setPreviewOpen(true);
     },

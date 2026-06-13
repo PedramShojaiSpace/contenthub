@@ -3911,3 +3911,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Run db:push after schema changes — syndication_jobs table created
 - [ ] Write tests for syndicationAdapter and syndicationRouter (pending)
 - [ ] Add MEDIUM_INTEGRATION_TOKEN to project secrets (pending user input)
+
+## VA Syndication Dashboard
+- [ ] Audit syndicationRouter.ts and Reddit integration to confirm available data fields for VA Dashboard
+- [ ] Add `redditPosts` table or query to surface Reddit job data (subreddit, title, body, link) alongside Medium/Quora jobs
+- [ ] Add `vaJobs` view/query that joins syndicationJobs with contentItems for VA Dashboard display
+- [ ] Build VADashboard.tsx page at /va-dashboard — job queue table with status, platform badges, content preview panels
+- [ ] Each job card shows: blog title, platform, scheduled date, status, pre-written content (copyable), direct action link, inline step instructions
+- [ ] Add Reddit job generation to syndicationAdapter.ts (subreddit suggestion + post title + body + link)
+- [ ] Add Reddit jobs to syndicationRouter.ts enqueueForPost flow
+- [ ] Add /va-dashboard route to App.tsx
+- [ ] Add VA Dashboard link to sidebar/nav
+- [ ] Write full VA SOP document (PDF) covering Medium, Quora, Reddit with screenshots-style step descriptions
+- [ ] Save checkpoint after VA Dashboard is complete

@@ -34,6 +34,7 @@ const PLATFORM_DELAY: Record<string, number> = {
   substack: 1 * DAY_MS,  // Day 1
   medium:   2 * DAY_MS,  // Day 2
   quora:    3 * DAY_MS,  // Day 3
+  reddit:   4 * DAY_MS,  // Day 4
 };
 
 // ─── tRPC Router ─────────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ const PLATFORM_DELAY: Record<string, number> = {
 export const syndicationRouter = router({
   /**
    * Enqueue syndication jobs for a newly published WordPress post.
-   * Creates one job per platform (substack, medium, quora) with staggered scheduledAt.
+   * Creates one job per platform (substack, medium, quora, reddit) with staggered scheduledAt.
    * Called automatically from the WordPress publish flow.
    */
   enqueue: protectedProcedure
@@ -58,7 +59,7 @@ export const syndicationRouter = router({
       if (!db) throw new Error("Database unavailable");
 
       const now = Date.now();
-      const platforms = ["substack", "medium", "quora"] as const;
+      const platforms = ["substack", "medium", "quora", "reddit"] as const;
 
       // Check for existing jobs for this content item to avoid duplicates
       const existing = await db
@@ -95,6 +96,7 @@ export const syndicationRouter = router({
           substack: new Date(now + PLATFORM_DELAY.substack).toISOString(),
           medium: new Date(now + PLATFORM_DELAY.medium).toISOString(),
           quora: new Date(now + PLATFORM_DELAY.quora).toISOString(),
+          reddit: new Date(now + PLATFORM_DELAY.reddit).toISOString(),
         },
       };
     }),
@@ -216,6 +218,46 @@ export const syndicationRouter = router({
 
       return { ok: true, content: platformContent };
     }),
+
+  /**
+   * List all VA-actionable jobs: manual platforms (quora, reddit, medium).
+   * "published" means the cron has processed them and the content is ready to post manually.
+   */
+  listVaJobs: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const jobs = await db
+        .select()
+        .from(syndicationJobs)
+        .where(
+          inArray(syndicationJobs.platform, ["medium", "quora", "reddit"])
+        )
+        .orderBy(syndicationJobs.scheduledAt);
+      return jobs;
+    }),
+
+  /**
+   * Mark a VA job as manually posted.
+   */
+  markVaJobPosted: protectedProcedure
+    .input(z.object({
+      jobId: z.number(),
+      publishedUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      await db
+        .update(syndicationJobs)
+        .set({
+          status: "published",
+          publishedUrl: input.publishedUrl ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(syndicationJobs.id, input.jobId));
+      return { ok: true };
+    }),
 });
 
 // ─── Heartbeat Cron Handler ───────────────────────────────────────────────────
@@ -314,6 +356,12 @@ export async function handleSyndicationCron(req: {
         publishedUrl = undefined;
         publishedPostId = undefined;
         console.log(`[Syndication Cron] Quora answer ready for manual posting. Question: "${adaptedContent.targetQuestion}"`);
+      } else if (job.platform === "reddit") {
+        // Reddit has no publish API for organic posts — we store the adapted post for manual posting
+        // and mark it as "published" (meaning: ready for the VA to post manually)
+        publishedUrl = undefined;
+        publishedPostId = undefined;
+        console.log(`[Syndication Cron] Reddit post ready for manual posting. Suggested subreddits: ${(adaptedContent.suggestedSubreddits ?? []).join(", ")}`);
       }
 
       // Mark as published
@@ -371,3 +419,6 @@ export async function handleSyndicationCron(req: {
 
   return { processed: dueJobs.length, results };
 }
+
+// ─── VA Dashboard Procedure ───────────────────────────────────────────────────
+// Export a separate function so it can be imported by syndicationRouter

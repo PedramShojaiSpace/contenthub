@@ -1,7 +1,7 @@
 /**
  * Syndication Adapter
  *
- * Takes a published WordPress blog post and generates three distinct adapted versions:
+ * Takes a published WordPress blog post and generates four distinct adapted versions:
  *
  * 1. Substack Letter — Pedram's personal founder voice (600–1,000 words)
  *    - Opens with a personal hook or question
@@ -21,6 +21,12 @@
  *    - Never copy-pastes from the WordPress article
  *    - No promotional links in body
  *    - Includes the target question to search/answer on Quora
+ *
+ * 4. Reddit Post — Community-native post for r/health or relevant subreddit (200–400 words)
+ *    - Written in Reddit's conversational, peer-to-peer style
+ *    - Suggests the best subreddit(s) to post in
+ *    - Includes a link to the WordPress article as the source
+ *    - Framed as sharing a discovery, not promoting a brand
  */
 
 import { invokeLLM } from "./_core/llm";
@@ -49,6 +55,12 @@ export interface SyndicationAdaptations {
     targetQuestion: string; // The Quora question to answer
     answerMarkdown: string;
   };
+  reddit: {
+    suggestedSubreddits: string[]; // e.g. ["r/Microbiome", "r/Nootropics", "r/Biohackers"]
+    postTitle: string;
+    postBody: string; // Plain text, Reddit markdown
+    sourceLink: string; // Always = wordpressUrl
+  };
 }
 
 /**
@@ -73,7 +85,7 @@ function htmlToPlainText(html: string): string {
 }
 
 /**
- * Generate all three syndication adaptations from a WordPress post.
+ * Generate all four syndication adaptations from a WordPress post.
  */
 export async function generateSyndicationAdaptations(
   post: WordPressPostContext
@@ -167,8 +179,36 @@ Return a JSON object with:
   "answerMarkdown": "Full answer in Markdown format (no links, no promotion)"
 }`;
 
-  // Run all three adaptations in parallel
-  const [substackRaw, mediumRaw, quoraRaw] = await Promise.all([
+  // ─── 4. Reddit Post ────────────────────────────────────────────────────────
+  const redditPrompt = `The following is a published blog post from theurbanmonk.com. Your job is to write a Reddit post that shares the core insight from this article in Reddit's native community style.
+
+WORDPRESS POST TITLE: ${post.title}
+WORDPRESS POST URL: ${post.wordpressUrl}
+FOCUS KEYWORD: ${post.focusKeyword ?? "not specified"}
+
+ARTICLE CONTENT (for reference):
+${truncatedText}
+
+Write a Reddit post with these requirements:
+- Suggest 2–3 specific subreddits that would be most receptive to this content (e.g. r/Microbiome, r/Nootropics, r/Biohackers, r/Supplements, r/Health, r/Meditation, r/Longevity, r/Fitness, r/Anxiety, r/ChronicIllness). Choose based on the article topic.
+- Post title: Compelling, curiosity-driven, NOT promotional. Reddit rewards genuine sharing, not marketing headlines. 80 chars max.
+- Post body: 200–350 words. Written in first-person as someone who discovered something interesting and wants to share it. NOT as a brand or marketer.
+  - Open with a personal observation or question
+  - Share the core insight in plain, peer-to-peer language
+  - End with a question to invite discussion
+  - Last line: "Full article with sources: [link]" — this is where the WordPress URL goes
+- Tone: Conversational, curious, humble. Reddit users are smart and will downvote anything that feels like an ad.
+- Do NOT use marketing language, superlatives, or brand names in the title.
+
+Return a JSON object with:
+{
+  "suggestedSubreddits": ["r/SubredditName1", "r/SubredditName2", "r/SubredditName3"],
+  "postTitle": "The Reddit post title",
+  "postBody": "The full post body in plain Reddit markdown"
+}`;
+
+  // Run all four adaptations in parallel
+  const [substackRaw, mediumRaw, quoraRaw, redditRaw] = await Promise.all([
     invokeLLM({
       messages: [
         { role: "system", content: systemPrompt },
@@ -236,6 +276,32 @@ Return a JSON object with:
         },
       },
     }),
+    invokeLLM({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: redditPrompt },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "reddit_post",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              suggestedSubreddits: {
+                type: "array",
+                items: { type: "string" },
+              },
+              postTitle: { type: "string" },
+              postBody: { type: "string" },
+            },
+            required: ["suggestedSubreddits", "postTitle", "postBody"],
+            additionalProperties: false,
+          },
+        },
+      },
+    }),
   ]);
 
   const parseContent = (raw: unknown, label: string) => {
@@ -252,6 +318,7 @@ Return a JSON object with:
   const substackData = parseContent(substackRaw, "substack");
   const mediumData = parseContent(mediumRaw, "medium");
   const quoraData = parseContent(quoraRaw, "quora");
+  const redditData = parseContent(redditRaw, "reddit");
 
   return {
     substack: {
@@ -267,6 +334,12 @@ Return a JSON object with:
     quora: {
       targetQuestion: quoraData.targetQuestion,
       answerMarkdown: quoraData.answerMarkdown,
+    },
+    reddit: {
+      suggestedSubreddits: redditData.suggestedSubreddits,
+      postTitle: redditData.postTitle,
+      postBody: redditData.postBody,
+      sourceLink: post.wordpressUrl,
     },
   };
 }

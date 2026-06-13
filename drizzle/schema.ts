@@ -1989,6 +1989,7 @@ export const syndicationPlatformEnum = mysqlEnum("syndication_platform", [
   "substack",
   "medium",
   "quora",
+  "reddit",
 ]);
 
 export const syndicationStatusEnum = mysqlEnum("syndication_status", [

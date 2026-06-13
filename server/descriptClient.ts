@@ -83,16 +83,26 @@ export interface DescriptExportResponse {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 /**
- * Create a new Descript project from a script using the agent endpoint.
- * Underlord will narrate the script using the specified voice (e.g. "Pedram Shojai").
+ * Apply phonetic substitutions so Descript TTS pronounces names correctly.
+ * Pedram = Peh-drom (NOT Pee-dram)
+ * Shojai = Sho-jai
  */
+function applyPhoneticSubstitutions(text: string): string {
+  return text
+    .replace(/\bPedram\b/g, "Peh-drom")
+    .replace(/\bpedram\b/g, "peh-drom")
+    .replace(/\bShojai\b/g, "Sho-jai")
+    .replace(/\bshojai\b/g, "sho-jai");
+}
+
 export async function createProjectWithVoice(params: {
   projectName: string;
   scriptText: string;
   voiceName?: string;
 }): Promise<DescriptAgentCreateResponse> {
   const voice = params.voiceName ?? "Pedram FOR GUT COURSE READ";
-  const prompt = `Create a new video project. Narrate the following script using the "${voice}" AI voice. Apply Studio Sound to enhance audio quality. Add captions. Here is the script:\n\n${params.scriptText}`;
+  const phoneticScript = applyPhoneticSubstitutions(params.scriptText);
+  const prompt = `Create a new video project. Narrate the following script using the "${voice}" AI voice. Apply Studio Sound to enhance audio quality. Add captions. Here is the script:\n\n${phoneticScript}`;
 
   return descriptFetch<DescriptAgentCreateResponse>("/jobs/agent", {
     method: "POST",

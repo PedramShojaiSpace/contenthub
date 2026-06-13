@@ -91,7 +91,7 @@ export async function createProjectWithVoice(params: {
   scriptText: string;
   voiceName?: string;
 }): Promise<DescriptAgentCreateResponse> {
-  const voice = params.voiceName ?? "Pedram Shojai";
+  const voice = params.voiceName ?? "Pedram FOR GUT COURSE READ";
   const prompt = `Create a new video project. Narrate the following script using the "${voice}" AI voice. Apply Studio Sound to enhance audio quality. Add captions. Here is the script:\n\n${params.scriptText}`;
 
   return descriptFetch<DescriptAgentCreateResponse>("/jobs/agent", {

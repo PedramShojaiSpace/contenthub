@@ -3,6 +3,13 @@
  * Base URL: https://descriptapi.com/v1
  * Auth: Bearer token in Authorization header
  * Docs: https://docs.descriptapi.com
+ *
+ * Key insight: The agent endpoint (/jobs/agent) can CREATE a new project from a prompt
+ * (pass project_name instead of project_id). This is how we use Pedram's AI voice —
+ * we instruct Underlord to narrate the script using the "Pedram Shojai" voice.
+ *
+ * Actual job status response uses job_state: "running" | "stopped" | "cancelled"
+ * and result.status: "success" | "failed" | "partial"
  */
 
 const DESCRIPT_BASE_URL = "https://descriptapi.com/v1";
@@ -34,83 +41,98 @@ async function descriptFetch<T>(
   return res.json() as Promise<T>;
 }
 
-export interface DescriptImportResponse {
+// ─── Response Types (matching actual API) ────────────────────────────────────
+
+export interface DescriptAgentCreateResponse {
   job_id: string;
   drive_id: string;
   project_id: string;
   project_url: string;
 }
 
-export interface DescriptJobStatus {
+export interface DescriptJobStatusResponse {
   job_id: string;
-  status: "pending" | "processing" | "complete" | "failed";
-  error?: string;
+  job_type: string;
+  job_state: "running" | "stopped" | "cancelled";
+  created_at: string;
+  stopped_at?: string;
+  drive_id: string;
+  project_id?: string;
+  project_url?: string;
+  progress?: { label: string; last_update_at: string };
   result?: {
-    project_id: string;
-    project_url: string;
-    composition_id?: string;
+    status: "success" | "failed" | "partial";
+    agent_response?: string;
+    project_changed?: boolean;
+    media_seconds_used?: number;
+    ai_credits_used?: number;
+    download_url?: string;
+    share_url?: string;
+    media_status?: Record<string, { status: string; duration_seconds?: number }>;
+    created_compositions?: Array<{ id: string; name: string }>;
   };
-}
-
-export interface DescriptAgentResponse {
-  job_id: string;
-  status: "pending" | "processing" | "complete" | "failed";
-  error?: string;
 }
 
 export interface DescriptExportResponse {
   job_id: string;
-  status: "pending" | "processing" | "complete" | "failed";
-  download_url?: string;
-  error?: string;
+  drive_id: string;
+  project_id: string;
+  project_url: string;
 }
 
-export async function createProjectFromScript(params: {
+// ─── API Functions ────────────────────────────────────────────────────────────
+
+/**
+ * Create a new Descript project from a script using the agent endpoint.
+ * Underlord will narrate the script using the specified voice (e.g. "Pedram Shojai").
+ */
+export async function createProjectWithVoice(params: {
   projectName: string;
   scriptText: string;
-  driveId?: string;
-}): Promise<DescriptImportResponse> {
-  return descriptFetch<DescriptImportResponse>("/jobs/import/project_media", {
+  voiceName?: string;
+}): Promise<DescriptAgentCreateResponse> {
+  const voice = params.voiceName ?? "Pedram Shojai";
+  const prompt = `Create a new video project. Narrate the following script using the "${voice}" AI voice. Apply Studio Sound to enhance audio quality. Add captions. Here is the script:\n\n${params.scriptText}`;
+
+  return descriptFetch<DescriptAgentCreateResponse>("/jobs/agent", {
     method: "POST",
     body: JSON.stringify({
       project_name: params.projectName,
-      ...(params.driveId ? { drive_id: params.driveId } : {}),
-      add_media: {
-        "script.txt": {
-          text: params.scriptText,
-        },
-      },
-      add_compositions: [
-        {
-          name: params.projectName,
-          clips: [{ media: "script.txt" }],
-        },
-      ],
+      prompt,
     }),
   });
 }
 
-export async function getJobStatus(jobId: string): Promise<DescriptJobStatus> {
-  return descriptFetch<DescriptJobStatus>(`/jobs/${jobId}`);
-}
-
+/**
+ * Run Underlord on an existing project (e.g. add B-roll, remove filler words).
+ */
 export async function runUnderlordAgent(params: {
   projectId: string;
   prompt: string;
-}): Promise<DescriptAgentResponse> {
-  return descriptFetch<DescriptAgentResponse>("/agent/underlord", {
+  compositionId?: string;
+}): Promise<DescriptAgentCreateResponse> {
+  return descriptFetch<DescriptAgentCreateResponse>("/jobs/agent", {
     method: "POST",
     body: JSON.stringify({
       project_id: params.projectId,
+      ...(params.compositionId ? { composition_id: params.compositionId } : {}),
       prompt: params.prompt,
     }),
   });
 }
 
-export async function getAgentJobStatus(jobId: string): Promise<DescriptAgentResponse> {
-  return descriptFetch<DescriptAgentResponse>(`/agent/underlord/${jobId}`);
+/**
+ * Get the status of any job (import, agent, export).
+ * job_state: "running" | "stopped" | "cancelled"
+ * When stopped, check result.status for "success" | "failed" | "partial"
+ */
+export async function getJobStatus(jobId: string): Promise<DescriptJobStatusResponse> {
+  return descriptFetch<DescriptJobStatusResponse>(`/jobs/${jobId}`);
 }
 
+/**
+ * Export a project to MP4.
+ */
 export async function exportProject(params: {
   projectId: string;
   compositionId?: string;
@@ -128,10 +150,9 @@ export async function exportProject(params: {
   });
 }
 
-export async function getExportJobStatus(jobId: string): Promise<DescriptExportResponse> {
-  return descriptFetch<DescriptExportResponse>(`/jobs/export/${jobId}`);
-}
-
-export async function getDrives(): Promise<{ drives: Array<{ id: string; name: string }> }> {
-  return descriptFetch<{ drives: Array<{ id: string; name: string }> }>("/drives");
+/**
+ * List all projects in the authenticated drive.
+ */
+export async function listProjects(): Promise<{ data: Array<{ id: string; name: string; project_url: string }> }> {
+  return descriptFetch<{ data: Array<{ id: string; name: string; project_url: string }> }>("/projects");
 }

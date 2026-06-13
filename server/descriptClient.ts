@@ -127,12 +127,20 @@ export async function createProjectWithVoice(params: {
   projectName: string;
   scriptText: string;
   voiceName?: string;
+  ctaText?: string;
+  ctaUrl?: string;
 }): Promise<DescriptAgentCreateResponse> {
   const voice = params.voiceName ?? "Pedram FOR GUT COURSE READ";
   // Format for natural TTS delivery first, then apply phonetic corrections
   const formattedScript = formatScriptForTTS(params.scriptText);
   const phoneticScript = applyPhoneticSubstitutions(formattedScript);
-  const prompt = `Create a new video project. Narrate the following script using the "${voice}" AI voice. Speak naturally with appropriate pacing and pauses — do not rush through the text. Apply Studio Sound to enhance audio quality. Add captions. Here is the script:\n\n${phoneticScript}`;
+
+  // Build optional CTA end-screen instruction
+  const ctaInstruction = params.ctaText
+    ? `\n\nAfter the narration ends, add a title card end screen that stays visible for 5 seconds. The card should display this text in white on a dark background: "${params.ctaText}" with the URL "${params.ctaUrl ?? 'theurbanmonk.com'}" below it.`
+    : "";
+
+  const prompt = `Create a new video project. Narrate the following script using the "${voice}" AI voice. Speak naturally with appropriate pacing and pauses — do not rush through the text. Apply Studio Sound to enhance audio quality. Add captions.${ctaInstruction} Here is the script:\n\n${phoneticScript}`;
 
   return descriptFetch<DescriptAgentCreateResponse>("/jobs/agent", {
     method: "POST",

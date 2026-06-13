@@ -179,7 +179,7 @@ export async function exportProject(params: {
   format?: "mp4" | "mov";
   resolution?: "1080p" | "720p" | "4k";
 }): Promise<DescriptExportResponse> {
-  return descriptFetch<DescriptExportResponse>("/jobs/export", {
+  return descriptFetch<DescriptExportResponse>("/jobs/publish", {
     method: "POST",
     body: JSON.stringify({
       project_id: params.projectId,

@@ -1,0 +1,1 @@
+ALTER TABLE `syndication_jobs` MODIFY COLUMN `syndication_platform` enum('substack','medium','quora','reddit') NOT NULL;

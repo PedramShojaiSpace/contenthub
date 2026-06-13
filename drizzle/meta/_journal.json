@@ -785,6 +785,13 @@
       "when": 1781351698858,
       "tag": "0111_perfect_mandarin",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "5",
+      "when": 1781353000702,
+      "tag": "0112_early_magus",
+      "breakpoints": true
     }
   ]
 }

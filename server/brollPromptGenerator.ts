@@ -45,8 +45,8 @@ ${params.scriptText.substring(0, 2000)}
 
 Return JSON with this exact structure:
 {
-  "underlordPrompt": "A single detailed natural language prompt for Descript Underlord that instructs it to: (1) generate voiceover using Pedram's AI voice, (2) apply Studio Sound enhancement, (3) remove filler words and long pauses, (4) add auto-captions, (5) insert B-roll from the stock library based on the content — describe exactly what B-roll to use at which moments",
-  "sceneDirections": ["array of 5-8 specific B-roll direction strings like 'At the gut health section, show close-up footage of healthy food and digestion animations'"],
+  "underlordPrompt": "A single detailed natural language prompt for Descript Underlord that instructs it to: (1) generate voiceover using Pedram's AI voice, (2) apply Studio Sound enhancement, (3) remove filler words and long pauses, (4) add auto-captions, (5) insert HEAVY B-roll from the stock library — CRITICAL: cut to a new B-roll clip every 5 to 12 seconds throughout the ENTIRE video with NO exceptions, never linger on a single shot longer than 12 seconds, use a high density of B-roll cuts to maintain visual momentum, describe exactly what B-roll to use at each specific moment in the script",
+  "sceneDirections": ["array of 10-15 specific B-roll direction strings with timestamps, e.g. 'At 0:00-0:10 show aerial nature footage; at 0:10-0:20 cut to close-up of person meditating' — every direction must specify a short 5-12 second clip with a clear cut to the next shot"],
   "youtubeTitle": "SEO-optimized YouTube title under 60 chars",
   "youtubeDescription": "YouTube description 150-200 words with timestamps placeholder, key points, and CTA to Urban Monk Academy",
   "youtubeTags": ["array", "of", "10-15", "relevant", "tags"]

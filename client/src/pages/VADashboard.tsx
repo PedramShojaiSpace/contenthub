@@ -58,17 +58,21 @@ interface SyndicationJob {
 interface VideoJob {
   id: number;
   contentItemId: number;
-  scriptTitle: string;
   scriptText: string;
   brollPrompt: string | null;
   descriptProjectId: string | null;
-  descriptProjectUrl: string | null;
-  videoS3Url: string | null;
+  descriptImportJobId: string | null;
+  descriptAgentJobId: string | null;
+  descriptPublishJobId: string | null;
+  descriptShareUrl: string | null;
+  descriptDownloadUrl: string | null;
+  s3VideoKey: string | null;
+  s3VideoUrl: string | null;
+  youtubeVideoId: string | null;
   youtubeTitle: string | null;
   youtubeDescription: string | null;
   youtubeTags: string | null;
-  youtubeVideoId: string | null;
-  youtubeVideoUrl: string | null;
+  youtubeThumbnailUrl: string | null;
   status: string;
   errorMessage: string | null;
   retryCount: number | null;
@@ -494,7 +498,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   const [showReject, setShowReject] = useState(false);
   const [showEditMeta, setShowEditMeta] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [editTitle, setEditTitle] = useState(job.youtubeTitle ?? job.scriptTitle);
+  const [editTitle, setEditTitle] = useState(job.youtubeTitle ?? "Urban Monk Video");
   const [editDescription, setEditDescription] = useState(job.youtubeDescription ?? "");
   const [editTags, setEditTags] = useState(
     job.youtubeTags ? (JSON.parse(job.youtubeTags) as string[]).join(", ") : ""
@@ -555,7 +559,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                 )}
               </div>
               <p className="text-white font-medium text-sm truncate">
-                {job.youtubeTitle ?? job.scriptTitle}
+                {job.youtubeTitle ?? "Urban Monk Video"}
               </p>
               <p className="text-xs text-zinc-500 mt-0.5">
                 Job #{job.id} · Created {new Date(job.createdAt).toLocaleDateString()}
@@ -592,19 +596,19 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           )}
 
           {/* Video preview */}
-          {job.videoS3Url && (
+          {job.s3VideoUrl && (
             <div className="space-y-2">
               <p className="text-xs text-zinc-400 uppercase tracking-wider">Video Preview</p>
               <div className="rounded-lg overflow-hidden bg-black border border-zinc-700">
                 <video
                   controls
                   className="w-full max-h-[360px]"
-                  src={job.videoS3Url}
+                  src={job.s3VideoUrl}
                   preload="metadata"
                 />
               </div>
               <a
-                href={job.videoS3Url}
+                href={job.s3VideoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200"
@@ -615,11 +619,11 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           )}
 
           {/* Descript project link */}
-          {job.descriptProjectUrl && (
+          {job.descriptShareUrl && (
             <div className="flex items-center gap-2 text-sm">
               <span className="text-zinc-400">Descript Project:</span>
               <a
-                href={job.descriptProjectUrl}
+                href={job.descriptShareUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300 underline text-xs truncate"
@@ -646,7 +650,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
             </div>
             <div>
               <p className="text-xs text-zinc-500 mb-1">Title</p>
-              <p className="text-white text-sm font-medium">{job.youtubeTitle ?? job.scriptTitle}</p>
+              <p className="text-white text-sm font-medium">{job.youtubeTitle ?? "Urban Monk Video"}</p>
             </div>
             {job.youtubeDescription && (
               <div>
@@ -669,12 +673,12 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           </div>
 
           {/* Published YouTube link */}
-          {isPublished && job.youtubeVideoUrl && (
+          {isPublished && `https://www.youtube.com/watch?v=${job.youtubeVideoId}` && (
             <div className="flex items-center gap-2 p-3 bg-red-600/10 border border-red-600/20 rounded text-sm text-red-300">
               <Youtube className="w-4 h-4 flex-shrink-0" />
               <span>Published: </span>
-              <a href={job.youtubeVideoUrl} target="_blank" rel="noopener noreferrer" className="underline truncate">
-                {job.youtubeVideoUrl}
+              <a href={`https://www.youtube.com/watch?v=${job.youtubeVideoId}`} target="_blank" rel="noopener noreferrer" className="underline truncate">
+                {`https://www.youtube.com/watch?v=${job.youtubeVideoId}`}
               </a>
             </div>
           )}

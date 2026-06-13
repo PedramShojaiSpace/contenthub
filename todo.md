@@ -3924,3 +3924,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Add VA Dashboard link to sidebar/nav
 - [ ] Write full VA SOP document (PDF) covering Medium, Quora, Reddit with screenshots-style step descriptions
 - [ ] Save checkpoint after VA Dashboard is complete
+
+## Descript Video Production Pipeline (Session: Jun 13 2026)
+
+- [x] Add video_jobs table to drizzle/schema.ts (26 columns: status enum, Descript IDs, S3 URL, YouTube metadata, VA approval fields)
+- [x] Write server/descriptClient.ts — Descript Partner API client (createProjectFromScript, runUnderlordAgent, exportProject, getJobStatus, getDrives)
+- [x] Write server/brollPromptGenerator.ts — AI-powered B-roll prompt + YouTube metadata generator using invokeLLM
+- [x] Write server/descriptPipeline.ts — pipeline orchestrator (9-step chain: B-roll prompt → import → Underlord agent → export → S3 upload → ready_for_review)
+- [x] Write server/youtubeUploader.ts — YouTube Data API v3 uploader using stored OAuth refresh token
+- [x] Write server/videoPipelineRouter.ts — tRPC router (startVideoJob, getVideoJobs, approveVideoJob, rejectVideoJob, retryVideoJob, updateVideoMetadata, processScheduledVideoJobs)
+- [x] Register videoPipelineRouter in server/routers.ts as videoPipeline
+- [x] Add /api/scheduled/video-pipeline cron handler to server/_core/index.ts
+- [x] Register Heartbeat cron: video-pipeline-poll, every 15 min, task_uid: hGp92XkZBgiNbcwk9zgGSJ
+- [x] Extend client/src/pages/VADashboard.tsx with Video Review tab (video player, metadata editor, Approve & Publish to YouTube, Reject, Retry)
+- [x] TypeScript check: 0 errors (excluding pre-existing ScriptGenerator.tsx error)

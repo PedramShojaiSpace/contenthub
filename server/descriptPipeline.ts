@@ -124,8 +124,6 @@ export async function processVideoJob(jobId: number): Promise<void> {
       // Editing done — start export
       const exportResult = await exportProject({
         projectId: job.descriptProjectId!,
-        format: "mp4",
-        resolution: "1080p",
       });
 
       await db.update(videoJobs).set({

@@ -105,6 +105,7 @@ import { crossModuleRouter } from "./crossModuleRouter";
 import { redditRouter } from "./redditRouter";
 import { podcastRouter } from "./podcastRouter";
 import { keywordStrategyRouter } from "./keywordStrategyRouter";
+import { syndicationRouter } from "./syndicationRouter";
 import { hostedLandingPagesRouter } from "./hostedLandingPagesRouter";
 import { testimonialsRouter } from "./testimonialsRouter";
 import { kajabiOptIn } from "./kajabiApi";
@@ -453,6 +454,7 @@ export const appRouter = router({
   reddit: redditRouter,
   podcast: podcastRouter,
   kwStrategy: keywordStrategyRouter,
+  syndicationPipeline: syndicationRouter,
   hostedLp: hostedLandingPagesRouter,
   testimonials: testimonialsRouter,
   videoToBlog: videoToBlogRouter,
@@ -3777,39 +3779,55 @@ Return BOTH in this exact format:
           }
         }
 
-        // Step 9e: Substack publish — fire if sendToSubstack is toggled on this content item
-        let substackResult: { published: boolean; postUrl?: string; postId?: string; message: string } = { published: false, message: "skipped" };
+        // Step 9e: Syndication pipeline — enqueue staggered jobs for Substack (Day 1), Medium (Day 2), Quora (Day 3)
+        // NOTE: Simultaneous Substack push has been REPLACED by the staggered syndication pipeline.
+        // Substack now receives a distinct founder letter (not a copy of the WP post) 24 hours after WP publish.
+        // This ensures WordPress is indexed by Google first (canonical origin) and Substack subscribers
+        // receive unique content that drives traffic back to the site.
+        let substackResult: { published: boolean; postUrl?: string; postId?: string; message: string } = { published: false, message: "queued_for_syndication" };
         if (newStatus !== "scheduled") {
           try {
-            const db9e = await getDb();
-            if (db9e) {
-              const { contentItems: ciTable9e } = await import("../drizzle/schema");
-              const { eq: eq9e } = await import("drizzle-orm");
-              const [ci9e] = await db9e.select({ sendToSubstack: ciTable9e.sendToSubstack, substackPostId: ciTable9e.substackPostId })
-                .from(ciTable9e)
-                .where(eq9e(ciTable9e.id, publishInput.contentItemId));
-              if (ci9e?.sendToSubstack && !ci9e.substackPostId) {
-                const { publishToSubstack } = await import("./substackPublisher");
-                const substackRes = await publishToSubstack({
-                  title: publishInput.title,
-                  bodyHtml: wpHtmlBody,
-                  subtitle: publishInput.metaDescription,
-                  sendEmail: true,
-                });
-                await db9e.update(ciTable9e).set({
-                  substackPostId: substackRes.postId,
-                  substackPostUrl: substackRes.postUrl,
-                }).where(eq9e(ciTable9e.id, publishInput.contentItemId));
-                substackResult = { published: true, postUrl: substackRes.postUrl, postId: substackRes.postId, message: `Published to Substack: ${substackRes.postUrl}` };
-                console.log(`[Substack] Published post ${substackRes.postId}: ${substackRes.postUrl}`);
-              } else if (ci9e?.substackPostId) {
-                substackResult = { published: false, message: "Already published to Substack" };
+            const { syndicationRouter: syndicationRouterModule } = await import("./syndicationRouter");
+            // Enqueue via direct DB insert (bypasses tRPC auth for server-side use)
+            const { syndicationJobs: sjTable } = await import("../drizzle/schema");
+            const dbSyn = await getDb();
+            if (dbSyn) {
+              const DAY_MS = 24 * 60 * 60 * 1000;
+              const now = Date.now();
+              const wpCanonicalUrl = post.link;
+              // Check for existing jobs to avoid duplicates on re-publish
+              const { eq: eqSyn, inArray: inArraySyn } = await import("drizzle-orm");
+              const existing = await dbSyn.select({ platform: sjTable.platform })
+                .from(sjTable)
+                .where(eqSyn(sjTable.contentItemId, publishInput.contentItemId));
+              const existingPlatforms = new Set(existing.map((j: { platform: string }) => j.platform));
+              const platforms = ["substack", "medium", "quora"] as const;
+              const delays: Record<string, number> = { substack: 1 * DAY_MS, medium: 2 * DAY_MS, quora: 3 * DAY_MS };
+              const toCreate = platforms.filter((p) => !existingPlatforms.has(p));
+              if (toCreate.length > 0) {
+                await dbSyn.insert(sjTable).values(
+                  toCreate.map((platform) => ({
+                    contentItemId: publishInput.contentItemId,
+                    wordpressUrl: wpCanonicalUrl,
+                    wordpressTitle: publishInput.title,
+                    wordpressBodyHtml: wpHtmlBody,
+                    wordpressMetaDescription: publishInput.metaDescription ?? null,
+                    wordpressFocusKeyword: publishInput.focusKeyword ?? null,
+                    platform,
+                    status: "pending" as const,
+                    scheduledAt: now + delays[platform],
+                  }))
+                );
+                substackResult = { published: false, message: `Syndication queued: Substack in 24h, Medium in 48h, Quora in 72h` };
+                console.log(`[Syndication] Enqueued ${toCreate.length} jobs for content item ${publishInput.contentItemId}`);
+              } else {
+                substackResult = { published: false, message: "Syndication jobs already exist for this post" };
               }
             }
-          } catch (subErr) {
-            // Non-fatal — Substack publish failure should never block the WP publish response
-            console.error("[Substack] Publish failed (non-fatal):", subErr);
-            substackResult = { published: false, message: `Substack publish failed: ${(subErr as Error).message}` };
+          } catch (synErr) {
+            // Non-fatal — syndication enqueue failure should never block the WP publish response
+            console.error("[Syndication] Enqueue failed (non-fatal):", synErr);
+            substackResult = { published: false, message: `Syndication enqueue failed: ${(synErr as Error).message}` };
           }
         }
 

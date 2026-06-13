@@ -5,6 +5,7 @@
  * Tab 2 (Video Review): Descript-rendered videos awaiting VA approval before YouTube publish
  */
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import {
   Youtube,
   Edit2,
   Tag,
+  ArrowLeft,
 } from "lucide-react";
 
 // ─── Syndication Types ────────────────────────────────────────────────────────
@@ -155,15 +157,15 @@ function renderAdaptedContent(platform: Platform, adaptedContent: Record<string,
     return (
       <div className="space-y-3">
         <div>
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Headline</p>
-          <p className="text-white font-semibold text-lg">{adaptedContent.title as string}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Headline</p>
+          <p className="text-foreground font-semibold text-lg">{adaptedContent.title as string}</p>
         </div>
         <div>
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Article Body (Markdown)</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Article Body (Markdown)</p>
           <Textarea
             readOnly
             value={adaptedContent.bodyMarkdown as string}
-            className="min-h-[200px] font-mono text-xs bg-zinc-900 border-zinc-700 text-zinc-300 resize-y"
+            className="min-h-[200px] font-mono text-xs bg-card border-border text-foreground/80 resize-y"
           />
         </div>
         <div className="flex items-center gap-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
@@ -178,15 +180,15 @@ function renderAdaptedContent(platform: Platform, adaptedContent: Record<string,
     return (
       <div className="space-y-3">
         <div>
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Target Question to Find on Quora</p>
-          <p className="text-white font-semibold">{adaptedContent.targetQuestion as string}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Target Question to Find on Quora</p>
+          <p className="text-foreground font-semibold">{adaptedContent.targetQuestion as string}</p>
         </div>
         <div>
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Your Answer (Markdown)</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Your Answer (Markdown)</p>
           <Textarea
             readOnly
             value={adaptedContent.answerMarkdown as string}
-            className="min-h-[200px] font-mono text-xs bg-zinc-900 border-zinc-700 text-zinc-300 resize-y"
+            className="min-h-[200px] font-mono text-xs bg-card border-border text-foreground/80 resize-y"
           />
         </div>
         <div className="flex items-center gap-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-300">
@@ -202,7 +204,7 @@ function renderAdaptedContent(platform: Platform, adaptedContent: Record<string,
     return (
       <div className="space-y-3">
         <div>
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Suggested Subreddits</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Suggested Subreddits</p>
           <div className="flex flex-wrap gap-2">
             {subreddits.map((sub) => (
               <a
@@ -218,22 +220,22 @@ function renderAdaptedContent(platform: Platform, adaptedContent: Record<string,
           </div>
         </div>
         <div>
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Post Title</p>
-          <p className="text-white font-semibold">{adaptedContent.postTitle as string}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Post Title</p>
+          <p className="text-foreground font-semibold">{adaptedContent.postTitle as string}</p>
         </div>
         <div>
-          <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Post Body</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Post Body</p>
           <Textarea
             readOnly
             value={adaptedContent.postBody as string}
-            className="min-h-[200px] font-mono text-xs bg-zinc-900 border-zinc-700 text-zinc-300 resize-y"
+            className="min-h-[200px] font-mono text-xs bg-card border-border text-foreground/80 resize-y"
           />
         </div>
       </div>
     );
   }
 
-  return <p className="text-zinc-400 text-sm">No content preview available.</p>;
+  return <p className="text-muted-foreground text-sm">No content preview available.</p>;
 }
 
 // ─── Syndication Job Card ─────────────────────────────────────────────────────
@@ -295,7 +297,7 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
   };
 
   return (
-    <Card className={`border ${config.color} bg-zinc-900/50`}>
+    <Card className={`border ${config.color} bg-card`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -322,17 +324,17 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
                   </Badge>
                 ) : null}
                 {job.status === "skipped" && (
-                  <Badge variant="outline" className="text-xs bg-zinc-500/10 text-zinc-400 border-zinc-500/20">
+                  <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
                     Skipped
                   </Badge>
                 )}
               </div>
-              <p className="text-white font-medium text-sm mt-1 truncate">{job.wordpressTitle}</p>
+              <p className="text-foreground font-medium text-sm mt-1 truncate">{job.wordpressTitle}</p>
               <a
                 href={job.wordpressUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors truncate block"
+                className="text-xs text-muted-foreground hover:text-foreground/80 transition-colors truncate block"
               >
                 {job.wordpressUrl}
               </a>
@@ -342,7 +344,7 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
             variant="ghost"
             size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="flex-shrink-0 text-zinc-400"
+            className="flex-shrink-0 text-muted-foreground"
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
@@ -352,12 +354,12 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
       {expanded && (
         <CardContent className="pt-0 space-y-4">
           {/* Instructions */}
-          <div className="bg-zinc-800/50 rounded-lg p-4">
-            <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-3">Step-by-Step Instructions</p>
+          <div className="bg-muted/50 rounded-lg p-4">
+            <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider mb-3">Step-by-Step Instructions</p>
             <ol className="space-y-2">
               {config.instructions.map((step, i) => (
-                <li key={i} className="flex gap-3 text-sm text-zinc-300">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-zinc-700 text-zinc-300 text-xs flex items-center justify-center font-medium">
+                <li key={i} className="flex gap-3 text-sm text-foreground/80">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-secondary text-foreground/80 text-xs flex items-center justify-center font-medium">
                     {i + 1}
                   </span>
                   {step}
@@ -375,14 +377,14 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
               <span>AI is generating content for this platform... Check back in a few minutes.</span>
             </div>
           ) : (
-            <p className="text-zinc-500 text-sm">Content not available.</p>
+            <p className="text-muted-foreground text-sm">Content not available.</p>
           )}
 
           {/* Actions */}
           {!isPosted && !isPending && (
             <div className="flex gap-3 flex-wrap">
               <a href={getCtaUrl()} target="_blank" rel="noopener noreferrer">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white text-sm">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-foreground text-sm">
                   <ExternalLink className="w-4 h-4 mr-2" />
                   {config.ctaLabel}
                 </Button>
@@ -390,7 +392,7 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
               {adaptedContent && (
                 <Button
                   variant="outline"
-                  className="text-sm border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                  className="text-sm border-border text-foreground/80 hover:bg-muted"
                   onClick={() => {
                     const text = JSON.stringify(adaptedContent, null, 2);
                     navigator.clipboard.writeText(text);
@@ -402,7 +404,7 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
                 </Button>
               )}
               <Button
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-foreground text-sm"
                 onClick={() => setShowMarkPosted(true)}
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -411,7 +413,7 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
               {job.status !== "skipped" && (
                 <Button
                   variant="ghost"
-                  className="text-zinc-500 hover:text-zinc-300 text-sm"
+                  className="text-muted-foreground hover:text-foreground/80 text-sm"
                   onClick={() => skipJob.mutate({ jobId: job.id })}
                   disabled={skipJob.isPending}
                 >
@@ -436,26 +438,26 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
 
       {/* Mark as Posted Dialog */}
       <Dialog open={showMarkPosted} onOpenChange={setShowMarkPosted}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 text-white">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Mark {config.label} Post as Done</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Paste the URL of your published {config.label} post below (optional but recommended for tracking).
             </p>
             <Input
               placeholder={`https://www.${platform}.com/...`}
               value={publishedUrl}
               onChange={(e) => setPublishedUrl(e.target.value)}
-              className="bg-zinc-800 border-zinc-700 text-white"
+              className="bg-muted border-border text-foreground"
             />
             <div className="flex gap-2 justify-end">
-              <Button variant="ghost" onClick={() => setShowMarkPosted(false)} className="text-zinc-400">
+              <Button variant="ghost" onClick={() => setShowMarkPosted(false)} className="text-muted-foreground">
                 Cancel
               </Button>
               <Button
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-foreground"
                 onClick={() => markPosted.mutate({ jobId: job.id, publishedUrl: publishedUrl || undefined })}
                 disabled={markPosted.isPending}
               >
@@ -473,18 +475,18 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
 // ─── Video Status Badge ───────────────────────────────────────────────────────
 function VideoStatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; className: string }> = {
-    queued: { label: "Queued", className: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" },
+    queued: { label: "Queued", className: "bg-muted text-muted-foreground border-border" },
     importing: { label: "Importing to Descript", className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
     processing: { label: "AI Processing", className: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
     rendering: { label: "Rendering Video", className: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
     ready_for_review: { label: "Ready for Review", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
     approved: { label: "Approved", className: "bg-green-500/10 text-green-400 border-green-500/20" },
     publishing: { label: "Uploading to YouTube", className: "bg-red-500/10 text-red-400 border-red-500/20" },
-    published: { label: "Published on YouTube", className: "bg-red-600/10 text-red-300 border-red-600/20" },
+    published: { label: "Published on YouTube", className: "bg-red-600/10 text-primary border-red-600/20" },
     failed: { label: "Failed", className: "bg-red-900/20 text-red-400 border-red-900/30" },
-    skipped: { label: "Skipped", className: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20" },
+    skipped: { label: "Skipped", className: "bg-muted text-muted-foreground border-border" },
   };
-  const c = config[status] ?? { label: status, className: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" };
+  const c = config[status] ?? { label: status, className: "bg-muted text-muted-foreground border-border" };
   return (
     <Badge variant="outline" className={`text-xs ${c.className}`}>
       {c.label}
@@ -544,7 +546,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   });
 
   return (
-    <Card className="border border-zinc-700/50 bg-zinc-900/50">
+    <Card className="border border-border/50 bg-card">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -555,13 +557,13 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <VideoStatusBadge status={job.status} />
                 {isInProgress && (
-                  <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />
+                  <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
                 )}
               </div>
-              <p className="text-white font-medium text-sm truncate">
+              <p className="text-foreground font-medium text-sm truncate">
                 {job.youtubeTitle ?? "Urban Monk Video"}
               </p>
-              <p className="text-xs text-zinc-500 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Job #{job.id} · Created {new Date(job.createdAt).toLocaleDateString()}
               </p>
             </div>
@@ -570,7 +572,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
             variant="ghost"
             size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="flex-shrink-0 text-zinc-400"
+            className="flex-shrink-0 text-muted-foreground"
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
@@ -589,7 +591,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
           {/* Error message */}
           {isFailed && job.errorMessage && (
-            <div className="p-3 bg-red-900/20 border border-red-900/30 rounded text-sm text-red-300">
+            <div className="p-3 bg-red-900/20 border border-red-900/30 rounded text-sm text-primary">
               <p className="font-medium mb-1">Error:</p>
               <p className="font-mono text-xs">{job.errorMessage}</p>
             </div>
@@ -598,8 +600,8 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           {/* Video preview */}
           {job.s3VideoUrl && (
             <div className="space-y-2">
-              <p className="text-xs text-zinc-400 uppercase tracking-wider">Video Preview</p>
-              <div className="rounded-lg overflow-hidden bg-black border border-zinc-700">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Video Preview</p>
+              <div className="rounded-lg overflow-hidden bg-foreground/5 border border-border">
                 <video
                   controls
                   className="w-full max-h-[360px]"
@@ -611,7 +613,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                 href={job.s3VideoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
                 <ExternalLink className="w-3 h-3" /> Open in new tab
               </a>
@@ -621,7 +623,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           {/* Descript project link */}
           {job.descriptShareUrl && (
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-zinc-400">Descript Project:</span>
+              <span className="text-muted-foreground">Descript Project:</span>
               <a
                 href={job.descriptShareUrl}
                 target="_blank"
@@ -634,14 +636,14 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           )}
 
           {/* YouTube metadata */}
-          <div className="space-y-3 bg-zinc-800/50 rounded-lg p-4">
+          <div className="space-y-3 bg-muted/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">YouTube Metadata</p>
+              <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">YouTube Metadata</p>
               {isReadyForReview && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-zinc-400 hover:text-zinc-200 h-7 px-2"
+                  className="text-muted-foreground hover:text-foreground h-7 px-2"
                   onClick={() => setShowEditMeta(true)}
                 >
                   <Edit2 className="w-3 h-3 mr-1" /> Edit
@@ -649,21 +651,21 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
               )}
             </div>
             <div>
-              <p className="text-xs text-zinc-500 mb-1">Title</p>
-              <p className="text-white text-sm font-medium">{job.youtubeTitle ?? "Urban Monk Video"}</p>
+              <p className="text-xs text-muted-foreground mb-1">Title</p>
+              <p className="text-foreground text-sm font-medium">{job.youtubeTitle ?? "Urban Monk Video"}</p>
             </div>
             {job.youtubeDescription && (
               <div>
-                <p className="text-xs text-zinc-500 mb-1">Description</p>
-                <p className="text-zinc-300 text-xs line-clamp-3">{job.youtubeDescription}</p>
+                <p className="text-xs text-muted-foreground mb-1">Description</p>
+                <p className="text-foreground/80 text-xs line-clamp-3">{job.youtubeDescription}</p>
               </div>
             )}
             {job.youtubeTags && (
               <div>
-                <p className="text-xs text-zinc-500 mb-1">Tags</p>
+                <p className="text-xs text-muted-foreground mb-1">Tags</p>
                 <div className="flex flex-wrap gap-1">
                   {(JSON.parse(job.youtubeTags) as string[]).slice(0, 8).map((tag) => (
-                    <span key={tag} className="px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded text-xs">
+                    <span key={tag} className="px-2 py-0.5 bg-secondary text-foreground/80 rounded text-xs">
                       {tag}
                     </span>
                   ))}
@@ -674,7 +676,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
           {/* Published YouTube link */}
           {isPublished && `https://www.youtube.com/watch?v=${job.youtubeVideoId}` && (
-            <div className="flex items-center gap-2 p-3 bg-red-600/10 border border-red-600/20 rounded text-sm text-red-300">
+            <div className="flex items-center gap-2 p-3 bg-red-600/10 border border-red-600/20 rounded text-sm text-primary">
               <Youtube className="w-4 h-4 flex-shrink-0" />
               <span>Published: </span>
               <a href={`https://www.youtube.com/watch?v=${job.youtubeVideoId}`} target="_blank" rel="noopener noreferrer" className="underline truncate">
@@ -688,7 +690,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
             {isReadyForReview && (
               <>
                 <Button
-                  className="bg-red-600 hover:bg-red-700 text-white text-sm"
+                  className="bg-red-600 hover:bg-red-700 text-foreground text-sm"
                   onClick={() => approveJob.mutate({ jobId: job.id })}
                   disabled={approveJob.isPending}
                 >
@@ -701,7 +703,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                 </Button>
                 <Button
                   variant="outline"
-                  className="text-sm border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                  className="text-sm border-border text-foreground/80 hover:bg-muted"
                   onClick={() => setShowReject(true)}
                 >
                   <ThumbsDown className="w-4 h-4 mr-2" />
@@ -712,7 +714,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
             {isFailed && (
               <Button
                 variant="outline"
-                className="text-sm border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                className="text-sm border-border text-foreground/80 hover:bg-muted"
                 onClick={() => retryJob.mutate({ jobId: job.id })}
                 disabled={retryJob.isPending}
               >
@@ -730,22 +732,22 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
       {/* Reject Dialog */}
       <Dialog open={showReject} onOpenChange={setShowReject}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 text-white">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Reject Video</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-zinc-400">Provide a reason for rejection (optional). The job will be marked as failed.</p>
+            <p className="text-sm text-muted-foreground">Provide a reason for rejection (optional). The job will be marked as failed.</p>
             <Textarea
               placeholder="e.g. Audio quality issue, wrong B-roll, script error..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="bg-zinc-800 border-zinc-700 text-white"
+              className="bg-muted border-border text-foreground"
             />
             <div className="flex gap-2 justify-end">
-              <Button variant="ghost" onClick={() => setShowReject(false)} className="text-zinc-400">Cancel</Button>
+              <Button variant="ghost" onClick={() => setShowReject(false)} className="text-muted-foreground">Cancel</Button>
               <Button
-                className="bg-red-700 hover:bg-red-800 text-white"
+                className="bg-red-700 hover:bg-red-800 text-foreground"
                 onClick={() => rejectJob.mutate({ jobId: job.id, reason: rejectReason || undefined })}
                 disabled={rejectJob.isPending}
               >
@@ -759,42 +761,42 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
       {/* Edit Metadata Dialog */}
       <Dialog open={showEditMeta} onOpenChange={setShowEditMeta}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-2xl">
+        <DialogContent className="bg-card border-border text-foreground max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit YouTube Metadata</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Title (max 100 chars)</label>
+              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Title (max 100 chars)</label>
               <Input
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 maxLength={100}
-                className="bg-zinc-800 border-zinc-700 text-white"
+                className="bg-muted border-border text-foreground"
               />
-              <p className="text-xs text-zinc-500 mt-1">{editTitle.length}/100</p>
+              <p className="text-xs text-muted-foreground mt-1">{editTitle.length}/100</p>
             </div>
             <div>
-              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Description</label>
+              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Description</label>
               <Textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                className="min-h-[150px] bg-zinc-800 border-zinc-700 text-white text-sm"
+                className="min-h-[150px] bg-muted border-border text-foreground text-sm"
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">Tags (comma-separated)</label>
+              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Tags (comma-separated)</label>
               <Input
                 value={editTags}
                 onChange={(e) => setEditTags(e.target.value)}
                 placeholder="gut health, microbiome, urban monk..."
-                className="bg-zinc-800 border-zinc-700 text-white"
+                className="bg-muted border-border text-foreground"
               />
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="ghost" onClick={() => setShowEditMeta(false)} className="text-zinc-400">Cancel</Button>
+              <Button variant="ghost" onClick={() => setShowEditMeta(false)} className="text-muted-foreground">Cancel</Button>
               <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-foreground"
                 onClick={() =>
                   updateMeta.mutate({
                     jobId: job.id,
@@ -818,6 +820,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function VADashboard() {
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"syndication" | "video">("syndication");
   const [syndicationFilter, setSyndicationFilter] = useState<"all" | "todo" | "done">("todo");
   const [videoFilter, setVideoFilter] = useState<"all" | "review" | "published" | "failed">("review");
@@ -860,37 +863,44 @@ export default function VADashboard() {
   }, {});
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <div className="border-b border-zinc-800 bg-zinc-900/50">
+      <div className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-6 py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">VA Dashboard</h1>
-              <p className="text-zinc-400 text-sm mt-1">
+              <button
+                onClick={() => navigate("/blog-to-youtube")}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Content Hub
+              </button>
+              <h1 className="text-2xl font-bold text-foreground">VA Dashboard</h1>
+              <p className="text-muted-foreground text-sm mt-1">
                 Content syndication queue and video review for The Urban Monk.
               </p>
             </div>
             <div className="flex gap-3 text-center flex-shrink-0">
-              <div className="bg-zinc-800 rounded-lg px-4 py-2">
+              <div className="bg-muted rounded-lg px-4 py-2">
                 <p className="text-2xl font-bold text-amber-400">{syndicationTodoCount}</p>
-                <p className="text-xs text-zinc-400">Posts to Syndicate</p>
+                <p className="text-xs text-muted-foreground">Posts to Syndicate</p>
               </div>
-              <div className="bg-zinc-800 rounded-lg px-4 py-2">
+              <div className="bg-muted rounded-lg px-4 py-2">
                 <p className="text-2xl font-bold text-red-400">{videoReviewCount}</p>
-                <p className="text-xs text-zinc-400">Videos to Review</p>
+                <p className="text-xs text-muted-foreground">Videos to Review</p>
               </div>
             </div>
           </div>
 
           {/* Main tabs */}
-          <div className="flex gap-1 mt-5 bg-zinc-800/50 rounded-lg p-1 w-fit">
+          <div className="flex gap-1 mt-5 bg-muted/50 rounded-lg p-1 w-fit">
             <button
               onClick={() => setActiveTab("syndication")}
               className={`px-5 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
                 activeTab === "syndication"
-                  ? "bg-zinc-700 text-white"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <MessageSquare className="w-4 h-4" />
@@ -905,14 +915,14 @@ export default function VADashboard() {
               onClick={() => setActiveTab("video")}
               className={`px-5 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
                 activeTab === "video"
-                  ? "bg-zinc-700 text-white"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Video className="w-4 h-4" />
               Video Review
               {videoReviewCount > 0 && (
-                <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                <span className="bg-red-500 text-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                   {videoReviewCount}
                 </span>
               )}
@@ -936,7 +946,7 @@ export default function VADashboard() {
                       {PLATFORM_CONFIG[p].label}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-400">{PLATFORM_CONFIG[p].ctaLabel}</p>
+                  <p className="text-xs text-muted-foreground">{PLATFORM_CONFIG[p].ctaLabel}</p>
                 </div>
               ))}
             </div>
@@ -949,8 +959,8 @@ export default function VADashboard() {
                   onClick={() => setSyndicationFilter(f)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     syndicationFilter === f
-                      ? "bg-zinc-700 text-white"
-                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
                   {f === "todo" ? "To Do" : f === "done" ? "Completed" : "All Jobs"}
@@ -960,16 +970,16 @@ export default function VADashboard() {
 
             {syndicationLoading ? (
               <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
-                <span className="ml-3 text-zinc-400">Loading your queue...</span>
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-3 text-muted-foreground">Loading your queue...</span>
               </div>
             ) : Object.keys(grouped).length === 0 ? (
               <div className="text-center py-16">
                 <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   {syndicationFilter === "todo" ? "All caught up!" : "No jobs found"}
                 </h3>
-                <p className="text-zinc-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                   {syndicationFilter === "todo"
                     ? "No posts are waiting to be syndicated right now."
                     : "No syndication jobs match this filter."}
@@ -980,9 +990,9 @@ export default function VADashboard() {
                 {Object.entries(grouped).map(([title, postJobs]) => (
                   <div key={title}>
                     <div className="flex items-center gap-3 mb-3">
-                      <h2 className="text-sm font-semibold text-zinc-200 truncate">{title}</h2>
-                      <div className="flex-1 h-px bg-zinc-800" />
-                      <span className="text-xs text-zinc-500 flex-shrink-0">
+                      <h2 className="text-sm font-semibold text-foreground truncate">{title}</h2>
+                      <div className="flex-1 h-px bg-muted" />
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
                         {postJobs.length} platform{postJobs.length !== 1 ? "s" : ""}
                       </span>
                     </div>
@@ -1007,14 +1017,14 @@ export default function VADashboard() {
         {activeTab === "video" && (
           <>
             {/* Instructions banner */}
-            <div className="mb-6 p-4 bg-red-900/10 border border-red-900/20 rounded-lg">
-              <p className="text-sm font-semibold text-red-300 mb-2">Video Review Instructions</p>
-              <ol className="space-y-1 text-xs text-zinc-400">
+            <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <p className="text-sm font-semibold text-primary mb-2">Video Review Instructions</p>
+              <ol className="space-y-1 text-xs text-muted-foreground">
                 <li>1. Watch the full video in the preview player below.</li>
                 <li>2. Check audio quality, B-roll relevance, and captions.</li>
                 <li>3. Edit the YouTube title, description, and tags if needed.</li>
-                <li>4. Click <strong className="text-white">Approve &amp; Publish to YouTube</strong> — the video uploads automatically.</li>
-                <li>5. If the video has issues, click <strong className="text-white">Reject</strong> with a reason — the team will re-render.</li>
+                <li>4. Click <strong className="text-foreground">Approve &amp; Publish to YouTube</strong> — the video uploads automatically.</li>
+                <li>5. If the video has issues, click <strong className="text-foreground">Reject</strong> with a reason — the team will re-render.</li>
               </ol>
             </div>
 
@@ -1026,8 +1036,8 @@ export default function VADashboard() {
                   onClick={() => setVideoFilter(f)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     videoFilter === f
-                      ? "bg-zinc-700 text-white"
-                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
                   {f === "review" ? "Needs Review" : f === "published" ? "Published" : f === "failed" ? "Failed" : "All"}
@@ -1037,16 +1047,16 @@ export default function VADashboard() {
 
             {videoLoading ? (
               <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
-                <span className="ml-3 text-zinc-400">Loading video jobs...</span>
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-3 text-muted-foreground">Loading video jobs...</span>
               </div>
             ) : filteredVideoJobs.length === 0 ? (
               <div className="text-center py-16">
                 <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   {videoFilter === "review" ? "No videos waiting for review" : "No videos found"}
                 </h3>
-                <p className="text-zinc-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                   {videoFilter === "review"
                     ? "Videos will appear here once Descript finishes rendering them."
                     : "No video jobs match this filter."}

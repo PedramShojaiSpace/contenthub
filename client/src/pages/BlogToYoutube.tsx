@@ -46,6 +46,7 @@ import {
   Upload,
   Info,
   ArrowLeft,
+  Send,
 } from "lucide-react";
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
@@ -195,6 +196,13 @@ export default function BlogToYoutube() {
       if (selectedItem) setSelectedItem((prev: any) => ({ ...prev, status: "live" }));
     },
     onError: (e) => toast.error(e.message),
+  });
+
+  const sendToDescriptMut = trpc.videoPipeline.startVideoJob.useMutation({
+    onSuccess: () => {
+      toast.success("Script sent to Descript! Check the Video Review tab in the VA Dashboard.");
+    },
+    onError: (e) => toast.error(`Descript error: ${e.message}`),
   });
 
   const generateBlogMut = trpc.blogToYoutube.generateBlogFromScript.useMutation({
@@ -593,20 +601,41 @@ export default function BlogToYoutube() {
                   />
 
                   {editedScript && (
-                    <Button
-                      onClick={() =>
-                        updateScriptMut.mutate({
-                          itemId: selectedItem.id,
-                          script: editedScript,
-                        })
-                      }
-                      disabled={updateScriptMut.isPending}
-                    >
-                      {updateScriptMut.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : null}
-                      Save Script
-                    </Button>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Button
+                        onClick={() =>
+                          updateScriptMut.mutate({
+                            itemId: selectedItem.id,
+                            script: editedScript,
+                          })
+                        }
+                        disabled={updateScriptMut.isPending}
+                      >
+                        {updateScriptMut.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : null}
+                        Save Script
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="border-red-400 text-red-700 hover:bg-red-50"
+                        disabled={sendToDescriptMut.isPending || editedScript.length < 50}
+                        onClick={() =>
+                          sendToDescriptMut.mutate({
+                            contentItemId: selectedItem.id,
+                            scriptTitle: selectedItem.blogTitle,
+                            scriptText: editedScript,
+                          })
+                        }
+                      >
+                        {sendToDescriptMut.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4 mr-2" />
+                        )}
+                        Send to Descript
+                      </Button>
+                    </div>
                   )}
                 </TabsContent>
 

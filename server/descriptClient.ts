@@ -83,6 +83,34 @@ export interface DescriptExportResponse {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 /**
+ * Format a script for natural TTS delivery.
+ * - Adds ellipses after transitional phrases to create natural pauses
+ * - Converts long run-on sentences into shorter, breathable chunks
+ * - Adds em-dashes for natural mid-sentence breaks
+ * - Ensures paragraph breaks become full pauses
+ * - Removes double spaces and cleans up formatting artifacts
+ */
+function formatScriptForTTS(text: string): string {
+  return text
+    // Paragraph breaks → double newline with pause cue
+    .replace(/\n{2,}/g, "\n\n")
+    // Add a brief pause after transitional openers
+    .replace(/\b(Now,|So,|And,|But,|Well,|Look,|Here's the thing,|The truth is,|Think about it,|Here's what I mean,|Let me explain,|In other words,|The bottom line is,|What this means is,|What that means for you is)/g, "$1...")
+    // Add pause before contrasting conjunctions mid-sentence
+    .replace(/ (but|yet|however|although|though|while|whereas) /g, " — $1 ")
+    // Break up sentences longer than ~120 chars at natural comma points
+    .replace(/([^.!?]{80,}),\s+([A-Za-z])/g, (match, p1, p2) => `${p1}...\n${p2}`)
+    // Ensure sentences end with proper terminal punctuation before a pause
+    .replace(/([^.!?…])\n/g, "$1.\n")
+    // Clean up any double ellipses or triple periods
+    .replace(/\.{4,}/g, "...")
+    .replace(/\.\.\./g, "...")
+    // Clean up double spaces
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
+/**
  * Apply phonetic substitutions so Descript TTS pronounces names correctly.
  * Pedram = Peh-drom (NOT Pee-dram)
  * Shojai = Sho-jai
@@ -101,8 +129,10 @@ export async function createProjectWithVoice(params: {
   voiceName?: string;
 }): Promise<DescriptAgentCreateResponse> {
   const voice = params.voiceName ?? "Pedram FOR GUT COURSE READ";
-  const phoneticScript = applyPhoneticSubstitutions(params.scriptText);
-  const prompt = `Create a new video project. Narrate the following script using the "${voice}" AI voice. Apply Studio Sound to enhance audio quality. Add captions. Here is the script:\n\n${phoneticScript}`;
+  // Format for natural TTS delivery first, then apply phonetic corrections
+  const formattedScript = formatScriptForTTS(params.scriptText);
+  const phoneticScript = applyPhoneticSubstitutions(formattedScript);
+  const prompt = `Create a new video project. Narrate the following script using the "${voice}" AI voice. Speak naturally with appropriate pacing and pauses — do not rush through the text. Apply Studio Sound to enhance audio quality. Add captions. Here is the script:\n\n${phoneticScript}`;
 
   return descriptFetch<DescriptAgentCreateResponse>("/jobs/agent", {
     method: "POST",

@@ -118,6 +118,7 @@ const videoItems = [
   { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
   { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
   { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
+  { icon: Users, label: "VA Dashboard", path: "/va" },
 ];
 
 const videoPaths = new Set(videoItems.map((i) => i.path));

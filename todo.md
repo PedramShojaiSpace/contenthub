@@ -3897,3 +3897,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Landing page generator: add "sailing teacher" positioning block to bridge section
 - [x] Landing page generator: update default Lights On webinar title to "Actual Intelligence: How to Reclaim the One Thing AI Can't Replace"
 - [x] Save checkpoint after all prompt updates
+
+## Syndication Pipeline (Option A — WordPress-first, staggered cron)
+- [x] Add syndication queue table to schema (syndicationJobs): contentItemId, platform, status, scheduledAt, adaptedContent, publishedUrl, error
+- [x] Add Medium publisher module (server/mediumPublisher.ts) using Medium API
+- [x] Add Quora answer generator module (bundled in syndicationAdapter.ts) — AI-only, no publish API
+- [x] Add AI adaptation engine (server/syndicationAdapter.ts) — generates distinct Substack letter, Medium article, Quora answer from WordPress post
+- [x] Remove simultaneous Substack push from WordPress publish flow (Step 9e in routers.ts) — replaced with syndicationPipeline.enqueueForPost
+- [x] Add syndication queue router (server/syndicationRouter.ts) — enqueue jobs on WP publish, manual trigger, status view
+- [x] Add Heartbeat cron handler at /api/scheduled/syndication — processes due jobs from queue
+- [x] Register Heartbeat cron (daily at 08:00 UTC) via manus-heartbeat CLI — task_uid: WSbobopPsBDJ4rEEHiPtRR
+- [x] Add Syndication Queue UI page at /syndication — shows pending/completed jobs per post with preview, skip, retry
+- [x] Run db:push after schema changes — syndication_jobs table created
+- [ ] Write tests for syndicationAdapter and syndicationRouter (pending)
+- [ ] Add MEDIUM_INTEGRATION_TOKEN to project secrets (pending user input)

@@ -606,6 +606,20 @@ async function startServer() {
   const { handleBufferSync } = await import("../bufferSyncHandler");
   app.post("/api/scheduled/buffer-sync", handleBufferSync);
 
+  // Syndication pipeline — runs daily at 08:00 UTC
+  // Processes pending syndication jobs: Substack (Day 1), Medium (Day 2), Quora (Day 3)
+  app.post("/api/scheduled/syndication", async (req, res) => {
+    try {
+      const { handleSyndicationCron } = await import("../syndicationRouter");
+      const result = await handleSyndicationCron(req as unknown as { headers: Record<string, string | string[] | undefined> });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Syndication Cron] Handler error:", msg);
+      res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
+    }
+  });
+
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
   // Campaigns: lo | gut | sleep | webinar

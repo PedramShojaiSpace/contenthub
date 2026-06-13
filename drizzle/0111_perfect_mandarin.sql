@@ -1,0 +1,20 @@
+CREATE TABLE `syndication_jobs` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`sj_content_item_id` int NOT NULL,
+	`sj_wordpress_url` text NOT NULL,
+	`sj_wordpress_title` varchar(512) NOT NULL,
+	`sj_wordpress_body_html` text,
+	`sj_wordpress_meta_description` text,
+	`sj_wordpress_focus_keyword` varchar(255),
+	`syndication_platform` enum('substack','medium','quora') NOT NULL,
+	`syndication_status` enum('pending','adapting','ready','published','failed','skipped') NOT NULL DEFAULT 'pending',
+	`sj_scheduled_at` bigint NOT NULL,
+	`sj_adapted_content` text,
+	`sj_published_url` text,
+	`sj_published_post_id` varchar(256),
+	`sj_error_message` text,
+	`sj_retry_count` int DEFAULT 0,
+	`sj_created_at` timestamp NOT NULL DEFAULT (now()),
+	`sj_updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `syndication_jobs_id` PRIMARY KEY(`id`)
+);

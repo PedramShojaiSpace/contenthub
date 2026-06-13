@@ -1976,3 +1976,49 @@ export const presenceAssessmentResults = mysqlTable("presence_assessment_results
 
 export type PresenceAssessmentResult = typeof presenceAssessmentResults.$inferSelect;
 export type InsertPresenceAssessmentResult = typeof presenceAssessmentResults.$inferInsert;
+
+// ─── Syndication Pipeline ────────────────────────────────────────────────────
+// Tracks the staggered multi-platform syndication queue for each WordPress post.
+// When a blog is published to WordPress, three jobs are automatically enqueued:
+//   - substack: fires at Day 1 (24h after WP publish)
+//   - medium:   fires at Day 2 (48h after WP publish)
+//   - quora:    fires at Day 3 (72h after WP publish)
+// The Heartbeat cron at /api/scheduled/syndication processes pending jobs daily.
+
+export const syndicationPlatformEnum = mysqlEnum("syndication_platform", [
+  "substack",
+  "medium",
+  "quora",
+]);
+
+export const syndicationStatusEnum = mysqlEnum("syndication_status", [
+  "pending",
+  "adapting",
+  "ready",
+  "published",
+  "failed",
+  "skipped",
+]);
+
+export const syndicationJobs = mysqlTable("syndication_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  contentItemId: int("sj_content_item_id").notNull(),
+  wordpressUrl: text("sj_wordpress_url").notNull(),
+  wordpressTitle: varchar("sj_wordpress_title", { length: 512 }).notNull(),
+  wordpressBodyHtml: text("sj_wordpress_body_html"),
+  wordpressMetaDescription: text("sj_wordpress_meta_description"),
+  wordpressFocusKeyword: varchar("sj_wordpress_focus_keyword", { length: 255 }),
+  platform: syndicationPlatformEnum.notNull(),
+  status: syndicationStatusEnum.notNull().default("pending"),
+  scheduledAt: bigint("sj_scheduled_at", { mode: "number" }).notNull(),
+  adaptedContent: text("sj_adapted_content"),
+  publishedUrl: text("sj_published_url"),
+  publishedPostId: varchar("sj_published_post_id", { length: 256 }),
+  errorMessage: text("sj_error_message"),
+  retryCount: int("sj_retry_count").default(0),
+  createdAt: timestamp("sj_created_at").defaultNow().notNull(),
+  updatedAt: timestamp("sj_updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SyndicationJob = typeof syndicationJobs.$inferSelect;
+export type InsertSyndicationJob = typeof syndicationJobs.$inferInsert;

@@ -101,7 +101,7 @@ export const videoPipelineRouter = router({
       if (job.status !== "ready_for_review") {
         throw new Error(`Job is in status '${job.status}', expected 'ready_for_review'`);
       }
-      if (!job.descriptProjectId) throw new Error("No Descript project ID — cannot re-export");
+      if (!job.descriptProjectId && !job.descriptDownloadUrl) throw new Error("No Descript project ID or download URL — cannot upload");
 
       await db.update(videoJobs).set({ status: "approved", vaApprovedAt: Date.now() }).where(eq(videoJobs.id, input.jobId));
       await db.update(videoJobs).set({ status: "uploading" }).where(eq(videoJobs.id, input.jobId));
@@ -113,37 +113,68 @@ export const videoPipelineRouter = router({
         const jobLabel = `[BG Job #${input.jobId}]`;
         console.log(`${jobLabel} Background upload started for: "${job.youtubeTitle ?? 'Urban Monk Video'}"`);
         try {
-          // ── Phase 1: Trigger Descript export ──────────────────────────────
-          console.log(`${jobLabel} Triggering Descript export for project: ${job.descriptProjectId}`);
-          const exportResp = await exportProject({ projectId: job.descriptProjectId! });
-          const publishJobId = exportResp.job_id;
-          console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
-
           let downloadUrl: string | undefined;
-          const maxAttempts = 80; // increased: 80 x 15s = 20 min max for Descript
-          for (let i = 0; i < maxAttempts; i++) {
-            await new Promise(r => setTimeout(r, 15_000));
-            const jobStatus = await getJobStatus(publishJobId);
-            console.log(`${jobLabel} Descript poll ${i + 1}/${maxAttempts}: job_state=${jobStatus.job_state}`);
-            if (jobStatus.job_state === "stopped") {
-              if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
-                downloadUrl = jobStatus.result.download_url;
-                console.log(`${jobLabel} Descript export complete. Download URL obtained.`);
-                break;
+
+          // ── Phase 1: Try to reuse cached Descript download URL ────────────
+          // descriptDownloadUrl is the real signed GCS MP4 URL.
+          // s3VideoUrl may be set to the share page URL (share.descript.com) — NEVER use that for upload.
+          const cachedUrl = job.descriptDownloadUrl;
+          const isRealMp4 = cachedUrl &&
+            cachedUrl.startsWith("http") &&
+            !cachedUrl.includes("share.descript.com");
+
+          if (isRealMp4) {
+            console.log(`${jobLabel} Checking if cached Descript download URL is still valid...`);
+            try {
+              const headRes = await fetch(cachedUrl, { method: "HEAD", signal: AbortSignal.timeout(15_000) });
+              if (headRes.ok || headRes.status === 405) {
+                downloadUrl = cachedUrl;
+                console.log(`${jobLabel} Cached download URL is valid (${headRes.status}). Skipping re-export.`);
               } else {
-                throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+                console.warn(`${jobLabel} Cached URL returned ${headRes.status} — expired. Will re-export from Descript.`);
+                await bgDb.update(videoJobs).set({ descriptDownloadUrl: null }).where(eq(videoJobs.id, input.jobId));
               }
-            }
-            if (jobStatus.job_state === "cancelled") {
-              throw new Error("Descript publish job was cancelled");
+            } catch (headErr) {
+              const headMsg = headErr instanceof Error ? headErr.message : String(headErr);
+              console.warn(`${jobLabel} HEAD check failed (${headMsg}). Will re-export from Descript.`);
             }
           }
-          if (!downloadUrl) throw new Error("Descript publish timed out after 20 minutes");
 
-          // ── Phase 2: Upload to YouTube ────────────────────────────────────
+          // ── Phase 2: Fresh Descript export if no valid cached URL ─────────
+          if (!downloadUrl) {
+            if (!job.descriptProjectId) throw new Error("No Descript project ID — cannot re-export. Please use Force Re-export.");
+            console.log(`${jobLabel} Triggering Descript export for project: ${job.descriptProjectId}`);
+            const exportResp = await exportProject({ projectId: job.descriptProjectId! });
+            const publishJobId = exportResp.job_id;
+            console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
+
+            const maxAttempts = 80; // 80 x 15s = 20 min max for Descript
+            for (let i = 0; i < maxAttempts; i++) {
+              await new Promise(r => setTimeout(r, 15_000));
+              const jobStatus = await getJobStatus(publishJobId);
+              console.log(`${jobLabel} Descript poll ${i + 1}/${maxAttempts}: job_state=${jobStatus.job_state}`);
+              if (jobStatus.job_state === "stopped") {
+                if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
+                  downloadUrl = jobStatus.result.download_url;
+                  // Cache the fresh URL
+                  await bgDb.update(videoJobs).set({ descriptDownloadUrl: downloadUrl }).where(eq(videoJobs.id, input.jobId));
+                  console.log(`${jobLabel} Descript export complete. Download URL obtained and cached.`);
+                  break;
+                } else {
+                  throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+                }
+              }
+              if (jobStatus.job_state === "cancelled") {
+                throw new Error("Descript publish job was cancelled");
+              }
+            }
+            if (!downloadUrl) throw new Error("Descript publish timed out after 20 minutes");
+          }
+
+          // ── Phase 3: Upload to YouTube ──────────────────────────────────
           const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
           const uploadResult = await uploadToYouTube({
-            videoUrl: downloadUrl,
+            videoUrl: downloadUrl!,
             title: job.youtubeTitle ?? "Urban Monk Video",
             description: job.youtubeDescription ?? "",
             tags,
@@ -264,7 +295,7 @@ export const videoPipelineRouter = router({
 
           const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
           const uploadResult = await uploadToYouTube({
-            videoUrl: downloadUrl,
+            videoUrl: downloadUrl!,
             title: job.youtubeTitle ?? "Urban Monk Video",
             description: job.youtubeDescription ?? "",
             tags,
@@ -360,7 +391,7 @@ export const videoPipelineRouter = router({
 
           const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
           const uploadResult = await uploadToYouTube({
-            videoUrl: downloadUrl,
+            videoUrl: downloadUrl!,
             title: job.youtubeTitle ?? "Urban Monk Video",
             description: job.youtubeDescription ?? "",
             tags,

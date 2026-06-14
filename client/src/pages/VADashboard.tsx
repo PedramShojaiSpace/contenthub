@@ -621,6 +621,16 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
     onError: (err) => toast.error(`Retry upload failed: ${err.message}`),
   });
 
+  const forceReexport = trpc.videoPipeline.forceReexport.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message ?? "Force re-export started. Descript is re-processing (~15 min).", { duration: 10000 });
+      const pollInterval = setInterval(() => { onRefresh(); }, 30_000);
+      setTimeout(() => clearInterval(pollInterval), 40 * 60 * 1000);
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Force re-export failed: ${err.message}`),
+  });
+
   const resetStuckJob = trpc.videoPipeline.resetStuckJob.useMutation({
     onSuccess: (data) => {
       toast.success(data.message ?? "Job reset. Click Approve & Upload to retry.");
@@ -1098,6 +1108,25 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                     <Youtube className="w-4 h-4 mr-2" />
                   )}
                   {retryUploadToYouTube.isPending ? "Queuing for YouTube..." : "Upload to YouTube"}
+                </Button>
+                {/* Force Re-export: bypasses cache, triggers fresh Descript export */}
+                <Button
+                  variant="outline"
+                  className="text-sm border-amber-500/60 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  onClick={() => {
+                    if (confirm("This will bypass the cached Descript URL and trigger a full fresh export (~15 min). Continue?")) {
+                      forceReexport.mutate({ jobId: job.id });
+                    }
+                  }}
+                  disabled={forceReexport.isPending || job.status === "uploading"}
+                  title="Bypass cache and force a fresh Descript export, then upload to YouTube"
+                >
+                  {forceReexport.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  {forceReexport.isPending ? "Re-exporting from Descript..." : "Force Re-export from Descript"}
                 </Button>
                 {isFailed && (
                   <Button

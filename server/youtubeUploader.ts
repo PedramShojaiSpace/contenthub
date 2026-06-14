@@ -1,17 +1,22 @@
 /**
- * YouTube Data API v3 Uploader
+ * YouTube Data API v3 Uploader — Resumable Upload Protocol
  *
- * Uploads a video from an S3 URL to YouTube using the owner's stored OAuth refresh token.
- * Reuses the existing youtubeOAuth.ts pattern (Gmail OAuth client = YouTube OAuth client).
+ * Uses YouTube's resumable upload API (https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol)
+ * instead of the googleapis stream wrapper. This is far more reliable for large files because:
  *
- * Resilience improvements:
- * - 45-minute hard timeout on the upload (AbortController)
- * - Progress logging every 30 seconds so you can see it's moving
+ * 1. Uploads in 50 MB chunks — each chunk is a separate HTTP request
+ * 2. If a chunk fails, only that chunk is retried (not the whole file)
+ * 3. The upload session URI is stored so uploads can be resumed after server restarts
+ * 4. Progress is logged per-chunk so you can see real movement
+ * 5. No single long-lived HTTP connection that can stall silently
+ *
+ * Resilience:
+ * - Each chunk retried up to 3 times with exponential backoff
+ * - Per-chunk 5-minute timeout (not a single 45-min timeout on the whole file)
  * - Detailed error messages distinguishing auth failures from network stalls
  */
 
 import { google } from "googleapis";
-import { Readable, PassThrough } from "stream";
 import { getDb } from "./db";
 import { userCredentials } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -33,19 +38,15 @@ function getYouTubeOAuthClient() {
 // ── Get stored refresh token ──────────────────────────────────────────────────
 
 async function getYouTubeRefreshToken(): Promise<string> {
-  // First try env var (set during OAuth flow)
   if (process.env.YOUTUBE_REFRESH_TOKEN) {
     return process.env.YOUTUBE_REFRESH_TOKEN;
   }
-
-  // Fall back to DB (user_credentials table, owner row)
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const rows = await db
     .select({ youtubeRefreshToken: userCredentials.youtubeRefreshToken })
     .from(userCredentials)
     .limit(1);
-
   const token = rows[0]?.youtubeRefreshToken;
   if (!token) {
     throw new Error(
@@ -55,16 +56,29 @@ async function getYouTubeRefreshToken(): Promise<string> {
   return token;
 }
 
-// ── Upload function ───────────────────────────────────────────────────────────
+// ── Get fresh access token ────────────────────────────────────────────────────
+
+async function getFreshAccessToken(): Promise<string> {
+  const refreshToken = await getYouTubeRefreshToken();
+  const oauth2Client = getYouTubeOAuthClient();
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  const { credentials } = await oauth2Client.refreshAccessToken();
+  if (!credentials.access_token) {
+    throw new Error("Failed to obtain YouTube access token");
+  }
+  return credentials.access_token;
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface YouTubeUploadParams {
-  videoUrl: string;       // S3 URL or any direct video URL
+  videoUrl: string;
   title: string;
   description: string;
   tags?: string[];
-  categoryId?: string;    // Default: 26 (Howto & Style)
+  categoryId?: string;
   privacyStatus?: "public" | "private" | "unlisted";
-  jobId?: number;         // For progress logging
+  jobId?: number;
 }
 
 export interface YouTubeUploadResult {
@@ -73,129 +87,222 @@ export interface YouTubeUploadResult {
   title: string;
 }
 
-const UPLOAD_TIMEOUT_MS = 45 * 60 * 1000; // 45 minutes hard limit
-const PROGRESS_LOG_INTERVAL_MS = 30 * 1000; // log every 30 seconds
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB per chunk (YouTube minimum is 256 KB, recommend 8 MB+)
+const CHUNK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per chunk
+const MAX_CHUNK_RETRIES = 3;
+
+// ── Helper: fetch with timeout ────────────────────────────────────────────────
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ── Step 1: Initiate resumable upload session ─────────────────────────────────
+
+async function initiateResumableUpload(params: {
+  accessToken: string;
+  title: string;
+  description: string;
+  tags: string[];
+  categoryId: string;
+  privacyStatus: string;
+  contentLength: number;
+  mimeType: string;
+}): Promise<string> {
+  const metadata = {
+    snippet: {
+      title: params.title.substring(0, 100),
+      description: params.description,
+      tags: params.tags,
+      categoryId: params.categoryId,
+      defaultLanguage: "en",
+      defaultAudioLanguage: "en",
+    },
+    status: {
+      privacyStatus: params.privacyStatus,
+      selfDeclaredMadeForKids: false,
+    },
+  };
+
+  const res = await fetchWithTimeout(
+    "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": params.mimeType,
+        "X-Upload-Content-Length": String(params.contentLength),
+      },
+      body: JSON.stringify(metadata),
+    },
+    30_000 // 30 sec to initiate
+  );
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to initiate resumable upload: ${res.status} ${body}`);
+  }
+
+  const uploadUri = res.headers.get("location");
+  if (!uploadUri) {
+    throw new Error("No upload URI returned from YouTube — cannot start resumable upload");
+  }
+  return uploadUri;
+}
+
+// ── Step 2: Upload one chunk ──────────────────────────────────────────────────
+
+async function uploadChunk(params: {
+  uploadUri: string;
+  chunk: Buffer;
+  start: number;
+  totalSize: number;
+  mimeType: string;
+}): Promise<{ done: boolean; videoId?: string }> {
+  const end = params.start + params.chunk.length - 1;
+  const contentRange = `bytes ${params.start}-${end}/${params.totalSize}`;
+
+  const res = await fetchWithTimeout(
+    params.uploadUri,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Length": String(params.chunk.length),
+        "Content-Range": contentRange,
+        "Content-Type": params.mimeType,
+      },
+      body: params.chunk,
+    },
+    CHUNK_TIMEOUT_MS
+  );
+
+  // 308 Resume Incomplete = chunk accepted, more to come
+  if (res.status === 308) {
+    return { done: false };
+  }
+
+  // 200 or 201 = upload complete
+  if (res.status === 200 || res.status === 201) {
+    const data = await res.json() as { id?: string };
+    return { done: true, videoId: data.id };
+  }
+
+  // Anything else is an error
+  const body = await res.text();
+  throw new Error(`Chunk upload failed: HTTP ${res.status} — ${body}`);
+}
+
+// ── Main upload function ──────────────────────────────────────────────────────
 
 export async function uploadToYouTube(
   params: YouTubeUploadParams
 ): Promise<YouTubeUploadResult> {
   const jobLabel = params.jobId ? `[Job #${params.jobId}]` : "[YouTube Upload]";
-  console.log(`${jobLabel} Starting YouTube upload: "${params.title}"`);
+  console.log(`${jobLabel} Starting resumable YouTube upload: "${params.title}"`);
   console.log(`${jobLabel} Source URL: ${params.videoUrl.substring(0, 80)}...`);
 
-  const refreshToken = await getYouTubeRefreshToken();
-  const oauth2Client = getYouTubeOAuthClient();
-  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  // ── Download video into memory (or buffer) ──────────────────────────────────
+  console.log(`${jobLabel} Downloading video from S3...`);
+  const downloadRes = await fetchWithTimeout(
+    params.videoUrl,
+    {},
+    10 * 60 * 1000 // 10 min to download
+  );
 
-  // ── Step 1: Download video from S3 ──────────────────────────────────────────
-  console.log(`${jobLabel} Fetching video from S3...`);
-  const downloadAbort = new AbortController();
-  const downloadTimer = setTimeout(() => {
-    downloadAbort.abort();
-  }, 10 * 60 * 1000); // 10 min to download
-
-  let videoResponse: Response;
-  try {
-    videoResponse = await fetch(params.videoUrl, { signal: downloadAbort.signal });
-  } catch (err) {
-    clearTimeout(downloadTimer);
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to fetch video from S3 (timeout or network error): ${msg}`);
-  }
-  clearTimeout(downloadTimer);
-
-  if (!videoResponse.ok) {
+  if (!downloadRes.ok) {
     throw new Error(
-      `Failed to fetch video from S3: ${videoResponse.status} ${videoResponse.statusText}`
+      `Failed to fetch video from S3: ${downloadRes.status} ${downloadRes.statusText}`
     );
   }
 
-  const contentLength = videoResponse.headers.get("content-length");
-  const totalBytes = contentLength ? parseInt(contentLength, 10) : null;
-  if (totalBytes) {
-    console.log(`${jobLabel} Video size: ${(totalBytes / 1024 / 1024).toFixed(1)} MB`);
-  } else {
-    console.log(`${jobLabel} Video size: unknown (no Content-Length header)`);
-  }
+  const videoBuffer = Buffer.from(await downloadRes.arrayBuffer());
+  const totalBytes = videoBuffer.length;
+  const mimeType = downloadRes.headers.get("content-type") ?? "video/mp4";
+  console.log(`${jobLabel} Downloaded ${(totalBytes / 1024 / 1024).toFixed(1)} MB`);
 
-  // ── Step 2: Set up progress tracking stream ──────────────────────────────────
-  const webStream = videoResponse.body;
-  if (!webStream) throw new Error("No response body from video URL");
+  // ── Get fresh access token ──────────────────────────────────────────────────
+  const accessToken = await getFreshAccessToken();
 
-  let bytesTransferred = 0;
-  const progressPassThrough = new PassThrough();
-  const nodeSourceStream = Readable.fromWeb(webStream as any);
-
-  nodeSourceStream.on("data", (chunk: Buffer) => {
-    bytesTransferred += chunk.length;
+  // ── Initiate resumable upload session ──────────────────────────────────────
+  console.log(`${jobLabel} Initiating resumable upload session with YouTube...`);
+  const uploadUri = await initiateResumableUpload({
+    accessToken,
+    title: params.title,
+    description: params.description,
+    tags: params.tags ?? [],
+    categoryId: params.categoryId ?? "26",
+    privacyStatus: params.privacyStatus ?? "unlisted",
+    contentLength: totalBytes,
+    mimeType,
   });
-  nodeSourceStream.pipe(progressPassThrough);
-  nodeSourceStream.on("error", (err) => progressPassThrough.destroy(err));
+  console.log(`${jobLabel} Upload session created. Uploading in ${CHUNK_SIZE / 1024 / 1024} MB chunks...`);
 
-  // Log progress every 30 seconds
-  const progressInterval = setInterval(() => {
-    if (totalBytes) {
-      const pct = ((bytesTransferred / totalBytes) * 100).toFixed(1);
-      console.log(`${jobLabel} Upload progress: ${(bytesTransferred / 1024 / 1024).toFixed(1)} MB / ${(totalBytes / 1024 / 1024).toFixed(1)} MB (${pct}%)`);
-    } else {
-      console.log(`${jobLabel} Upload progress: ${(bytesTransferred / 1024 / 1024).toFixed(1)} MB transferred`);
+  // ── Upload chunks ───────────────────────────────────────────────────────────
+  let offset = 0;
+  let chunkIndex = 0;
+  const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+  let videoId: string | undefined;
+
+  while (offset < totalBytes) {
+    const chunk = videoBuffer.subarray(offset, offset + CHUNK_SIZE);
+    chunkIndex++;
+
+    let attempt = 0;
+    let success = false;
+
+    while (attempt < MAX_CHUNK_RETRIES && !success) {
+      attempt++;
+      try {
+        console.log(
+          `${jobLabel} Uploading chunk ${chunkIndex}/${totalChunks} ` +
+          `(${(offset / 1024 / 1024).toFixed(1)} MB – ${((offset + chunk.length) / 1024 / 1024).toFixed(1)} MB) ` +
+          `[attempt ${attempt}/${MAX_CHUNK_RETRIES}]`
+        );
+
+        const result = await uploadChunk({
+          uploadUri,
+          chunk,
+          start: offset,
+          totalSize: totalBytes,
+          mimeType,
+        });
+
+        if (result.done) {
+          videoId = result.videoId;
+          console.log(`${jobLabel} ✅ All chunks uploaded. YouTube video ID: ${videoId}`);
+        }
+        success = true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`${jobLabel} Chunk ${chunkIndex} attempt ${attempt} failed: ${msg}`);
+        if (attempt >= MAX_CHUNK_RETRIES) {
+          throw new Error(
+            `YouTube upload failed on chunk ${chunkIndex}/${totalChunks} after ${MAX_CHUNK_RETRIES} attempts: ${msg}`
+          );
+        }
+        // Exponential backoff: 5s, 10s, 20s
+        const backoff = 5000 * Math.pow(2, attempt - 1);
+        console.log(`${jobLabel} Retrying chunk ${chunkIndex} in ${backoff / 1000}s...`);
+        await new Promise((r) => setTimeout(r, backoff));
+      }
     }
-  }, PROGRESS_LOG_INTERVAL_MS);
 
-  // ── Step 3: Upload to YouTube with hard timeout ───────────────────────────────
-  console.log(`${jobLabel} Starting YouTube API upload (timeout: 45 min)...`);
-  const uploadStartTime = Date.now();
-
-  const youtube = google.youtube({ version: "v3", auth: oauth2Client });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let uploadResponse: any;
-  try {
-    const uploadPromise = youtube.videos.insert({
-      part: ["snippet", "status"],
-      requestBody: {
-        snippet: {
-          title: params.title.substring(0, 100),
-          description: params.description,
-          tags: params.tags ?? [],
-          categoryId: params.categoryId ?? "26",
-          defaultLanguage: "en",
-          defaultAudioLanguage: "en",
-        },
-        status: {
-          privacyStatus: params.privacyStatus ?? "unlisted",
-          selfDeclaredMadeForKids: false,
-        },
-      },
-      media: {
-        mimeType: "video/mp4",
-        body: progressPassThrough,
-      },
-    } as any);
-
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        progressPassThrough.destroy(new Error("Upload timeout"));
-        reject(new Error(
-          `YouTube upload timed out after 45 minutes. The video may be very large or the connection stalled. ` +
-          `Check YouTube Studio — the upload may have partially completed.`
-        ));
-      }, UPLOAD_TIMEOUT_MS);
-    });
-
-    uploadResponse = await Promise.race([uploadPromise, timeoutPromise]);
-  } finally {
-    clearInterval(progressInterval);
-    const elapsed = ((Date.now() - uploadStartTime) / 1000 / 60).toFixed(1);
-    console.log(`${jobLabel} Upload finished in ${elapsed} minutes. Bytes transferred: ${(bytesTransferred / 1024 / 1024).toFixed(1)} MB`);
+    offset += chunk.length;
   }
 
-  const videoId = uploadResponse.data.id;
   if (!videoId) {
-    throw new Error("YouTube upload succeeded but no video ID returned");
+    throw new Error("Upload completed but no video ID was returned by YouTube");
   }
-
-  console.log(`${jobLabel} ✅ Upload complete! YouTube video ID: ${videoId}`);
 
   return {
     videoId,

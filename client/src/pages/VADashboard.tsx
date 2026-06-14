@@ -795,14 +795,49 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
             )}
           </div>
 
-          {/* Published YouTube link */}
-          {isPublished && `https://www.youtube.com/watch?v=${job.youtubeVideoId}` && (
-            <div className="flex items-center gap-2 p-3 bg-red-600/10 border border-red-600/20 rounded text-sm text-primary">
-              <Youtube className="w-4 h-4 flex-shrink-0" />
-              <span>Published: </span>
-              <a href={`https://www.youtube.com/watch?v=${job.youtubeVideoId}`} target="_blank" rel="noopener noreferrer" className="underline truncate">
-                {`https://www.youtube.com/watch?v=${job.youtubeVideoId}`}
-              </a>
+          {/* YouTube video link — shown as soon as we have a video ID (unlisted or published) */}
+          {job.youtubeVideoId && (
+            <div className="p-3 bg-red-600/10 border border-red-600/20 rounded space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Youtube className="w-4 h-4 flex-shrink-0 text-red-500" />
+                <span className="font-medium text-foreground">{isPublished ? "Published on YouTube:" : "Uploaded to YouTube (unlisted):"}</span>
+                <a
+                  href={`https://www.youtube.com/watch?v=${job.youtubeVideoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline truncate text-red-600 hover:text-red-700"
+                >
+                  {`https://www.youtube.com/watch?v=${job.youtubeVideoId}`}
+                </a>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <a
+                  href={`https://studio.youtube.com/video/${job.youtubeVideoId}/edit`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 font-medium"
+                >
+                  <Youtube className="w-3 h-3" />
+                  YouTube Studio
+                </a>
+                <a
+                  href={`https://app.vidiq.com/youtube/video/${job.youtubeVideoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 font-medium"
+                >
+                  <span className="font-bold text-[10px]">VIQ</span>
+                  Optimize in vidIQ
+                </a>
+                <a
+                  href={`https://www.youtube.com/watch?v=${job.youtubeVideoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-muted text-muted-foreground hover:bg-muted/80 font-medium"
+                >
+                  View on YouTube
+                </a>
+              </div>
             </div>
           )}
 

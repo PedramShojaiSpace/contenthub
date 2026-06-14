@@ -389,31 +389,47 @@ async function startServer() {
       const { refreshToken, channelTitle } = await exchangeYouTubeCode(code);
       // Store in process.env so the current server process can use it immediately
       process.env.YOUTUBE_REFRESH_TOKEN = refreshToken;
-      // Also persist in DB so it survives restarts
+      // Persist in DB using the owner's actual userId (resolved via OWNER_OPEN_ID),
+      // NOT a hardcoded userId=1 which may not match in all environments.
       const db = await getDb();
       if (db) {
-        const { userCredentials } = await import("../../drizzle/schema");
-        const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, 1));
+        const { userCredentials, users } = await import("../../drizzle/schema");
+        const ownerOpenId = process.env.OWNER_OPEN_ID;
+        let ownerUserId = 1; // fallback
+        if (ownerOpenId) {
+          const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.openId, ownerOpenId));
+          if (owner) ownerUserId = owner.id;
+        }
+        const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ownerUserId));
         if (existing) {
           await db.update(userCredentials)
             .set({ youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle } as any)
-            .where(eq(userCredentials.userId, 1));
+            .where(eq(userCredentials.userId, ownerUserId));
         } else {
-          await db.insert(userCredentials).values({ userId: 1, youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle } as any);
+          await db.insert(userCredentials).values({ userId: ownerUserId, youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle } as any);
         }
       }
+      // If opened as a popup, notify the opener and close; otherwise redirect back.
       return res.send(`
-        <html><body style="font-family:sans-serif;padding:40px;max-width:600px">
-          <h2>&#x2705; YouTube Connected!</h2>
+        <html><body style="font-family:sans-serif;padding:40px;max-width:600px;text-align:center">
+          <h2 style="color:#16a34a">&#x2705; YouTube Connected!</h2>
           <p>Channel: <strong>${channelTitle}</strong></p>
-          <p>The tool can now push blog URLs directly to YouTube video descriptions.</p>
-          <p><a href="/video-to-blog">&larr; Return to YouTube &rarr; Blog Pipeline</a></p>
-          <script>setTimeout(() => { window.location.href = '/video-to-blog'; }, 2000);</script>
+          <p>You can close this window and return to your workflow.</p>
+          <script>
+            // If opened as a popup, send a message to the parent and close.
+            if (window.opener && !window.opener.closed) {
+              window.opener.postMessage({ type: 'YOUTUBE_AUTH_SUCCESS', channelTitle: '${channelTitle.replace(/'/g, "\\'").replace(/"/g, '&quot;')}' }, window.location.origin);
+              setTimeout(() => window.close(), 800);
+            } else {
+              // Fallback: full-page redirect back to the pipeline
+              setTimeout(() => { window.location.href = '/video-to-blog'; }, 1500);
+            }
+          </script>
         </body></html>
       `);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return res.status(500).send(`<html><body><h2>&#x274c; Authorization failed</h2><p>${msg}</p></body></html>`);
+      return res.status(500).send(`<html><body style="font-family:sans-serif;padding:40px"><h2 style="color:#dc2626">&#x274c; Authorization failed</h2><p>${msg}</p><p><a href="/video-to-blog">&larr; Return to pipeline</a></p></body></html>`);
     }
   });
   // GET /api/youtube/status — check if YouTube is authorized

@@ -3946,3 +3946,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add retry-with-reauth logic: if updateYouTubeDescription returns needsReauth, auto-retry after reconnect
 - [x] Add "Retry YouTube Update" button that re-runs Step 4 without losing Steps 1-3 results
 - [x] Add beforeunload warning when workflow is in progress (Steps 1-3 done, Step 4 not yet done)
+
+## HeyGen Avatar Video Integration
+- [ ] Store HEYGEN_API_KEY, HEYGEN_AVATAR_ID, HEYGEN_VOICE_ID as secrets
+- [ ] Build heygenRouter.ts: generateAvatarVideo procedure (submit job, poll, download, upload to S3)
+- [ ] Add vj_type column to video_jobs schema ('standard' | 'avatar')
+- [ ] Wire avatar video into existing YouTube upload pipeline (retryUploadToYouTube, watchdog)
+- [ ] Add Generate Avatar Video button to VA Dashboard script cards
+- [ ] Add Avatar Video badge to distinguish avatar jobs in VA Dashboard
+- [ ] Test end-to-end: script → HeyGen render → S3 → YouTube unlisted → SEO review

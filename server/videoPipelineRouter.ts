@@ -287,6 +287,102 @@ export const videoPipelineRouter = router({
       return { success: true, message: "Retrying YouTube upload in the background. The dashboard will update when done." };
     }),
 
+  /**
+   * forceReexport
+   *
+   * Manually bypasses the cached Descript download URL and triggers a fresh export.
+   * Use this when the cached URL is expired (403) or you want a clean re-export
+   * (e.g., after editing the video in Descript post-approval).
+   *
+   * Clears descriptDownloadUrl, sets status to 'uploading', then runs the full
+   * Descript export → YouTube upload pipeline in the background.
+   */
+  forceReexport: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const jobs = await db.select().from(videoJobs).where(eq(videoJobs.id, input.jobId)).limit(1);
+      if (!jobs.length) throw new Error(`Video job ${input.jobId} not found`);
+      const job = jobs[0];
+
+      if (!job.descriptProjectId) {
+        throw new Error("No Descript project ID stored — cannot re-export. This job may have been created without a Descript project link.");
+      }
+
+      // Allow force re-export from any non-terminal status
+      const blockedStatuses = ["uploading"];
+      if (blockedStatuses.includes(job.status)) {
+        throw new Error(`Job is currently uploading. Wait for it to finish or use Reset Stuck Job first.`);
+      }
+
+      // Clear the stale cached URL and reset to uploading
+      await db.update(videoJobs).set({
+        status: "uploading",
+        errorMessage: null,
+        descriptDownloadUrl: null,   // Force fresh export
+        vaApprovedAt: Date.now(),
+      }).where(eq(videoJobs.id, input.jobId));
+
+      // Fire-and-forget: fresh Descript export → YouTube upload
+      (async () => {
+        const bgDb = await getDb();
+        if (!bgDb) return;
+        const jobLabel = `[Force Re-export Job #${input.jobId}]`;
+        console.log(`${jobLabel} Force re-export started for: "${job.youtubeTitle ?? 'Urban Monk Video'}"`);
+        console.log(`${jobLabel} Cached Descript URL cleared. Triggering fresh export from project: ${job.descriptProjectId}`);
+        try {
+          const exportResp = await exportProject({ projectId: job.descriptProjectId! });
+          const publishJobId = exportResp.job_id;
+          console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
+
+          let downloadUrl: string | undefined;
+          const maxAttempts = 80; // 80 x 15s = 20 min
+          for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(r => setTimeout(r, 15_000));
+            const jobStatus = await getJobStatus(publishJobId);
+            console.log(`${jobLabel} Descript poll ${i + 1}/${maxAttempts}: job_state=${jobStatus.job_state}`);
+            if (jobStatus.job_state === "stopped") {
+              if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
+                downloadUrl = jobStatus.result.download_url;
+                await bgDb.update(videoJobs).set({ descriptDownloadUrl: downloadUrl }).where(eq(videoJobs.id, input.jobId));
+                console.log(`${jobLabel} Fresh Descript export complete. URL cached.`);
+                break;
+              } else {
+                throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+              }
+            }
+            if (jobStatus.job_state === "cancelled") {
+              throw new Error("Descript publish job was cancelled");
+            }
+          }
+          if (!downloadUrl) throw new Error("Descript publish timed out after 20 minutes");
+
+          const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
+          const uploadResult = await uploadToYouTube({
+            videoUrl: downloadUrl,
+            title: job.youtubeTitle ?? "Urban Monk Video",
+            description: job.youtubeDescription ?? "",
+            tags,
+            privacyStatus: "unlisted",
+            jobId: input.jobId,
+          });
+
+          await bgDb.update(videoJobs).set({
+            status: "uploaded_unlisted",
+            youtubeVideoId: uploadResult.videoId,
+          }).where(eq(videoJobs.id, input.jobId));
+          console.log(`${jobLabel} ✅ Force re-export complete. Video ID: ${uploadResult.videoId}`);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`${jobLabel} ❌ Force re-export failed: ${message}`);
+          await bgDb.update(videoJobs).set({ status: "failed", errorMessage: message }).where(eq(videoJobs.id, input.jobId));
+        }
+      })();
+
+      return { success: true, message: "Force re-export started. Descript will re-process the video (~15 min), then upload to YouTube automatically." };
+    }),
+
   rejectVideoJob: protectedProcedure
     .input(z.object({ jobId: z.number(), reason: z.string().optional() }))
     .mutation(async ({ input }) => {

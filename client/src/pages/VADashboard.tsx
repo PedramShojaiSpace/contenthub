@@ -40,6 +40,8 @@ import {
   Target,
   Hash,
   MessageCircle,
+  Bot,
+  Wand2,
 } from "lucide-react";
 
 // ─── Syndication Types ────────────────────────────────────────────────────────
@@ -80,6 +82,8 @@ interface VideoJob {
   youtubeDescription: string | null;
   youtubeTags: string | null;
   youtubeThumbnailUrl: string | null;
+  videoType: string | null;
+  heygenVideoId: string | null;
   status: string;
   errorMessage: string | null;
   retryCount: number | null;
@@ -524,6 +528,8 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   const isUploading = job.status === "uploading" || job.status === "publishing";
   const isPublished = job.status === "published";
   const isFailed = job.status === "failed";
+  const isAvatar = job.videoType === "avatar";
+  const isRendering = job.status === "rendering"; // HeyGen rendering in progress
 
   // SEO panel state
   const [showSeoPanel, setShowSeoPanel] = useState(isUploadedUnlisted);
@@ -640,6 +646,28 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
     onError: (err) => toast.error(`Reset failed: ${err.message}`),
   });
 
+  // ── HeyGen Avatar mutations ───────────────────────────────────────────────
+  const generateAvatarVideo = trpc.heygen.generateAvatarVideo.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message ?? "HeyGen avatar render started. Dashboard will update when done.", { duration: 10000 });
+      // Poll every 30s while rendering
+      const pollInterval = setInterval(() => { onRefresh(); }, 30_000);
+      setTimeout(() => clearInterval(pollInterval), 90 * 60 * 1000); // stop after 90 min
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Avatar generation failed: ${err.message}`),
+  });
+
+  const retryAvatarVideo = trpc.heygen.retryAvatarVideo.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message ?? "HeyGen avatar render restarted.", { duration: 8000 });
+      const pollInterval = setInterval(() => { onRefresh(); }, 30_000);
+      setTimeout(() => clearInterval(pollInterval), 90 * 60 * 1000);
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Avatar retry failed: ${err.message}`),
+  });
+
   // Yoast-style traffic light helper
   const statusDot = (s: "green" | "amber" | "red") => (
     <span className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${
@@ -658,7 +686,13 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <VideoStatusBadge status={job.status} />
-                {isInProgress && (
+                {isAvatar && (
+                  <Badge variant="outline" className="text-xs bg-violet-500/10 text-violet-400 border-violet-500/20 flex items-center gap-1">
+                    <Bot className="w-3 h-3" />
+                    Avatar
+                  </Badge>
+                )}
+                {(isInProgress || isRendering) && (
                   <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
                 )}
               </div>
@@ -684,10 +718,24 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
       {expanded && (
         <CardContent className="pt-0 space-y-4">
           {/* In-progress message */}
-          {isInProgress && (
+          {isInProgress && !isAvatar && (
             <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-300">
               <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
               <span>Descript is processing this video. The pipeline polls every 15 minutes — check back soon.</span>
+            </div>
+          )}
+
+          {/* HeyGen rendering banner */}
+          {isRendering && (
+            <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded text-sm text-violet-300">
+              <div className="flex items-center gap-2 mb-1">
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                <span className="font-medium">HeyGen is rendering the cartoon avatar video — typically 10–30 minutes.</span>
+              </div>
+              {job.heygenVideoId && (
+                <p className="text-xs text-violet-400/80 mt-1">HeyGen Job ID: {job.heygenVideoId}</p>
+              )}
+              <p className="text-xs text-violet-400/70 mt-1">The dashboard polls every 30 seconds. Once complete, the video will be uploaded to YouTube automatically.</p>
             </div>
           )}
 
@@ -1106,6 +1154,48 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
           {/* Actions */}
           <div className="flex gap-3 flex-wrap">
+            {/* Generate Avatar Video — shown for non-avatar jobs in pending/approved/failed/ready_for_review */}
+            {!isAvatar && !isRendering && !isUploading && !isPublished && !isUploadedUnlisted && (
+              <Button
+                variant="outline"
+                className="text-sm border-violet-500/40 text-violet-400 hover:bg-violet-950/30"
+                onClick={() => {
+                  if (confirm("Generate a cartoon avatar video from this script using HeyGen? This will use your HeyGen Creator plan quota (~15 min/month). The avatar video will be uploaded to YouTube automatically when done.")) {
+                    generateAvatarVideo.mutate({ jobId: job.id });
+                  }
+                }}
+                disabled={generateAvatarVideo.isPending}
+                title="Generate a HeyGen cartoon avatar video from this script"
+              >
+                {generateAvatarVideo.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Bot className="w-4 h-4 mr-2" />
+                )}
+                {generateAvatarVideo.isPending ? "Starting Avatar Render..." : "Generate Avatar Video"}
+              </Button>
+            )}
+
+            {/* Retry Avatar — for failed avatar jobs */}
+            {isAvatar && isFailed && (
+              <Button
+                className="bg-violet-600 hover:bg-violet-700 text-foreground text-sm"
+                onClick={() => {
+                  if (confirm("Retry the HeyGen avatar render? This will start a fresh render and use additional HeyGen quota.")) {
+                    retryAvatarVideo.mutate({ jobId: job.id });
+                  }
+                }}
+                disabled={retryAvatarVideo.isPending}
+              >
+                {retryAvatarVideo.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Wand2 className="w-4 h-4 mr-2" />
+                )}
+                {retryAvatarVideo.isPending ? "Restarting Render..." : "Retry Avatar Render"}
+              </Button>
+            )}
+
             {isReadyForReview && (
               <>
                 <Button

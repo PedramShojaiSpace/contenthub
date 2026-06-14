@@ -12,4 +12,7 @@ export const ENV = {
   vidiqApiKey: process.env.VIDIQ_API_KEY ?? "",
   substackSessionCookie: process.env.SUBSTACK_SESSION_COOKIE ?? "",
   substackPublicationUrl: process.env.SUBSTACK_PUBLICATION_URL ?? "", // e.g. "drpedramshojai.substack.com"
+  heygenApiKey: process.env.HEYGEN_API_KEY ?? "",
+  heygenAvatarId: process.env.HEYGEN_AVATAR_ID ?? "",
+  heygenVoiceId: process.env.HEYGEN_VOICE_ID ?? "",
 };

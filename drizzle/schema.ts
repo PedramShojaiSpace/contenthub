@@ -2062,6 +2062,10 @@ export const videoJobs = mysqlTable("video_jobs", {
   ctaLabel: varchar("vj_cta_label", { length: 256 }),
   ctaText: text("vj_cta_text"),
   ctaUrl: text("vj_cta_url"),
+  // Video type: standard = Descript pipeline, avatar = HeyGen cartoon avatar pipeline
+  videoType: mysqlEnum("vj_video_type", ["standard", "avatar"]).default("standard").notNull(),
+  // HeyGen avatar pipeline fields
+  heygenVideoId: varchar("vj_heygen_video_id", { length: 128 }),
   status: videoJobStatusEnum.notNull().default("pending"),
   errorMessage: text("vj_error_message"),
   retryCount: int("vj_retry_count").default(0),

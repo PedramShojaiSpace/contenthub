@@ -185,7 +185,9 @@ export const videoPipelineRouter = router({
       if (!allowedStatuses.includes(job.status)) {
         throw new Error(`Job is in status '${job.status}' — can only retry from: ${allowedStatuses.join(", ")}`);
       }
-      if (!job.descriptProjectId) throw new Error("No Descript project ID — cannot re-export");
+      if (!job.descriptProjectId && !job.descriptDownloadUrl) {
+        throw new Error("No Descript project ID or download URL — cannot retry");
+      }
 
       await db.update(videoJobs).set({
         status: "uploading",
@@ -193,38 +195,50 @@ export const videoPipelineRouter = router({
         vaApprovedAt: Date.now(),
       }).where(eq(videoJobs.id, input.jobId));
 
-      // Fire-and-forget: same background upload logic as approveVideoJob
+      // Fire-and-forget background upload
       (async () => {
         const bgDb = await getDb();
         if (!bgDb) return;
         const jobLabel = `[Retry Job #${input.jobId}]`;
         console.log(`${jobLabel} Retry upload started for: "${job.youtubeTitle ?? 'Urban Monk Video'}"`);
         try {
-          console.log(`${jobLabel} Triggering Descript export for project: ${job.descriptProjectId}`);
-          const exportResp = await exportProject({ projectId: job.descriptProjectId! });
-          const publishJobId = exportResp.job_id;
-          console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
-
           let downloadUrl: string | undefined;
-          const maxAttempts = 80;
-          for (let i = 0; i < maxAttempts; i++) {
-            await new Promise(r => setTimeout(r, 15_000));
-            const jobStatus = await getJobStatus(publishJobId);
-            console.log(`${jobLabel} Descript poll ${i + 1}/${maxAttempts}: job_state=${jobStatus.job_state}`);
-            if (jobStatus.job_state === "stopped") {
-              if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
-                downloadUrl = jobStatus.result.download_url;
-                console.log(`${jobLabel} Descript export complete.`);
-                break;
-              } else {
-                throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+
+          // ── Optimization: reuse cached Descript download URL if available ──
+          // This avoids a 15-20 min Descript re-export when the URL is already stored.
+          // descriptDownloadUrl is the real MP4 link; s3VideoUrl is only the share page preview.
+          if (job.descriptDownloadUrl && job.descriptDownloadUrl.startsWith("http") && !job.descriptDownloadUrl.includes("share.descript.com")) {
+            downloadUrl = job.descriptDownloadUrl;
+            console.log(`${jobLabel} Reusing cached Descript download URL (skipping re-export).`);
+          } else {
+            // Fall back to fresh Descript export
+            console.log(`${jobLabel} No cached download URL — triggering fresh Descript export for project: ${job.descriptProjectId}`);
+            const exportResp = await exportProject({ projectId: job.descriptProjectId! });
+            const publishJobId = exportResp.job_id;
+            console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
+
+            const maxAttempts = 80; // 80 x 15s = 20 min
+            for (let i = 0; i < maxAttempts; i++) {
+              await new Promise(r => setTimeout(r, 15_000));
+              const jobStatus = await getJobStatus(publishJobId);
+              console.log(`${jobLabel} Descript poll ${i + 1}/${maxAttempts}: job_state=${jobStatus.job_state}`);
+              if (jobStatus.job_state === "stopped") {
+                if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
+                  downloadUrl = jobStatus.result.download_url;
+                  // Cache it for future retries
+                  await bgDb.update(videoJobs).set({ descriptDownloadUrl: downloadUrl }).where(eq(videoJobs.id, input.jobId));
+                  console.log(`${jobLabel} Descript export complete. Download URL cached.`);
+                  break;
+                } else {
+                  throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+                }
+              }
+              if (jobStatus.job_state === "cancelled") {
+                throw new Error("Descript publish job was cancelled");
               }
             }
-            if (jobStatus.job_state === "cancelled") {
-              throw new Error("Descript publish job was cancelled");
-            }
+            if (!downloadUrl) throw new Error("Descript publish timed out after 20 minutes");
           }
-          if (!downloadUrl) throw new Error("Descript publish timed out after 20 minutes");
 
           const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
           const uploadResult = await uploadToYouTube({

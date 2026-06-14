@@ -740,6 +740,48 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Start the weekly Monday digest cron
     startWeeklyDigestCron();
+
+    // ── Upload Watchdog: runs every 10 minutes ────────────────────────────────
+    // Auto-fails video jobs stuck in 'uploading' for more than 50 minutes.
+    // This handles the case where the background upload process hangs silently
+    // (e.g., no timeout in old code, network stall, server restart mid-upload).
+    const runUploadWatchdog = async () => {
+      try {
+        const { getDb } = await import("../db");
+        const { videoJobs } = await import("../../drizzle/schema");
+        const { eq, and, lt } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return;
+        const STUCK_THRESHOLD_MS = 50 * 60 * 1000; // 50 minutes
+        const cutoff = Date.now() - STUCK_THRESHOLD_MS;
+        // Find jobs stuck in 'uploading' where vaApprovedAt is older than 50 min
+        const stuckJobs = await db
+          .select({ id: videoJobs.id, youtubeTitle: videoJobs.youtubeTitle, vaApprovedAt: videoJobs.vaApprovedAt })
+          .from(videoJobs)
+          .where(and(
+            eq(videoJobs.status, "uploading"),
+            lt(videoJobs.vaApprovedAt, cutoff)
+          ));
+        for (const job of stuckJobs) {
+          const minutesStuck = job.vaApprovedAt ? Math.round((Date.now() - Number(job.vaApprovedAt)) / 60000) : '?';
+          console.warn(`[Upload Watchdog] Job #${job.id} ("${job.youtubeTitle}") has been uploading for ${minutesStuck} min — auto-failing for retry.`);
+          await db.update(videoJobs).set({
+            status: "approved",
+            errorMessage: `Upload timed out after ${minutesStuck} minutes. The Descript download URL is preserved — click "Upload to YouTube" to retry.`,
+          }).where(eq(videoJobs.id, job.id));
+        }
+        if (stuckJobs.length > 0) {
+          console.log(`[Upload Watchdog] Reset ${stuckJobs.length} stuck job(s) back to 'approved'.`);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[Upload Watchdog] Error:`, msg);
+      }
+    };
+    // Run immediately on startup (catches jobs stuck from before this deploy)
+    runUploadWatchdog();
+    // Then every 10 minutes
+    setInterval(runUploadWatchdog, 10 * 60 * 1000);
   });
 }
 

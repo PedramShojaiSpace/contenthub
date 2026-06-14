@@ -610,6 +610,14 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
     onError: (err) => toast.error(`Publish failed: ${err.message}`),
   });
 
+  const resetStuckJob = trpc.videoPipeline.resetStuckJob.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message ?? "Job reset. Click Approve & Upload to retry.");
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Reset failed: ${err.message}`),
+  });
+
   // Yoast-style traffic light helper
   const statusDot = (s: "green" | "amber" | "red") => (
     <span className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${
@@ -778,9 +786,23 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
           {/* Uploading progress banner */}
           {isUploading && (
-            <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-sm text-amber-600">
-              <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-              <span>Uploading to YouTube as unlisted — this takes 10–20 minutes. The status will update automatically.</span>
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded text-sm text-amber-600">
+              <div className="flex items-center gap-2 mb-2">
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                <span className="font-medium">Uploading to YouTube as unlisted — this typically takes 15–30 minutes for a full episode.</span>
+              </div>
+              <p className="text-xs text-amber-500/80 mb-2">The dashboard polls every 30 seconds. If it has been more than 30 minutes with no change, use the Reset button below.</p>
+              <button
+                onClick={() => {
+                  if (confirm("Reset this job back to 'approved' so you can retry the upload?")) {
+                    resetStuckJob.mutate({ jobId: job.id });
+                  }
+                }}
+                disabled={resetStuckJob.isPending}
+                className="text-xs px-3 py-1.5 rounded border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 font-medium disabled:opacity-50"
+              >
+                {resetStuckJob.isPending ? "Resetting..." : "Reset Stuck Job"}
+              </button>
             </div>
           )}
 

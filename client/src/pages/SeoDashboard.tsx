@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,6 +103,22 @@ function StatCard({
 
 function ConnectPanel({ onConnected }: { onConnected: () => void }) {
   const [connecting, setConnecting] = useState(false);
+  const popupRef = useRef<Window | null>(null);
+
+  // Listen for postMessage from the OAuth popup
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'GSC_AUTH_SUCCESS') {
+        toast.success('Google Search Console connected! Loading your data...');
+        onConnected();
+        if (popupRef.current && !popupRef.current.closed) {
+          popupRef.current.close();
+        }
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onConnected]);
 
   const handleConnect = async () => {
     setConnecting(true);
@@ -110,8 +126,17 @@ function ConnectPanel({ onConnected }: { onConnected: () => void }) {
       const res = await fetch("/api/gsc/auth-url", { credentials: "include" });
       const data = await res.json();
       if (data.url) {
-        window.open(data.url, "_blank", "width=600,height=700,noopener");
-        toast.info("Complete the Google authorization in the popup, then click Refresh below.");
+        const popup = window.open(data.url, 'gsc-oauth', 'width=600,height=700,left=200,top=100');
+        popupRef.current = popup;
+        toast.info("Complete the Google authorization in the popup window.");
+        // Poll for popup close as a fallback
+        const pollTimer = setInterval(() => {
+          if (popup && popup.closed) {
+            clearInterval(pollTimer);
+            // Give the server a moment to save the token, then refresh
+            setTimeout(() => onConnected(), 500);
+          }
+        }, 500);
       } else {
         toast.error("Failed to get authorization URL");
       }

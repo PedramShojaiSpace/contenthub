@@ -285,22 +285,43 @@ async function startServer() {
     try {
       const { exchangeGscCode } = await import("../googleSearchConsole");
       const { refreshToken } = await exchangeGscCode(code);
-      // Store the refresh token in the DB for the owner
+      // Store the refresh token in the DB for the owner (resolved by OWNER_OPEN_ID, not hardcoded)
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const { userCredentials } = await import("../../drizzle/schema");
-      const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, 1));
+      const { getOwnerCredentials } = await import("../db");
+      const { userCredentials, users } = await import("../../drizzle/schema");
+      // Resolve owner userId from OWNER_OPEN_ID env
+      const ownerOpenId = process.env.OWNER_OPEN_ID;
+      if (!ownerOpenId) throw new Error("OWNER_OPEN_ID not configured");
+      const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.openId, ownerOpenId));
+      if (!owner) throw new Error("Owner user not found in database");
+      const ownerUserId = owner.id;
+      const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ownerUserId));
       if (existing) {
-        await db.update(userCredentials).set({ gscRefreshToken: refreshToken }).where(eq(userCredentials.userId, 1));
+        await db.update(userCredentials).set({ gscRefreshToken: refreshToken }).where(eq(userCredentials.userId, ownerUserId));
       } else {
-        await db.insert(userCredentials).values({ userId: 1, gscRefreshToken: refreshToken });
+        await db.insert(userCredentials).values({ userId: ownerUserId, gscRefreshToken: refreshToken });
       }
+      // If opened as a popup, notify the parent and close.
+      // If opened as a full-page redirect, navigate back to the dashboard.
       return res.send(`
-        <html><body style="font-family:sans-serif;padding:40px;max-width:600px">
-          <h2>\u2705 Google Search Console Connected!</h2>
+        <html><body style="font-family:sans-serif;padding:40px;max-width:600px;text-align:center">
+          <h2 style="color:#16a34a">&#x2705; Google Search Console Connected!</h2>
           <p>Your Search Console data is now available in the SEO Dashboard.</p>
-          <p><a href="/">&larr; Return to Content Hub</a></p>
-          <script>setTimeout(() => { window.location.href = '/'; }, 2000);</script>
+          <p style="color:#6b7280;font-size:14px">This window will close automatically...</p>
+          <script>
+            try {
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({ type: 'GSC_AUTH_SUCCESS' }, '*');
+                setTimeout(() => window.close(), 800);
+              } else {
+                // Full-page flow: redirect to SEO dashboard
+                setTimeout(() => { window.location.href = '/seo-dashboard'; }, 1500);
+              }
+            } catch(e) {
+              setTimeout(() => { window.location.href = '/seo-dashboard'; }, 1500);
+            }
+          </script>
         </body></html>
       `);
     } catch (err) {

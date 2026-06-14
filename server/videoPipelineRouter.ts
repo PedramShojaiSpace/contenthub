@@ -166,6 +166,91 @@ export const videoPipelineRouter = router({
       return { success: true, status: "uploading", message: "Video is being processed and uploaded to YouTube as unlisted. This typically takes 15–30 minutes for a full episode. The dashboard will update automatically when done." };
     }),
 
+  /**
+   * retryUploadToYouTube — re-triggers the Descript export + YouTube upload
+   * for a job that is in 'approved' or 'failed' status.
+   * This is the "Step 4" button for jobs that were reset or failed mid-upload.
+   */
+  retryUploadToYouTube: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const jobs = await db.select().from(videoJobs).where(eq(videoJobs.id, input.jobId)).limit(1);
+      if (!jobs.length) throw new Error(`Video job ${input.jobId} not found`);
+      const job = jobs[0];
+
+      // Allow retry from approved, failed, or ready_for_review
+      const allowedStatuses = ["approved", "failed", "ready_for_review"];
+      if (!allowedStatuses.includes(job.status)) {
+        throw new Error(`Job is in status '${job.status}' — can only retry from: ${allowedStatuses.join(", ")}`);
+      }
+      if (!job.descriptProjectId) throw new Error("No Descript project ID — cannot re-export");
+
+      await db.update(videoJobs).set({
+        status: "uploading",
+        errorMessage: null,
+        vaApprovedAt: Date.now(),
+      }).where(eq(videoJobs.id, input.jobId));
+
+      // Fire-and-forget: same background upload logic as approveVideoJob
+      (async () => {
+        const bgDb = await getDb();
+        if (!bgDb) return;
+        const jobLabel = `[Retry Job #${input.jobId}]`;
+        console.log(`${jobLabel} Retry upload started for: "${job.youtubeTitle ?? 'Urban Monk Video'}"`);
+        try {
+          console.log(`${jobLabel} Triggering Descript export for project: ${job.descriptProjectId}`);
+          const exportResp = await exportProject({ projectId: job.descriptProjectId! });
+          const publishJobId = exportResp.job_id;
+          console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
+
+          let downloadUrl: string | undefined;
+          const maxAttempts = 80;
+          for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(r => setTimeout(r, 15_000));
+            const jobStatus = await getJobStatus(publishJobId);
+            console.log(`${jobLabel} Descript poll ${i + 1}/${maxAttempts}: job_state=${jobStatus.job_state}`);
+            if (jobStatus.job_state === "stopped") {
+              if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
+                downloadUrl = jobStatus.result.download_url;
+                console.log(`${jobLabel} Descript export complete.`);
+                break;
+              } else {
+                throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+              }
+            }
+            if (jobStatus.job_state === "cancelled") {
+              throw new Error("Descript publish job was cancelled");
+            }
+          }
+          if (!downloadUrl) throw new Error("Descript publish timed out after 20 minutes");
+
+          const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
+          const uploadResult = await uploadToYouTube({
+            videoUrl: downloadUrl,
+            title: job.youtubeTitle ?? "Urban Monk Video",
+            description: job.youtubeDescription ?? "",
+            tags,
+            privacyStatus: "unlisted",
+            jobId: input.jobId,
+          });
+
+          await bgDb.update(videoJobs).set({
+            status: "uploaded_unlisted",
+            youtubeVideoId: uploadResult.videoId,
+          }).where(eq(videoJobs.id, input.jobId));
+          console.log(`${jobLabel} ✅ Retry complete. Video ID: ${uploadResult.videoId}`);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`${jobLabel} ❌ Retry failed: ${message}`);
+          await bgDb.update(videoJobs).set({ status: "failed", errorMessage: message }).where(eq(videoJobs.id, input.jobId));
+        }
+      })();
+
+      return { success: true, message: "Retrying YouTube upload in the background. The dashboard will update when done." };
+    }),
+
   rejectVideoJob: protectedProcedure
     .input(z.object({ jobId: z.number(), reason: z.string().optional() }))
     .mutation(async ({ input }) => {
@@ -486,6 +571,6 @@ Apply all rules strictly. Title MUST be ≤60 chars. Hook line MUST be 140-155 c
         status: "approved",
         errorMessage: null,
       }).where(eq(videoJobs.id, input.jobId));
-      return { success: true, message: `Job #${input.jobId} reset to 'approved'. Click Approve & Upload again to retry.` };
+      return { success: true, message: `Job #${input.jobId} reset. Click "Upload to YouTube" to retry the upload.` };
     }),
 });

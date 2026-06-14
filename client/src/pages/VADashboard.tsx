@@ -517,6 +517,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   );
 
   const isReadyForReview = job.status === "ready_for_review";
+  const isApproved = job.status === "approved"; // reset from stuck — needs re-upload
   const isUploadedUnlisted = job.status === "uploaded_unlisted";
   const isInProgress = ["queued", "importing", "processing", "rendering"].includes(job.status);
   const isUploading = job.status === "uploading" || job.status === "publishing";
@@ -608,6 +609,16 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
       onRefresh();
     },
     onError: (err) => toast.error(`Publish failed: ${err.message}`),
+  });
+
+  const retryUploadToYouTube = trpc.videoPipeline.retryUploadToYouTube.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message ?? "Retrying YouTube upload in the background.", { duration: 8000 });
+      const pollInterval = setInterval(() => { onRefresh(); }, 30_000);
+      setTimeout(() => clearInterval(pollInterval), 40 * 60 * 1000);
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Retry upload failed: ${err.message}`),
   });
 
   const resetStuckJob = trpc.videoPipeline.resetStuckJob.useMutation({
@@ -1073,20 +1084,38 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                 </Button>
               </>
             )}
-            {isFailed && (
-              <Button
-                variant="outline"
-                className="text-sm border-border text-foreground/80 hover:bg-muted"
-                onClick={() => retryJob.mutate({ jobId: job.id })}
-                disabled={retryJob.isPending}
-              >
-                {retryJob.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
+            {/* Approved (reset from stuck) or failed — show Retry Upload to YouTube */}
+            {(isApproved || isFailed) && (
+              <>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-foreground text-sm"
+                  onClick={() => retryUploadToYouTube.mutate({ jobId: job.id })}
+                  disabled={retryUploadToYouTube.isPending}
+                >
+                  {retryUploadToYouTube.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Youtube className="w-4 h-4 mr-2" />
+                  )}
+                  {retryUploadToYouTube.isPending ? "Queuing for YouTube..." : "Upload to YouTube"}
+                </Button>
+                {isFailed && (
+                  <Button
+                    variant="outline"
+                    className="text-sm border-border text-foreground/80 hover:bg-muted"
+                    onClick={() => retryJob.mutate({ jobId: job.id })}
+                    disabled={retryJob.isPending}
+                    title="Reset job back to pending to re-run the full pipeline from scratch"
+                  >
+                    {retryJob.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Full Retry
+                  </Button>
                 )}
-                Retry
-              </Button>
+              </>
             )}
           </div>
         </CardContent>

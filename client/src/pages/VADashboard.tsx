@@ -601,22 +601,41 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           {job.s3VideoUrl && (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Video Preview</p>
-              <div className="rounded-lg overflow-hidden bg-foreground/5 border border-border">
-                <video
-                  controls
-                  className="w-full max-h-[360px]"
-                  src={job.s3VideoUrl}
-                  preload="metadata"
-                />
-              </div>
-              <a
-                href={job.s3VideoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <ExternalLink className="w-3 h-3" /> Open in new tab
-              </a>
+              {job.s3VideoUrl.startsWith('https://share.descript.com') ? (
+                // Descript share URL — open in Descript viewer (can't embed inline)
+                <div className="rounded-lg border border-border bg-muted/30 p-5 flex flex-col items-center gap-3 text-center">
+                  <Video className="w-8 h-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Video is ready. Preview it in Descript before approving.</p>
+                  <a
+                    href={job.s3VideoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+                  >
+                    <Play className="w-4 h-4" /> Watch in Descript
+                  </a>
+                </div>
+              ) : (
+                // Direct MP4 URL — inline video player
+                <>
+                  <div className="rounded-lg overflow-hidden bg-foreground/5 border border-border">
+                    <video
+                      controls
+                      className="w-full max-h-[360px]"
+                      src={job.s3VideoUrl}
+                      preload="metadata"
+                    />
+                  </div>
+                  <a
+                    href={job.s3VideoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <ExternalLink className="w-3 h-3" /> Open in new tab
+                  </a>
+                </>
+              )}
             </div>
           )}
 

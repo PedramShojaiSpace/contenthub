@@ -3,19 +3,24 @@
  *
  * Simplified flow using the Descript agent endpoint:
  *   1. Generate B-roll prompt + YouTube metadata via AI
- *   2. Create Descript project via agent — Underlord narrates with "Pedram Shojai" AI voice
+ *   2. Create Descript project via agent — Underlord narrates with Pedram AI voice
  *   3. Poll agent job until stopped
- *   4. Export project to MP4
- *   5. Poll export job until stopped, download video, upload to S3
- *   6. Mark ready_for_review
+ *   4. Run B-roll editing agent pass
+ *   5. Poll editing job until stopped
+ *   6. Export project to MP4
+ *   7. Poll export job — store Descript share URL (NO download), mark ready_for_review
+ *   8. On VA approval: download MP4 + upload to S3 + upload to YouTube
  *
  * DB status enum: pending|importing|editing|rendering|ready_for_review|approved|uploading|published|failed|rejected
+ *
+ * NOTE: We intentionally skip downloading the MP4 at step 7 because videos can be
+ * 500MB–1GB. Instead we store the Descript share_url for VA preview and only
+ * download on approval (handled in videoPipelineRouter approveVideoJob).
  */
 
 import { eq, or } from "drizzle-orm";
 import { getDb } from "./db";
 import { videoJobs } from "../drizzle/schema";
-import { storagePut } from "./storage";
 import { generateBrollPrompt } from "./brollPromptGenerator";
 import {
   createProjectWithVoice,
@@ -54,14 +59,13 @@ export async function processVideoJob(jobId: number): Promise<void> {
       job = r[0];
     }
 
-    // ── Step 2: Create Descript project via agent (Pedram Shojai AI voice) ───
-    // We use descriptImportJobId to store the agent job_id for the creation step
+    // ── Step 2: Create Descript project via agent (Pedram FOR GUT COURSE READ voice) ───
     if (!job.descriptImportJobId) {
       const projectName = (job.youtubeTitle ?? "Urban Monk Video").substring(0, 100);
       const agentResult = await createProjectWithVoice({
         projectName,
         scriptText: job.scriptText,
-        voiceName: "Pedram Shojai",
+        voiceName: "Pedram FOR GUT COURSE READ",
         ctaText: job.ctaText ?? undefined,
         ctaUrl: job.ctaUrl ?? undefined,
       });
@@ -91,7 +95,7 @@ export async function processVideoJob(jobId: number): Promise<void> {
         throw new Error(`Descript project creation failed: ${jobStatus.result?.agent_response ?? "unknown"}`);
       }
 
-      // Creation done — now run a second agent pass for B-roll/captions if we have a prompt
+      // Creation done — now run a second agent pass for B-roll/captions
       const ctaSuffix = job.ctaText
         ? `\n\nEND SCREEN CTA (last 5 seconds): Add a title card at the very end of the video with this exact text: "${job.ctaText}" and the URL: "${job.ctaUrl ?? 'theurbanmonk.com'}". The card should be white text on a dark background and stay visible for 5 seconds.`
         : "";
@@ -121,7 +125,7 @@ export async function processVideoJob(jobId: number): Promise<void> {
         throw new Error(`Underlord editing failed: ${agentStatus.result?.agent_response ?? "unknown"}`);
       }
 
-      // Editing done — start export
+      // Editing done — start export (publish to get download URL)
       const exportResult = await exportProject({
         projectId: job.descriptProjectId!,
       });
@@ -134,7 +138,10 @@ export async function processVideoJob(jobId: number): Promise<void> {
       job = { ...job, descriptPublishJobId: exportResult.job_id, status: "rendering" };
     }
 
-    // ── Step 5: Poll export job — download + upload to S3 ────────────────────
+    // ── Step 5: Poll export job — store share URL, mark ready_for_review ─────
+    // We do NOT download the MP4 here (can be 500MB–1GB).
+    // Instead we store the Descript share_url for VA preview.
+    // The actual download + S3 upload happens on VA approval in videoPipelineRouter.
     if (job.status === "rendering" && job.descriptPublishJobId) {
       const exportStatus = await getJobStatus(job.descriptPublishJobId);
 
@@ -143,20 +150,15 @@ export async function processVideoJob(jobId: number): Promise<void> {
         throw new Error(`Export failed: ${exportStatus.result?.agent_response ?? "unknown"}`);
       }
 
-      const downloadUrl = exportStatus.result?.download_url ?? exportStatus.result?.share_url;
-      if (!downloadUrl) throw new Error("Export completed but no download URL in result");
-
-      const videoResponse = await fetch(downloadUrl);
-      if (!videoResponse.ok) throw new Error(`Failed to download video from Descript: ${videoResponse.status}`);
-
-      const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
-      const s3Key = `video-pipeline/${jobId}-${Date.now()}.mp4`;
-      const { url: s3Url } = await storagePut(s3Key, videoBuffer, "video/mp4");
+      // Store the share URL and download URL (for later use on approval)
+      const shareUrl = exportStatus.result?.share_url ?? job.descriptShareUrl ?? "";
+      const downloadUrl = exportStatus.result?.download_url ?? "";
 
       await db.update(videoJobs).set({
-        s3VideoKey: s3Key,
-        s3VideoUrl: s3Url,
+        // Use share_url as the preview URL in VA Dashboard (no download needed)
+        s3VideoUrl: shareUrl,
         descriptDownloadUrl: downloadUrl,
+        descriptShareUrl: shareUrl,
         status: "ready_for_review",
       }).where(eq(videoJobs.id, jobId));
     }

@@ -1,25 +1,30 @@
 /**
- * YouTube Data API v3 Uploader — Resumable Upload Protocol
+ * YouTube Data API v3 Uploader — Streaming Resumable Upload
  *
- * Uses YouTube's resumable upload API (https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol)
- * instead of the googleapis stream wrapper. This is far more reliable for large files because:
+ * Uses YouTube's resumable upload protocol with STREAMING chunks:
  *
- * 1. Uploads in 50 MB chunks — each chunk is a separate HTTP request
- * 2. If a chunk fails, only that chunk is retried (not the whole file)
- * 3. The upload session URI is stored so uploads can be resumed after server restarts
- * 4. Progress is logged per-chunk so you can see real movement
- * 5. No single long-lived HTTP connection that can stall silently
+ *   1. HEAD the source URL to get Content-Length (no download yet)
+ *   2. Initiate a YouTube resumable upload session → get upload URI
+ *   3. For each 50 MB chunk:
+ *        a. Fetch ONLY that byte range from GCS (Range: bytes=X-Y)
+ *        b. PUT that chunk to YouTube
+ *        c. Discard the buffer — memory stays flat (~50 MB peak, not 1 GB)
+ *
+ * Why this matters:
+ *   - A typical 20-min 1080p video is 500 MB – 1.5 GB
+ *   - Loading the whole file with arrayBuffer() crashes a 4 GB server
+ *   - Range requests keep peak memory under ~100 MB regardless of file size
  *
  * Resilience:
- * - Each chunk retried up to 3 times with exponential backoff
- * - Per-chunk 5-minute timeout (not a single 45-min timeout on the whole file)
- * - Detailed error messages distinguishing auth failures from network stalls
+ *   - Each chunk retried up to 5 times with exponential backoff
+ *   - Per-chunk 8-minute timeout
+ *   - Explicit guard: rejects share.descript.com URLs (viewer pages, not MP4s)
+ *   - Logs progress per-chunk so you can see real movement in server logs
  */
 
 import { google } from "googleapis";
 import { getDb } from "./db";
 import { userCredentials } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
 
 // ── OAuth client ──────────────────────────────────────────────────────────────
 
@@ -89,21 +94,48 @@ export interface YouTubeUploadResult {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB per chunk (YouTube minimum is 256 KB, recommend 8 MB+)
-const CHUNK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per chunk
-const MAX_CHUNK_RETRIES = 3;
+const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB per chunk
+const CHUNK_TIMEOUT_MS = 8 * 60 * 1000; // 8 minutes per chunk
+const MAX_CHUNK_RETRIES = 5;
 
 // ── Helper: fetch with timeout ────────────────────────────────────────────────
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    return res;
+    return await fetch(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ── Step 0: HEAD the source to get file size ──────────────────────────────────
+
+async function getRemoteFileSize(
+  url: string
+): Promise<{ size: number; mimeType: string }> {
+  const res = await fetchWithTimeout(url, { method: "HEAD" }, 30_000);
+  if (!res.ok) {
+    throw new Error(
+      `HEAD request to source URL failed: ${res.status} ${res.statusText}`
+    );
+  }
+  const sizeStr = res.headers.get("content-length");
+  if (!sizeStr) {
+    throw new Error(
+      "Source URL did not return Content-Length. Cannot use streaming upload. " +
+        "This URL may be a redirect or a viewer page rather than a direct file URL."
+    );
+  }
+  const size = parseInt(sizeStr, 10);
+  const rawMime = res.headers.get("content-type") ?? "video/mp4";
+  const mimeType = rawMime.split(";")[0].trim();
+  return { size, mimeType };
 }
 
 // ── Step 1: Initiate resumable upload session ─────────────────────────────────
@@ -145,7 +177,7 @@ async function initiateResumableUpload(params: {
       },
       body: JSON.stringify(metadata),
     },
-    30_000 // 30 sec to initiate
+    30_000
   );
 
   if (!res.ok) {
@@ -155,12 +187,37 @@ async function initiateResumableUpload(params: {
 
   const uploadUri = res.headers.get("location");
   if (!uploadUri) {
-    throw new Error("No upload URI returned from YouTube — cannot start resumable upload");
+    throw new Error(
+      "No upload URI returned from YouTube — cannot start resumable upload"
+    );
   }
   return uploadUri;
 }
 
-// ── Step 2: Upload one chunk ──────────────────────────────────────────────────
+// ── Step 2: Fetch one byte range from source ──────────────────────────────────
+
+async function fetchByteRange(
+  url: string,
+  start: number,
+  end: number
+): Promise<Buffer> {
+  const res = await fetchWithTimeout(
+    url,
+    { headers: { Range: `bytes=${start}-${end}` } },
+    CHUNK_TIMEOUT_MS
+  );
+
+  // 206 Partial Content is expected; 200 is acceptable if server ignores Range
+  if (res.status !== 206 && res.status !== 200) {
+    throw new Error(
+      `Range request for bytes ${start}-${end} failed: ${res.status} ${res.statusText}`
+    );
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// ── Step 3: Upload one chunk to YouTube ──────────────────────────────────────
 
 async function uploadChunk(params: {
   uploadUri: string;
@@ -186,18 +243,13 @@ async function uploadChunk(params: {
     CHUNK_TIMEOUT_MS
   );
 
-  // 308 Resume Incomplete = chunk accepted, more to come
-  if (res.status === 308) {
-    return { done: false };
-  }
+  if (res.status === 308) return { done: false };
 
-  // 200 or 201 = upload complete
   if (res.status === 200 || res.status === 201) {
-    const data = await res.json() as { id?: string };
+    const data = (await res.json()) as { id?: string };
     return { done: true, videoId: data.id };
   }
 
-  // Anything else is an error
   const body = await res.text();
   throw new Error(`Chunk upload failed: HTTP ${res.status} — ${body}`);
 }
@@ -208,32 +260,29 @@ export async function uploadToYouTube(
   params: YouTubeUploadParams
 ): Promise<YouTubeUploadResult> {
   const jobLabel = params.jobId ? `[Job #${params.jobId}]` : "[YouTube Upload]";
-  console.log(`${jobLabel} Starting resumable YouTube upload: "${params.title}"`);
+  console.log(`${jobLabel} Starting streaming YouTube upload: "${params.title}"`);
   console.log(`${jobLabel} Source URL: ${params.videoUrl.substring(0, 80)}...`);
 
-  // ── Download video into memory (or buffer) ──────────────────────────────────
-  console.log(`${jobLabel} Downloading video from S3...`);
-  const downloadRes = await fetchWithTimeout(
-    params.videoUrl,
-    {},
-    10 * 60 * 1000 // 10 min to download
-  );
-
-  if (!downloadRes.ok) {
+  // Guard: never try to upload a Descript viewer page
+  if (params.videoUrl.includes("share.descript.com")) {
     throw new Error(
-      `Failed to fetch video from S3: ${downloadRes.status} ${downloadRes.statusText}`
+      "videoUrl points to a Descript share viewer page, not a downloadable MP4. " +
+        "Use descriptDownloadUrl (the signed GCS URL) instead."
     );
   }
 
-  const videoBuffer = Buffer.from(await downloadRes.arrayBuffer());
-  const totalBytes = videoBuffer.length;
-  const mimeType = downloadRes.headers.get("content-type") ?? "video/mp4";
-  console.log(`${jobLabel} Downloaded ${(totalBytes / 1024 / 1024).toFixed(1)} MB`);
+  // ── Step 0: Get file size via HEAD (no download) ────────────────────────────
+  console.log(`${jobLabel} Checking source file size via HEAD...`);
+  const { size: totalBytes, mimeType } = await getRemoteFileSize(params.videoUrl);
+  console.log(
+    `${jobLabel} Source: ${(totalBytes / 1024 / 1024).toFixed(1)} MB, type: ${mimeType}`
+  );
 
-  // ── Get fresh access token ──────────────────────────────────────────────────
+  // ── Step 1: Get fresh access token ─────────────────────────────────────────
   const accessToken = await getFreshAccessToken();
+  console.log(`${jobLabel} YouTube OAuth token obtained.`);
 
-  // ── Initiate resumable upload session ──────────────────────────────────────
+  // ── Step 2: Initiate resumable upload session ───────────────────────────────
   console.log(`${jobLabel} Initiating resumable upload session with YouTube...`);
   const uploadUri = await initiateResumableUpload({
     accessToken,
@@ -245,16 +294,19 @@ export async function uploadToYouTube(
     contentLength: totalBytes,
     mimeType,
   });
-  console.log(`${jobLabel} Upload session created. Uploading in ${CHUNK_SIZE / 1024 / 1024} MB chunks...`);
+  const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+  console.log(
+    `${jobLabel} Upload session created. ` +
+      `${totalChunks} chunks × ${CHUNK_SIZE / 1024 / 1024} MB each (streaming — no full file in memory)`
+  );
 
-  // ── Upload chunks ───────────────────────────────────────────────────────────
+  // ── Step 3: Stream chunks: fetch range → upload → discard ──────────────────
   let offset = 0;
   let chunkIndex = 0;
-  const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
   let videoId: string | undefined;
 
   while (offset < totalBytes) {
-    const chunk = videoBuffer.subarray(offset, offset + CHUNK_SIZE);
+    const chunkEnd = Math.min(offset + CHUNK_SIZE - 1, totalBytes - 1);
     chunkIndex++;
 
     let attempt = 0;
@@ -264,9 +316,15 @@ export async function uploadToYouTube(
       attempt++;
       try {
         console.log(
-          `${jobLabel} Uploading chunk ${chunkIndex}/${totalChunks} ` +
-          `(${(offset / 1024 / 1024).toFixed(1)} MB – ${((offset + chunk.length) / 1024 / 1024).toFixed(1)} MB) ` +
-          `[attempt ${attempt}/${MAX_CHUNK_RETRIES}]`
+          `${jobLabel} Chunk ${chunkIndex}/${totalChunks}: ` +
+            `fetching bytes ${offset}–${chunkEnd} from source [attempt ${attempt}]`
+        );
+
+        const chunk = await fetchByteRange(params.videoUrl, offset, chunkEnd);
+
+        console.log(
+          `${jobLabel} Chunk ${chunkIndex}/${totalChunks}: ` +
+            `uploading ${(chunk.length / 1024 / 1024).toFixed(1)} MB to YouTube...`
         );
 
         const result = await uploadChunk({
@@ -279,25 +337,36 @@ export async function uploadToYouTube(
 
         if (result.done) {
           videoId = result.videoId;
-          console.log(`${jobLabel} ✅ All chunks uploaded. YouTube video ID: ${videoId}`);
+          console.log(
+            `${jobLabel} ✅ All chunks uploaded. YouTube video ID: ${videoId}`
+          );
+        } else {
+          const pct = (((chunkEnd + 1) / totalBytes) * 100).toFixed(0);
+          console.log(
+            `${jobLabel} Chunk ${chunkIndex}/${totalChunks} accepted (${pct}% complete)`
+          );
         }
+
         success = true;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`${jobLabel} Chunk ${chunkIndex} attempt ${attempt} failed: ${msg}`);
+        console.error(
+          `${jobLabel} Chunk ${chunkIndex} attempt ${attempt} failed: ${msg}`
+        );
         if (attempt >= MAX_CHUNK_RETRIES) {
           throw new Error(
             `YouTube upload failed on chunk ${chunkIndex}/${totalChunks} after ${MAX_CHUNK_RETRIES} attempts: ${msg}`
           );
         }
-        // Exponential backoff: 5s, 10s, 20s
         const backoff = 5000 * Math.pow(2, attempt - 1);
-        console.log(`${jobLabel} Retrying chunk ${chunkIndex} in ${backoff / 1000}s...`);
+        console.log(
+          `${jobLabel} Retrying chunk ${chunkIndex} in ${backoff / 1000}s...`
+        );
         await new Promise((r) => setTimeout(r, backoff));
       }
     }
 
-    offset += chunk.length;
+    offset = chunkEnd + 1;
   }
 
   if (!videoId) {

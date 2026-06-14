@@ -181,7 +181,7 @@ async function uploadChunk(params: {
         "Content-Range": contentRange,
         "Content-Type": params.mimeType,
       },
-      body: params.chunk,
+      body: new Uint8Array(params.chunk),
     },
     CHUNK_TIMEOUT_MS
   );

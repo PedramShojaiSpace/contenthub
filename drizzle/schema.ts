@@ -2034,6 +2034,7 @@ export const videoJobStatusEnum = mysqlEnum("video_job_status", [
   "ready_for_review",
   "approved",
   "uploading",
+  "uploaded_unlisted",
   "published",
   "failed",
   "rejected",

@@ -35,6 +35,11 @@ import {
   Edit2,
   Tag,
   ArrowLeft,
+  Sparkles,
+  Globe,
+  Target,
+  Hash,
+  MessageCircle,
 } from "lucide-react";
 
 // ─── Syndication Types ────────────────────────────────────────────────────────
@@ -483,8 +488,9 @@ function VideoStatusBadge({ status }: { status: string }) {
     rendering: { label: "Rendering Video", className: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
     ready_for_review: { label: "Ready for Review ✅", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold" },
     approved: { label: "Approved", className: "bg-green-500/10 text-green-600 border-green-500/20" },
-    uploading: { label: "Publishing to YouTube...", className: "bg-red-500/10 text-red-500 border-red-500/20 animate-pulse" },
-    publishing: { label: "Publishing to YouTube...", className: "bg-red-500/10 text-red-500 border-red-500/20 animate-pulse" },
+    uploading: { label: "Uploading to YouTube...", className: "bg-red-500/10 text-red-500 border-red-500/20 animate-pulse" },
+    publishing: { label: "Uploading to YouTube...", className: "bg-red-500/10 text-red-500 border-red-500/20 animate-pulse" },
+    uploaded_unlisted: { label: "Uploaded — SEO Review Needed", className: "bg-amber-500/10 text-amber-600 border-amber-500/20 font-semibold" },
     published: { label: "Published on YouTube 🎉", className: "bg-red-600/10 text-primary border-red-600/20 font-semibold" },
     failed: { label: "Failed ⚠️", className: "bg-red-900/20 text-red-500 border-red-900/30" },
     rejected: { label: "Rejected", className: "bg-muted text-muted-foreground border-border" },
@@ -511,9 +517,26 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   );
 
   const isReadyForReview = job.status === "ready_for_review";
+  const isUploadedUnlisted = job.status === "uploaded_unlisted";
   const isInProgress = ["queued", "importing", "processing", "rendering"].includes(job.status);
+  const isUploading = job.status === "uploading" || job.status === "publishing";
   const isPublished = job.status === "published";
   const isFailed = job.status === "failed";
+
+  // SEO panel state
+  const [showSeoPanel, setShowSeoPanel] = useState(isUploadedUnlisted);
+  const [seoTitle, setSeoTitle] = useState(job.youtubeTitle ?? "");
+  const [seoDescription, setSeoDescription] = useState(job.youtubeDescription ?? "");
+  const [seoTags, setSeoTags] = useState(
+    job.youtubeTags ? (JSON.parse(job.youtubeTags) as string[]).join(", ") : ""
+  );
+  const [seoPrimaryKeyword, setSeoPrimaryKeyword] = useState("");
+  const [seoSecondaryKeyword, setSeoSecondaryKeyword] = useState("");
+  const [seoSemanticKeywords, setSeoSemanticKeywords] = useState<string[]>([]);
+  const [seoPinnedComment, setSeoPinnedComment] = useState("");
+  const [seoHookLine, setSeoHookLine] = useState("");
+  const [seoTitleStatus, setSeoTitleStatus] = useState<"green" | "amber" | "red">("amber");
+  const [seoHookStatus, setSeoHookStatus] = useState<"green" | "amber" | "red">("amber");
 
   const approveJob = trpc.videoPipeline.approveVideoJob.useMutation({
     onSuccess: (data) => {
@@ -551,6 +574,48 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
     },
     onError: (err) => toast.error(`Save failed: ${err.message}`),
   });
+
+  const generateSeo = trpc.videoPipeline.generateSeoOptimization.useMutation({
+    onSuccess: (data) => {
+      if (data.success && data.seo) {
+        setSeoTitle(data.seo.title);
+        setSeoDescription(data.seo.description);
+        setSeoTags(data.seo.tags.join(", "));
+        setSeoPrimaryKeyword(data.seo.primaryKeyword);
+        setSeoSecondaryKeyword(data.seo.secondaryKeyword);
+        setSeoSemanticKeywords(data.seo.semanticKeywords);
+        setSeoPinnedComment(data.seo.pinnedCommentSuggestion);
+        setSeoHookLine(data.seo.hookLine);
+        setSeoTitleStatus(data.seo.titleStatus);
+        setSeoHookStatus(data.seo.hookLineStatus);
+        toast.success("SEO copy generated — review and edit before publishing.", { duration: 5000 });
+      }
+    },
+    onError: (err) => toast.error(`SEO generation failed: ${err.message}`),
+  });
+
+  const saveSeoMeta = trpc.videoPipeline.updateVideoMetadata.useMutation({
+    onSuccess: () => {
+      toast.success("SEO metadata saved.");
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
+  });
+
+  const makePublic = trpc.videoPipeline.makePublic.useMutation({
+    onSuccess: (data) => {
+      toast.success("Video is now PUBLIC on YouTube!", { duration: 8000 });
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Publish failed: ${err.message}`),
+  });
+
+  // Yoast-style traffic light helper
+  const statusDot = (s: "green" | "amber" | "red") => (
+    <span className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+      s === "green" ? "bg-emerald-500" : s === "amber" ? "bg-amber-400" : "bg-red-500"
+    }`} />
+  );
 
   return (
     <Card className="border border-border/50 bg-card">
@@ -711,6 +776,255 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
             </div>
           )}
 
+          {/* Uploading progress banner */}
+          {isUploading && (
+            <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-sm text-amber-600">
+              <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+              <span>Uploading to YouTube as unlisted — this takes 10–20 minutes. The status will update automatically.</span>
+            </div>
+          )}
+
+          {/* ── SEO Review Panel (uploaded_unlisted status) ─────────────────── */}
+          {isUploadedUnlisted && (
+            <div className="border border-amber-500/30 rounded-lg bg-amber-500/5 overflow-hidden">
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-amber-500/20 bg-amber-500/10">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-amber-600" />
+                  <span className="text-sm font-semibold text-amber-700">SEO Optimization — Review Before Publishing</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-amber-600">
+                  <Youtube className="w-3.5 h-3.5" />
+                  <a
+                    href={`https://studio.youtube.com/video/${job.youtubeVideoId}/edit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-700"
+                  >
+                    View in YouTube Studio ↗
+                  </a>
+                </div>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {/* AI Generate button */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Use the Yoast-style SEO protocol to generate optimized copy, then review and edit before publishing.</p>
+                  <Button
+                    size="sm"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs flex-shrink-0 ml-3"
+                    onClick={() => generateSeo.mutate({ jobId: job.id })}
+                    disabled={generateSeo.isPending}
+                  >
+                    {generateSeo.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    {generateSeo.isPending ? "Generating..." : "Generate AI SEO Copy"}
+                  </Button>
+                </div>
+
+                {/* Title field with Yoast traffic light */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {statusDot(seoTitleStatus)}
+                    <label className="text-xs font-medium text-foreground/80 uppercase tracking-wider">
+                      YouTube Title
+                    </label>
+                    <span className={`text-xs ml-auto ${
+                      seoTitle.length <= 60 ? "text-emerald-600" : seoTitle.length <= 70 ? "text-amber-500" : "text-red-500"
+                    }`}>
+                      {seoTitle.length}/60 chars {seoTitle.length <= 60 ? "✓" : seoTitle.length <= 70 ? "(amber)" : "(too long)"}
+                    </span>
+                  </div>
+                  <Input
+                    value={seoTitle}
+                    onChange={(e) => {
+                      setSeoTitle(e.target.value);
+                      const len = e.target.value.length;
+                      setSeoTitleStatus(len <= 60 ? "green" : len <= 70 ? "amber" : "red");
+                    }}
+                    maxLength={100}
+                    className="bg-muted border-border text-foreground text-sm"
+                    placeholder="Focus keyword: Compelling benefit | The Urban Monk"
+                  />
+                </div>
+
+                {/* Hook line (meta desc equivalent) with Yoast traffic light */}
+                {seoHookLine && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      {statusDot(seoHookStatus)}
+                      <label className="text-xs font-medium text-foreground/80 uppercase tracking-wider">
+                        Hook Line (First Description Line)
+                      </label>
+                      <span className={`text-xs ml-auto ${
+                        seoHookLine.length >= 140 && seoHookLine.length <= 155 ? "text-emerald-600"
+                        : seoHookLine.length >= 120 && seoHookLine.length <= 160 ? "text-amber-500" : "text-red-500"
+                      }`}>
+                        {seoHookLine.length} chars (target: 140–155)
+                      </span>
+                    </div>
+                    <Input
+                      value={seoHookLine}
+                      onChange={(e) => {
+                        setSeoHookLine(e.target.value);
+                        const len = e.target.value.length;
+                        setSeoHookStatus(len >= 140 && len <= 155 ? "green" : len >= 120 && len <= 160 ? "amber" : "red");
+                      }}
+                      className="bg-muted border-border text-foreground text-sm"
+                      placeholder="Focus keyword appears here first — 140-155 chars"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Appears before "Show More" in YouTube search results. Must start with focus keyword.</p>
+                  </div>
+                )}
+
+                {/* Keywords row */}
+                {(seoPrimaryKeyword || seoSecondaryKeyword) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Target className="w-3 h-3 text-primary" />
+                        <label className="text-xs font-medium text-foreground/80 uppercase tracking-wider">Focus Keyphrase</label>
+                      </div>
+                      <div className="px-3 py-2 bg-primary/10 border border-primary/20 rounded text-sm text-primary font-medium">
+                        {seoPrimaryKeyword}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Target className="w-3 h-3 text-muted-foreground" />
+                        <label className="text-xs font-medium text-foreground/80 uppercase tracking-wider">Secondary Keyphrase</label>
+                      </div>
+                      <div className="px-3 py-2 bg-muted border border-border rounded text-sm text-foreground/80">
+                        {seoSecondaryKeyword}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Semantic keywords */}
+                {seoSemanticKeywords.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Hash className="w-3 h-3 text-muted-foreground" />
+                      <label className="text-xs font-medium text-foreground/80 uppercase tracking-wider">Semantic Keywords (LSI)</label>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {seoSemanticKeywords.map((kw) => (
+                        <span key={kw} className="px-2 py-0.5 bg-secondary text-foreground/70 rounded text-xs border border-border">
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Full description */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-xs font-medium text-foreground/80 uppercase tracking-wider">Full Description</label>
+                    <span className="text-xs text-muted-foreground ml-auto">{seoDescription.length} chars</span>
+                  </div>
+                  <Textarea
+                    value={seoDescription}
+                    onChange={(e) => setSeoDescription(e.target.value)}
+                    className="min-h-[180px] bg-muted border-border text-foreground text-xs font-mono"
+                    placeholder="Full YouTube description: hook, value, timestamps, bio, CTA, links, hashtags"
+                  />
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Tag className="w-3 h-3 text-muted-foreground" />
+                    <label className="text-xs font-medium text-foreground/80 uppercase tracking-wider">Tags (comma-separated)</label>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {seoTags.split(",").filter(t => t.trim()).length} tags
+                    </span>
+                  </div>
+                  <Input
+                    value={seoTags}
+                    onChange={(e) => setSeoTags(e.target.value)}
+                    className="bg-muted border-border text-foreground text-sm"
+                    placeholder="gut health protocol, sleep optimization, urban monk..."
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Target: 15–20 tags, ordered most-specific to most-broad.</p>
+                </div>
+
+                {/* Pinned comment suggestion */}
+                {seoPinnedComment && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <MessageCircle className="w-3 h-3 text-muted-foreground" />
+                      <label className="text-xs font-medium text-foreground/80 uppercase tracking-wider">Suggested Pinned Comment</label>
+                    </div>
+                    <div className="px-3 py-2 bg-muted border border-border rounded text-xs text-foreground/80 italic">
+                      "{seoPinnedComment}"
+                    </div>
+                    <button
+                      className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
+                      onClick={() => { navigator.clipboard.writeText(seoPinnedComment); toast.success("Copied to clipboard"); }}
+                    >
+                      <Copy className="w-3 h-3" /> Copy to clipboard
+                    </button>
+                  </div>
+                )}
+
+                {/* Save + Publish actions */}
+                <div className="flex gap-3 pt-2 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-sm border-border text-foreground/80 hover:bg-muted"
+                    onClick={() => saveSeoMeta.mutate({
+                      jobId: job.id,
+                      youtubeTitle: seoTitle || undefined,
+                      youtubeDescription: seoDescription || undefined,
+                      youtubeTags: seoTags ? seoTags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+                    })}
+                    disabled={saveSeoMeta.isPending}
+                  >
+                    {saveSeoMeta.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                    Save Changes
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-red-600 hover:bg-red-700 text-foreground text-sm flex-1"
+                    onClick={() => makePublic.mutate({ jobId: job.id })}
+                    disabled={makePublic.isPending || !seoTitle}
+                  >
+                    {makePublic.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    ) : (
+                      <Globe className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    {makePublic.isPending ? "Publishing..." : "Publish to YouTube (Make Public)"}
+                  </Button>
+                </div>
+
+                {/* Yoast-style SEO score summary */}
+                <div className="flex items-center gap-4 pt-1 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    {statusDot(seoTitleStatus)}
+                    <span>Title: {seoTitle.length <= 60 ? "Good" : seoTitle.length <= 70 ? "Needs trim" : "Too long"}</span>
+                  </div>
+                  {seoHookLine && (
+                    <div className="flex items-center gap-1.5">
+                      {statusDot(seoHookStatus)}
+                      <span>Hook: {seoHookLine.length >= 140 && seoHookLine.length <= 155 ? "Perfect" : "Adjust length"}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    {statusDot(seoTags.split(",").filter(t => t.trim()).length >= 15 ? "green" : seoTags.split(",").filter(t => t.trim()).length >= 8 ? "amber" : "red")}
+                    <span>Tags: {seoTags.split(",").filter(t => t.trim()).length} (target 15+)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 flex-wrap">
             {isReadyForReview && (
@@ -725,7 +1039,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                   ) : (
                     <Youtube className="w-4 h-4 mr-2" />
                   )}
-                  {approveJob.isPending ? "Queuing for YouTube..." : "Approve & Publish to YouTube"}
+                  {approveJob.isPending ? "Queuing for YouTube..." : "Approve & Upload to YouTube"}
                 </Button>
                 <Button
                   variant="outline"
@@ -849,7 +1163,7 @@ export default function VADashboard() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"syndication" | "video">("syndication");
   const [syndicationFilter, setSyndicationFilter] = useState<"all" | "todo" | "done">("todo");
-  const [videoFilter, setVideoFilter] = useState<"all" | "review" | "published" | "failed">("review");
+  const [videoFilter, setVideoFilter] = useState<"all" | "review" | "seo" | "published" | "failed">("review");
 
   // Syndication data
   const { data: syndicationJobs, isLoading: syndicationLoading, refetch: refetchSyndication } =
@@ -870,6 +1184,7 @@ export default function VADashboard() {
 
   const filteredVideoJobs = allVideoJobs.filter((job) => {
     if (videoFilter === "review") return job.status === "ready_for_review";
+    if (videoFilter === "seo") return job.status === "uploaded_unlisted";
     if (videoFilter === "published") return job.status === "published";
     if (videoFilter === "failed") return job.status === "failed";
     return true;
@@ -878,7 +1193,7 @@ export default function VADashboard() {
   const syndicationTodoCount = allSyndicationJobs.filter(
     (j) => j.status === "ready" || (j.status === "pending" && j.scheduledAt <= Date.now())
   ).length;
-  const videoReviewCount = allVideoJobs.filter((j) => j.status === "ready_for_review").length;
+  const videoReviewCount = allVideoJobs.filter((j) => j.status === "ready_for_review" || j.status === "uploaded_unlisted").length;
 
   // Group syndication jobs by wordpress post
   const grouped = filteredSyndicationJobs.reduce<Record<string, SyndicationJob[]>>((acc, job) => {
@@ -1046,27 +1361,28 @@ export default function VADashboard() {
             <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
               <p className="text-sm font-semibold text-primary mb-2">Video Review Instructions</p>
               <ol className="space-y-1 text-xs text-muted-foreground">
-                <li>1. Watch the full video in the preview player below.</li>
-                <li>2. Check audio quality, B-roll relevance, and captions.</li>
-                <li>3. Edit the YouTube title, description, and tags if needed.</li>
-                <li>4. Click <strong className="text-foreground">Approve &amp; Publish to YouTube</strong> — the video uploads automatically.</li>
-                <li>5. If the video has issues, click <strong className="text-foreground">Reject</strong> with a reason — the team will re-render.</li>
+                <li>1. Watch the full video in Descript. Check audio, B-roll, and captions.</li>
+                <li>2. Click <strong className="text-foreground">Approve &amp; Upload to YouTube</strong> — uploads as <em>unlisted</em> automatically.</li>
+                <li>3. Once uploaded, go to the <strong className="text-foreground">SEO Review</strong> tab — generate AI SEO copy using the Yoast protocol.</li>
+                <li>4. Review and edit the title (≤60 chars), hook line (140–155 chars), description, and tags.</li>
+                <li>5. Click <strong className="text-foreground">Publish to YouTube (Make Public)</strong> to go live.</li>
+                <li>6. If the video has issues, click <strong className="text-foreground">Reject</strong> with a reason — the team will re-render.</li>
               </ol>
             </div>
 
             {/* Filter tabs */}
-            <div className="flex gap-2 mb-6">
-              {(["review", "all", "published", "failed"] as const).map((f) => (
+            <div className="flex gap-2 mb-6 flex-wrap">
+              {(["review", "seo", "all", "published", "failed"] as const).map((f) => (
                 <button
                   key={f}
-                  onClick={() => setVideoFilter(f)}
+                  onClick={() => setVideoFilter(f as any)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     videoFilter === f
                       ? "bg-secondary text-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
-                  {f === "review" ? "Needs Review" : f === "published" ? "Published" : f === "failed" ? "Failed" : "All"}
+                  {f === "review" ? "Needs Review" : f === "seo" ? "SEO Review" : f === "published" ? "Published" : f === "failed" ? "Failed" : "All"}
                 </button>
               ))}
             </div>

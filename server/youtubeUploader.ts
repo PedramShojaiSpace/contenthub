@@ -148,7 +148,8 @@ export async function uploadToYouTube(
 
   const youtube = google.youtube({ version: "v3", auth: oauth2Client });
 
-  let uploadResponse: Awaited<ReturnType<typeof youtube.videos.insert>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let uploadResponse: any;
   try {
     const uploadPromise = youtube.videos.insert({
       part: ["snippet", "status"],

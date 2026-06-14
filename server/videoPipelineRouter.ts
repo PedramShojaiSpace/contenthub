@@ -10,6 +10,7 @@ import { getDb } from "./db";
 import { videoJobs } from "../drizzle/schema";
 import { processScheduledVideoJobs } from "./descriptPipeline";
 import { uploadToYouTube } from "./youtubeUploader";
+import { exportProject, getJobStatus } from "./descriptClient";
 
 const VIDEO_JOB_STATUSES = [
   "pending", "importing", "editing", "rendering",
@@ -86,48 +87,76 @@ export const videoPipelineRouter = router({
       return { success: true };
     }),
 
-  approveVideoJob: protectedProcedure
+    approveVideoJob: protectedProcedure
     .input(z.object({ jobId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
-
       const jobs = await db.select().from(videoJobs).where(eq(videoJobs.id, input.jobId)).limit(1);
       if (!jobs.length) throw new Error(`Video job ${input.jobId} not found`);
       const job = jobs[0];
-
       if (job.status !== "ready_for_review") {
         throw new Error(`Job is in status '${job.status}', expected 'ready_for_review'`);
       }
-
-      const videoUrl = job.s3VideoUrl ?? job.descriptDownloadUrl;
-      if (!videoUrl) throw new Error("No video URL available — cannot upload to YouTube");
+      if (!job.descriptProjectId) throw new Error("No Descript project ID — cannot re-export");
 
       await db.update(videoJobs).set({ status: "approved", vaApprovedAt: Date.now() }).where(eq(videoJobs.id, input.jobId));
       await db.update(videoJobs).set({ status: "uploading" }).where(eq(videoJobs.id, input.jobId));
 
-      try {
-        const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
-        const uploadResult = await uploadToYouTube({
-          videoUrl,
-          title: job.youtubeTitle ?? "Urban Monk Video",
-          description: job.youtubeDescription ?? "",
-          tags,
-          privacyStatus: "public",
-        });
+      // Fire-and-forget: Descript re-render + YouTube upload runs in background
+      // The mutation returns immediately with 'uploading' status.
+      // VA Dashboard polls getVideoJobs to see when it becomes 'published' or 'failed'.
+      (async () => {
+        const bgDb = await getDb();
+        if (!bgDb) return;
+        try {
+          // Step 1: Trigger a fresh Descript publish job (download URLs expire)
+          const exportResp = await exportProject({ projectId: job.descriptProjectId! });
+          const publishJobId = exportResp.job_id;
 
-        await db.update(videoJobs).set({
-          status: "published",
-          youtubeVideoId: uploadResult.videoId,
-          publishedAt: Date.now(),
-        }).where(eq(videoJobs.id, input.jobId));
+          // Step 2: Poll until the publish job completes (max 15 min)
+          let downloadUrl: string | undefined;
+          const maxAttempts = 60; // 60 × 15s = 15 min
+          for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(r => setTimeout(r, 15_000));
+            const jobStatus = await getJobStatus(publishJobId);
+            if (jobStatus.job_state === "stopped") {
+              if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
+                downloadUrl = jobStatus.result.download_url;
+                break;
+              } else {
+                throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+              }
+            }
+            if (jobStatus.job_state === "cancelled") {
+              throw new Error("Descript publish job was cancelled");
+            }
+          }
+          if (!downloadUrl) throw new Error("Descript publish timed out after 15 minutes");
 
-        return { success: true, youtubeVideoId: uploadResult.videoId, youtubeVideoUrl: uploadResult.videoUrl };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        await db.update(videoJobs).set({ status: "failed", errorMessage: message }).where(eq(videoJobs.id, input.jobId));
-        throw err;
-      }
+          // Step 3: Upload to YouTube using the fresh download URL
+          const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
+          const uploadResult = await uploadToYouTube({
+            videoUrl: downloadUrl,
+            title: job.youtubeTitle ?? "Urban Monk Video",
+            description: job.youtubeDescription ?? "",
+            tags,
+            privacyStatus: "public",
+          });
+
+          await bgDb.update(videoJobs).set({
+            status: "published",
+            youtubeVideoId: uploadResult.videoId,
+            publishedAt: Date.now(),
+          }).where(eq(videoJobs.id, input.jobId));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          await bgDb.update(videoJobs).set({ status: "failed", errorMessage: message }).where(eq(videoJobs.id, input.jobId));
+        }
+      })();
+
+      // Return immediately — VA Dashboard will poll for status changes
+      return { success: true, status: "uploading", message: "Video is being published to YouTube. This takes 10–20 minutes. Refresh the dashboard to check progress." };
     }),
 
   rejectVideoJob: protectedProcedure

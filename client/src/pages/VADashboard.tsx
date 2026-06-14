@@ -475,15 +475,19 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
 // ─── Video Status Badge ───────────────────────────────────────────────────────
 function VideoStatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; className: string }> = {
+    pending: { label: "Queued", className: "bg-muted text-muted-foreground border-border" },
     queued: { label: "Queued", className: "bg-muted text-muted-foreground border-border" },
     importing: { label: "Importing to Descript", className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+    editing: { label: "AI Editing", className: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
     processing: { label: "AI Processing", className: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
     rendering: { label: "Rendering Video", className: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
-    ready_for_review: { label: "Ready for Review", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-    approved: { label: "Approved", className: "bg-green-500/10 text-green-400 border-green-500/20" },
-    publishing: { label: "Uploading to YouTube", className: "bg-red-500/10 text-red-400 border-red-500/20" },
-    published: { label: "Published on YouTube", className: "bg-red-600/10 text-primary border-red-600/20" },
-    failed: { label: "Failed", className: "bg-red-900/20 text-red-400 border-red-900/30" },
+    ready_for_review: { label: "Ready for Review ✅", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold" },
+    approved: { label: "Approved", className: "bg-green-500/10 text-green-600 border-green-500/20" },
+    uploading: { label: "Publishing to YouTube...", className: "bg-red-500/10 text-red-500 border-red-500/20 animate-pulse" },
+    publishing: { label: "Publishing to YouTube...", className: "bg-red-500/10 text-red-500 border-red-500/20 animate-pulse" },
+    published: { label: "Published on YouTube 🎉", className: "bg-red-600/10 text-primary border-red-600/20 font-semibold" },
+    failed: { label: "Failed ⚠️", className: "bg-red-900/20 text-red-500 border-red-900/30" },
+    rejected: { label: "Rejected", className: "bg-muted text-muted-foreground border-border" },
     skipped: { label: "Skipped", className: "bg-muted text-muted-foreground border-border" },
   };
   const c = config[status] ?? { label: status, className: "bg-muted text-muted-foreground border-border" };
@@ -513,7 +517,10 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
   const approveJob = trpc.videoPipeline.approveVideoJob.useMutation({
     onSuccess: (data) => {
-      toast.success(`Video published to YouTube!`);
+      toast.success("Publishing to YouTube in the background — this takes 10–20 minutes. The status will update automatically.", { duration: 8000 });
+      // Start polling every 30s while uploading
+      const pollInterval = setInterval(() => { onRefresh(); }, 30_000);
+      setTimeout(() => clearInterval(pollInterval), 25 * 60 * 1000); // stop after 25 min
       onRefresh();
     },
     onError: (err) => toast.error(`Approve failed: ${err.message}`),
@@ -718,7 +725,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                   ) : (
                     <Youtube className="w-4 h-4 mr-2" />
                   )}
-                  Approve & Publish to YouTube
+                  {approveJob.isPending ? "Queuing for YouTube..." : "Approve & Publish to YouTube"}
                 </Button>
                 <Button
                   variant="outline"

@@ -518,6 +518,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 
   const isReadyForReview = job.status === "ready_for_review";
   const isApproved = job.status === "approved"; // reset from stuck — needs re-upload
+  const isQueuedOrPending = job.status === "pending"; // waiting in queue — can force re-export
   const isUploadedUnlisted = job.status === "uploaded_unlisted";
   const isInProgress = ["queued", "importing", "processing", "rendering"].includes(job.status);
   const isUploading = job.status === "uploading" || job.status === "publishing";
@@ -1094,8 +1095,8 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                 </Button>
               </>
             )}
-            {/* Approved (reset from stuck) or failed — show Retry Upload to YouTube */}
-            {(isApproved || isFailed) && (
+            {/* Approved / Failed / Pending (Queued) — show Upload to YouTube + Force Re-export */}
+            {(isApproved || isFailed || isQueuedOrPending) && (
               <>
                 <Button
                   className="bg-red-600 hover:bg-red-700 text-foreground text-sm"
@@ -1114,7 +1115,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                   variant="outline"
                   className="text-sm border-amber-500/60 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                   onClick={() => {
-                    if (confirm("This will bypass the cached Descript URL and trigger a full fresh export (~15 min). Continue?")) {
+                    if (confirm("This will bypass the cached Descript URL and trigger a full fresh export (~15 min), then upload to YouTube automatically. Continue?")) {
                       forceReexport.mutate({ jobId: job.id });
                     }
                   }}

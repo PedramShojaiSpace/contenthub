@@ -1,20 +1,23 @@
 /**
  * Video Pipeline tRPC Router
- * Status enum (actual DB): pending|importing|editing|rendering|ready_for_review|approved|uploading|published|failed|rejected
+ * Status enum (actual DB): pending|importing|editing|rendering|ready_for_review|approved|uploading|uploaded_unlisted|published|failed|rejected
  */
 
 import { z } from "zod";
-import { eq, desc, or } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { videoJobs } from "../drizzle/schema";
 import { processScheduledVideoJobs } from "./descriptPipeline";
 import { uploadToYouTube } from "./youtubeUploader";
 import { exportProject, getJobStatus } from "./descriptClient";
+import { invokeLLM } from "./_core/llm";
+import { google } from "googleapis";
+import { userCredentials } from "../drizzle/schema";
 
 const VIDEO_JOB_STATUSES = [
   "pending", "importing", "editing", "rendering",
-  "ready_for_review", "approved", "uploading", "published", "failed", "rejected",
+  "ready_for_review", "approved", "uploading", "uploaded_unlisted", "published", "failed", "rejected",
 ] as const;
 
 export const videoPipelineRouter = router({
@@ -87,7 +90,7 @@ export const videoPipelineRouter = router({
       return { success: true };
     }),
 
-    approveVideoJob: protectedProcedure
+  approveVideoJob: protectedProcedure
     .input(z.object({ jobId: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -104,19 +107,15 @@ export const videoPipelineRouter = router({
       await db.update(videoJobs).set({ status: "uploading" }).where(eq(videoJobs.id, input.jobId));
 
       // Fire-and-forget: Descript re-render + YouTube upload runs in background
-      // The mutation returns immediately with 'uploading' status.
-      // VA Dashboard polls getVideoJobs to see when it becomes 'published' or 'failed'.
       (async () => {
         const bgDb = await getDb();
         if (!bgDb) return;
         try {
-          // Step 1: Trigger a fresh Descript publish job (download URLs expire)
           const exportResp = await exportProject({ projectId: job.descriptProjectId! });
           const publishJobId = exportResp.job_id;
 
-          // Step 2: Poll until the publish job completes (max 15 min)
           let downloadUrl: string | undefined;
-          const maxAttempts = 60; // 60 × 15s = 15 min
+          const maxAttempts = 60;
           for (let i = 0; i < maxAttempts; i++) {
             await new Promise(r => setTimeout(r, 15_000));
             const jobStatus = await getJobStatus(publishJobId);
@@ -134,20 +133,19 @@ export const videoPipelineRouter = router({
           }
           if (!downloadUrl) throw new Error("Descript publish timed out after 15 minutes");
 
-          // Step 3: Upload to YouTube using the fresh download URL
+          // Upload as UNLISTED — SEO review required before making public
           const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
           const uploadResult = await uploadToYouTube({
             videoUrl: downloadUrl,
             title: job.youtubeTitle ?? "Urban Monk Video",
             description: job.youtubeDescription ?? "",
             tags,
-            privacyStatus: "public",
+            privacyStatus: "unlisted",
           });
 
           await bgDb.update(videoJobs).set({
-            status: "published",
+            status: "uploaded_unlisted",
             youtubeVideoId: uploadResult.videoId,
-            publishedAt: Date.now(),
           }).where(eq(videoJobs.id, input.jobId));
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -155,8 +153,7 @@ export const videoPipelineRouter = router({
         }
       })();
 
-      // Return immediately — VA Dashboard will poll for status changes
-      return { success: true, status: "uploading", message: "Video is being published to YouTube. This takes 10–20 minutes. Refresh the dashboard to check progress." };
+      return { success: true, status: "uploading", message: "Video is being uploaded to YouTube as unlisted. This takes 10–20 minutes. Refresh the dashboard to check progress." };
     }),
 
   rejectVideoJob: protectedProcedure
@@ -187,6 +184,271 @@ export const videoPipelineRouter = router({
       }).where(eq(videoJobs.id, input.jobId));
 
       return { success: true };
+    }),
+
+  /**
+   * generateSeoOptimization
+   *
+   * Applies the same Yoast-style SEO protocol used for blog publishing, adapted for YouTube:
+   *  - Title ≤60 chars (green), focus keyword in first 3-4 words
+   *  - Hook line 140-155 chars (Yoast meta desc equivalent), starts with focus keyword
+   *  - Focus keyphrase: 2-4 words, what someone types into YouTube/Google
+   *  - Semantic keywords: 5-8 LSI/related phrases
+   *  - Full description: hook, value, timestamps, bio, CTA to Academy, links, hashtags
+   *  - Tags: 15-20 ordered most-specific to most-broad
+   *  - Pinned comment suggestion
+   */
+  generateSeoOptimization: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const jobs = await db.select().from(videoJobs).where(eq(videoJobs.id, input.jobId)).limit(1);
+      if (!jobs.length) throw new Error(`Video job ${input.jobId} not found`);
+      const job = jobs[0];
+
+      const scriptSnippet = (job.scriptText ?? "").substring(0, 4000);
+      const currentTitle = job.youtubeTitle ?? "";
+
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert YouTube SEO strategist for Dr. Pedram Shojai (The Urban Monk).
+You apply the same rigorous Yoast-style SEO protocol used for the blog, adapted for YouTube.
+
+BRAND VOICE: Dr. Pedram Shojai — wise, grounded, integrative medicine, practical wisdom, spiritual but science-backed.
+CHANNEL: The Urban Monk — health, longevity, mindfulness, energy, sleep, gut health, modern wellness.
+
+YOUTUBE SEO RULES (mirrors Yoast blog protocol):
+
+TITLE (Yoast SEO Title equivalent):
+- HARD MAX 60 characters — count every character including spaces
+- Focus keyword MUST appear in the first 3-4 words
+- Format: "[Focus Keyword]: [Compelling Benefit]" or "[Focus Keyword] — [Hook]"
+- Green zone: ≤60 chars. Amber: 61-70. Red: >70. AIM FOR GREEN.
+
+HOOK LINE (Yoast Meta Description equivalent):
+- EXACTLY 140-155 characters — count every character including spaces
+- RULE 1: Start with the focus keyword as the very first words
+- RULE 2: Stay between 140-155 chars — appears in YouTube search results
+- RULE 3: Never end with ellipsis (...)
+- RULE 4: Complete compelling sentence with focus keyword naturally in first 25 chars
+- This is the first line of the YouTube description (before "Show More")
+
+FOCUS KEYPHRASE (Yoast Focus Keyword equivalent):
+- 2-4 word phrase — exactly what someone types into YouTube/Google
+- Must appear in: title (first 3-4 words), hook line (first 25 chars), description (8+ times)
+- Examples: "gut health protocol", "sleep optimization", "meditation for anxiety"
+
+SECONDARY KEYPHRASE:
+- 2-4 word semantic variation of the primary keyphrase
+
+SEMANTIC KEYWORDS (Yoast LSI/semantic keywords):
+- 5-8 related phrases supporting the focus keyphrase
+- Mix of: broader terms, specific variations, question-based keywords
+
+FULL DESCRIPTION (300-500 words):
+1. Hook line (first 2 lines, 140-155 chars — before "Show More")
+2. Blank line
+3. Value paragraph: what viewer will learn (2-3 sentences, include focus keyphrase naturally 8+ times total across description)
+4. Chapter timestamps (if script has clear sections — format: 0:00 Intro, 2:30 [Section])
+5. About Dr. Pedram Shojai (2-3 sentences, authoritative bio)
+6. Soft CTA: "Join the Urban Monk Academy at urbanmonkacademy.com for deeper practices and community"
+7. Links section:
+   🌐 Website: theurbanmonk.com
+   🎓 Academy: urbanmonkacademy.com
+   📚 Books: theurbanmonk.com/books
+   📱 Instagram: @theurbanmonk
+8. Hashtags (3-5): #TheUrbanMonk #[TopicHashtag] #[SecondaryHashtag]
+
+TAGS (15-20 tags):
+- Order: most specific → most broad
+- Include: focus keyphrase exact, secondary keyphrase exact, 3-4 long-tail variations,
+  2-3 topic-level tags, "urban monk", "pedram shojai", "integrative medicine", "wellness"
+- No duplicate concepts — each tag adds unique search coverage
+
+PINNED COMMENT:
+- 1-2 sentences, includes focus keyword, drives to Academy or free resource`,
+          },
+          {
+            role: "user",
+            content: `Optimize this YouTube video for SEO using the full Yoast-style protocol.
+
+Current title: ${currentTitle}
+Script (first 4000 chars): ${scriptSnippet}
+
+Apply all rules strictly. Title MUST be ≤60 chars. Hook line MUST be 140-155 chars and start with focus keyword.`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "youtube_seo_yoast",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                title: {
+                  type: "string",
+                  description: "YouTube title: HARD MAX 60 chars. Focus keyword in first 3-4 words.",
+                },
+                hookLine: {
+                  type: "string",
+                  description: "First description line (before Show More): EXACTLY 140-155 chars. Starts with focus keyword. No ellipsis.",
+                },
+                description: {
+                  type: "string",
+                  description: "Full YouTube description 300-500 words: hook, value, timestamps, bio, CTA, links, hashtags",
+                },
+                tags: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "15-20 YouTube tags ordered most-specific to most-broad",
+                },
+                primaryKeyword: {
+                  type: "string",
+                  description: "Focus keyphrase: 2-4 words, what someone types into YouTube/Google",
+                },
+                secondaryKeyword: {
+                  type: "string",
+                  description: "Secondary keyphrase: 2-4 word semantic variation",
+                },
+                semanticKeywords: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "5-8 LSI/semantic keyword phrases supporting the focus keyphrase",
+                },
+                pinnedCommentSuggestion: {
+                  type: "string",
+                  description: "Suggested pinned comment: 1-2 sentences with focus keyword, drives to Academy",
+                },
+                titleCharCount: {
+                  type: "number",
+                  description: "Exact character count of the title field",
+                },
+                hookLineCharCount: {
+                  type: "number",
+                  description: "Exact character count of the hookLine field",
+                },
+              },
+              required: [
+                "title", "hookLine", "description", "tags",
+                "primaryKeyword", "secondaryKeyword", "semanticKeywords",
+                "pinnedCommentSuggestion", "titleCharCount", "hookLineCharCount",
+              ],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const content = response.choices[0].message.content;
+      const seo = typeof content === "string" ? JSON.parse(content) : content;
+
+      // Auto-fix title if over 60 chars (mirrors Yoast hard-trim)
+      let finalTitle = seo.title as string;
+      if (finalTitle.length > 60) {
+        const trimmed = finalTitle.slice(0, 57);
+        const lastSpace = trimmed.lastIndexOf(" ");
+        finalTitle = (lastSpace > 30 ? trimmed.slice(0, lastSpace) : trimmed).trimEnd() + "...";
+        console.warn(`[YouTube SEO] Title auto-trimmed: ${seo.title.length} → ${finalTitle.length} chars`);
+      }
+
+      // Auto-fix hook line if over 155 chars (mirrors Yoast meta desc hard-trim)
+      let finalHookLine = seo.hookLine as string;
+      if (finalHookLine.length > 155) {
+        const trimmed = finalHookLine.slice(0, 152);
+        const lastSpace = trimmed.lastIndexOf(" ");
+        finalHookLine = (lastSpace > 100 ? trimmed.slice(0, lastSpace) : trimmed).trimEnd().replace(/[,;:\-–—]$/, "").trimEnd();
+        console.warn(`[YouTube SEO] Hook line auto-trimmed: ${seo.hookLine.length} → ${finalHookLine.length} chars`);
+      }
+
+      // Save SEO-optimized copy to job
+      await db.update(videoJobs).set({
+        youtubeTitle: finalTitle,
+        youtubeDescription: seo.description as string,
+        youtubeTags: JSON.stringify(seo.tags),
+      }).where(eq(videoJobs.id, input.jobId));
+
+      return {
+        success: true,
+        seo: {
+          title: finalTitle,
+          hookLine: finalHookLine,
+          description: seo.description as string,
+          tags: seo.tags as string[],
+          primaryKeyword: seo.primaryKeyword as string,
+          secondaryKeyword: seo.secondaryKeyword as string,
+          semanticKeywords: seo.semanticKeywords as string[],
+          pinnedCommentSuggestion: seo.pinnedCommentSuggestion as string,
+          titleCharCount: finalTitle.length,
+          hookLineCharCount: finalHookLine.length,
+          // Yoast-style traffic-light status for the frontend
+          titleStatus: (finalTitle.length <= 60 ? "green" : finalTitle.length <= 70 ? "amber" : "red") as "green" | "amber" | "red",
+          hookLineStatus: (finalHookLine.length >= 140 && finalHookLine.length <= 155 ? "green"
+            : finalHookLine.length >= 120 && finalHookLine.length <= 160 ? "amber" : "red") as "green" | "amber" | "red",
+        },
+      };
+    }),
+
+  /**
+   * makePublic — flips YouTube video from unlisted → public with final reviewed metadata.
+   * Mirrors the Yoast publish flow: review → approve → publish.
+   */
+  makePublic: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const jobs = await db.select().from(videoJobs).where(eq(videoJobs.id, input.jobId)).limit(1);
+      if (!jobs.length) throw new Error(`Video job ${input.jobId} not found`);
+      const job = jobs[0];
+      if (!job.youtubeVideoId) throw new Error("No YouTube video ID — video has not been uploaded yet");
+
+      const clientId = process.env.GMAIL_CLIENT_ID;
+      const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+      if (!clientId || !clientSecret) throw new Error("YouTube OAuth credentials not configured");
+      const redirectUri = process.env.YOUTUBE_REDIRECT_URI ?? "https://content.theurbanmonk.com/api/youtube/callback";
+      const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+
+      const credRows = await db.select({ youtubeRefreshToken: userCredentials.youtubeRefreshToken }).from(userCredentials).limit(1);
+      const refreshToken = process.env.YOUTUBE_REFRESH_TOKEN ?? credRows[0]?.youtubeRefreshToken;
+      if (!refreshToken) throw new Error("YouTube refresh token not found");
+      oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+      const youtube = google.youtube({ version: "v3", auth: oauth2Client });
+
+      const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
+      await youtube.videos.update({
+        part: ["snippet", "status"],
+        requestBody: {
+          id: job.youtubeVideoId,
+          snippet: {
+            title: (job.youtubeTitle ?? "Urban Monk Video").substring(0, 100),
+            description: job.youtubeDescription ?? "",
+            tags,
+            categoryId: "26",
+            defaultLanguage: "en",
+            defaultAudioLanguage: "en",
+          },
+          status: {
+            privacyStatus: "public",
+            selfDeclaredMadeForKids: false,
+          },
+        },
+      } as any);
+
+      await db.update(videoJobs).set({
+        status: "published",
+        publishedAt: Date.now(),
+      }).where(eq(videoJobs.id, input.jobId));
+
+      return {
+        success: true,
+        youtubeVideoId: job.youtubeVideoId,
+        youtubeVideoUrl: `https://www.youtube.com/watch?v=${job.youtubeVideoId}`,
+      };
     }),
 
   processScheduledVideoJobs: publicProcedure.mutation(async () => {

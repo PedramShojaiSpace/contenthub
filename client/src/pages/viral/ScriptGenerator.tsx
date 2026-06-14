@@ -642,7 +642,7 @@ function BatchQueuePanel({
     if (freshResults.length > 0) {
       saveAllMutation.mutate({
         items: freshResults.map((r) => ({
-          title: ((r.hook || r.topic || "Untitled Script").trim().slice(0, 80)) || "Untitled Script",
+          title: ((r.hook || "Untitled Script").trim().slice(0, 80)) || "Untitled Script",
           rawIdea: r.hook,
           platform: kanbanPlatform as "meta" | "linkedin" | "x" | "youtube" | "tiktok" | "blog" | "email" | "carousel",
           status: "drafting" as const,

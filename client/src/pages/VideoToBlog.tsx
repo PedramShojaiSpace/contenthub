@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,95 @@ export default function VideoToBlog() {
   const [ytDescResult, setYtDescResult] = useState<{ description: string } | null>(null);
   const [showArticlePreview, setShowArticlePreview] = useState(false);
 
+  // ── sessionStorage draft persistence ─────────────────────────────────────
+  // Restore any in-progress workflow state from sessionStorage on mount.
+  // This means a hard reload (or a popup-based reauth) never loses work.
+  const DRAFT_KEY = "ytblog_draft";
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(DRAFT_KEY);
+      if (!saved) return;
+      const draft = JSON.parse(saved);
+      if (draft.youtubeUrl) setYoutubeUrl(draft.youtubeUrl);
+      if (draft.focusKeyword) setFocusKeyword(draft.focusKeyword);
+      if (draft.videoInfo) setVideoInfo(draft.videoInfo);
+      if (draft.blogResult) setBlogResult(draft.blogResult);
+      if (draft.wpResult) setWpResult(draft.wpResult);
+    } catch { /* ignore corrupt draft */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist draft to sessionStorage whenever key state changes
+  useEffect(() => {
+    try {
+      if (!videoInfo && !blogResult && !wpResult) {
+        sessionStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+        youtubeUrl,
+        focusKeyword,
+        videoInfo,
+        blogResult,
+        wpResult,
+      }));
+    } catch { /* quota exceeded — non-fatal */ }
+  }, [youtubeUrl, focusKeyword, videoInfo, blogResult, wpResult]);
+
+  // ── Warn before leaving when workflow is partially complete ───────────────
+  useEffect(() => {
+    const hasUnsavedWork = !!(videoInfo || blogResult) && !ytUpdateResult?.success;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedWork) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [videoInfo, blogResult, ytUpdateResult]);
+
+  // ── Popup-based YouTube reauth ────────────────────────────────────────────
+  const popupRef = useRef<Window | null>(null);
+  const [isReauthing, setIsReauthing] = useState(false);
+  const [pendingRetryAfterAuth, setPendingRetryAfterAuth] = useState(false);
+
+  const openYouTubeAuthPopup = useCallback((authUrl: string) => {
+    if (popupRef.current && !popupRef.current.closed) {
+      popupRef.current.focus();
+      return;
+    }
+    const width = 600;
+    const height = 700;
+    const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
+    const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
+    const popup = window.open(
+      authUrl,
+      "youtube_auth",
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+    );
+    popupRef.current = popup;
+    setIsReauthing(true);
+  }, []);
+
+  const utils = trpc.useUtils();
+
+  // Listen for the postMessage from the callback popup
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "YOUTUBE_AUTH_SUCCESS") return;
+      setIsReauthing(false);
+      // Refresh YouTube status so the banner updates
+      utils.videoToBlog.getYouTubeStatus.invalidate();
+      utils.videoToBlog.getYouTubeAuthUrl.invalidate();
+      toast.success("YouTube reconnected! Retrying Step 4…");
+      // Auto-retry Step 4 if it was waiting for reauth
+      setPendingRetryAfterAuth(true);
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [utils]);
+
   // YouTube OAuth status
   const { data: ytStatus } = trpc.videoToBlog.getYouTubeStatus.useQuery();
   const { data: ytAuthUrlData } = trpc.videoToBlog.getYouTubeAuthUrl.useQuery(
@@ -218,7 +307,6 @@ export default function VideoToBlog() {
     onError: (err) => toast.error(err.message),
   });
 
-  const utils = trpc.useUtils();
   const updateYtDesc = trpc.videoToBlog.updateYouTubeDescription.useMutation({
     onSuccess: (data) => {
       setYtUpdateResult(data);
@@ -265,6 +353,26 @@ export default function VideoToBlog() {
     onError: (err) => toast.error(err.message),
   });
 
+  // ── Auto-retry Step 4 after successful reauth ────────────────────────────
+  useEffect(() => {
+    if (!pendingRetryAfterAuth) return;
+    if (!wpResult || !videoInfo || !blogResult) return;
+    setPendingRetryAfterAuth(false);
+    setYtUpdateResult(null);
+    updateYtDesc.reset();
+    // Small delay to let the token propagate
+    const t = setTimeout(() => {
+      updateYtDesc.mutate({
+        videoId: videoInfo.videoId,
+        blogUrl: wpResult.link,
+        blogTitle: blogResult.title,
+        contentItemId: blogResult.contentItemId,
+      });
+    }, 800);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingRetryAfterAuth]);
+
   // Step statuses
   const step1Status: StepStatus = fetchVideoInfo.isPending ? "active" : videoInfo ? "done" : "pending";
   const step2Status: StepStatus = generateBlog.isPending ? "active" : blogResult ? "done" : videoInfo ? "pending" : "pending";
@@ -283,11 +391,14 @@ export default function VideoToBlog() {
     setFocusKeyword("");
     setManualTranscript("");
     setShowTranscriptUpload(false);
+    setPendingRetryAfterAuth(false);
     fetchVideoInfo.reset();
     generateBlog.reset();
     publishToWP.reset();
     updateYtDesc.reset();
     generateYtDesc.reset();
+    // Clear the persisted draft so the next workflow starts fresh
+    try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* non-fatal */ }
   };
 
   return (
@@ -321,18 +432,19 @@ export default function VideoToBlog() {
           <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-blue-900 dark:text-blue-200">Connect YouTube to enable Step 4</p>
-            <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Authorize the YouTube channel once so the tool can push blog URLs directly to video descriptions.</p>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Opens a small popup — your workflow stays open in this tab.</p>
           </div>
           <Button
             size="sm"
             className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={isReauthing}
             onClick={() => {
-              if (ytAuthUrlData?.url) window.location.href = ytAuthUrlData.url;
-              else toast.error("Could not get YouTube auth URL — check that GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET are set in Secrets.");
+              if (ytAuthUrlData?.url) openYouTubeAuthPopup(ytAuthUrlData.url);
+              else toast.error("Could not get YouTube auth URL — check Secrets.");
             }}
           >
-            <Youtube className="w-3.5 h-3.5 mr-1.5" />
-            Connect YouTube
+            {isReauthing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Youtube className="w-3.5 h-3.5 mr-1.5" />}
+            {isReauthing ? "Connecting…" : "Connect YouTube"}
           </Button>
         </div>
       )}
@@ -346,13 +458,14 @@ export default function VideoToBlog() {
             size="sm"
             variant="outline"
             className="shrink-0 text-xs h-7 px-2 border-green-400 text-green-800 hover:bg-green-100 dark:text-green-300 dark:border-green-700 dark:hover:bg-green-900/40"
+            disabled={isReauthing}
             onClick={() => {
-              if (ytAuthUrlData?.url) window.location.href = ytAuthUrlData.url;
-              else toast.error("Could not get YouTube auth URL — check that GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET are set in Secrets.");
+              if (ytAuthUrlData?.url) openYouTubeAuthPopup(ytAuthUrlData.url);
+              else toast.error("Could not get YouTube auth URL — check Secrets.");
             }}
           >
-            <RefreshCw className="w-3 h-3 mr-1" />
-            Reconnect
+            {isReauthing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+            {isReauthing ? "Reconnecting…" : "Reconnect"}
           </Button>
         </div>
       )}
@@ -932,31 +1045,71 @@ export default function VideoToBlog() {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">YouTube update failed</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {ytUpdateResult.needsReauth
-                      ? "Your YouTube authorization has expired. Please reconnect to continue."
-                      : ytUpdateResult.error}
-                  </p>
-                  {(ytUpdateResult.needsReauth || (ytStatus && !ytStatus.authorized)) && (
+                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400">YouTube update failed</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {ytUpdateResult.needsReauth
+                          ? "Your YouTube token expired. Click Reconnect — a popup opens and your workflow stays intact. Step 4 retries automatically after reconnect."
+                          : ytUpdateResult.error}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(ytUpdateResult.needsReauth || (ytStatus && !ytStatus.authorized)) && (
+                      <Button
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        disabled={isReauthing}
+                        onClick={() => {
+                          if (ytAuthUrlData?.url) openYouTubeAuthPopup(ytAuthUrlData.url);
+                          else toast.error("Could not get YouTube auth URL — check Secrets.");
+                        }}
+                      >
+                        {isReauthing
+                          ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Reconnecting… (auto-retry pending)</>
+                          : <><Youtube className="w-3.5 h-3.5 mr-1.5" />Reconnect YouTube Account</>}
+                      </Button>
+                    )}
+                    {!ytUpdateResult.needsReauth && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setYtUpdateResult(null);
+                          updateYtDesc.reset();
+                          updateYtDesc.mutate({
+                            videoId: videoInfo!.videoId,
+                            blogUrl: wpResult.link,
+                            blogTitle: blogResult!.title,
+                            contentItemId: blogResult?.contentItemId,
+                          });
+                        }}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                        Retry
+                      </Button>
+                    )}
+                  </div>
+                  <div className="border-t border-amber-200 dark:border-amber-800 pt-3">
+                    <p className="text-xs text-muted-foreground mb-1.5">Or manually copy this to the YouTube description:</p>
+                    <div className="p-2 rounded bg-muted font-mono text-xs break-all select-all">
+                      📖 Read the full article: {blogResult?.title}{"\n"}{wpResult.link}
+                    </div>
                     <Button
+                      variant="ghost"
                       size="sm"
-                      className="mt-3 bg-blue-600 hover:bg-blue-700 text-white"
+                      className="mt-1.5 text-xs h-7"
                       onClick={() => {
-                        if (ytAuthUrlData?.url) window.location.href = ytAuthUrlData.url;
-                        else toast.error("Could not get YouTube auth URL — check that GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET are set in Secrets.");
+                        const text = `📖 Read the full article: ${blogResult?.title}\n${wpResult.link}`;
+                        navigator.clipboard.writeText(text);
+                        toast.success("Copied to clipboard!");
                       }}
                     >
-                      <Youtube className="w-3.5 h-3.5 mr-1.5" />
-                      Reconnect YouTube Account
+                      <Copy className="w-3 h-3 mr-1" /> Copy to clipboard
                     </Button>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Or manually add this link to the YouTube description:
-                  </p>
-                  <div className="mt-2 p-2 rounded bg-muted font-mono text-xs break-all">
-                    📖 Read the full article: {blogResult?.title}{"\n"}{wpResult.link}
                   </div>
                 </div>
               </div>

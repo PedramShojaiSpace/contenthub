@@ -3938,3 +3938,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Register Heartbeat cron: video-pipeline-poll, every 15 min, task_uid: hGp92XkZBgiNbcwk9zgGSJ
 - [x] Extend client/src/pages/VADashboard.tsx with Video Review tab (video player, metadata editor, Approve & Publish to YouTube, Reject, Retry)
 - [x] TypeScript check: 0 errors (excluding pre-existing ScriptGenerator.tsx error)
+
+## YouTube Connection Resilience (Bug Fix)
+- [x] Fix YouTube reauth: open OAuth in popup window instead of navigating away (preserves workflow state)
+- [x] Add sessionStorage draft-save: persist videoInfo, blogResult, wpResult across page reloads
+- [x] Fix callback userId mismatch: use getOwnerCredentials() in callback instead of hardcoded userId=1
+- [x] Add retry-with-reauth logic: if updateYouTubeDescription returns needsReauth, auto-retry after reconnect
+- [x] Add "Retry YouTube Update" button that re-runs Step 4 without losing Steps 1-3 results
+- [x] Add beforeunload warning when workflow is in progress (Steps 1-3 done, Step 4 not yet done)

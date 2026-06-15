@@ -170,7 +170,7 @@ export const syndicationRouter = router({
         })
         .where(and(
           eq(syndicationJobs.id, input.jobId),
-          eq(syndicationJobs.status, "failed")
+          inArray(syndicationJobs.status, ["failed", "adapting"]) // also recover stuck adapting jobs
         ));
 
       return { ok: true };
@@ -274,6 +274,23 @@ export async function handleSyndicationCron(req: {
   }
 
   const now = Date.now();
+
+  // ── Crash recovery: reset any jobs stuck in 'adapting' from a previous interrupted run ──
+  // This happens when the server restarts mid-cron. The cron only picks up 'pending' jobs,
+  // so without this reset, stuck 'adapting' jobs show the spinner forever in the VA Dashboard.
+  const stuckAdapting = await db
+    .select({ id: syndicationJobs.id })
+    .from(syndicationJobs)
+    .where(eq(syndicationJobs.status, "adapting"));
+
+  if (stuckAdapting.length > 0) {
+    const stuckIds = stuckAdapting.map((j) => j.id);
+    await db
+      .update(syndicationJobs)
+      .set({ status: "pending", scheduledAt: now, updatedAt: new Date() })
+      .where(inArray(syndicationJobs.id, stuckIds));
+    console.log(`[Syndication Cron] Recovered ${stuckAdapting.length} stuck 'adapting' job(s) → reset to pending`);
+  }
 
   // Find all pending jobs that are due
   const dueJobs = await db

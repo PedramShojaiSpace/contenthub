@@ -132,6 +132,8 @@ function ScriptDisplay({ result, onCopy, autoSaved }: { result: ScriptResult; on
   const [showStructure, setShowStructure] = useState(false);
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [savedToKanban, setSavedToKanban] = useState(autoSaved ?? false);
+  const [pipelineQueued, setPipelineQueued] = useState(false);
+  const [createdContentItemId, setCreatedContentItemId] = useState<number | null>(null);
 
   const PLATFORM_MAP: Record<string, string> = {
     tiktok: "tiktok",

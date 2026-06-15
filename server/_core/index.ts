@@ -742,9 +742,15 @@ async function startServer() {
     startWeeklyDigestCron();
 
     // ── Upload Watchdog: runs every 10 minutes ────────────────────────────────
-    // Auto-fails video jobs stuck in 'uploading' for more than 50 minutes.
-    // This handles the case where the background upload process hangs silently
-    // (e.g., no timeout in old code, network stall, server restart mid-upload).
+    // Auto-recovers video jobs stuck in 'uploading' for more than 50 minutes.
+    // This handles server restarts mid-upload (fire-and-forget background tasks
+    // are killed when the server restarts, leaving jobs orphaned in 'uploading').
+    //
+    // Recovery strategy:
+    //   - Reset to 'ready_for_review' (not 'approved') so the VA Dashboard
+    //     shows the Approve button and the VA can re-trigger the upload.
+    //   - Clear descriptDownloadUrl so the next approval triggers a fresh
+    //     Descript export (the signed GCS URL expires after ~24h anyway).
     const runUploadWatchdog = async () => {
       try {
         const { getDb } = await import("../db");
@@ -765,14 +771,18 @@ async function startServer() {
           ));
         for (const job of stuckJobs) {
           const minutesStuck = job.vaApprovedAt ? Math.round((Date.now() - Number(job.vaApprovedAt)) / 60000) : '?';
-          console.warn(`[Upload Watchdog] Job #${job.id} ("${job.youtubeTitle}") has been uploading for ${minutesStuck} min — auto-failing for retry.`);
+          console.warn(`[Upload Watchdog] Job #${job.id} ("${job.youtubeTitle}") has been uploading for ${minutesStuck} min — resetting to ready_for_review.`);
           await db.update(videoJobs).set({
-            status: "approved",
-            errorMessage: `Upload timed out after ${minutesStuck} minutes. The Descript download URL is preserved — click "Upload to YouTube" to retry.`,
+            // Reset to ready_for_review so the Approve button re-appears in the VA Dashboard
+            status: "ready_for_review",
+            // Clear the stale Descript download URL — it expires after ~24h anyway.
+            // The next approval will trigger a fresh Descript export automatically.
+            descriptDownloadUrl: null,
+            errorMessage: `Upload timed out after ${minutesStuck} min (server restart). Approve again to re-export from Descript and upload to YouTube.`,
           }).where(eq(videoJobs.id, job.id));
         }
         if (stuckJobs.length > 0) {
-          console.log(`[Upload Watchdog] Reset ${stuckJobs.length} stuck job(s) back to 'approved'.`);
+          console.log(`[Upload Watchdog] Reset ${stuckJobs.length} stuck job(s) back to 'ready_for_review'.`);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

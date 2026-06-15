@@ -105,6 +105,87 @@ async function checkHeyGenQuota(): Promise<void> {
   }
 }
 
+/**
+ * Strip all production/direction notes from a script so only spoken dialogue
+ * reaches HeyGen. Removes:
+ *  - Lines in [square brackets] e.g. [B-ROLL: forest shot]
+ *  - Lines in (parentheses) e.g. (pause here)
+ *  - ALL-CAPS section headers e.g. INTRO:, HOOK:, OUTRO:, B-ROLL:, CTA:
+ *  - Lines starting with common direction keywords
+ *  - Markdown bold/italic markers
+ *  - Timestamps e.g. [0:00], (0:00-0:08)
+ *  - Empty lines collapsed to single blank
+ */
+function cleanScriptForHeyGen(raw: string): string {
+  // Step 1: Remove the entire PRODUCTION NOTES block (=== PRODUCTION NOTES === to end of string)
+  let text = raw.replace(/===\s*PRODUCTION NOTES\s*===[\s\S]*/i, "").trim();
+
+  // Step 2: Remove === SECTION: ... === headers (entire line)
+  text = text.replace(/^===.*===\s*$/gm, "");
+
+  // Step 3: Remove inline [PAUSE] and [EMPHASIS] markers (keep surrounding text)
+  text = text
+    .replace(/\[PAUSE\]/gi, "")
+    .replace(/\[EMPHASIS\]/gi, "")
+    .replace(/\[BEAT\]/gi, "")
+    .replace(/\[BREATHE\]/gi, "");
+
+  const directionKeywords = [
+    /^\[.*?\]/,           // [anything in brackets]
+    /^\(.*?\)/,           // (anything in parens)
+    /^[A-Z][A-Z\s]{3,}:/, // ALL CAPS HEADER:
+    /^b[-\s]?roll/i,
+    /^\[?b[-\s]?roll/i,
+    /^visual/i,
+    /^cut to/i,
+    /^scene/i,
+    /^shot:/i,
+    /^note:/i,
+    /^direction/i,
+    /^transition/i,
+    /^music:/i,
+    /^sfx:/i,
+    /^\d+:\d+/,           // timestamp lines like 0:00 or 1:23
+    /^production notes/i,
+    /^delivery tip/i,
+    /^pacing/i,
+  ];
+
+  const lines = text.split("\n");
+  const cleaned: string[] = [];
+
+  for (const rawLine of lines) {
+    // Strip markdown bold/italic and inline brackets/timestamps
+    let line = rawLine
+      .replace(/\*\*|__/g, "")          // bold markers
+      .replace(/\*|_/g, "")             // italic markers
+      .replace(/\[\d+:\d+(?:-\d+:\d+)?\]/g, "") // [0:00] or [0:00-0:08]
+      .replace(/\(\d+:\d+(?:-\d+:\d+)?\)/g, "") // (0:00) or (0:00-0:08)
+      .trim();
+
+    // Skip empty lines (will be re-added as paragraph breaks)
+    if (!line) {
+      cleaned.push("");
+      continue;
+    }
+
+    // Skip direction lines
+    const isDirection = directionKeywords.some(re => re.test(line));
+    if (isDirection) continue;
+
+    // Skip lines that are entirely in brackets or parens
+    if (/^\[.*\]$/.test(line) || /^\(.*\)$/.test(line)) continue;
+
+    cleaned.push(line);
+  }
+
+  // Collapse multiple blank lines into one, trim leading/trailing whitespace
+  return cleaned
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 async function startHeyGenRender(scriptText: string): Promise<string> {
   const avatarId = ENV.heygenAvatarId;
   const voiceId = ENV.heygenVoiceId;
@@ -114,10 +195,14 @@ async function startHeyGenRender(scriptText: string): Promise<string> {
   // Pre-flight: check quota before submitting to avoid burning credits on doomed renders
   await checkHeyGenQuota();
 
+  // Strip all production directions — HeyGen must only receive spoken dialogue
+  const spokenText = cleanScriptForHeyGen(scriptText);
+  console.log(`[HeyGen] Script cleaned: ${scriptText.length} chars → ${spokenText.length} chars (removed ${scriptText.length - spokenText.length} chars of directions)`);
+
   // HeyGen limits each clip to 5000 chars. Split long scripts into multiple clips
   // which HeyGen concatenates into a single video automatically.
   const HEYGEN_CHAR_LIMIT = 4800; // leave 200 char buffer
-  const chunks = splitScriptIntoChunks(scriptText, HEYGEN_CHAR_LIMIT);
+  const chunks = splitScriptIntoChunks(spokenText, HEYGEN_CHAR_LIMIT);
   console.log(`[HeyGen] Script split into ${chunks.length} clip(s) (total ${scriptText.length} chars)`);
 
   const video_inputs = chunks.map(chunk => ({

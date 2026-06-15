@@ -287,12 +287,13 @@ VOICE GUIDELINES:
 - Target length: approximately ${targetWords} words (${input.targetDurationMinutes} minutes at speaking pace)
 
 FORMAT:
-- Write the script as continuous spoken prose — no bullet points, no stage directions
-- Use [PAUSE] markers where natural breaks should occur
-- Use [EMPHASIS] before words to stress
-- Mark section transitions with: === SECTION: [Name] ===
-- At the end, include a === PRODUCTION NOTES === section with 3-5 tips for Pedram on delivery, pacing, and any props or B-roll suggestions
-- Output ONLY the script — no preamble or commentary`;
+- Write the script as PURE SPOKEN DIALOGUE ONLY — exactly the words Pedram will say aloud, nothing else
+- NO stage directions, NO production notes, NO B-roll suggestions, NO delivery tips
+- NO [PAUSE], [EMPHASIS], or any bracket markers — these will be read aloud by the AI avatar
+- NO === SECTION === headers — these will be read aloud by the AI avatar
+- NO markdown formatting (no **, no *, no #)
+- Natural paragraph breaks are fine — a blank line between paragraphs is the only structural element allowed
+- Output ONLY the spoken words — no preamble, no commentary, no labels`;
 
       const userMessage = `BLOG TITLE: ${input.blogTitle}
 BLOG URL: ${input.blogUrl}

@@ -38,6 +38,8 @@ export const videoPipelineRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
 
+      console.log(`[videoPipeline] startVideoJob called: title="${input.scriptTitle.substring(0, 60)}" contentItemId=${input.contentItemId}`);
+
       const [result] = await db.insert(videoJobs).values({
         contentItemId: input.contentItemId,
         scriptText: input.scriptText,
@@ -52,13 +54,16 @@ export const videoPipelineRouter = router({
       });
 
       const jobId = (result as any).insertId as number;
+      console.log(`[videoPipeline] Job #${jobId} created (videoType=avatar). Kicking off HeyGen render immediately...`);
 
       // Kick off step 1 immediately (fire-and-forget) — no waiting for the cron.
       // The cron only polls for completion of async external steps (HeyGen, Descript).
       setImmediate(() => {
-        processVideoJob(jobId).catch((err) => {
-          console.error(`[videoPipeline] Immediate kickoff failed for job ${jobId}:`, err?.message ?? err);
-        });
+        processVideoJob(jobId)
+          .then(() => console.log(`[videoPipeline] Job #${jobId} step-1 kickoff complete (HeyGen render started or already in progress).`))
+          .catch((err) => {
+            console.error(`[videoPipeline] ❌ Immediate kickoff FAILED for job #${jobId}:`, err?.message ?? err);
+          });
       });
 
       return {

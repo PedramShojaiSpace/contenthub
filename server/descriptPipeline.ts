@@ -92,11 +92,27 @@ function splitScriptIntoChunks(text: string, maxLen = 4800): string[] {
   return chunks.filter(c => c.length > 0);
 }
 
+async function checkHeyGenQuota(): Promise<void> {
+  const res = await heygenFetch("/v2/user/remaining_quota");
+  if (!res.ok) return; // if quota check fails, let the render attempt proceed
+  const json = (await res.json()) as { error: null | string; data: { remaining_quota: number } };
+  const remaining = json.data?.remaining_quota ?? -1;
+  console.log(`[HeyGen] Quota check: remaining_quota=${remaining}`);
+  if (remaining === 0) {
+    throw new Error(
+      "HeyGen API quota exhausted (remaining_quota=0). Please top up API credits at app.heygen.com → Account → Credits. Job will retry automatically once credits are restored."
+    );
+  }
+}
+
 async function startHeyGenRender(scriptText: string): Promise<string> {
   const avatarId = ENV.heygenAvatarId;
   const voiceId = ENV.heygenVoiceId;
   if (!avatarId) throw new Error("HEYGEN_AVATAR_ID is not configured");
   if (!voiceId) throw new Error("HEYGEN_VOICE_ID is not configured");
+
+  // Pre-flight: check quota before submitting to avoid burning credits on doomed renders
+  await checkHeyGenQuota();
 
   // HeyGen limits each clip to 5000 chars. Split long scripts into multiple clips
   // which HeyGen concatenates into a single video automatically.

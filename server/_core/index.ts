@@ -749,17 +749,18 @@ async function startServer() {
       try {
         const { getDb } = await import("../db");
         const { videoJobs } = await import("../../drizzle/schema");
-        const { eq, and, lt } = await import("drizzle-orm");
+        const { eq, and, lt, isNotNull } = await import("drizzle-orm");
         const db = await getDb();
         if (!db) return;
         const STUCK_THRESHOLD_MS = 50 * 60 * 1000; // 50 minutes
         const cutoff = Date.now() - STUCK_THRESHOLD_MS;
-        // Find jobs stuck in 'uploading' where vaApprovedAt is older than 50 min
+        // Find jobs stuck in 'uploading' where vaApprovedAt is set and older than 50 min
         const stuckJobs = await db
           .select({ id: videoJobs.id, youtubeTitle: videoJobs.youtubeTitle, vaApprovedAt: videoJobs.vaApprovedAt })
           .from(videoJobs)
           .where(and(
             eq(videoJobs.status, "uploading"),
+            isNotNull(videoJobs.vaApprovedAt),
             lt(videoJobs.vaApprovedAt, cutoff)
           ));
         for (const job of stuckJobs) {

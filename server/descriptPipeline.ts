@@ -20,7 +20,7 @@
 
 import { eq, or } from "drizzle-orm";
 import { getDb } from "./db";
-import { videoJobs } from "../drizzle/schema";
+import { videoJobs, contentItems } from "../drizzle/schema";
 import { generateBrollPrompt } from "./brollPromptGenerator";
 import {
   createProjectWithVoice,
@@ -33,7 +33,44 @@ export async function processVideoJob(jobId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
 
-  const rows = await db.select().from(videoJobs).where(eq(videoJobs.id, jobId)).limit(1);
+  const rows = await db
+    .select({
+      id: videoJobs.id,
+      contentItemId: videoJobs.contentItemId,
+      scriptText: videoJobs.scriptText,
+      brollPrompt: videoJobs.brollPrompt,
+      descriptProjectId: videoJobs.descriptProjectId,
+      descriptImportJobId: videoJobs.descriptImportJobId,
+      descriptAgentJobId: videoJobs.descriptAgentJobId,
+      descriptPublishJobId: videoJobs.descriptPublishJobId,
+      descriptShareUrl: videoJobs.descriptShareUrl,
+      descriptDownloadUrl: videoJobs.descriptDownloadUrl,
+      s3VideoKey: videoJobs.s3VideoKey,
+      s3VideoUrl: videoJobs.s3VideoUrl,
+      youtubeVideoId: videoJobs.youtubeVideoId,
+      youtubeTitle: videoJobs.youtubeTitle,
+      youtubeDescription: videoJobs.youtubeDescription,
+      youtubeTags: videoJobs.youtubeTags,
+      youtubeThumbnailUrl: videoJobs.youtubeThumbnailUrl,
+      ctaId: videoJobs.ctaId,
+      ctaLabel: videoJobs.ctaLabel,
+      ctaText: videoJobs.ctaText,
+      ctaUrl: videoJobs.ctaUrl,
+      videoType: videoJobs.videoType,
+      heygenVideoId: videoJobs.heygenVideoId,
+      status: videoJobs.status,
+      errorMessage: videoJobs.errorMessage,
+      retryCount: videoJobs.retryCount,
+      vaApprovedAt: videoJobs.vaApprovedAt,
+      publishedAt: videoJobs.publishedAt,
+      createdAt: videoJobs.createdAt,
+      updatedAt: videoJobs.updatedAt,
+      blogUrl: contentItems.publishUrl,
+    })
+    .from(videoJobs)
+    .leftJoin(contentItems, eq(videoJobs.contentItemId, contentItems.id))
+    .where(eq(videoJobs.id, jobId))
+    .limit(1);
   if (!rows.length) throw new Error(`Video job ${jobId} not found`);
   let job = rows[0];
 
@@ -45,6 +82,7 @@ export async function processVideoJob(jobId: number): Promise<void> {
         scriptText: job.scriptText,
         topic: job.youtubeTitle ?? "Urban Monk Video",
         keywords: job.youtubeTags ? JSON.parse(job.youtubeTags) : [],
+        blogUrl: job.blogUrl ?? undefined,
       });
 
       await db.update(videoJobs).set({
@@ -55,7 +93,44 @@ export async function processVideoJob(jobId: number): Promise<void> {
         status: "importing",
       }).where(eq(videoJobs.id, jobId));
 
-      const r = await db.select().from(videoJobs).where(eq(videoJobs.id, jobId)).limit(1);
+      const r = await db
+        .select({
+          id: videoJobs.id,
+          contentItemId: videoJobs.contentItemId,
+          scriptText: videoJobs.scriptText,
+          brollPrompt: videoJobs.brollPrompt,
+          descriptProjectId: videoJobs.descriptProjectId,
+          descriptImportJobId: videoJobs.descriptImportJobId,
+          descriptAgentJobId: videoJobs.descriptAgentJobId,
+          descriptPublishJobId: videoJobs.descriptPublishJobId,
+          descriptShareUrl: videoJobs.descriptShareUrl,
+          descriptDownloadUrl: videoJobs.descriptDownloadUrl,
+          s3VideoKey: videoJobs.s3VideoKey,
+          s3VideoUrl: videoJobs.s3VideoUrl,
+          youtubeVideoId: videoJobs.youtubeVideoId,
+          youtubeTitle: videoJobs.youtubeTitle,
+          youtubeDescription: videoJobs.youtubeDescription,
+          youtubeTags: videoJobs.youtubeTags,
+          youtubeThumbnailUrl: videoJobs.youtubeThumbnailUrl,
+          ctaId: videoJobs.ctaId,
+          ctaLabel: videoJobs.ctaLabel,
+          ctaText: videoJobs.ctaText,
+          ctaUrl: videoJobs.ctaUrl,
+          videoType: videoJobs.videoType,
+          heygenVideoId: videoJobs.heygenVideoId,
+          status: videoJobs.status,
+          errorMessage: videoJobs.errorMessage,
+          retryCount: videoJobs.retryCount,
+          vaApprovedAt: videoJobs.vaApprovedAt,
+          publishedAt: videoJobs.publishedAt,
+          createdAt: videoJobs.createdAt,
+          updatedAt: videoJobs.updatedAt,
+          blogUrl: contentItems.publishUrl,
+        })
+        .from(videoJobs)
+        .leftJoin(contentItems, eq(videoJobs.contentItemId, contentItems.id))
+        .where(eq(videoJobs.id, jobId))
+        .limit(1);
       job = r[0];
     }
 

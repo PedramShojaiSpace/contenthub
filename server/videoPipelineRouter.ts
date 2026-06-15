@@ -7,13 +7,14 @@ import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { videoJobs } from "../drizzle/schema";
+import { videoJobs, contentItems } from "../drizzle/schema";
 import { processScheduledVideoJobs } from "./descriptPipeline";
 import { uploadToYouTube } from "./youtubeUploader";
 import { exportProject, getJobStatus } from "./descriptClient";
 import { invokeLLM } from "./_core/llm";
 import { google } from "googleapis";
 import { userCredentials } from "../drizzle/schema";
+import { fetchSingleWpPost, updateWpPostContent, createWpPost } from "./wordpress";
 
 const VIDEO_JOB_STATUSES = [
   "pending", "importing", "editing", "rendering",
@@ -65,9 +66,46 @@ export const videoPipelineRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
 
-      const query = db.select().from(videoJobs).orderBy(desc(videoJobs.createdAt)).limit(input.limit);
-      if (input.status) return query.where(eq(videoJobs.status, input.status));
-      return query;
+      // Join with content_items to get blog URL and embed status for the closed-loop UI
+      const baseQuery = db
+        .select({
+          id: videoJobs.id,
+          contentItemId: videoJobs.contentItemId,
+          scriptText: videoJobs.scriptText,
+          brollPrompt: videoJobs.brollPrompt,
+          descriptProjectId: videoJobs.descriptProjectId,
+          descriptImportJobId: videoJobs.descriptImportJobId,
+          descriptAgentJobId: videoJobs.descriptAgentJobId,
+          descriptPublishJobId: videoJobs.descriptPublishJobId,
+          descriptShareUrl: videoJobs.descriptShareUrl,
+          descriptDownloadUrl: videoJobs.descriptDownloadUrl,
+          s3VideoKey: videoJobs.s3VideoKey,
+          s3VideoUrl: videoJobs.s3VideoUrl,
+          youtubeVideoId: videoJobs.youtubeVideoId,
+          youtubeTitle: videoJobs.youtubeTitle,
+          youtubeDescription: videoJobs.youtubeDescription,
+          youtubeTags: videoJobs.youtubeTags,
+          youtubeThumbnailUrl: videoJobs.youtubeThumbnailUrl,
+          videoType: videoJobs.videoType,
+          heygenVideoId: videoJobs.heygenVideoId,
+          status: videoJobs.status,
+          errorMessage: videoJobs.errorMessage,
+          retryCount: videoJobs.retryCount,
+          vaApprovedAt: videoJobs.vaApprovedAt,
+          publishedAt: videoJobs.publishedAt,
+          createdAt: videoJobs.createdAt,
+          updatedAt: videoJobs.updatedAt,
+          // Blog <-> Video closed-loop fields
+          blogUrl: contentItems.publishUrl,
+          blogEmbedStatus: contentItems.embeddedYoutubeEmbedStatus,
+        })
+        .from(videoJobs)
+        .leftJoin(contentItems, eq(videoJobs.contentItemId, contentItems.id))
+        .orderBy(desc(videoJobs.createdAt))
+        .limit(input.limit);
+
+      if (input.status) return baseQuery.where(eq(videoJobs.status, input.status));
+      return baseQuery;
     }),
 
   updateVideoMetadata: protectedProcedure
@@ -704,6 +742,17 @@ Apply all rules strictly. Title MUST be ≤60 chars. Hook line MUST be 140-155 c
         publishedAt: Date.now(),
       }).where(eq(videoJobs.id, input.jobId));
 
+      // Fire-and-forget: Blog <-> Video closed loop
+      if (job.contentItemId) {
+        runBlogVideoLoop({
+          db,
+          youtube,
+          videoId: job.youtubeVideoId!,
+          contentItemId: job.contentItemId,
+          job: job as Record<string, unknown>,
+        }).catch(err => console.error(`[Blog<->Video] Loop error for job #${input.jobId}:`, err));
+      }
+
       return {
         success: true,
         youtubeVideoId: job.youtubeVideoId,
@@ -739,3 +788,92 @@ Apply all rules strictly. Title MUST be ≤60 chars. Hook line MUST be 140-155 c
       return { success: true, message: `Job #${input.jobId} reset. Click "Upload to YouTube" to retry the upload.` };
     }),
 });
+
+// ---------------------------------------------------------------------------
+// Blog <-> Video Closed-Loop Helper
+// ---------------------------------------------------------------------------
+async function runBlogVideoLoop(params: {
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
+  youtube: ReturnType<typeof google.youtube>;
+  videoId: string;
+  contentItemId: number;
+  job: Record<string, unknown>;
+}): Promise<void> {
+  const { db, youtube, videoId, contentItemId, job } = params;
+  const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const wpBaseUrl = (process.env.WORDPRESS_URL ?? "https://theurbanmonk.com").replace(/\/$/, "");
+
+  const youtubeEmbedBlock = `<!-- wp:embed {"url":"${youtubeUrl}","type":"video","providerNameSlug":"youtube","responsive":true,"className":"wp-embed-aspect-16-9 wp-has-aspect-ratio"} -->\n<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio">\n<div class="wp-block-embed__wrapper">\n${youtubeUrl}\n</div>\n</figure>\n<!-- /wp:embed -->`;
+
+  const items = await db.select({
+    id: contentItems.id,
+    wpPostId: contentItems.wpPostId,
+    publishUrl: contentItems.publishUrl,
+    embeddedYoutubeVideoId: contentItems.embeddedYoutubeVideoId,
+  }).from(contentItems).where(eq(contentItems.id, contentItemId)).limit(1);
+
+  const item = items[0];
+  let blogUrl: string | null = item?.publishUrl ?? null;
+  let wpPostId: number | null = item?.wpPostId ?? null;
+
+  if (wpPostId) {
+    if (item?.embeddedYoutubeVideoId !== videoId) {
+      const postData = await fetchSingleWpPost(wpPostId);
+      const existingContent = postData.content ?? "";
+      if (!existingContent.includes(videoId)) {
+        const newContent = youtubeEmbedBlock + "\n\n" + existingContent;
+        await updateWpPostContent(wpPostId, newContent);
+        console.log(`[Blog<->Video] Embedded YouTube video in WP post ${wpPostId}`);
+      }
+      await db.update(contentItems).set({
+        embeddedYoutubeVideoId: videoId,
+        embeddedYoutubeEmbedStatus: "embedded",
+      }).where(eq(contentItems.id, contentItemId));
+    }
+    blogUrl = blogUrl ?? `${wpBaseUrl}/?p=${wpPostId}`;
+  } else {
+    const videoTitle = (job.youtubeTitle as string | null) ?? "Urban Monk Video";
+    const videoDescription = (job.youtubeDescription as string | null) ?? "";
+    const draftContent = youtubeEmbedBlock + "\n\n" +
+      `<p>${videoDescription.split("\n")[0]}</p>\n\n` +
+      `<p>Watch the full video above, and <a href="${youtubeUrl}" target="_blank" rel="noopener">subscribe on YouTube</a> for weekly insights from Dr. Pedram Shojai.</p>`;
+    const slug = videoTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
+    const tags = (job.youtubeTags as string | null) ? (JSON.parse(job.youtubeTags as string) as string[]) : [];
+    const wpResult = await createWpPost({
+      title: videoTitle,
+      slug,
+      content: draftContent,
+      status: "draft",
+      metaDescription: videoDescription.substring(0, 155),
+      focusKeyword: tags[0],
+    });
+    wpPostId = wpResult.id;
+    blogUrl = wpResult.link;
+    await db.update(contentItems).set({
+      wpPostId: wpResult.id,
+      publishUrl: wpResult.link,
+      embeddedYoutubeVideoId: videoId,
+      embeddedYoutubeEmbedStatus: "embedded",
+    }).where(eq(contentItems.id, contentItemId));
+    console.log(`[Blog<->Video] Created WP draft post ${wpResult.id}: ${wpResult.link}`);
+  }
+
+  if (blogUrl) {
+    const currentDesc = (job.youtubeDescription as string | null) ?? "";
+    const blogCta = `\n\n📖 Read the full article with references and protocol:\n${blogUrl}`;
+    if (!currentDesc.includes(blogUrl)) {
+      const updatedDesc = (currentDesc + blogCta).substring(0, 5000);
+      const listRes = await youtube.videos.list({ part: ["snippet"], id: [videoId] });
+      const snippet = listRes.data.items?.[0]?.snippet;
+      if (snippet) {
+        await youtube.videos.update({
+          part: ["snippet"],
+          requestBody: { id: videoId, snippet: { ...snippet, description: updatedDesc } },
+        } as any);
+        await db.update(videoJobs).set({ youtubeDescription: updatedDesc })
+          .where(eq(videoJobs.contentItemId, contentItemId));
+        console.log(`[Blog<->Video] Appended blog URL to YouTube description for video ${videoId}`);
+      }
+    }
+  }
+}

@@ -2385,12 +2385,32 @@ export default function CommandCenter() {
 
   // ── Generate Video from Kanban card ──────────────────────────────────────────
   const [generatingVideoId, setGeneratingVideoId] = useState<number | null>(null);
+  // Video generation modal state
+  const [videoModalItem, setVideoModalItem] = useState<ContentItem | null>(null);
+  const [videoPath, setVideoPath] = useState<"heygen_then_descript" | "heygen_only" | "descript_only">("heygen_then_descript");
+  const [videoChannels, setVideoChannels] = useState<string[]>(["youtube"]);
+
+  const ALL_CHANNELS = [
+    { id: "youtube", label: "YouTube", color: "text-red-600" },
+    { id: "tiktok", label: "TikTok", color: "text-foreground" },
+    { id: "meta", label: "Meta (Facebook)", color: "text-blue-600" },
+    { id: "instagram", label: "Instagram", color: "text-pink-600" },
+    { id: "x", label: "X / Twitter", color: "text-sky-600" },
+  ];
+
+  const PATH_OPTIONS = [
+    { id: "heygen_then_descript", label: "HeyGen → Descript", desc: "Avatar render + B-roll editing (full quality, ~30 min)" },
+    { id: "heygen_only", label: "HeyGen Only", desc: "Avatar render, no Descript editing (faster, ~15 min)" },
+    { id: "descript_only", label: "Descript Only", desc: "AI voice narration + B-roll (no avatar, ~20 min)" },
+  ];
 
   // Fetch the linked script when we need it for video generation
   const startVideoJobMutation = trpc.videoPipeline.startVideoJob.useMutation({
-    onSuccess: (_, vars) => {
+    onSuccess: (data) => {
       setGeneratingVideoId(null);
-      toast.success("Video queued! HeyGen → Descript B-roll → VA Dashboard for review.", {
+      setVideoModalItem(null);
+      const channelNames = videoChannels.join(", ");
+      toast.success(`Video queued! ${data.message ?? "Check VA Dashboard for review."}`, {
         action: { label: "VA Dashboard →", onClick: () => setLocation("/va") },
       });
     },
@@ -2400,14 +2420,18 @@ export default function CommandCenter() {
     },
   });
 
-  const handleGenerateVideo = async (item: ContentItem) => {
-    if (!item.linkedScriptId) {
+  const handleGenerateVideo = (item: ContentItem) => {
+    // Open the path/channel picker modal
+    setVideoModalItem(item);
+  };
+
+  const handleConfirmVideoGeneration = async () => {
+    const item = videoModalItem;
+    if (!item || !item.linkedScriptId) {
       toast.error("No linked script found for this item.");
       return;
     }
-    if (!window.confirm(`Generate avatar video for "${item.title}"?\n\nHeyGen will render the avatar, Descript adds B-roll, then it appears in the VA Dashboard for review.`)) return;
     setGeneratingVideoId(item.id);
-    // Fetch the script body from the server
     try {
       const script = await utils.scripts.get.fetch({ id: item.linkedScriptId });
       if (!script || !script.scriptBody) {
@@ -2419,6 +2443,8 @@ export default function CommandCenter() {
         contentItemId: item.id,
         scriptTitle: item.title,
         scriptText: script.scriptBody,
+        productionPath: videoPath,
+        outputChannels: videoChannels as ("youtube" | "tiktok" | "meta" | "instagram" | "x")[],
       });
     } catch (err: any) {
       setGeneratingVideoId(null);
@@ -5030,6 +5056,112 @@ export default function CommandCenter() {
           </DialogContent>
         )}
       </Dialog>
+
+      {/* Video Generation Path & Channel Picker */}
+      <Dialog open={!!videoModalItem} onOpenChange={(open) => { if (!open) setVideoModalItem(null); }}>
+        {videoModalItem && (
+          <DialogContent className="max-w-2xl bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <Film className="h-4 w-4 text-red-600" />
+                Generate Video
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-5 py-2">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Content Item</p>
+                <p className="text-sm font-medium text-foreground">{videoModalItem.title}</p>
+                <p className="text-xs text-muted-foreground mt-1">Choose the production path and where this video should go after approval.</p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Production Path</p>
+                <div className="grid gap-2">
+                  {PATH_OPTIONS.map((option) => {
+                    const active = videoPath === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setVideoPath(option.id as "heygen_then_descript" | "heygen_only" | "descript_only")}
+                        className={`text-left rounded-lg border p-3 transition-colors ${active ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-muted/40"}`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{option.label}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{option.desc}</p>
+                          </div>
+                          {active && <Badge className="bg-primary text-primary-foreground">Selected</Badge>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Output Channels</p>
+                  <p className="text-[11px] text-muted-foreground">Select one or more destinations</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {ALL_CHANNELS.map((channel) => {
+                    const active = videoChannels.includes(channel.id);
+                    return (
+                      <button
+                        key={channel.id}
+                        type="button"
+                        onClick={() => {
+                          setVideoChannels((prev) => {
+                            if (prev.includes(channel.id)) {
+                              return prev.length === 1 ? prev : prev.filter((id) => id !== channel.id);
+                            }
+                            return [...prev, channel.id];
+                          });
+                        }}
+                        className={`rounded-lg border px-3 py-2 text-left transition-colors ${active ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-muted/40"}`}
+                      >
+                        <p className={`text-sm font-medium ${channel.color}`}>{channel.label}</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">{active ? "Included" : "Not selected"}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-700 space-y-1">
+                <p className="font-medium">Current delivery behavior</p>
+                <p>
+                  {videoPath === "heygen_only"
+                    ? "This will render the HeyGen avatar and stop there, so you can distribute the raw avatar video."
+                    : videoPath === "descript_only"
+                    ? "This will skip HeyGen and use Descript narration with B-roll."
+                    : "This will render in HeyGen first, then send the result through Descript for B-roll editing."}
+                </p>
+                <p>Selected destinations: {videoChannels.map((c) => ALL_CHANNELS.find((x) => x.id === c)?.label ?? c).join(", ")}.</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVideoModalItem(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmVideoGeneration}
+                disabled={startVideoJobMutation.isPending || generatingVideoId === videoModalItem.id || videoChannels.length === 0}
+              >
+                {startVideoJobMutation.isPending || generatingVideoId === videoModalItem.id ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" />Starting…</>
+                ) : (
+                  <>Start Video Job</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+
       {/* Buffer Channel Selector Dialog */}
       <BufferChannelSelector
         open={showChannelSelector}

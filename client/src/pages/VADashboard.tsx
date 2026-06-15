@@ -91,6 +91,8 @@ interface VideoJob {
   publishedAt: number | null;
   createdAt: Date;
   updatedAt: Date;
+  blogUrl: string | null;
+  blogEmbedStatus: string | null;
 }
 
 // ─── Platform Config ──────────────────────────────────────────────────────────
@@ -886,6 +888,26 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                   View on YouTube
                 </a>
               </div>
+              {/* Blog <-> Video closed loop link */}
+              {job.blogUrl && (
+                <div className="mt-2 pt-2 border-t border-border/50">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                    <BookOpen className="w-3 h-3" />
+                    <span className="font-medium">Blog Post</span>
+                    {job.blogEmbedStatus === "embedded" && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20">Video Embedded ✓</span>
+                    )}
+                  </div>
+                  <a
+                    href={job.blogUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline truncate text-emerald-600 hover:text-emerald-700 text-xs"
+                  >
+                    {job.blogUrl}
+                  </a>
+                </div>
+              )}
             </div>
           )}
 

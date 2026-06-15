@@ -276,6 +276,16 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
     onError: (err) => toast.error(`Error: ${err.message}`),
   });
 
+  const retryJob = trpc.syndicationPipeline.retryJob.useMutation({
+    onSuccess: () => {
+      toast.success(`Retrying ${config.label} — AI will regenerate content shortly.`);
+      onPosted();
+    },
+    onError: (err) => toast.error(`Retry failed: ${err.message}`),
+  });
+
+  const isStuck = job.status === "adapting" || job.status === "failed";
+
   let adaptedContent: Record<string, unknown> | null = null;
   if (job.adaptedContent) {
     try {
@@ -383,9 +393,27 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
           {adaptedContent ? (
             renderAdaptedContent(platform, adaptedContent)
           ) : isPending ? (
-            <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-300">
-              <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-              <span>AI is generating content for this platform... Check back in a few minutes.</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-300">
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                <span>
+                  {job.status === "adapting"
+                    ? "AI is adapting content for this platform… If this persists over 5 minutes, click Retry."
+                    : "Content scheduled — AI will generate it when the scheduled time arrives."}
+                </span>
+              </div>
+              {isStuck && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                  onClick={() => retryJob.mutate({ jobId: job.id })}
+                  disabled={retryJob.isPending}
+                >
+                  {retryJob.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                  Retry AI Generation
+                </Button>
+              )}
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">Content not available.</p>

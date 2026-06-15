@@ -63,20 +63,55 @@ async function heygenFetch(path: string, options: RequestInit = {}): Promise<Res
   });
 }
 
+/** Split text into chunks at paragraph boundaries, each under maxLen chars */
+function splitScriptIntoChunks(text: string, maxLen = 4800): string[] {
+  const paragraphs = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const para of paragraphs) {
+    // If a single paragraph exceeds maxLen, split it at sentence boundaries
+    if (para.length > maxLen) {
+      const sentences = para.match(/[^.!?]+[.!?]+[\s]*/g) ?? [para];
+      for (const sentence of sentences) {
+        if ((current + sentence).length > maxLen && current) {
+          chunks.push(current.trim());
+          current = sentence;
+        } else {
+          current += sentence;
+        }
+      }
+    } else if ((current + "\n\n" + para).length > maxLen && current) {
+      chunks.push(current.trim());
+      current = para;
+    } else {
+      current = current ? current + "\n\n" + para : para;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.filter(c => c.length > 0);
+}
+
 async function startHeyGenRender(scriptText: string): Promise<string> {
   const avatarId = ENV.heygenAvatarId;
   const voiceId = ENV.heygenVoiceId;
   if (!avatarId) throw new Error("HEYGEN_AVATAR_ID is not configured");
   if (!voiceId) throw new Error("HEYGEN_VOICE_ID is not configured");
 
+  // HeyGen limits each clip to 5000 chars. Split long scripts into multiple clips
+  // which HeyGen concatenates into a single video automatically.
+  const HEYGEN_CHAR_LIMIT = 4800; // leave 200 char buffer
+  const chunks = splitScriptIntoChunks(scriptText, HEYGEN_CHAR_LIMIT);
+  console.log(`[HeyGen] Script split into ${chunks.length} clip(s) (total ${scriptText.length} chars)`);
+
+  const video_inputs = chunks.map(chunk => ({
+    character: { type: "avatar", avatar_id: avatarId, avatar_style: "normal" },
+    voice: { type: "text", input_text: chunk, voice_id: voiceId, speed: 1.0 },
+    background: { type: "color", value: "#f5f0e8" },
+  }));
+
   const body = {
-    video_inputs: [
-      {
-        character: { type: "avatar", avatar_id: avatarId, avatar_style: "normal" },
-        voice: { type: "text", input_text: scriptText, voice_id: voiceId, speed: 1.0 },
-        background: { type: "color", value: "#f5f0e8" },
-      },
-    ],
+    video_inputs,
     dimension: { width: 1920, height: 1080 },
     aspect_ratio: null,
     test: false,

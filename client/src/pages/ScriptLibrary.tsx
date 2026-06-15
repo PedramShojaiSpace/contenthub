@@ -44,7 +44,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";  
+import { useLocation } from "wouter";
+import { PipelineStatusBadge } from "@/components/PipelineStatusBadge";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -634,6 +635,9 @@ function ScriptCard({
           <Trash2 className="w-3 h-3" />
         </Button>
       </div>
+      {script.platform === "youtube" && script.title && (
+        <PipelineStatusBadge scriptTitle={script.title} />
+      )}
     </div>
   );
 }

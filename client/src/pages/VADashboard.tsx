@@ -1196,7 +1196,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
               </Button>
             )}
 
-            {isReadyForReview && (
+            {(isReadyForReview || isUploading) && (
               <>
                 <Button
                   className="bg-red-600 hover:bg-red-700 text-foreground text-sm"

@@ -715,6 +715,8 @@ function DraggableCard({
   onMarkPublished,
   isMarkingPublished,
   onViewScript,
+  onGenerateVideo,
+  isGeneratingVideo,
   onNavigate,
   bufferError,
   onClearBufferError,
@@ -735,6 +737,8 @@ function DraggableCard({
   onMarkPublished?: (item: ContentItem) => void;
   isMarkingPublished?: boolean;
   onViewScript?: (scriptId: number) => void;
+  onGenerateVideo?: (item: ContentItem) => void;
+  isGeneratingVideo?: boolean;
   onNavigate?: (path: string) => void;
   bufferError?: string;
   onClearBufferError?: () => void;
@@ -1313,6 +1317,25 @@ function DraggableCard({
               >
                 <Film className="h-2.5 w-2.5" />
                 View Script
+              </Button>
+            )}
+            {item.platform === "youtube" && item.linkedScriptId && onGenerateVideo && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full h-6 text-[10px] border-red-500/40 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-500 gap-1"
+                disabled={isGeneratingVideo}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onGenerateVideo(item);
+                }}
+              >
+                {isGeneratingVideo ? (
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                ) : (
+                  <Youtube className="h-2.5 w-2.5" />
+                )}
+                {isGeneratingVideo ? "Queuing…" : "Generate Video"}
               </Button>
             )}
           </div>
@@ -2357,7 +2380,50 @@ export default function CommandCenter() {
   };
 
   const handleViewScript = (scriptId: number) => {
-    setLocation(`/script-library?scriptId=${scriptId}`);
+    setLocation(`/scripts?scriptId=${scriptId}`);
+  };
+
+  // ── Generate Video from Kanban card ──────────────────────────────────────────
+  const [generatingVideoId, setGeneratingVideoId] = useState<number | null>(null);
+
+  // Fetch the linked script when we need it for video generation
+  const startVideoJobMutation = trpc.videoPipeline.startVideoJob.useMutation({
+    onSuccess: (_, vars) => {
+      setGeneratingVideoId(null);
+      toast.success("Video queued! HeyGen → Descript B-roll → VA Dashboard for review.", {
+        action: { label: "VA Dashboard →", onClick: () => setLocation("/va-dashboard") },
+      });
+    },
+    onError: (err) => {
+      setGeneratingVideoId(null);
+      toast.error("Failed to queue video: " + err.message);
+    },
+  });
+
+  const handleGenerateVideo = async (item: ContentItem) => {
+    if (!item.linkedScriptId) {
+      toast.error("No linked script found for this item.");
+      return;
+    }
+    if (!window.confirm(`Generate avatar video for "${item.title}"?\n\nHeyGen will render the avatar, Descript adds B-roll, then it appears in the VA Dashboard for review.`)) return;
+    setGeneratingVideoId(item.id);
+    // Fetch the script body from the server
+    try {
+      const script = await utils.scripts.get.fetch({ id: item.linkedScriptId });
+      if (!script || !script.scriptBody) {
+        setGeneratingVideoId(null);
+        toast.error("Script body is empty — please write the script in Script Library first.");
+        return;
+      }
+      startVideoJobMutation.mutate({
+        contentItemId: item.id,
+        scriptTitle: item.title,
+        scriptText: script.scriptBody,
+      });
+    } catch (err: any) {
+      setGeneratingVideoId(null);
+      toast.error("Could not load script: " + (err?.message ?? "unknown error"));
+    }
   };
 
   const { data: items = [], refetch } = trpc.content.list.useQuery();
@@ -3392,6 +3458,8 @@ export default function CommandCenter() {
                               onMarkPublished={handleMarkPublished}
                               isMarkingPublished={markingPublishedId === item.id}
                               onViewScript={handleViewScript}
+                              onGenerateVideo={handleGenerateVideo}
+                              isGeneratingVideo={generatingVideoId === (item as ContentItem).id}
                               onNavigate={setLocation}
                               bufferError={bufferErrors[(item as ContentItem).id]}
                               onClearBufferError={() => setBufferErrors((prev) => { const next = { ...prev }; delete next[(item as ContentItem).id]; return next; })}

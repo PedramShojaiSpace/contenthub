@@ -181,7 +181,7 @@ function GeneratePanel({ report }: { report: IngestReport }) {
       setGeneratingScript(false);
       setGeneratedScriptId(data.scriptId);
       toast.success("Script generated and saved to Script Library!", {
-        action: { label: "View Script →", onClick: () => navigate(`/script-library?scriptId=${data.scriptId}`) },
+        action: { label: "View Script →", onClick: () => navigate(`/scripts?scriptId=${data.scriptId}`) },
       });
     },
     onError: (err) => {
@@ -447,7 +447,7 @@ function GeneratePanel({ report }: { report: IngestReport }) {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => navigate(`/script-library?scriptId=${generatedScriptId}`)}
+                            onClick={() => navigate(`/scripts?scriptId=${generatedScriptId}`)}
                             className="gap-1.5 border-violet-500/40 text-violet-600 hover:bg-violet-500/10"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />

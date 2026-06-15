@@ -2391,7 +2391,7 @@ export default function CommandCenter() {
     onSuccess: (_, vars) => {
       setGeneratingVideoId(null);
       toast.success("Video queued! HeyGen → Descript B-roll → VA Dashboard for review.", {
-        action: { label: "VA Dashboard →", onClick: () => setLocation("/va-dashboard") },
+        action: { label: "VA Dashboard →", onClick: () => setLocation("/va") },
       });
     },
     onError: (err) => {

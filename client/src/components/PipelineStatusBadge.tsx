@@ -51,7 +51,7 @@ export function PipelineStatusBadge({ scriptTitle }: { scriptTitle: string }) {
         </a>
       )}
       {job.status === "ready_for_review" && (
-        <a href="/va-dashboard"
+        <a href="/va"
           className="inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 underline underline-offset-2">
           <Video className="w-3 h-3" /> Review in VA Dashboard →
         </a>

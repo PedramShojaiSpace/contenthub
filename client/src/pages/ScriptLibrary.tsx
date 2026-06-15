@@ -41,6 +41,7 @@ import {
   Search,
   X as XIcon,
   SlidersHorizontal,
+  Loader2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";  
@@ -287,6 +288,13 @@ function ScriptCard({
       toast.success("Saved");
     },
     onError: (e) => toast.error(e.message),
+  });
+
+  const sendToVideoPipelineMut = trpc.videoPipeline.startVideoJob.useMutation({
+    onSuccess: () => {
+      toast.success("Script queued! HeyGen → Descript B-roll → VA Dashboard for review.");
+    },
+    onError: (e) => toast.error(`Video pipeline error: ${e.message}`),
   });
 
   const handleSaveTitle = () => {
@@ -556,6 +564,30 @@ function ScriptCard({
           >
             <ExternalLink className="w-3 h-3 mr-1" />
             View in Kanban
+          </Button>
+        )}
+        {script.platform === "youtube" && script.scriptBody && script.scriptBody.length >= 50 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 text-xs text-red-700 hover:text-red-800 hover:bg-red-50 px-2"
+            disabled={sendToVideoPipelineMut.isPending}
+            title="Generate avatar video: HeyGen → Descript B-roll → YouTube"
+            onClick={() => {
+              if (!confirm(`Generate avatar video for "${script.title}"?\n\nHeyGen will render the avatar, Descript adds B-roll, then it appears in the VA Dashboard for review.`)) return;
+              sendToVideoPipelineMut.mutate({
+                contentItemId: script.linkedContentItemId ?? 0,
+                scriptTitle: script.title,
+                scriptText: script.scriptBody!,
+              });
+            }}
+          >
+            {sendToVideoPipelineMut.isPending ? (
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            ) : (
+              <Video className="w-3 h-3 mr-1" />
+            )}
+            Generate Video
           </Button>
         )}
         {script.scriptBody && (

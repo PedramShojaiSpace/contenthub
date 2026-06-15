@@ -155,6 +155,23 @@ function ScriptDisplay({ result, onCopy, autoSaved }: { result: ScriptResult; on
     onError: (err) => toast.error(`Save failed: ${err.message}`),
   });
 
+  const sendToVideoPipeline = trpc.videoPipeline.startVideoJob.useMutation({
+    onSuccess: () => {
+      setPipelineQueued(true);
+      toast.success("Script queued! HeyGen → Descript B-roll → VA Dashboard for review.");
+    },
+    onError: (e) => toast.error(`Video pipeline error: ${e.message}`),
+  });
+
+  const handleSendToVideoPipeline = () => {
+    if (!confirm(`Generate avatar video for "${result.topic}"?\n\nHeyGen will render the avatar, Descript adds B-roll, then it appears in the VA Dashboard for review.`)) return;
+    sendToVideoPipeline.mutate({
+      contentItemId: createdContentItemId ?? 0,
+      scriptTitle: result.topic,
+      scriptText: result.fullScript,
+    });
+  };
+
   const handleSaveToKanban = () => {
     if (savedToKanban) return;
     saveToKanbanMutation.mutate({

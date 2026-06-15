@@ -47,6 +47,7 @@ export const videoPipelineRouter = router({
         ctaLabel: input.ctaLabel ?? null,
         ctaText: input.ctaText ?? null,
         ctaUrl: input.ctaUrl ?? null,
+        videoType: "avatar", // Default: HeyGen avatar → Descript B-roll → YouTube
         status: "pending",
       });
 
@@ -63,7 +64,7 @@ export const videoPipelineRouter = router({
       return {
         success: true,
         jobId,
-        message: "Video job started — generating B-roll prompt and submitting to Descript now.",
+        message: "Avatar video job started — submitting to HeyGen now. The avatar render typically takes 10–20 minutes, then B-roll editing and export will follow automatically.",
       };
     }),
 

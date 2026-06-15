@@ -195,6 +195,36 @@ export async function exportProject(params: {
 }
 
 /**
+ * Import a video from a public/pre-signed URL into a new Descript project.
+ * Used to import the HeyGen avatar MP4 so Underlord can add B-roll on top.
+ * Returns job_id, project_id, project_url (same shape as DescriptAgentCreateResponse).
+ */
+export async function importVideoFromUrl(params: {
+  projectName: string;
+  videoUrl: string;
+  compositionName?: string;
+}): Promise<DescriptAgentCreateResponse> {
+  const fileName = "avatar.mp4";
+  const compositionName = params.compositionName ?? params.projectName.substring(0, 80);
+
+  return descriptFetch<DescriptAgentCreateResponse>("/jobs/import/project_media", {
+    method: "POST",
+    body: JSON.stringify({
+      project_name: params.projectName,
+      add_media: {
+        [fileName]: { url: params.videoUrl },
+      },
+      add_compositions: [
+        {
+          name: compositionName,
+          clips: [{ media: fileName }],
+        },
+      ],
+    }),
+  });
+}
+
+/**
  * List all projects in the authenticated drive.
  */
 export async function listProjects(): Promise<{ data: Array<{ id: string; name: string; project_url: string }> }> {

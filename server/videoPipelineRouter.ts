@@ -57,6 +57,20 @@ export const videoPipelineRouter = router({
       };
     }),
 
+  getJobByTitle: protectedProcedure
+    .input(z.object({ title: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const jobs = await db
+        .select({ id: videoJobs.id, status: videoJobs.status, youtubeVideoId: videoJobs.youtubeVideoId, errorMessage: videoJobs.errorMessage })
+        .from(videoJobs)
+        .where(eq(videoJobs.youtubeTitle, input.title.substring(0, 512)))
+        .orderBy(desc(videoJobs.createdAt))
+        .limit(1);
+      return jobs[0] ?? null;
+    }),
+
   getVideoJobs: protectedProcedure
     .input(z.object({
       status: z.enum(VIDEO_JOB_STATUSES).optional(),

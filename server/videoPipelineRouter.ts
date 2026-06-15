@@ -98,8 +98,10 @@ export const videoPipelineRouter = router({
       const jobs = await db.select().from(videoJobs).where(eq(videoJobs.id, input.jobId)).limit(1);
       if (!jobs.length) throw new Error(`Video job ${input.jobId} not found`);
       const job = jobs[0];
-      if (job.status !== "ready_for_review") {
-        throw new Error(`Job is in status '${job.status}', expected 'ready_for_review'`);
+      // Allow re-approval from ready_for_review, uploading (stuck), or failed
+      const approvableStatuses = ["ready_for_review", "uploading", "failed"];
+      if (!approvableStatuses.includes(job.status)) {
+        throw new Error(`Job is in status '${job.status}' — can only approve from: ${approvableStatuses.join(", ")}`);
       }
       if (!job.descriptProjectId && !job.descriptDownloadUrl) throw new Error("No Descript project ID or download URL — cannot upload");
 

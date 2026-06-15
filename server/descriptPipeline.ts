@@ -149,8 +149,21 @@ async function pollHeyGenStatus(heygenVideoId: string): Promise<{
   video_url?: string;
   error?: { code: string; detail: string };
 }> {
+  // Primary: v1 status endpoint
   const res = await heygenFetch(`/v1/video.status.get?video_id=${heygenVideoId}`);
-  if (!res.ok) throw new Error(`HeyGen status check failed (${res.status})`);
+  
+  // Some multi-clip videos return HTML 404 from the status endpoint but are visible in the list.
+  // Fall back to v1/video.list to find the video by ID.
+  if (!res.ok || res.headers.get("content-type")?.includes("text/html")) {
+    console.log(`[HeyGen] Status endpoint returned ${res.status}/HTML for ${heygenVideoId}, falling back to list endpoint...`);
+    const listRes = await heygenFetch("/v1/video.list?limit=20");
+    if (!listRes.ok) throw new Error(`HeyGen status check failed (${res.status}) and list fallback also failed (${listRes.status})`);
+    const listJson = (await listRes.json()) as { data: { videos: Array<{ video_id: string; status: string; video_url?: string; error?: { code: string; detail: string } }> } };
+    const found = listJson.data?.videos?.find(v => v.video_id === heygenVideoId);
+    if (!found) throw new Error(`HeyGen status check failed (${res.status}) — video ${heygenVideoId} not found in list`);
+    return found as { status: "pending" | "processing" | "waiting" | "failed" | "completed"; video_url?: string; error?: { code: string; detail: string } };
+  }
+  
   const json = (await res.json()) as {
     error: null | string;
     data: {

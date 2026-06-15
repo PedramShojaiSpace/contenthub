@@ -1,29 +1,32 @@
 /**
  * Descript Video Pipeline Orchestrator
  *
- * Two pipeline modes depending on videoType:
+ * Three production paths (productionPath field):
  *
- * ── AVATAR flow (videoType = 'avatar') ─────────────────────────────────────
+ * ── heygen_then_descript (default avatar flow) ──────────────────────────────
  *   0. Start HeyGen render (fires immediately on job creation)
  *   1. Poll HeyGen until completed → download MP4 → upload to S3
- *   2. Generate B-roll prompt + YouTube metadata via AI
- *   3. Import S3 avatar video into Descript (POST /jobs/import/project_media)
- *   4. Poll import job until done
- *   5. Run Underlord B-roll agent on the imported avatar video
- *   6. Poll editing job until done
- *   7. Export project to MP4
- *   8. Poll export job → store Descript share URL, mark ready_for_review
- *   9. On VA approval: download MP4 + upload to S3 + upload to YouTube
+ *   2. Generate B-roll prompt + metadata via AI
+ *   3. Import S3 avatar video into Descript
+ *   4. Run Underlord B-roll agent on the imported avatar video
+ *   5. Export project to MP4 → ready_for_review
+ *   6. On VA approval: distribute to all outputChannels
  *
- * ── STANDARD flow (videoType = 'standard') ─────────────────────────────────
- *   1. Generate B-roll prompt + YouTube metadata via AI
+ * ── heygen_only ──────────────────────────────────────────────────────────────
+ *   0. Start HeyGen render (fires immediately on job creation)
+ *   1. Poll HeyGen until completed → download MP4 → upload to S3
+ *   2. Generate metadata via AI
+ *   3. Mark ready_for_review (skip Descript entirely)
+ *   4. On VA approval: distribute to all outputChannels
+ *
+ * ── descript_only (original AI voice flow) ──────────────────────────────────
+ *   1. Generate B-roll prompt + metadata via AI
  *   2. Create Descript project via agent — Underlord narrates with Pedram AI voice
- *   3. Poll agent job until stopped
- *   4. Run B-roll editing agent pass
- *   5. Poll editing job until stopped
- *   6. Export project to MP4
- *   7. Poll export job → store Descript share URL, mark ready_for_review
- *   8. On VA approval: download MP4 + upload to S3 + upload to YouTube
+ *   3. Run B-roll editing agent pass
+ *   4. Export project to MP4 → ready_for_review
+ *   5. On VA approval: distribute to all outputChannels
+ *
+ * outputChannels: JSON array of destination platforms e.g. ["youtube","tiktok","meta"]
  *
  * DB status enum: pending|rendering|importing|editing|rendering|ready_for_review|approved|uploading|published|failed|rejected
  *
@@ -306,6 +309,8 @@ async function fetchJobRow(jobId: number) {
       ctaText: videoJobs.ctaText,
       ctaUrl: videoJobs.ctaUrl,
       videoType: videoJobs.videoType,
+      productionPath: videoJobs.productionPath,
+      outputChannels: videoJobs.outputChannels,
       heygenVideoId: videoJobs.heygenVideoId,
       status: videoJobs.status,
       errorMessage: videoJobs.errorMessage,
@@ -336,9 +341,70 @@ export async function processVideoJob(jobId: number): Promise<void> {
 
   try {
     // ════════════════════════════════════════════════════════════════════════
-    // AVATAR PIPELINE (videoType = 'avatar')
     // ════════════════════════════════════════════════════════════════════════
-    if (job.videoType === "avatar") {
+    // Determine effective path from productionPath (falls back to videoType for legacy)
+    // ════════════════════════════════════════════════════════════════════════
+    const effectivePath = job.productionPath ?? (job.videoType === "avatar" ? "heygen_then_descript" : "descript_only");
+
+    // ════════════════════════════════════════════════════════════════════════
+    // HEYGEN_ONLY PIPELINE — HeyGen render → ready_for_review (no Descript)
+    // ════════════════════════════════════════════════════════════════════════
+    if (effectivePath === "heygen_only") {
+
+      // Step H0: Start HeyGen render
+      if (!job.heygenVideoId) {
+        console.log(`${jobLabel} [HeyGen-Only] Starting HeyGen render...`);
+        const heygenVideoId = await startHeyGenRender(job.scriptText);
+        console.log(`${jobLabel} [HeyGen-Only] HeyGen video_id: ${heygenVideoId}`);
+        await db.update(videoJobs).set({
+          heygenVideoId,
+          status: "rendering",
+          errorMessage: null,
+        }).where(eq(videoJobs.id, jobId));
+        return;
+      }
+
+      // Step H1: Poll HeyGen until completed → download → S3
+      if (job.status === "rendering" && job.heygenVideoId && !job.s3VideoUrl) {
+        const heygenStatus = await pollHeyGenStatus(job.heygenVideoId);
+        console.log(`${jobLabel} [HeyGen-Only] HeyGen status: ${heygenStatus.status}`);
+
+        if (heygenStatus.status === "failed") {
+          throw new Error(`HeyGen render failed: ${heygenStatus.error?.detail ?? "unknown error"}`);
+        }
+        if (heygenStatus.status !== "completed") return; // still rendering
+
+        const { s3Key, s3Url } = await downloadAndUploadToS3(heygenStatus.video_url!, jobId, jobLabel);
+
+        // Generate metadata (title, description, tags) without B-roll prompt
+        const brollResult = await generateBrollPrompt({
+          scriptTitle: job.youtubeTitle ?? "Urban Monk Video",
+          scriptText: job.scriptText,
+          topic: job.youtubeTitle ?? "Urban Monk Video",
+          keywords: job.youtubeTags ? JSON.parse(job.youtubeTags) : [],
+          blogUrl: job.blogUrl ?? undefined,
+        });
+
+        await db.update(videoJobs).set({
+          s3VideoKey: s3Key,
+          s3VideoUrl: s3Url,
+          descriptDownloadUrl: s3Url, // use S3 URL directly as download URL
+          youtubeTitle: (brollResult.youtubeTitle ?? job.youtubeTitle ?? "Urban Monk Video").substring(0, 512),
+          youtubeDescription: brollResult.youtubeDescription,
+          youtubeTags: JSON.stringify(brollResult.youtubeTags),
+          status: "ready_for_review",
+        }).where(eq(videoJobs.id, jobId));
+
+        console.log(`${jobLabel} [HeyGen-Only] ✅ Ready for review. S3 URL: ${s3Url}`);
+      }
+
+      return;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // AVATAR PIPELINE (heygen_then_descript — HeyGen → Descript B-roll)
+    // ════════════════════════════════════════════════════════════════════════
+    if (effectivePath === "heygen_then_descript" || job.videoType === "avatar") {
 
       // ── Step A0: Start HeyGen render ──────────────────────────────────────
       if (!job.heygenVideoId) {

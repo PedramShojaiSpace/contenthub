@@ -2024,7 +2024,18 @@ export const syndicationJobs = mysqlTable("syndication_jobs", {
 export type SyndicationJob = typeof syndicationJobs.$inferSelect;
 export type InsertSyndicationJob = typeof syndicationJobs.$inferInsert;
 
-// ── Video Pipeline (Descript → YouTube) ──────────────────────────────────────
+// ── Video Pipeline (Multi-path → Multi-channel) ─────────────────────────────
+// productionPath controls which rendering engine is used:
+//   descript_only  = AI voice narration + B-roll in Descript (original flow)
+//   heygen_only    = HeyGen avatar render only (no Descript B-roll)
+//   heygen_then_descript = HeyGen avatar → Descript B-roll overlay (full avatar flow)
+// outputChannels is a JSON array of destination channels: ["youtube","tiktok","meta","instagram","x"]
+export const videoProductionPathEnum = mysqlEnum("video_production_path", [
+  "descript_only",
+  "heygen_only",
+  "heygen_then_descript",
+]);
+
 // Status enum matches actual DB: pending|importing|editing|rendering|ready_for_review|approved|uploading|published|failed|rejected
 export const videoJobStatusEnum = mysqlEnum("video_job_status", [
   "pending",
@@ -2062,7 +2073,15 @@ export const videoJobs = mysqlTable("video_jobs", {
   ctaLabel: varchar("vj_cta_label", { length: 256 }),
   ctaText: text("vj_cta_text"),
   ctaUrl: text("vj_cta_url"),
-  // Video type: standard = Descript pipeline, avatar = HeyGen cartoon avatar pipeline
+  // Production path: which rendering engine(s) to use
+  // descript_only = AI narration + Descript B-roll (original)
+  // heygen_only = HeyGen avatar render only, no Descript
+  // heygen_then_descript = HeyGen avatar → Descript B-roll overlay
+  productionPath: videoProductionPathEnum.default("heygen_then_descript").notNull(),
+  // Output channels: JSON array e.g. ["youtube","tiktok","meta"]
+  // Determines where the final video is distributed after VA approval
+  outputChannels: text("vj_output_channels").default(JSON.stringify(["youtube"])).notNull(),
+  // Legacy field kept for backwards compatibility (maps to productionPath)
   videoType: mysqlEnum("vj_video_type", ["standard", "avatar"]).default("standard").notNull(),
   // HeyGen avatar pipeline fields
   heygenVideoId: varchar("vj_heygen_video_id", { length: 128 }),

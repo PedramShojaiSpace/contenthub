@@ -33,12 +33,18 @@ export const videoPipelineRouter = router({
       ctaLabel: z.string().optional(),
       ctaText: z.string().optional(),
       ctaUrl: z.string().optional(),
+      // New: production path and output channels
+      productionPath: z.enum(["descript_only", "heygen_only", "heygen_then_descript"]).optional(),
+      outputChannels: z.array(z.enum(["youtube", "tiktok", "meta", "instagram", "x"])).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
 
-      console.log(`[videoPipeline] startVideoJob called: title="${input.scriptTitle.substring(0, 60)}" contentItemId=${input.contentItemId}`);
+      const path = input.productionPath ?? "heygen_then_descript";
+      const channels = input.outputChannels ?? ["youtube"];
+
+      console.log(`[videoPipeline] startVideoJob called: title="${input.scriptTitle.substring(0, 60)}" path=${path} channels=${channels.join(",")} contentItemId=${input.contentItemId}`);
 
       const [result] = await db.insert(videoJobs).values({
         contentItemId: input.contentItemId,
@@ -49,27 +55,38 @@ export const videoPipelineRouter = router({
         ctaLabel: input.ctaLabel ?? null,
         ctaText: input.ctaText ?? null,
         ctaUrl: input.ctaUrl ?? null,
-        videoType: "avatar", // Default: HeyGen avatar → Descript B-roll → YouTube
+        productionPath: path,
+        outputChannels: JSON.stringify(channels),
+        videoType: path === "descript_only" ? "standard" : "avatar", // legacy compat
         status: "pending",
       });
 
       const jobId = (result as any).insertId as number;
-      console.log(`[videoPipeline] Job #${jobId} created (videoType=avatar). Kicking off HeyGen render immediately...`);
+      const pathLabel = path === "heygen_only" ? "HeyGen-Only" : path === "descript_only" ? "Descript-Only" : "HeyGen→Descript";
+      console.log(`[videoPipeline] Job #${jobId} created (path=${path}, channels=${channels.join(",")}). Kicking off pipeline immediately...`);
 
       // Kick off step 1 immediately (fire-and-forget) — no waiting for the cron.
       // The cron only polls for completion of async external steps (HeyGen, Descript).
       setImmediate(() => {
         processVideoJob(jobId)
-          .then(() => console.log(`[videoPipeline] Job #${jobId} step-1 kickoff complete (HeyGen render started or already in progress).`))
+          .then(() => console.log(`[videoPipeline] Job #${jobId} step-1 kickoff complete (${pathLabel} pipeline started).`))
           .catch((err) => {
             console.error(`[videoPipeline] ❌ Immediate kickoff FAILED for job #${jobId}:`, err?.message ?? err);
           });
       });
 
+      const pathMessages: Record<string, string> = {
+        heygen_only: "HeyGen avatar render started. No Descript editing — the raw avatar video will be ready for review in 10–20 minutes.",
+        descript_only: "Descript AI voice pipeline started. Underlord will narrate with Pedram's AI voice and add B-roll automatically.",
+        heygen_then_descript: "Avatar video job started — submitting to HeyGen now. After the avatar render (~10–20 min), Descript will add B-roll automatically.",
+      };
+
       return {
         success: true,
         jobId,
-        message: "Avatar video job started — submitting to HeyGen now. The avatar render typically takes 10–20 minutes, then B-roll editing and export will follow automatically.",
+        productionPath: path,
+        outputChannels: channels,
+        message: pathMessages[path] ?? "Video job started.",
       };
     }),
 
@@ -117,6 +134,8 @@ export const videoPipelineRouter = router({
           youtubeTags: videoJobs.youtubeTags,
           youtubeThumbnailUrl: videoJobs.youtubeThumbnailUrl,
           videoType: videoJobs.videoType,
+          productionPath: videoJobs.productionPath,
+          outputChannels: videoJobs.outputChannels,
           heygenVideoId: videoJobs.heygenVideoId,
           status: videoJobs.status,
           errorMessage: videoJobs.errorMessage,

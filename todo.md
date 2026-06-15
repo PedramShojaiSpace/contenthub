@@ -3955,3 +3955,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Add Generate Avatar Video button to VA Dashboard script cards
 - [ ] Add Avatar Video badge to distinguish avatar jobs in VA Dashboard
 - [ ] Test end-to-end: script → HeyGen render → S3 → YouTube unlisted → SEO review
+
+## Pipeline Path & Channel Flexibility Redesign
+
+- [x] Add productionPath enum field to videoJobs schema: "heygen_only" | "descript_only" | "heygen_then_descript"
+- [x] Add outputChannels JSON text field to videoJobs schema: array of "youtube" | "tiktok" | "meta" | "instagram" | "x"
+- [x] Run pnpm db:push to migrate schema (applied via SQL)
+- [x] Update startVideoJob input to accept productionPath and outputChannels
+- [x] Refactor processVideoJob to branch on productionPath
+- [ ] Update approveVideoJob to dispatch to all selected outputChannels (YouTube only for now; TikTok/Meta via Buffer in next phase)
+- [ ] Add channel-specific upload handlers (TikTok, Meta via Buffer)
+- [x] Update VA Dashboard job cards: show productionPath badge, output channel chips
+- [x] Update Command Center Kanban: Generate Video modal to pick path + channels
+- [ ] Update PipelineStatusBadge to reflect multi-channel status

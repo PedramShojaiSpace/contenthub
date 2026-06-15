@@ -83,6 +83,8 @@ interface VideoJob {
   youtubeTags: string | null;
   youtubeThumbnailUrl: string | null;
   videoType: string | null;
+  productionPath: string | null;
+  outputChannels: string | null;
   heygenVideoId: string | null;
   status: string;
   errorMessage: string | null;
@@ -558,8 +560,40 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   const isUploading = job.status === "uploading" || job.status === "publishing";
   const isPublished = job.status === "published";
   const isFailed = job.status === "failed";
-  const isAvatar = job.videoType === "avatar";
+  // Determine production path — new field takes precedence over legacy videoType
+  const effectivePath = job.productionPath ?? (job.videoType === "avatar" ? "heygen_then_descript" : "descript_only");
+  const isAvatar = effectivePath !== "descript_only"; // any HeyGen path
+  const isHeyGenOnly = effectivePath === "heygen_only";
+  const isDescriptOnly = effectivePath === "descript_only";
   const isRendering = job.status === "rendering"; // HeyGen rendering in progress
+
+  // Parse output channels
+  const outputChannelList: string[] = (() => {
+    try { return JSON.parse(job.outputChannels ?? '["youtube"]'); }
+    catch { return ["youtube"]; }
+  })();
+
+  // Channel display helpers
+  const CHANNEL_LABELS: Record<string, string> = {
+    youtube: "YouTube", tiktok: "TikTok", meta: "Meta", instagram: "Instagram", x: "X/Twitter"
+  };
+  const CHANNEL_COLORS: Record<string, string> = {
+    youtube: "bg-red-500/10 text-red-600 border-red-500/20",
+    tiktok: "bg-black/10 text-foreground border-border",
+    meta: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+    instagram: "bg-pink-500/10 text-pink-600 border-pink-500/20",
+    x: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+  };
+  const PATH_LABELS: Record<string, string> = {
+    heygen_then_descript: "HeyGen → Descript",
+    heygen_only: "HeyGen Only",
+    descript_only: "Descript Only",
+  };
+  const PATH_COLORS: Record<string, string> = {
+    heygen_then_descript: "bg-violet-500/10 text-violet-600 border-violet-500/20",
+    heygen_only: "bg-violet-500/10 text-violet-600 border-violet-500/20",
+    descript_only: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  };
 
   // SEO panel state
   const [showSeoPanel, setShowSeoPanel] = useState(isUploadedUnlisted);
@@ -716,12 +750,20 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <VideoStatusBadge status={job.status} />
-                {isAvatar && (
-                  <Badge variant="outline" className="text-xs bg-violet-500/10 text-violet-400 border-violet-500/20 flex items-center gap-1">
-                    <Bot className="w-3 h-3" />
-                    Avatar
+                {/* Production path badge */}
+                <Badge variant="outline" className={`text-xs flex items-center gap-1 ${PATH_COLORS[effectivePath] ?? "bg-muted text-muted-foreground border-border"}`}>
+                  {effectivePath === "descript_only" ? (
+                    <><span className="font-mono text-[10px]">D</span> {PATH_LABELS[effectivePath]}</>
+                  ) : (
+                    <><Bot className="w-3 h-3" /> {PATH_LABELS[effectivePath]}</>
+                  )}
+                </Badge>
+                {/* Output channel chips */}
+                {outputChannelList.map(ch => (
+                  <Badge key={ch} variant="outline" className={`text-xs ${CHANNEL_COLORS[ch] ?? "bg-muted text-muted-foreground border-border"}`}>
+                    {CHANNEL_LABELS[ch] ?? ch}
                   </Badge>
-                )}
+                ))}
                 {(isInProgress || isRendering) && (
                   <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
                 )}
@@ -1258,7 +1300,10 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                   ) : (
                     <Youtube className="w-4 h-4 mr-2" />
                   )}
-                  {approveJob.isPending ? "Queuing for YouTube..." : "Approve & Upload to YouTube"}
+                  {approveJob.isPending
+                    ? `Distributing to ${outputChannelList.map(c => CHANNEL_LABELS[c] ?? c).join(", ")}...`
+                    : `Approve & Distribute to ${outputChannelList.map(c => CHANNEL_LABELS[c] ?? c).join(", ")}`
+                  }
                 </Button>
                 <Button
                   variant="outline"

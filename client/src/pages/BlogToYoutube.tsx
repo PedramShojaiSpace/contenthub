@@ -687,7 +687,7 @@ export default function BlogToYoutube() {
                           ) : (
                             <Send className="w-4 h-4 mr-2" />
                           )}
-                          Send to Descript
+                          Generate Avatar Video
                         </Button>
                       </div>
                     </div>

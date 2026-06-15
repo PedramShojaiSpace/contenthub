@@ -216,6 +216,35 @@ function Teleprompter({
   );
 }
 
+// ─── Generate Avatar Video Button ──────────────────────────────────────────
+
+function GenerateAvatarVideoButton({ sessionName, scripts }: { sessionName: string; scripts: SessionScript[] }) {
+  const startVideoJob = trpc.videoPipeline.startVideoJob.useMutation({
+    onSuccess: () => {
+      toast.success("Script queued! HeyGen → Descript B-roll → VA Dashboard for review.");
+    },
+    onError: (e) => toast.error(`Video pipeline error: ${e.message}`),
+  });
+
+  const handleGenerate = () => {
+    const approvedHook = scripts.find((s) => s.scriptType === "hook" && s.approved);
+    const body = scripts.find((s) => s.scriptType === "body");
+    const cta = scripts.find((s) => s.scriptType === "cta");
+    const parts = [approvedHook, body, cta].filter(Boolean).map((s) => s!.scriptText);
+    if (parts.length === 0) { toast.error("No approved scripts to send"); return; }
+    const fullScript = parts.join("\n\n");
+    if (!confirm(`Generate avatar video for "${sessionName}"?\n\nHeyGen will render the avatar, Descript adds B-roll, then it appears in the VA Dashboard for review.`)) return;
+    startVideoJob.mutate({ contentItemId: 0, scriptTitle: sessionName, scriptText: fullScript });
+  };
+
+  return (
+    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white h-8" disabled={startVideoJob.isPending} onClick={handleGenerate}>
+      {startVideoJob.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Video className="w-3 h-3 mr-1" />}
+      Generate Avatar Video
+    </Button>
+  );
+}
+
 // ─── Script Card ─────────────────────────────────────────────────────────────
 
 function ScriptCard({
@@ -713,6 +742,9 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
           >
             <Download className="w-3 h-3 mr-1" /> Export Teleprompter DOCX
           </Button>
+        )}
+        {allApproved && session.platform === "youtube" && (
+          <GenerateAvatarVideoButton sessionName={session.sessionName} scripts={scripts} />
         )}
         <Button
           size="sm"

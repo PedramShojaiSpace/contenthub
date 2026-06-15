@@ -174,6 +174,41 @@ export async function processScheduledVideoJobs(): Promise<{ processed: number; 
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
 
+  // ── Crash recovery: reset orphaned jobs on startup ─────────────────────────
+  // If the server restarted mid-pipeline, jobs may be stuck in importing/editing/rendering
+  // with partial Descript state (e.g. descriptImportJobId set but no descriptProjectId).
+  // Clear ALL Descript fields so they restart cleanly from the beginning.
+  const stuckJobs = await db
+    .select({ id: videoJobs.id, status: videoJobs.status, descriptProjectId: videoJobs.descriptProjectId, descriptImportJobId: videoJobs.descriptImportJobId })
+    .from(videoJobs)
+    .where(
+      or(
+        eq(videoJobs.status, "importing"),
+        eq(videoJobs.status, "editing"),
+        eq(videoJobs.status, "rendering")
+      )
+    );
+
+  for (const stuckJob of stuckJobs) {
+    // Only reset jobs that have orphaned state: descriptImportJobId set but no descriptProjectId
+    // (indicates a partial failure mid-creation). Jobs with both set are actively being polled.
+    if (stuckJob.descriptImportJobId && !stuckJob.descriptProjectId) {
+      console.log(`[descriptPipeline] Crash recovery: resetting orphaned job #${stuckJob.id} (status=${stuckJob.status}, has importJobId but no projectId) → pending`);
+      await db.update(videoJobs).set({
+        status: "pending",
+        descriptProjectId: null,
+        descriptImportJobId: null,
+        descriptAgentJobId: null,
+        descriptPublishJobId: null,
+        descriptShareUrl: null,
+        descriptDownloadUrl: null,
+        s3VideoUrl: null,
+        errorMessage: null,
+      }).where(eq(videoJobs.id, stuckJob.id));
+    }
+  }
+  // ── End crash recovery ─────────────────────────────────────────────────────
+
   const pendingJobs = await db
     .select({ id: videoJobs.id })
     .from(videoJobs)

@@ -490,9 +490,14 @@ export const videoPipelineRouter = router({
         status: "pending",
         errorMessage: null,
         retryCount: (jobs[0].retryCount ?? 0) + 1,
+        // Clear ALL Descript state so the job starts completely fresh
+        descriptProjectId: null,
         descriptImportJobId: null,
         descriptAgentJobId: null,
         descriptPublishJobId: null,
+        descriptShareUrl: null,
+        descriptDownloadUrl: null,
+        s3VideoUrl: null,
       }).where(eq(videoJobs.id, input.jobId));
 
       return { success: true };

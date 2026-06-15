@@ -8,7 +8,7 @@ import { eq, desc } from "drizzle-orm";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { videoJobs, contentItems } from "../drizzle/schema";
-import { processScheduledVideoJobs } from "./descriptPipeline";
+import { processScheduledVideoJobs, processVideoJob } from "./descriptPipeline";
 import { uploadToYouTube } from "./youtubeUploader";
 import { exportProject, getJobStatus } from "./descriptClient";
 import { invokeLLM } from "./_core/llm";
@@ -50,10 +50,20 @@ export const videoPipelineRouter = router({
         status: "pending",
       });
 
+      const jobId = (result as any).insertId as number;
+
+      // Kick off step 1 immediately (fire-and-forget) — no waiting for the cron.
+      // The cron only polls for completion of async external steps (HeyGen, Descript).
+      setImmediate(() => {
+        processVideoJob(jobId).catch((err) => {
+          console.error(`[videoPipeline] Immediate kickoff failed for job ${jobId}:`, err?.message ?? err);
+        });
+      });
+
       return {
         success: true,
-        jobId: (result as any).insertId as number,
-        message: "Video job queued. The pipeline will process it within 15 minutes.",
+        jobId,
+        message: "Video job started — generating B-roll prompt and submitting to Descript now.",
       };
     }),
 

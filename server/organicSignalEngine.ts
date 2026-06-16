@@ -182,6 +182,79 @@ async function fetchMetaPagePosts(limit = 25): Promise<MetaPostStats[]> {
   }
 }
 
+// ─── Instagram Business Account scanner ─────────────────────────────────────
+
+interface InstagramPostStats {
+  id: string;
+  caption: string;
+  mediaType: string;
+  permalink: string;
+  timestamp: string;
+  likeCount: number;
+  commentsCount: number;
+  reach: number;
+  thumbnailUrl?: string;
+}
+
+async function fetchInstagramPosts(limit = 25): Promise<InstagramPostStats[]> {
+  const token = process.env.META_AD_ACCESS_TOKEN;
+  const pageId = process.env.META_PAGE_ID;
+  if (!token || !pageId) return [];
+
+  try {
+    // Auto-fetch the Instagram Business Account ID from the Facebook Page
+    const igRes = await fetch(
+      `https://graph.facebook.com/v21.0/${pageId}?fields=instagram_business_account&access_token=${token}`
+    );
+    const igData = await igRes.json() as any;
+    const igAccountId = igData.instagram_business_account?.id;
+    if (!igAccountId) {
+      console.info("[OrganicSignal/Instagram] No Instagram Business Account linked to this Page — skipping");
+      return [];
+    }
+
+    const fields = "id,caption,media_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url";
+    const mediaRes = await fetch(
+      `https://graph.facebook.com/v21.0/${igAccountId}/media?fields=${encodeURIComponent(fields)}&limit=${limit}&access_token=${token}`
+    );
+    const mediaData = await mediaRes.json() as any;
+    if (mediaData.error) {
+      console.error("[OrganicSignal/Instagram] Media fetch error:", mediaData.error.message);
+      return [];
+    }
+
+    const posts: InstagramPostStats[] = [];
+    for (const item of (mediaData.data ?? [])) {
+      let reach = 0;
+      try {
+        const insightsRes = await fetch(
+          `https://graph.facebook.com/v21.0/${item.id}/insights?metric=reach,impressions&access_token=${token}`
+        );
+        const insightsData = await insightsRes.json() as any;
+        for (const metric of (insightsData.data ?? [])) {
+          if (metric.name === "reach") reach = metric.values?.[0]?.value ?? 0;
+        }
+      } catch (_) { /* insights unavailable for some post types */ }
+
+      posts.push({
+        id: item.id,
+        caption: (item.caption ?? "").slice(0, 512),
+        mediaType: item.media_type ?? "IMAGE",
+        permalink: item.permalink ?? `https://www.instagram.com/p/${item.id}`,
+        timestamp: item.timestamp,
+        likeCount: item.like_count ?? 0,
+        commentsCount: item.comments_count ?? 0,
+        reach: reach || (item.like_count ?? 0) * 10,
+        thumbnailUrl: item.thumbnail_url ?? item.media_url,
+      });
+    }
+    return posts;
+  } catch (err) {
+    console.error("[OrganicSignal/Instagram] Failed:", err);
+    return [];
+  }
+}
+
 // ─── LinkedIn post scanner ────────────────────────────────────────────────────
 
 interface LinkedInPostStats {
@@ -506,7 +579,47 @@ export async function runOrganicSignalPoller(): Promise<{
     }
   }
 
-  // ── 4. TikTok — placeholder ─────────────────────────────────────────────────
+  // ── 4. Instagram posts ─────────────────────────────────────────────────────
+  const instagramPosts = await fetchInstagramPosts(25);
+  for (const post of instagramPosts) {
+    if (post.reach < MIN_REACH_TO_SCORE) continue;
+    const publishedAtMs = new Date(post.timestamp).getTime();
+    const hoursSincePublish = (Date.now() - publishedAtMs) / 3600000;
+    if (hoursSincePublish < 24) continue;
+    const engagementRate = post.reach > 0
+      ? Math.round(((post.likeCount + post.commentsCount) / post.reach) * 10000) / 100
+      : 0;
+    const reachVelocity = computeViewVelocity(post.reach, publishedAtMs);
+    const signalStrength = classifyMetaSignal(engagementRate, reachVelocity);
+    if (!signalStrength) continue;
+    const alreadyFlagged = await db
+      .select({ id: paidPromoCandidates.id })
+      .from(paidPromoCandidates)
+      .where(and(
+        eq(paidPromoCandidates.platform, "instagram"),
+        eq(paidPromoCandidates.sourcePostId as any, post.id)
+      ))
+      .limit(1);
+    if (alreadyFlagged.length === 0) {
+      await db.insert(paidPromoCandidates).values({
+        platform: "instagram",
+        sourcePostId: post.id,
+        youtubeTitle: post.caption.slice(0, 200) || `Instagram ${post.mediaType} ${post.id}`,
+        youtubeThumbnailUrl: post.thumbnailUrl,
+        viewCount: post.reach,
+        likeCount: post.likeCount,
+        commentCount: post.commentsCount,
+        viewVelocity: reachVelocity,
+        engagementRate: engagementRate.toFixed(2),
+        outlierScore: "0",
+        signalStrength,
+        status: "flagged",
+      });
+      candidatesFlagged++;
+    }
+  }
+
+  // ── 5. TikTok — placeholder ─────────────────────────────────────────────────
   // TikTok Business API requires separate OAuth approval.
   // When TIKTOK_ACCESS_TOKEN is set, add fetchTikTokPosts() here.
 
@@ -515,6 +628,7 @@ export async function runOrganicSignalPoller(): Promise<{
     snapshotsTaken,
     candidatesFlagged,
     metaPostsChecked: metaPosts.length,
+    instagramPostsChecked: instagramPosts.length,
     linkedInPostsChecked: linkedInPosts.length,
   };
 }

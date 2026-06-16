@@ -1471,7 +1471,7 @@ export default function VADashboard() {
     trpc.syndicationPipeline.listVaJobs.useQuery(undefined, { refetchInterval: 30_000 });
 
   // Video jobs data
-  const { data: videoJobsData, isLoading: videoLoading, refetch: refetchVideo } =
+  const { data: videoJobsData, isLoading: videoLoading, error: videoError, refetch: refetchVideo } =
     trpc.videoPipeline.getVideoJobs.useQuery({ limit: 50 }, { refetchInterval: 30_000 });
 
   const allSyndicationJobs = (syndicationJobs ?? []) as SyndicationJob[];
@@ -1692,6 +1692,13 @@ export default function VADashboard() {
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                 <span className="ml-3 text-muted-foreground">Loading video jobs...</span>
+              </div>
+            ) : videoError ? (
+              <div className="text-center py-16">
+                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Error loading video jobs</h3>
+                <p className="text-muted-foreground text-sm mb-4">{videoError.message}</p>
+                <button onClick={() => refetchVideo()} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm">Retry</button>
               </div>
             ) : filteredVideoJobs.length === 0 ? (
               <div className="text-center py-16">

@@ -202,6 +202,8 @@ export default function VideoToBlog() {
   const [isReauthing, setIsReauthing] = useState(false);
   const [pendingRetryAfterAuth, setPendingRetryAfterAuth] = useState(false);
 
+  const popupCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const openYouTubeAuthPopup = useCallback((authUrl: string) => {
     if (popupRef.current && !popupRef.current.closed) {
       popupRef.current.focus();
@@ -218,6 +220,16 @@ export default function VideoToBlog() {
     );
     popupRef.current = popup;
     setIsReauthing(true);
+    // Poll every 500ms — if popup closes without sending YOUTUBE_AUTH_SUCCESS, reset state
+    if (popupCheckRef.current) clearInterval(popupCheckRef.current);
+    popupCheckRef.current = setInterval(() => {
+      if (popupRef.current?.closed) {
+        clearInterval(popupCheckRef.current!);
+        popupCheckRef.current = null;
+        // Only reset if auth didn't succeed (success handler sets isReauthing=false first)
+        setIsReauthing(prev => { if (prev) { return false; } return prev; });
+      }
+    }, 500);
   }, []);
 
   const utils = trpc.useUtils();

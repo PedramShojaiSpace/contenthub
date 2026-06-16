@@ -63,6 +63,7 @@ import {
   Layout,
   Youtube,
   Clock,
+  Megaphone,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -119,6 +120,7 @@ const videoItems = [
   { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
   { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
   { icon: Users, label: "VA Dashboard", path: "/va" },
+  { icon: Megaphone, label: "Ads Manager", path: "/ads" },
 ];
 
 const videoPaths = new Set(videoItems.map((i) => i.path));

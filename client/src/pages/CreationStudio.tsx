@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { slidesToDataUrls, type CarouselSlideData, type SlideType } from "@/components/CarouselSlideRenderer";
-import { FlaskConical, Globe, Target, Swords, ArrowRight } from "lucide-react";
+import { FlaskConical, Globe, Target, Swords, ArrowRight, Clapperboard } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
@@ -181,6 +181,12 @@ export default function CreationStudio() {
   const [blogYtScript, setBlogYtScript] = useState<string | null>(null);
   const [generatingBlogYtScript, setGeneratingBlogYtScript] = useState(false);
   const [blogYtScriptSaved, setBlogYtScriptSaved] = useState(false);
+
+  // Video pipeline modal state
+  const [showVideoPipelineModal, setShowVideoPipelineModal] = useState(false);
+  const [videoPipelinePath, setVideoPipelinePath] = useState<"heygen_then_descript" | "heygen_only" | "descript_only">("heygen_then_descript");
+  const [videoPipelineChannels, setVideoPipelineChannels] = useState<string[]>(["youtube"]);
+  const [videoPipelineLaunched, setVideoPipelineLaunched] = useState(false);
 
   // Substack toggle: whether to cross-post this blog to Substack on WP publish
   const [sendToSubstack, setSendToSubstack] = useState(false);
@@ -769,6 +775,36 @@ export default function CreationStudio() {
       productionStatus: "scripted",
       scriptBody: blogYtScript,
       linkedContentItemId: savedItemIds["blog"] ?? undefined,
+    });
+  };
+
+  // ── Push to Video Pipeline ─────────────────────────────────────────────────
+  const startVideoJobMutation = trpc.videoPipeline.startVideoJob.useMutation({
+    onSuccess: (data) => {
+      setVideoPipelineLaunched(true);
+      setShowVideoPipelineModal(false);
+      toast.success(data.message ?? "Video job queued! Check VA Dashboard for review.", {
+        action: { label: "VA Dashboard →", onClick: () => window.location.href = "/va" },
+      });
+    },
+    onError: (err) => {
+      toast.error("Failed to queue video: " + err.message);
+    },
+  });
+
+  const handlePushToVideoPipeline = () => {
+    if (!blogYtScript || !blogContent) return;
+    const contentItemId = savedItemIds["blog"];
+    if (!contentItemId) {
+      toast.error("Save the blog post to Kanban first before pushing to video pipeline.");
+      return;
+    }
+    startVideoJobMutation.mutate({
+      contentItemId,
+      scriptTitle: blogContent.title,
+      scriptText: blogYtScript,
+      productionPath: videoPipelinePath,
+      outputChannels: videoPipelineChannels as ("youtube" | "tiktok" | "meta" | "instagram" | "x")[],
     });
   };
 
@@ -3190,9 +3226,126 @@ export default function CreationStudio() {
                           <RefreshCw className="h-3 w-3 mr-1" />
                           Regenerate
                         </Button>
+                        {videoPipelineLaunched ? (
+                          <span className="flex items-center gap-1 text-xs text-green-400 px-2">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Queued!
+                          </span>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-purple-400 hover:text-purple-300"
+                            onClick={() => {
+                              if (savedItemIds["blog"]) {
+                                setShowVideoPipelineModal(true);
+                              } else {
+                                handlePushToVideoPipeline();
+                              }
+                            }}
+                            disabled={startVideoJobMutation.isPending}
+                          >
+                            {startVideoJobMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <Clapperboard className="h-3 w-3 mr-1" />
+                            )}
+                            Push to Video
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
+                  {/* Video Pipeline Modal */}
+                  {showVideoPipelineModal && (
+                    <div className="mt-3 p-4 rounded-lg bg-purple-950/30 border border-purple-700/40 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-purple-300 flex items-center gap-2">
+                          <Clapperboard className="h-4 w-4" />
+                          Push to Video Pipeline
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowVideoPipelineModal(false)}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                      {/* Production Path */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Production Path</p>
+                        <div className="flex flex-col gap-1.5">
+                          {([
+                            { value: "heygen_then_descript", label: "HeyGen → Descript", desc: "Avatar video + Descript edit" },
+                            { value: "heygen_only", label: "HeyGen Only", desc: "Avatar video, skip Descript" },
+                            { value: "descript_only", label: "Descript Only", desc: "Voice clone, skip HeyGen" },
+                          ] as const).map((opt) => (
+                            <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="videoPipelinePath"
+                                value={opt.value}
+                                checked={videoPipelinePath === opt.value}
+                                onChange={() => setVideoPipelinePath(opt.value)}
+                                className="accent-purple-500"
+                              />
+                              <span className="text-xs text-foreground">{opt.label}</span>
+                              <span className="text-xs text-muted-foreground">— {opt.desc}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Output Channels */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Output Channels</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(["youtube", "tiktok", "meta", "instagram", "x"] as const).map((ch) => (
+                            <label key={ch} className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={videoPipelineChannels.includes(ch)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setVideoPipelineChannels((prev) => [...prev, ch]);
+                                  } else {
+                                    setVideoPipelineChannels((prev) => prev.filter((c) => c !== ch));
+                                  }
+                                }}
+                                className="accent-purple-500"
+                              />
+                              <span className="text-xs text-foreground capitalize">{ch === "x" ? "X / Twitter" : ch}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Launch */}
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          size="sm"
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs gap-1.5"
+                          onClick={handlePushToVideoPipeline}
+                          disabled={startVideoJobMutation.isPending || videoPipelineChannels.length === 0}
+                        >
+                          {startVideoJobMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Clapperboard className="h-3.5 w-3.5" />
+                          )}
+                          Launch →
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-muted-foreground"
+                          onClick={() => setShowVideoPipelineModal(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   {!blogYtScript && !generatingBlogYtScript && (
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground">

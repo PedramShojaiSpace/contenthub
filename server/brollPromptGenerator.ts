@@ -29,7 +29,7 @@ export const CHANNEL_FOOTER = `---
 Join thousands of high-performers who have used our Upstream Framework to rebuild their gut health, reclaim their energy, and build a protocol that actually works.
 👉 Watch Free: https://upstream.theurbanmonk.com?utm_source=youtube&utm_medium=video&utm_campaign=upstream-bundle&utm_content=video-description&utm_term=youtube_cold_upstream
 
-💡 LIGHTS ON — Wake Up & Live With Purpose ($299/year)
+💡 LIGHTS ON — Wake Up & Live With Purpose ($369/year)
 10 modules. 52 weeks. The systematic perceptual training program Dr. Pedram Shojai spent 30 years building. Break through the noise and optimize your mind, body, and spirit.
 👉 Enroll Now: https://lightson.theurbanmonk.com?utm_source=youtube&utm_medium=video&utm_campaign=lights-on&utm_content=video-description&utm_term=youtube_cold_LO
 

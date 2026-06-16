@@ -792,11 +792,10 @@ async function startServer() {
         const { getDb } = await import("../db");
         const { videoJobs } = await import("../../drizzle/schema");
         const { eq, and, lt, isNotNull } = await import("drizzle-orm");
-        const { resumeYouTubeUpload } = await import("../youtubeUploader");
+        const { spawnUploadWorker, isUploadWorkerRunning } = await import("../spawnUploadWorker");
         const db = await getDb();
         if (!db) return;
         // Use a shorter threshold (5 min) so we catch restarts quickly.
-        // A server restart kills the upload instantly — no need to wait 50 min.
         const STUCK_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
         const cutoff = Date.now() - STUCK_THRESHOLD_MS;
         // Find jobs stuck in 'uploading' where vaApprovedAt is set and older than 5 min
@@ -804,12 +803,7 @@ async function startServer() {
           .select({
             id: videoJobs.id,
             youtubeTitle: videoJobs.youtubeTitle,
-            youtubeDescription: videoJobs.youtubeDescription,
-            youtubeTags: videoJobs.youtubeTags,
             vaApprovedAt: videoJobs.vaApprovedAt,
-            ytUploadUri: videoJobs.ytUploadUri,
-            descriptDownloadUrl: videoJobs.descriptDownloadUrl,
-            s3VideoUrl: videoJobs.s3VideoUrl,
           })
           .from(videoJobs)
           .where(and(
@@ -822,61 +816,15 @@ async function startServer() {
           const minutesStuck = job.vaApprovedAt ? Math.round((Date.now() - Number(job.vaApprovedAt)) / 60000) : '?';
           console.warn(`[Upload Watchdog] Job #${job.id} ("${job.youtubeTitle}") stuck in uploading for ${minutesStuck} min.`);
 
-          // Determine the video source URL
-          const videoUrl = job.descriptDownloadUrl && !job.descriptDownloadUrl.includes('share.descript.com')
-            ? job.descriptDownloadUrl
-            : job.s3VideoUrl ?? null;
-
-          // Try to resume if we have both a persisted upload URI and a video source URL
-          if (job.ytUploadUri && videoUrl) {
-            console.log(`[Upload Watchdog] Job #${job.id}: Found persisted upload URI — attempting resume...`);
-            // Fire-and-forget resume attempt
-            (async () => {
-              try {
-                const result = await resumeYouTubeUpload({
-                  jobId: job.id,
-                  uploadUri: job.ytUploadUri!,
-                  videoUrl: videoUrl,
-                  title: job.youtubeTitle ?? 'Urban Monk Video',
-                });
-                const bgDb = await getDb();
-                if (bgDb) {
-                  await bgDb.update(videoJobs).set({
-                    status: 'uploaded_unlisted',
-                    youtubeVideoId: result.videoId,
-                    ytUploadUri: null,
-                    ytUploadOffset: null,
-                  }).where(eq(videoJobs.id, job.id));
-                }
-                console.log(`[Upload Watchdog] ✅ Job #${job.id} resumed and completed. YouTube ID: ${result.videoId}`);
-              } catch (resumeErr) {
-                const msg = resumeErr instanceof Error ? resumeErr.message : String(resumeErr);
-                console.error(`[Upload Watchdog] Resume failed for job #${job.id}: ${msg}`);
-                // If URI expired or any other error, fall back to reset
-                const fallbackDb = await getDb();
-                if (fallbackDb) {
-                  await fallbackDb.update(videoJobs).set({
-                    status: 'ready_for_review',
-                    ytUploadUri: null,
-                    ytUploadOffset: null,
-                    descriptDownloadUrl: null,
-                    errorMessage: `Upload interrupted (server restart). Resume failed: ${msg}. Approve again to re-export and upload.`,
-                  }).where(eq(videoJobs.id, job.id));
-                  console.log(`[Upload Watchdog] Job #${job.id} reset to ready_for_review after failed resume.`);
-                }
-              }
-            })();
-          } else {
-            // No upload URI or no video URL — just reset so VA can re-approve
-            console.log(`[Upload Watchdog] Job #${job.id}: No upload URI or video URL — resetting to ready_for_review.`);
-            await db.update(videoJobs).set({
-              status: 'ready_for_review',
-              ytUploadUri: null,
-              ytUploadOffset: null,
-              descriptDownloadUrl: null,
-              errorMessage: `Upload timed out after ${minutesStuck} min (server restart). Approve again to re-export from Descript and upload to YouTube.`,
-            }).where(eq(videoJobs.id, job.id));
+          // Check if the upload worker process is still running for this job
+          if (isUploadWorkerRunning(job.id)) {
+            console.log(`[Upload Watchdog] Job #${job.id}: Worker process is still running — skipping.`);
+            continue;
           }
+
+          // Worker is dead — re-spawn it. The worker will resume from the persisted URI if available.
+          console.log(`[Upload Watchdog] Job #${job.id}: Worker not running — re-spawning upload worker.`);
+          spawnUploadWorker(job.id);
         }
 
         if (stuckJobs.length > 0) {

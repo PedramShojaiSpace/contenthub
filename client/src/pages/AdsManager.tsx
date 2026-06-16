@@ -1175,3 +1175,279 @@ function WeeklyDigestTab() {
     </div>
   );
 }
+
+function HookTestingTab() {
+  const [topic, setTopic] = useState("");
+  const [targetProduct, setTargetProduct] = useState<"lightsOn" | "academy" | "upstream" | "kbmoTesting" | "general">("lightsOn");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [dailyBudget, setDailyBudget] = useState(5);
+  const [testDays, setTestDays] = useState(5);
+  const [generatedHooks, setGeneratedHooks] = useState<null | {
+    id: number;
+    variants: {
+      framework: string;
+      frameworkLabel: string;
+      hookText: string;
+      overlayText: string;
+      whyItWorks: string;
+      estimatedCTRLift: string;
+      deliveryNote: string;
+    }[];
+  }>(null);
+
+  const hookGenerations = trpc.metaAds.getHookGenerations.useQuery({ limit: 10 });
+  const abTests = trpc.metaAds.getHookAbTests.useQuery({ limit: 10 });
+
+  const generateHooks = trpc.metaAds.generateHooks.useMutation({
+    onSuccess: (data) => {
+      setGeneratedHooks({ id: data.id, variants: data.variants });
+      toast.success(`Generated ${data.variants.length} hook variants!`);
+      hookGenerations.refetch();
+    },
+    onError: (err) => toast.error(`Hook generation failed: ${err.message}`),
+  });
+
+  const launchTest = trpc.metaAds.launchHookAbTest.useMutation({
+    onSuccess: (data) => {
+      toast.success(`A/B test launched! Campaign created — ${data.adIds.length} ads queued. Check Meta Ads Manager.`);
+      abTests.refetch();
+    },
+    onError: (err) => toast.error(`Launch failed: ${err.message}`),
+  });
+
+  const checkWinner = trpc.metaAds.checkHookWinner.useMutation({
+    onSuccess: (data) => {
+      if (data.winner) {
+        toast.success(`Winner found: ${data.winner.framework} (CTR: ${data.winner.ctr.toFixed(2)}%)`);
+      } else {
+        toast.info("No clear winner yet — test needs more data.");
+      }
+      abTests.refetch();
+    },
+    onError: (err) => toast.error(`Check failed: ${err.message}`),
+  });
+
+  const promoteWinner = trpc.metaAds.promoteHookWinner.useMutation({
+    onSuccess: () => {
+      toast.success("Winner promoted to full campaign!");
+      abTests.refetch();
+    },
+    onError: (err) => toast.error(`Promotion failed: ${err.message}`),
+  });
+
+  // suppress unused var warning
+  void hookGenerations;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-semibold">Viral Hook A/B Testing</h2>
+        <p className="text-sm text-muted-foreground">
+          Generate 5 hook variants using 8 proven viral frameworks, run Meta A/B tests at $3–5/day per variant, then promote the winner.
+        </p>
+      </div>
+
+      {/* Generate Hooks */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-yellow-400" />
+            Step 1 — Generate Hook Variants
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Topic / Script Idea</label>
+              <input
+                className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="e.g. Why you're always tired after 40"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Target Product</label>
+              <Select value={targetProduct} onValueChange={(v) => setTargetProduct(v as typeof targetProduct)}>
+                <SelectTrigger className="text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lightsOn">Lights On ($369/yr)</SelectItem>
+                  <SelectItem value="academy">Urban Monk Academy</SelectItem>
+                  <SelectItem value="upstream">Upstream Course</SelectItem>
+                  <SelectItem value="kbmoTesting">KBMO Testing</SelectItem>
+                  <SelectItem value="general">General / Awareness</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button
+            onClick={() => generateHooks.mutate({ topic, targetProduct, count: 5 })}
+            disabled={generateHooks.isPending || !topic.trim()}
+            className="gap-2"
+          >
+            {generateHooks.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Generate 5 Hook Variants
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Generated Hooks */}
+      {generatedHooks && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-yellow-400" />
+              Step 2 — Review &amp; Launch A/B Test
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              {generatedHooks.variants.map((v, i) => (
+                <div key={i} className="p-3 rounded-lg border border-border bg-muted/20">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="text-xs">{v.frameworkLabel}</Badge>
+                    <span className="text-xs text-green-400">{v.estimatedCTRLift} CTR lift</span>
+                  </div>
+                  <p className="text-sm font-medium">{v.hookText}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Overlay: {v.overlayText}</p>
+                  <p className="text-xs text-muted-foreground">{v.whyItWorks}</p>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Video URL (for ads)</label>
+                <input
+                  className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="https://..."
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Daily Budget / Variant ($)</label>
+                <input
+                  type="number"
+                  min={3}
+                  max={20}
+                  className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={dailyBudget}
+                  onChange={(e) => setDailyBudget(Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Test Duration (days)</label>
+                <input
+                  type="number"
+                  min={3}
+                  max={14}
+                  className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={testDays}
+                  onChange={(e) => setTestDays(Number(e.target.value))}
+                />
+              </div>
+            </div>
+            <Button
+              onClick={() =>
+                launchTest.mutate({
+                  hookGenerationId: generatedHooks.id,
+                  topic,
+                  targetProduct,
+                  variants: generatedHooks.variants,
+                  videoUrl,
+                  dailyBudgetPerVariant: dailyBudget,
+                  testDurationDays: testDays,
+                })
+              }
+              disabled={launchTest.isPending || !videoUrl.trim()}
+              className="gap-2 bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              {launchTest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+              Launch A/B Test on Meta
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active A/B Tests */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="w-4 h-4 text-blue-400" />
+            Active &amp; Past A/B Tests
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {abTests.isLoading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />)}
+            </div>
+          ) : (abTests.data?.length ?? 0) === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <Target className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No A/B tests yet — generate hooks above and launch your first test.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {abTests.data?.map((test) => (
+                <div key={test.id} className="p-3 rounded-lg border border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-medium">{test.topic}</p>
+                      <p className="text-xs text-muted-foreground">{test.targetProduct} · {test.variantCount} variants · ${test.dailyBudgetPerVariant}/day each</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={
+                          test.status === "active" ? "border-green-500 text-green-400" :
+                          test.status === "winner_selected" ? "border-yellow-500 text-yellow-400" :
+                          test.status === "completed" ? "border-blue-500 text-blue-400" :
+                          "border-border text-muted-foreground"
+                        }
+                      >
+                        {test.status}
+                      </Badge>
+                      {test.status === "active" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => checkWinner.mutate({ testId: test.id })}
+                          disabled={checkWinner.isPending}
+                        >
+                          {checkWinner.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                          Check Winner
+                        </Button>
+                      )}
+                      {test.status === "winner_selected" && (
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => promoteWinner.mutate({ testId: test.id, fullDailyBudget: 50 })}
+                          disabled={promoteWinner.isPending}
+                        >
+                          {promoteWinner.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trophy className="w-3 h-3" />}
+                          Promote Winner
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {test.winnerFramework && (
+                    <div className="mt-2 p-2 rounded bg-yellow-950/30 border border-yellow-700/30">
+                      <p className="text-xs text-yellow-400 font-medium">Winner: {test.winnerFramework}</p>
+                      {test.winnerCtr && <p className="text-xs text-muted-foreground mt-0.5">CTR: {test.winnerCtr}% · CPL: ${test.winnerCpl}</p>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

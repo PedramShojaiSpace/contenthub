@@ -405,7 +405,7 @@ export const keywordStrategyRouter = router({
 
       const systemPrompt = `You are an expert SEO strategist for The Urban Monk (theurbanmonk.com), 
 a wellness brand run by Dr. Pedram Shojai, OMD. The site monetizes through:
-- Urban Monk Academy membership ($297/year) — the primary conversion goal
+- Urban Monk Academy membership ($369/year) — the primary conversion goal
 - Supplement store (gut health, sleep, energy, adaptogens)
 - Functional medicine testing (GI Map, KBMO FIT 176, Orobiome)
 - Free lead magnets (ebooks, webinars) that feed the Academy funnel

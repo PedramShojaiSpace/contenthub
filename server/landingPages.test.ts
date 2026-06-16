@@ -74,13 +74,13 @@ describe("Offer configuration", () => {
   it("Academy offer has correct price", () => {
     // This tests the offer metadata in the router
     const OFFER_DETAILS: Record<string, { price: string }> = {
-      academy: { price: "$297/year" },
+      academy: { price: "$369/year" },
       retreat: { price: "$1,200" },
       supplements: { price: "Starting at $49" },
       free_guide: { price: "Free" },
       custom: { price: "" },
     };
-    expect(OFFER_DETAILS.academy.price).toBe("$297/year");
+    expect(OFFER_DETAILS.academy.price).toBe("$369/year");
     expect(OFFER_DETAILS.retreat.price).toBe("$1,200");
   });
 });

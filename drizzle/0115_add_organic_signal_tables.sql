@@ -1,0 +1,41 @@
+CREATE TABLE `video_engagement_snapshots` (
+	`ves_id` int AUTO_INCREMENT NOT NULL,
+	`ves_video_job_id` int NOT NULL,
+	`ves_yt_video_id` varchar(64) NOT NULL,
+	`ves_snapshot_hour` int NOT NULL,
+	`ves_view_count` int NOT NULL DEFAULT 0,
+	`ves_like_count` int NOT NULL DEFAULT 0,
+	`ves_comment_count` int NOT NULL DEFAULT 0,
+	`ves_view_velocity` int NOT NULL DEFAULT 0,
+	`ves_engagement_rate` varchar(16),
+	`ves_outlier_score` varchar(16),
+	`ves_captured_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `video_engagement_snapshots_ves_id` PRIMARY KEY(`ves_id`)
+);
+
+CREATE TABLE `paid_promo_candidates` (
+	`ppc_id` int AUTO_INCREMENT NOT NULL,
+	`ppc_video_job_id` int NOT NULL,
+	`ppc_yt_video_id` varchar(64) NOT NULL,
+	`ppc_yt_title` varchar(512),
+	`ppc_yt_thumbnail_url` text,
+	`ppc_view_count` int NOT NULL DEFAULT 0,
+	`ppc_like_count` int NOT NULL DEFAULT 0,
+	`ppc_comment_count` int NOT NULL DEFAULT 0,
+	`ppc_view_velocity` int NOT NULL DEFAULT 0,
+	`ppc_engagement_rate` varchar(16),
+	`ppc_outlier_score` varchar(16),
+	`ppc_signal_strength` enum('strong','exceptional') NOT NULL,
+	`ppc_flagged_at` timestamp NOT NULL DEFAULT (now()),
+	`ppc_claude_recommendation` text,
+	`ppc_rec_generated_at` timestamp,
+	`ppc_status` enum('flagged','recommended','approved','launched','dismissed') NOT NULL DEFAULT 'flagged',
+	`ppc_meta_campaign_id` varchar(64),
+	`ppc_meta_adset_id` varchar(64),
+	`ppc_meta_ad_id` varchar(64),
+	`ppc_launched_at` timestamp,
+	`ppc_launched_by` varchar(128),
+	`ppc_created_at` timestamp NOT NULL DEFAULT (now()),
+	`ppc_updated_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `paid_promo_candidates_ppc_id` PRIMARY KEY(`ppc_id`)
+);

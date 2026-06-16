@@ -1,4 +1,4 @@
-import { bigint, boolean, date, double, float, int, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, date, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -2100,3 +2100,69 @@ export const videoJobs = mysqlTable("video_jobs", {
 
 export type VideoJob = typeof videoJobs.$inferSelect;
 export type InsertVideoJob = typeof videoJobs.$inferInsert;
+
+// ─── Organic Signal Monitor ───────────────────────────────────────────────────
+
+/**
+ * Tracks periodic YouTube engagement snapshots for videos produced via the
+ * video pipeline. Snapshots are taken at 24h, 48h, 72h, 7d, and 14d post-publish.
+ * Used to compute engagement score and flag paid promotion candidates.
+ */
+export const videoEngagementSnapshots = mysqlTable("video_engagement_snapshots", {
+  id: int("ves_id").primaryKey().autoincrement(),
+  videoJobId: int("ves_video_job_id").notNull(),           // FK → video_jobs.id
+  youtubeVideoId: varchar("ves_yt_video_id", { length: 64 }).notNull(),
+  snapshotHour: int("ves_snapshot_hour").notNull(),        // 24, 48, 72, 168 (7d), 336 (14d)
+  viewCount: int("ves_view_count").default(0).notNull(),
+  likeCount: int("ves_like_count").default(0).notNull(),
+  commentCount: int("ves_comment_count").default(0).notNull(),
+  viewVelocity: int("ves_view_velocity").default(0).notNull(), // views/day at this snapshot
+  engagementRate: varchar("ves_engagement_rate", { length: 16 }), // (likes+comments)/views %
+  outlierScore: varchar("ves_outlier_score", { length: 16 }),     // views / channel avg
+  capturedAt: timestamp("ves_captured_at").defaultNow().notNull(),
+});
+
+export type VideoEngagementSnapshot = typeof videoEngagementSnapshots.$inferSelect;
+
+/**
+ * Paid promotion candidates — videos flagged by the organic signal engine
+ * as strong performers worth promoting via Meta ads.
+ * Claude generates a campaign recommendation for each candidate.
+ */
+export const paidPromoCandidates = mysqlTable("paid_promo_candidates", {
+  id: int("ppc_id").primaryKey().autoincrement(),
+  videoJobId: int("ppc_video_job_id").notNull(),
+  youtubeVideoId: varchar("ppc_yt_video_id", { length: 64 }).notNull(),
+  youtubeTitle: varchar("ppc_yt_title", { length: 512 }),
+  youtubeThumbnailUrl: text("ppc_yt_thumbnail_url"),
+  // Signal metrics at time of flagging
+  viewCount: int("ppc_view_count").default(0).notNull(),
+  likeCount: int("ppc_like_count").default(0).notNull(),
+  commentCount: int("ppc_comment_count").default(0).notNull(),
+  viewVelocity: int("ppc_view_velocity").default(0).notNull(),
+  engagementRate: varchar("ppc_engagement_rate", { length: 16 }),
+  outlierScore: varchar("ppc_outlier_score", { length: 16 }),
+  signalStrength: mysqlEnum("ppc_signal_strength", ["strong", "exceptional"]).notNull(),
+  flaggedAt: timestamp("ppc_flagged_at").defaultNow().notNull(),
+  // Claude recommendation
+  claudeRecommendation: text("ppc_claude_recommendation"),  // JSON string: CampaignRecommendation object
+  recommendationGeneratedAt: timestamp("ppc_rec_generated_at"),
+  // Campaign launch status
+  status: mysqlEnum("ppc_status", [
+    "flagged",          // Just flagged, no recommendation yet
+    "recommended",      // Claude has generated a recommendation
+    "approved",         // User approved the recommendation
+    "launched",         // Campaign created in Meta
+    "dismissed",        // User dismissed this candidate
+  ]).default("flagged").notNull(),
+  metaCampaignId: varchar("ppc_meta_campaign_id", { length: 64 }),
+  metaAdSetId: varchar("ppc_meta_adset_id", { length: 64 }),
+  metaAdId: varchar("ppc_meta_ad_id", { length: 64 }),
+  launchedAt: timestamp("ppc_launched_at"),
+  launchedBy: varchar("ppc_launched_by", { length: 128 }),
+  createdAt: timestamp("ppc_created_at").defaultNow().notNull(),
+  updatedAt: timestamp("ppc_updated_at").defaultNow().notNull(),
+});
+
+export type PaidPromoCandidate = typeof paidPromoCandidates.$inferSelect;
+export type InsertPaidPromoCandidate = typeof paidPromoCandidates.$inferInsert;

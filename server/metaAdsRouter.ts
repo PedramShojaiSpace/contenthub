@@ -20,6 +20,9 @@ import {
   updateCampaignStatus,
   validateToken,
 } from "./metaAdsClient";
+import { getPaidPromoCandidates, updateCandidateStatus, runOrganicSignalPoller } from "./organicSignalEngine";
+import { generateAndSaveRecommendation } from "./campaignRecommendationEngine";
+import { launchCampaign } from "./metaCampaignLauncher";
 
 const DATE_PRESETS = [
   "today",
@@ -208,5 +211,68 @@ export const metaAdsRouter = router({
       const config = getMetaAdsConfig();
       const success = await updateCampaignStatus(config, input.campaignId, input.status);
       return { success };
+    }),
+
+  // ── Organic-to-Paid Signal Engine ─────────────────────────────────────────
+
+  // Get all paid promo candidates
+  getPaidPromoCandidates: protectedProcedure
+    .input(
+      z.object({
+        status: z.array(z.enum(["flagged", "recommended", "approved", "launched", "dismissed"])).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      return getPaidPromoCandidates(input.status);
+    }),
+
+  // Manually trigger the organic signal poller (for testing / on-demand)
+  runSignalPoller: protectedProcedure.mutation(async () => {
+    return runOrganicSignalPoller();
+  }),
+
+  // Generate a Claude campaign recommendation for a candidate
+  generateRecommendation: protectedProcedure
+    .input(z.object({ candidateId: z.number() }))
+    .mutation(async ({ input }) => {
+      const candidates = await getPaidPromoCandidates();
+      const candidate = candidates.find((c) => c.id === input.candidateId);
+      if (!candidate) throw new Error("Candidate not found");
+      return generateAndSaveRecommendation(candidate as any);
+    }),
+
+  // Approve a recommendation (marks it ready to launch)
+  approveRecommendation: protectedProcedure
+    .input(z.object({ candidateId: z.number() }))
+    .mutation(async ({ input }) => {
+      await updateCandidateStatus(input.candidateId, "approved");
+      return { success: true };
+    }),
+
+  // Dismiss a candidate (not worth promoting)
+  dismissCandidate: protectedProcedure
+    .input(z.object({ candidateId: z.number() }))
+    .mutation(async ({ input }) => {
+      await updateCandidateStatus(input.candidateId, "dismissed");
+      return { success: true };
+    }),
+
+  // Launch a campaign in Meta (creates PAUSED campaign for review)
+  launchCampaign: protectedProcedure
+    .input(z.object({ candidateId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const candidates = await getPaidPromoCandidates(["approved"]);
+      const candidate = candidates.find((c) => c.id === input.candidateId);
+      if (!candidate) throw new Error("Approved candidate not found");
+      if (!candidate.claudeRecommendation) throw new Error("No recommendation found — generate one first");
+      if (!candidate.youtubeVideoId) throw new Error("No YouTube video ID on candidate");
+
+      return launchCampaign(
+        candidate.id,
+        candidate.youtubeVideoId,
+        candidate.youtubeTitle ?? "",
+        candidate.claudeRecommendation as any,
+        ctx.user?.name ?? "Content Hub"
+      );
     }),
 });

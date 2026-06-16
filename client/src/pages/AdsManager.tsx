@@ -21,6 +21,13 @@ import {
   CheckCircle2,
   XCircle,
   Zap,
+  Rocket,
+  Sparkles,
+  ThumbsUp,
+  ThumbsDown,
+  ExternalLink,
+  Target,
+  BarChart2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -185,6 +192,10 @@ export default function AdsManager() {
             )}
           </TabsTrigger>
           <TabsTrigger value="pixels">Pixel Health</TabsTrigger>
+          <TabsTrigger value="organic2paid" className="gap-1.5">
+            <Rocket className="w-3.5 h-3.5" />
+            Organic → Paid
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Overview Tab ────────────────────────────────────────────────── */}
@@ -464,7 +475,310 @@ export default function AdsManager() {
             </div>
           )}
         </TabsContent>
+
+        {/* ── Organic-to-Paid Tab ─────────────────────────────────────────── */}
+        <TabsContent value="organic2paid" className="space-y-4 mt-4">
+          <OrganicToPaidTab />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Organic-to-Paid Tab Component
+// ─────────────────────────────────────────────────────────────────────────────
+
+type CandidateStatus = "flagged" | "recommended" | "approved" | "launched" | "dismissed";
+
+const STATUS_LABELS: Record<CandidateStatus, { label: string; color: string }> = {
+  flagged: { label: "Flagged", color: "bg-amber-100 text-amber-800" },
+  recommended: { label: "Recommended", color: "bg-blue-100 text-blue-800" },
+  approved: { label: "Approved", color: "bg-green-100 text-green-800" },
+  launched: { label: "Launched", color: "bg-purple-100 text-purple-800" },
+  dismissed: { label: "Dismissed", color: "bg-gray-100 text-gray-500" },
+};
+
+function SignalStrengthBadge({ strength }: { strength: string }) {
+  if (strength === "strong") return <Badge className="bg-green-100 text-green-800 border-green-200">Strong Signal</Badge>;
+  if (strength === "moderate") return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Moderate Signal</Badge>;
+  return <Badge variant="outline">{strength}</Badge>;
+}
+
+function OrganicToPaidTab() {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<CandidateStatus[]>(["flagged", "recommended", "approved"]);
+
+  const candidates = trpc.metaAds.getPaidPromoCandidates.useQuery({ status: statusFilter });
+  const runPoller = trpc.metaAds.runSignalPoller.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Signal scan complete: ${data.videosChecked} videos checked, ${data.candidatesFlagged} flagged`);
+      candidates.refetch();
+    },
+    onError: (e) => toast.error(`Scan failed: ${e.message}`),
+  });
+  const generateRec = trpc.metaAds.generateRecommendation.useMutation({
+    onSuccess: () => { toast.success("Campaign recommendation generated!"); candidates.refetch(); },
+    onError: (e) => toast.error(`Failed: ${e.message}`),
+  });
+  const approveRec = trpc.metaAds.approveRecommendation.useMutation({
+    onSuccess: () => { toast.success("Approved — ready to launch"); candidates.refetch(); },
+    onError: (e) => toast.error(`Failed: ${e.message}`),
+  });
+  const dismissCandidate = trpc.metaAds.dismissCandidate.useMutation({
+    onSuccess: () => { toast.success("Dismissed"); candidates.refetch(); },
+    onError: (e) => toast.error(`Failed: ${e.message}`),
+  });
+  const launchCampaign = trpc.metaAds.launchCampaign.useMutation({
+    onSuccess: (data) => {
+      toast.success("Campaign created in Meta (PAUSED) — review before activating");
+      window.open(data.adsManagerUrl, "_blank");
+      candidates.refetch();
+    },
+    onError: (e) => toast.error(`Launch failed: ${e.message}`),
+  });
+
+  const list = candidates.data ?? [];
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Organic → Paid Signal Engine</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Videos outperforming channel averages are flagged as paid promotion candidates. Claude generates the campaign brief.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => runPoller.mutate()}
+          disabled={runPoller.isPending}
+        >
+          <RefreshCw className={`w-4 h-4 mr-1.5 ${runPoller.isPending ? "animate-spin" : ""}`} />
+          Scan Now
+        </Button>
+      </div>
+
+      {/* How it works */}
+      <Card className="border-dashed">
+        <CardContent className="pt-4 pb-3">
+          <div className="flex items-start gap-3">
+            <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">How it works:</strong> Every 24 hours, the engine checks YouTube stats for all published videos.
+              Videos with engagement rate &gt;3% or outlier score &gt;1.5x the channel average are flagged.
+              Click <strong>Generate Brief</strong> to have Claude write a full campaign recommendation.
+              Click <strong>Approve</strong> then <strong>Launch in Meta</strong> to create a PAUSED campaign ready for your review.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Status filter */}
+      <div className="flex gap-2 flex-wrap">
+        {(["flagged", "recommended", "approved", "launched", "dismissed"] as CandidateStatus[]).map((s) => (
+          <button
+            key={s}
+            onClick={() =>
+              setStatusFilter((prev) =>
+                prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+              )
+            }
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              statusFilter.includes(s)
+                ? STATUS_LABELS[s].color + " border-transparent"
+                : "bg-background text-muted-foreground border-border"
+            }`}
+          >
+            {STATUS_LABELS[s].label}
+          </button>
+        ))}
+      </div>
+
+      {/* Candidate list */}
+      {candidates.isLoading ? (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}><CardContent className="pt-4 pb-4"><div className="h-20 bg-muted animate-pulse rounded" /></CardContent></Card>
+          ))}
+        </div>
+      ) : list.length === 0 ? (
+        <Card>
+          <CardContent className="pt-8 pb-8 text-center">
+            <Target className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              No candidates match the selected filters. Click <strong>Scan Now</strong> to check for new high-performers.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {list.map((c) => {
+            const rec = c.claudeRecommendation as any;
+            const isExpanded = expandedId === c.id;
+            const statusInfo = STATUS_LABELS[c.status as CandidateStatus] ?? { label: c.status, color: "bg-gray-100 text-gray-600" };
+
+            return (
+              <Card key={c.id} className="overflow-hidden">
+                <CardContent className="pt-4 pb-4">
+                  {/* Top row */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>{statusInfo.label}</span>
+                        <SignalStrengthBadge strength={c.signalStrength ?? ""} />
+                      </div>
+                      <h3 className="font-medium mt-1.5 truncate">{c.youtubeTitle ?? `Video ${c.youtubeVideoId}`}</h3>
+                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(c.viewCount ?? 0).toLocaleString()} views</span>
+                        <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" />{parseFloat(c.engagementRate ?? "0").toFixed(2)}% engagement</span>
+                        <span className="flex items-center gap-1"><BarChart2 className="w-3 h-3" />{parseFloat(c.outlierScore ?? "0").toFixed(2)}x outlier</span>
+                        {c.youtubeVideoId && (
+                          <a href={`https://www.youtube.com/watch?v=${c.youtubeVideoId}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline">
+                            <ExternalLink className="w-3 h-3" />YouTube
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {c.status === "flagged" && (
+                        <>
+                          <Button size="sm" variant="outline"
+                            onClick={() => generateRec.mutate({ candidateId: c.id })}
+                            disabled={generateRec.isPending}
+                          >
+                            <Sparkles className="w-3.5 h-3.5 mr-1" />
+                            {generateRec.isPending ? "Generating..." : "Generate Brief"}
+                          </Button>
+                          <Button size="sm" variant="ghost"
+                            onClick={() => dismissCandidate.mutate({ candidateId: c.id })}
+                            disabled={dismissCandidate.isPending}
+                          >
+                            <ThumbsDown className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {c.status === "recommended" && (
+                        <>
+                          <Button size="sm" variant="outline"
+                            onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                          >
+                            {isExpanded ? "Hide" : "View Brief"}
+                          </Button>
+                          <Button size="sm"
+                            onClick={() => approveRec.mutate({ candidateId: c.id })}
+                            disabled={approveRec.isPending}
+                          >
+                            <ThumbsUp className="w-3.5 h-3.5 mr-1" />Approve
+                          </Button>
+                          <Button size="sm" variant="ghost"
+                            onClick={() => dismissCandidate.mutate({ candidateId: c.id })}
+                            disabled={dismissCandidate.isPending}
+                          >
+                            <ThumbsDown className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {c.status === "approved" && (
+                        <>
+                          <Button size="sm" variant="outline"
+                            onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                          >
+                            {isExpanded ? "Hide" : "View Brief"}
+                          </Button>
+                          <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white"
+                            onClick={() => launchCampaign.mutate({ candidateId: c.id })}
+                            disabled={launchCampaign.isPending}
+                          >
+                            <Rocket className="w-3.5 h-3.5 mr-1" />
+                            {launchCampaign.isPending ? "Launching..." : "Launch in Meta"}
+                          </Button>
+                        </>
+                      )}
+                      {c.status === "launched" && c.metaCampaignId && (
+                        <a
+                          href={`https://www.facebook.com/adsmanager/manage/campaigns?selected_campaign_ids=${c.metaCampaignId}`}
+                          target="_blank" rel="noopener noreferrer"
+                        >
+                          <Button size="sm" variant="outline">
+                            <ExternalLink className="w-3.5 h-3.5 mr-1" />View in Meta
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expanded recommendation */}
+                  {isExpanded && rec && (
+                    <div className="mt-4 pt-4 border-t space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Campaign structure */}
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Campaign</p>
+                          <p className="text-sm font-medium">{rec.campaignName}</p>
+                          <p className="text-xs text-muted-foreground">{rec.objective} · ${rec.dailyBudgetUsd}/day · {rec.recommendedRunDays} days</p>
+                          <p className="text-xs text-muted-foreground mt-1">{rec.objectiveRationale}</p>
+                        </div>
+                        {/* Benchmarks */}
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Expected Performance</p>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                            <span className="text-muted-foreground">CPM</span><span>{rec.benchmarks?.expectedCPM}</span>
+                            <span className="text-muted-foreground">CTR</span><span>{rec.benchmarks?.expectedCTR}</span>
+                            <span className="text-muted-foreground">CPL</span><span>{rec.benchmarks?.expectedCPL}</span>
+                            <span className="text-muted-foreground">Leads/day</span><span>{rec.benchmarks?.expectedLeadsPerDay}</span>
+                          </div>
+                        </div>
+                        {/* Landing page */}
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Landing Page</p>
+                          <a href={rec.landingPage?.url} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline break-all">
+                            {rec.landingPage?.url?.split("?")[0]}
+                          </a>
+                          <p className="text-xs text-muted-foreground mt-1">{rec.landingPage?.rationale}</p>
+                        </div>
+                      </div>
+
+                      {/* Ad copy */}
+                      <div className="bg-muted/40 rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ad Creative</p>
+                        <p className="text-sm">{rec.creative?.primaryText}</p>
+                        <div className="flex gap-4 text-xs">
+                          <span><strong>Headline:</strong> {rec.creative?.headline}</span>
+                          <span><strong>CTA:</strong> {rec.creative?.callToAction}</span>
+                        </div>
+                      </div>
+
+                      {/* Targeting */}
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Targeting</p>
+                        <p className="text-xs text-muted-foreground">Ages {rec.targeting?.ageMin}–{rec.targeting?.ageMax} · {rec.targeting?.geographicFocus}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {(rec.targeting?.interests ?? []).map((i: string) => (
+                            <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{i}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Why this video + notes */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-muted-foreground">
+                        <div><strong className="text-foreground">Why this video:</strong> {rec.whyThisVideo}</div>
+                        <div><strong className="text-foreground">Notes:</strong> {rec.notes}</div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

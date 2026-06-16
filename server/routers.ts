@@ -115,6 +115,7 @@ import { vidiqRouter } from "./vidiqRouter";
 import { analyticsSyncRouter } from "./analyticsSyncRouter";
 import { videoPipelineRouter } from "./videoPipelineRouter";
 import { heygenRouter } from "./heygenRouter";
+import { metaAdsRouter } from "./metaAdsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -465,6 +466,7 @@ export const appRouter = router({
   analyticsSync: analyticsSyncRouter,
   videoPipeline: videoPipelineRouter,
   heygen: heygenRouter,
+  metaAds: metaAdsRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

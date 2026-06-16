@@ -54,6 +54,7 @@ const AskUrbanMonk = lazy(() => import("./pages/AskUrbanMonk"));
 const PresenceAssessment = lazy(() => import("./pages/PresenceAssessment"));
 const SyndicationQueue = lazy(() => import("./pages/SyndicationQueue"));
 const VADashboard = lazy(() => import("./pages/VADashboard"));
+const AdsManager = lazy(() => import("./pages/AdsManager"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -115,6 +116,7 @@ function Router() {
         <Route path={"/presence-assessment"} component={PresenceAssessment} />
         <Route path={"/syndication"} component={SyndicationQueue} />
         <Route path={"/va"} component={VADashboard} />
+        <Route path={"/ads"} component={AdsManager} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

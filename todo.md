@@ -3968,3 +3968,18 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Update VA Dashboard job cards: show productionPath badge, output channel chips
 - [x] Update Command Center Kanban: Generate Video modal to pick path + channels
 - [ ] Update PipelineStatusBadge to reflect multi-channel status
+
+## AI Ads Manager — Phase 1
+
+- [ ] Add META_AD_ACCOUNT_ID, META_AD_ACCESS_TOKEN, META_APP_ID, META_APP_SECRET secrets
+- [ ] Build server/metaAdsRouter.ts — tRPC router for campaign data, insights, and creative management
+- [ ] Build server/metaAdsClient.ts — Meta Marketing API client (campaigns, ad sets, insights, creatives)
+- [ ] Add metaAdsRouter to server/routers.ts
+- [ ] Build client/src/pages/AdsManager.tsx — Ads Performance dashboard page
+- [ ] Add Ads Manager nav link to sidebar/navigation
+- [ ] Campaign overview table: name, status, spend, impressions, CPL, CTR, ROAS
+- [ ] Creative fatigue alerts: flag ads with frequency > 3.5 or CTR declining > 20% WoW
+- [ ] Signal diagnostics: pixel health check via Meta API
+- [ ] Date range selector (last 7d, 14d, 30d, custom)
+- [ ] Campaign-level drill-down: ad sets and individual ads
+- [ ] One-click pause/activate controls for campaigns

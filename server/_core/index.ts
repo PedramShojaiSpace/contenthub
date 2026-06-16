@@ -738,6 +738,43 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+
+    // ── Startup: Restore OAuth tokens from DB into process.env ───────────────
+    // process.env tokens are set in-memory during OAuth callbacks but are lost
+    // on every server restart. This restores them from the DB so the server
+    // works correctly without requiring the user to re-authorize after restarts.
+    (async () => {
+      try {
+        const { getDb } = await import("../db");
+        const { userCredentials, users } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return;
+        const ownerOpenId = process.env.OWNER_OPEN_ID;
+        let ownerUserId = 1;
+        if (ownerOpenId) {
+          const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.openId, ownerOpenId));
+          if (owner) ownerUserId = owner.id;
+        }
+        const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ownerUserId));
+        if (creds) {
+          if ((creds as any).youtubeRefreshToken && !process.env.YOUTUBE_REFRESH_TOKEN) {
+            process.env.YOUTUBE_REFRESH_TOKEN = (creds as any).youtubeRefreshToken;
+            console.log(`[Startup] Restored YOUTUBE_REFRESH_TOKEN from DB (channel: ${(creds as any).youtubeChannelTitle ?? 'unknown'})`);
+          }
+          if ((creds as any).gmailRefreshToken && !process.env.GMAIL_REFRESH_TOKEN) {
+            process.env.GMAIL_REFRESH_TOKEN = (creds as any).gmailRefreshToken;
+            console.log(`[Startup] Restored GMAIL_REFRESH_TOKEN from DB`);
+          }
+        } else {
+          console.log(`[Startup] No user credentials found in DB for owner userId=${ownerUserId}`);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[Startup] Failed to restore OAuth tokens from DB:`, msg);
+      }
+    })();
+
     // Start the weekly Monday digest cron
     startWeeklyDigestCron();
 

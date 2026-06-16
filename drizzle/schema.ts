@@ -2210,3 +2210,31 @@ export const adsWeeklyDigests = mysqlTable("ads_weekly_digests", {
   actionsCount: int("actions_count"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── Hook A/B Tests ────────────────────────────────────────────────────────────
+// Tracks Meta A/B test campaigns created from hook variants
+export const hookAbTests = mysqlTable("hook_ab_tests", {
+  id: int("id").autoincrement().primaryKey(),
+  hookGenerationId: int("hookGenerationId").notNull(),
+  campaignId: varchar("campaignId", { length: 64 }).notNull(),
+  adSetIds: text("adSetIds").notNull(),       // JSON array of ad set IDs
+  adIds: text("adIds").notNull(),             // JSON array of ad IDs
+  topic: text("topic").notNull(),
+  targetProduct: varchar("targetProduct", { length: 32 }).notNull(),
+  dailyBudgetPerVariant: decimal("dailyBudgetPerVariant", { precision: 10, scale: 2 }).notNull(),
+  testDurationDays: int("testDurationDays").notNull().default(5),
+  variantCount: int("variantCount").notNull().default(5),
+  // paused | active | completed | winner_selected
+  status: mysqlEnum("hat_status", ["paused", "active", "completed", "winner_selected"])
+    .default("paused")
+    .notNull(),
+  winnerAdId: varchar("winnerAdId", { length: 64 }),
+  winnerFramework: varchar("winnerFramework", { length: 64 }),
+  winnerCtr: decimal("winnerCtr", { precision: 10, scale: 4 }),
+  winnerCpl: decimal("winnerCpl", { precision: 10, scale: 2 }),
+  promotedCampaignId: varchar("promotedCampaignId", { length: 64 }),
+  createdAt: timestamp("hat_createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("hat_updatedAt").defaultNow().notNull(),
+});
+export type HookAbTest = typeof hookAbTests.$inferSelect;
+export type InsertHookAbTest = typeof hookAbTests.$inferInsert;

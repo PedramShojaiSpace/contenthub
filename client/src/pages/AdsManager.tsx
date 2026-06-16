@@ -28,6 +28,9 @@ import {
   ExternalLink,
   Target,
   BarChart2,
+  Trophy,
+  ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -195,6 +198,10 @@ export default function AdsManager() {
           <TabsTrigger value="organic2paid" className="gap-1.5">
             <Rocket className="w-3.5 h-3.5" />
             Organic → Paid
+          </TabsTrigger>
+          <TabsTrigger value="hooktesting" className="gap-1.5">
+            <Zap className="w-3.5 h-3.5" />
+            Hook Testing
           </TabsTrigger>
         </TabsList>
 
@@ -481,7 +488,12 @@ export default function AdsManager() {
           <OrganicToPaidTab />
         </TabsContent>
 
-        {/* ── Optimizer Tab (Phase 3) ────────────────────────────────────────────── */}
+        {/* ── Hook Testing Tab ──────────────────────────────────────────────────────── */}
+        <TabsContent value="hooktesting" className="space-y-4 mt-4">
+          <HookTestingTab />
+        </TabsContent>
+
+                {/* ── Optimizer Tab (Phase 3) ────────────────────────────────────────────── */}
         <TabsContent value="optimizer" className="space-y-4 mt-4">
           <OptimizerTab />
         </TabsContent>

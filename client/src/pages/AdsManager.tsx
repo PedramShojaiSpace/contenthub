@@ -807,7 +807,7 @@ function OptimizerTab() {
   const optimizationLog = trpc.metaAds.getOptimizationLog.useQuery({ limit: 50 });
   const runNow = trpc.metaAds.runOptimizationNow.useMutation({
     onSuccess: (result) => {
-      toast.success(`Optimization run complete — ${result.actionsCount} actions taken`);
+      toast.success(`Optimization run complete — ${result.actions?.length ?? 0} actions taken`);
       optimizationLog.refetch();
     },
     onError: (err) => toast.error(`Optimization failed: ${err.message}`),

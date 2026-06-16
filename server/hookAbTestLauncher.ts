@@ -103,6 +103,10 @@ export async function launchHookAbTest(
   if (!AD_ACCOUNT_ID || !ACCESS_TOKEN) {
     throw new Error("META_AD_ACCOUNT_ID and META_AD_ACCESS_TOKEN must be set");
   }
+  const pageId = process.env.META_PAGE_ID;
+  if (!pageId) {
+    throw new Error("META_PAGE_ID is not set — required to create ad creatives. Add it in Settings → Secrets.");
+  }
 
   const dateStr = new Date().toISOString().split("T")[0];
   const campaignName = `Hook Test — ${config.topic.slice(0, 40)} — ${dateStr}`;
@@ -148,7 +152,7 @@ export async function launchHookAbTest(
     const creative = await metaPost(`act_${AD_ACCOUNT_ID}/adcreatives`, {
       name: `Creative — Hook ${i + 1} — ${variant.framework}`,
       object_story_spec: {
-        page_id: process.env.META_PAGE_ID ?? "",
+        page_id: pageId,
         video_data: {
           video_url: config.videoUrl,
           message: variant.hookText,
@@ -184,7 +188,7 @@ export async function launchHookAbTest(
       targetProduct: config.targetProduct,
       dailyBudgetPerVariant: config.dailyBudgetPerVariant.toString(),
       testDurationDays: config.testDurationDays,
-      status: "paused",
+      status: "active",
       variantCount: config.variants.length,
     });
   }

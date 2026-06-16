@@ -18,7 +18,7 @@
  */
 
 import { getDb } from "./db";
-import { hookAbTests, frameworkPerformance } from "../drizzle/schema";
+import { hookAbTests, frameworkPerformance, hookGenerations } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 
@@ -122,6 +122,22 @@ export async function checkAndPickWinner(testId: number): Promise<{
   const adSetIds = JSON.parse(test.adSetIds) as string[];
   const insights = await getAdInsights(adIds);
 
+  // Resolve framework names from hookGenerations hooksJson (adIds are in variant order)
+  try {
+    const [gen] = await db
+      .select()
+      .from(hookGenerations)
+      .where(eq(hookGenerations.id, test.hookGenerationId));
+    if (gen?.hooksJson) {
+      const variants = JSON.parse(gen.hooksJson) as Array<{ framework: string }>;
+      insights.forEach((ins, idx) => {
+        if (variants[idx]?.framework) ins.framework = variants[idx].framework;
+      });
+    }
+  } catch (e) {
+    console.warn("[hookWinnerPicker] Could not resolve framework names:", e);
+  }
+
   if (!insights.length) {
     return { hasWinner: false, reason: "No insights data yet — test may not have started" };
   }
@@ -170,6 +186,7 @@ export async function checkAndPickWinner(testId: number): Promise<{
     .set({
       status: "winner_selected",
       winnerAdId: winner.adId,
+      winnerFramework: winner.framework || "unknown",
       winnerCtr: winner.ctr.toFixed(4),
       winnerCpl: winner.cpl.toFixed(2),
     })

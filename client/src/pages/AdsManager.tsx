@@ -203,6 +203,14 @@ export default function AdsManager() {
             <Zap className="w-3.5 h-3.5" />
             Hook Testing
           </TabsTrigger>
+          <TabsTrigger value="optimizer" className="gap-1.5">
+            <BarChart2 className="w-3.5 h-3.5" />
+            Optimizer
+          </TabsTrigger>
+          <TabsTrigger value="digest" className="gap-1.5">
+            <Activity className="w-3.5 h-3.5" />
+            Weekly Digest
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Overview Tab ────────────────────────────────────────────────── */}

@@ -2131,8 +2131,12 @@ export type VideoEngagementSnapshot = typeof videoEngagementSnapshots.$inferSele
  */
 export const paidPromoCandidates = mysqlTable("paid_promo_candidates", {
   id: int("ppc_id").primaryKey().autoincrement(),
-  videoJobId: int("ppc_video_job_id").notNull(),
-  youtubeVideoId: varchar("ppc_yt_video_id", { length: 64 }).notNull(),
+  // Source platform — youtube, meta, linkedin, tiktok
+  platform: varchar("ppc_platform", { length: 32 }).default("youtube").notNull(),
+  // For non-YouTube sources: the native post ID
+  sourcePostId: varchar("ppc_source_post_id", { length: 128 }),
+  videoJobId: int("ppc_video_job_id"),
+  youtubeVideoId: varchar("ppc_yt_video_id", { length: 64 }),
   youtubeTitle: varchar("ppc_yt_title", { length: 512 }),
   youtubeThumbnailUrl: text("ppc_yt_thumbnail_url"),
   // Signal metrics at time of flagging

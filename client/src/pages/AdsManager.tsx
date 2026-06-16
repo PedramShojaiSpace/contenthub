@@ -530,19 +530,45 @@ const STATUS_LABELS: Record<CandidateStatus, { label: string; color: string }> =
 };
 
 function SignalStrengthBadge({ strength }: { strength: string }) {
+  if (strength === "exceptional") return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Exceptional Signal</Badge>;
   if (strength === "strong") return <Badge className="bg-green-100 text-green-800 border-green-200">Strong Signal</Badge>;
   if (strength === "moderate") return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Moderate Signal</Badge>;
   return <Badge variant="outline">{strength}</Badge>;
 }
 
+const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
+  youtube: { label: "YouTube", color: "bg-red-100 text-red-700" },
+  meta: { label: "Meta", color: "bg-blue-100 text-blue-700" },
+  linkedin: { label: "LinkedIn", color: "bg-sky-100 text-sky-700" },
+  tiktok: { label: "TikTok", color: "bg-pink-100 text-pink-700" },
+};
+
+function PlatformBadge({ platform }: { platform?: string | null }) {
+  const p = platform ?? "youtube";
+  const info = PLATFORM_LABELS[p] ?? { label: p, color: "bg-gray-100 text-gray-600" };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${info.color}`}>
+      {info.label}
+    </span>
+  );
+}
+
+type PlatformFilter = "youtube" | "meta" | "linkedin";
+
 function OrganicToPaidTab() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<CandidateStatus[]>(["flagged", "recommended", "approved"]);
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter[]>(["youtube", "meta", "linkedin"]);
 
   const candidates = trpc.metaAds.getPaidPromoCandidates.useQuery({ status: statusFilter });
   const runPoller = trpc.metaAds.runSignalPoller.useMutation({
-    onSuccess: (data) => {
-      toast.success(`Signal scan complete: ${data.videosChecked} videos checked, ${data.candidatesFlagged} flagged`);
+    onSuccess: (data: any) => {
+      const parts: string[] = [];
+      if (data.videosChecked > 0) parts.push(`${data.videosChecked} YouTube videos`);
+      if (data.metaPostsChecked > 0) parts.push(`${data.metaPostsChecked} Meta posts`);
+      if (data.linkedInPostsChecked > 0) parts.push(`${data.linkedInPostsChecked} LinkedIn posts`);
+      const scanned = parts.length > 0 ? parts.join(", ") : "0 items";
+      toast.success(`Scan complete: ${scanned} checked — ${data.candidatesFlagged} new candidates flagged`);
       candidates.refetch();
     },
     onError: (e) => toast.error(`Scan failed: ${e.message}`),
@@ -568,7 +594,10 @@ function OrganicToPaidTab() {
     onError: (e) => toast.error(`Launch failed: ${e.message}`),
   });
 
-  const list = candidates.data ?? [];
+  const allCandidates = candidates.data ?? [];
+  const list = platformFilter.length > 0
+    ? allCandidates.filter((c: any) => platformFilter.includes((c.platform ?? "youtube") as PlatformFilter))
+    : allCandidates;
 
   return (
     <div className="space-y-4">
@@ -577,7 +606,7 @@ function OrganicToPaidTab() {
         <div>
           <h2 className="text-lg font-semibold">Organic → Paid Signal Engine</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Videos outperforming channel averages are flagged as paid promotion candidates. Claude generates the campaign brief.
+            High-performing organic posts across YouTube, Meta, and LinkedIn are flagged as paid promotion candidates.
           </p>
         </div>
         <Button
@@ -597,14 +626,40 @@ function OrganicToPaidTab() {
           <div className="flex items-start gap-3">
             <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
             <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">How it works:</strong> Every 24 hours, the engine checks YouTube stats for all published videos.
-              Videos with engagement rate &gt;3% or outlier score &gt;1.5x the channel average are flagged.
+              <strong className="text-foreground">How it works:</strong> Every 24 hours, the engine scans your YouTube videos, Meta Page posts, and LinkedIn posts.
+              Content with engagement rate ≥3% (YouTube/LinkedIn) or ≥2% (Meta) is flagged as a paid candidate.
               Click <strong>Generate Brief</strong> to have Claude write a full campaign recommendation.
               Click <strong>Approve</strong> then <strong>Launch in Meta</strong> to create a PAUSED campaign ready for your review.
+              TikTok scanning will be added once TikTok Business API access is configured.
             </p>
           </div>
         </CardContent>
       </Card>
+
+      {/* Platform filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Platform:</span>
+        {(["youtube", "meta", "linkedin"] as PlatformFilter[]).map((p) => {
+          const info = PLATFORM_LABELS[p];
+          return (
+            <button
+              key={p}
+              onClick={() =>
+                setPlatformFilter((prev) =>
+                  prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+                )
+              }
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                platformFilter.includes(p)
+                  ? info.color + " border-transparent"
+                  : "bg-background text-muted-foreground border-border"
+              }`}
+            >
+              {info.label}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Status filter */}
       <div className="flex gap-2 flex-wrap">
@@ -657,18 +712,36 @@ function OrganicToPaidTab() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <PlatformBadge platform={(c as any).platform} />
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>{statusInfo.label}</span>
                         <SignalStrengthBadge strength={c.signalStrength ?? ""} />
                       </div>
-                      <h3 className="font-medium mt-1.5 truncate">{c.youtubeTitle ?? `Video ${c.youtubeVideoId}`}</h3>
+                      <h3 className="font-medium mt-1.5 truncate">{c.youtubeTitle ?? `Post ${(c as any).sourcePostId ?? c.youtubeVideoId}`}</h3>
                       <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
-                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(c.viewCount ?? 0).toLocaleString()} views</span>
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {(c.viewCount ?? 0).toLocaleString()} {(c as any).platform === "meta" ? "reach" : (c as any).platform === "linkedin" ? "impressions" : "views"}
+                        </span>
                         <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" />{parseFloat(c.engagementRate ?? "0").toFixed(2)}% engagement</span>
-                        <span className="flex items-center gap-1"><BarChart2 className="w-3 h-3" />{parseFloat(c.outlierScore ?? "0").toFixed(2)}x outlier</span>
-                        {c.youtubeVideoId && (
+                        {(c as any).platform === "youtube" && (
+                          <span className="flex items-center gap-1"><BarChart2 className="w-3 h-3" />{parseFloat(c.outlierScore ?? "0").toFixed(2)}x outlier</span>
+                        )}
+                        {c.youtubeVideoId && (c as any).platform !== "meta" && (c as any).platform !== "linkedin" && (
                           <a href={`https://www.youtube.com/watch?v=${c.youtubeVideoId}`} target="_blank" rel="noopener noreferrer"
                             className="flex items-center gap-1 text-primary hover:underline">
-                            <ExternalLink className="w-3 h-3" />YouTube
+                            <ExternalLink className="w-3 h-3" />View on YouTube
+                          </a>
+                        )}
+                        {(c as any).sourcePostId && (c as any).platform === "meta" && (
+                          <a href={`https://www.facebook.com/${(c as any).sourcePostId}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline">
+                            <ExternalLink className="w-3 h-3" />View on Facebook
+                          </a>
+                        )}
+                        {(c as any).sourcePostId && (c as any).platform === "linkedin" && (
+                          <a href={`https://www.linkedin.com/feed/update/${(c as any).sourcePostId}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline">
+                            <ExternalLink className="w-3 h-3" />View on LinkedIn
                           </a>
                         )}
                       </div>

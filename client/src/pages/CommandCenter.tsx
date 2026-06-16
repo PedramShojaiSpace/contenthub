@@ -91,6 +91,7 @@ import {
   PenLine,
   Edit3,
   Save,
+  Clapperboard,
 } from "lucide-react";  
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
@@ -2132,6 +2133,48 @@ export default function CommandCenter() {
     setGeneratingTiktok(true);
     tiktokScriptMutation.mutate({ title, platform: "tiktok" });
   };
+
+  // Blog → YouTube Script state (for blog card modal)
+  const [blogScript, setBlogScript] = useState<string | null>(null);
+  const [generatingBlogScript, setGeneratingBlogScript] = useState(false);
+  const [blogScriptSaved, setBlogScriptSaved] = useState(false);
+  const [showBlogVideoPipelinePanel, setShowBlogVideoPipelinePanel] = useState(false);
+  const [blogVideoPipelineLaunched, setBlogVideoPipelineLaunched] = useState(false);
+
+  const blogScriptMutation = trpc.research.generateTeleprompterScript.useMutation({
+    onSuccess: (data) => {
+      setBlogScript(data.script);
+      setGeneratingBlogScript(false);
+      toast.success("YouTube script ready!");
+    },
+    onError: (err) => {
+      setGeneratingBlogScript(false);
+      toast.error("Script generation failed: " + err.message);
+    },
+  });
+
+  const handleGenerateBlogScript = (item: ContentItem) => {
+    const title = item.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || item.rawIdea || item.title;
+    setBlogScript(null);
+    setBlogScriptSaved(false);
+    setBlogVideoPipelineLaunched(false);
+    setShowBlogVideoPipelinePanel(false);
+    setGeneratingBlogScript(true);
+    blogScriptMutation.mutate({ title, platform: "youtube" });
+  };
+
+  const blogStartVideoJobMutation = trpc.videoPipeline.startVideoJob.useMutation({
+    onSuccess: (data) => {
+      setBlogVideoPipelineLaunched(true);
+      setShowBlogVideoPipelinePanel(false);
+      toast.success(data.message ?? "Video job queued! Check VA Dashboard for review.", {
+        action: { label: "VA Dashboard →", onClick: () => setLocation("/va") },
+      });
+    },
+    onError: (err) => {
+      toast.error("Failed to queue video: " + err.message);
+    },
+  });
 
   // Save to Script Library
   const utils = trpc.useUtils();
@@ -4381,6 +4424,110 @@ export default function CommandCenter() {
                       rows={14}
                       className="bg-background border-violet-500/20 resize-none text-sm font-mono leading-relaxed text-foreground"
                     />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Blog → YouTube Script + Video Pipeline — blog cards only */}
+            {selectedItem.platform === "blog" && (
+              <div className="rounded-lg border border-red-700/30 bg-red-950/20 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-red-400/80 font-semibold uppercase tracking-wider flex items-center gap-1">
+                    <Clapperboard className="h-3 w-3" />
+                    YouTube Script &amp; Video Pipeline
+                  </p>
+                  {blogScript && !generatingBlogScript && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]"
+                        onClick={() => { navigator.clipboard.writeText(blogScript); toast.success("Script copied!"); }}>
+                        <Copy className="h-3 w-3 mr-1" />Copy
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-green-400 hover:text-green-300"
+                        onClick={() => { if (blogScriptSaved) return; handleSaveToLibrary(selectedItem.title, blogScript, "youtube", selectedItem.id); setBlogScriptSaved(true); }}
+                        disabled={saveScriptMutation.isPending || blogScriptSaved}>
+                        {saveScriptMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : blogScriptSaved ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <BookMarked className="h-3 w-3 mr-1" />}
+                        {blogScriptSaved ? "Saved!" : "Save to Library"}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-amber-400 hover:text-amber-300"
+                        onClick={() => handleGenerateBlogScript(selectedItem)} disabled={generatingBlogScript}>
+                        <RefreshCw className="h-3 w-3 mr-1" />Redo
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {!blogScript && !generatingBlogScript && (
+                  <Button variant="outline" size="sm" className="w-full border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300 text-xs"
+                    onClick={() => handleGenerateBlogScript(selectedItem)}>
+                    <Clapperboard className="h-3 w-3 mr-1" />Generate YouTube Script
+                  </Button>
+                )}
+                {generatingBlogScript && (
+                  <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-red-400" />
+                    Writing YouTube script from blog post… ~30 seconds.
+                  </div>
+                )}
+                {blogScript && !generatingBlogScript && (
+                  <div className="rounded-lg border border-red-500/20 bg-black/20 p-3 max-h-64 overflow-y-auto">
+                    <p className="text-[10px] text-red-400/70 mb-2 font-medium uppercase tracking-wider">Teleprompter Script — YouTube Ready</p>
+                    <div className="text-xs text-foreground leading-loose whitespace-pre-wrap font-mono">{blogScript}</div>
+                  </div>
+                )}
+                {blogScript && !generatingBlogScript && (
+                  <div className="space-y-2">
+                    {blogVideoPipelineLaunched ? (
+                      <div className="flex items-center gap-2 text-xs text-green-400">
+                        <CheckCircle2 className="h-3.5 w-3.5" />Video job queued — check VA Dashboard.
+                      </div>
+                    ) : (
+                      <>
+                        <Button variant="outline" size="sm"
+                          className="w-full border-purple-500/40 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 text-xs"
+                          onClick={() => setShowBlogVideoPipelinePanel((v) => !v)}
+                          disabled={blogStartVideoJobMutation.isPending}>
+                          <Clapperboard className="h-3 w-3 mr-1" />Push to Video Pipeline
+                        </Button>
+                        {showBlogVideoPipelinePanel && (
+                          <div className="rounded-lg border border-purple-700/30 bg-purple-950/20 p-3 space-y-3">
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Production Path</p>
+                              <div className="flex flex-col gap-1">
+                                {PATH_OPTIONS.map((opt) => (
+                                  <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="blogVideoPipelinePath" value={opt.id}
+                                      checked={videoPath === opt.id}
+                                      onChange={() => setVideoPath(opt.id as "heygen_then_descript" | "heygen_only" | "descript_only")}
+                                      className="accent-purple-500" />
+                                    <span className="text-xs text-foreground">{opt.label}</span>
+                                    <span className="text-xs text-muted-foreground">— {opt.desc.split("(")[0].trim()}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Output Channels</p>
+                              <div className="flex flex-wrap gap-2">
+                                {ALL_CHANNELS.map((ch) => (
+                                  <label key={ch.id} className="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" checked={videoChannels.includes(ch.id)}
+                                      onChange={(e) => setVideoChannels((prev) => e.target.checked ? [...prev, ch.id] : prev.length === 1 ? prev : prev.filter((c) => c !== ch.id))}
+                                      className="accent-purple-500" />
+                                    <span className={`text-xs ${ch.color}`}>{ch.label}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs gap-1.5"
+                              onClick={() => blogStartVideoJobMutation.mutate({ contentItemId: selectedItem.id, scriptTitle: selectedItem.title, scriptText: blogScript, productionPath: videoPath, outputChannels: videoChannels as ("youtube" | "tiktok" | "meta" | "instagram" | "x")[] })}
+                              disabled={blogStartVideoJobMutation.isPending || videoChannels.length === 0}>
+                              {blogStartVideoJobMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clapperboard className="h-3.5 w-3.5" />}
+                              Launch Video Job →
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </div>

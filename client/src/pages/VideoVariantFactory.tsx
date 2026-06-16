@@ -1562,10 +1562,18 @@ export default function VideoVariantFactory() {
                       </div>
                     )}
 
-                    {/* Meta Ads config panel */}
+                    {/* Meta Ads Hook A/B Test panel */}
                     {outputPath === "meta" && (
+                      <MetaHookAbTestPanel
+                        doneVariants={doneVariants.map(v => ({ id: v.id, variantLabel: v.variantLabel, s3Url: v.s3Url }))}
+                        jobName={jobName}
+                        onLaunched={() => setOutputPath("none")}
+                      />
+                    )}
+                    {/* OLD manual Meta panel — kept as hidden placeholder */}
+                    {false && (
                       <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-3">
-                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Meta Ads Manager</p>
+                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Meta Ads Manager (legacy)</p>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Ad Account ID</label>

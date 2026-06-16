@@ -349,10 +349,11 @@ export async function runOrganicSignalPoller(): Promise<{
   snapshotsTaken: number;
   candidatesFlagged: number;
   metaPostsChecked: number;
+  instagramPostsChecked: number;
   linkedInPostsChecked: number;
 }> {
   const db = await getDb();
-  if (!db) return { videosChecked: 0, snapshotsTaken: 0, candidatesFlagged: 0, metaPostsChecked: 0, linkedInPostsChecked: 0 };
+  if (!db) return { videosChecked: 0, snapshotsTaken: 0, candidatesFlagged: 0, metaPostsChecked: 0, instagramPostsChecked: 0, linkedInPostsChecked: 0 };
 
   let snapshotsTaken = 0;
   let candidatesFlagged = 0;

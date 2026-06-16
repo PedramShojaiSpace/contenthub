@@ -1,30 +1,23 @@
 /**
  * hookAbTestLauncher.ts
- * 
- * Creates a Meta A/B test campaign with one ad per hook variant.
- * Each ad uses the same video creative but different hook text overlays
- * (via ad copy / primary text differences) so Meta can test which hook
- * drives the best CTR and CPL.
- * 
+ *
+ * Creates a Meta A/B test campaign with one ad per video variant.
+ * Each variant gets its own video URL (from VideoVariantFactory) and
+ * optionally its own hook text (from the hook generator).
+ *
  * Structure:
  *   Campaign: "Hook Test — [Topic] — [Date]" (PAUSED, manual activation)
- *   └── Ad Set: "Cold — [Age] — [Interests]" ($X/day budget)
- *       └── Ad 1: Hook A (contradiction)
- *       └── Ad 2: Hook B (curiosityGap)
- *       └── Ad 3: Hook C (specificity)
- *       └── Ad 4: Hook D (directChallenge)
- *       └── Ad 5: Hook E (repFormula)
- * 
- * Note: Meta's native split-test requires identical budgets per variant.
- * We use a single ad set with multiple ads — Meta's delivery system
- * naturally allocates spend toward better performers (Advantage+ delivery).
- * 
- * For true isolated testing, each hook gets its own ad set at $3-5/day.
+ *   └── Ad Set 1: Hook Variant 1 ($X/day budget, own video)
+ *   └── Ad Set 2: Hook Variant 2 ($X/day budget, own video)
+ *   └── Ad Set N: Hook Variant N ($X/day budget, own video)
+ *
+ * Each ad set has its own video creative so Meta is truly testing
+ * different video hooks, not just different ad copy.
  */
 
 import { getDb } from "./db";
 import { hookAbTests } from "../drizzle/schema";
-import type { HookVariant, TargetProduct } from "./hookGenerator";
+import type { TargetProduct } from "./hookGenerator";
 
 const META_API_BASE = "https://graph.facebook.com/v21.0";
 const AD_ACCOUNT_ID = process.env.META_AD_ACCOUNT_ID;
@@ -64,20 +57,20 @@ const DEFAULT_TARGETING = {
   device_platforms: ["mobile"],
 };
 
-export interface HookAbTestConfig {
+export interface HookAbTestInput {
   topic: string;
   targetProduct: TargetProduct;
-  variants: HookVariant[];
-  videoUrl: string;           // S3 URL of the video to use as creative
-  dailyBudgetPerVariant: number; // in USD, e.g. 5 for $5/day
-  testDurationDays: number;   // e.g. 5
-  hookGenerationId: number;   // FK to hookGenerations table
+  variantVideoUrls: string[];   // one S3 URL per variant (from VideoVariantFactory)
+  hookTexts?: string[];          // optional hook text per variant (matched by index)
+  dailyBudgetPerVariant: number; // in USD
+  durationDays: number;
 }
 
 export interface HookAbTestResult {
   campaignId: string;
   adSetIds: string[];
   adIds: string[];
+  adsCreated: number;
   metaAdsManagerUrl: string;
   estimatedTotalDailyBudget: number;
   estimatedTotalTestCost: number;
@@ -97,9 +90,7 @@ async function metaPost(endpoint: string, body: Record<string, unknown>): Promis
   return data;
 }
 
-export async function launchHookAbTest(
-  config: HookAbTestConfig
-): Promise<HookAbTestResult> {
+export async function launchHookAbTest(input: HookAbTestInput): Promise<HookAbTestResult> {
   if (!AD_ACCOUNT_ID || !ACCESS_TOKEN) {
     throw new Error("META_AD_ACCOUNT_ID and META_AD_ACCESS_TOKEN must be set");
   }
@@ -108,8 +99,9 @@ export async function launchHookAbTest(
     throw new Error("META_PAGE_ID is not set — required to create ad creatives. Add it in Settings → Secrets.");
   }
 
+  const { variantVideoUrls, hookTexts, topic, targetProduct, dailyBudgetPerVariant, durationDays } = input;
   const dateStr = new Date().toISOString().split("T")[0];
-  const campaignName = `Hook Test — ${config.topic.slice(0, 40)} — ${dateStr}`;
+  const campaignName = `Hook Test — ${topic.slice(0, 40)} — ${dateStr}`;
 
   // 1. Create Campaign (PAUSED — user activates manually after review)
   const campaign = await metaPost(`act_${AD_ACCOUNT_ID}/campaigns`, {
@@ -123,40 +115,36 @@ export async function launchHookAbTest(
 
   const adSetIds: string[] = [];
   const adIds: string[] = [];
-  const landingUrl = PRODUCT_URLS[config.targetProduct];
+  const landingUrl = PRODUCT_URLS[targetProduct];
 
-  // 2. Create one Ad Set per variant (isolated budget per hook)
-  for (let i = 0; i < config.variants.length; i++) {
-    const variant = config.variants[i];
-    const adSetName = `Hook ${i + 1} — ${variant.frameworkLabel}`;
+  // 2. Create one Ad Set + Creative + Ad per variant
+  for (let i = 0; i < variantVideoUrls.length; i++) {
+    const videoUrl = variantVideoUrls[i];
+    const hookText = hookTexts?.[i] ?? `Hook Variant ${i + 1}`;
+    const adSetName = `Hook ${i + 1} — ${topic.slice(0, 30)}`;
 
     const adSet = await metaPost(`act_${AD_ACCOUNT_ID}/adsets`, {
       name: adSetName,
       campaign_id: campaignId,
-      daily_budget: Math.round(config.dailyBudgetPerVariant * 100), // in cents
+      daily_budget: Math.round(dailyBudgetPerVariant * 100), // in cents
       billing_event: "IMPRESSIONS",
       optimization_goal: "LINK_CLICKS",
       targeting: DEFAULT_TARGETING,
       status: "PAUSED",
       start_time: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
-      end_time: new Date(
-        Date.now() + config.testDurationDays * 24 * 3600000
-      ).toISOString(),
+      end_time: new Date(Date.now() + durationDays * 24 * 3600000).toISOString(),
     });
     const adSetId = (adSet as any).id as string;
     adSetIds.push(adSetId);
 
-    // 3. Create Ad Creative for this variant
-    // Primary text = hook text (what Pedram says in the video)
-    // Headline = overlay text (short punchy version)
+    // Create Ad Creative — each variant gets its own video
     const creative = await metaPost(`act_${AD_ACCOUNT_ID}/adcreatives`, {
-      name: `Creative — Hook ${i + 1} — ${variant.framework}`,
+      name: `Creative — Hook ${i + 1}`,
       object_story_spec: {
         page_id: pageId,
         video_data: {
-          video_url: config.videoUrl,
-          message: variant.hookText,
-          title: variant.overlayText,
+          video_url: videoUrl,
+          message: hookText,
           call_to_action: {
             type: "LEARN_MORE",
             value: { link: landingUrl },
@@ -166,9 +154,9 @@ export async function launchHookAbTest(
     });
     const creativeId = (creative as any).id as string;
 
-    // 4. Create Ad
+    // Create Ad
     const ad = await metaPost(`act_${AD_ACCOUNT_ID}/ads`, {
-      name: `Ad — Hook ${i + 1} — ${variant.framework}`,
+      name: `Ad — Hook ${i + 1}`,
       adset_id: adSetId,
       creative: { creative_id: creativeId },
       status: "PAUSED",
@@ -176,30 +164,31 @@ export async function launchHookAbTest(
     adIds.push((ad as any).id as string);
   }
 
-  // 5. Save test record to DB
+  // 3. Save test record to DB
   const db = await getDb();
   if (db) {
     await db.insert(hookAbTests).values({
-      hookGenerationId: config.hookGenerationId,
+      hookGenerationId: 0, // no longer required — variants come from VideoVariantFactory
       campaignId,
       adSetIds: JSON.stringify(adSetIds),
       adIds: JSON.stringify(adIds),
-      topic: config.topic,
-      targetProduct: config.targetProduct,
-      dailyBudgetPerVariant: config.dailyBudgetPerVariant.toString(),
-      testDurationDays: config.testDurationDays,
+      topic,
+      targetProduct,
+      dailyBudgetPerVariant: dailyBudgetPerVariant.toString(),
+      testDurationDays: durationDays,
       status: "active",
-      variantCount: config.variants.length,
+      variantCount: variantVideoUrls.length,
     });
   }
 
-  const totalDaily = config.dailyBudgetPerVariant * config.variants.length;
-  const totalCost = totalDaily * config.testDurationDays;
+  const totalDaily = dailyBudgetPerVariant * variantVideoUrls.length;
+  const totalCost = totalDaily * durationDays;
 
   return {
     campaignId,
     adSetIds,
     adIds,
+    adsCreated: adIds.length,
     metaAdsManagerUrl: `https://www.facebook.com/adsmanager/manage/campaigns?act=${AD_ACCOUNT_ID}&selected_campaign_ids=${campaignId}`,
     estimatedTotalDailyBudget: totalDaily,
     estimatedTotalTestCost: totalCost,

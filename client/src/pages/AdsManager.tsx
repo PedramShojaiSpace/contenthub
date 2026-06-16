@@ -31,7 +31,10 @@ import {
   Trophy,
   ChevronDown,
   Loader2,
+  Film,
+  Clapperboard,
 } from "lucide-react";
+import { Link } from "wouter";
 import { toast } from "sonner";
 
 const DATE_PRESETS = [
@@ -1400,57 +1403,26 @@ function HookTestingTab() {
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Video URL (for ads)</label>
-                <input
-                  className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="https://..."
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                />
+            {/* Redirect to VideoVariantFactory for multi-variant video upload + Meta launch */}
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <Clapperboard className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Launch Multi-Variant A/B Test</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload your hook clips (up to 10), body clip, and CTA clip in the Video Variant Factory.
+                    Once stitched, click <strong>"Launch Hook A/B Test on Meta"</strong> directly from the factory
+                    — each variant gets its own video ad in a single Meta campaign.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Daily Budget / Variant ($)</label>
-                <input
-                  type="number"
-                  min={3}
-                  max={20}
-                  className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={dailyBudget}
-                  onChange={(e) => setDailyBudget(Number(e.target.value))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Test Duration (days)</label>
-                <input
-                  type="number"
-                  min={3}
-                  max={14}
-                  className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={testDays}
-                  onChange={(e) => setTestDays(Number(e.target.value))}
-                />
-              </div>
+              <Link href="/video-variants">
+                <Button className="gap-2 bg-blue-600 hover:bg-blue-500 text-white w-full">
+                  <Film className="w-4 h-4" />
+                  Go to Video Variant Factory →
+                </Button>
+              </Link>
             </div>
-            <Button
-              onClick={() =>
-                launchTest.mutate({
-                  hookGenerationId: generatedHooks.id,
-                  topic,
-                  targetProduct,
-                  variants: generatedHooks.variants,
-                  videoUrl,
-                  dailyBudgetPerVariant: dailyBudget,
-                  testDurationDays: testDays,
-                })
-              }
-              disabled={launchTest.isPending || !videoUrl.trim()}
-              className="gap-2 bg-orange-600 hover:bg-orange-700 text-white"
-            >
-              {launchTest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
-              Launch A/B Test on Meta
-            </Button>
           </CardContent>
         </Card>
       )}

@@ -657,6 +657,32 @@ async function startServer() {
     }
   });
 
+  // ── Ads Optimization cron — daily at 06:00 UTC ──────────────────────────────
+  app.post("/api/scheduled/ads-optimize", async (req, res) => {
+    try {
+      const { runDailyOptimization } = await import("../adsOptimizationEngine");
+      const result = await runDailyOptimization();
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Ads Optimizer Cron] Handler error:", msg);
+      res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
+    }
+  });
+
+  // ── Ads Weekly Digest — every Monday at 08:00 UTC ─────────────────────────
+  app.post("/api/scheduled/ads-weekly-digest", async (req, res) => {
+    try {
+      const { generateWeeklyDigest } = await import("../adsWeeklyDigest");
+      const result = await generateWeeklyDigest();
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Ads Digest Cron] Handler error:", msg);
+      res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
+    }
+  });
+
   // ── Video Pipeline cron — every 15 minutes, polls Descript jobs ────────────
   app.post("/api/scheduled/video-pipeline", async (req, res) => {
     try {

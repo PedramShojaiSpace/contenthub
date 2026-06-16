@@ -445,3 +445,18 @@ export async function validateToken(config: MetaAdsConfig): Promise<{
     return { valid: false, error: err.message };
   }
 }
+
+// ─── Ad Set budget update ─────────────────────────────────────────────────────
+
+export async function updateAdSetBudget(
+  config: MetaAdsConfig,
+  adSetId: string,
+  dailyBudgetCents: number // Meta stores budgets in cents
+): Promise<boolean> {
+  const result = await metaPost<{ success: boolean }>(
+    adSetId,
+    { daily_budget: dailyBudgetCents.toString() },
+    config.accessToken
+  );
+  return result.success === true;
+}

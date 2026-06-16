@@ -480,6 +480,16 @@ export default function AdsManager() {
         <TabsContent value="organic2paid" className="space-y-4 mt-4">
           <OrganicToPaidTab />
         </TabsContent>
+
+        {/* ── Optimizer Tab (Phase 3) ────────────────────────────────────────────── */}
+        <TabsContent value="optimizer" className="space-y-4 mt-4">
+          <OptimizerTab />
+        </TabsContent>
+
+        {/* ── Weekly Digest Tab (Phase 3) ────────────────────────────────────────── */}
+        <TabsContent value="digest" className="space-y-4 mt-4">
+          <WeeklyDigestTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -777,6 +787,377 @@ function OrganicToPaidTab() {
               </Card>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Optimizer Tab (Phase 3) — Guardrails config + optimization log
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+
+function OptimizerTab() {
+  const utils = trpc.useUtils();
+  const guardrails = trpc.metaAds.getGuardrails.useQuery();
+  const optimizationLog = trpc.metaAds.getOptimizationLog.useQuery({ limit: 50 });
+  const runNow = trpc.metaAds.runOptimizationNow.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Optimization run complete — ${result.actionsCount} actions taken`);
+      optimizationLog.refetch();
+    },
+    onError: (err) => toast.error(`Optimization failed: ${err.message}`),
+  });
+  const updateGuardrails = trpc.metaAds.updateGuardrails.useMutation({
+    onSuccess: () => {
+      toast.success("Guardrails saved");
+      utils.metaAds.getGuardrails.invalidate();
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`),
+  });
+
+  const g = guardrails.data;
+
+  const [form, setForm] = useState({
+    targetCpl: g?.targetCpl ?? "25",
+    minDailyBudget: g?.minDailyBudget ?? "30",
+    maxDailyBudget: g?.maxDailyBudget ?? "500",
+    autoScaleEnabled: g?.autoScaleEnabled ?? true,
+    autoPauseEnabled: g?.autoPauseEnabled ?? true,
+    maxFrequencyBeforePause: g?.maxFrequencyBeforePause ?? "3.5",
+    minCtrBeforePause: g?.minCtrBeforePause ?? "0.5",
+    scaleUpMultiplier: g?.scaleUpMultiplier ?? "1.2",
+    minSpendForAction: g?.minSpendForAction ?? "20",
+  });
+
+  // Sync form when guardrails load
+  useState(() => {
+    if (g) {
+      setForm({
+        targetCpl: g.targetCpl,
+        minDailyBudget: g.minDailyBudget,
+        maxDailyBudget: g.maxDailyBudget,
+        autoScaleEnabled: g.autoScaleEnabled ?? true,
+        autoPauseEnabled: g.autoPauseEnabled ?? true,
+        maxFrequencyBeforePause: g.maxFrequencyBeforePause,
+        minCtrBeforePause: g.minCtrBeforePause,
+        scaleUpMultiplier: g.scaleUpMultiplier,
+        minSpendForAction: g.minSpendForAction,
+      });
+    }
+  });
+
+  const handleSave = () => {
+    updateGuardrails.mutate({
+      targetCpl: parseFloat(form.targetCpl as string),
+      minDailyBudget: parseFloat(form.minDailyBudget as string),
+      maxDailyBudget: parseFloat(form.maxDailyBudget as string),
+      autoScaleEnabled: form.autoScaleEnabled as boolean,
+      autoPauseEnabled: form.autoPauseEnabled as boolean,
+      maxFrequencyBeforePause: parseFloat(form.maxFrequencyBeforePause as string),
+      minCtrBeforePause: parseFloat(form.minCtrBeforePause as string),
+      scaleUpMultiplier: parseFloat(form.scaleUpMultiplier as string),
+      minSpendForAction: parseFloat(form.minSpendForAction as string),
+    });
+  };
+
+  const actionColor = (action: string) => {
+    if (action === "scaled") return "text-green-700 bg-green-50";
+    if (action === "paused") return "text-red-700 bg-red-50";
+    if (action === "budget_adjusted") return "text-blue-700 bg-blue-50";
+    return "text-gray-700 bg-gray-50";
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Automated Optimizer</h2>
+          <p className="text-sm text-muted-foreground">
+            Runs daily at 06:00 UTC — adjusts budgets, pauses underperformers, scales winners
+          </p>
+        </div>
+        <Button
+          onClick={() => runNow.mutate()}
+          disabled={runNow.isPending}
+          variant="outline"
+          className="gap-2"
+        >
+          {runNow.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+          Run Now
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Guardrails Config */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-amber-500" />
+              Budget Guardrails
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {guardrails.isLoading ? (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded" />)}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Target CPL ($)</Label>
+                    <Input
+                      type="number"
+                      value={form.targetCpl as string}
+                      onChange={(e) => setForm({ ...form, targetCpl: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Min Spend Before Action ($)</Label>
+                    <Input
+                      type="number"
+                      value={form.minSpendForAction as string}
+                      onChange={(e) => setForm({ ...form, minSpendForAction: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Min Daily Budget ($)</Label>
+                    <Input
+                      type="number"
+                      value={form.minDailyBudget as string}
+                      onChange={(e) => setForm({ ...form, minDailyBudget: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Max Daily Budget ($)</Label>
+                    <Input
+                      type="number"
+                      value={form.maxDailyBudget as string}
+                      onChange={(e) => setForm({ ...form, maxDailyBudget: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Max Frequency Before Pause</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={form.maxFrequencyBeforePause as string}
+                      onChange={(e) => setForm({ ...form, maxFrequencyBeforePause: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Min CTR Before Pause (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={form.minCtrBeforePause as string}
+                      onChange={(e) => setForm({ ...form, minCtrBeforePause: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Scale-Up Multiplier (e.g. 1.2 = +20%)</Label>
+                    <Input
+                      type="number"
+                      step="0.05"
+                      value={form.scaleUpMultiplier as string}
+                      onChange={(e) => setForm({ ...form, scaleUpMultiplier: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Auto-Scale Winners</Label>
+                    <Switch
+                      checked={form.autoScaleEnabled as boolean}
+                      onCheckedChange={(v) => setForm({ ...form, autoScaleEnabled: v })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Auto-Pause Underperformers</Label>
+                    <Switch
+                      checked={form.autoPauseEnabled as boolean}
+                      onCheckedChange={(v) => setForm({ ...form, autoPauseEnabled: v })}
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleSave}
+                  disabled={updateGuardrails.isPending}
+                  className="w-full"
+                  size="sm"
+                >
+                  {updateGuardrails.isPending ? "Saving..." : "Save Guardrails"}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Optimization Log */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="w-4 h-4 text-blue-500" />
+              Optimization Log
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {optimizationLog.isLoading ? (
+              <div className="space-y-2">
+                {[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted animate-pulse rounded" />)}
+              </div>
+            ) : (optimizationLog.data?.length ?? 0) === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No optimization actions yet</p>
+                <p className="text-xs mt-1">Click "Run Now" to trigger the first optimization pass</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {optimizationLog.data?.map((log) => (
+                  <div key={log.id} className="flex items-start gap-2 p-2 rounded-lg border">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${actionColor(log.action)}`}>
+                      {log.action.replace(/_/g, " ").toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium truncate">{log.campaignName}</p>
+                      <p className="text-xs text-muted-foreground">{log.reason}</p>
+                      {log.previousBudget && log.newBudget && (
+                        <p className="text-xs text-muted-foreground">
+                          ${log.previousBudget}/day → ${log.newBudget}/day
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {new Date(log.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Weekly Digest Tab (Phase 3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+import ReactMarkdown from "react-markdown";
+
+function WeeklyDigestTab() {
+  const digests = trpc.metaAds.getWeeklyDigests.useQuery({ limit: 12 });
+  const generateNow = trpc.metaAds.generateDigestNow.useMutation({
+    onSuccess: () => {
+      toast.success("Weekly digest generated");
+      digests.refetch();
+    },
+    onError: (err) => toast.error(`Failed to generate digest: ${err.message}`),
+  });
+  const [selectedDigest, setSelectedDigest] = useState<number | null>(null);
+
+  const selected = digests.data?.find((d) => d.id === selectedDigest) ?? digests.data?.[0] ?? null;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Weekly Performance Digest</h2>
+          <p className="text-sm text-muted-foreground">
+            Generated every Monday at 08:00 UTC — Claude analyzes your week and recommends actions
+          </p>
+        </div>
+        <Button
+          onClick={() => generateNow.mutate()}
+          disabled={generateNow.isPending}
+          variant="outline"
+          className="gap-2"
+        >
+          {generateNow.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          Generate Now
+        </Button>
+      </div>
+
+      {digests.isLoading ? (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />)}
+        </div>
+      ) : (digests.data?.length ?? 0) === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <BarChart2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No digests yet</p>
+          <p className="text-sm mt-1">Click "Generate Now" to create your first weekly digest</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Digest list */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">History</p>
+            {digests.data?.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => setSelectedDigest(d.id)}
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  (selected?.id === d.id) ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                }`}
+              >
+                <p className="text-sm font-medium">{d.weekStartDate} – {d.weekEndDate}</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs text-muted-foreground">${d.totalSpend} spend</span>
+                  <span className="text-xs text-muted-foreground">{d.totalLeads} leads</span>
+                  <span className="text-xs text-muted-foreground">CPL ${d.avgCpl}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Digest content */}
+          <div className="lg:col-span-2">
+            {selected ? (
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">
+                      Week of {selected.weekStartDate}
+                    </CardTitle>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>${selected.totalSpend} spend</span>
+                      <span>{selected.totalLeads} leads</span>
+                      <span>CPL ${selected.avgCpl}</span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm max-w-none text-foreground">
+                    <ReactMarkdown>{selected.digestMarkdown}</ReactMarkdown>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="text-center py-16 text-muted-foreground">
+                <p className="text-sm">Select a digest from the list</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

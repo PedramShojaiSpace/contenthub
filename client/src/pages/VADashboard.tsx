@@ -42,6 +42,7 @@ import {
   MessageCircle,
   Bot,
   Wand2,
+  Share2,
 } from "lucide-react";
 
 // ─── Syndication Types ────────────────────────────────────────────────────────
@@ -1241,6 +1242,41 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Social Channel Distribution Status — shown when job has social channels AND is uploaded/published */}
+          {(isUploadedUnlisted || isPublished) && outputChannelList.some(ch => ch !== "youtube") && (
+            <div className="border border-border/50 rounded-lg bg-muted/30 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Social Channel Distribution</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {outputChannelList.filter(ch => ch !== "youtube").map(ch => {
+                  const CHANNEL_ICONS: Record<string, string> = {
+                    tiktok: "🎵", meta: "👥", instagram: "📸", x: "𝕏"
+                  };
+                  return (
+                    <div key={ch} className={`flex items-center gap-2 px-3 py-2 rounded border text-xs ${
+                      CHANNEL_COLORS[ch] ?? "bg-muted text-muted-foreground border-border"
+                    }`}>
+                      <span>{CHANNEL_ICONS[ch] ?? "📢"}</span>
+                      <span className="font-medium">{CHANNEL_LABELS[ch] ?? ch}</span>
+                      <span className="ml-auto text-[10px] opacity-70">Queued in Buffer ✓</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {job.errorMessage && job.errorMessage.startsWith("Social posting") && (
+                <div className="text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded p-2">
+                  <span className="font-medium">Note:</span> {job.errorMessage}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Posts have been queued in Buffer and will publish at the next scheduled slot for each channel.
+                <a href="https://publish.buffer.com" target="_blank" rel="noopener noreferrer" className="ml-1 underline hover:text-foreground">Review in Buffer ↗</a>
+              </p>
             </div>
           )}
 

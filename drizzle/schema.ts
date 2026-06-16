@@ -2085,6 +2085,10 @@ export const videoJobs = mysqlTable("video_jobs", {
   videoType: mysqlEnum("vj_video_type", ["standard", "avatar"]).default("standard").notNull(),
   // HeyGen avatar pipeline fields
   heygenVideoId: varchar("vj_heygen_video_id", { length: 128 }),
+  // YouTube resumable upload URI — persisted so upload can resume after server restart
+  // YouTube resumable URIs are valid for 7 days from creation
+  ytUploadUri: text("vj_yt_upload_uri"),
+  ytUploadOffset: bigint("vj_yt_upload_offset", { mode: "number" }),
   status: videoJobStatusEnum.notNull().default("pending"),
   errorMessage: text("vj_error_message"),
   retryCount: int("vj_retry_count").default(0),

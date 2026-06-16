@@ -779,47 +779,108 @@ async function startServer() {
     startWeeklyDigestCron();
 
     // ── Upload Watchdog: runs every 10 minutes ────────────────────────────────
-    // Auto-recovers video jobs stuck in 'uploading' for more than 50 minutes.
-    // This handles server restarts mid-upload (fire-and-forget background tasks
-    // are killed when the server restarts, leaving jobs orphaned in 'uploading').
+    // Auto-recovers video jobs stuck in 'uploading' after a server restart.
     //
-    // Recovery strategy:
-    //   - Reset to 'ready_for_review' (not 'approved') so the VA Dashboard
-    //     shows the Approve button and the VA can re-trigger the upload.
-    //   - Clear descriptDownloadUrl so the next approval triggers a fresh
-    //     Descript export (the signed GCS URL expires after ~24h anyway).
+    // Recovery strategy (in priority order):
+    //   1. If the job has a persisted ytUploadUri: attempt to RESUME the upload
+    //      from where YouTube left off (YouTube resumable URIs are valid 7 days).
+    //      This means zero re-uploading of already-sent chunks.
+    //   2. If the URI is expired (404) or missing: reset to 'ready_for_review'
+    //      so the VA can re-approve and trigger a fresh export + upload.
     const runUploadWatchdog = async () => {
       try {
         const { getDb } = await import("../db");
         const { videoJobs } = await import("../../drizzle/schema");
         const { eq, and, lt, isNotNull } = await import("drizzle-orm");
+        const { resumeYouTubeUpload } = await import("../youtubeUploader");
         const db = await getDb();
         if (!db) return;
-        const STUCK_THRESHOLD_MS = 50 * 60 * 1000; // 50 minutes
+        // Use a shorter threshold (5 min) so we catch restarts quickly.
+        // A server restart kills the upload instantly — no need to wait 50 min.
+        const STUCK_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
         const cutoff = Date.now() - STUCK_THRESHOLD_MS;
-        // Find jobs stuck in 'uploading' where vaApprovedAt is set and older than 50 min
+        // Find jobs stuck in 'uploading' where vaApprovedAt is set and older than 5 min
         const stuckJobs = await db
-          .select({ id: videoJobs.id, youtubeTitle: videoJobs.youtubeTitle, vaApprovedAt: videoJobs.vaApprovedAt })
+          .select({
+            id: videoJobs.id,
+            youtubeTitle: videoJobs.youtubeTitle,
+            youtubeDescription: videoJobs.youtubeDescription,
+            youtubeTags: videoJobs.youtubeTags,
+            vaApprovedAt: videoJobs.vaApprovedAt,
+            ytUploadUri: videoJobs.ytUploadUri,
+            descriptDownloadUrl: videoJobs.descriptDownloadUrl,
+            s3VideoUrl: videoJobs.s3VideoUrl,
+          })
           .from(videoJobs)
           .where(and(
             eq(videoJobs.status, "uploading"),
             isNotNull(videoJobs.vaApprovedAt),
             lt(videoJobs.vaApprovedAt, cutoff)
           ));
+
         for (const job of stuckJobs) {
           const minutesStuck = job.vaApprovedAt ? Math.round((Date.now() - Number(job.vaApprovedAt)) / 60000) : '?';
-          console.warn(`[Upload Watchdog] Job #${job.id} ("${job.youtubeTitle}") has been uploading for ${minutesStuck} min — resetting to ready_for_review.`);
-          await db.update(videoJobs).set({
-            // Reset to ready_for_review so the Approve button re-appears in the VA Dashboard
-            status: "ready_for_review",
-            // Clear the stale Descript download URL — it expires after ~24h anyway.
-            // The next approval will trigger a fresh Descript export automatically.
-            descriptDownloadUrl: null,
-            errorMessage: `Upload timed out after ${minutesStuck} min (server restart). Approve again to re-export from Descript and upload to YouTube.`,
-          }).where(eq(videoJobs.id, job.id));
+          console.warn(`[Upload Watchdog] Job #${job.id} ("${job.youtubeTitle}") stuck in uploading for ${minutesStuck} min.`);
+
+          // Determine the video source URL
+          const videoUrl = job.descriptDownloadUrl && !job.descriptDownloadUrl.includes('share.descript.com')
+            ? job.descriptDownloadUrl
+            : job.s3VideoUrl ?? null;
+
+          // Try to resume if we have both a persisted upload URI and a video source URL
+          if (job.ytUploadUri && videoUrl) {
+            console.log(`[Upload Watchdog] Job #${job.id}: Found persisted upload URI — attempting resume...`);
+            // Fire-and-forget resume attempt
+            (async () => {
+              try {
+                const result = await resumeYouTubeUpload({
+                  jobId: job.id,
+                  uploadUri: job.ytUploadUri!,
+                  videoUrl: videoUrl,
+                  title: job.youtubeTitle ?? 'Urban Monk Video',
+                });
+                const bgDb = await getDb();
+                if (bgDb) {
+                  await bgDb.update(videoJobs).set({
+                    status: 'uploaded_unlisted',
+                    youtubeVideoId: result.videoId,
+                    ytUploadUri: null,
+                    ytUploadOffset: null,
+                  }).where(eq(videoJobs.id, job.id));
+                }
+                console.log(`[Upload Watchdog] ✅ Job #${job.id} resumed and completed. YouTube ID: ${result.videoId}`);
+              } catch (resumeErr) {
+                const msg = resumeErr instanceof Error ? resumeErr.message : String(resumeErr);
+                console.error(`[Upload Watchdog] Resume failed for job #${job.id}: ${msg}`);
+                // If URI expired or any other error, fall back to reset
+                const fallbackDb = await getDb();
+                if (fallbackDb) {
+                  await fallbackDb.update(videoJobs).set({
+                    status: 'ready_for_review',
+                    ytUploadUri: null,
+                    ytUploadOffset: null,
+                    descriptDownloadUrl: null,
+                    errorMessage: `Upload interrupted (server restart). Resume failed: ${msg}. Approve again to re-export and upload.`,
+                  }).where(eq(videoJobs.id, job.id));
+                  console.log(`[Upload Watchdog] Job #${job.id} reset to ready_for_review after failed resume.`);
+                }
+              }
+            })();
+          } else {
+            // No upload URI or no video URL — just reset so VA can re-approve
+            console.log(`[Upload Watchdog] Job #${job.id}: No upload URI or video URL — resetting to ready_for_review.`);
+            await db.update(videoJobs).set({
+              status: 'ready_for_review',
+              ytUploadUri: null,
+              ytUploadOffset: null,
+              descriptDownloadUrl: null,
+              errorMessage: `Upload timed out after ${minutesStuck} min (server restart). Approve again to re-export from Descript and upload to YouTube.`,
+            }).where(eq(videoJobs.id, job.id));
+          }
         }
+
         if (stuckJobs.length > 0) {
-          console.log(`[Upload Watchdog] Reset ${stuckJobs.length} stuck job(s) back to 'ready_for_review'.`);
+          console.log(`[Upload Watchdog] Processed ${stuckJobs.length} stuck job(s).`);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

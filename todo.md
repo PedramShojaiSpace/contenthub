@@ -3971,15 +3971,27 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## AI Ads Manager — Phase 1
 
-- [ ] Add META_AD_ACCOUNT_ID, META_AD_ACCESS_TOKEN, META_APP_ID, META_APP_SECRET secrets
-- [ ] Build server/metaAdsRouter.ts — tRPC router for campaign data, insights, and creative management
-- [ ] Build server/metaAdsClient.ts — Meta Marketing API client (campaigns, ad sets, insights, creatives)
-- [ ] Add metaAdsRouter to server/routers.ts
-- [ ] Build client/src/pages/AdsManager.tsx — Ads Performance dashboard page
-- [ ] Add Ads Manager nav link to sidebar/navigation
-- [ ] Campaign overview table: name, status, spend, impressions, CPL, CTR, ROAS
-- [ ] Creative fatigue alerts: flag ads with frequency > 3.5 or CTR declining > 20% WoW
-- [ ] Signal diagnostics: pixel health check via Meta API
-- [ ] Date range selector (last 7d, 14d, 30d, custom)
-- [ ] Campaign-level drill-down: ad sets and individual ads
-- [ ] One-click pause/activate controls for campaigns
+- [x] Add META_AD_ACCOUNT_ID, META_AD_ACCESS_TOKEN, META_APP_ID, META_APP_SECRET secrets
+- [x] Build server/metaAdsRouter.ts — tRPC router for campaign data, insights, and creative management
+- [x] Build server/metaAdsClient.ts — Meta Marketing API client (campaigns, ad sets, insights, creatives)
+- [x] Add metaAdsRouter to server/routers.ts
+- [x] Build client/src/pages/AdsManager.tsx — Ads Performance dashboard page
+- [x] Add Ads Manager nav link to sidebar/navigation
+- [x] Campaign overview table: name, status, spend, impressions, CPL, CTR, ROAS
+- [x] Creative fatigue alerts: flag ads with frequency > 3.5 or CTR declining > 20% WoW
+- [x] Signal diagnostics: pixel health check via Meta API
+- [x] Date range selector (last 7d, 14d, 30d, custom)
+- [x] Campaign-level drill-down: ad sets and individual ads
+- [x] One-click pause/activate controls for campaigns
+
+## AI Ads Manager — Phase 2 & 3
+- [x] Build organic signal engine (organicSignalEngine.ts) — YouTube poller + engagement scorer
+- [x] Build Claude campaign recommendation engine (campaignRecommendationEngine.ts)
+- [x] Build Meta campaign launcher (metaCampaignLauncher.ts) — one-click campaign creation
+- [x] Add Organic-to-Paid tab to Ads Manager dashboard
+- [x] Build automated optimization engine (adsOptimizationEngine.ts)
+- [x] Build weekly digest generator (adsWeeklyDigest.ts)
+- [x] Register heartbeat cron: ads-daily-optimizer (06:00 UTC daily)
+- [x] Register heartbeat cron: ads-weekly-digest (Monday 08:00 UTC)
+- [x] Add Optimizer tab (guardrails config + optimization log)
+- [x] Add Weekly Digest tab (Claude-written digest history)

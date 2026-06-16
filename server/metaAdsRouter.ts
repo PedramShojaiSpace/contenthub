@@ -6,6 +6,9 @@
 
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { getDb } from "./db";
+import { adsGuardrails, adsOptimizationLogs, adsWeeklyDigests } from "../drizzle/schema";
+import { desc, eq } from "drizzle-orm";
 import {
   getMetaAdsConfig,
   getCampaigns,
@@ -257,7 +260,7 @@ export const metaAdsRouter = router({
       return { success: true };
     }),
 
-  // Launch a campaign in Meta (creates PAUSED campaign for review)
+    // Launch a campaign in Meta (creates PAUSED campaign for review)
   launchCampaign: protectedProcedure
     .input(z.object({ candidateId: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -266,7 +269,6 @@ export const metaAdsRouter = router({
       if (!candidate) throw new Error("Approved candidate not found");
       if (!candidate.claudeRecommendation) throw new Error("No recommendation found — generate one first");
       if (!candidate.youtubeVideoId) throw new Error("No YouTube video ID on candidate");
-
       return launchCampaign(
         candidate.id,
         candidate.youtubeVideoId,
@@ -275,4 +277,94 @@ export const metaAdsRouter = router({
         ctx.user?.name ?? "Content Hub"
       );
     }),
+
+  // ── Phase 3: Guardrails Config ──────────────────────────────────────────────
+  getGuardrails: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+    const rows = await db.select().from(adsGuardrails).limit(1);
+    return rows[0] ?? null;
+  }),
+
+  updateGuardrails: protectedProcedure
+    .input(z.object({
+      targetCpl: z.number().min(1).max(500),
+      minDailyBudget: z.number().min(5).max(10000),
+      maxDailyBudget: z.number().min(10).max(100000),
+      autoScaleEnabled: z.boolean(),
+      autoPauseEnabled: z.boolean(),
+      maxFrequencyBeforePause: z.number().min(1).max(20),
+      minCtrBeforePause: z.number().min(0.01).max(10),
+      scaleUpMultiplier: z.number().min(1.05).max(2.0),
+      minSpendForAction: z.number().min(1).max(1000),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const existing = await db.select().from(adsGuardrails).limit(1);
+      if (existing.length > 0) {
+        await db.update(adsGuardrails)
+          .set({
+            targetCpl: input.targetCpl.toFixed(2),
+            minDailyBudget: input.minDailyBudget.toFixed(2),
+            maxDailyBudget: input.maxDailyBudget.toFixed(2),
+            autoScaleEnabled: input.autoScaleEnabled,
+            autoPauseEnabled: input.autoPauseEnabled,
+            maxFrequencyBeforePause: input.maxFrequencyBeforePause.toFixed(1),
+            minCtrBeforePause: input.minCtrBeforePause.toFixed(2),
+            scaleUpMultiplier: input.scaleUpMultiplier.toFixed(2),
+            minSpendForAction: input.minSpendForAction.toFixed(2),
+            updatedAt: new Date(),
+          })
+          .where(eq(adsGuardrails.id, existing[0].id));
+      } else {
+        await db.insert(adsGuardrails).values({
+          targetCpl: input.targetCpl.toFixed(2),
+          minDailyBudget: input.minDailyBudget.toFixed(2),
+          maxDailyBudget: input.maxDailyBudget.toFixed(2),
+          autoScaleEnabled: input.autoScaleEnabled,
+          autoPauseEnabled: input.autoPauseEnabled,
+          maxFrequencyBeforePause: input.maxFrequencyBeforePause.toFixed(1),
+          minCtrBeforePause: input.minCtrBeforePause.toFixed(2),
+          scaleUpMultiplier: input.scaleUpMultiplier.toFixed(2),
+          minSpendForAction: input.minSpendForAction.toFixed(2),
+          updatedAt: new Date(),
+        });
+      }
+      return { success: true };
+    }),
+
+  // ── Phase 3: Optimization Log ───────────────────────────────────────────────
+  getOptimizationLog: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      return db.select().from(adsOptimizationLogs)
+        .orderBy(desc(adsOptimizationLogs.createdAt))
+        .limit(input.limit);
+    }),
+
+  // ── Phase 3: Weekly Digests ─────────────────────────────────────────────────
+  getWeeklyDigests: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(52).default(12) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      return db.select().from(adsWeeklyDigests)
+        .orderBy(desc(adsWeeklyDigests.createdAt))
+        .limit(input.limit);
+    }),
+
+  // ── Phase 3: Manual trigger for optimization run ────────────────────────────
+  runOptimizationNow: protectedProcedure.mutation(async () => {
+    const { runDailyOptimization } = await import("./adsOptimizationEngine");
+    return runDailyOptimization();
+  }),
+
+  // ── Phase 3: Manual trigger for weekly digest ───────────────────────────────
+  generateDigestNow: protectedProcedure.mutation(async () => {
+    const { generateWeeklyDigest } = await import("./adsWeeklyDigest");
+    return generateWeeklyDigest();
+  }),
 });

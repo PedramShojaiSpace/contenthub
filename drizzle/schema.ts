@@ -1,4 +1,4 @@
-import { bigint, boolean, date, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, date, decimal, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -2166,3 +2166,47 @@ export const paidPromoCandidates = mysqlTable("paid_promo_candidates", {
 
 export type PaidPromoCandidate = typeof paidPromoCandidates.$inferSelect;
 export type InsertPaidPromoCandidate = typeof paidPromoCandidates.$inferInsert;
+
+// ─── Ads Guardrails Config ────────────────────────────────────────────────────
+// Single-row config table for Phase 3 automated optimization guardrails
+export const adsGuardrails = mysqlTable("ads_guardrails", {
+  id: int("id").primaryKey().autoincrement(),
+  targetCpl: decimal("target_cpl", { precision: 10, scale: 2 }).default("25.00").notNull(),
+  minDailyBudget: decimal("min_daily_budget", { precision: 10, scale: 2 }).default("20.00").notNull(),
+  maxDailyBudget: decimal("max_daily_budget", { precision: 10, scale: 2 }).default("200.00").notNull(),
+  autoScaleEnabled: boolean("auto_scale_enabled").default(true).notNull(),
+  autoPauseEnabled: boolean("auto_pause_enabled").default(true).notNull(),
+  maxFrequencyBeforePause: decimal("max_frequency_before_pause", { precision: 4, scale: 1 }).default("4.0").notNull(),
+  minCtrBeforePause: decimal("min_ctr_before_pause", { precision: 5, scale: 2 }).default("0.30").notNull(),
+  scaleUpMultiplier: decimal("scale_up_multiplier", { precision: 4, scale: 2 }).default("1.20").notNull(),
+  minSpendForAction: decimal("min_spend_for_action", { precision: 10, scale: 2 }).default("5.00").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── Ads Optimization Logs ───────────────────────────────────────────────────
+// Audit trail of every automated action taken by the optimization engine
+export const adsOptimizationLogs = mysqlTable("ads_optimization_logs", {
+  id: int("id").primaryKey().autoincrement(),
+  campaignId: varchar("campaign_id", { length: 64 }).notNull(),
+  campaignName: varchar("campaign_name", { length: 256 }).notNull(),
+  action: varchar("action", { length: 32 }).notNull(), // scaled | paused | warned | held | skipped
+  reason: text("reason").notNull(),
+  previousBudget: decimal("previous_budget", { precision: 10, scale: 2 }),
+  newBudget: decimal("new_budget", { precision: 10, scale: 2 }),
+  metricsSnapshot: text("metrics_snapshot"), // JSON
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Weekly Digest History ───────────────────────────────────────────────────
+export const adsWeeklyDigests = mysqlTable("ads_weekly_digests", {
+  id: int("id").primaryKey().autoincrement(),
+  weekStartDate: varchar("week_start_date", { length: 16 }).notNull(),
+  weekEndDate: varchar("week_end_date", { length: 16 }).notNull(),
+  digestMarkdown: text("digest_markdown").notNull(),
+  totalSpend: decimal("total_spend", { precision: 12, scale: 2 }),
+  totalLeads: int("total_leads"),
+  avgCpl: decimal("avg_cpl", { precision: 10, scale: 2 }),
+  campaignCount: int("campaign_count"),
+  actionsCount: int("actions_count"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

@@ -367,4 +367,77 @@ export const metaAdsRouter = router({
     const { generateWeeklyDigest } = await import("./adsWeeklyDigest");
     return generateWeeklyDigest();
   }),
+
+  // ── Hook Testing: Generate hook variants via Claude ──────────────────────────
+  generateHooks: protectedProcedure
+    .input(z.object({
+      topic: z.string().min(5),
+      targetProduct: z.enum(["lightsOn", "academy", "upstream", "kbmoTesting", "general"]),
+      count: z.number().min(3).max(8).default(5),
+    }))
+    .mutation(async ({ input }) => {
+      const { generateHookVariants, saveHookGeneration } = await import("./hookGenerator");
+      const result = await generateHookVariants(input.topic, input.targetProduct, input.count);
+      const id = await saveHookGeneration("system", input.topic, input.targetProduct, result.variants);
+      return { ...result, id };
+    }),
+
+  // ── Hook Testing: Get past hook generations ───────────────────────────────────
+  getHookGenerations: protectedProcedure
+    .input(z.object({ limit: z.number().default(20) }))
+    .query(async ({ input }) => {
+      const { getHookGenerations } = await import("./hookGenerator");
+      return getHookGenerations("system", input.limit);
+    }),
+
+  // ── Hook Testing: Launch A/B test campaign in Meta ───────────────────────────
+  launchHookAbTest: protectedProcedure
+    .input(z.object({
+      hookGenerationId: z.number(),
+      topic: z.string(),
+      targetProduct: z.enum(["lightsOn", "academy", "upstream", "kbmoTesting", "general"]),
+      variants: z.array(z.object({
+        framework: z.string(),
+        frameworkLabel: z.string(),
+        hookText: z.string(),
+        overlayText: z.string(),
+        whyItWorks: z.string(),
+        estimatedCTRLift: z.string(),
+        deliveryNote: z.string(),
+      })),
+      videoUrl: z.string().url(),
+      dailyBudgetPerVariant: z.number().min(3).max(20).default(5),
+      testDurationDays: z.number().min(3).max(14).default(5),
+    }))
+    .mutation(async ({ input }) => {
+      const { launchHookAbTest } = await import("./hookAbTestLauncher");
+      return launchHookAbTest(input as any);
+    }),
+
+  // ── Hook Testing: Get all A/B tests ──────────────────────────────────────────
+  getHookAbTests: protectedProcedure
+    .input(z.object({ limit: z.number().default(20) }))
+    .query(async ({ input }) => {
+      const { getHookAbTests } = await import("./hookAbTestLauncher");
+      return getHookAbTests(input.limit);
+    }),
+
+  // ── Hook Testing: Check winner for a specific test ───────────────────────────
+  checkHookWinner: protectedProcedure
+    .input(z.object({ testId: z.number() }))
+    .mutation(async ({ input }) => {
+      const { checkAndPickWinner } = await import("./hookWinnerPicker");
+      return checkAndPickWinner(input.testId);
+    }),
+
+  // ── Hook Testing: Promote winner to full campaign ─────────────────────────────
+  promoteHookWinner: protectedProcedure
+    .input(z.object({
+      testId: z.number(),
+      fullDailyBudget: z.number().min(10).max(500).default(50),
+    }))
+    .mutation(async ({ input }) => {
+      const { promoteWinnerToFullCampaign } = await import("./hookWinnerPicker");
+      return promoteWinnerToFullCampaign(input.testId, input.fullDailyBudget);
+    }),
 });

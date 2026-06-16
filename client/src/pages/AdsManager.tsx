@@ -539,6 +539,7 @@ function SignalStrengthBadge({ strength }: { strength: string }) {
 const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
   youtube: { label: "YouTube", color: "bg-red-100 text-red-700" },
   meta: { label: "Meta", color: "bg-blue-100 text-blue-700" },
+  instagram: { label: "Instagram", color: "bg-orange-100 text-orange-700" },
   linkedin: { label: "LinkedIn", color: "bg-sky-100 text-sky-700" },
   tiktok: { label: "TikTok", color: "bg-pink-100 text-pink-700" },
 };
@@ -553,12 +554,12 @@ function PlatformBadge({ platform }: { platform?: string | null }) {
   );
 }
 
-type PlatformFilter = "youtube" | "meta" | "linkedin";
+type PlatformFilter = "youtube" | "meta" | "instagram" | "linkedin";
 
 function OrganicToPaidTab() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<CandidateStatus[]>(["flagged", "recommended", "approved"]);
-  const [platformFilter, setPlatformFilter] = useState<PlatformFilter[]>(["youtube", "meta", "linkedin"]);
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter[]>(["youtube", "meta", "instagram", "linkedin"]);
 
   const candidates = trpc.metaAds.getPaidPromoCandidates.useQuery({ status: statusFilter });
   const runPoller = trpc.metaAds.runSignalPoller.useMutation({
@@ -566,6 +567,7 @@ function OrganicToPaidTab() {
       const parts: string[] = [];
       if (data.videosChecked > 0) parts.push(`${data.videosChecked} YouTube videos`);
       if (data.metaPostsChecked > 0) parts.push(`${data.metaPostsChecked} Meta posts`);
+      if (data.instagramPostsChecked > 0) parts.push(`${data.instagramPostsChecked} Instagram posts`);
       if (data.linkedInPostsChecked > 0) parts.push(`${data.linkedInPostsChecked} LinkedIn posts`);
       const scanned = parts.length > 0 ? parts.join(", ") : "0 items";
       toast.success(`Scan complete: ${scanned} checked — ${data.candidatesFlagged} new candidates flagged`);
@@ -639,7 +641,7 @@ function OrganicToPaidTab() {
       {/* Platform filter */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground font-medium">Platform:</span>
-        {(["youtube", "meta", "linkedin"] as PlatformFilter[]).map((p) => {
+        {(["youtube", "meta", "instagram", "linkedin"] as PlatformFilter[]).map((p) => {
           const info = PLATFORM_LABELS[p];
           return (
             <button

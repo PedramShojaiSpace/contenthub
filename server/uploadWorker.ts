@@ -22,6 +22,7 @@ import * as fs from "fs";
 import { createConnection } from "mysql2/promise";
 import { uploadToYouTube } from "./youtubeUploader";
 import { exportProject, getJobStatus } from "./descriptClient";
+import { postVideoToSocialChannels } from "./videoSocialPoster";
 
 const jobId = parseInt(process.env.JOB_ID ?? "0", 10);
 if (!jobId) {
@@ -54,7 +55,7 @@ async function run() {
     const [rows] = await conn.execute(
       `SELECT id, video_job_status, vj_descript_project_id, vj_descript_download_url,
               vj_youtube_title, vj_youtube_description, vj_youtube_tags,
-              vj_yt_upload_uri, vj_yt_upload_offset
+              vj_yt_upload_uri, vj_yt_upload_offset, vj_output_channels
        FROM video_jobs WHERE id = ?`,
       [jobId]
     ) as [any[], any];
@@ -236,7 +237,7 @@ async function run() {
       jobId,
     });
 
-    // ── Phase 3: Mark complete ──────────────────────────────────────────────────
+    // ── Phase 3: Mark YouTube upload complete ─────────────────────────────────
     await conn.execute(
       `UPDATE video_jobs SET video_job_status = 'uploaded_unlisted', vj_youtube_video_id = ?,
        vj_yt_upload_uri = NULL, vj_yt_upload_offset = NULL, vj_error_message = NULL
@@ -244,8 +245,53 @@ async function run() {
       [uploadResult.videoId, jobId]
     );
 
-    log(`✅ Job #${jobId} complete. YouTube video ID: ${uploadResult.videoId}`);
+    log(`✅ Job #${jobId} YouTube upload complete. Video ID: ${uploadResult.videoId}`);
     log(`   URL: ${uploadResult.videoUrl}`);
+
+    // ── Phase 4: Post to social channels via Buffer ────────────────────────────
+    const outputChannels: string[] = (() => {
+      try { return JSON.parse(job.vj_output_channels ?? '["youtube"]'); }
+      catch { return ["youtube"]; }
+    })();
+
+    const socialChannels = outputChannels.filter((ch: string) => ch !== "youtube");
+    if (socialChannels.length > 0) {
+      log(`[Social] Output channels: ${outputChannels.join(", ")}`);
+      try {
+        const socialResults = await postVideoToSocialChannels({
+          jobId,
+          title: job.vj_youtube_title ?? "Urban Monk Video",
+          description: job.vj_youtube_description ?? "",
+          youtubeVideoId: uploadResult.videoId,
+          outputChannels,
+          log,
+        });
+
+        // Save social results as JSON in the error_message field (repurposed as notes field)
+        // Only if all succeeded — otherwise leave error message for failed channels
+        const failedChannels = socialResults.filter(r => !r.success);
+        if (failedChannels.length > 0) {
+          const failMsg = failedChannels.map(r => `${r.channel}: ${r.error}`).join("; ");
+          log(`[Social] ⚠️ Some channels failed: ${failMsg}`);
+          await conn.execute(
+            `UPDATE video_jobs SET vj_error_message = ? WHERE id = ?`,
+            [`Social posting partial failure: ${failMsg}`.substring(0, 500), jobId]
+          );
+        } else {
+          log(`[Social] All channels queued successfully in Buffer.`);
+        }
+      } catch (socialErr) {
+        const socialMsg = socialErr instanceof Error ? socialErr.message : String(socialErr);
+        log(`[Social] ❌ Social posting error: ${socialMsg}`);
+        // Don't fail the whole job — YouTube upload succeeded
+        await conn.execute(
+          `UPDATE video_jobs SET vj_error_message = ? WHERE id = ?`,
+          [`Social posting error: ${socialMsg}`.substring(0, 500), jobId]
+        );
+      }
+    } else {
+      log(`[Social] YouTube-only job — no social channels to post.`);
+    }
 
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

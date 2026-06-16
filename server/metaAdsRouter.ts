@@ -393,25 +393,18 @@ export const metaAdsRouter = router({
   // ── Hook Testing: Launch A/B test campaign in Meta ───────────────────────────
   launchHookAbTest: protectedProcedure
     .input(z.object({
-      hookGenerationId: z.number(),
       topic: z.string(),
       targetProduct: z.enum(["lightsOn", "academy", "upstream", "kbmoTesting", "general"]),
-      variants: z.array(z.object({
-        framework: z.string(),
-        frameworkLabel: z.string(),
-        hookText: z.string(),
-        overlayText: z.string(),
-        whyItWorks: z.string(),
-        estimatedCTRLift: z.string(),
-        deliveryNote: z.string(),
-      })),
-      videoUrl: z.string().url(),
-      dailyBudgetPerVariant: z.number().min(3).max(20).default(5),
-      testDurationDays: z.number().min(3).max(14).default(5),
+      // Multi-variant mode: one video URL per variant (from VideoVariantFactory)
+      variantVideoUrls: z.array(z.string().url()).min(1).max(10),
+      // Optional hook texts — if provided, matched by index to variantVideoUrls
+      hookTexts: z.array(z.string()).optional(),
+      dailyBudgetPerVariant: z.number().min(1).max(50).default(5),
+      durationDays: z.number().min(1).max(30).default(7),
     }))
     .mutation(async ({ input }) => {
       const { launchHookAbTest } = await import("./hookAbTestLauncher");
-      return launchHookAbTest(input as any);
+      return launchHookAbTest(input);
     }),
 
   // ── Hook Testing: Get all A/B tests ──────────────────────────────────────────

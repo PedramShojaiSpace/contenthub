@@ -13,10 +13,10 @@
   "experiments": null,
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZER54CC2K",
-    "secret_access_key": "hHEWBhXbQBRU+4px3SfzXboSXb6YobarBVdhDz8U",
-    "session_token": "IQoJb3JpZ2luX2VjELj//////////wEaCXVzLWVhc3QtMSJIMEYCIQDW0mNo0VBlwyzdSAy/r64qIvFvaM34Ds0RPxBcTJfPqgIhAJZjE9J+AeFsssGoaVeZ57xdxhP46WExBIFiTeCJHTO/Kv4DCIH//////////wEQBBoMNjY1Mzg2MDk4ODY2Igzy/6aMTwIBsyImyEYq0gNOru6E/i40MDUBBX7EolTLtUPu2hWb8VGNvucxexqZXR5/G6XNBTUmuZ9oBTCf+uaZIgpS4Vq0/HzfYN/NZh/KYH7QSsUjzZnIkN6jX0Y3g4p/3Xq/Vew/9no32mRb/9pz+GSJuYrK5kPLmTQFKtKXV3Ad9DWjfklq6ojBNgDL051k2m6WHmE6sSZdKavaCaqm3Xy3G2dJrZIX1oQr221Ulqdm7HtoUDUYeAnkbC3Wx9Mlx+6zWr2tL+wnvWG8CLsXLrY45j1qrikelJXrj1L85AWC/h4jIwZ5Bjhd1yxj9ABQrOEXGGgQN6UEu7nEGTE6EgCI26i8nWFmwXVgNYhDX4Vw7MQXkNnGLyXhop2Ocsdlkqex90kkCWc7bUOuHgX0bCsr+IkENrgadC+j9E5bgRdgONYuibNUfaxL3UhG/YaSbDjnoGOOKtj8CYhzgqsv7eb79MD/12t3vWx/FRjrwQZxc+BmsMb5eaRPbH6B/0x2sw11NQOkxnNUnlUrANyv18BRJwlHHceIhkHcOMdF+yKibb8ff+Prcm+ghCCNBkioAB2xreW1pXv/cuXS9MFiN/mJAL9HhESkqjRB8+zgb6c7F0je6gqpd/V6qQipVZimMMy5x9EGOpwB4CiRL0NBjJ4ZF8DX87DDlVTvaJ45SeAU3qFBkAbxYcRJWO8+oyrSyPaWqxRl1SkwXW1CUHbSJbh8zxvzYYZ14aGmHaaAnvYJtfKo7ywKzFLZEe7kllVmPmf7/2x7bPHaRz/E/edAJFReCZKQkmE99au5o3IpRAb6KnfBL3glzIstkVtVcbNAV19DQFeFmlA7u7MCBn6jm9HogMfW",
-    "expiration": "2026-06-17T11:31:24.000Z"
+    "access_key_id": "ASIAZV3A2ECZK7EUT2ZJ",
+    "secret_access_key": "Gz8iTRDsc10WmWqWslqEj56YaHqzlAHYS/eE1ii2",
+    "session_token": "IQoJb3JpZ2luX2VjELj//////////wEaCXVzLWVhc3QtMSJHMEUCIQC4YZz4dD4E5pzeotZhkhJ994GJR+/xtdOM2/osS/eX+gIgHvRmq+qMFy6DT/xIvYrULdTR7DGc17hh2a1ciAggA9Yq/gMIgf//////////ARAEGgw2NjUzODYwOTg4NjYiDPwexREy2dCXwYUBLirSAx6TRUXU3Yz6nRuto+nbelYQXWbmvR05jIBWzfHBt9T+sPIlQP3WWUzdjajPJ7zI32LFMKQBpZdPSRZ8vW0y0ua8MJqjRxtQ736fq8Pqlndc6fuo5zCEJNsMufcSEITE1nLZcYqlZ0yE6GpjE4S/zuPChl+g7aOfDM8Kv/WD0OflsZHBq4RLBUAon1BUKOGF0cGBR4d8praZXlR0tT9ZCqA0mbPp9kj/ZFWQEvtVTq9pyrXYdi65OGrqViIezsAk86de8AW6KvlXrYyyYDSSyrFkJKKZq56jaELgOeyq7TM+jALjxcvUl+hYotE19IXDG8aRNBAqyOEzPuyNzRtIGFDrqRe4BOXKnRYRDXazBH3u1/KIyxZT2FDVn39R/xx6usIkFXLwX1a3oEZ585I7CDC0s7tKgrnEWh79v1fJP7SLBoxAltpiGUqwU86JF+iMWymH7U67FiLySRTDnJL3H7nuGDGdz3WaqH5dan2IUO+E5/5Pi2lLzjOt2pvp6F7nzi03DhhEybem/gbXx7I5mjLyP55c4k45cYoEQNAZpZLyfx1en9nkLJupUTu5vrz0MnTCCLISCf9MQVS9BgsrqOtQBPfY8xZJgmdvDHRD3CJ7BHswpL/H0QY6nQG7gbBK37o+BiWd+G6eEM9mf3MeDeF4TGFRmKRnMKkil/baroOc/pJPu13HLTyzB2PgbwTuizYHC2IFZA2vBchQHw99PsUBEpR1yk16AVj6YeXYXljp1SA6p058gP75mqjixmeIWbixIcCeFzK+Ax6QWB6ucoQ0sS2q0v/nt3doOrs07ktldYV7dvIxnNVmg3T/nnVYNc8fj5xk7q2v",
+    "expiration": "2026-06-17T11:43:32.000Z"
   },
   "name": "lights-on-optin",
   "path": "/home/ubuntu/lights-on-optin",

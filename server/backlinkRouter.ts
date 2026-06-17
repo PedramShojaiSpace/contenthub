@@ -165,7 +165,7 @@ Pedram's credentials to weave in naturally:
 - NY Times bestselling author (The Urban Monk, Rise and Shine, others)
 - Host of The Urban Monk Podcast (millions of downloads)
 - Founder of The Urban Monk Academy
-- Expert in integrative medicine, Taoist philosophy, stress, sleep, gut health, longevity
+- Expert in integrative medicine, Daoist philosophy, stress, sleep, gut health, longevity
 
 Suggest a specific guest article topic that would serve their audience well.`,
   };

@@ -191,9 +191,9 @@ function buildArticleSchema(params: {
         "https://www.youtube.com/@theurbanmonk",
         "https://www.linkedin.com/in/pedramshojai",
       ],
-      jobTitle: "Doctor of Oriental Medicine, Taoist Monk, Author",
+      jobTitle: "Doctor of Oriental Medicine, Daoist Monk, Author",
       description:
-        "Dr. Pedram Shojai (OMD) is a New York Times bestselling author, Doctor of Oriental Medicine, Taoist monk, and filmmaker. Founder of The Urban Monk wellness education platform.",
+        "Dr. Pedram Shojai (OMD) is a New York Times bestselling author, Doctor of Oriental Medicine, Daoist monk, and filmmaker. Founder of The Urban Monk wellness education platform.",
     },
     publisher: {
       "@type": "Organization",

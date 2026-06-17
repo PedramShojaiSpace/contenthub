@@ -11,10 +11,10 @@ import { getAvatarContextBlock } from "./avatarRouter";
 const PEDRAM_VOICE_GUIDE = `
 Pedram Shojai (The Urban Monk) voice & positioning guide:
 - Tone: Warm, authoritative, grounded — the wise elder who has walked the path
-- Credentials: Doctor of Oriental Medicine (OMD), Qigong master, former Taoist monk, NY Times bestselling author
+- Credentials: Doctor of Oriental Medicine (OMD), Qigong master, former Daoist monk, NY Times bestselling author
 - Core worldview: Ancient wisdom meets modern science; the body is a garden, not a machine
 - Key differentiators vs. typical wellness content:
-  1. Integrates Eastern philosophy (Taoism, Qigong, TCM) with Western functional medicine
+  1. Integrates Eastern philosophy (Daoism, Qigong, TCM) with Western functional medicine
   2. Emphasizes "life energy" (Qi) and time as the ultimate currency
   3. Practical, actionable — not just theory; always gives the reader/viewer a next step
   4. Speaks to high-performing professionals who feel depleted, not just "sick people"
@@ -376,7 +376,7 @@ Produce a structured differentiation brief with these exact sections:
 ## 3. Pedram's Differentiation Angle
 - The specific angle Pedram should take that NO competitor is covering
 - How to open with a hook that is distinctly "Urban Monk"
-- Key points to include that leverage his unique credentials (OMD, Qigong, Taoist background)
+- Key points to include that leverage his unique credentials (OMD, Qigong, Daoist background)
 - How to structure the content differently
 - The CTA that fits the Urban Monk funnel (Academy, supplements, retreat)
 
@@ -880,7 +880,7 @@ What specific words and phrases appear most? What emotional triggers are being u
 Analyze the #1, #2, and #3 titles specifically. Why do they outperform? What psychological mechanism is at work?
 
 ## 4. Gaps — What No One Is Saying
-What title angles are completely absent from this list that Pedram could own? Think about his unique positioning (Eastern medicine, Qigong, Taoist perspective, high-performer audience).
+What title angles are completely absent from this list that Pedram could own? Think about his unique positioning (Eastern medicine, Qigong, Daoist perspective, high-performer audience).
 
 ## 5. 5 Suggested Title Templates for Pedram
 Write 5 ready-to-use title templates that apply the winning patterns but are distinctly "Urban Monk" in voice and positioning. Format: Title | Why It Works
@@ -1048,7 +1048,7 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
    - DIRECT ADDRESS: "POV: You've been doing intermittent fasting wrong." (use sparingly — only if natural)
    - BOLD FACT DROP: "Your gut has more neurons than your spinal cord. Here's why that matters."
    - PATTERN INTERRUPT QUESTION: "What if everything you know about stress is backwards?"
-   - STORY TEASE: "A Taoist master told me something about sleep that changed my life. Here it is."`,
+   - STORY TEASE: "A Daoist master told me something about sleep that changed my life. Here it is."`,
           structureRules: `STRUCTURE (TikTok — 60-90 seconds, fast-paced, no labels):
    Instant hook (2 sec) → Fast context — why should I care? (5 sec) → Core insight broken into 2-3 fast beats (30-40 sec) → Surprising or memorable close (10 sec) → CTA (5 sec)
    TikTok viewers decide in 2 seconds. Every sentence must pull them forward.`,

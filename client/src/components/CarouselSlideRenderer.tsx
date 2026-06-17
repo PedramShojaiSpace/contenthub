@@ -4,7 +4,7 @@
  * Each slide is 1080×1080 (1:1 square) for Meta.
  *
  * Design system: The Urban Monk Visual Identity Guidelines (May 2020)
- *   - Taoist five-element color palette
+ *   - Daoist five-element color palette
  *   - Flat solid color backgrounds (NO gradients)
  *   - White text on colored backgrounds
  *   - Dark (#161513) text on cream backgrounds
@@ -31,7 +31,7 @@ export interface CarouselSlideData {
 
 // ── Brand tokens (Urban Monk Visual Identity Guidelines) ──────────────────────
 const BRAND = {
-  // Taoist element colors
+  // Daoist element colors
   fire:    "#ed5939",  // Fire — primary brand red-orange
   wood:    "#3d7e51",  // Wood — forest green
   water:   "#5870aa",  // Water — muted blue

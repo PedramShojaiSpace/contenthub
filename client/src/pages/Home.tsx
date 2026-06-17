@@ -189,7 +189,7 @@ export default function Home() {
                 <h2 className="text-3xl font-serif font-bold text-foreground mb-2">Dr. Pedram Shojai, OMD</h2>
                 <p className="text-primary font-medium mb-6 tracking-wide">NYT Bestselling Author & Functional Medicine Authority</p>
                 <p className="text-foreground/70 leading-relaxed mb-6">
-                  Former Taoist monk turned Doctor of Oriental Medicine, Dr. Shojai helps high-performing executives and entrepreneurs optimize their health and performance through the integration of ancient wisdom and cutting-edge science.
+                  Former Daoist monk turned Doctor of Oriental Medicine, Dr. Shojai helps high-performing executives and entrepreneurs optimize their health and performance through the integration of ancient wisdom and cutting-edge science.
                 </p>
                 <div className="flex flex-wrap justify-center md:justify-start gap-4">
                   <div className="flex items-center gap-2 text-sm text-foreground/50">
@@ -198,7 +198,7 @@ export default function Home() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-foreground/50">
                     <CheckCircle2 className="w-4 h-4 text-primary" />
-                    <span>Taoist Abbot</span>
+                    <span>Daoist Abbot</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-foreground/50">
                     <CheckCircle2 className="w-4 h-4 text-primary" />

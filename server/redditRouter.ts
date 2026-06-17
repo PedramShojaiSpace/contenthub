@@ -156,7 +156,7 @@ async function analyzePostWithAI(post: {
   score: number;
   numComments: number;
 }): Promise<PostAnalysis> {
-  const prompt = `You are the editorial AI for Dr. Pedram Shojai (The Urban Monk) — a doctor of Oriental Medicine, bestselling author, and expert in energy medicine, Taoist philosophy, biohacking, meditation, stress resilience, gut health, and longevity.
+  const prompt = `You are the editorial AI for Dr. Pedram Shojai (The Urban Monk) — a doctor of Oriental Medicine, bestselling author, and expert in energy medicine, Daoist philosophy, biohacking, meditation, stress resilience, gut health, and longevity.
 
 Analyze this Reddit thread and determine if it's a high-value opportunity for Dr. Shojai to add expert value:
 
@@ -470,7 +470,7 @@ export const redditRouter = router({
         ? `\n\nAdditional instructions: ${input.customInstructions}`
         : "";
 
-      const prompt = `You are writing a Reddit comment for Dr. Pedram Shojai (The Urban Monk) — a doctor of Oriental Medicine, bestselling author, expert in energy medicine, Taoist philosophy, biohacking, meditation, stress resilience, gut health, and longevity.
+      const prompt = `You are writing a Reddit comment for Dr. Pedram Shojai (The Urban Monk) — a doctor of Oriental Medicine, bestselling author, expert in energy medicine, Daoist philosophy, biohacking, meditation, stress resilience, gut health, and longevity.
 
 Thread: r/${post.subreddit}
 Title: ${post.title}
@@ -588,7 +588,7 @@ Return only the comment text, no quotes or labels.`;
 
     const uniqueSubreddits = Array.from(new Set(posts.map((p) => p.subreddit)));
 
-    const prompt = `You are the editorial AI for Dr. Pedram Shojai (The Urban Monk), an expert in integrative medicine, Taoist philosophy, biohacking, meditation, gut health, sleep, and longevity.
+    const prompt = `You are the editorial AI for Dr. Pedram Shojai (The Urban Monk), an expert in integrative medicine, Daoist philosophy, biohacking, meditation, gut health, sleep, and longevity.
 
 Analyze the following ${posts.length} Reddit threads from the past 2 weeks across ${uniqueSubreddits.length} subreddits and produce a weekly trend briefing.
 

@@ -145,7 +145,7 @@ TOPIC: "${topic}" | AUDIENCE: ${targetAudience}
 ${sourceContext}REQUIREMENTS:
 ${sourceDocumentText
   ? `- Build the outline directly from the source document. Extract specific ideas, stories, frameworks, and protocols from that material. Every chapter must reference concrete content from the source.`
-  : `- Arc: reader's pain → understanding WHY → transformation framework → practical protocols → integration. Specific titles (e.g. "The 2 AM Wake-Up: What Your Liver Is Trying to Tell You" not "The Power of Sleep"). Ground in ancient wisdom (TCM/Ayurveda/Taoist) AND modern science.`}
+  : `- Arc: reader's pain → understanding WHY → transformation framework → practical protocols → integration. Specific titles (e.g. "The 2 AM Wake-Up: What Your Liver Is Trying to Tell You" not "The Power of Sleep"). Ground in ancient wisdom (TCM/Ayurveda/Daoist) AND modern science.`}
 - Summaries: 3-5 sentences naming exact concepts, protocols, and transformation delivered.
 - Avoid generic wellness clichés. Each chapter needs at least one surprising insight.
 - Chapter titles must be vivid, specific, and intriguing — never generic (e.g. NOT "The Power of Sleep", YES "The 2 AM Wake-Up: What Your Liver Is Trying to Tell You").
@@ -227,7 +227,7 @@ REQUIREMENTS:
 - Open with a hook (scene/statistic/question) — NOT "In this chapter..."
 ${sourceDocumentText
   ? `- Draw directly from the source document. Quote/paraphrase specific insights. Do not invent content that contradicts the source.`
-  : `- Include: one story/case study, one scientific finding, one ancient wisdom reference (TCM/Ayurveda/Taoist), one counterintuitive insight`}
+  : `- Include: one story/case study, one scientific finding, one ancient wisdom reference (TCM/Ayurveda/Daoist), one counterintuitive insight`}
 - 2-4 subheadings (## format), each developing a distinct idea
 - 2-3 specific actionable protocols the reader can actually do
 - Dr. Shojai's voice: warm, direct, authoritative, blending science + ancient wisdom, speaks directly to "you"

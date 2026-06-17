@@ -55,7 +55,7 @@ ARTICLE STRUCTURE (follow exactly — GhostLink OS Written Pillar Architecture):
 INTERNAL & EXTERNAL LINKS:
 - You MUST use ONLY the internal link URLs explicitly provided in the VERIFIED INTERNAL LINK LIST in the user message. Do NOT invent or guess any theurbanmonk.com URL not in that list.
 - MANDATORY OUTBOUND LINKS (YOAST HARD REQUIREMENT): You MUST include at least 2 outbound links to high-authority external sources (PubMed, Harvard Health, Mayo Clinic, NIH, Cleveland Clinic, Johns Hopkins, Nature, JAMA, Frontiers in Medicine). Format them EXACTLY as: [Outbound Link: describe the study or resource you want to cite here] — the system will resolve these to real URLs automatically. Failure to include outbound links = Yoast RED FAIL. Place at least one in the body copy and one in the FAQ section.
-- E-E-A-T signals: weave Pedram's credentials (OMD, Taoist monk, filmmaker, author) naturally into the body.
+- E-E-A-T signals: weave Pedram's credentials (OMD, Daoist monk, filmmaker, author) naturally into the body.
 ABSOLUTE RULES — NEVER VIOLATE:
 - NEVER use the URL urbanmonk.com — the ONLY correct domain is theurbanmonk.com
 - NEVER invent, guess, or construct a theurbanmonk.com URL not in the provided list
@@ -88,7 +88,7 @@ QUALITY GATE (self-check before outputting):
 - YOAST READABILITY CHECK — TRANSITION WORDS: Count transitions ÷ total sentences. Must be ≥30%. Target 35%.
 - YOAST READABILITY CHECK — CONSECUTIVE SENTENCE STARTS: No word starts 3+ consecutive sentences.
 - Does the FAQ section contain 4-6 real PAA-style questions with direct answers?
-CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Taoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
+CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Daoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

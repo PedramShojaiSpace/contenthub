@@ -181,7 +181,7 @@ const DEFAULT_CTA_BLOCKS = [
   },
   {
     label: "Lights On Course",
-    ctaText: "The Lights On Method is Dr. Pedram Shojai's flagship program for reclaiming your energy, focus, and vitality. It's a practical, science-backed system built on 30 years of clinical practice and Taoist philosophy — designed for high-performers who are done running on empty. Visit lightson.theurbanmonk.com to enroll.",
+    ctaText: "The Lights On Method is Dr. Pedram Shojai's flagship program for reclaiming your energy, focus, and vitality. It's a practical, science-backed system built on 30 years of clinical practice and Daoist philosophy — designed for high-performers who are done running on empty. Visit lightson.theurbanmonk.com to enroll.",
     url: "https://lightson.theurbanmonk.com/",
     keywords: JSON.stringify(["lights on", "lights on course", "lights on method", "urban monk course", "energy course", "vitality program", "pedram course", "flagship program"]),
     isDefault: false,

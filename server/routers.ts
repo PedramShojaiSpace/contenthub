@@ -341,7 +341,7 @@ VOICE (GhostLink OS B6 Voice Rules — non-negotiable):
 - Concrete nouns over abstract nouns. Every bold claim has a receipt within 2 sentences.
 - Direct address: "you" and "we" — never "one" or "users"
 - Opinions land hard. No "I think maybe."
-- Pedram writes as a doctor (OMD), a Taoist monk, a filmmaker, and a father. Warm but direct. He cites mechanisms (not just studies). He tells short stories. Never condescending. No fluff.
+- Pedram writes as a doctor (OMD), a Daoist monk, a filmmaker, and a father. Warm but direct. He cites mechanisms (not just studies). He tells short stories. Never condescending. No fluff.
 
 ⚠️ OUTPUT FORMAT FOR THIS CALL: Output ONLY the full article body in clean Markdown. Do NOT wrap in JSON. Do NOT include a title H1 at the top. Start directly with the opening hook paragraph. Write the complete article — all sections fully developed — ending with the FAQ section. Do not stop early. Do NOT output JSON under any circumstances.
 
@@ -358,7 +358,7 @@ ARTICLE STRUCTURE (follow exactly — this is the GhostLink OS Written Pillar Ar
    Then write 4-6 concise bullet points (using - ) that summarise the most actionable insights the reader will gain from this article. Each bullet must be a complete sentence, 15-25 words, written in Pedram's warm-but-direct voice. These bullets should tease the framework and outcomes — they are a promise to the reader, not a dry abstract. Do NOT use sub-bullets. Do NOT repeat the article title. This section must appear in the article body immediately after the opening hook paragraphs.
 
 3. THE HIDDEN PROBLEM — WHY THIS IS HAPPENING (1 H2, 2-3 paragraphs, 200-250 words):
-   H2 must contain a semantic keyword and answer a PAA-style question. Diagnose the root cause — the biology, physiology, Taoist or functional medicine lens. Name the surface symptom, reveal the root cause, explain the mechanism, validate their effort. This earns the right to teach.
+   H2 must contain a semantic keyword and answer a PAA-style question. Diagnose the root cause — the biology, physiology, Daoist or functional medicine lens. Name the surface symptom, reveal the root cause, explain the mechanism, validate their effort. This earns the right to teach.
    ⚠️ YOAST SUBHEADING RULE: At least ONE of the H2 headings in sections 3, 4, or 5 MUST contain the exact focus keyword or a very close synonym (e.g. if focus keyword is 'qigong for digestion', an H2 like 'How Qigong for Digestion Heals Your Gut-Brain Axis' passes). This is mandatory — Yoast checks every H2 and H3 for the focus keyword.
 
 4. WHAT MOST PEOPLE GET WRONG (1 H2, 2-3 paragraphs, 200-250 words):
@@ -392,7 +392,7 @@ SEO + AEO INTEGRATION RULES (non-negotiable):
 - Include at least 2 internal links to related articles on theurbanmonk.com. A VERIFIED INTERNAL LINK LIST will be provided in the user message — you MUST use ONLY URLs from that list. Use Markdown format: [anchor text](url). If you need a link to a topic not in the list, use the placeholder format: [INTERNAL LINK: topic of related article] — NEVER invent or guess a theurbanmonk.com URL that is not explicitly in the provided list
 - Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH). Use real verified URLs if you know them with high confidence. For any source you are not 100% certain of, use the placeholder format: [Outbound Link: Source Name — description] — these will be resolved to real URLs automatically after generation
 - The FAQ section at the bottom targets featured snippets and AI citation
-- E-E-A-T signals: weave Pedram's credentials (OMD, Taoist monk, filmmaker, author) naturally into the body — not as a bio block, but as contextual authority within the teaching. IMPORTANT: Do NOT claim "NYT bestselling" or any specific award/accolade unless it is a verifiable fact. Do NOT fabricate media mentions (e.g. "As featured in The New York Times"). Do NOT reference specific YouTube series, podcast episode numbers, or course module names that may not exist — reference Pedram's work generically (e.g. "in my practice", "in my book", "in my podcast").
+- E-E-A-T signals: weave Pedram's credentials (OMD, Daoist monk, filmmaker, author) naturally into the body — not as a bio block, but as contextual authority within the teaching. IMPORTANT: Do NOT claim "NYT bestselling" or any specific award/accolade unless it is a verifiable fact. Do NOT fabricate media mentions (e.g. "As featured in The New York Times"). Do NOT reference specific YouTube series, podcast episode numbers, or course module names that may not exist — reference Pedram's work generically (e.g. "in my practice", "in my book", "in my podcast").
 
 ABSOLUTE RULES — NEVER VIOLATE:
 - NEVER use the URL urbanmonk.com — it is NOT owned by Pedram. The ONLY correct domain is theurbanmonk.com
@@ -441,7 +441,7 @@ QUALITY GATE (self-check before outputting):
 - Does the opening hook contain a clear, direct answer to the core question within the first 300 words?
 - Does the FAQ section contain 4-6 real PAA-style questions with direct answers?
 
-CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Taoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
+CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Daoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
 
 const DEFAULT_IMAGE_STYLE = PLATFORM_IMAGE_STYLES.all;
 
@@ -797,7 +797,7 @@ export const appRouter = router({
               const seenS = new Set<string>(); for (const h of tierS) seenS.add(h.outlet);
               const seenA = new Set<string>(); for (const h of tierA) seenA.add(h.outlet);
               const outlets = [...Array.from(seenS), ...Array.from(seenA)].join(", ");
-              pressAuthorityContext = `\n\nAUTHOR CREDENTIALS (weave naturally into content where relevant):\nDr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Taoist monk. He has been featured in: ${outlets}. His work has reached millions of readers and viewers across major national and industry publications.`;
+              pressAuthorityContext = `\n\nAUTHOR CREDENTIALS (weave naturally into content where relevant):\nDr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Daoist monk. He has been featured in: ${outlets}. His work has reached millions of readers and viewers across major national and industry publications.`;
             }
           }
         } catch (err) {
@@ -1129,7 +1129,7 @@ Rules:
               const seenS = new Set<string>(); for (const h of tierS) seenS.add(h.outlet);
               const seenA = new Set<string>(); for (const h of tierA) seenA.add(h.outlet);
               const outlets = [...Array.from(seenS), ...Array.from(seenA)].join(", ");
-              blogPressContext = `\n\nAUTHOR CREDENTIALS (weave naturally into the article for E-E-A-T):\nDr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Taoist monk. He has been featured in: ${outlets}. His work has reached millions of readers and viewers across major national and industry publications.`;
+              blogPressContext = `\n\nAUTHOR CREDENTIALS (weave naturally into the article for E-E-A-T):\nDr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Daoist monk. He has been featured in: ${outlets}. His work has reached millions of readers and viewers across major national and industry publications.`;
             }
           }
         } catch (err) {
@@ -1307,10 +1307,10 @@ SEO REQUIREMENTS FOR THIS ARTICLE:
 2. SEARCH INTENT: Identify whether this keyword is informational, navigational, or commercial. Match the article format to that intent exactly.
 3. COMPETITIVE DIFFERENTIATION: The top-10 results for "${kw}" are generic. This article wins by:
    — Going deeper on the mechanism (not just the symptom)
-   — Citing Dr. Shojai’s clinical experience and Taoist framework as a unique lens
+   — Citing Dr. Shojai’s clinical experience and Daoist framework as a unique lens
    — Answering the PAA (People Also Ask) questions that competitors miss
    — Providing a named, actionable protocol (not just information)
-4. E-E-A-T SIGNALS: Weave in Dr. Shojai’s credentials (OMD, Taoist monk, NYT bestselling author, clinical practice) naturally — not as a bio block, but as proof woven into the argument.
+4. E-E-A-T SIGNALS: Weave in Dr. Shojai’s credentials (OMD, Daoist monk, NYT bestselling author, clinical practice) naturally — not as a bio block, but as proof woven into the argument.
 5. FEATURED SNIPPET TARGET: Structure one section as a direct, concise answer (40–60 words) to the primary question behind the keyword. This is the featured snippet target.
 6. PAA COVERAGE: The FAQ section must include the exact PAA questions that Google shows for "${kw}" — answer each one directly and completely in 2–3 sentences.
 7. SEMANTIC DEPTH: Use related terms, synonyms, and co-occurring concepts that signal topical authority to Google’s Helpful Content system.
@@ -2137,7 +2137,7 @@ CRITICAL OUTPUT RULES:
         const tagList = (input.topicTags ?? []).join(", ");
         const competitorList = (input.competitorBrands ?? []).slice(0, 5).join(", ");
 
-        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Taoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
+        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Daoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
 
 Your task: Write a FULL teleprompter-ready script for a ${input.platform === "youtube" ? "YouTube video" : input.platform + " video"} on the topic below.
 
@@ -2156,7 +2156,7 @@ SCRIPT REQUIREMENTS:
 - CTA must mention the Lights On Course () at lightson.theurbanmonk.com or a relevant free resource
 - Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
 - Voice: conversational, like Pedram is talking directly to one person
-- Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
+- Weave in his credentials naturally (OMD, Daoist training, functional medicine) without bragging
 - Reference relevant books or programs where appropriate
 
 Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
@@ -2176,7 +2176,7 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
               const seenS = new Set<string>(); for (const h of tierS) seenS.add(h.outlet);
               const seenA = new Set<string>(); for (const h of tierA) seenA.add(h.outlet);
               const outlets = [...Array.from(seenS), ...Array.from(seenA)].join(", ");
-              scriptPressContext = `\n\nAUTHOR CREDENTIALS (reference naturally when establishing authority):\nDr. Pedram Shojai has been featured in: ${outlets}. New York Times bestselling author, Doctor of Oriental Medicine, Taoist monk.`;
+              scriptPressContext = `\n\nAUTHOR CREDENTIALS (reference naturally when establishing authority):\nDr. Pedram Shojai has been featured in: ${outlets}. New York Times bestselling author, Doctor of Oriental Medicine, Daoist monk.`;
             }
           }
         } catch (err) {
@@ -2782,7 +2782,7 @@ CAPTION: [caption text]`;
               const tierS = topHits.filter((h: any) => h.authorityTier === "S").slice(0, 5);
               const tierA = topHits.filter((h: any) => h.authorityTier === "A").slice(0, 5);
               const outlets = Array.from(new Set([...tierS, ...tierA].map((h: any) => h.outlet))).join(", ");
-              pressCtx = `\n\nAUTHOR CREDENTIALS: Dr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Taoist monk. Featured in: ${outlets}.`;
+              pressCtx = `\n\nAUTHOR CREDENTIALS: Dr. Pedram Shojai is a New York Times bestselling author, Doctor of Oriental Medicine, and Daoist monk. Featured in: ${outlets}.`;
             }
           }
         } catch (err) { console.warn("[Brief] Press context failed:", err); }
@@ -2835,7 +2835,7 @@ Be specific and actionable. This brief will go directly to content creation.`;
         const tagList = (input.topicTags ?? []).join(", ");
         const competitorList = (input.competitorBrands ?? []).slice(0, 5).join(", ");
 
-        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Taoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
+        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Daoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
 
 Your task: Write a FULL teleprompter-ready script for a ${input.platform === "youtube" ? "YouTube video" : input.platform + " video"} on the topic below.
 
@@ -2854,7 +2854,7 @@ SCRIPT REQUIREMENTS:
 - CTA must mention the Lights On Course () at lightson.theurbanmonk.com or a relevant free resource
 - Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
 - Voice: conversational, like Pedram is talking directly to one person
-- Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
+- Weave in his credentials naturally (OMD, Daoist training, functional medicine) without bragging
 - Reference relevant books or programs where appropriate
 
 Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
@@ -2874,7 +2874,7 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
               const seenS = new Set<string>(); for (const h of tierS) seenS.add(h.outlet);
               const seenA = new Set<string>(); for (const h of tierA) seenA.add(h.outlet);
               const outlets = [...Array.from(seenS), ...Array.from(seenA)].join(", ");
-              scriptPressContext = `\n\nAUTHOR CREDENTIALS (reference naturally when establishing authority):\nDr. Pedram Shojai has been featured in: ${outlets}. New York Times bestselling author, Doctor of Oriental Medicine, Taoist monk.`;
+              scriptPressContext = `\n\nAUTHOR CREDENTIALS (reference naturally when establishing authority):\nDr. Pedram Shojai has been featured in: ${outlets}. New York Times bestselling author, Doctor of Oriental Medicine, Daoist monk.`;
             }
           }
         } catch (err) {
@@ -2938,7 +2938,7 @@ Format the script with clear section headers in [BRACKETS] for the teleprompter 
         })
       )
       .mutation(async ({ input }) => {
-        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Taoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
+        const systemPrompt = `You are a professional teleprompter scriptwriter for Dr. Pedram Shojai (The Urban Monk), OMD — a Daoist monk, functional medicine doctor, and bestselling author. You write in his exact voice: warm, authoritative, grounded in Eastern wisdom and Western science, never preachy, always practical.
 
 Your task: Adapt the blog post below into a FULL teleprompter-ready YouTube video script. The blog post is the authoritative source — use its structure, insights, and examples. Do NOT invent new claims; stay true to the article's content while making it feel natural and conversational for video.
 
@@ -2954,7 +2954,7 @@ SCRIPT REQUIREMENTS:
 - CTA must mention the Urban Monk Academy or a relevant resource${input.publishUrl ? ` — reference the full blog post at: ${input.publishUrl}` : ""}
 - Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
 - Voice: conversational, like Pedram is talking directly to one person
-- Weave in his credentials naturally (OMD, Taoist training, functional medicine) without bragging
+- Weave in his credentials naturally (OMD, Daoist training, functional medicine) without bragging
 - Format with clear section headers in [BRACKETS] for the teleprompter operator
 
 IMPORTANT: This is a VIDEO script, not a blog post. Convert written prose into spoken language. Break up long sentences. Add natural transitions ("Now, here's the thing...", "Let me give you an example...", "So what does this mean for you?").`;
@@ -4782,7 +4782,7 @@ STRICT RULES:
       .mutation(async ({ input }) => {
         const THEME_SYSTEM = `You are a world-class art director for a premium health and wellness brand. Given a blog article title and topic, suggest 6 visually DISTINCT hero image themes. Each theme must look completely different from the others — different color palette, different photographic style, different subject matter, different mood.
 
-The brand is The Urban Monk (Dr. Pedram Shojai) — bridges ancient Taoist wisdom with modern functional medicine. Audience: educated professionals 30-55, health-conscious, skeptical of hype.
+The brand is The Urban Monk (Dr. Pedram Shojai) — bridges ancient Daoist wisdom with modern functional medicine. Audience: educated professionals 30-55, health-conscious, skeptical of hype.
 
 CRITICAL: Do NOT default to "warm golden sunrise yoga retreat" imagery. That is the cliché to avoid. Push for specificity, contrast, and visual surprise.
 

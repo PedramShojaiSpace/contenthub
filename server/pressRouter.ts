@@ -204,7 +204,7 @@ export const pressRouter = router({
 
       const block = `Dr. Pedram Shojai (The Urban Monk) has been featured in: ${outletList}. ` +
         `His work has reached an estimated ${formatImpressions(totalImpressions)} readers and viewers across ${all.length} press placements. ` +
-        `He is a New York Times bestselling author and Taoist monk whose books include The Urban Monk, The Art of Stopping Time, and FOCUS.`;
+        `He is a New York Times bestselling author and Daoist monk whose books include The Urban Monk, The Art of Stopping Time, and FOCUS.`;
 
       return {
         block,
@@ -255,7 +255,7 @@ Include specific outlet names, book titles, and credentials. Aim for 150-200 wor
 PRESS COVERAGE: ${outletList}
 TOTAL REACH: ${formatImpressions(totalImpressions)} readers/viewers across ${all.length} press placements
 BOOKS: The Urban Monk (NYT Bestseller), The Art of Stopping Time, FOCUS, Exhausted, Prosperity
-CREDENTIALS: Doctor of Oriental Medicine (OMD), Taoist Monk, Qigong Master, Filmmaker
+CREDENTIALS: Doctor of Oriental Medicine (OMD), Daoist Monk, Qigong Master, Filmmaker
 TOPICS COVERED: meditation, focus, time management, energy, stress, gut health, prosperity, breathwork
 
 ${topicFocus}
@@ -305,7 +305,7 @@ Write factual, citation-worthy content that reads like a Wikipedia-style authori
 VERIFIED FACTS:
 - NYT Bestselling Author (The Urban Monk debuted on NYT Best Sellers list, February 2016)
 - Doctor of Oriental Medicine (OMD)
-- Taoist Monk and Qigong Master
+- Daoist Monk and Qigong Master
 - Filmmaker (Vitality, Origins, Prosperity documentaries)
 - Founder of The Urban Monk (wellness education platform: Lights On, Upstream, Gateway to Health programs)
 - Books: The Urban Monk (2016), The Art of Stopping Time (2017), FOCUS (2020), Exhausted, Prosperity

@@ -2026,6 +2026,7 @@ export const syndicationJobs = mysqlTable("syndication_jobs", {
   retryCount: int("sj_retry_count").default(0),
   createdAt: timestamp("sj_created_at").defaultNow().notNull(),
   updatedAt: timestamp("sj_updated_at").defaultNow().onUpdateNow().notNull(),
+  archivedAt: bigint("sj_archived_at", { mode: "number" }),
 });
 
 export type SyndicationJob = typeof syndicationJobs.$inferSelect;
@@ -2101,6 +2102,7 @@ export const videoJobs = mysqlTable("video_jobs", {
   retryCount: int("vj_retry_count").default(0),
   vaApprovedAt: bigint("vj_va_approved_at", { mode: "number" }),
   publishedAt: bigint("vj_published_at", { mode: "number" }),
+  archivedAt: bigint("vj_archived_at", { mode: "number" }),
   createdAt: timestamp("vj_created_at").defaultNow().notNull(),
   updatedAt: timestamp("vj_updated_at").defaultNow().notNull(),
 });

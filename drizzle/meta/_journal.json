@@ -820,6 +820,13 @@
       "when": 1781657600000,
       "tag": "0116_add_sku_cpa_targets",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "5",
+      "when": 1750190400000,
+      "tag": "0117_add_archived_at",
+      "breakpoints": true
     }
   ]
 }

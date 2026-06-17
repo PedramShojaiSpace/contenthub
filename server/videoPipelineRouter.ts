@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull, and } from "drizzle-orm";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { videoJobs, contentItems } from "../drizzle/schema";
@@ -107,7 +107,7 @@ export const videoPipelineRouter = router({
 
   getVideoJobs: protectedProcedure
     .input(z.object({
-      status: z.enum(VIDEO_JOB_STATUSES).optional(),
+      status: z.enum([...VIDEO_JOB_STATUSES, 'archived'] as const).optional(),
       limit: z.number().min(1).max(100).default(50),
     }))
     .query(async ({ input }) => {
@@ -143,6 +143,7 @@ export const videoPipelineRouter = router({
           retryCount: videoJobs.retryCount,
           vaApprovedAt: videoJobs.vaApprovedAt,
           publishedAt: videoJobs.publishedAt,
+          archivedAt: videoJobs.archivedAt,
           createdAt: videoJobs.createdAt,
           updatedAt: videoJobs.updatedAt,
           // Blog <-> Video closed-loop fields
@@ -154,8 +155,9 @@ export const videoPipelineRouter = router({
         .orderBy(desc(videoJobs.createdAt))
         .limit(input.limit);
 
-      if (input.status) return baseQuery.where(eq(videoJobs.status, input.status));
-      return baseQuery;
+      if (input.status === 'archived') return baseQuery.where(isNotNull(videoJobs.archivedAt));
+      if (input.status) return baseQuery.where(and(eq(videoJobs.status, input.status), isNull(videoJobs.archivedAt)));
+      return baseQuery.where(isNull(videoJobs.archivedAt));
     }),
 
   updateVideoMetadata: protectedProcedure
@@ -756,6 +758,26 @@ Apply all rules strictly. Title MUST be ≤60 chars. Hook line MUST be 140-155 c
         errorMessage: null,
       }).where(eq(videoJobs.id, input.jobId));
       return { success: true, message: `Job #${input.jobId} reset. Click "Upload to YouTube" to retry the upload.` };
+    }),
+
+  /** Move a video job to the Finished Bin (sets archivedAt timestamp). */
+  archiveVideoJob: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      await db.update(videoJobs).set({ archivedAt: Date.now() }).where(eq(videoJobs.id, input.jobId));
+      return { ok: true };
+    }),
+
+  /** Restore a video job from the Finished Bin. */
+  unarchiveVideoJob: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      await db.update(videoJobs).set({ archivedAt: null }).where(eq(videoJobs.id, input.jobId));
+      return { ok: true };
     }),
 });
 

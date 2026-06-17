@@ -43,6 +43,8 @@ import {
   Bot,
   Wand2,
   Share2,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 
 // ─── Syndication Types ────────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ interface SyndicationJob {
   publishedUrl: string | null;
   errorMessage: string | null;
   retryCount: number;
+  archivedAt: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -92,6 +95,7 @@ interface VideoJob {
   retryCount: number | null;
   vaApprovedAt: number | null;
   publishedAt: number | null;
+  archivedAt: number | null;
   createdAt: Date;
   updatedAt: Date;
   blogUrl: string | null;
@@ -285,6 +289,16 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
       onPosted();
     },
     onError: (err) => toast.error(`Retry failed: ${err.message}`),
+  });
+
+  const archiveJob = trpc.syndicationPipeline.archiveSyndicationJob.useMutation({
+    onSuccess: () => { toast.success("Moved to Finished Bin."); onPosted(); },
+    onError: (err) => toast.error(`Error: ${err.message}`),
+  });
+
+  const unarchiveJob = trpc.syndicationPipeline.unarchiveSyndicationJob.useMutation({
+    onSuccess: () => { toast.success("Restored from Finished Bin."); onPosted(); },
+    onError: (err) => toast.error(`Error: ${err.message}`),
   });
 
   const isStuck = job.status === "adapting" || job.status === "failed";
@@ -510,6 +524,33 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Archive / Restore footer */}
+      <div className="px-6 pb-4 flex justify-end border-t border-border/30 pt-3">
+        {job.archivedAt ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground text-xs"
+            onClick={() => unarchiveJob.mutate({ jobId: job.id })}
+            disabled={unarchiveJob.isPending}
+          >
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+            Restore from Finished Bin
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-amber-400 text-xs"
+            onClick={() => archiveJob.mutate({ jobId: job.id })}
+            disabled={archiveJob.isPending}
+          >
+            <Archive className="w-3.5 h-3.5 mr-1.5" />
+            Mark as Done — Move to Finished Bin
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }
@@ -731,6 +772,16 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
       onRefresh();
     },
     onError: (err) => toast.error(`Avatar retry failed: ${err.message}`),
+  });
+
+  const archiveVideoJob = trpc.videoPipeline.archiveVideoJob.useMutation({
+    onSuccess: () => { toast.success("Moved to Finished Bin."); onRefresh(); },
+    onError: (err) => toast.error(`Error: ${err.message}`),
+  });
+
+  const unarchiveVideoJob = trpc.videoPipeline.unarchiveVideoJob.useMutation({
+    onSuccess: () => { toast.success("Restored from Finished Bin."); onRefresh(); },
+    onError: (err) => toast.error(`Error: ${err.message}`),
   });
 
   // Yoast-style traffic light helper
@@ -1491,6 +1542,33 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Archive / Restore footer */}
+      <div className="px-6 pb-4 flex justify-end border-t border-border/30 pt-3">
+        {job.archivedAt ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground text-xs"
+            onClick={() => unarchiveVideoJob.mutate({ jobId: job.id })}
+            disabled={unarchiveVideoJob.isPending}
+          >
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+            Restore from Finished Bin
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-amber-400 text-xs"
+            onClick={() => archiveVideoJob.mutate({ jobId: job.id })}
+            disabled={archiveVideoJob.isPending}
+          >
+            <Archive className="w-3.5 h-3.5 mr-1.5" />
+            Mark as Done — Move to Finished Bin
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }
@@ -1499,8 +1577,8 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 export default function VADashboard() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"syndication" | "video">("syndication");
-  const [syndicationFilter, setSyndicationFilter] = useState<"all" | "todo" | "done">("todo");
-  const [videoFilter, setVideoFilter] = useState<"all" | "review" | "seo" | "published" | "failed">("review");
+  const [syndicationFilter, setSyndicationFilter] = useState<"all" | "todo" | "done" | "finished">("todo");
+  const [videoFilter, setVideoFilter] = useState<"all" | "review" | "seo" | "published" | "failed" | "finished">("review");
 
   // Syndication data
   const { data: syndicationJobs, isLoading: syndicationLoading, refetch: refetchSyndication } =
@@ -1514,17 +1592,19 @@ export default function VADashboard() {
   const allVideoJobs = (videoJobsData ?? []) as VideoJob[];
 
   const filteredSyndicationJobs = allSyndicationJobs.filter((job) => {
-    if (syndicationFilter === "todo") return job.status === "ready" || job.status === "pending" || job.status === "adapting" || job.status === "failed";
-    if (syndicationFilter === "done") return job.status === "published" || job.status === "skipped";
-    return true;
+    if (syndicationFilter === "finished") return !!job.archivedAt;
+    if (syndicationFilter === "todo") return !job.archivedAt && (job.status === "ready" || job.status === "pending" || job.status === "adapting" || job.status === "failed");
+    if (syndicationFilter === "done") return !job.archivedAt && (job.status === "published" || job.status === "skipped");
+    return !job.archivedAt;
   });
 
   const filteredVideoJobs = allVideoJobs.filter((job) => {
-    if (videoFilter === "review") return job.status === "ready_for_review";
-    if (videoFilter === "seo") return job.status === "uploaded_unlisted";
-    if (videoFilter === "published") return job.status === "published";
-    if (videoFilter === "failed") return job.status === "failed";
-    return true;
+    if (videoFilter === "finished") return !!job.archivedAt;
+    if (videoFilter === "review") return !job.archivedAt && job.status === "ready_for_review";
+    if (videoFilter === "seo") return !job.archivedAt && job.status === "uploaded_unlisted";
+    if (videoFilter === "published") return !job.archivedAt && job.status === "published";
+    if (videoFilter === "failed") return !job.archivedAt && job.status === "failed";
+    return !job.archivedAt;
   });
 
   const syndicationTodoCount = allSyndicationJobs.filter(
@@ -1630,18 +1710,19 @@ export default function VADashboard() {
             </div>
 
             {/* Filter tabs */}
-            <div className="flex gap-2 mb-6">
-              {(["todo", "all", "done"] as const).map((f) => (
+            <div className="flex gap-2 mb-6 flex-wrap">
+              {(["todo", "all", "done", "finished"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setSyndicationFilter(f)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                     syndicationFilter === f
-                      ? "bg-secondary text-foreground"
+                      ? f === "finished" ? "bg-amber-500/20 text-amber-400" : "bg-secondary text-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
-                  {f === "todo" ? "To Do" : f === "done" ? "Completed" : "All Jobs"}
+                  {f === "finished" && <Archive className="w-3.5 h-3.5" />}
+                  {f === "todo" ? "To Do" : f === "done" ? "Completed" : f === "finished" ? "Finished Bin" : "All Jobs"}
                 </button>
               ))}
             </div>
@@ -1709,17 +1790,18 @@ export default function VADashboard() {
 
             {/* Filter tabs */}
             <div className="flex gap-2 mb-6 flex-wrap">
-              {(["review", "seo", "all", "published", "failed"] as const).map((f) => (
+              {(["review", "seo", "all", "published", "failed", "finished"] as const).map((f) => (
                 <button
                   key={f}
-                  onClick={() => setVideoFilter(f as any)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  onClick={() => setVideoFilter(f)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                     videoFilter === f
-                      ? "bg-secondary text-foreground"
+                      ? f === "finished" ? "bg-amber-500/20 text-amber-400" : "bg-secondary text-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
-                  {f === "review" ? "Needs Review" : f === "seo" ? "SEO Review" : f === "published" ? "Published" : f === "failed" ? "Failed" : "All"}
+                  {f === "finished" && <Archive className="w-3.5 h-3.5" />}
+                  {f === "review" ? "Needs Review" : f === "seo" ? "SEO Review" : f === "published" ? "Published" : f === "failed" ? "Failed" : f === "finished" ? "Finished Bin" : "All"}
                 </button>
               ))}
             </div>

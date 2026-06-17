@@ -2456,9 +2456,29 @@ CAPTION: [caption text]`;
         })
       )
       .mutation(async ({ input }) => {
+        // Resolve any internal /manus-storage/* paths to real public HTTPS URLs
+        let resolvedImageUrls = input.imageUrls;
+        if (resolvedImageUrls.some((u) => u.startsWith("/manus-storage/"))) {
+          try {
+            const { storageGet } = await import("./storage");
+            resolvedImageUrls = await Promise.all(
+              resolvedImageUrls.map(async (url) => {
+                if (url.startsWith("/manus-storage/")) {
+                  const key = url.replace(/^\/manus-storage\//, "");
+                  const { url: publicUrl } = await storageGet(key);
+                  return publicUrl;
+                }
+                return url;
+              })
+            );
+          } catch (err) {
+            console.error("[Buffer carousel push] Failed to resolve storage URLs:", err);
+          }
+        }
+
         const result = await pushCarouselToBuffer({
           caption: input.caption,
-          imageUrls: input.imageUrls,
+          imageUrls: resolvedImageUrls,
           profileIds: input.profileIds,
           channelServiceMap: input.channelServiceMap,
           scheduledAt: input.scheduledAt,
@@ -2559,10 +2579,26 @@ CAPTION: [caption text]`;
           }
         }
 
+        // Resolve internal /manus-storage/* paths to real public HTTPS URLs.
+        // Buffer's servers cannot fetch relative or internal proxy paths — they need
+        // a fully qualified public URL to download the image.
+        let resolvedImageUrl = input.imageUrl;
+        if (resolvedImageUrl?.startsWith("/manus-storage/")) {
+          try {
+            const { storageGet } = await import("./storage");
+            const storageKey = resolvedImageUrl.replace(/^\/manus-storage\//, "");
+            const { url } = await storageGet(storageKey);
+            resolvedImageUrl = url;
+          } catch (err) {
+            console.error("[Buffer push] Failed to resolve storage URL:", err);
+            // Fall back to original — will likely fail at Buffer, but gives a clearer error
+          }
+        }
+
         const result = await pushToBuffer({
           text: input.text,
           profileIds: input.profileIds,
-          imageUrl: input.imageUrl,
+          imageUrl: resolvedImageUrl,
           videoUrl: input.videoUrl,
           scheduledAt: input.scheduledAt,
           platform: input.platform,

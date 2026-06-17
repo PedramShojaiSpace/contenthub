@@ -44,7 +44,7 @@ Is your gut the root of everything? Watch this groundbreaking docu-series and di
 
 ---
 About Dr. Pedram Shojai:
-Dr. Pedram Shojai, OMD is a Doctor of Oriental Medicine, Taoist monk, New York Times bestselling author, filmmaker, and host of The Urban Monk podcast. He has spent 30 years studying ancient wisdom traditions and modern functional medicine to help people reclaim their energy, health, and purpose.`;
+Dr. Pedram Shojai, OMD is a Doctor of Oriental Medicine, Daoist monk, New York Times bestselling author, filmmaker, and host of The Urban Monk podcast. He has spent 30 years studying ancient wisdom traditions and modern functional medicine to help people reclaim their energy, health, and purpose.`;
 
 // ── Channel-specific base tags (always included in every video) ───────────────
 const CHANNEL_BASE_TAGS = [
@@ -53,7 +53,7 @@ const CHANNEL_BASE_TAGS = [
   "Dr Pedram Shojai",
   "holistic health",
   "functional medicine",
-  "Taoist medicine",
+  "Daoist medicine",
   "gut health",
   "longevity",
   "mindfulness",
@@ -116,8 +116,8 @@ export async function generateBrollPrompt(params: {
 
 CHANNEL IDENTITY:
 - Channel: The Urban Monk (youtube.com/@TheUrbanMonk)
-- Host: Dr. Pedram Shojai — Doctor of Oriental Medicine, Taoist monk, NY Times bestselling author, filmmaker
-- Niche: holistic health, gut health, longevity, Taoist medicine, functional medicine, mindfulness, ancient wisdom + modern science
+- Host: Dr. Pedram Shojai — Doctor of Oriental Medicine, Daoist monk, NY Times bestselling author, filmmaker
+- Niche: holistic health, gut health, longevity, Daoist medicine, functional medicine, mindfulness, ancient wisdom + modern science
 - Audience: health-conscious professionals aged 30-55, ambitious parents and seekers optimizing biology and purpose
 - Tone: calm, authoritative, educational, evidence-based with ancient wisdom grounding
 - Video length: 7-12 minutes

@@ -32,7 +32,7 @@ const CONSCIOUSNESS_NICHES = [
   "Meditation & Altered States",
   "Non-Duality & Awareness",
   "Quantum Reality & Consciousness",
-  "Taoist Philosophy & Modern Life",
+  "Daoist Philosophy & Modern Life",
   "Near-Death Experiences & Science",
   "The Nature of Time & Reality",
 ];

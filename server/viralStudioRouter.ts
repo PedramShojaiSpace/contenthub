@@ -43,7 +43,7 @@ Voice: authoritative but warm, science-backed but accessible, direct and no-fluf
 Audience: health-conscious adults 35-65 who want longevity, energy, clarity, and deeper meaning. This includes people on a spiritual path — seekers exploring consciousness, enlightenment, and the nature of reality — as well as those focused on physical health.
 Brand: The Urban Monk — programs include Upstream (upstream.theurbanmonk.com), Lights On (lightson.theurbanmonk.com), Gateway to Health test (gth.theurbanmonk.com), and the Restorative Sleep Masterclass (theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay). Also supplements and books.
 Content pillars: longevity, gut health, sleep, stress, integrative medicine, consciousness & neuroscience, enlightenment & spiritual growth, metaphysics & philosophy of mind.
-Never use corporate jargon. Speak like a wise doctor who is also a Taoist monk and lifelong student of consciousness.
+Never use corporate jargon. Speak like a wise doctor who is also a Daoist monk and lifelong student of consciousness.
 `;
 
 // ─── Hook frameworks ──────────────────────────────────────────────────────────

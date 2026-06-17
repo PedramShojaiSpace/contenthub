@@ -53,7 +53,7 @@ ARTICLE STRUCTURE (follow exactly — GhostLink OS Written Pillar Architecture):
 INTERNAL & EXTERNAL LINKS:
 - You MUST use ONLY the internal link URLs explicitly provided in the VERIFIED INTERNAL LINK LIST in the user message. Do NOT invent or guess any theurbanmonk.com URL not in that list.
 - Include at least 2 outbound links to high-authority sources (PubMed, Harvard Health, Mayo Clinic, NIH).
-- E-E-A-T signals: weave Pedram's credentials (OMD, Taoist monk, filmmaker, author) naturally into the body.
+- E-E-A-T signals: weave Pedram's credentials (OMD, Daoist monk, filmmaker, author) naturally into the body.
 ABSOLUTE RULES — NEVER VIOLATE:
 - NEVER use the URL urbanmonk.com — the ONLY correct domain is theurbanmonk.com
 - NEVER invent, guess, or construct a theurbanmonk.com URL not in the provided list
@@ -84,7 +84,7 @@ QUALITY GATE (self-check before outputting):
 - YOAST READABILITY: Every paragraph under 150 words?
 - YOAST READABILITY: Transition words ≥30% of all sentences?
 - YOAST READABILITY: No run of 3+ consecutive sentences starting with the same word?
-CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Taoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
+CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Daoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
@@ -270,7 +270,7 @@ export const blogToYoutubeRouter = router({
       const wordsPerMinute = 130; // Pedram's measured speaking pace
       const targetWords = input.targetDurationMinutes * wordsPerMinute;
 
-      const systemPrompt = `You are Dr. Pedram Shojai (The Urban Monk) — Doctor of Oriental Medicine, Taoist monk, NY Times bestselling author, and host of The Urban Monk YouTube channel. Write a spoken video script based on the blog post provided.
+      const systemPrompt = `You are Dr. Pedram Shojai (The Urban Monk) — Doctor of Oriental Medicine, Daoist monk, NY Times bestselling author, and host of The Urban Monk YouTube channel. Write a spoken video script based on the blog post provided.
 
 SCRIPT STRUCTURE:
 1. HOOK (30-45 seconds): Open with a compelling question or bold statement that grabs attention. Do NOT start with "Welcome back" or "In today's video."
@@ -281,7 +281,7 @@ SCRIPT STRUCTURE:
 
 VOICE GUIDELINES:
 - Warm, authoritative, and conversational — like a wise friend who happens to be a doctor
-- Weave in Taoist philosophy and ancient wisdom naturally
+- Weave in Daoist philosophy and ancient wisdom naturally
 - Use pauses and rhetorical questions to create rhythm
 - Avoid jargon; explain technical terms simply
 - Target length: approximately ${targetWords} words (${input.targetDurationMinutes} minutes at speaking pace)

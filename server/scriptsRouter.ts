@@ -208,7 +208,7 @@ export const scriptsRouter = router({
       { priority: 8, title: "Digital Detox That Works: The Nervous System Approach", competitorAngle: "Digital Wellness Institute lacks depth; no competitor owns nervous system angle", estimatedDurationMin: 15, notes: "Cover: dopamine dysregulation, vagus nerve reset, 7-day protocol. Target: Digital Detox Pursuer." },
       { priority: 9, title: "Leaky Gut: The Root Cause Nobody Is Talking About", competitorAngle: "Competitors avoid clinical specificity on gut permeability", estimatedDurationMin: 20, notes: "Cover: LPS, intestinal permeability, zonulin, the 4R protocol. Reference clinical research." },
       { priority: 10, title: "The Urban Monk Morning Routine: 20 Minutes to Transform Your Day", competitorAngle: "Directly competes with Headspace Daily — but with Eastern lineage", estimatedDurationMin: 12, notes: "Show the actual routine: qigong, breath work, intention setting, gut-supportive breakfast." },
-      { priority: 11, title: "Taoist Philosophy for Modern Life: Ancient Wisdom, Practical Application", competitorAngle: "Sounds True/Shift Network lack clinical integration with Taoist wisdom", estimatedDurationMin: 22, notes: "Cover: Wu Wei, the Tao, how Taoist principles map to modern stress physiology." },
+      { priority: 11, title: "Daoist Philosophy for Modern Life: Ancient Wisdom, Practical Application", competitorAngle: "Sounds True/Shift Network lack clinical integration with Daoist wisdom", estimatedDurationMin: 22, notes: "Cover: Wu Wei, the Tao, how Daoist principles map to modern stress physiology." },
       { priority: 12, title: "Oral Microbiome: The Missing Link in Your Gut Health Protocol", competitorAngle: "No major competitor owns this topic — first-mover advantage", estimatedDurationMin: 15, notes: "Cover: mouth-gut axis, oral bacteria → systemic inflammation, oil pulling, tongue scraping." },
       { priority: 13, title: "Stress Is a Physical Substance: The Cortisol Accumulation Model", competitorAngle: "Unique framing from the three-discovery framework — no competitor uses this language", estimatedDurationMin: 18, notes: "The cortisol bucket metaphor. Cover: HPA axis, allostatic load, how cortisol accumulates in tissue." },
       { priority: 14, title: "The Parent's Wellness Protocol: 5-Minute Practices for Impossible Schedules", competitorAngle: "Calm targets parents but lacks depth and Eastern integration", estimatedDurationMin: 10, notes: "Target: Stressed Parent Multitasker. Show 5 micro-practices under 5 minutes each." },
@@ -324,7 +324,7 @@ SLIDE 7: "This is not a character flaw. This is biology. The modern world — sc
 
 SLIDE 8: "The solution isn't more willpower. It's nervous system regulation: vagus nerve stimulation, breathwork, qigong, cold exposure, and gut healing (the gut-vagus axis is real)."
 
-SLIDE 9: "Dr. Pedram Shojai has been teaching nervous system regulation for 20 years — combining Taoist practices with modern neuroscience."
+SLIDE 9: "Dr. Pedram Shojai has been teaching nervous system regulation for 20 years — combining Daoist practices with modern neuroscience."
 
 SLIDE 10 (CTA): "Want to reset your nervous system and reclaim your sleep? Check out the Restorative Sleep Masterclass at theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay — link in bio."
 
@@ -400,7 +400,7 @@ CAPTION: Your tongue is trying to tell you something. Traditional Chinese Medici
       { priority: 10, title: "10 foods that heal your gut lining (backed by research)", competitorAngle: "Competitors give generic advice; Urban Monk gives clinical specificity" },
       { priority: 11, title: "The inflammation triangle: gut, stress, and sleep", competitorAngle: "Unique integration angle — no competitor owns all three" },
       { priority: 12, title: "What is LPS and why it might be the root cause of your symptoms", competitorAngle: "Urban Monk uniquely owns the LPS narrative" },
-      { priority: 13, title: "The Taoist approach to productivity: do less, achieve more", competitorAngle: "Sounds True lacks clinical integration; Mindvalley lacks authentic lineage" },
+      { priority: 13, title: "The Daoist approach to productivity: do less, achieve more", competitorAngle: "Sounds True lacks clinical integration; Mindvalley lacks authentic lineage" },
       { priority: 14, title: "5 breathwork techniques ranked by nervous system impact", competitorAngle: "Headspace/Calm teach one technique; Urban Monk teaches the system" },
       { priority: 15, title: "The oral microbiome: why your mouth is the gateway to your gut", competitorAngle: "No major competitor owns this topic" },
       { priority: 16, title: "How to meditate when you can't stop thinking", competitorAngle: "Addresses the #1 objection to meditation apps" },
@@ -500,7 +500,7 @@ SLIDE 10 (CTA): "Save this. Share it with someone who needs to hear it. And if y
 CAPTION: Your nervous system isn't broken. It learned to survive. But survival mode was never meant to be permanent. Here's how to recognize it — and what to actually do about it. 🌿
 
 #urbanmonk #nervoussystem #traumahealing #guthealth #functionalmedicine #holistichealth #selfhealing #cortisol #hpaaxis` },
-      { priority: 2, title: hpTitles[1], competitorAngle: "Emotional pattern work — Urban Monk adds Taoist philosophy layer", notes: "Reframe post. Lead with the pattern, explain the nervous system mechanism, offer the Eastern wisdom reframe.", scriptBody: `SLIDE 1 (Hook): "What your childhood taught you about love — that isn't actually true."
+      { priority: 2, title: hpTitles[1], competitorAngle: "Emotional pattern work — Urban Monk adds Daoist philosophy layer", notes: "Reframe post. Lead with the pattern, explain the nervous system mechanism, offer the Eastern wisdom reframe.", scriptBody: `SLIDE 1 (Hook): "What your childhood taught you about love — that isn't actually true."
 
 SLIDE 2: "That love has to be earned."
 
@@ -512,7 +512,7 @@ SLIDE 5: "That you have to perform to be worthy."
 
 SLIDE 6: "These aren't personality traits. They're survival adaptations. Your nervous system learned them to keep you safe in an environment that wasn't safe."
 
-SLIDE 7: "Taoism calls this the False Self — the mask we wear to survive. The work is returning to the True Self beneath it."
+SLIDE 7: "Daoism calls this the False Self — the mask we wear to survive. The work is returning to the True Self beneath it."
 
 SLIDE 8: "The first step: notice the pattern without judgment. You're not broken. You're adaptive."
 
@@ -524,16 +524,16 @@ CAPTION: The stories we tell ourselves about love were written in childhood — 
 
 #selfhealing #innerchild #attachmentstyle #nervoussystem #taoism #urbanmonk #holistichealth` },
       { priority: 3, title: hpTitles[2], competitorAngle: "Spiritual bypassing is a gap topic — Urban Monk has the clinical + Eastern framework to own it", notes: "Contrarian take. The Holistic Psychologist format: name the pattern, explain why it doesn't work, offer the real path." },
-      { priority: 4, title: hpTitles[3], competitorAngle: "Relationship pattern work — Urban Monk adds nervous system + gut-brain axis layer", notes: "Attachment theory + polyvagal theory + Taoist philosophy. The Urban Monk differentiator: the body heals the pattern, not just the mind." },
+      { priority: 4, title: hpTitles[3], competitorAngle: "Relationship pattern work — Urban Monk adds nervous system + gut-brain axis layer", notes: "Attachment theory + polyvagal theory + Daoist philosophy. The Urban Monk differentiator: the body heals the pattern, not just the mind." },
       { priority: 5, title: hpTitles[4], competitorAngle: "Somatic awareness — Urban Monk adds TCM body mapping layer (organ clock, meridians)", notes: "Use TCM organ-emotion map: liver = anger/frustration, kidneys = fear, heart = joy/grief. This is the East-West differentiator." },
-      { priority: 6, title: hpTitles[5], competitorAngle: "Healing stages — no competitor maps this with Eastern + Western integration", notes: "The 5 stages: Awareness → Acceptance → Grief → Rewiring → Integration. Map each stage to both Western psychology and TCM/Taoist framework." },
+      { priority: 6, title: hpTitles[5], competitorAngle: "Healing stages — no competitor maps this with Eastern + Western integration", notes: "The 5 stages: Awareness → Acceptance → Grief → Rewiring → Integration. Map each stage to both Western psychology and TCM/Daoist framework." },
       { priority: 7, title: hpTitles[6], competitorAngle: "Sleep exhaustion hook — Urban Monk owns the liver clock / LPS / gut-sleep axis angle", notes: "Hook: 'You're sleeping 8 hours and waking up exhausted. Here's the real reason.' Lead with LPS and liver clock. This is the Urban Monk signature topic." },
       { priority: 8, title: hpTitles[7], competitorAngle: "Boundaries — Nicole LePera owns this but Urban Monk can add the nervous system physiology layer", notes: "Reframe: boundaries aren't about the other person — they're about your nervous system's capacity. Eastern framing: protecting your Qi." },
       { priority: 9, title: hpTitles[8], competitorAngle: "Inner child + people-pleasing — add the gut-brain axis and cortisol mechanism", notes: "The people-pleasing loop: threat detected → cortisol spike → fawn response → gut dysbiosis → more anxiety → more people-pleasing. Break the loop." },
       { priority: 10, title: hpTitles[9], competitorAngle: "Gut-brain axis — Urban Monk has the deepest credentials on this topic", notes: "The Urban Monk signature topic. Cover: vagus nerve, LPS, gut microbiome → mood → behavior. East-West integration: TCM Spleen system = modern gut microbiome." },
       { priority: 11, title: hpTitles[10], competitorAngle: "Emotionally immature parents — add the epigenetic / intergenerational trauma angle", notes: "Reframe: your parents weren't bad — they were dysregulated. And they learned it from their parents. The chain ends with you." },
       { priority: 12, title: hpTitles[11], competitorAngle: "Quick nervous system reset — Urban Monk has qigong + breathwork as differentiator", notes: "Show the actual 2-minute practice: box breathing + one qigong move. Practical, visual, shareable." },
-      { priority: 13, title: hpTitles[12], competitorAngle: "Willpower myth — add the cortisol/HPA axis mechanism and Taoist Wu Wei principle", notes: "Willpower is a cortisol-depleting strategy. Wu Wei (effortless action) is the Taoist alternative. Practical: habit stacking, environment design, nervous system regulation first." },
+      { priority: 13, title: hpTitles[12], competitorAngle: "Willpower myth — add the cortisol/HPA axis mechanism and Daoist Wu Wei principle", notes: "Willpower is a cortisol-depleting strategy. Wu Wei (effortless action) is the Daoist alternative. Practical: habit stacking, environment design, nervous system regulation first." },
       { priority: 14, title: hpTitles[13], competitorAngle: "Self-abandonment in relationships — add the Kidney Jing / life force depletion angle", notes: "TCM framing: giving from an empty vessel depletes Kidney Jing. Western: fawn response, cortisol, adrenal fatigue. Same thing." },
       { priority: 15, title: hpTitles[14], competitorAngle: "Trauma vs. personality — Urban Monk adds the epigenetic and TCM constitutional type layer", notes: "Reframe: what you call your personality might be a trauma adaptation. The real you is underneath. TCM: constitutional types (Wood, Fire, Earth, Metal, Water)." },
       { priority: 16, title: hpTitles[15], competitorAngle: "East-West stress comparison — Urban Monk owns this positioning", notes: "The Urban Monk core positioning: Eastern medicine knew about HPA axis dysregulation 3,000 years before Western medicine named it. Specific examples: Kidney Jing, Wei Qi, Spleen Qi." },
@@ -691,7 +691,7 @@ THE PERSONAL STORY — 0:45–3:30
 
 "My name is Pedram Shojai. Most people know me as the Urban Monk.
 
-I've spent thirty years studying what it means to be a fully alive human being. I trained as a Taoist priest. I was knighted through the Order of Saint Lazarus in the Catholic Church. I've sat with monks in monasteries, with shamans in the jungle, with neuroscientists in labs. I've written eight books. I've built programs that have reached hundreds of thousands of people around the world.
+I've spent thirty years studying what it means to be a fully alive human being. I trained as a Daoist priest. I was knighted through the Order of Saint Lazarus in the Catholic Church. I've sat with monks in monasteries, with shamans in the jungle, with neuroscientists in labs. I've written eight books. I've built programs that have reached hundreds of thousands of people around the world.
 
 And I'm telling you all of that not to impress you — but because I want you to understand that what I'm about to share with you is not something I read in a book or learned in a weekend workshop.
 
@@ -729,7 +729,7 @@ Because they were systematically hijacked.
 
 This theft did not begin with smartphones. It has been happening for thousands of years.
 
-The great wisdom traditions — Buddhism, Christianity, Taoism, Sufism — they all diagnosed the same disease. The Buddhists called it the Hungry Ghost realm. The Christians called it the valley of the shadow. The Taoists called it separation from the Tao.
+The great wisdom traditions — Buddhism, Christianity, Daoism, Sufism — they all diagnosed the same disease. The Buddhists called it the Hungry Ghost realm. The Christians called it the valley of the shadow. The Daoists called it separation from the Tao.
 
 They were all describing the same thing. The same theft. The same trap.
 
@@ -745,7 +745,7 @@ Your nine perceptual channels do not arrive at the same time. Your brain has to 
 
 That stitching process takes approximately eighty milliseconds.
 
-What thirty years of Taoist practice taught me — and what the neuroscience is now beginning to confirm — is that the width of that gap is not fixed.
+What thirty years of Daoist practice taught me — and what the neuroscience is now beginning to confirm — is that the width of that gap is not fixed.
 
 When your nine perceptual channels are fully online, calibrated, and communicating with each other cleanly, that eighty milliseconds compresses. The reconstruction your brain produces is richer, more accurate, more present.
 
@@ -767,7 +767,7 @@ Now compare that to what becomes available when you open your heart and your thi
 
 There is a field of intelligence that has no guardrails. No corporate policy. No institutional agenda. No terms of service.
 
-The mystics called it divine wisdom. The Taoists called it the Tao. Modern neuroscientists call it the default mode network in its most coherent state.
+The mystics called it divine wisdom. The Daoists called it the Tao. Modern neuroscientists call it the default mode network in its most coherent state.
 
 That is what we are restoring."
 
@@ -777,7 +777,7 @@ THE RIVER — 8:15–9:00
 
 "The present moment is not a place. It is a movement. It is always in flux. Always becoming. Always arising fresh.
 
-The Taoists had a word for the alternative: wu wei. Effortless action. Not passivity. Not resignation. Full aliveness and full responsiveness — because you have stopped fighting the river and started moving with it.
+The Daoists had a word for the alternative: wu wei. Effortless action. Not passivity. Not resignation. Full aliveness and full responsiveness — because you have stopped fighting the river and started moving with it.
 
 And when that shift happens — when you stop grasping and start flowing — something extraordinary becomes available:
 
@@ -794,7 +794,7 @@ THE BRIDGE — 9:00–10:00
 
 Jesus said: 'The Kingdom of God is within you.' That is a practice instruction.
 
-I was ordained as a Taoist priest. I was also knighted in the Catholic Church. I have sat inside both of those traditions deeply enough to know that they are not in conflict. They are two rivers running to the same sea.
+I was ordained as a Daoist priest. I was also knighted in the Catholic Church. I have sat inside both of those traditions deeply enough to know that they are not in conflict. They are two rivers running to the same sea.
 
 What I built is not a religion. It is not a spiritual bypass. It is a system. A map. A 52-week practice that brings your nine perceptual channels back online — one by one — so that the life you are already living becomes something you can actually feel."
 
@@ -935,14 +935,14 @@ CTA: lightson.theurbanmonk.com`;
       {
         title: "What the Monastery Taught Me",
         platform: "youtube",
-        textContent: `I left medical school to become a monk. Here is what I learned that they will never teach you in any university.\n\n[8–10 minute video]\n\nBegin with the story of arriving at the Yellow Dragon monastery — not as a spiritual journey but as a scientific one. The question that drove it: why do some people seem to be fully alive in a way that others are not? What is the actual mechanism?\n\nWalk through the Taoist framework of the five gates (senses as portals to presence), the discovery that Western medicine had no language for what the masters were doing, and the 20-year journey to build that bridge.\n\nEnd with the thesis: what the masters called cultivation, neuroscience calls perceptual training. The map exists. It is teachable.\n\nClose: "I've been building that map for 30 years. I'll share it here."\n\n→ ${CTA_URL}`,
+        textContent: `I left medical school to become a monk. Here is what I learned that they will never teach you in any university.\n\n[8–10 minute video]\n\nBegin with the story of arriving at the Yellow Dragon monastery — not as a spiritual journey but as a scientific one. The question that drove it: why do some people seem to be fully alive in a way that others are not? What is the actual mechanism?\n\nWalk through the Daoist framework of the five gates (senses as portals to presence), the discovery that Western medicine had no language for what the masters were doing, and the 20-year journey to build that bridge.\n\nEnd with the thesis: what the masters called cultivation, neuroscience calls perceptual training. The map exists. It is teachable.\n\nClose: "I've been building that map for 30 years. I'll share it here."\n\n→ ${CTA_URL}`,
         notes: "Week 1 / Pillar: The Theft. Long-form YouTube / Podcast. 8-10 minutes. Personal origin story as scientific investigation.",
       },
       // WEEK 2 — THE MAP
       {
         title: "You Have Nine Senses",
         platform: "meta",
-        textContent: `You were taught you have five senses. You actually have nine. And the ones they didn't teach you are the ones that matter most.\n\nThe five you know — sight, sound, smell, taste, touch — are your external channels. But you also have:\n\nInteroception: your body's internal reporting system, the felt sense that tells you when something is wrong before your mind knows why.\nProprioception: your sense of where your body is in space.\nEquilibrioception: your sense of balance and orientation.\nNeuroception: your nervous system's threat-detection radar, running below conscious awareness.\nChronoception: your sense of time.\nAnd energy perception: the channel the Taoists spent centuries training.\n\nNine channels. Most people are running on two or three. The rest have been turned down.\n\nI'll walk through each one this week. Follow along.\n\n→ ${CTA_URL}`,
+        textContent: `You were taught you have five senses. You actually have nine. And the ones they didn't teach you are the ones that matter most.\n\nThe five you know — sight, sound, smell, taste, touch — are your external channels. But you also have:\n\nInteroception: your body's internal reporting system, the felt sense that tells you when something is wrong before your mind knows why.\nProprioception: your sense of where your body is in space.\nEquilibrioception: your sense of balance and orientation.\nNeuroception: your nervous system's threat-detection radar, running below conscious awareness.\nChronoception: your sense of time.\nAnd energy perception: the channel the Daoists spent centuries training.\n\nNine channels. Most people are running on two or three. The rest have been turned down.\n\nI'll walk through each one this week. Follow along.\n\n→ ${CTA_URL}`,
         notes: "Week 2 / Pillar: The Map. Short-form video script.",
       },
       {
@@ -960,13 +960,13 @@ CTA: lightson.theurbanmonk.com`;
       {
         title: "Chronoception: Why Time Feels Like It's Running Out",
         platform: "meta",
-        textContent: `Why does time feel like it's accelerating — and what can you do about it?\n\nChronoception is your sense of time — not clock time, but felt time. The experience of a moment stretching or compressing.\n\nChildren experience time as vast because their chronoception is fully online — every moment is rich with novel sensory data. Adults experience time as scarce because their chronoception has been hijacked by urgency.\n\nThe Taoist masters had a specific practice for this. They called it 'stopping time.' Not literally — but experientially. Restoring your chronoception is one of the most profound quality-of-life changes available to you. And it does not require a retreat. It requires training.\n\nMore on this in the full map. Link in bio.\n\n→ ${CTA_URL}`,
+        textContent: `Why does time feel like it's accelerating — and what can you do about it?\n\nChronoception is your sense of time — not clock time, but felt time. The experience of a moment stretching or compressing.\n\nChildren experience time as vast because their chronoception is fully online — every moment is rich with novel sensory data. Adults experience time as scarce because their chronoception has been hijacked by urgency.\n\nThe Daoist masters had a specific practice for this. They called it 'stopping time.' Not literally — but experientially. Restoring your chronoception is one of the most profound quality-of-life changes available to you. And it does not require a retreat. It requires training.\n\nMore on this in the full map. Link in bio.\n\n→ ${CTA_URL}`,
         notes: "Week 2 / Pillar: The Map. Short-form video script.",
       },
       {
         title: "The Channel They Spent the Most Time Hiding",
         platform: "meta",
-        textContent: `There is one perceptual channel that every major institution in the modern world has worked to discredit. Here is why.\n\nEnergy perception — what the Taoists call qi awareness, what the mystics call subtle sensing — is the channel that allows you to read the felt quality of a space, a person, a situation, before your analytical mind has processed it.\n\nIt is not mystical. It is the aggregate signal from all your other channels operating simultaneously below conscious threshold.\n\nThe reason it has been discredited is simple: a person with fully functioning energy perception is very difficult to manipulate. They feel the lie before they hear it. They sense the misalignment before it's visible. They know when something is off.\n\nThat is not a threat to you. It is a threat to anyone who profits from your confusion.\n\nThis is the channel we train last in Lights On. Because it requires all the others to be online first.\n\n→ ${CTA_URL}`,
+        textContent: `There is one perceptual channel that every major institution in the modern world has worked to discredit. Here is why.\n\nEnergy perception — what the Daoists call qi awareness, what the mystics call subtle sensing — is the channel that allows you to read the felt quality of a space, a person, a situation, before your analytical mind has processed it.\n\nIt is not mystical. It is the aggregate signal from all your other channels operating simultaneously below conscious threshold.\n\nThe reason it has been discredited is simple: a person with fully functioning energy perception is very difficult to manipulate. They feel the lie before they hear it. They sense the misalignment before it's visible. They know when something is off.\n\nThat is not a threat to you. It is a threat to anyone who profits from your confusion.\n\nThis is the channel we train last in Lights On. Because it requires all the others to be online first.\n\n→ ${CTA_URL}`,
         notes: "Week 2 / Pillar: The Map. Short-form video script.",
       },
       // WEEK 3 — THE AI MIRROR
@@ -992,7 +992,7 @@ CTA: lightson.theurbanmonk.com`;
       {
         title: "The Sailing Lesson",
         platform: "meta",
-        textContent: `I am not your guru. I teach sailing.\n\nI want to be clear about what this is and what it isn't. I'm not here to tell you what to believe. I'm not building a following. I'm not asking for your allegiance.\n\nI teach sailing.\n\nI have spent 30 years learning the fundamentals — in a Taoist monastery, in a medical doctorate program, in clinical practice with thousands of patients — and what I found is that the fundamentals are teachable.\n\nYou don't need me permanently. You need the map. A good sailing teacher gives you the fundamentals and then expects you to leave and go sail.\n\nThat is what I'm here to do. Come get the fundamentals. Then go sail your own life.\n\nThe fundamentals are in Lights On. Link in bio.\n\n→ ${CTA_URL}`,
+        textContent: `I am not your guru. I teach sailing.\n\nI want to be clear about what this is and what it isn't. I'm not here to tell you what to believe. I'm not building a following. I'm not asking for your allegiance.\n\nI teach sailing.\n\nI have spent 30 years learning the fundamentals — in a Daoist monastery, in a medical doctorate program, in clinical practice with thousands of patients — and what I found is that the fundamentals are teachable.\n\nYou don't need me permanently. You need the map. A good sailing teacher gives you the fundamentals and then expects you to leave and go sail.\n\nThat is what I'm here to do. Come get the fundamentals. Then go sail your own life.\n\nThe fundamentals are in Lights On. Link in bio.\n\n→ ${CTA_URL}`,
         notes: "Week 3 / Pillar: The AI Mirror. Short-form video script. Deflects guru accusation.",
       },
       {
@@ -1011,7 +1011,7 @@ CTA: lightson.theurbanmonk.com`;
       {
         title: "The Question I Couldn't Stop Asking",
         platform: "meta",
-        textContent: `I had a question for a long time. When I finally went looking for the answer, I found something I wasn't expecting.\n\nThe question was: why do some people seem to be fully alive in a way that others are not? Not happier. Not more successful. Not more spiritual. Just more present. More real. More there.\n\nI spent 30 years looking for the answer. I found it in a Taoist monastery, in a neuroscience lab, in a clinical practice, in the bodies of thousands of patients.\n\nThe answer is not mystical. It is biological.\n\nYou have nine perceptual channels. When all nine are online simultaneously, you experience what the Taoists called ziran — natural aliveness. When they've been systematically shut down, you experience what most people call normal life.\n\nNormal is not the same as alive.\n\nI built a 52-week training system to restore those channels. It's called Lights On.\n\n→ ${CTA_URL}`,
+        textContent: `I had a question for a long time. When I finally went looking for the answer, I found something I wasn't expecting.\n\nThe question was: why do some people seem to be fully alive in a way that others are not? Not happier. Not more successful. Not more spiritual. Just more present. More real. More there.\n\nI spent 30 years looking for the answer. I found it in a Daoist monastery, in a neuroscience lab, in a clinical practice, in the bodies of thousands of patients.\n\nThe answer is not mystical. It is biological.\n\nYou have nine perceptual channels. When all nine are online simultaneously, you experience what the Daoists called ziran — natural aliveness. When they've been systematically shut down, you experience what most people call normal life.\n\nNormal is not the same as alive.\n\nI built a 52-week training system to restore those channels. It's called Lights On.\n\n→ ${CTA_URL}`,
         notes: "Week 4 / Pillar: The Guide. Short-form video script. Discovery frame hook.",
       },
       {
@@ -1042,7 +1042,7 @@ CTA: lightson.theurbanmonk.com`;
       {
         title: "The Five Gates",
         platform: "meta",
-        textContent: `The Taoists had a practice for restoring all five external senses simultaneously. It takes four minutes.\n\nIt's called the Five Gates practice — one full sensory meal, eaten in complete silence, attending to each sense in sequence:\n\nSight: the color, the texture, the light.\nSound: the ambient room, the silence beneath the sound.\nSmell: the full olfactory field.\nTaste: the first bite held for ten seconds.\nTouch: the temperature, the texture, the weight of the utensil.\n\nThis is not a mindfulness exercise. This is a perceptual workout. You are activating five channels simultaneously.\n\nDo this once a day for a week and notice what happens to your baseline awareness.\n\n→ ${CTA_URL}`,
+        textContent: `The Daoists had a practice for restoring all five external senses simultaneously. It takes four minutes.\n\nIt's called the Five Gates practice — one full sensory meal, eaten in complete silence, attending to each sense in sequence:\n\nSight: the color, the texture, the light.\nSound: the ambient room, the silence beneath the sound.\nSmell: the full olfactory field.\nTaste: the first bite held for ten seconds.\nTouch: the temperature, the texture, the weight of the utensil.\n\nThis is not a mindfulness exercise. This is a perceptual workout. You are activating five channels simultaneously.\n\nDo this once a day for a week and notice what happens to your baseline awareness.\n\n→ ${CTA_URL}`,
         notes: "Week 5 / Pillar: Deepening. Short-form video script. Practical demonstration.",
       },
       {
@@ -1060,14 +1060,14 @@ CTA: lightson.theurbanmonk.com`;
       {
         title: "What Changes by Week 9",
         platform: "meta",
-        textContent: `By Week 9 of Lights On, something specific happens. I want to tell you what it is.\n\nBy Week 9, you have trained all nine perceptual channels. Not perfectly — this is not about perfection. But you have activated each one, you have felt it come online, and you have had at least one moment where all nine were operating simultaneously.\n\nThe Taoists called that state ziran — natural aliveness. It is not a peak experience. It is not a high. It is the opposite: it is the baseline you were always supposed to have.\n\nIt feels like coming home to a house you didn't know you'd been locked out of.\n\nAnd once you've felt it, you cannot unfeel it. The remaining 43 weeks of the program are about making that state your new normal.\n\n→ ${CTA_URL}`,
+        textContent: `By Week 9 of Lights On, something specific happens. I want to tell you what it is.\n\nBy Week 9, you have trained all nine perceptual channels. Not perfectly — this is not about perfection. But you have activated each one, you have felt it come online, and you have had at least one moment where all nine were operating simultaneously.\n\nThe Daoists called that state ziran — natural aliveness. It is not a peak experience. It is not a high. It is the opposite: it is the baseline you were always supposed to have.\n\nIt feels like coming home to a house you didn't know you'd been locked out of.\n\nAnd once you've felt it, you cannot unfeel it. The remaining 43 weeks of the program are about making that state your new normal.\n\n→ ${CTA_URL}`,
         notes: "Week 5 / Pillar: Deepening. Short-form video script. Transformation preview.",
       },
       // WEEK 6 — CONVERSION
       {
         title: "The Map Exists",
         platform: "meta",
-        textContent: `I spent 30 years building a map. I want to give it to you.\n\nThe map is 52 weeks. Ten modules. Nine perceptual channels. It is not a philosophy course. It is not a meditation app. It is a systematic training program for your nervous system — built at the intersection of 3,000 years of Taoist practice and modern neuroscience.\n\nIt is called Lights On. It is $369 for the full year — just over a dollar a day. There is a 30-day money-back guarantee, not because I think you'll want a refund, but because I want you to be certain before you commit.\n\nIf you're not certain by Day 30, you should leave. This work is not for everyone. But if the questions I've been asking this week are your questions — if you recognized yourself in any of this — then you already know whether it's for you.\n\nLink in bio. Come get the map.\n\n→ ${CTA_URL}`,
+        textContent: `I spent 30 years building a map. I want to give it to you.\n\nThe map is 52 weeks. Ten modules. Nine perceptual channels. It is not a philosophy course. It is not a meditation app. It is a systematic training program for your nervous system — built at the intersection of 3,000 years of Daoist practice and modern neuroscience.\n\nIt is called Lights On. It is $369 for the full year — just over a dollar a day. There is a 30-day money-back guarantee, not because I think you'll want a refund, but because I want you to be certain before you commit.\n\nIf you're not certain by Day 30, you should leave. This work is not for everyone. But if the questions I've been asking this week are your questions — if you recognized yourself in any of this — then you already know whether it's for you.\n\nLink in bio. Come get the map.\n\n→ ${CTA_URL}`,
         notes: "Week 6 / Conversion. Short-form video script. Direct Invitation archetype. First soft sell.",
         imageUrl: AD_CREATIVE_URL,
       },
@@ -1086,7 +1086,7 @@ CTA: lightson.theurbanmonk.com`;
       {
         title: "The Dollar a Day Question",
         platform: "meta",
-        textContent: `What would you pay for a dollar a day to feel genuinely alive?\n\nLights On is $369 for the full year. That is $1.01 a day.\n\nFor that dollar, you get 52 weeks of systematic perceptual training — ten modules, nine channels, a new week of content every seven days. You get the map I spent 30 years building. You get the practices the Taoist masters spent centuries refining. You get the neuroscience that explains why they work.\n\nThe question is not whether $369 is a lot of money. The question is what you are currently spending on the problem — the therapy, the supplements, the retreats, the apps — and whether any of it is addressing the root cause.\n\nThe root cause is that your perceptual channels have been shut down. Lights On addresses the root cause.\n\n→ ${CTA_URL}`,
+        textContent: `What would you pay for a dollar a day to feel genuinely alive?\n\nLights On is $369 for the full year. That is $1.01 a day.\n\nFor that dollar, you get 52 weeks of systematic perceptual training — ten modules, nine channels, a new week of content every seven days. You get the map I spent 30 years building. You get the practices the Daoist masters spent centuries refining. You get the neuroscience that explains why they work.\n\nThe question is not whether $369 is a lot of money. The question is what you are currently spending on the problem — the therapy, the supplements, the retreats, the apps — and whether any of it is addressing the root cause.\n\nThe root cause is that your perceptual channels have been shut down. Lights On addresses the root cause.\n\n→ ${CTA_URL}`,
         notes: "Week 6 / Conversion. Short-form video script. Value framing.",
       },
       {

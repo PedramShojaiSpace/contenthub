@@ -760,7 +760,7 @@ export default function HookGenerator() {
                       { label: "Metaphysics", topic: "Why the materialist model of reality is breaking down and what it means for how you live", color: "bg-purple-100 text-purple-700 border-purple-300" },
                       { label: "Non-Duality", topic: "What the experience of non-dual awareness actually feels like and why it changes everything", color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300" },
                       { label: "Quantum Mind", topic: "Why quantum physics and consciousness research are converging on the same radical conclusion", color: "bg-sky-100 text-sky-700 border-sky-300" },
-                      { label: "Taoism", topic: "The Taoist principle that modern high-achievers are violating and why it is burning them out", color: "bg-emerald-100 text-emerald-700 border-emerald-300" },
+                      { label: "Daoism", topic: "The Daoist principle that modern high-achievers are violating and why it is burning them out", color: "bg-emerald-100 text-emerald-700 border-emerald-300" },
                       { label: "Ancient Wisdom", topic: "What 5000-year-old wisdom traditions knew about the mind that neuroscience is just catching up to", color: "bg-amber-100 text-amber-700 border-amber-300" },
                       { label: "Meditation", topic: "The specific type of meditation that rewires your default mode network in 8 weeks", color: "bg-blue-100 text-blue-700 border-blue-300" },
                       { label: "Near-Death", topic: "What near-death experiences are telling us about the nature of consciousness and reality", color: "bg-pink-100 text-pink-700 border-pink-300" },

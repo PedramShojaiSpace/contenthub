@@ -136,6 +136,8 @@ TOPIC: ${topic}
 
 TARGET PRODUCT: ${PRODUCT_CONTEXT[targetProduct]}
 
+SPELLING RULE (CRITICAL): Always spell "Daoist" and "Daoism" with a D — NEVER "Daoist" or "Daoism". This is required for correct pronunciation in text-to-speech and teleprompter software.
+
 CRITICAL RULES FOR HOOKS:
 1. The hook is the FIRST 3-5 seconds of spoken audio — no intro, no "hey guys", no setup
 2. Start mid-thought or with the core tension — pattern interrupt immediately
@@ -178,6 +180,8 @@ TARGET PRODUCT: ${PRODUCT_CONTEXT[targetProduct]}
 
 Write the BODY SCRIPT — the middle section of the video that comes after the hook and before the CTA.
 
+SPELLING RULE (CRITICAL): Always spell "Daoist" and "Daoism" with a D — NEVER "Daoist" or "Daoism". Required for correct TTS/teleprompter pronunciation.
+
 RULES:
 1. Deliver the core value/insight promised by the hook — don't bait-and-switch
 2. Use one concrete story, statistic, or patient example to make it real
@@ -200,6 +204,8 @@ TOPIC: ${topic}
 TARGET PRODUCT: ${PRODUCT_CONTEXT[targetProduct]}
 
 Write 5 DIFFERENT CTA variants for the END of the video (last 5-10 seconds of spoken content).
+
+SPELLING RULE (CRITICAL): Always spell "Daoist" and "Daoism" with a D — NEVER "Daoist" or "Daoism". Required for correct TTS/teleprompter pronunciation.
 
 Each CTA must:
 1. Be a natural spoken close — not a hard sell

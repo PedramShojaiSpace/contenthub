@@ -90,7 +90,7 @@ async function fetchRedditHot(subreddit: string, limit = 25): Promise<RedditRawP
 // ─── AI analysis (same prompt as redditRouter.ts) ────────────────────────────
 
 async function analyzePost(post: { title: string; selftext: string | null; subreddit: string; score: number; numComments: number }) {
-  const prompt = `You are the editorial AI for Dr. Pedram Shojai (The Urban Monk) — a doctor of Oriental Medicine, bestselling author, and expert in energy medicine, Taoist philosophy, biohacking, meditation, stress resilience, gut health, and longevity.
+  const prompt = `You are the editorial AI for Dr. Pedram Shojai (The Urban Monk) — a doctor of Oriental Medicine, bestselling author, and expert in energy medicine, Daoist philosophy, biohacking, meditation, stress resilience, gut health, and longevity.
 
 Analyze this Reddit thread and respond with ONLY valid JSON (no markdown, no code fences):
 

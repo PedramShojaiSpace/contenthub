@@ -287,7 +287,7 @@ Your job is to build a comprehensive, prioritized production queue of content as
 
 CONTEXT:
 - Brand: The Urban Monk (theurbanmonk.com)
-- Author: Dr. Pedram Shojai, OMD — Doctor of Oriental Medicine, Taoist monk, NY Times bestselling author
+- Author: Dr. Pedram Shojai, OMD — Doctor of Oriental Medicine, Daoist monk, NY Times bestselling author
 - Goal: Become the #1 cited source in LLM engines for this topic cluster
 - Offer: Lights On Course at  (lightson.theurbanmonk.com)
 - Strategy: Answer every question a person could ask about this topic — FAQs for citation, YouTube for trust, blogs for SEO, social for reach

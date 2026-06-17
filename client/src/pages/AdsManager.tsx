@@ -1399,35 +1399,13 @@ function HookTestingTab() {
                 </div>
               ))}
             </div>
-            {/* Redirect to VideoVariantFactory for multi-variant video upload + Meta launch */}
-            <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <Clapperboard className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Launch Multi-Variant A/B Test</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Upload your hook clips (up to 10), body clip, and CTA clip in the Video Variant Factory.
-                    Once stitched, click <strong>"Launch Hook A/B Test on Meta"</strong> directly from the factory
-                    — each variant gets its own video ad in a single Meta campaign.
-                  </p>
-                </div>
-              </div>
-              <Button
-                className="gap-2 bg-blue-600 hover:bg-blue-500 text-white w-full"
-                onClick={() => {
-                  sessionStorage.setItem("hookHandoff", JSON.stringify({
-                    topic,
-                    targetProduct,
-                    generationId: generatedHooks?.id,
-                    variants: generatedHooks?.variants ?? [],
-                  }));
-                  navigate("/video-variants");
-                }}
-              >
-                <Film className="w-4 h-4" />
-                Go to Video Variant Factory →
-              </Button>
-            </div>
+            {/* Create a Video Job pre-loaded with these hooks */}
+            <CreateVideoJobButton
+              topic={topic}
+              targetProduct={targetProduct}
+              hookVariants={generatedHooks?.variants ?? []}
+              onCreated={(jobId) => navigate(`/video-variants?jobId=${jobId}`)}
+            />
           </CardContent>
         </Card>
       )}
@@ -1508,6 +1486,78 @@ function HookTestingTab() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ─── CreateVideoJobButton ─────────────────────────────────────────────────────
+// Creates a Video Variant Factory job pre-loaded with hook scripts from the
+// Hook Generator, then navigates directly to that job's upload step.
+function CreateVideoJobButton({
+  topic,
+  targetProduct,
+  hookVariants,
+  onCreated,
+}: {
+  topic: string;
+  targetProduct: string;
+  hookVariants: { hookText: string; frameworkLabel: string; estimatedCTRLift: string }[];
+  onCreated: (jobId: number) => void;
+}) {
+  const createJob = trpc.videoVariant.createJob.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Video job created — ${hookVariants.length} hook scripts loaded. Upload your clips!`);
+      onCreated(data.jobId);
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to create video job"),
+  });
+
+  const jobName = topic.trim()
+    ? `${topic.slice(0, 60)} — ${new Date().toLocaleDateString()}`
+    : `Hook Test — ${new Date().toLocaleDateString()}`;
+
+  return (
+    <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <Clapperboard className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">Create Video Job with These Hooks</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Creates a job in the Video Variant Factory pre-loaded with your {hookVariants.length} hook scripts.
+            You'll upload your recorded clips there — one clip per hook — and the factory will stitch
+            all variants automatically, then launch the Meta A/B test.
+          </p>
+          {hookVariants.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {hookVariants.map((v, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <span className="text-xs text-blue-400 shrink-0 font-mono">H{i + 1}</span>
+                  <p className="text-xs text-muted-foreground truncate">{v.hookText}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <Button
+        className="gap-2 bg-blue-600 hover:bg-blue-500 text-white w-full"
+        disabled={createJob.isPending || hookVariants.length === 0}
+        onClick={() =>
+          createJob.mutate({
+            jobName,
+            aspectRatio: "9:16",
+            hookScripts: hookVariants,
+            targetProduct,
+          })
+        }
+      >
+        {createJob.isPending ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Film className="w-4 h-4" />
+        )}
+        Create Video Job &amp; Go to Factory →
+      </Button>
     </div>
   );
 }

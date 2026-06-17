@@ -983,6 +983,10 @@ export const videoVariantJobs = mysqlTable("video_variant_jobs", {
   hookCount: int("hookCount").default(0),
   variantCount: int("variantCount").default(0),
   errorMessage: text("errorMessage"),
+  // Hook scripts from the Hook Generator — JSON array of {hookText, frameworkLabel, estimatedCTRLift}
+  hookScripts: text("hookScripts"),
+  // Which product this job is advertising
+  targetProduct: varchar("targetProduct", { length: 64 }),
   // Output aspect ratio: 9:16 vertical (Reels/TikTok), 16:9 horizontal (YouTube), 1:1 square (Instagram)
   aspectRatio: mysqlEnum("aspectRatio", ["9:16", "16:9", "1:1"]).default("9:16").notNull(),
   // Google Drive folder URL after export (null if not yet exported)

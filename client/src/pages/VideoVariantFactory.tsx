@@ -173,14 +173,22 @@ function DuplicateJobButton({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function VideoVariantFactory() {
-  // Read ?session=<name> URL param to pre-fill job name when arriving from Video Production Session
+  // Read ?session=<name> or ?jobId=<id> URL param
+  // ?jobId=N: auto-load an existing job created by the Hook Generator
+  // ?session=<name>: pre-fill job name when arriving from Video Production Session
   const [jobName, setJobName]           = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       return params.get("session") ?? "";
     } catch { return ""; }
   });
-  const [activeJobId, setActiveJobId]   = useState<number | null>(null);
+  const [activeJobId, setActiveJobId]   = useState<number | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("jobId");
+      return id ? parseInt(id, 10) : null;
+    } catch { return null; }
+  });
   const [aspectRatio, setAspectRatio]   = useState<"9:16" | "16:9" | "1:1">("9:16");
   const [uploadedClips, setUploadedClips] = useState<UploadedClip[]>([]);
   const [uploadingClips, setUploadingClips] = useState<UploadingClip[]>([]);
@@ -833,6 +841,37 @@ export default function VideoVariantFactory() {
 
           {/* Upload zone (only when pending) */}
           {(job?.status === "pending" || !job) && (
+            <div className="space-y-4">
+            {/* Hook Scripts reference panel — shown when job was created from Hook Generator */}
+            {(() => {
+              const scripts = (() => {
+                try { return job?.hookScripts ? JSON.parse(job.hookScripts) as { hookText: string; frameworkLabel?: string; estimatedCTRLift?: string }[] : null; }
+                catch { return null; }
+              })();
+              if (!scripts?.length) return null;
+              return (
+                <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <p className="text-sm font-semibold text-foreground">{scripts.length} Hook Scripts Ready — Record One Clip Per Hook</p>
+                  </div>
+                  <div className="grid gap-2">
+                    {scripts.map((s, i) => (
+                      <div key={i} className="flex items-start gap-3 p-2.5 rounded-lg bg-background/50 border border-border">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">H{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground">{s.hookText}</p>
+                          {(s.frameworkLabel || s.estimatedCTRLift) && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{s.frameworkLabel}{s.estimatedCTRLift ? ` · ${s.estimatedCTRLift} CTR lift` : ""}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3">Record each hook as a short video clip, then upload them below in order (H1 first, H2 second, etc.).</p>
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Hook clips */}
               <Card className="bg-card border-border">
@@ -939,6 +978,7 @@ export default function VideoVariantFactory() {
                   </Button>
                 </CardContent>
               </Card>
+            </div>
             </div>
           )}
 

@@ -396,7 +396,7 @@ export const metaAdsRouter = router({
     return generateWeeklyDigest();
   }),
 
-  // ── Hook Testing: Generate hook variants via Claude ──────────────────────────
+  // ── Hook Testing: Generate hook variants + body script + CTA variants via Claude ─
   generateHooks: protectedProcedure
     .input(z.object({
       topic: z.string().min(5),
@@ -404,10 +404,19 @@ export const metaAdsRouter = router({
       count: z.number().min(3).max(8).default(5),
     }))
     .mutation(async ({ input }) => {
-      const { generateHookVariants, saveHookGeneration } = await import("./hookGenerator");
-      const result = await generateHookVariants(input.topic, input.targetProduct, input.count);
-      const id = await saveHookGeneration("system", input.topic, input.targetProduct, result.variants);
-      return { ...result, id };
+      const { generateHookVariants, generateBodyAndCta, saveHookGeneration } = await import("./hookGenerator");
+      // Run hooks + body/CTA in parallel for speed
+      const [hooksResult, bodyCta] = await Promise.all([
+        generateHookVariants(input.topic, input.targetProduct, input.count),
+        generateBodyAndCta(input.topic, input.targetProduct),
+      ]);
+      const id = await saveHookGeneration("system", input.topic, input.targetProduct, hooksResult.variants);
+      return {
+        ...hooksResult,
+        bodyScript: bodyCta.bodyScript,
+        ctaVariants: bodyCta.ctaVariants,
+        id,
+      };
     }),
 
   // ── Hook Testing: Get past hook generations ───────────────────────────────────

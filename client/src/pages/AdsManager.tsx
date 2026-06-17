@@ -1272,6 +1272,18 @@ function HookTestingTab() {
       estimatedCTRLift: string;
       deliveryNote: string;
     }[];
+    bodyScript?: {
+      spokenScript: string;
+      keyPoints: string[];
+      deliveryNote: string;
+      estimatedDuration: string;
+    };
+    ctaVariants?: {
+      ctaText: string;
+      overlayText: string;
+      urgencyMechanism: string;
+      deliveryNote: string;
+    }[];
   }>(null);
 
   const hookGenerations = trpc.metaAds.getHookGenerations.useQuery({ limit: 10 });
@@ -1279,8 +1291,13 @@ function HookTestingTab() {
 
   const generateHooks = trpc.metaAds.generateHooks.useMutation({
     onSuccess: (data) => {
-      setGeneratedHooks({ id: data.id, variants: data.variants });
-      toast.success(`Generated ${data.variants.length} hook variants!`);
+      setGeneratedHooks({
+        id: data.id,
+        variants: data.variants,
+        bodyScript: data.bodyScript as any,
+        ctaVariants: data.ctaVariants as any,
+      });
+      toast.success(`Generated ${data.variants.length} hooks + body script + 5 CTAs!`);
       hookGenerations.refetch();
     },
     onError: (err) => toast.error(`Hook generation failed: ${err.message}`),
@@ -1399,11 +1416,57 @@ function HookTestingTab() {
                 </div>
               ))}
             </div>
+            {/* Body Script */}
+            {generatedHooks.bodyScript && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-400" />
+                  <span className="text-sm font-semibold text-foreground">Body Script</span>
+                  <span className="text-xs text-muted-foreground">({generatedHooks.bodyScript.estimatedDuration})</span>
+                </div>
+                <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 space-y-2">
+                  <p className="text-sm leading-relaxed">{generatedHooks.bodyScript.spokenScript}</p>
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {generatedHooks.bodyScript.keyPoints.map((pt, i) => (
+                      <span key={i} className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/20">{pt}</span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">🎥 {generatedHooks.bodyScript.deliveryNote}</p>
+                </div>
+              </div>
+            )}
+
+            {/* CTA Variants */}
+            {generatedHooks.ctaVariants && generatedHooks.ctaVariants.length > 0 && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="text-sm font-semibold text-foreground">CTA Variants</span>
+                  <span className="text-xs text-muted-foreground">({generatedHooks.ctaVariants.length} versions — pair each with a different hook)</span>
+                </div>
+                <div className="space-y-2">
+                  {generatedHooks.ctaVariants.map((cta, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-amber-400">CTA {i + 1}</span>
+                        <span className="text-xs text-muted-foreground">{cta.urgencyMechanism}</span>
+                      </div>
+                      <p className="text-sm font-medium">{cta.ctaText}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Overlay: {cta.overlayText}</p>
+                      <p className="text-xs text-muted-foreground italic">🎥 {cta.deliveryNote}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Create a Video Job pre-loaded with these hooks */}
             <CreateVideoJobButton
               topic={topic}
               targetProduct={targetProduct}
               hookVariants={generatedHooks?.variants ?? []}
+              bodyScript={generatedHooks?.bodyScript}
+              ctaVariants={generatedHooks?.ctaVariants}
               onCreated={(jobId) => navigate(`/video-variants?jobId=${jobId}`)}
             />
           </CardContent>
@@ -1497,11 +1560,15 @@ function CreateVideoJobButton({
   topic,
   targetProduct,
   hookVariants,
+  bodyScript,
+  ctaVariants,
   onCreated,
 }: {
   topic: string;
   targetProduct: string;
   hookVariants: { hookText: string; frameworkLabel: string; estimatedCTRLift: string }[];
+  bodyScript?: { spokenScript: string; keyPoints: string[]; deliveryNote: string; estimatedDuration: string };
+  ctaVariants?: { ctaText: string; overlayText: string; urgencyMechanism: string; deliveryNote: string }[];
   onCreated: (jobId: number) => void;
 }) {
   const createJob = trpc.videoVariant.createJob.useMutation({
@@ -1548,6 +1615,8 @@ function CreateVideoJobButton({
             aspectRatio: "9:16",
             hookScripts: hookVariants,
             targetProduct,
+            bodyScript: bodyScript as any,
+            ctaScripts: ctaVariants as any,
           })
         }
       >

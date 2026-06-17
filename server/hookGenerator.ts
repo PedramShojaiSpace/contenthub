@@ -45,10 +45,26 @@ export interface HookVariant {
   deliveryNote: string;       // How Pedram should deliver this hook on camera
 }
 
+export interface BodyScript {
+  spokenScript: string;        // Full body script Pedram reads on camera (30-60 seconds)
+  keyPoints: string[];         // 3-4 bullet points covered in the body
+  deliveryNote: string;        // Tone/pace/setting guidance
+  estimatedDuration: string;   // e.g. "35-45 seconds"
+}
+
+export interface CtaVariant {
+  ctaText: string;             // The spoken CTA (last 5-10 seconds)
+  overlayText: string;         // Short text overlay (max 8 words)
+  urgencyMechanism: string;    // What creates urgency (scarcity, transformation, etc.)
+  deliveryNote: string;        // How to deliver it
+}
+
 export interface HookGenerationResult {
   topic: string;
   targetProduct: TargetProduct;
   variants: HookVariant[];
+  bodyScript?: BodyScript;
+  ctaVariants?: CtaVariant[];
   generatedAt: Date;
 }
 
@@ -151,6 +167,138 @@ RESPOND WITH VALID JSON ONLY. No markdown, no explanation outside the JSON.
     }
   ]
 }`;
+
+const BODY_SCRIPT_PROMPT = (topic: string, targetProduct: TargetProduct) =>
+  `You are a world-class direct response copywriter writing for Dr. Pedram Shojai — an OMD, former monk, author of 8 books. He speaks with calm authority, genuine warmth, and deep expertise. NOT a hype marketer.
+
+VIDEO FORMAT: Handheld authentic video. Pedram speaking directly to camera. Conversational but purposeful. 30-60 seconds of spoken content.
+
+TOPIC: ${topic}
+TARGET PRODUCT: ${PRODUCT_CONTEXT[targetProduct]}
+
+Write the BODY SCRIPT — the middle section of the video that comes after the hook and before the CTA.
+
+RULES:
+1. Deliver the core value/insight promised by the hook — don't bait-and-switch
+2. Use one concrete story, statistic, or patient example to make it real
+3. Bridge naturally to the product — don't hard sell, let the insight create desire
+4. Conversational sentences, max 2-3 sentences per beat
+5. Total spoken length: 30-60 seconds at natural pace
+
+RESPOND WITH VALID JSON ONLY.
+{
+  "spokenScript": "full script here",
+  "keyPoints": ["point 1", "point 2", "point 3"],
+  "deliveryNote": "guidance for Pedram",
+  "estimatedDuration": "35-45 seconds"
+}`;
+
+const CTA_PROMPT = (topic: string, targetProduct: TargetProduct) =>
+  `You are a world-class direct response copywriter writing CTAs for Dr. Pedram Shojai — an OMD, former monk, author of 8 books. Calm authority, genuine warmth. NOT a hype marketer.
+
+TOPIC: ${topic}
+TARGET PRODUCT: ${PRODUCT_CONTEXT[targetProduct]}
+
+Write 5 DIFFERENT CTA variants for the END of the video (last 5-10 seconds of spoken content).
+
+Each CTA must:
+1. Be a natural spoken close — not a hard sell
+2. Direct the viewer to take ONE specific action (click link, take test, join, etc.)
+3. Use a DIFFERENT urgency/motivation mechanism each time:
+   - Transformation promise
+   - Scarcity/exclusivity
+   - Ease/simplicity
+   - Social proof
+   - Direct ask / challenge
+4. Feel like Pedram genuinely recommending something he believes in
+5. Max 2-3 sentences spoken
+
+RESPOND WITH VALID JSON ONLY.
+{
+  "ctas": [
+    {
+      "ctaText": "full spoken CTA",
+      "overlayText": "max 8 words for text overlay",
+      "urgencyMechanism": "what creates the pull",
+      "deliveryNote": "how Pedram should deliver this"
+    }
+  ]
+}`;
+
+export async function generateBodyAndCta(
+  topic: string,
+  targetProduct: TargetProduct = "general"
+): Promise<{ bodyScript: BodyScript; ctaVariants: CtaVariant[] }> {
+  // Run body and CTA generation in parallel
+  const [bodyResponse, ctaResponse] = await Promise.all([
+    invokeLLM({
+      messages: [
+        { role: "system", content: "You are a video script specialist. Respond ONLY with valid JSON. No markdown fences." },
+        { role: "user", content: BODY_SCRIPT_PROMPT(topic, targetProduct) },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "body_script",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              spokenScript: { type: "string" },
+              keyPoints: { type: "array", items: { type: "string" } },
+              deliveryNote: { type: "string" },
+              estimatedDuration: { type: "string" },
+            },
+            required: ["spokenScript", "keyPoints", "deliveryNote", "estimatedDuration"],
+            additionalProperties: false,
+          },
+        },
+      },
+    }),
+    invokeLLM({
+      messages: [
+        { role: "system", content: "You are a direct response CTA specialist. Respond ONLY with valid JSON. No markdown fences." },
+        { role: "user", content: CTA_PROMPT(topic, targetProduct) },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "cta_variants",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              ctas: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    ctaText: { type: "string" },
+                    overlayText: { type: "string" },
+                    urgencyMechanism: { type: "string" },
+                    deliveryNote: { type: "string" },
+                  },
+                  required: ["ctaText", "overlayText", "urgencyMechanism", "deliveryNote"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["ctas"],
+            additionalProperties: false,
+          },
+        },
+      },
+    }),
+  ]);
+
+  const bodyRaw = bodyResponse.choices[0].message.content as string;
+  const ctaRaw = ctaResponse.choices[0].message.content as string;
+
+  const bodyScript = JSON.parse(bodyRaw) as BodyScript;
+  const ctaVariants = (JSON.parse(ctaRaw) as { ctas: CtaVariant[] }).ctas.slice(0, 5);
+
+  return { bodyScript, ctaVariants };
+}
 
 export async function generateHookVariants(
   topic: string,

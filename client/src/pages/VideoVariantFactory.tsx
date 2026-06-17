@@ -842,33 +842,88 @@ export default function VideoVariantFactory() {
           {/* Upload zone (only when pending) */}
           {(job?.status === "pending" || !job) && (
             <div className="space-y-4">
-            {/* Hook Scripts reference panel — shown when job was created from Hook Generator */}
+            {/* Hook Scripts + Body Script + CTA reference panel — shown when job was created from Hook Generator */}
             {(() => {
-              const scripts = (() => {
+              const hookScripts = (() => {
                 try { return job?.hookScripts ? JSON.parse(job.hookScripts) as { hookText: string; frameworkLabel?: string; estimatedCTRLift?: string }[] : null; }
                 catch { return null; }
               })();
-              if (!scripts?.length) return null;
+              const bodyScript = (() => {
+                try { return (job as any)?.bodyScript ? JSON.parse((job as any).bodyScript) as { spokenScript: string; keyPoints: string[]; deliveryNote: string; estimatedDuration: string } : null; }
+                catch { return null; }
+              })();
+              const ctaScripts = (() => {
+                try { return (job as any)?.ctaScripts ? JSON.parse((job as any).ctaScripts) as { ctaText: string; overlayText: string; urgencyMechanism: string; deliveryNote: string }[] : null; }
+                catch { return null; }
+              })();
+              if (!hookScripts?.length && !bodyScript && !ctaScripts?.length) return null;
               return (
-                <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    <p className="text-sm font-semibold text-foreground">{scripts.length} Hook Scripts Ready — Record One Clip Per Hook</p>
-                  </div>
-                  <div className="grid gap-2">
-                    {scripts.map((s, i) => (
-                      <div key={i} className="flex items-start gap-3 p-2.5 rounded-lg bg-background/50 border border-border">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">H{i + 1}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground">{s.hookText}</p>
-                          {(s.frameworkLabel || s.estimatedCTRLift) && (
-                            <p className="text-xs text-muted-foreground mt-0.5">{s.frameworkLabel}{s.estimatedCTRLift ? ` · ${s.estimatedCTRLift} CTR lift` : ""}</p>
-                          )}
-                        </div>
+                <div className="space-y-3">
+                  {/* Hook Scripts */}
+                  {hookScripts?.length ? (
+                    <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        <p className="text-sm font-semibold text-foreground">{hookScripts.length} Hook Scripts — Record One Clip Per Hook</p>
                       </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-3">Record each hook as a short video clip, then upload them below in order (H1 first, H2 second, etc.).</p>
+                      <div className="grid gap-2">
+                        {hookScripts.map((s, i) => (
+                          <div key={i} className="flex items-start gap-3 p-2.5 rounded-lg bg-background/50 border border-border">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">H{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground">{s.hookText}</p>
+                              {(s.frameworkLabel || s.estimatedCTRLift) && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{s.frameworkLabel}{s.estimatedCTRLift ? ` · ${s.estimatedCTRLift} CTR lift` : ""}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3">Record each hook as a short clip, upload in order (H1 first, H2 second, etc.).</p>
+                    </div>
+                  ) : null}
+
+                  {/* Body Script */}
+                  {bodyScript ? (
+                    <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Film className="w-4 h-4 text-blue-400" />
+                        <p className="text-sm font-semibold text-foreground">Body Script ({bodyScript.estimatedDuration})</p>
+                        <span className="text-xs text-muted-foreground ml-auto">Read this on camera for your single body clip</span>
+                      </div>
+                      <p className="text-sm leading-relaxed text-foreground">{bodyScript.spokenScript}</p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {bodyScript.keyPoints.map((pt, i) => (
+                          <span key={i} className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/20">{pt}</span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground italic mt-2">🎥 {bodyScript.deliveryNote}</p>
+                    </div>
+                  ) : null}
+
+                  {/* CTA Scripts */}
+                  {ctaScripts?.length ? (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Zap className="w-4 h-4 text-amber-400" />
+                        <p className="text-sm font-semibold text-foreground">{ctaScripts.length} CTA Variants — Record One Clip Per CTA</p>
+                        <span className="text-xs text-muted-foreground ml-auto">Each CTA pairs with every hook</span>
+                      </div>
+                      <div className="grid gap-2">
+                        {ctaScripts.map((c, i) => (
+                          <div key={i} className="flex items-start gap-3 p-2.5 rounded-lg bg-background/50 border border-border">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold shrink-0 mt-0.5">C{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground">{c.ctaText}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">Overlay: {c.overlayText} · {c.urgencyMechanism}</p>
+                              <p className="text-xs text-muted-foreground italic">🎥 {c.deliveryNote}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3">Upload CTA clips in order (C1 first, etc.). The factory will stitch {hookScripts?.length ?? 1} hooks × {ctaScripts.length} CTAs = {(hookScripts?.length ?? 1) * ctaScripts.length} total variants.</p>
+                    </div>
+                  ) : null}
                 </div>
               );
             })()}

@@ -633,6 +633,20 @@ export const videoVariantRouter = router({
         frameworkLabel: z.string().optional(),
         estimatedCTRLift: z.string().optional(),
       })).optional(),
+      // Optional: body script pre-loaded from Hook Generator
+      bodyScript: z.object({
+        spokenScript: z.string(),
+        keyPoints: z.array(z.string()),
+        deliveryNote: z.string(),
+        estimatedDuration: z.string(),
+      }).optional(),
+      // Optional: CTA variants pre-loaded from Hook Generator
+      ctaScripts: z.array(z.object({
+        ctaText: z.string(),
+        overlayText: z.string(),
+        urgencyMechanism: z.string(),
+        deliveryNote: z.string(),
+      })).optional(),
       targetProduct: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -646,6 +660,8 @@ export const videoVariantRouter = router({
         variantCount: 0,
         aspectRatio: input.aspectRatio,
         hookScripts: input.hookScripts ? JSON.stringify(input.hookScripts) : null,
+        bodyScript: input.bodyScript ? JSON.stringify(input.bodyScript) : null,
+        ctaScripts: input.ctaScripts ? JSON.stringify(input.ctaScripts) : null,
         targetProduct: input.targetProduct ?? null,
       });
       const jobId = (result as unknown as { insertId: number }).insertId;

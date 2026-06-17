@@ -26,9 +26,12 @@ const ACCESS_TOKEN = process.env.META_AD_ACCESS_TOKEN;
 // Product → Landing page URL mapping
 const PRODUCT_URLS: Record<TargetProduct, string> = {
   lightsOn: "https://lightson.theurbanmonk.com?utm_source=meta&utm_medium=paid&utm_campaign=hook_test",
+  lightsOnCourse: "https://lightson.theurbanmonk.com/course?utm_source=meta&utm_medium=paid&utm_campaign=hook_test",
   academy: "https://theurbanmonk.com/academy?utm_source=meta&utm_medium=paid&utm_campaign=hook_test",
   upstream: "https://upstream.theurbanmonk.com?utm_source=meta&utm_medium=paid&utm_campaign=hook_test",
   kbmoTesting: "https://theurbanmonk.com/testing?utm_source=meta&utm_medium=paid&utm_campaign=hook_test",
+  sleepTestKit: "https://theurbanmonk.com/sleep-test?utm_source=meta&utm_medium=paid&utm_campaign=hook_test",
+  orobiomeTestKit: "https://theurbanmonk.com/orobiome?utm_source=meta&utm_medium=paid&utm_campaign=hook_test",
   general: "https://theurbanmonk.com?utm_source=meta&utm_medium=paid&utm_campaign=hook_test",
 };
 

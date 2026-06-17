@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import { ENV } from "./env";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -291,7 +292,7 @@ async function startServer() {
       const { getOwnerCredentials } = await import("../db");
       const { userCredentials, users } = await import("../../drizzle/schema");
       // Resolve owner userId from OWNER_OPEN_ID env
-      const ownerOpenId = process.env.OWNER_OPEN_ID;
+      const ownerOpenId = ENV.ownerOpenId || process.env.OWNER_OPEN_ID;
       if (!ownerOpenId) throw new Error("OWNER_OPEN_ID not configured");
       const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.openId, ownerOpenId));
       if (!owner) throw new Error("Owner user not found in database");
@@ -415,7 +416,7 @@ async function startServer() {
       const db = await getDb();
       if (db) {
         const { userCredentials, users } = await import("../../drizzle/schema");
-        const ownerOpenId = process.env.OWNER_OPEN_ID;
+        const ownerOpenId = ENV.ownerOpenId || process.env.OWNER_OPEN_ID;
         let ownerUserId = 1; // fallback
         if (ownerOpenId) {
           const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.openId, ownerOpenId));
@@ -776,7 +777,7 @@ async function startServer() {
         const { eq } = await import("drizzle-orm");
         const db = await getDb();
         if (!db) return;
-        const ownerOpenId = process.env.OWNER_OPEN_ID;
+        const ownerOpenId = ENV.ownerOpenId || process.env.OWNER_OPEN_ID;
         let ownerUserId = 1;
         if (ownerOpenId) {
           const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.openId, ownerOpenId));

@@ -37,7 +37,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
 const DATE_PRESETS = [
@@ -1255,8 +1255,9 @@ function WeeklyDigestTab() {
 }
 
 function HookTestingTab() {
+  const [, navigate] = useLocation();
   const [topic, setTopic] = useState("");
-  const [targetProduct, setTargetProduct] = useState<"lightsOn" | "academy" | "upstream" | "kbmoTesting" | "general">("lightsOn");
+  const [targetProduct, setTargetProduct] = useState<"lightsOn" | "lightsOnCourse" | "academy" | "upstream" | "kbmoTesting" | "sleepTestKit" | "orobiomeTestKit" | "general">("kbmoTesting");
   const [videoUrl, setVideoUrl] = useState("");
   const [dailyBudget, setDailyBudget] = useState(5);
   const [testDays, setTestDays] = useState(5);
@@ -1352,10 +1353,13 @@ function HookTestingTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lightsOn">Lights On ($369/yr)</SelectItem>
+                  <SelectItem value="kbmoTesting">KBMO Food Sensitivity Test</SelectItem>
+                  <SelectItem value="lightsOnCourse">Lights On Course</SelectItem>
+                  <SelectItem value="sleepTestKit">Sleep Test Kit</SelectItem>
+                  <SelectItem value="orobiomeTestKit">Orobiome Test Kit</SelectItem>
                   <SelectItem value="academy">Urban Monk Academy</SelectItem>
                   <SelectItem value="upstream">Upstream Course</SelectItem>
-                  <SelectItem value="kbmoTesting">KBMO Testing</SelectItem>
+                  <SelectItem value="lightsOn">Lights On (Lead Gen)</SelectItem>
                   <SelectItem value="general">General / Awareness</SelectItem>
                 </SelectContent>
               </Select>
@@ -1408,12 +1412,21 @@ function HookTestingTab() {
                   </p>
                 </div>
               </div>
-              <Link href="/video-variants">
-                <Button className="gap-2 bg-blue-600 hover:bg-blue-500 text-white w-full">
-                  <Film className="w-4 h-4" />
-                  Go to Video Variant Factory →
-                </Button>
-              </Link>
+              <Button
+                className="gap-2 bg-blue-600 hover:bg-blue-500 text-white w-full"
+                onClick={() => {
+                  sessionStorage.setItem("hookHandoff", JSON.stringify({
+                    topic,
+                    targetProduct,
+                    generationId: generatedHooks?.id,
+                    variants: generatedHooks?.variants ?? [],
+                  }));
+                  navigate("/video-variants");
+                }}
+              >
+                <Film className="w-4 h-4" />
+                Go to Video Variant Factory →
+              </Button>
             </div>
           </CardContent>
         </Card>

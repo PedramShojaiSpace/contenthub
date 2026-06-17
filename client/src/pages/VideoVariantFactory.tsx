@@ -1841,13 +1841,36 @@ function MetaHookAbTestPanel({
   jobName: string;
   onLaunched: () => void;
 }) {
-  const [topic, setTopic] = useState(jobName);
-  const [targetProduct, setTargetProduct] = useState<"lightsOn" | "academy" | "upstream" | "kbmoTesting" | "general">("academy");
+  // ── Read hook context passed from Ads Manager Hook Generator tab ──────────
+  const handoff = (() => {
+    try {
+      const raw = sessionStorage.getItem("hookHandoff");
+      if (!raw) return null;
+      sessionStorage.removeItem("hookHandoff"); // consume once
+      return JSON.parse(raw) as {
+        topic: string;
+        targetProduct: string;
+        generationId?: number;
+        variants: { hookText: string; frameworkLabel: string; estimatedCTRLift: string }[];
+      };
+    } catch { return null; }
+  })();
+
+  const [topic, setTopic] = useState(handoff?.topic || jobName);
+  const [targetProduct, setTargetProduct] = useState<"lightsOn" | "lightsOnCourse" | "academy" | "upstream" | "kbmoTesting" | "sleepTestKit" | "orobiomeTestKit" | "general">(
+    (handoff?.targetProduct as any) ?? "academy"
+  );
   const [dailyBudget, setDailyBudget] = useState(5);
   const [testDays, setTestDays] = useState(7);
-  const [generatedHooks, setGeneratedHooks] = useState<{ variants: { hookText: string; frameworkLabel: string; estimatedCTRLift: string }[] } | null>(null);
-  const [hookTexts, setHookTexts] = useState<string[]>([]);
-  const [step, setStep] = useState<"setup" | "hooks" | "launch">("setup");
+  const [generatedHooks, setGeneratedHooks] = useState<{ variants: { hookText: string; frameworkLabel: string; estimatedCTRLift: string }[] } | null>(
+    handoff?.variants?.length ? { variants: handoff.variants } : null
+  );
+  const [hookTexts, setHookTexts] = useState<string[]>(
+    handoff?.variants?.length ? handoff.variants.map((v) => v.hookText) : []
+  );
+  const [step, setStep] = useState<"setup" | "hooks" | "launch">(
+    handoff?.variants?.length ? "hooks" : "setup"
+  );
 
   const generateHooks = trpc.metaAds.generateHooks.useMutation({
     onSuccess: (data) => {
@@ -1888,10 +1911,14 @@ function MetaHookAbTestPanel({
               <Select value={targetProduct} onValueChange={(v) => setTargetProduct(v as typeof targetProduct)}>
                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="kbmoTesting">KBMO Food Sensitivity Test</SelectItem>
+                  <SelectItem value="lightsOnCourse">Lights On Course</SelectItem>
+                  <SelectItem value="sleepTestKit">Sleep Test Kit</SelectItem>
+                  <SelectItem value="orobiomeTestKit">Orobiome Test Kit</SelectItem>
                   <SelectItem value="academy">Urban Monk Academy</SelectItem>
-                  <SelectItem value="lightsOn">Lights On Supplement</SelectItem>
-                  <SelectItem value="upstream">Upstream</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="upstream">Upstream Course</SelectItem>
+                  <SelectItem value="lightsOn">Lights On (Lead Gen)</SelectItem>
+                  <SelectItem value="general">General / Awareness</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1924,7 +1951,14 @@ function MetaHookAbTestPanel({
 
       {step === "hooks" && generatedHooks && (
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">Review and edit hook texts. Each will be paired with the corresponding video variant.</p>
+          <div className="flex items-center gap-2 rounded-md bg-green-500/10 border border-green-500/20 px-3 py-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
+            <p className="text-xs text-green-300">
+              {hookTexts.length > 0 && hookTexts[0] !== ""
+                ? `${generatedHooks.variants.length} hooks carried over from Hook Generator — review and edit below.`
+                : "Review and edit hook texts. Each will be paired with the corresponding video variant."}
+            </p>
+          </div>
           <div className="space-y-2">
             {doneVariants.map((v, i) => (
               <div key={v.id} className="flex items-start gap-2">

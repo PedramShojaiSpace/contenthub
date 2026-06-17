@@ -14,6 +14,7 @@
  */
 
 import type { Request, Response } from "express";
+import { ENV } from "./_core/env";
 import { getDb } from "./db";
 import { notifyOwner } from "./_core/notification";
 import {
@@ -46,7 +47,7 @@ export async function gscDigestHandler(req: Request, res: Response) {
     const { eq } = await import("drizzle-orm");
 
     // Find the owner's GSC credentials
-    const ownerOpenId = process.env.OWNER_OPEN_ID;
+    const ownerOpenId = ENV.ownerOpenId || process.env.OWNER_OPEN_ID;
     if (!ownerOpenId) {
       return res.status(500).json({ error: "OWNER_OPEN_ID not configured" });
     }

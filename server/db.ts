@@ -175,7 +175,9 @@ export async function getOwnerCredentials() {
   if (!db) return null;
   const { userCredentials, users } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
-  const ownerOpenId = process.env.OWNER_OPEN_ID;
+  // Use ENV.ownerOpenId (resolved at startup with hardcoded fallback) so this
+  // works in production even when process.env.OWNER_OPEN_ID is not injected at request time.
+  const ownerOpenId = ENV.ownerOpenId || process.env.OWNER_OPEN_ID;
   if (!ownerOpenId) return null;
   // Look up the owner's numeric userId from the users table
   const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.openId, ownerOpenId));

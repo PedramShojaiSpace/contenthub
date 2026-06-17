@@ -27,9 +27,12 @@ export type HookFramework =
 
 export type TargetProduct =
   | "lightsOn"
+  | "lightsOnCourse"
   | "academy"
   | "upstream"
   | "kbmoTesting"
+  | "sleepTestKit"
+  | "orobiomeTestKit"
   | "general";
 
 export interface HookVariant {
@@ -87,12 +90,18 @@ const FRAMEWORK_DESCRIPTIONS: Record<HookFramework, { label: string; ctrLift: st
 const PRODUCT_CONTEXT: Record<TargetProduct, string> = {
   lightsOn: `Lights On course ($369/year) — 10 modules, 52 weeks of perceptual training. 
     Best hooks: Contradiction + Specificity. Target: people feeling mentally foggy, distracted, spiritually adrift.`,
+  lightsOnCourse: `Lights On Course (paid digital course) — energy, focus, and perceptual clarity training. 
+    Best hooks: Contradiction + Specificity. Target: high-performers feeling foggy, burned out, or spiritually adrift.`,
   academy: `Urban Monk Academy ($297/year) — subscription community, courses, practices. 
     Best hooks: Authority + Transformation. Target: people seeking integrated health, Eastern + Western medicine.`,
   upstream: `Upstream Course — gut health, root cause medicine, functional health. 
     Best hooks: Direct Challenge + Specificity. Target: people with chronic symptoms who've tried everything.`,
   kbmoTesting: `KBMO Food Sensitivity Testing ($299) — identifies hidden inflammatory triggers. 
     Best hooks: Fear/Urgency + Specificity. Target: people with unexplained fatigue, bloating, inflammation.`,
+  sleepTestKit: `Sleep Test Kit — at-home sleep quality analysis. 
+    Best hooks: Fear/Urgency + Curiosity Gap. Target: people with poor sleep, fatigue, or suspected sleep apnea.`,
+  orobiomeTestKit: `Orobiome Test Kit ($299) — oral microbiome analysis for systemic health. 
+    Best hooks: Specificity + Curiosity Gap. Target: people with dental issues, gut problems, or chronic inflammation.`,
   general: `General Urban Monk brand awareness — Dr. Pedram Shojai, OMD, author of 8 books. 
     Best hooks: Authority + REP Formula. Target: health-conscious adults 35-65.`,
 };

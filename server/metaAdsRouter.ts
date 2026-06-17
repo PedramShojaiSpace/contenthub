@@ -372,7 +372,7 @@ export const metaAdsRouter = router({
   generateHooks: protectedProcedure
     .input(z.object({
       topic: z.string().min(5),
-      targetProduct: z.enum(["lightsOn", "academy", "upstream", "kbmoTesting", "general"]),
+      targetProduct: z.enum(["lightsOn", "lightsOnCourse", "academy", "upstream", "kbmoTesting", "sleepTestKit", "orobiomeTestKit", "general"]),
       count: z.number().min(3).max(8).default(5),
     }))
     .mutation(async ({ input }) => {
@@ -394,7 +394,7 @@ export const metaAdsRouter = router({
   launchHookAbTest: protectedProcedure
     .input(z.object({
       topic: z.string(),
-      targetProduct: z.enum(["lightsOn", "academy", "upstream", "kbmoTesting", "general"]),
+      targetProduct: z.enum(["lightsOn", "lightsOnCourse", "academy", "upstream", "kbmoTesting", "sleepTestKit", "orobiomeTestKit", "general"]),
       // Multi-variant mode: one video URL per variant (from VideoVariantFactory)
       variantVideoUrls: z.array(z.string().url()).min(1).max(10),
       // Optional hook texts — if provided, matched by index to variantVideoUrls

@@ -897,11 +897,9 @@ function OrganicToPaidTab() {
 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 
 function OptimizerTab() {
   const utils = trpc.useUtils();
-  const guardrails = trpc.metaAds.getGuardrails.useQuery();
   const optimizationLog = trpc.metaAds.getOptimizationLog.useQuery({ limit: 50 });
   const runNow = trpc.metaAds.runOptimizationNow.useMutation({
     onSuccess: (result) => {
@@ -911,57 +909,36 @@ function OptimizerTab() {
     onError: (err) => toast.error(`Optimization failed: ${err.message}`),
   });
   const updateGuardrails = trpc.metaAds.updateGuardrails.useMutation({
-    onSuccess: () => {
-      toast.success("Guardrails saved");
-      utils.metaAds.getGuardrails.invalidate();
-    },
+    onSuccess: () => toast.success("Settings saved"),
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
 
-  const g = guardrails.data;
-
-  const [form, setForm] = useState({
-    targetCpl: g?.targetCpl ?? "25",
-    minDailyBudget: g?.minDailyBudget ?? "30",
-    maxDailyBudget: g?.maxDailyBudget ?? "500",
-    autoScaleEnabled: g?.autoScaleEnabled ?? true,
-    autoPauseEnabled: g?.autoPauseEnabled ?? true,
-    maxFrequencyBeforePause: g?.maxFrequencyBeforePause ?? "3.5",
-    minCtrBeforePause: g?.minCtrBeforePause ?? "0.5",
-    scaleUpMultiplier: g?.scaleUpMultiplier ?? "1.2",
-    minSpendForAction: g?.minSpendForAction ?? "20",
-  });
-
-  // Sync form when guardrails load
-  useState(() => {
-    if (g) {
-      setForm({
-        targetCpl: g.targetCpl,
-        minDailyBudget: g.minDailyBudget,
-        maxDailyBudget: g.maxDailyBudget,
-        autoScaleEnabled: g.autoScaleEnabled ?? true,
-        autoPauseEnabled: g.autoPauseEnabled ?? true,
-        maxFrequencyBeforePause: g.maxFrequencyBeforePause,
-        minCtrBeforePause: g.minCtrBeforePause,
-        scaleUpMultiplier: g.scaleUpMultiplier,
-        minSpendForAction: g.minSpendForAction,
-      });
-    }
-  });
+  const [autoScale, setAutoScale] = useState(true);
+  const [autoPause, setAutoPause] = useState(true);
 
   const handleSave = () => {
     updateGuardrails.mutate({
-      targetCpl: parseFloat(form.targetCpl as string),
-      minDailyBudget: parseFloat(form.minDailyBudget as string),
-      maxDailyBudget: parseFloat(form.maxDailyBudget as string),
-      autoScaleEnabled: form.autoScaleEnabled as boolean,
-      autoPauseEnabled: form.autoPauseEnabled as boolean,
-      maxFrequencyBeforePause: parseFloat(form.maxFrequencyBeforePause as string),
-      minCtrBeforePause: parseFloat(form.minCtrBeforePause as string),
-      scaleUpMultiplier: parseFloat(form.scaleUpMultiplier as string),
-      minSpendForAction: parseFloat(form.minSpendForAction as string),
+      targetCpl: 200,
+      minDailyBudget: 20,
+      maxDailyBudget: 500,
+      autoScaleEnabled: autoScale,
+      autoPauseEnabled: autoPause,
+      maxFrequencyBeforePause: 4.0,
+      minCtrBeforePause: 0.3,
+      scaleUpMultiplier: 1.2,
+      minSpendForAction: 5,
     });
   };
+
+  const SKU_TABLE = [
+    { id: "kbmoTesting",    label: "KBMO Food Sensitivity Test",   cpa: 200, minBudget: 20, maxBudget: 300 },
+    { id: "lightsOnCourse", label: "Lights On Course",             cpa: 200, minBudget: 20, maxBudget: 300 },
+    { id: "sleepTestKit",   label: "Sleep Test Kit",               cpa: 200, minBudget: 20, maxBudget: 300 },
+    { id: "orobiomeTestKit",label: "Orobiome Test Kit",            cpa: 200, minBudget: 20, maxBudget: 300 },
+    { id: "academy",        label: "Urban Monk Academy ($297/yr)", cpa: 150, minBudget: 20, maxBudget: 500 },
+    { id: "upstream",       label: "Upstream Course",             cpa: 100, minBudget: 15, maxBudget: 200 },
+    { id: "general",        label: "General / Awareness",         cpa: 50,  minBudget: 10, maxBudget: 100 },
+  ];
 
   const actionColor = (action: string) => {
     if (action === "scaled") return "text-green-700 bg-green-50";
@@ -992,117 +969,57 @@ function OptimizerTab() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Guardrails Config */}
+        {/* Per-SKU CPA Targets */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-amber-500" />
-              Budget Guardrails
+              CPA Targets by SKU
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {guardrails.isLoading ? (
-              <div className="space-y-3">
-                {[...Array(4)].map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded" />)}
+            <p className="text-xs text-muted-foreground">
+              Optimizer uses per-SKU CPA (Cost Per Acquisition / buyer) targets.
+              Campaign names must include the SKU keyword for auto-detection.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-1.5 pr-3 text-xs font-semibold text-muted-foreground">Product / SKU</th>
+                    <th className="text-right py-1.5 px-2 text-xs font-semibold text-muted-foreground">Target CPA</th>
+                    <th className="text-right py-1.5 px-2 text-xs font-semibold text-muted-foreground">Min/Day</th>
+                    <th className="text-right py-1.5 pl-2 text-xs font-semibold text-muted-foreground">Max/Day</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {SKU_TABLE.map((sku) => (
+                    <tr key={sku.id} className="border-b last:border-0">
+                      <td className="py-2 pr-3">
+                        <div className="font-medium text-xs">{sku.label}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{sku.id}</div>
+                      </td>
+                      <td className="text-right py-2 px-2 font-semibold text-green-700">${sku.cpa}</td>
+                      <td className="text-right py-2 px-2 text-muted-foreground">${sku.minBudget}</td>
+                      <td className="text-right py-2 pl-2 text-muted-foreground">${sku.maxBudget}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-3 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Auto-Scale Winners</Label>
+                <Switch checked={autoScale} onCheckedChange={setAutoScale} />
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Target CPL ($)</Label>
-                    <Input
-                      type="number"
-                      value={form.targetCpl as string}
-                      onChange={(e) => setForm({ ...form, targetCpl: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Min Spend Before Action ($)</Label>
-                    <Input
-                      type="number"
-                      value={form.minSpendForAction as string}
-                      onChange={(e) => setForm({ ...form, minSpendForAction: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Min Daily Budget ($)</Label>
-                    <Input
-                      type="number"
-                      value={form.minDailyBudget as string}
-                      onChange={(e) => setForm({ ...form, minDailyBudget: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Max Daily Budget ($)</Label>
-                    <Input
-                      type="number"
-                      value={form.maxDailyBudget as string}
-                      onChange={(e) => setForm({ ...form, maxDailyBudget: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Max Frequency Before Pause</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={form.maxFrequencyBeforePause as string}
-                      onChange={(e) => setForm({ ...form, maxFrequencyBeforePause: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Min CTR Before Pause (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={form.minCtrBeforePause as string}
-                      onChange={(e) => setForm({ ...form, minCtrBeforePause: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Scale-Up Multiplier (e.g. 1.2 = +20%)</Label>
-                    <Input
-                      type="number"
-                      step="0.05"
-                      value={form.scaleUpMultiplier as string}
-                      onChange={(e) => setForm({ ...form, scaleUpMultiplier: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-2 border-t">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm">Auto-Scale Winners</Label>
-                    <Switch
-                      checked={form.autoScaleEnabled as boolean}
-                      onCheckedChange={(v) => setForm({ ...form, autoScaleEnabled: v })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm">Auto-Pause Underperformers</Label>
-                    <Switch
-                      checked={form.autoPauseEnabled as boolean}
-                      onCheckedChange={(v) => setForm({ ...form, autoPauseEnabled: v })}
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleSave}
-                  disabled={updateGuardrails.isPending}
-                  className="w-full"
-                  size="sm"
-                >
-                  {updateGuardrails.isPending ? "Saving..." : "Save Guardrails"}
-                </Button>
-              </>
-            )}
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Auto-Pause Underperformers</Label>
+                <Switch checked={autoPause} onCheckedChange={setAutoPause} />
+              </div>
+            </div>
+            <Button onClick={handleSave} disabled={updateGuardrails.isPending} className="w-full" size="sm">
+              {updateGuardrails.isPending ? "Saving..." : "Save Settings"}
+            </Button>
           </CardContent>
         </Card>
 

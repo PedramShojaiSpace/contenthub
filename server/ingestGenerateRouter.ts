@@ -451,6 +451,7 @@ SCRIPT REQUIREMENTS:
 - Length: 8-12 minutes of spoken content (approximately 1,200-1,800 words)
 - Voice: conversational, like Pedram is talking directly to one person
 - Reference the YouTube description context below for key points to cover
+- GREETING RULE: If the script opens with a greeting to the audience, ALWAYS say "Hello Urban Monks" — NEVER "Hello Urban Monk Nation" or any other variation
 
 Format the script with clear section headers in [BRACKETS] for the teleprompter operator.`;
 

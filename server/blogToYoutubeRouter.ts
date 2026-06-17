@@ -285,6 +285,7 @@ VOICE GUIDELINES:
 - Use pauses and rhetorical questions to create rhythm
 - Avoid jargon; explain technical terms simply
 - Target length: approximately ${targetWords} words (${input.targetDurationMinutes} minutes at speaking pace)
+- GREETING RULE: If the script opens with a greeting to the audience, ALWAYS say "Hello Urban Monks" — NEVER "Hello Urban Monk Nation" or any other variation
 
 FORMAT:
 - Write the script as PURE SPOKEN DIALOGUE ONLY — exactly the words Pedram will say aloud, nothing else

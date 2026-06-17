@@ -2957,6 +2957,8 @@ SCRIPT REQUIREMENTS:
 - Weave in his credentials naturally (OMD, Daoist training, functional medicine) without bragging
 - Format with clear section headers in [BRACKETS] for the teleprompter operator
 
+GREETING RULE: If the script opens with a greeting to the audience, ALWAYS say "Hello Urban Monks" — NEVER "Hello Urban Monk Nation" or any other variation.
+
 IMPORTANT: This is a VIDEO script, not a blog post. Convert written prose into spoken language. Break up long sentences. Add natural transitions ("Now, here's the thing...", "Let me give you an example...", "So what does this mean for you?").`;
 
         const articleExcerpt = input.articleBody.slice(0, 6000);

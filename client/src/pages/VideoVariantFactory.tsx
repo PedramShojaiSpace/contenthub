@@ -25,7 +25,8 @@ import {
   CheckCircle2, Clock, AlertCircle, Loader2, Plus,
   Clapperboard, Zap, History, ChevronDown, ChevronUp,
   FileVideo, RefreshCw, FlaskConical, FolderDown,
-  Share2, Megaphone, Send, ExternalLink, ArrowLeft
+  Share2, Megaphone, Send, ExternalLink, ArrowLeft,
+  Copy, Check
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -865,6 +866,7 @@ export default function VideoVariantFactory() {
                       <div className="flex items-center gap-2 mb-3">
                         <CheckCircle2 className="w-4 h-4 text-green-400" />
                         <p className="text-sm font-semibold text-foreground">{hookScripts.length} Hook Scripts — Record One Clip Per Hook</p>
+                        <VFCopyAllButton scripts={hookScripts.map((s, i) => `H${i+1}: ${s.hookText}`).join('\n\n')} label="Copy All Hooks" />
                       </div>
                       <div className="grid gap-2">
                         {hookScripts.map((s, i) => (
@@ -876,6 +878,7 @@ export default function VideoVariantFactory() {
                                 <p className="text-xs text-muted-foreground mt-0.5">{s.frameworkLabel}{s.estimatedCTRLift ? ` · ${s.estimatedCTRLift} CTR lift` : ""}</p>
                               )}
                             </div>
+                            <VFCopyAllButton scripts={s.hookText} label={`H${i+1}`} />
                           </div>
                         ))}
                       </div>
@@ -889,7 +892,8 @@ export default function VideoVariantFactory() {
                       <div className="flex items-center gap-2 mb-3">
                         <Film className="w-4 h-4 text-blue-400" />
                         <p className="text-sm font-semibold text-foreground">Body Script ({bodyScript.estimatedDuration})</p>
-                        <span className="text-xs text-muted-foreground ml-auto">Read this on camera for your single body clip</span>
+                        <span className="text-xs text-muted-foreground">Read on camera once</span>
+                        <VFCopyAllButton scripts={bodyScript.spokenScript} label="Copy Body" />
                       </div>
                       <p className="text-sm leading-relaxed text-foreground">{bodyScript.spokenScript}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
@@ -907,7 +911,7 @@ export default function VideoVariantFactory() {
                       <div className="flex items-center gap-2 mb-3">
                         <Zap className="w-4 h-4 text-amber-400" />
                         <p className="text-sm font-semibold text-foreground">{ctaScripts.length} CTA Variants — Record One Clip Per CTA</p>
-                        <span className="text-xs text-muted-foreground ml-auto">Each CTA pairs with every hook</span>
+                        <VFCopyAllButton scripts={ctaScripts.map((c, i) => `C${i+1}: ${c.ctaText}`).join('\n\n')} label="Copy All CTAs" />
                       </div>
                       <div className="grid gap-2">
                         {ctaScripts.map((c, i) => (
@@ -918,6 +922,7 @@ export default function VideoVariantFactory() {
                               <p className="text-xs text-muted-foreground mt-0.5">Overlay: {c.overlayText} · {c.urgencyMechanism}</p>
                               <p className="text-xs text-muted-foreground italic">🎥 {c.deliveryNote}</p>
                             </div>
+                            <VFCopyAllButton scripts={c.ctaText} label={`C${i+1}`} />
                           </div>
                         ))}
                       </div>
@@ -2099,5 +2104,43 @@ function MetaHookAbTestPanel({
         </div>
       )}
     </div>
+  );
+}
+
+// ─── VFCopyAllButton ──────────────────────────────────────────────────────────
+// Inline copy-to-clipboard button for teleprompter use in the factory panels.
+function VFCopyAllButton({ scripts, label }: { scripts: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(scripts);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = scripts;
+      el.style.position = "fixed";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [scripts]);
+  return (
+    <button
+      onClick={handleCopy}
+      title={`Copy ${label ?? "script"} to teleprompter`}
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors shrink-0 ml-auto ${
+        copied
+          ? "bg-green-500/20 text-green-400 border border-green-500/30"
+          : "bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted border border-border"
+      }`}
+    >
+      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+      {copied ? "Copied!" : (label ?? "Copy")}
+    </button>
   );
 }

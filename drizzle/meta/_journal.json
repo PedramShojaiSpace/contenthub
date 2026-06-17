@@ -813,6 +813,13 @@
       "when": 1781629718172,
       "tag": "0115_add_organic_signal_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "5",
+      "when": 1781657600000,
+      "tag": "0116_add_sku_cpa_targets",
+      "breakpoints": true
     }
   ]
 }

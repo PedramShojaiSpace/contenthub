@@ -34,6 +34,9 @@ import {
   Film,
   Clapperboard,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
@@ -895,11 +898,97 @@ function OrganicToPaidTab() {
 // Optimizer Tab (Phase 3) — Guardrails config + optimization log
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+function SkuCpaRow({ sku }: { sku: { id: number; skuId: string; label: string; targetCpa: string; minDailyBudget: string; maxDailyBudget: string; updatedAt: Date } }) {
+  const utils = trpc.useUtils();
+  const [editing, setEditing] = useState(false);
+  const [cpa, setCpa] = useState(sku.targetCpa);
+  const [minBudget, setMinBudget] = useState(sku.minDailyBudget);
+  const [maxBudget, setMaxBudget] = useState(sku.maxDailyBudget);
+
+  const update = trpc.metaAds.updateSkuCpaTarget.useMutation({
+    onSuccess: () => {
+      toast.success(`${sku.label} updated`);
+      utils.metaAds.getSkuCpaTargets.invalidate();
+      setEditing(false);
+    },
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
+  });
+
+  const handleSave = () => {
+    update.mutate({
+      skuId: sku.skuId,
+      targetCpa: parseFloat(cpa),
+      minDailyBudget: parseFloat(minBudget),
+      maxDailyBudget: parseFloat(maxBudget),
+    });
+  };
+
+  const handleCancel = () => {
+    setCpa(sku.targetCpa);
+    setMinBudget(sku.minDailyBudget);
+    setMaxBudget(sku.maxDailyBudget);
+    setEditing(false);
+  };
+
+  return (
+    <tr className="border-b last:border-0 group">
+      <td className="py-2 pr-2">
+        <div className="font-medium text-xs">{sku.label}</div>
+        <div className="text-xs text-muted-foreground font-mono">{sku.skuId}</div>
+      </td>
+      {editing ? (
+        <>
+          <td className="py-1 px-1">
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">$</span>
+              <Input type="number" value={cpa} onChange={(e) => setCpa(e.target.value)} className="h-7 w-20 text-xs px-1" min={1} step={1} />
+            </div>
+          </td>
+          <td className="py-1 px-1">
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">$</span>
+              <Input type="number" value={minBudget} onChange={(e) => setMinBudget(e.target.value)} className="h-7 w-16 text-xs px-1" min={1} step={1} />
+            </div>
+          </td>
+          <td className="py-1 px-1">
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">$</span>
+              <Input type="number" value={maxBudget} onChange={(e) => setMaxBudget(e.target.value)} className="h-7 w-16 text-xs px-1" min={1} step={1} />
+            </div>
+          </td>
+          <td className="py-1 pl-1">
+            <div className="flex gap-1">
+              <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSave} disabled={update.isPending}>
+                {update.isPending ? "..." : "Save"}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={handleCancel}>Cancel</Button>
+            </div>
+          </td>
+        </>
+      ) : (
+        <>
+          <td className="text-right py-2 px-2 font-semibold text-green-700">${parseFloat(cpa).toFixed(0)}</td>
+          <td className="text-right py-2 px-2 text-muted-foreground">${parseFloat(minBudget).toFixed(0)}</td>
+          <td className="text-right py-2 px-2 text-muted-foreground">${parseFloat(maxBudget).toFixed(0)}</td>
+          <td className="py-2 pl-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </Button>
+          </td>
+        </>
+      )}
+    </tr>
+  );
+}
 
 function OptimizerTab() {
   const utils = trpc.useUtils();
+  const skuTargets = trpc.metaAds.getSkuCpaTargets.useQuery();
   const optimizationLog = trpc.metaAds.getOptimizationLog.useQuery({ limit: 50 });
   const runNow = trpc.metaAds.runOptimizationNow.useMutation({
     onSuccess: (result) => {
@@ -916,7 +1005,7 @@ function OptimizerTab() {
   const [autoScale, setAutoScale] = useState(true);
   const [autoPause, setAutoPause] = useState(true);
 
-  const handleSave = () => {
+  const handleSaveToggles = () => {
     updateGuardrails.mutate({
       targetCpl: 200,
       minDailyBudget: 20,
@@ -929,16 +1018,6 @@ function OptimizerTab() {
       minSpendForAction: 5,
     });
   };
-
-  const SKU_TABLE = [
-    { id: "kbmoTesting",    label: "KBMO Food Sensitivity Test",   cpa: 200, minBudget: 20, maxBudget: 300 },
-    { id: "lightsOnCourse", label: "Lights On Course",             cpa: 200, minBudget: 20, maxBudget: 300 },
-    { id: "sleepTestKit",   label: "Sleep Test Kit",               cpa: 200, minBudget: 20, maxBudget: 300 },
-    { id: "orobiomeTestKit",label: "Orobiome Test Kit",            cpa: 200, minBudget: 20, maxBudget: 300 },
-    { id: "academy",        label: "Urban Monk Academy ($297/yr)", cpa: 150, minBudget: 20, maxBudget: 500 },
-    { id: "upstream",       label: "Upstream Course",             cpa: 100, minBudget: 15, maxBudget: 200 },
-    { id: "general",        label: "General / Awareness",         cpa: 50,  minBudget: 10, maxBudget: 100 },
-  ];
 
   const actionColor = (action: string) => {
     if (action === "scaled") return "text-green-700 bg-green-50";
@@ -969,7 +1048,7 @@ function OptimizerTab() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Per-SKU CPA Targets */}
+        {/* Per-SKU CPA Targets — inline editable */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -979,34 +1058,30 @@ function OptimizerTab() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              Optimizer uses per-SKU CPA (Cost Per Acquisition / buyer) targets.
-              Campaign names must include the SKU keyword for auto-detection.
+              Hover a row and click <strong>Edit</strong> to update. Campaign names must include the SKU keyword for auto-detection.
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-1.5 pr-3 text-xs font-semibold text-muted-foreground">Product / SKU</th>
-                    <th className="text-right py-1.5 px-2 text-xs font-semibold text-muted-foreground">Target CPA</th>
-                    <th className="text-right py-1.5 px-2 text-xs font-semibold text-muted-foreground">Min/Day</th>
-                    <th className="text-right py-1.5 pl-2 text-xs font-semibold text-muted-foreground">Max/Day</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {SKU_TABLE.map((sku) => (
-                    <tr key={sku.id} className="border-b last:border-0">
-                      <td className="py-2 pr-3">
-                        <div className="font-medium text-xs">{sku.label}</div>
-                        <div className="text-xs text-muted-foreground font-mono">{sku.id}</div>
-                      </td>
-                      <td className="text-right py-2 px-2 font-semibold text-green-700">${sku.cpa}</td>
-                      <td className="text-right py-2 px-2 text-muted-foreground">${sku.minBudget}</td>
-                      <td className="text-right py-2 pl-2 text-muted-foreground">${sku.maxBudget}</td>
+            {skuTargets.isLoading ? (
+              <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded" />)}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-1.5 pr-2 text-xs font-semibold text-muted-foreground">Product / SKU</th>
+                      <th className="text-right py-1.5 px-2 text-xs font-semibold text-muted-foreground">Target CPA</th>
+                      <th className="text-right py-1.5 px-2 text-xs font-semibold text-muted-foreground">Min/Day</th>
+                      <th className="text-right py-1.5 px-2 text-xs font-semibold text-muted-foreground">Max/Day</th>
+                      <th className="py-1.5 pl-1"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {skuTargets.data?.map((sku) => (
+                      <SkuCpaRow key={sku.id} sku={sku} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <div className="space-y-3 pt-2 border-t">
               <div className="flex items-center justify-between">
                 <Label className="text-sm">Auto-Scale Winners</Label>
@@ -1017,8 +1092,8 @@ function OptimizerTab() {
                 <Switch checked={autoPause} onCheckedChange={setAutoPause} />
               </div>
             </div>
-            <Button onClick={handleSave} disabled={updateGuardrails.isPending} className="w-full" size="sm">
-              {updateGuardrails.isPending ? "Saving..." : "Save Settings"}
+            <Button onClick={handleSaveToggles} disabled={updateGuardrails.isPending} className="w-full" size="sm">
+              {updateGuardrails.isPending ? "Saving..." : "Save Toggle Settings"}
             </Button>
           </CardContent>
         </Card>

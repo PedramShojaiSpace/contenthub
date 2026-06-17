@@ -228,7 +228,7 @@ export async function getTopPages(
 }
 
 /**
- * Get "striking distance" keywords: positions 11–20 with >100 impressions
+ * Get "striking distance" keywords: positions 11–30 with >=10 impressions
  * These are the fastest SEO wins — one good content update can push them to page 1
  */
 export async function getStrikingDistanceKeywords(
@@ -243,7 +243,7 @@ export async function getStrikingDistanceKeywords(
       startDate: daysAgo(28),
       endDate: daysAgo(3),
       dimensions: ["query"],
-      rowLimit: 500, // fetch more so we can filter client-side
+      rowLimit: 1000, // fetch more so we can filter client-side
     },
   } as any);
   const data = (res as any).data;
@@ -254,9 +254,9 @@ export async function getStrikingDistanceKeywords(
     ctr: r.ctr ?? 0,
     position: r.position ?? 0,
   }));
-  // Filter: positions 11–20, at least 50 impressions
+  // Filter: positions 11–30, at least 10 impressions (broad enough to surface real opportunities)
   return rows
-    .filter((r: QueryRow) => r.position >= 11 && r.position <= 20 && r.impressions >= 50)
+    .filter((r: QueryRow) => r.position >= 11 && r.position <= 30 && r.impressions >= 10)
     .sort((a: QueryRow, b: QueryRow) => b.impressions - a.impressions)
     .slice(0, limit);
 }

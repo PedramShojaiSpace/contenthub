@@ -1565,7 +1565,7 @@ export default function VideoVariantFactory() {
                     {/* Meta Ads Hook A/B Test panel */}
                     {outputPath === "meta" && (
                       <MetaHookAbTestPanel
-                        doneVariants={doneVariants.map(v => ({ id: v.id, variantLabel: v.variantLabel, s3Url: v.s3Url }))}
+                        doneVariants={doneVariants.filter((v: any) => !!v.s3Url).map((v: any) => ({ id: v.id as number, variantLabel: v.variantLabel as string, s3Url: v.s3Url as string }))}
                         jobName={jobName}
                         onLaunched={() => setOutputPath("none")}
                       />
@@ -1819,6 +1819,154 @@ function UploadingRow({
               Retry
             </button>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MetaHookAbTestPanel ──────────────────────────────────────────────────────
+interface MetaVariantItem {
+  id: number;
+  variantLabel: string;
+  s3Url: string;
+}
+
+function MetaHookAbTestPanel({
+  doneVariants,
+  jobName,
+  onLaunched,
+}: {
+  doneVariants: MetaVariantItem[];
+  jobName: string;
+  onLaunched: () => void;
+}) {
+  const [topic, setTopic] = useState(jobName);
+  const [targetProduct, setTargetProduct] = useState<"lightsOn" | "academy" | "upstream" | "kbmoTesting" | "general">("academy");
+  const [dailyBudget, setDailyBudget] = useState(5);
+  const [testDays, setTestDays] = useState(7);
+  const [generatedHooks, setGeneratedHooks] = useState<{ variants: { hookText: string; frameworkLabel: string; estimatedCTRLift: string }[] } | null>(null);
+  const [hookTexts, setHookTexts] = useState<string[]>([]);
+  const [step, setStep] = useState<"setup" | "hooks" | "launch">("setup");
+
+  const generateHooks = trpc.metaAds.generateHooks.useMutation({
+    onSuccess: (data) => {
+      setGeneratedHooks(data);
+      setHookTexts(data.variants.map((v: { hookText: string }) => v.hookText));
+      setStep("hooks");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to generate hooks"),
+  });
+
+  const launchTest = trpc.metaAds.launchHookAbTest.useMutation({
+    onSuccess: (data) => {
+      toast.success(`A/B test launched! Campaign: ${data.campaignName} — ${doneVariants.length} variants live.`);
+      onLaunched();
+    },
+    onError: (err) => toast.error(err.message ?? "Launch failed"),
+  });
+
+  const variantVideoUrls = doneVariants.map((v) => v.s3Url).filter((url): url is string => !!url);
+
+  return (
+    <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-4">
+      <div className="flex items-center gap-2">
+        <Megaphone className="w-4 h-4 text-blue-400" />
+        <p className="text-sm font-semibold text-foreground">Launch Hook A/B Test on Meta</p>
+        <Badge variant="outline" className="text-xs ml-auto">{doneVariants.length} variants</Badge>
+      </div>
+
+      {step === "setup" && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Topic / Angle</label>
+              <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. cortisol weight gain" className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Product</label>
+              <Select value={targetProduct} onValueChange={(v) => setTargetProduct(v as typeof targetProduct)}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="academy">Urban Monk Academy</SelectItem>
+                  <SelectItem value="lightsOn">Lights On Supplement</SelectItem>
+                  <SelectItem value="upstream">Upstream</SelectItem>
+                  <SelectItem value="general">General</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Daily Budget / Variant ($)</label>
+              <Input type="number" min={3} max={20} value={dailyBudget} onChange={(e) => setDailyBudget(Number(e.target.value))} className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Test Duration (days)</label>
+              <Input type="number" min={3} max={14} value={testDays} onChange={(e) => setTestDays(Number(e.target.value))} className="text-sm" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 gap-2 bg-purple-600 hover:bg-purple-500 text-white"
+              disabled={generateHooks.isPending || !topic.trim()}
+              onClick={() => generateHooks.mutate({ topic, targetProduct, count: Math.min(Math.max(doneVariants.length, 3), 8) })}
+            >
+              {generateHooks.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              Generate Hook Texts for Each Variant
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={() => { setHookTexts(doneVariants.map((v) => v.variantLabel)); setStep("launch"); }}>
+              Skip → Use Variant Labels
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {step === "hooks" && generatedHooks && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">Review and edit hook texts. Each will be paired with the corresponding video variant.</p>
+          <div className="space-y-2">
+            {doneVariants.map((v, i) => (
+              <div key={v.id} className="flex items-start gap-2">
+                <Badge variant="outline" className="text-xs shrink-0 mt-1">{v.variantLabel}</Badge>
+                <div className="flex-1 space-y-1">
+                  {generatedHooks.variants[i] && (
+                    <p className="text-xs text-muted-foreground">{generatedHooks.variants[i].frameworkLabel} · {generatedHooks.variants[i].estimatedCTRLift}</p>
+                  )}
+                  <Input value={hookTexts[i] ?? ""} onChange={(e) => { const u = [...hookTexts]; u[i] = e.target.value; setHookTexts(u); }} className="text-sm" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <Button className="w-full gap-2 bg-blue-600 hover:bg-blue-500 text-white" onClick={() => setStep("launch")}>
+            <CheckCircle2 className="w-4 h-4" /> Confirm Hooks → Set Budget
+          </Button>
+        </div>
+      )}
+
+      {step === "launch" && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
+            <p className="text-xs font-medium text-foreground">Campaign Summary</p>
+            <p className="text-xs text-muted-foreground">{doneVariants.length} video variants · ${dailyBudget}/day each · {testDays} day test</p>
+            <p className="text-xs text-muted-foreground">Total max spend: ${(dailyBudget * doneVariants.length * testDays).toFixed(0)}</p>
+          </div>
+          <Button
+            className="w-full gap-2 bg-orange-600 hover:bg-orange-700 text-white"
+            disabled={launchTest.isPending || variantVideoUrls.length === 0}
+            onClick={() => launchTest.mutate({
+              topic,
+              targetProduct,
+              variantVideoUrls,
+              hookTexts: hookTexts.length === variantVideoUrls.length ? hookTexts : variantVideoUrls.map((_, i) => `Variant ${i + 1}`),
+              dailyBudgetPerVariant: dailyBudget,
+              testDurationDays: testDays,
+            })}
+          >
+            {launchTest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />}
+            Launch {doneVariants.length}-Variant A/B Test on Meta
+          </Button>
+          <button className="text-xs text-muted-foreground hover:text-foreground w-full text-center" onClick={() => setStep("setup")}>← Back to setup</button>
         </div>
       )}
     </div>

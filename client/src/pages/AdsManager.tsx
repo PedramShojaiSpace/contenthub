@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,8 @@ import {
   Loader2,
   Film,
   Clapperboard,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -1409,6 +1411,9 @@ function HookTestingTab() {
                   <div className="flex items-center gap-2 mb-1">
                     <Badge variant="outline" className="text-xs">{v.frameworkLabel}</Badge>
                     <span className="text-xs text-green-400">{v.estimatedCTRLift} CTR lift</span>
+                    <span className="ml-auto">
+                      <CopyScriptButton text={v.hookText} label={`H${i + 1}`} />
+                    </span>
                   </div>
                   <p className="text-sm font-medium">{v.hookText}</p>
                   <p className="text-xs text-muted-foreground mt-1">Overlay: {v.overlayText}</p>
@@ -1423,6 +1428,9 @@ function HookTestingTab() {
                   <div className="w-2 h-2 rounded-full bg-blue-400" />
                   <span className="text-sm font-semibold text-foreground">Body Script</span>
                   <span className="text-xs text-muted-foreground">({generatedHooks.bodyScript.estimatedDuration})</span>
+                  <span className="ml-auto">
+                    <CopyScriptButton text={generatedHooks.bodyScript.spokenScript} label="Body" />
+                  </span>
                 </div>
                 <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 space-y-2">
                   <p className="text-sm leading-relaxed">{generatedHooks.bodyScript.spokenScript}</p>
@@ -1450,6 +1458,9 @@ function HookTestingTab() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-bold text-amber-400">CTA {i + 1}</span>
                         <span className="text-xs text-muted-foreground">{cta.urgencyMechanism}</span>
+                        <span className="ml-auto">
+                          <CopyScriptButton text={cta.ctaText} label={`C${i + 1}`} />
+                        </span>
                       </div>
                       <p className="text-sm font-medium">{cta.ctaText}</p>
                       <p className="text-xs text-muted-foreground mt-1">Overlay: {cta.overlayText}</p>
@@ -1628,5 +1639,44 @@ function CreateVideoJobButton({
         Create Video Job &amp; Go to Factory →
       </Button>
     </div>
+  );
+}
+
+// ─── CopyScriptButton ─────────────────────────────────────────────────────────
+// One-tap copy for teleprompter use. Shows a checkmark for 2 seconds after copy.
+function CopyScriptButton({ text, label }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older mobile browsers
+      const el = document.createElement("textarea");
+      el.value = text;
+      el.style.position = "fixed";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [text]);
+  return (
+    <button
+      onClick={handleCopy}
+      title={`Copy ${label ?? "script"} to clipboard`}
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors shrink-0 ${
+        copied
+          ? "bg-green-500/20 text-green-400 border border-green-500/30"
+          : "bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted border border-border"
+      }`}
+    >
+      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+      {copied ? "Copied!" : (label ?? "Copy")}
+    </button>
   );
 }

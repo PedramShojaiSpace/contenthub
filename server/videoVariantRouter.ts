@@ -627,6 +627,13 @@ export const videoVariantRouter = router({
     .input(z.object({
       jobName: z.string().min(1).max(255),
       aspectRatio: z.enum(["9:16", "16:9", "1:1"]).default("9:16"),
+      // Optional: hook scripts pre-loaded from Hook Generator
+      hookScripts: z.array(z.object({
+        hookText: z.string(),
+        frameworkLabel: z.string().optional(),
+        estimatedCTRLift: z.string().optional(),
+      })).optional(),
+      targetProduct: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -635,9 +642,11 @@ export const videoVariantRouter = router({
         userId: ctx.user.id,
         jobName: input.jobName,
         status: "pending",
-        hookCount: 0,
+        hookCount: input.hookScripts?.length ?? 0,
         variantCount: 0,
         aspectRatio: input.aspectRatio,
+        hookScripts: input.hookScripts ? JSON.stringify(input.hookScripts) : null,
+        targetProduct: input.targetProduct ?? null,
       });
       const jobId = (result as unknown as { insertId: number }).insertId;
       return { jobId };

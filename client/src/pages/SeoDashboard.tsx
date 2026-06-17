@@ -283,6 +283,7 @@ export default function SeoDashboard() {
 
   const handleRefresh = async () => {
     try {
+      // Invalidate all GSC queries so they re-fetch with the latest credentials
       await Promise.all([
         utils.gsc.status.invalidate(),
         utils.gsc.weekOverWeek.invalidate(),
@@ -291,6 +292,9 @@ export default function SeoDashboard() {
         utils.gsc.strikingDistance.invalidate(),
         utils.gsc.trackedKeywords.invalidate(),
       ]);
+      // Force the status query to refetch immediately so the UI switches from
+      // ConnectPanel to the dashboard without requiring a page reload
+      await utils.gsc.status.refetch();
       toast.success("SEO data refreshed from Google Search Console");
     } catch (err: any) {
       toast.error(`Refresh failed: ${err?.message ?? "Unknown error"}`);

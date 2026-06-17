@@ -1533,13 +1533,32 @@ function YoastScoreBadge({ item }: { item: ContentItem }) {
  * Fetches live data from the server-side validateSeo procedure.
  */
 function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compact?: boolean }) {
-  // Only render for blog posts with content
-  if (item.platform !== "blog" || !item.textContent) return null;
+  // ── ALL HOOKS MUST BE CALLED UNCONDITIONALLY (Rules of Hooks) ──────────────
+  const isBlog = item.platform === "blog" && !!item.textContent;
 
   const { data, isLoading, refetch } = trpc.blog.validateSeo.useQuery(
     { contentItemId: item.id },
-    { enabled: true, staleTime: 30_000 }
+    { enabled: isBlog, staleTime: 30_000 }
   );
+
+  // Readability analysis — always call, gate with enabled flag
+  const { data: readability, isLoading: readabilityLoading } = trpc.blog.analyzeReadability.useQuery(
+    { contentItemId: item.id },
+    { enabled: isBlog && !compact, staleTime: 60_000 }
+  );
+
+  // fixSeoMutation — always call, use isPending/mutate only when appropriate
+  const fixSeoMutation = trpc.blog.fixSeoIssues.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Fixed: ${result.fixed.join(", ") || "no changes needed"}`);
+      refetch();
+    },
+    onError: (err) => toast.error("Fix failed: " + err.message),
+  });
+  // ── END HOOKS ──────────────────────────────────────────────────────────────
+
+  // Now safe to return early — all hooks have already been called above
+  if (!isBlog) return null;
 
   const statusColors = {
     green: "bg-green-500/15 text-green-700 border-green-500/30",
@@ -1565,6 +1584,10 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
   if (!data) return null;
 
   const overall = data.overallStatus;
+
+  const hasFixableIssues = data.checks.some(
+    (c) => c.status !== "green" && ["SEO Title", "Meta Desc", "H2 Subheading", "Keyphrase in Meta"].includes(c.label)
+  );
 
   if (compact) {
     // Compact mode: single overall dot + label + tooltip with all checks
@@ -1611,23 +1634,6 @@ function SeoValidatorPanel({ item, compact = false }: { item: ContentItem; compa
   }
 
   // Full mode: expanded badge grid for the card detail panel
-  const fixSeoMutation = trpc.blog.fixSeoIssues.useMutation({
-    onSuccess: (result) => {
-      toast.success(`Fixed: ${result.fixed.join(", ") || "no changes needed"}`);
-      refetch();
-    },
-    onError: (err) => toast.error("Fix failed: " + err.message),
-  });
-
-  const hasFixableIssues = data.checks.some(
-    (c) => c.status !== "green" && ["SEO Title", "Meta Desc", "H2 Subheading", "Keyphrase in Meta"].includes(c.label)
-  );
-
-  // Readability analysis (transition words + consecutive sentence starts)
-  const { data: readability, isLoading: readabilityLoading } = trpc.blog.analyzeReadability.useQuery(
-    { contentItemId: item.id },
-    { enabled: !compact, staleTime: 60_000 }
-  );
 
   // Combine SEO + readability overall status for the summary footer
   const readabilityOverall: "green" | "amber" | "red" | null = readability

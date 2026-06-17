@@ -1960,7 +1960,7 @@ function MetaHookAbTestPanel({
               variantVideoUrls,
               hookTexts: hookTexts.length === variantVideoUrls.length ? hookTexts : variantVideoUrls.map((_, i) => `Variant ${i + 1}`),
               dailyBudgetPerVariant: dailyBudget,
-              testDurationDays: testDays,
+              durationDays: testDays,
             })}
           >
             {launchTest.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />}

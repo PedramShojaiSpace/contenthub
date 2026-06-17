@@ -3,7 +3,9 @@ export const ENV = {
   cookieSecret: process.env.JWT_SECRET ?? "",
   databaseUrl: process.env.DATABASE_URL ?? "",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
-  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
+  // Hardcoded fallback ensures GSC/YouTube OAuth callbacks work in production
+  // even when the platform injects OWNER_OPEN_ID only at startup, not at request time.
+  ownerOpenId: process.env.OWNER_OPEN_ID || "6Efk5Rs3uA46PG9TgoeUmf",
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",

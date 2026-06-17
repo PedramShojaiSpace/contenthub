@@ -7,7 +7,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { adsGuardrails, adsOptimizationLogs, adsWeeklyDigests } from "../drizzle/schema";
+import { adsGuardrails, adsOptimizationLogs, adsWeeklyDigests, skuCpaTargets } from "../drizzle/schema";
 import { desc, eq } from "drizzle-orm";
 import {
   getMetaAdsConfig,
@@ -335,6 +335,34 @@ export const metaAdsRouter = router({
     }),
 
   // ── Phase 3: Optimization Log ───────────────────────────────────────────────
+  // ── Per-SKU CPA Targets: read all ─────────────────────────────────────────────────────
+  getSkuCpaTargets: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+    return db.select().from(skuCpaTargets).orderBy(skuCpaTargets.id);
+  }),
+
+  // ── Per-SKU CPA Targets: update one row ─────────────────────────────────────────────────
+  updateSkuCpaTarget: protectedProcedure
+    .input(z.object({
+      skuId: z.string().min(1),
+      targetCpa: z.number().min(1).max(10000),
+      minDailyBudget: z.number().min(1).max(100000),
+      maxDailyBudget: z.number().min(1).max(100000),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db.update(skuCpaTargets)
+        .set({
+          targetCpa: input.targetCpa.toFixed(2),
+          minDailyBudget: input.minDailyBudget.toFixed(2),
+          maxDailyBudget: input.maxDailyBudget.toFixed(2),
+        })
+        .where(eq(skuCpaTargets.skuId, input.skuId));
+      return { success: true };
+    }),
+
   getOptimizationLog: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
     .query(async ({ input }) => {

@@ -2187,6 +2187,20 @@ export const adsGuardrails = mysqlTable("ads_guardrails", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── Per-SKU CPA Targets ─────────────────────────────────────────────────────
+// One row per product SKU; editable in-app from the Optimizer tab
+export const skuCpaTargets = mysqlTable("sku_cpa_targets", {
+  id: int("id").primaryKey().autoincrement(),
+  skuId: varchar("sku_id", { length: 64 }).notNull().unique(),
+  label: varchar("label", { length: 128 }).notNull(),
+  targetCpa: decimal("target_cpa", { precision: 10, scale: 2 }).notNull(),
+  minDailyBudget: decimal("min_daily_budget", { precision: 10, scale: 2 }).notNull(),
+  maxDailyBudget: decimal("max_daily_budget", { precision: 10, scale: 2 }).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type SkuCpaTarget = typeof skuCpaTargets.$inferSelect;
+export type InsertSkuCpaTarget = typeof skuCpaTargets.$inferInsert;
+
 // ─── Ads Optimization Logs ───────────────────────────────────────────────────
 // Audit trail of every automated action taken by the optimization engine
 export const adsOptimizationLogs = mysqlTable("ads_optimization_logs", {

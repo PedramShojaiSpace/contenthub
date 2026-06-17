@@ -4,7 +4,7 @@
  * SKU detection: campaign name must contain the SKU keyword.
  */
 import { getDb } from "./db";
-import { adsGuardrails, adsOptimizationLogs } from "../drizzle/schema";
+import { adsGuardrails, adsOptimizationLogs, skuCpaTargets } from "../drizzle/schema";
 import {
   getMetaAdsConfig,
   getCampaigns,
@@ -77,6 +77,24 @@ export async function runDailyOptimization(): Promise<OptimizationResult> {
     minSpendForAction: "5.00",
   };
 
+  // Load per-SKU CPA targets from DB (editable in-app); fall back to static config
+  const dbSkuRows = await db.select().from(skuCpaTargets);
+  const dbSkuMap: Record<string, { targetCpa: number; minDailyBudget: number; maxDailyBudget: number }> =
+    Object.fromEntries(dbSkuRows.map((r) => [
+      r.skuId,
+      {
+        targetCpa: parseFloat(r.targetCpa),
+        minDailyBudget: parseFloat(r.minDailyBudget),
+        maxDailyBudget: parseFloat(r.maxDailyBudget),
+      },
+    ]));
+
+  function getSkuTargets(skuId: string) {
+    if (dbSkuMap[skuId]) return dbSkuMap[skuId];
+    const staticSku = getSkuConfig(skuId);
+    return { targetCpa: staticSku.targetCpa, minDailyBudget: staticSku.minDailyBudget, maxDailyBudget: staticSku.maxDailyBudget };
+  }
+
   const maxFreq = parseFloat(guardrails.maxFrequencyBeforePause ?? "4");
   const minCtr = parseFloat(guardrails.minCtrBeforePause ?? "0.3");
   const scaleMultiplier = parseFloat(guardrails.scaleUpMultiplier ?? "1.20");
@@ -116,7 +134,8 @@ export async function runDailyOptimization(): Promise<OptimizationResult> {
 
   for (const campaign of campaigns) {
     const skuId = detectSkuFromCampaignName(campaign.name);
-    const sku = getSkuConfig(skuId);
+    const sku = getSkuConfig(skuId); // for label/shortLabel
+    const skuTargets = getSkuTargets(skuId); // DB-backed CPA targets (editable in-app)
 
     const action: OptimizationAction = {
       campaignId: campaign.id,
@@ -150,9 +169,9 @@ export async function runDailyOptimization(): Promise<OptimizationResult> {
       }
 
       const effectiveCost = action.metrics.purchases > 0 ? action.metrics.cpa : action.metrics.cpl;
-      const targetCpa = sku.targetCpa;
-      const minBudget = sku.minDailyBudget;
-      const maxBudget = sku.maxDailyBudget;
+      const targetCpa = skuTargets.targetCpa;
+      const minBudget = skuTargets.minDailyBudget;
+      const maxBudget = skuTargets.maxDailyBudget;
       const cpaRatio = effectiveCost > 0 ? effectiveCost / targetCpa : 0;
       const metricLabel = action.metrics.purchases > 0 ? "CPA" : "CPL";
 

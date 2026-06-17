@@ -68,6 +68,7 @@ export interface HookAbTestInput {
 
 export interface HookAbTestResult {
   campaignId: string;
+  campaignName: string;
   adSetIds: string[];
   adIds: string[];
   adsCreated: number;
@@ -186,6 +187,7 @@ export async function launchHookAbTest(input: HookAbTestInput): Promise<HookAbTe
 
   return {
     campaignId,
+    campaignName,
     adSetIds,
     adIds,
     adsCreated: adIds.length,

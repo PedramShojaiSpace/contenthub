@@ -14,6 +14,7 @@
 
 import type { Request, Response } from "express";
 import { sdk } from "./_core/sdk";
+import { ENV } from "./_core/env";
 import { getDb } from "./db";
 import { contentItems } from "../drizzle/schema";
 import { and, eq, lte, isNotNull } from "drizzle-orm";
@@ -29,7 +30,7 @@ export async function handleBufferSync(req: Request, res: Response) {
 
   // Accept both cron callers and the project owner (for manual testing)
   const isCron = (user as { isCron?: boolean }).isCron === true;
-  const isOwner = user.openId === process.env.OWNER_OPEN_ID;
+  const isOwner = user.openId === (ENV.ownerOpenId || process.env.OWNER_OPEN_ID);
   if (!isCron && !isOwner) {
     return res.status(403).json({ error: "cron-only" });
   }

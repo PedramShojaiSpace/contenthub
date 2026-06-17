@@ -13,6 +13,7 @@
  */
 
 import type { Request, Response } from "express";
+import { ENV } from "./_core/env";
 import { getDb } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { getTopQueries, getTopPages } from "./googleSearchConsole";
@@ -35,7 +36,7 @@ export async function scoreboardDigestHandler(req: Request, res: Response) {
     const { eq, and, isNotNull, desc, inArray } = await import("drizzle-orm");
 
     // Find the owner's credentials
-    const ownerOpenId = process.env.OWNER_OPEN_ID;
+    const ownerOpenId = ENV.ownerOpenId || process.env.OWNER_OPEN_ID;
     if (!ownerOpenId) return res.status(500).json({ error: "OWNER_OPEN_ID not configured" });
 
     const [owner] = await db.select().from(users).where(eq(users.openId, ownerOpenId)).limit(1);

@@ -237,6 +237,32 @@ export const syndicationRouter = router({
       return jobs;
     }),
 
+  /** Move a syndication job to the Finished Bin (sets archivedAt timestamp). */
+  archiveSyndicationJob: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      await db
+        .update(syndicationJobs)
+        .set({ archivedAt: Date.now() })
+        .where(eq(syndicationJobs.id, input.jobId));
+      return { ok: true };
+    }),
+
+  /** Restore a syndication job from the Finished Bin. */
+  unarchiveSyndicationJob: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      await db
+        .update(syndicationJobs)
+        .set({ archivedAt: null })
+        .where(eq(syndicationJobs.id, input.jobId));
+      return { ok: true };
+    }),
+
   /**
    * Mark a VA job as manually posted.
    */

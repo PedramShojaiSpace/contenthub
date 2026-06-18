@@ -13,17 +13,17 @@
   "experiments": null,
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZJ2VCUPSV",
-    "secret_access_key": "4T+owiDJQEfIUj4CwIwwyEsyrDotFmz2rL1tTfrE",
-    "session_token": "IQoJb3JpZ2luX2VjEOP//////////wEaCXVzLWVhc3QtMSJGMEQCIBGS6YGduce+Kk/5lpWmjU6ilmr/iHcCTMKkTqaeV1jvAiBG7dVVMwuw4pR8TC5le3FLq4IQtpwdB4BeV6slxllddyr+Awis//////////8BEAQaDDY2NTM4NjA5ODg2NiIMJaVch4kjSTZSloaGKtIDm090jOSfxUqpQxvk6mf8cbRSiR81zcpuhSHDCLMOQ/QNaXVZFJf+Ljtht5jLNkRMRubfEojUxXaC/DW1AqoThI0XcdI14bXYRZBJx3EnmEB8A4p9iamZvSvj+tbR07OQ/JhEbGvQnDdlrdCMkKYRv1BuAWaof8BJfP+5Q8cXKPC6rQm6QshkQLbqNPsA2Et0lHtmO1cff8hCDuWLFrEg4g+pdBQpGH8kqrzlsx8gESYLAWIvnPzzw4EGM7iVP/8twPp4rtIpbmn57sokGGHpNDSXNVf5FTmNmIwftpbTo7I2coznJ2wVu4VYkKGTNTZb2E8rNMtYfNUqMvtIg3X93PNlaOHghAxwidFeCyZb3AAX9ik4t4C1+5/t7dTh5I5nRbRgWwFsVLMrInwm/9dRif8lHGdoxKXpbCQic8P91CO+Y+5fujzhHmWVJVj5MzMv2sPIEm/tdAOc8JsU4sCLdg/zas/xBvUTT7RfDTWPPe4U/0X8tCWmPvcG6QdG+/HB7oy9EcYXrdrSU8I1R0hQw7kpt5XjFgL7yKhXHfRzIVMhJ9JrIsPBepmXjJhwuNNgDx0rAJuW1/I2ypt0xX4NTOAzFB9WJzis03Z0N1vLexmp1jCN9NDRBjqeAfx0ZrwVonqF6NYyA11sXMpL3yI0rTJLVWOqrdsompnkIDO0799IQ6uiIBGOjvpCf6sqEHWu6hj8PVSXn+uiE2fIcwVnT38+BGZKxP+yJpb7pixVvzDbODIgQiyElvAhcLKyfFoWOg5pVTH0fSf2PT1YPViKIn+IjGU0halBOQ+hHl+t0G066pvcxvbwJqJWF1/xTO9bhsNlveSEJmJn",
-    "expiration": "2026-06-19T06:33:49.000Z"
+    "access_key_id": "ASIAZV3A2ECZI4QYISKH",
+    "secret_access_key": "WmwxENsBf0JA7NHNuglMjEI+WZptiOz0M2fDmqEz",
+    "session_token": "IQoJb3JpZ2luX2VjEOP//////////wEaCXVzLWVhc3QtMSJHMEUCIQCBeP/1LJSm1B4G7fRalMCc32+RPw3YfWX8V4+j6LE84QIgdh/OuWpmVLkzed23Tev4PaK6rm722dBPbSAQUHuUp8Qq/gMIrP//////////ARAEGgw2NjUzODYwOTg4NjYiDA1IWsQxDt/MFdbsBSrSA7GUe891LBObRJ3NtruIQDg7wouXYSx8r7V7bBAjpXyCQ5ONMyvGFQgA27GmokTVaT2gViTgk3lSQRwTs6jQFHoc8XOo+ZsB+mDlN/nPQ9b0E5K//9qEEO/GK7vufOGIt/GRTKYjdCSVOy4WyctBZpdKn8u0bXDIw0jhuo9otFWHEdU++cgVzzX7GUd8N0W9SJhwe/ruyj+eFPxZKtqsgo2tBe808iPcO2uggz0eBMRnVnJATcNElEafJcgtus/3Wn1YJlgZ/exzTlCMr4xfKIDygTt4TIEhvdoN6ZjVQjXoJwEZ6Qqz5WTrABYXeezpZC10gM9SMUNsqb0eoSwDGYy3zEVCDKgESReMJNGb45+0n4Q1q1UWfBDsFmimDibelGQtt30uCDSZA9SS0rpVxK+QVrMKtht58MvaRS9EdlAde3FYxX8yJ1Yv7fkq9aXNkivouCE0o8LI+gi89p5g77xXwDa5cwckGNYdxPpgcN1HDCn2JiqyPAEIzlBgQMcWpQPVHdc2q10KYT3XeTKdhKpJdljEZkMiVz0NcHCvjlrVmqF/pI4D4YNoIycNUXk7PhUBz8mlmkOU1Zdhie5ush+OQP64iOdH2YpapUKRr1ipKdkw2PjQ0QY6nQGYnkfWmOzLG3wdh8b0wfBlcuAHeE5YX74eOchKxp724f7RG1OtworvPpNtkHNlvH/jKBL/LNF/8l0jBJUjiaet0tlNm2nWZAAvF5ab8tdCT7VoQ1UPf+n1OcPq7KTxK0JyTCKIDY8jiR0qoxwTwUyNwpfmzn331Vwq7Tot/OTzGuzDbWk6cRnwNRXYpvomohOKIuMuPusFQoxj6Sxb",
+    "expiration": "2026-06-19T06:43:36.000Z"
   },
   "name": "lights-on-optin",
   "path": "/home/ubuntu/lights-on-optin",
   "port": 3000,
   "secrets": {
     "ANTHROPIC_API_KEY": "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",
-    "APOLLO_API_KEY": "or3n9a33WfHzqdaB9sgg3w",
+    "APOLLO_API_KEY": "XVYXH8xrB-T7I2otDtTOOw",
     "BUFFER_ACCESS_TOKEN": "poKz3ynLtuvgotw0sWkHiFyGDFbXZPDtX8_qO9Y48y3",
     "BUILT_IN_FORGE_API_KEY": "5AVCyfY2SWPYSp6AmjFoZL",
     "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",

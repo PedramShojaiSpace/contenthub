@@ -20,13 +20,14 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Lead = {
   id: number;
-  source: "reddit" | "youtube";
+  source: "reddit" | "youtube" | "apollo";
   sourceId: string;
   title: string | null;
   body: string;
@@ -510,6 +511,228 @@ function EmailFinderTab() {
   );
 }
 
+// ─── Apollo Cold Lead Search Tab ────────────────────────────────────────────
+
+type ApolloPerson = {
+  id: string;
+  name: string;
+  title: string;
+  email: string | null;
+  emailStatus: string | null;
+  linkedinUrl: string | null;
+  company: string | null;
+  domain: string | null;
+  location: string;
+};
+
+const URBAN_MONK_PERSONAS = [
+  { label: "Wellness Coaches", titles: ["wellness coach", "health coach", "life coach"] },
+  { label: "Meditation Teachers", titles: ["meditation teacher", "mindfulness coach", "yoga instructor"] },
+  { label: "Functional Medicine", titles: ["functional medicine doctor", "integrative medicine physician", "naturopathic doctor"] },
+  { label: "Biohackers / Longevity", titles: ["biohacker", "longevity coach", "anti-aging specialist"] },
+  { label: "Stress & Burnout", titles: ["burnout coach", "stress management coach", "executive wellness coach"] },
+  { label: "Nutritionists", titles: ["nutritionist", "dietitian", "holistic nutritionist"] },
+];
+
+function ApolloSearchTab() {
+  const [titles, setTitles] = useState<string[]>([]);
+  const [customTitle, setCustomTitle] = useState("");
+  const [keywords, setKeywords] = useState("");
+  const [location, setLocation] = useState("United States");
+  const [page, setPage] = useState(1);
+  const [results, setResults] = useState<ApolloPerson[]>([]);
+  const [total, setTotal] = useState(0);
+  const [message, setMessage] = useState("");
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+
+  const search = trpc.leadScrubber.apolloSearchLeads.useMutation({
+    onSuccess: (data) => {
+      setResults(data.people as ApolloPerson[]);
+      setTotal(data.total);
+      setMessage(data.message ?? "");
+      if (!data.success && data.message) toast.error(data.message);
+    },
+    onError: () => toast.error("Apollo search failed"),
+  });
+
+  const togglePersona = (personaTitles: string[]) => {
+    setTitles((prev) => {
+      const allIn = personaTitles.every((t) => prev.includes(t));
+      if (allIn) return prev.filter((t) => !personaTitles.includes(t));
+      return Array.from(new Set([...prev, ...personaTitles]));
+    });
+  };
+
+  const handleSearch = (p = 1) => {
+    setPage(p);
+    const kwArr = keywords.trim() ? keywords.split(",").map((k) => k.trim()).filter(Boolean) : undefined;
+    search.mutate({
+      titles: titles.length ? titles : undefined,
+      keywords: kwArr,
+      locations: location.trim() ? [location.trim()] : undefined,
+      page: p,
+      perPage: 10,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+        <p className="font-semibold mb-1">Apollo.io Cold Lead Search (Tier 3b)</p>
+        <p>Search Apollo's database of 275M+ contacts by job title, keywords, and location. Results are automatically saved to your lead queue. Uses your Apollo Basic plan credits.</p>
+      </div>
+
+      {/* Persona Quick-Select */}
+      <div className="bg-white border rounded-xl p-5 space-y-4">
+        <h3 className="font-semibold text-sm text-gray-700">Target Persona</h3>
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500">Quick-select Urban Monk audience personas:</p>
+          <div className="flex flex-wrap gap-2">
+            {URBAN_MONK_PERSONAS.map((p) => {
+              const active = p.titles.every((t) => titles.includes(t));
+              return (
+                <button
+                  key={p.label}
+                  onClick={() => togglePersona(p.titles)}
+                  className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                    active
+                      ? "bg-primary text-white border-primary"
+                      : "bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom title */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add custom job title..."
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && customTitle.trim()) {
+                setTitles((prev) => Array.from(new Set([...prev, customTitle.trim()])));
+                setCustomTitle("");
+              }
+            }}
+            className="text-sm h-8"
+          />
+          <Button
+            size="sm" className="h-8"
+            onClick={() => {
+              if (customTitle.trim()) {
+                setTitles((prev) => Array.from(new Set([...prev, customTitle.trim()])));
+                setCustomTitle("");
+              }
+            }}
+          >
+            <Plus className="w-3 h-3" />
+          </Button>
+        </div>
+
+        {/* Selected titles */}
+        {titles.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {titles.map((t) => (
+              <span key={t} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                {t}
+                <button onClick={() => setTitles((prev) => prev.filter((x) => x !== t))} className="hover:text-red-500">&times;</button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-600">Keywords (comma-separated)</label>
+            <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="meditation, stress, burnout" className="text-sm" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-600">Location</label>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="United States" className="text-sm" />
+          </div>
+        </div>
+
+        <Button
+          className="w-full"
+          onClick={() => handleSearch(1)}
+          disabled={search.isPending || (!titles.length && !keywords.trim())}
+        >
+          {search.isPending ? (
+            <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Searching Apollo...</>
+          ) : (
+            <><Search className="w-4 h-4 mr-2" /> Search Cold Leads</>
+          )}
+        </Button>
+      </div>
+
+      {/* Results */}
+      {message && (
+        <p className="text-sm text-gray-500">{message} {total > 10 && `(showing page ${page})`}</p>
+      )}
+
+      {results.length > 0 && (
+        <div className="space-y-3">
+          {results.map((person) => (
+            <div key={person.id} className="bg-white border rounded-xl p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 text-sm">{person.name || "Unknown"}</p>
+                  <p className="text-xs text-gray-500">{person.title}</p>
+                  {person.company && <p className="text-xs text-gray-400">{person.company}{person.location ? ` · ${person.location}` : ""}</p>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {savedIds.includes(person.id) && (
+                    <span className="text-xs text-green-600 font-medium">✓ Saved</span>
+                  )}
+                  {person.linkedinUrl && (
+                    <a href={person.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 text-gray-400 hover:text-primary" />
+                    </a>
+                  )}
+                </div>
+              </div>
+              {person.email ? (
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-green-500" />
+                  <span className="text-sm font-mono text-green-700">{person.email}</span>
+                  {person.emailStatus && <span className="text-xs text-gray-400">({person.emailStatus})</span>}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic">No email in Apollo database — use Email Finder tab to look up manually</p>
+              )}
+              {!savedIds.includes(person.id) && (
+                <button
+                  onClick={() => setSavedIds((prev) => [...prev, person.id])}
+                  className="text-xs text-primary hover:underline"
+                >
+                  ✓ Mark as saved to queue
+                </button>
+              )}
+            </div>
+          ))}
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between pt-2">
+            <Button variant="outline" size="sm" onClick={() => handleSearch(page - 1)} disabled={page <= 1 || search.isPending}>
+              <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+            </Button>
+            <span className="text-xs text-gray-500">Page {page}</span>
+            <Button variant="outline" size="sm" onClick={() => handleSearch(page + 1)} disabled={results.length < 10 || search.isPending}>
+              Next <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Leads List ───────────────────────────────────────────────────────────────
 
 function LeadsList({ source }: { source: "reddit" | "youtube" | "all" }) {
@@ -626,7 +849,7 @@ function LeadsList({ source }: { source: "reddit" | "youtube" | "all" }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function LeadScrubber() {
-  const [activeTab, setActiveTab] = useState<"reddit" | "youtube" | "email" | "config">("reddit");
+  const [activeTab, setActiveTab] = useState<"reddit" | "youtube" | "apollo" | "email" | "config">("reddit");
 
   const { data: stats = [] } = trpc.leadScrubber.getStats.useQuery();
 
@@ -637,6 +860,7 @@ export default function LeadScrubber() {
   const tabs = [
     { id: "reddit" as const, label: "Reddit Leads", icon: Search },
     { id: "youtube" as const, label: "YouTube Leads", icon: Youtube },
+    { id: "apollo" as const, label: "Apollo Cold Leads", icon: Users },
     { id: "email" as const, label: "Email Finder", icon: Mail },
     { id: "config" as const, label: "Configure", icon: Settings },
   ];
@@ -697,6 +921,7 @@ export default function LeadScrubber() {
         <div>
           {activeTab === "reddit" && <LeadsList source="reddit" />}
           {activeTab === "youtube" && <LeadsList source="youtube" />}
+          {activeTab === "apollo" && <ApolloSearchTab />}
           {activeTab === "email" && <EmailFinderTab />}
           {activeTab === "config" && <ConfigPanel />}
         </div>

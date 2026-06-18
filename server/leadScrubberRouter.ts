@@ -448,6 +448,119 @@ export const leadScrubberRouter = router({
       return { success: true };
     }),
 
+  // ─── Tier 3b: Apollo Cold Lead Search ────────────────────────────────────
+  apolloSearchLeads: protectedProcedure
+    .input(
+      z.object({
+        titles: z.array(z.string()).optional(),       // e.g. ["wellness coach", "health coach"]
+        keywords: z.array(z.string()).optional(),     // keyword filters
+        industries: z.array(z.string()).optional(),  // e.g. ["health, wellness and fitness"]
+        locations: z.array(z.string()).optional(),   // e.g. ["United States"]
+        page: z.number().int().min(1).default(1),
+        perPage: z.number().int().min(1).max(25).default(10),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const apolloApiKey = process.env.APOLLO_API_KEY || "";
+      if (!apolloApiKey) {
+        return { success: false, people: [], total: 0, message: "Apollo API key not configured." };
+      }
+
+      const body: Record<string, unknown> = {
+        page: input.page,
+        per_page: input.perPage,
+      };
+      if (input.titles?.length)     body.person_titles = input.titles;
+      if (input.keywords?.length)   body.q_keywords = input.keywords.join(" ");
+      if (input.industries?.length) body.organization_industry_tag_ids = input.industries;
+      if (input.locations?.length)  body.person_locations = input.locations;
+
+      const res = await fetch("https://api.apollo.io/api/v1/mixed_people/api_search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          "X-Api-Key": apolloApiKey,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return { success: false, people: [], total: 0, message: `Apollo API error ${res.status}: ${errText.slice(0, 200)}` };
+      }
+
+      const data = (await res.json()) as {
+        people?: Array<{
+          id?: string;
+          name?: string;
+          first_name?: string;
+          last_name?: string;
+          title?: string;
+          email?: string;
+          email_status?: string;
+          linkedin_url?: string;
+          organization?: { name?: string; website_url?: string };
+          city?: string;
+          state?: string;
+          country?: string;
+        }>;
+        pagination?: { total_entries?: number };
+        error?: string;
+      };
+
+      if (data.error) {
+        return { success: false, people: [], total: 0, message: data.error };
+      }
+
+      const people = (data.people ?? []).map((p) => ({
+        id: p.id ?? "",
+        name: p.name ?? `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
+        title: p.title ?? "",
+        email: p.email ?? null,
+        emailStatus: p.email_status ?? null,
+        linkedinUrl: p.linkedin_url ?? null,
+        company: p.organization?.name ?? null,
+        domain: p.organization?.website_url?.replace(/^https?:\/\//, "").split("/")[0] ?? null,
+        location: [p.city, p.state, p.country].filter(Boolean).join(", "),
+      }));
+
+      // Save to lead_prospects DB so they appear in the main queue
+      const db = await getDb();
+      if (db && people.length > 0) {
+        for (const p of people) {
+          if (!p.name) continue;
+          try {
+            await db
+              .insert(leadProspects)
+              .ignore()
+              .values({
+                source: "apollo",
+                sourceId: `apollo_${p.id || p.name.replace(/\s+/g, "_").toLowerCase()}_${Date.now()}`,
+                title: p.title || null,
+                body: `${p.name} — ${p.title || ""} at ${p.company || "unknown company"}. Location: ${p.location || "unknown"}.`,
+                url: p.linkedinUrl || `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(p.name)}`,
+                author: p.name,
+                subredditOrChannel: p.company || null,
+                keywordsMatched: JSON.stringify(input.titles ?? input.keywords ?? []),
+                emailFound: p.email || null,
+                emailConfidence: p.emailStatus || null,
+                status: p.email ? "email_found" : "new",
+              });
+          } catch {
+            // ignore duplicate sourceId
+          }
+        }
+      }
+
+      return {
+        success: true,
+        people,
+        total: data.pagination?.total_entries ?? people.length,
+        message: `Found ${people.length} leads (${data.pagination?.total_entries ?? "?"} total matching).`,
+      };
+    }),
+
   getStats: protectedProcedure.query(async () => {
     const db = await getDb();
       if (!db) throw new Error("Database unavailable");

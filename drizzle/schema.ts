@@ -2269,7 +2269,7 @@ export type InsertHookAbTest = typeof hookAbTests.$inferInsert;
 
 // ─── Lead Scrubber — 3-Tier Cold Lead Prospecting ───────────────────────────
 
-export const leadProspectSourceEnum = mysqlEnum("lp_source", ["reddit", "youtube"]);
+export const leadProspectSourceEnum = mysqlEnum("lp_source", ["reddit", "youtube", "apollo"]);
 export const leadProspectStatusEnum = mysqlEnum("lp_status", [
   "new",
   "engaged",

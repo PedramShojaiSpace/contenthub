@@ -2333,3 +2333,27 @@ export const leadYtChannels = mysqlTable("lead_yt_channels", {
 });
 export type LeadYtChannel = typeof leadYtChannels.$inferSelect;
 export type InsertLeadYtChannel = typeof leadYtChannels.$inferInsert;
+
+// ─── Email Sequences ──────────────────────────────────────────────────────────
+
+export const emailSequenceStatusEnum = mysqlEnum("es_status", ["draft", "approved", "sent", "replied"]);
+
+export const emailSequences = mysqlTable("email_sequences", {
+  id: int("es_id").autoincrement().primaryKey(),
+  leadId: int("es_lead_id").notNull(),
+  leadName: varchar("es_lead_name", { length: 255 }),
+  leadEmail: varchar("es_lead_email", { length: 255 }),
+  leadCompany: varchar("es_lead_company", { length: 255 }),
+  leadTitle: varchar("es_lead_title", { length: 255 }),
+  category: varchar("es_category", { length: 100 }),
+  email1Subject: text("es_email1_subject"),
+  email1Body: longtext("es_email1_body"),
+  email2Subject: text("es_email2_subject"),
+  email2Body: longtext("es_email2_body"),
+  email3Subject: text("es_email3_subject"),
+  email3Body: longtext("es_email3_body"),
+  status: mysqlEnum("es_status", ["draft", "approved", "sent", "replied"]).default("draft"),
+  notes: text("es_notes"),
+  createdAt: bigint("es_created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("es_updated_at", { mode: "number" }).notNull(),
+});

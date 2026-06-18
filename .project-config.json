@@ -13,10 +13,10 @@
   "experiments": null,
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZOL5645DC",
-    "secret_access_key": "oUpxmYqEsN294s/P6F5sk7bXQQyc6lk6PHi69+uT",
-    "session_token": "IQoJb3JpZ2luX2VjEMz//////////wEaCXVzLWVhc3QtMSJGMEQCIEDiZqE11524jFlyfY04R28Iq1cRn73Sjn1qyLQy0nv6AiBUSr7AUnexOtRLbpfKH4Vn9Zq1z8ubDpD57oJmYkZ7Vyr+AwiV//////////8BEAQaDDY2NTM4NjA5ODg2NiIMGYSlE0xS8oqhIZ13KtID1NFcJh5/cl2xZ4/VJshGX0vrFX4ncoCe6zuC2rJhUjdcYUrDU5wyZLbhtI43paBD3SAFklcbSxQA8DqiP9tFxKG8+yQWIH5dWEeLINZrsAtueGd9b6QEO9ATGSMd5KYjbXQxOeZf6/4vmSSZQQBQ5UeceUkWw6+oTxbE82pxTa3H3WYhQoxhTz6pbsQ7J4otXmexVrQjSQlAJUSbswvKsB/MsiJBv1lat0gqkebHyfAs91WvxdhppS3mt5rEWGhnqCWXoPMVA4Rc2L78BDzxLl3P6RpJ52EkAZy0Bq9Zq+zNM1Q4See27iJ04itV0aU7yNKAiw3IV8f18F86Bk3R2VNxXGxYpvPDTQ/cmMi2PdN+iDZpc28PmvDHI/Ea1cTTgKz4wRC8cPVshQqJFYV66He4w+d3dK7uYyZ6AqYBVserwHA3rpxRDuIGtRQxcZ++tkLlkh/zr+iXA8CmPaeCnXKW4Zzjs668tO8rPbxYpjteCc/qnx61PctPuBj0nh85zrv/iY4cmo1t0OfNIAC/UzE+N/foBeMikp7VndMst1257FYaCLHrvDxPIOOBjXMXVN2yqdgjzM/8JO12BytTdwxgYKjUh3TYuJGPbUz9pu2BkDDr78vRBjqeATL/i5TYV8Tsc4lRgRfecKtZmW/2QGAouIxJvoMsSrW5JUhVO+4wT6FLh6SOU4y1v19d7Vat2ijAngkRbn3rLgBjQZlM/ORqYFsbjqCkAH32xiB39d6++Jq3mASknT7GtmC1JU7Beu1HXyozJc8YF8r5aG7g2QBnhbUTN8Ok1ZYh/xeDfdNt4TagTv4DZQZksbNOMtXLpBGbnFWi0lT9",
-    "expiration": "2026-06-18T07:39:23.000Z"
+    "access_key_id": "ASIAZV3A2ECZLY7YST53",
+    "secret_access_key": "+T1G8Jj0UIruSyiv1E9vDfDS03Pl4FxS2n19FiaK",
+    "session_token": "IQoJb3JpZ2luX2VjEOP//////////wEaCXVzLWVhc3QtMSJHMEUCIBCSgfiA6VNoZ4it5opWsdfKUH1VlgLcq+6rQVoaoNIfAiEA0FgDM7BTNW9UmspUmH+CcSxPN0jqWxn7wh3uqA96/vMq/gMIq///////////ARAEGgw2NjUzODYwOTg4NjYiDOqGlCa+U1otZCL1tCrSA7a7xjyywR1n9hszdpdlCnwbF8ui16uAemrNKimPBvqvB9WYf23cxxMl5p9gi1NTUxMBzH/H1sGRUEfnsNggsKap2iBRcTZH6RaRnYeQol5gZgK6IW7Iq//483N2XycYL5Xw9odQyizntqCwFZmqikXhj19625dNZwGkwarh7osM+4s1w5BbAwv3LZWE0UqDtH3eCIbfZ/hD0xTfPPelODaTwKEcf+zzAV65RTNRa5tvGOmps49vrpMPH5uCjQUd7Nztdbml2AkrhoZ8bf2+X/xTZ6NGi00bexZem3FxyWA6LWZb94H7MIFUiN6r+4NXdZlEQYQsPGpenNjCTbIbFWKa12YKGMSKZsPEAO61zs0JbLZflCrMSuGCi0h1lFo2+PTR9VBy58Jjm9AdDNnG4biI18n5UhCiZkv2sSCjAuWcX2wnuG/rMdeQRTJvy6G8bvn60m80si35PKQF26gLg76m0mKyIEJfYALbSx0zfCRhTSFUTilZsv/Y3quOx+mPKWvkn6exeVGnzCN+DBwG24saIvFWQJtv8dAhRETR465uvmxR+jAEmGS6X0HVx6RsC30SNfBvfs1nECiz9U4GhTKME483oVw+k1MlKr9MmPSe2kIwlu3Q0QY6nQH/dgo8obN6zm6XRl7DLEsdG2kbRG4s8z0jVgfWdkspV9CAQYWd9b50DwCrlrz0YJ+1WX2Sf+cjWJqO1WbOuggwYtt1aboM5JgidhcZDfXjfpXKOSB5qJkj+6v++IvvVxPehxixVlx14YPLCJtkUxqhUm25+noJlRy8y3CQkqWVS2Cv3bi4H/WJSXpIFpI3VXvUbSxlu/MoROmSRRul",
+    "expiration": "2026-06-19T06:19:02.000Z"
   },
   "name": "lights-on-optin",
   "path": "/home/ubuntu/lights-on-optin",
@@ -68,7 +68,8 @@
     "WORDPRESS_URL": "https://theurbanmonk.com",
     "WORDPRESS_USERNAME": "pedram@theurbanmonk.com",
     "YOUTUBE_CLIENT_ID": "877945805124-nsk14efih832lbrcmf7sicp3e6b97pn6.apps.googleusercontent.com",
-    "YOUTUBE_CLIENT_SECRET": "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"
+    "YOUTUBE_CLIENT_SECRET": "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",
+    "YOUTUBE_DATA_API_KEY": "AIzaSyDRFeXmv15Hl5OhAeV0iL8IiHXhV-KswMU"
   },
   "template_id": "web-db-user",
   "test_command": "pnpm test"

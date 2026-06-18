@@ -306,11 +306,14 @@ export const leadScrubberRouter = router({
       }
 
       try {
-        const res = await fetch("https://api.apollo.io/v1/people/match", {
+        const res = await fetch("https://api.apollo.io/api/v1/people/match", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            "X-Api-Key": apolloApiKey,
+          },
           body: JSON.stringify({
-            api_key: apolloApiKey,
             first_name: input.firstName,
             last_name: input.lastName,
             domain: input.domain,

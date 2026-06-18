@@ -1001,6 +1001,11 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
   const [sequenceStatus, setSequenceStatus] = useState<"draft" | "approved" | "sent" | "replied">("draft");
   const [copied, setCopied] = useState<number | null>(null);
   const [leadContext, setLeadContext] = useState(lead.body?.slice(0, 300) ?? "");
+  const [contentHubEmailId, setContentHubEmailId] = useState<number | undefined>(undefined);
+  const [contentHubEmailTitle, setContentHubEmailTitle] = useState<string | null>(null);
+
+  // Load available Content Hub emails for manual override
+  const { data: hubEmails = [] } = trpc.emailSequence.listContentHubEmails.useQuery();
 
   const generateMutation = trpc.emailSequence.generateEmailSequence.useMutation({
     onSuccess: (data) => {
@@ -1011,6 +1016,9 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
       });
       setSequenceId(data.sequenceId);
       setSequenceStatus("draft");
+      if (data.contentHubEmailTitle) {
+        setContentHubEmailTitle(data.contentHubEmailTitle);
+      }
       toast.success("3-email sequence generated!");
     },
     onError: (e) => toast.error(`Generation failed: ${e.message}`),
@@ -1060,6 +1068,7 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
       leadTitle: lead.title ?? undefined,
       category: lead.category ?? undefined,
       leadContext: leadContext || undefined,
+      contentHubEmailId: contentHubEmailId,
     });
   };
 
@@ -1142,6 +1151,31 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
             </div>
           </div>
 
+          {/* Content Hub Email 1 Picker */}
+          {hubEmails.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 flex items-center gap-1.5">
+                <Mail className="w-3 h-3 text-indigo-500" />
+                Email 1 source (from Content Hub)
+              </label>
+              <select
+                value={contentHubEmailId ?? ""}
+                onChange={(e) => setContentHubEmailId(e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full text-sm border rounded-lg px-3 py-2 bg-white text-gray-700"
+              >
+                <option value="">AI picks the most relevant one automatically</option>
+                {hubEmails.map((e: { id: number; title: string; preview: string }) => (
+                  <option key={e.id} value={e.id}>{e.title}</option>
+                ))}
+              </select>
+              {contentHubEmailTitle && !contentHubEmailId && (
+                <p className="text-xs text-indigo-600">
+                  ✓ AI selected: <span className="font-medium">"{contentHubEmailTitle}"</span>
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Generate button */}
           <button
             onClick={handleGenerate}
@@ -1150,7 +1184,7 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
           >
             <Sparkles className="w-4 h-4" />
             {generateMutation.isPending
-              ? "Generating 3-email sequence in Dr. Pedram's voice..."
+              ? "Selecting from Content Hub + writing follow-ups..."
               : drafts
               ? "Regenerate Sequence"
               : "Generate 3-Email Sequence"}
@@ -1171,15 +1205,21 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
                     }`}
                   >
                     Email {num}
-                    {num === 1 && <span className="ml-1 text-xs text-gray-400">(Value)</span>}
-                    {num === 2 && <span className="ml-1 text-xs text-gray-400">(Resource)</span>}
-                    {num === 3 && <span className="ml-1 text-xs text-gray-400">(Invite)</span>}
+                    {num === 1 && <span className="ml-1 text-xs text-indigo-400">(Content Hub)</span>}
+                    {num === 2 && <span className="ml-1 text-xs text-gray-400">(Follow-up)</span>}
+                    {num === 3 && <span className="ml-1 text-xs text-gray-400">(Academy Invite)</span>}
                   </button>
                 ))}
               </div>
 
               {currentDraft && (
                 <div className="space-y-3">
+                  {activeEmail === 1 && contentHubEmailTitle && (
+                    <div className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5">
+                      <Mail className="w-3 h-3" />
+                      <span>From Content Hub: <strong>"{contentHubEmailTitle}"</strong></span>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-600">Subject Line</label>
                     <input

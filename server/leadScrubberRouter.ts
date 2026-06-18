@@ -574,4 +574,42 @@ export const leadScrubberRouter = router({
       .groupBy(leadProspects.status, leadProspects.source);
     return rows;
   }),
+
+  /**
+   * Push a lead to Kajabi as a tagged contact.
+   * Works for any lead source (Reddit, YouTube, Apollo, manual).
+   * If leadId is provided, marks the lead as converted in the DB.
+   * The tag defaults to "Lead Scrubber" so all pushed leads are
+   * segmentable in Kajabi without extra setup.
+   */
+  pushToKajabi: protectedProcedure
+    .input(
+      z.object({
+        leadId: z.number().optional(),
+        email: z.string().email(),
+        name: z.string().optional(),
+        tagName: z.string().default("Lead Scrubber"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { kajabiOptIn } = await import("./kajabiApi");
+
+      const { contactId } = await kajabiOptIn({
+        email: input.email,
+        name: input.name,
+        tagName: input.tagName,
+      });
+
+      if (input.leadId) {
+        const db = await getDb();
+        if (db) {
+          await db
+            .update(leadProspects)
+            .set({ status: "converted" })
+            .where(eq(leadProspects.id, input.leadId));
+        }
+      }
+
+      return { success: true, contactId };
+    }),
 });

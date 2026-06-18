@@ -22,13 +22,13 @@ import { protectedProcedure, router } from "./_core/trpc";
 
 async function searchReddit(
   subreddit: string,
-  keywords: string[],
+  keywords: Array<{ keyword: string; category: string }>,
   limit: number
 ): Promise<InsertLeadProspect[]> {
   const results: InsertLeadProspect[] = [];
-  for (const keyword of keywords) {
+  for (const kw of keywords) {
     try {
-      const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(keyword)}&restrict_sr=1&sort=new&limit=${limit}&t=week`;
+      const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(kw.keyword)}&restrict_sr=1&sort=new&limit=${limit}&t=week`;
       const res = await fetch(url, {
         headers: { "User-Agent": "UrbanMonkContentHub/1.0 (research tool)" },
       });
@@ -49,7 +49,8 @@ async function searchReddit(
           url: `https://www.reddit.com${p.permalink as string}`,
           author: (p.author as string) || null,
           subredditOrChannel: subreddit,
-          keywordsMatched: JSON.stringify([keyword]),
+          keywordsMatched: JSON.stringify([kw.keyword]),
+          category: kw.category,
           status: "new",
         });
       }
@@ -63,7 +64,7 @@ async function searchReddit(
 async function searchYouTubeComments(
   channelId: string,
   channelName: string,
-  keywords: string[],
+  keywords: Array<{ keyword: string; category: string }>,
   apiKey: string
 ): Promise<InsertLeadProspect[]> {
   const results: InsertLeadProspect[] = [];
@@ -91,17 +92,20 @@ async function searchYouTubeComments(
       for (const comment of commentsData.items ?? []) {
         const commentText = comment.snippet.topLevelComment.snippet.textDisplay;
         const author = comment.snippet.topLevelComment.snippet.authorDisplayName;
-        const matched = keywords.filter((kw) => commentText.toLowerCase().includes(kw.toLowerCase()));
+        const matched = keywords.filter((kw) => commentText.toLowerCase().includes(kw.keyword.toLowerCase()));
         if (matched.length === 0) continue;
+        // Use the category of the first matched keyword
+        const primaryCategory = matched[0]?.category ?? "general";
         results.push({
           source: "youtube",
           sourceId: `yt_${comment.id}`,
           title: videoTitle,
           body: commentText.slice(0, 2000),
+          category: primaryCategory,
           url: `https://www.youtube.com/watch?v=${videoId}&lc=${comment.id}`,
           author,
           subredditOrChannel: channelName,
-          keywordsMatched: JSON.stringify(matched),
+          keywordsMatched: JSON.stringify(matched.map((m) => m.keyword)),
           status: "new",
         });
       }
@@ -236,7 +240,7 @@ export const leadScrubberRouter = router({
         return { saved: 0, scanned: 0, message: "No active keywords or subreddits configured." };
       }
 
-      const kwList = keywords.map((k) => k.keyword);
+      const kwList = keywords.map((k) => ({ keyword: k.keyword, category: k.category }));
       let allLeads: InsertLeadProspect[] = [];
 
       for (const sub of subreddits) {
@@ -272,7 +276,7 @@ export const leadScrubberRouter = router({
       return { saved: 0, scanned: 0, message: "No active keywords or channels configured." };
     }
 
-    const kwList = keywords.map((k) => k.keyword);
+    const kwList = keywords.map((k) => ({ keyword: k.keyword, category: k.category }));
     let allLeads: InsertLeadProspect[] = [];
 
     for (const channel of channels) {
@@ -588,16 +592,24 @@ export const leadScrubberRouter = router({
         leadId: z.number().optional(),
         email: z.string().email(),
         name: z.string().optional(),
-        tagName: z.string().default("Lead Scrubber"),
+        // If provided, use this tag. Otherwise derive from category.
+        tagName: z.string().optional(),
+        // Category from keyword match or persona — used to derive the tag
+        category: z.string().optional(),
+        // Source of the lead (reddit, youtube, apollo)
+        source: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const { kajabiOptIn } = await import("./kajabiApi");
 
+      // Derive a specific Kajabi tag based on category and source
+      const tag = input.tagName ?? deriveKajabiTag(input.category, input.source);
+
       const { contactId } = await kajabiOptIn({
         email: input.email,
         name: input.name,
-        tagName: input.tagName,
+        tagName: tag,
       });
 
       if (input.leadId) {
@@ -610,6 +622,46 @@ export const leadScrubberRouter = router({
         }
       }
 
-      return { success: true, contactId };
+      return { success: true, contactId, tag };
     }),
 });
+
+// ─── Tag Derivation Helper ────────────────────────────────────────────────────
+
+/**
+ * Maps keyword category + lead source to a specific Kajabi tag.
+ * This ensures gut/oral health leads are tagged differently from
+ * personal development or longevity leads.
+ */
+function deriveKajabiTag(category?: string, source?: string): string {
+  const categoryTagMap: Record<string, string> = {
+    gut_health:      "Lead - Gut Health",
+    oral_health:     "Lead - Oral Health",
+    supplements:     "Lead - Health & Wellness",
+    health:          "Lead - Health & Wellness",
+    stress:          "Lead - Personal Development",
+    sleep:           "Lead - Personal Development",
+    meditation:      "Lead - Personal Development",
+    ancient_wisdom:  "Lead - Personal Development",
+    longevity:       "Lead - Longevity",
+    brand:           "Lead - Brand Aware",
+    // Apollo persona categories
+    wellness_coach:  "Lead - Personal Development",
+    functional_med:  "Lead - Health & Wellness",
+    nutritionist:    "Lead - Health & Wellness",
+    biohacker:       "Lead - Longevity",
+    burnout:         "Lead - Personal Development",
+    meditation_teacher: "Lead - Personal Development",
+  };
+
+  if (category && categoryTagMap[category]) {
+    return categoryTagMap[category];
+  }
+
+  // Fallback by source
+  if (source === "reddit")  return "Lead - Reddit";
+  if (source === "youtube") return "Lead - YouTube";
+  if (source === "apollo")  return "Lead - Apollo Cold";
+
+  return "Lead - Scrubber";
+}

@@ -2289,6 +2289,7 @@ export const leadProspects = mysqlTable("lead_prospects", {
   author: varchar("author", { length: 128 }),  // username/handle
   subredditOrChannel: varchar("subredditOrChannel", { length: 128 }), // subreddit name or YouTube channel name
   keywordsMatched: text("keywordsMatched"),    // JSON array of matched keywords
+  category: varchar("category", { length: 64 }),  // derived from keyword category (e.g. gut_health, stress)
   status: leadProspectStatusEnum.notNull().default("new"),
   notes: text("notes"),
   engagedAt: bigint("engagedAt", { mode: "number" }),

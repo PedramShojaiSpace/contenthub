@@ -36,6 +36,7 @@ type Lead = {
   author: string | null;
   subredditOrChannel: string | null;
   keywordsMatched: string | null;
+  category: string | null;
   status: "new" | "engaged" | "email_found" | "converted" | "archived";
   notes: string | null;
   engagedAt: number | null;
@@ -283,7 +284,8 @@ function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
                     leadId: lead.id,
                     email: lead.emailFound!,
                     name: lead.author ?? undefined,
-                    tagName: "Lead Scrubber",
+                    category: lead.category ?? undefined,
+                    source: lead.source,
                   })
                 }
                 disabled={pushToKajabi.isPending}
@@ -555,15 +557,15 @@ type ApolloPerson = {
 
 // ─── Reusable Kajabi Push Button ─────────────────────────────────────────────
 
-function KajabiPushButton({ email, name, leadId }: { email: string; name?: string; leadId?: number }) {
+function KajabiPushButton({ email, name, leadId, category, source }: { email: string; name?: string; leadId?: number; category?: string; source?: string }) {
   const pushToKajabi = trpc.leadScrubber.pushToKajabi.useMutation({
-    onSuccess: () => toast.success("Pushed to Kajabi!"),
+    onSuccess: (data) => toast.success(`Pushed to Kajabi → ${data.tag}`),
     onError: (err) => toast.error(`Kajabi push failed: ${err.message}`),
   });
 
   return (
     <button
-      onClick={() => pushToKajabi.mutate({ email, name, leadId, tagName: "Lead Scrubber" })}
+      onClick={() => pushToKajabi.mutate({ email, name, leadId, category, source })}
       disabled={pushToKajabi.isPending || pushToKajabi.isSuccess}
       className={`text-xs font-medium px-2 py-1 rounded border transition-colors ${
         pushToKajabi.isSuccess
@@ -580,12 +582,12 @@ function KajabiPushButton({ email, name, leadId }: { email: string; name?: strin
 }
 
 const URBAN_MONK_PERSONAS = [
-  { label: "Wellness Coaches", titles: ["wellness coach", "health coach", "life coach"] },
-  { label: "Meditation Teachers", titles: ["meditation teacher", "mindfulness coach", "yoga instructor"] },
-  { label: "Functional Medicine", titles: ["functional medicine doctor", "integrative medicine physician", "naturopathic doctor"] },
-  { label: "Biohackers / Longevity", titles: ["biohacker", "longevity coach", "anti-aging specialist"] },
-  { label: "Stress & Burnout", titles: ["burnout coach", "stress management coach", "executive wellness coach"] },
-  { label: "Nutritionists", titles: ["nutritionist", "dietitian", "holistic nutritionist"] },
+  { label: "Wellness Coaches", titles: ["wellness coach", "health coach", "life coach"], category: "wellness_coach" },
+  { label: "Meditation Teachers", titles: ["meditation teacher", "mindfulness coach", "yoga instructor"], category: "meditation_teacher" },
+  { label: "Functional Medicine", titles: ["functional medicine doctor", "integrative medicine physician", "naturopathic doctor"], category: "functional_med" },
+  { label: "Biohackers / Longevity", titles: ["biohacker", "longevity coach", "anti-aging specialist"], category: "biohacker" },
+  { label: "Stress & Burnout", titles: ["burnout coach", "stress management coach", "executive wellness coach"], category: "burnout" },
+  { label: "Nutritionists", titles: ["nutritionist", "dietitian", "holistic nutritionist"], category: "nutritionist" },
 ];
 
 function ApolloSearchTab() {
@@ -598,6 +600,8 @@ function ApolloSearchTab() {
   const [total, setTotal] = useState(0);
   const [message, setMessage] = useState("");
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  // Track which persona category was last selected for Kajabi tagging
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
 
   const search = trpc.leadScrubber.apolloSearchLeads.useMutation({
     onSuccess: (data) => {
@@ -609,12 +613,13 @@ function ApolloSearchTab() {
     onError: () => toast.error("Apollo search failed"),
   });
 
-  const togglePersona = (personaTitles: string[]) => {
+  const togglePersona = (personaTitles: string[], personaCategory?: string) => {
     setTitles((prev) => {
       const allIn = personaTitles.every((t) => prev.includes(t));
       if (allIn) return prev.filter((t) => !personaTitles.includes(t));
       return Array.from(new Set([...prev, ...personaTitles]));
     });
+    if (personaCategory) setSelectedCategory(personaCategory);
   };
 
   const handleSearch = (p = 1) => {
@@ -647,7 +652,7 @@ function ApolloSearchTab() {
               return (
                 <button
                   key={p.label}
-                  onClick={() => togglePersona(p.titles)}
+                  onClick={() => togglePersona(p.titles, p.category)}
                   className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
                     active
                       ? "bg-primary text-white border-primary"
@@ -770,7 +775,7 @@ function ApolloSearchTab() {
                   </button>
                 )}
                 {person.email && (
-                  <KajabiPushButton email={person.email} name={person.name} />
+                  <KajabiPushButton email={person.email} name={person.name} category={selectedCategory} source="apollo" />
                 )}
               </div>
             </div>

@@ -64,6 +64,7 @@ import {
   Youtube,
   Clock,
   Megaphone,
+  UserSearch,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -151,6 +152,7 @@ const intelligenceItems = [
   { icon: Settings, label: "Default Channels", path: "/default-channels" },
   { icon: Inbox, label: "Ingest Inbox", path: "/ingest" },
   { icon: ShieldCheck, label: "Verified Links", path: "/verified-links" },
+  { icon: UserSearch, label: "Lead Scrubber", path: "/lead-scrubber" },
 ];
 
 const intelligencePaths = new Set(intelligenceItems.map((i) => i.path));

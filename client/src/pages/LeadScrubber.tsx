@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Send,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -92,6 +93,14 @@ function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
   const restoreLead = trpc.leadScrubber.restoreLead.useMutation({
     onSuccess: () => { onRefresh(); toast.success("Restored"); },
     onError: () => toast.error("Failed to restore"),
+  });
+
+  const pushToKajabi = trpc.leadScrubber.pushToKajabi.useMutation({
+    onSuccess: () => {
+      onRefresh();
+      toast.success("Pushed to Kajabi as a tagged contact!");
+    },
+    onError: (err) => toast.error(`Kajabi push failed: ${err.message}`),
   });
 
   const findEmail = trpc.leadScrubber.findEmail.useMutation({
@@ -262,6 +271,25 @@ function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
               >
                 <Mail className="w-3 h-3 mr-1" />
                 Find Email
+              </Button>
+            )}
+            {lead.emailFound && lead.status !== "converted" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-7 text-green-700 border-green-300 hover:bg-green-50"
+                onClick={() =>
+                  pushToKajabi.mutate({
+                    leadId: lead.id,
+                    email: lead.emailFound!,
+                    name: lead.author ?? undefined,
+                    tagName: "Lead Scrubber",
+                  })
+                }
+                disabled={pushToKajabi.isPending}
+              >
+                <Send className="w-3 h-3 mr-1" />
+                {pushToKajabi.isPending ? "Pushing..." : "Push to Kajabi"}
               </Button>
             )}
             <Button
@@ -525,6 +553,32 @@ type ApolloPerson = {
   location: string;
 };
 
+// ─── Reusable Kajabi Push Button ─────────────────────────────────────────────
+
+function KajabiPushButton({ email, name, leadId }: { email: string; name?: string; leadId?: number }) {
+  const pushToKajabi = trpc.leadScrubber.pushToKajabi.useMutation({
+    onSuccess: () => toast.success("Pushed to Kajabi!"),
+    onError: (err) => toast.error(`Kajabi push failed: ${err.message}`),
+  });
+
+  return (
+    <button
+      onClick={() => pushToKajabi.mutate({ email, name, leadId, tagName: "Lead Scrubber" })}
+      disabled={pushToKajabi.isPending || pushToKajabi.isSuccess}
+      className={`text-xs font-medium px-2 py-1 rounded border transition-colors ${
+        pushToKajabi.isSuccess
+          ? "text-green-700 border-green-300 bg-green-50 cursor-default"
+          : "text-green-700 border-green-300 hover:bg-green-50"
+      }`}
+    >
+      <span className="flex items-center gap-1">
+        <Send className="w-3 h-3" />
+        {pushToKajabi.isPending ? "Pushing..." : pushToKajabi.isSuccess ? "In Kajabi ✓" : "Push to Kajabi"}
+      </span>
+    </button>
+  );
+}
+
 const URBAN_MONK_PERSONAS = [
   { label: "Wellness Coaches", titles: ["wellness coach", "health coach", "life coach"] },
   { label: "Meditation Teachers", titles: ["meditation teacher", "mindfulness coach", "yoga instructor"] },
@@ -706,14 +760,19 @@ function ApolloSearchTab() {
               ) : (
                 <p className="text-xs text-gray-400 italic">No email in Apollo database — use Email Finder tab to look up manually</p>
               )}
-              {!savedIds.includes(person.id) && (
-                <button
-                  onClick={() => setSavedIds((prev) => [...prev, person.id])}
-                  className="text-xs text-primary hover:underline"
-                >
-                  ✓ Mark as saved to queue
-                </button>
-              )}
+              <div className="flex items-center gap-3 flex-wrap">
+                {!savedIds.includes(person.id) && (
+                  <button
+                    onClick={() => setSavedIds((prev) => [...prev, person.id])}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    ✓ Mark as saved to queue
+                  </button>
+                )}
+                {person.email && (
+                  <KajabiPushButton email={person.email} name={person.name} />
+                )}
+              </div>
             </div>
           ))}
 

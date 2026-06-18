@@ -116,6 +116,7 @@ import { analyticsSyncRouter } from "./analyticsSyncRouter";
 import { videoPipelineRouter } from "./videoPipelineRouter";
 import { heygenRouter } from "./heygenRouter";
 import { metaAdsRouter } from "./metaAdsRouter";
+import { leadScrubberRouter } from "./leadScrubberRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -467,6 +468,7 @@ export const appRouter = router({
   videoPipeline: videoPipelineRouter,
   heygen: heygenRouter,
   metaAds: metaAdsRouter,
+  leadScrubber: leadScrubberRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

@@ -22,7 +22,11 @@ import {
   ChevronRight,
   Users,
   Send,
+  Sparkles,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +48,29 @@ type Lead = {
   emailConfidence: string | null;
   archivedAt: number | null;
   createdAt: Date;
+};
+
+
+// ─── Email Sequence Type ──────────────────────────────────────────────────────
+
+type EmailSequence = {
+  id: number;
+  leadId: number;
+  leadName: string | null;
+  leadEmail: string | null;
+  leadCompany: string | null;
+  leadTitle: string | null;
+  category: string | null;
+  email1Subject: string | null;
+  email1Body: string | null;
+  email2Subject: string | null;
+  email2Body: string | null;
+  email3Subject: string | null;
+  email3Body: string | null;
+  status: "draft" | "approved" | "sent" | "replied";
+  notes: string | null;
+  createdAt: number;
+  updatedAt: number;
 };
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -70,6 +97,7 @@ function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
   const [showNotes, setShowNotes] = useState(false);
   const [noteText, setNoteText] = useState(lead.notes ?? "");
   const [showEmailFinder, setShowEmailFinder] = useState(false);
+  const [showEmailSequence, setShowEmailSequence] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [domain, setDomain] = useState("");
@@ -274,6 +302,15 @@ function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
                 Find Email
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-7 text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+              onClick={() => setShowEmailSequence(true)}
+            >
+              <Sparkles className="w-3 h-3 mr-1" />
+              Email Sequence
+            </Button>
             {lead.emailFound && lead.status !== "converted" && (
               <Button
                 size="sm"
@@ -322,6 +359,12 @@ function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
           {new Date(lead.createdAt).toLocaleDateString()}
         </span>
       </div>
+      {showEmailSequence && (
+        <EmailSequenceModal
+          lead={lead}
+          onClose={() => setShowEmailSequence(false)}
+        />
+      )}
     </div>
   );
 }
@@ -602,6 +645,8 @@ function ApolloSearchTab() {
   const [savedIds, setSavedIds] = useState<string[]>([]);
   // Track which persona category was last selected for Kajabi tagging
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  // Email sequence modal for Apollo leads
+  const [sequenceApolloLead, setSequenceApolloLead] = useState<Lead | null>(null);
 
   const search = trpc.leadScrubber.apolloSearchLeads.useMutation({
     onSuccess: (data) => {
@@ -774,12 +819,45 @@ function ApolloSearchTab() {
                     ✓ Mark as saved to queue
                   </button>
                 )}
+                <button
+                  onClick={() => setSequenceApolloLead({
+                    id: 0,
+                    source: "apollo",
+                    sourceId: person.id,
+                    title: person.title,
+                    body: `${person.title ?? ""} at ${person.company ?? ""}`,
+                    url: person.linkedinUrl ?? "",
+                    author: person.name,
+                    subredditOrChannel: person.company,
+                    keywordsMatched: null,
+                    category: selectedCategory ?? null,
+                    status: "new",
+                    notes: null,
+                    engagedAt: null,
+                    emailFound: person.email,
+                    emailConfidence: person.emailStatus,
+                    archivedAt: null,
+                    createdAt: new Date(),
+                  })}
+                  className="text-xs font-medium px-2 py-1 rounded border text-indigo-700 border-indigo-300 hover:bg-indigo-50 flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Email Sequence
+                </button>
                 {person.email && (
                   <KajabiPushButton email={person.email} name={person.name} category={selectedCategory} source="apollo" />
                 )}
               </div>
             </div>
           ))}
+
+          {/* Email Sequence Modal for Apollo leads */}
+          {sequenceApolloLead && (
+            <EmailSequenceModal
+              lead={sequenceApolloLead}
+              onClose={() => setSequenceApolloLead(null)}
+            />
+          )}
 
           {/* Pagination */}
           <div className="flex items-center justify-between pt-2">
@@ -910,10 +988,389 @@ function LeadsList({ source }: { source: "reddit" | "youtube" | "all" }) {
   );
 }
 
+// ─── Email Sequence Modal ─────────────────────────────────────────────────────
+
+function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+  const [activeEmail, setActiveEmail] = useState<1 | 2 | 3>(1);
+  const [drafts, setDrafts] = useState<{
+    email1: { subject: string; body: string };
+    email2: { subject: string; body: string };
+    email3: { subject: string; body: string };
+  } | null>(null);
+  const [sequenceId, setSequenceId] = useState<number | null>(null);
+  const [sequenceStatus, setSequenceStatus] = useState<"draft" | "approved" | "sent" | "replied">("draft");
+  const [copied, setCopied] = useState<number | null>(null);
+  const [leadContext, setLeadContext] = useState(lead.body?.slice(0, 300) ?? "");
+
+  const generateMutation = trpc.emailSequence.generateEmailSequence.useMutation({
+    onSuccess: (data) => {
+      setDrafts({
+        email1: { subject: data.email1.subject, body: data.email1.body },
+        email2: { subject: data.email2.subject, body: data.email2.body },
+        email3: { subject: data.email3.subject, body: data.email3.body },
+      });
+      setSequenceId(data.sequenceId);
+      setSequenceStatus("draft");
+      toast.success("3-email sequence generated!");
+    },
+    onError: (e) => toast.error(`Generation failed: ${e.message}`),
+  });
+
+  const saveMutation = trpc.emailSequence.saveEmailSequence.useMutation({
+    onSuccess: () => toast.success("Sequence saved"),
+    onError: (e) => toast.error(`Save failed: ${e.message}`),
+  });
+
+  const statusMutation = trpc.emailSequence.updateEmailSequenceStatus.useMutation({
+    onSuccess: (_, vars) => {
+      setSequenceStatus(vars.status);
+      toast.success(`Marked as ${vars.status}`);
+    },
+    onError: (e) => toast.error(`Status update failed: ${e.message}`),
+  });
+
+  // Load existing sequence on mount
+  const { data: existingSeqs } = trpc.emailSequence.getEmailSequences.useQuery(
+    { leadId: lead.id > 0 ? lead.id : undefined },
+    { enabled: lead.id > 0 }
+  );
+
+  // Populate from existing sequence if found
+  useState(() => {
+    if (existingSeqs && existingSeqs.length > 0 && !drafts) {
+      const seq = existingSeqs[0] as EmailSequence;
+      if (seq.email1Subject) {
+        setDrafts({
+          email1: { subject: seq.email1Subject ?? "", body: seq.email1Body ?? "" },
+          email2: { subject: seq.email2Subject ?? "", body: seq.email2Body ?? "" },
+          email3: { subject: seq.email3Subject ?? "", body: seq.email3Body ?? "" },
+        });
+        setSequenceId(seq.id);
+        setSequenceStatus(seq.status as "draft" | "approved" | "sent" | "replied");
+      }
+    }
+  });
+
+  const handleGenerate = () => {
+    generateMutation.mutate({
+      leadId: lead.id > 0 ? lead.id : Date.now(),
+      leadName: lead.author ?? undefined,
+      leadEmail: lead.emailFound ?? undefined,
+      leadCompany: lead.subredditOrChannel ?? undefined,
+      leadTitle: lead.title ?? undefined,
+      category: lead.category ?? undefined,
+      leadContext: leadContext || undefined,
+    });
+  };
+
+  const handleSave = () => {
+    if (!sequenceId || !drafts) return;
+    saveMutation.mutate({
+      sequenceId,
+      email1Subject: drafts.email1.subject,
+      email1Body: drafts.email1.body,
+      email2Subject: drafts.email2.subject,
+      email2Body: drafts.email2.body,
+      email3Subject: drafts.email3.subject,
+      email3Body: drafts.email3.body,
+    });
+  };
+
+  const handleCopy = (emailNum: 1 | 2 | 3) => {
+    if (!drafts) return;
+    const email = drafts[`email${emailNum}`];
+    const text = `Subject: ${email.subject}\n\n${email.body}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(emailNum);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  };
+
+  const handleApprove = () => {
+    if (!sequenceId) return;
+    statusMutation.mutate({ sequenceId, status: "approved" });
+  };
+
+  const currentDraft = drafts ? drafts[`email${activeEmail}`] : null;
+
+  const statusColors: Record<string, string> = {
+    draft: "bg-gray-100 text-gray-600",
+    approved: "bg-green-100 text-green-700",
+    sent: "bg-blue-100 text-blue-700",
+    replied: "bg-purple-100 text-purple-700",
+  };
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-indigo-600" />
+            Cold Email Sequence
+            {lead.author && <span className="text-gray-500 font-normal text-sm">— {lead.author}</span>}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Lead context */}
+          <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+              {lead.emailFound && (
+                <span className="flex items-center gap-1 text-green-700 font-medium">
+                  <Mail className="w-3 h-3" /> {lead.emailFound}
+                </span>
+              )}
+              {lead.title && <span className="italic">{lead.title}</span>}
+              {lead.subredditOrChannel && <span>{lead.subredditOrChannel}</span>}
+              {lead.category && (
+                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">{lead.category}</span>
+              )}
+              {sequenceStatus && (
+                <span className={`px-2 py-0.5 rounded-full font-medium ${statusColors[sequenceStatus]}`}>
+                  {sequenceStatus.charAt(0).toUpperCase() + sequenceStatus.slice(1)}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Context for AI (lead's post/bio — optional)</label>
+              <textarea
+                value={leadContext}
+                onChange={(e) => setLeadContext(e.target.value)}
+                placeholder="Paste the lead's post, bio, or any context to personalize the sequence..."
+                className="w-full text-xs border rounded-lg p-2 min-h-[60px] resize-none bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Generate button */}
+          <button
+            onClick={handleGenerate}
+            disabled={generateMutation.isPending}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium disabled:opacity-60"
+          >
+            <Sparkles className="w-4 h-4" />
+            {generateMutation.isPending
+              ? "Generating 3-email sequence in Dr. Pedram's voice..."
+              : drafts
+              ? "Regenerate Sequence"
+              : "Generate 3-Email Sequence"}
+          </button>
+
+          {/* Email tabs */}
+          {drafts && (
+            <div className="space-y-3">
+              <div className="flex gap-1 border-b border-gray-200">
+                {([1, 2, 3] as const).map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setActiveEmail(num)}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeEmail === num
+                        ? "border-indigo-600 text-indigo-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    Email {num}
+                    {num === 1 && <span className="ml-1 text-xs text-gray-400">(Value)</span>}
+                    {num === 2 && <span className="ml-1 text-xs text-gray-400">(Resource)</span>}
+                    {num === 3 && <span className="ml-1 text-xs text-gray-400">(Invite)</span>}
+                  </button>
+                ))}
+              </div>
+
+              {currentDraft && (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-600">Subject Line</label>
+                    <input
+                      value={currentDraft.subject}
+                      onChange={(e) => setDrafts(prev => prev ? {
+                        ...prev,
+                        [`email${activeEmail}`]: { ...prev[`email${activeEmail}`], subject: e.target.value }
+                      } : prev)}
+                      className="w-full text-sm border rounded-lg px-3 py-2 bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-600">Body</label>
+                    <textarea
+                      value={currentDraft.body}
+                      onChange={(e) => setDrafts(prev => prev ? {
+                        ...prev,
+                        [`email${activeEmail}`]: { ...prev[`email${activeEmail}`], body: e.target.value }
+                      } : prev)}
+                      className="w-full text-sm border rounded-lg px-3 py-2 min-h-[200px] resize-none bg-white font-mono"
+                    />
+                  </div>
+
+                  {/* Per-email actions */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleCopy(activeEmail)}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 border rounded-lg hover:bg-gray-50"
+                    >
+                      {copied === activeEmail ? <CheckCheck className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied === activeEmail ? "Copied!" : "Copy Email"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Footer actions */}
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                <button
+                  onClick={handleSave}
+                  disabled={saveMutation.isPending || !sequenceId}
+                  className="flex-1 py-2 text-sm font-medium border rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {saveMutation.isPending ? "Saving..." : "Save Edits"}
+                </button>
+                {sequenceStatus === "draft" && (
+                  <button
+                    onClick={handleApprove}
+                    disabled={statusMutation.isPending || !sequenceId}
+                    className="flex-1 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50"
+                  >
+                    {statusMutation.isPending ? "Approving..." : "✓ Approve Sequence"}
+                  </button>
+                )}
+                {sequenceStatus === "approved" && lead.emailFound && (
+                  <KajabiPushButton
+                    email={lead.emailFound}
+                    name={lead.author ?? undefined}
+                    leadId={lead.id > 0 ? lead.id : undefined}
+                    category={lead.category ?? undefined}
+                    source={lead.source}
+                  />
+                )}
+                {sequenceStatus === "approved" && !lead.emailFound && (
+                  <span className="flex-1 text-center text-xs text-gray-400 italic">
+                    Find email first to push to Kajabi
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Email Sequences Dashboard Tab ────────────────────────────────────────────
+
+function EmailSequencesTab() {
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+  const { data: sequences = [], isLoading, refetch } = trpc.emailSequence.getEmailSequences.useQuery({});
+
+  const deleteMutation = trpc.emailSequence.deleteEmailSequence.useMutation({
+    onSuccess: () => { refetch(); toast.success("Sequence deleted"); },
+    onError: (e) => toast.error(`Delete failed: ${e.message}`),
+  });
+
+  const statusColors: Record<string, string> = {
+    draft: "bg-gray-100 text-gray-600",
+    approved: "bg-green-100 text-green-700",
+    sent: "bg-blue-100 text-blue-700",
+    replied: "bg-purple-100 text-purple-700",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm text-indigo-800">
+        <p className="font-semibold mb-1">Cold Email Sequences</p>
+        <p>All AI-generated 3-email sequences in Dr. Pedram’s voice. Draft → Approve → Send → Push to Kajabi. Kajabi push is gated until the sequence is approved.</p>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-12 text-gray-400">Loading sequences...</div>
+      ) : sequences.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-40" />
+          <p className="text-sm">No sequences yet. Click “Email Sequence” on any lead card to generate one.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {(sequences as EmailSequence[]).map((seq) => (
+            <div key={seq.id} className="bg-white border rounded-xl p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColors[seq.status] ?? statusColors.draft}`}>
+                      {seq.status.charAt(0).toUpperCase() + seq.status.slice(1)}
+                    </span>
+                    <p className="font-semibold text-gray-900 text-sm">{seq.leadName ?? "Unknown Lead"}</p>
+                    {seq.leadTitle && <span className="text-xs text-gray-500">{seq.leadTitle}</span>}
+                    {seq.leadCompany && <span className="text-xs text-gray-400">{seq.leadCompany}</span>}
+                  </div>
+                  {seq.leadEmail && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <Mail className="w-3 h-3 text-green-500" />
+                      <span className="text-xs font-mono text-green-700">{seq.leadEmail}</span>
+                    </div>
+                  )}
+                  {seq.email1Subject && (
+                    <p className="text-xs text-gray-500 mt-1 italic">Email 1: “{seq.email1Subject}”</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setEditingLead({
+                      id: seq.leadId,
+                      source: "apollo",
+                      sourceId: String(seq.leadId),
+                      title: seq.leadTitle,
+                      body: "",
+                      url: "",
+                      author: seq.leadName,
+                      subredditOrChannel: seq.leadCompany,
+                      keywordsMatched: null,
+                      category: seq.category,
+                      status: "new",
+                      notes: null,
+                      engagedAt: null,
+                      emailFound: seq.leadEmail,
+                      emailConfidence: null,
+                      archivedAt: null,
+                      createdAt: new Date(seq.createdAt),
+                    })}
+                    className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteMutation.mutate({ sequenceId: seq.id })}
+                    disabled={deleteMutation.isPending}
+                    className="text-xs text-red-400 hover:text-red-600"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400">
+                Created {new Date(seq.createdAt).toLocaleDateString()} · Updated {new Date(seq.updatedAt).toLocaleDateString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editingLead && (
+        <EmailSequenceModal
+          lead={editingLead}
+          onClose={() => { setEditingLead(null); refetch(); }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function LeadScrubber() {
-  const [activeTab, setActiveTab] = useState<"reddit" | "youtube" | "apollo" | "email" | "config">("reddit");
+  const [activeTab, setActiveTab] = useState<"reddit" | "youtube" | "apollo" | "email" | "sequences" | "config">("reddit");
 
   const { data: stats = [] } = trpc.leadScrubber.getStats.useQuery();
 
@@ -926,6 +1383,7 @@ export default function LeadScrubber() {
     { id: "youtube" as const, label: "YouTube Leads", icon: Youtube },
     { id: "apollo" as const, label: "Apollo Cold Leads", icon: Users },
     { id: "email" as const, label: "Email Finder", icon: Mail },
+    { id: "sequences" as const, label: "Email Sequences", icon: Sparkles },
     { id: "config" as const, label: "Configure", icon: Settings },
   ];
 
@@ -987,9 +1445,11 @@ export default function LeadScrubber() {
           {activeTab === "youtube" && <LeadsList source="youtube" />}
           {activeTab === "apollo" && <ApolloSearchTab />}
           {activeTab === "email" && <EmailFinderTab />}
+          {activeTab === "sequences" && <EmailSequencesTab />}
           {activeTab === "config" && <ConfigPanel />}
         </div>
       </div>
     </div>
   );
 }
+// trigger

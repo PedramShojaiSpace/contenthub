@@ -117,6 +117,7 @@ import { videoPipelineRouter } from "./videoPipelineRouter";
 import { heygenRouter } from "./heygenRouter";
 import { metaAdsRouter } from "./metaAdsRouter";
 import { leadScrubberRouter } from "./leadScrubberRouter";
+import { emailSequenceRouter } from "./emailSequenceRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -469,6 +470,7 @@ export const appRouter = router({
   heygen: heygenRouter,
   metaAds: metaAdsRouter,
   leadScrubber: leadScrubberRouter,
+  emailSequence: emailSequenceRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

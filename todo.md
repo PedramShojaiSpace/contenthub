@@ -3995,3 +3995,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Register heartbeat cron: ads-weekly-digest (Monday 08:00 UTC)
 - [x] Add Optimizer tab (guardrails config + optimization log)
 - [x] Add Weekly Digest tab (Claude-written digest history)
+
+## Lead Scrubber — 3-Tier Cold Lead Prospecting
+
+- [ ] Add lead_prospects table to schema
+- [ ] Add lead_keywords table (keyword, category, active)
+- [ ] Add lead_subreddits table (subreddit, active)
+- [ ] Add lead_yt_channels table (channelId, channelName, active)
+- [ ] Run pnpm db:push for new tables
+- [ ] Build leadScrubberRouter: Reddit search via Reddit API
+- [ ] Build leadScrubberRouter: YouTube comment search via YouTube Data API v3
+- [ ] Build leadScrubberRouter: Apollo.io email finder
+- [ ] Build lead management procedures (updateStatus, addNote, markEngaged, archiveLead)
+- [ ] Build Lead Scrubber UI page with 3 tabs
+- [ ] Reddit tab: keyword/subreddit config, results list, actions
+- [ ] YouTube tab: channel config, comment results, actions
+- [ ] Email Finder tab: name + domain input, Apollo lookup
+- [ ] Add Lead Scrubber to sidebar navigation
+- [ ] Seed default Urban Monk keywords and subreddits

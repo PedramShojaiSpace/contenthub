@@ -2265,3 +2265,70 @@ export const hookAbTests = mysqlTable("hook_ab_tests", {
 });
 export type HookAbTest = typeof hookAbTests.$inferSelect;
 export type InsertHookAbTest = typeof hookAbTests.$inferInsert;
+
+
+// ─── Lead Scrubber — 3-Tier Cold Lead Prospecting ───────────────────────────
+
+export const leadProspectSourceEnum = mysqlEnum("lp_source", ["reddit", "youtube"]);
+export const leadProspectStatusEnum = mysqlEnum("lp_status", [
+  "new",
+  "engaged",
+  "email_found",
+  "converted",
+  "archived",
+]);
+
+/** Discovered cold leads from Reddit posts/comments or YouTube comments */
+export const leadProspects = mysqlTable("lead_prospects", {
+  id: int("id").autoincrement().primaryKey(),
+  source: leadProspectSourceEnum.notNull(),
+  sourceId: varchar("sourceId", { length: 128 }).notNull().unique(), // reddit post/comment id or youtube comment id
+  title: text("title"),                        // post title (reddit) or video title (youtube)
+  body: text("body").notNull(),                // post body or comment text
+  url: text("url").notNull(),                  // direct link to the post/comment
+  author: varchar("author", { length: 128 }),  // username/handle
+  subredditOrChannel: varchar("subredditOrChannel", { length: 128 }), // subreddit name or YouTube channel name
+  keywordsMatched: text("keywordsMatched"),    // JSON array of matched keywords
+  status: leadProspectStatusEnum.notNull().default("new"),
+  notes: text("notes"),
+  engagedAt: bigint("engagedAt", { mode: "number" }),
+  emailFound: varchar("emailFound", { length: 320 }),
+  emailConfidence: varchar("emailConfidence", { length: 32 }), // "high" | "medium" | "low"
+  archivedAt: bigint("archivedAt", { mode: "number" }),
+  createdAt: timestamp("lp_createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("lp_updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LeadProspect = typeof leadProspects.$inferSelect;
+export type InsertLeadProspect = typeof leadProspects.$inferInsert;
+
+/** Keywords to monitor across Reddit and YouTube */
+export const leadKeywords = mysqlTable("lead_keywords", {
+  id: int("id").autoincrement().primaryKey(),
+  keyword: varchar("keyword", { length: 128 }).notNull().unique(),
+  category: varchar("category", { length: 64 }).notNull().default("general"), // e.g. "stress", "sleep", "supplements"
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("lk_createdAt").defaultNow().notNull(),
+});
+export type LeadKeyword = typeof leadKeywords.$inferSelect;
+export type InsertLeadKeyword = typeof leadKeywords.$inferInsert;
+
+/** Subreddits to monitor for intent signals */
+export const leadSubreddits = mysqlTable("lead_subreddits", {
+  id: int("id").autoincrement().primaryKey(),
+  subreddit: varchar("subreddit", { length: 128 }).notNull().unique(), // without "r/"
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("ls_createdAt").defaultNow().notNull(),
+});
+export type LeadSubreddit = typeof leadSubreddits.$inferSelect;
+export type InsertLeadSubreddit = typeof leadSubreddits.$inferInsert;
+
+/** YouTube channels to monitor for intent comments */
+export const leadYtChannels = mysqlTable("lead_yt_channels", {
+  id: int("id").autoincrement().primaryKey(),
+  channelId: varchar("channelId", { length: 64 }).notNull().unique(), // YouTube channel ID (UC...)
+  channelName: varchar("channelName", { length: 128 }).notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("lyc_createdAt").defaultNow().notNull(),
+});
+export type LeadYtChannel = typeof leadYtChannels.$inferSelect;
+export type InsertLeadYtChannel = typeof leadYtChannels.$inferInsert;

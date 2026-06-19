@@ -9,7 +9,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   QrCode, Download, ExternalLink, Copy, CheckCircle2, Loader2, Globe,
-  Video, Sparkles, Send, ChevronDown, ChevronUp, Clock, FileText
+  Video, Sparkles, Send, ChevronDown, ChevronUp, Clock, FileText, Link2
 } from "lucide-react";
 
 // Known merchandise QR destinations
@@ -62,6 +62,12 @@ export default function QrGenerator() {
   const [productionPath, setProductionPath] = useState<"heygen_only" | "descript_only" | "heygen_then_descript">("heygen_then_descript");
   const [scriptExpanded, setScriptExpanded] = useState(true);
   const [videoJobSent, setVideoJobSent] = useState(false);
+  const [sentJobId, setSentJobId] = useState<number | null>(null);
+
+  // Assign video URL state
+  const [assignSlug, setAssignSlug] = useState("weboflife");
+  const [assignVideoUrl, setAssignVideoUrl] = useState("");
+  const [videoAssigned, setVideoAssigned] = useState(false);
 
   const generateQrMutation = trpc.qrGenerator.generate.useMutation({
     onSuccess: (data: { downloadUrl: string; filename: string; url: string; label: string; size: number; generatedAt: string }) => {
@@ -88,6 +94,7 @@ export default function QrGenerator() {
       setEditedScript(data.scriptText);
       setScriptExpanded(true);
       setVideoJobSent(false);
+      setSentJobId(null);
       toast.success("2-minute script generated");
     },
     onError: (err: { message?: string }) => {
@@ -95,13 +102,24 @@ export default function QrGenerator() {
     },
   });
 
-  const startVideoJobMutation = trpc.videoPipeline.startVideoJob.useMutation({
-    onSuccess: (data: { message?: string }) => {
+  const sendToProductionMutation = trpc.qrGenerator.sendToProduction.useMutation({
+    onSuccess: (data) => {
       setVideoJobSent(true);
-      toast.success(data.message || "Video job started — check Video Pipeline for status");
+      setSentJobId(data.jobId);
+      toast.success(`Video job #${data.jobId} sent to production via ${data.productionPath.replace(/_/g, " ")}`);
     },
     onError: (err: { message?: string }) => {
-      toast.error(err.message || "Failed to start video job");
+      toast.error(err.message || "Failed to send to production");
+    },
+  });
+
+  const assignVideoMutation = trpc.qrGenerator.assignVideo.useMutation({
+    onSuccess: () => {
+      setVideoAssigned(true);
+      toast.success("Video URL assigned — it will now appear on the landing page");
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(err.message || "Failed to assign video URL");
     },
   });
 
@@ -133,17 +151,25 @@ export default function QrGenerator() {
 
   const handleSendToProduction = () => {
     if (!generatedScript) return;
-    startVideoJobMutation.mutate({
-      contentItemId: 0, // standalone QR video — not tied to a content item
-      scriptTitle: generatedScript.scriptTitle,
+    const preset = selectedPresetSlug
+      ? PRESETS.find(p => p.slug === selectedPresetSlug)
+      : PRESETS[0];
+    if (!preset) return;
+    sendToProductionMutation.mutate({
+      slug: preset.slug,
+      designLabel: generatedScript.designLabel,
+      landingPageUrl: generatedScript.landingPageUrl,
       scriptText: editedScript || generatedScript.scriptText,
-      topic: generatedScript.designLabel,
-      ctaUrl: generatedScript.landingPageUrl,
-      ctaLabel: "Explore →",
-      ctaText: "Visit the landing page",
+      scriptTitle: generatedScript.scriptTitle,
+      theme: videoTheme,
       productionPath,
-      outputChannels: ["youtube"],
     });
+  };
+
+  const handleAssignVideo = () => {
+    if (!assignVideoUrl.trim()) { toast.error("Enter a video URL first"); return; }
+    if (!assignSlug.trim()) { toast.error("Enter a design slug first"); return; }
+    assignVideoMutation.mutate({ slug: assignSlug, videoUrl: assignVideoUrl });
   };
 
   const selectedPreset = selectedPresetSlug
@@ -173,7 +199,7 @@ export default function QrGenerator() {
             <li>Download the QR code PNG — print-ready at 300 DPI (2400×2400px)</li>
             <li>Write a theme below → AI generates a 2-minute video script in Dr. Pedram's voice</li>
             <li>Review and edit the script, then send to HeyGen or Descript</li>
-            <li>Once the video is ready, paste its URL into the landing page to embed it at the top</li>
+            <li>Once the video is ready, paste its URL below — it will auto-appear on the landing page</li>
           </ol>
         </div>
 
@@ -359,18 +385,22 @@ export default function QrGenerator() {
                     </div>
 
                     {videoJobSent ? (
-                      <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        <span>Video job sent to production. Check <a href="/video-pipeline" className="underline font-medium">Video Pipeline</a> for status. Once the video is ready, paste its URL into the landing page to embed it at the top.</span>
+                      <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                        <div className="text-sm text-green-700 space-y-1">
+                          <p className="font-medium">Video job #{sentJobId} sent to production</p>
+                          <p>Check <a href="/video-pipeline" className="underline font-medium">Video Pipeline</a> for status updates.</p>
+                          <p className="text-xs text-green-600">Once the video is ready, paste its URL in the section below — it will automatically appear at the top of the landing page.</p>
+                        </div>
                       </div>
                     ) : (
                       <Button
                         onClick={handleSendToProduction}
-                        disabled={startVideoJobMutation.isPending || !editedScript.trim()}
+                        disabled={sendToProductionMutation.isPending || !editedScript.trim()}
                         className="w-full"
                         variant="default"
                       >
-                        {startVideoJobMutation.isPending ? (
+                        {sendToProductionMutation.isPending ? (
                           <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending to production…</>
                         ) : (
                           <><Send className="w-4 h-4 mr-2" />Send to Production</>
@@ -380,6 +410,77 @@ export default function QrGenerator() {
                   </div>
                 )}
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Assign Video URL to Landing Page */}
+        <div className="border border-border rounded-lg overflow-hidden">
+          <div className="bg-muted/30 px-5 py-4 flex items-center gap-3 border-b border-border">
+            <Link2 className="w-4 h-4 text-primary" />
+            <div>
+              <h2 className="text-sm font-semibold">Assign Video to Landing Page</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Once your video is produced, paste the URL here — it will auto-embed at the top of the landing page
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="assign-slug" className="text-xs mb-1.5 block font-medium">Design Slug</Label>
+                <Input
+                  id="assign-slug"
+                  placeholder="weboflife"
+                  value={assignSlug}
+                  onChange={(e) => { setAssignSlug(e.target.value); setVideoAssigned(false); }}
+                  className="text-sm font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-1">The slug in the landing page URL</p>
+              </div>
+              <div>
+                <Label htmlFor="assign-video-url" className="text-xs mb-1.5 block font-medium">Video URL</Label>
+                <Input
+                  id="assign-video-url"
+                  placeholder="https://cdn.heygen.com/video/..."
+                  value={assignVideoUrl}
+                  onChange={(e) => { setAssignVideoUrl(e.target.value); setVideoAssigned(false); }}
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">HeyGen, Descript, YouTube, or any direct video URL</p>
+              </div>
+            </div>
+
+            {videoAssigned ? (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>
+                  Video assigned to <strong>{assignSlug}</strong>. Visit{" "}
+                  <a
+                    href={`https://ch.theurbanmonk.com/${assignSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-medium"
+                  >
+                    ch.theurbanmonk.com/{assignSlug}
+                  </a>{" "}
+                  to confirm the embed.
+                </span>
+              </div>
+            ) : (
+              <Button
+                onClick={handleAssignVideo}
+                disabled={assignVideoMutation.isPending || !assignVideoUrl.trim() || !assignSlug.trim()}
+                variant="outline"
+                className="w-full"
+              >
+                {assignVideoMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Assigning…</>
+                ) : (
+                  <><Link2 className="w-4 h-4 mr-2" />Assign Video to Landing Page</>
+                )}
+              </Button>
             )}
           </div>
         </div>

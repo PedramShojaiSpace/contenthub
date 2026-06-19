@@ -412,7 +412,7 @@ export const leadScrubberRouter = router({
 
   listLeads: protectedProcedure
     .input(z.object({
-      source: z.enum(["reddit", "youtube", "all"]).default("all"),
+      source: z.enum(["reddit", "youtube", "apollo", "all"]).default("all"),
       status: z.enum(["new", "engaged", "email_found", "converted", "archived", "active"]).default("active"),
       page: z.number().min(1).default(1),
       pageSize: z.number().min(5).max(100).default(25),

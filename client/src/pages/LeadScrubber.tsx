@@ -642,11 +642,24 @@ function ApolloSearchTab() {
   const [results, setResults] = useState<ApolloPerson[]>([]);
   const [total, setTotal] = useState(0);
   const [message, setMessage] = useState("");
-  const [savedIds, setSavedIds] = useState<string[]>([]);
   // Track which persona category was last selected for Kajabi tagging
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   // Email sequence modal for Apollo leads
   const [sequenceApolloLead, setSequenceApolloLead] = useState<Lead | null>(null);
+  // View toggle: search results vs saved DB leads
+  const [view, setView] = useState<"search" | "saved">("saved");
+  const [savedPage, setSavedPage] = useState(1);
+
+  // Load saved Apollo leads from DB
+  const { data: savedData, refetch: refetchSaved } = trpc.leadScrubber.listLeads.useQuery({
+    source: "apollo",
+    status: "active",
+    page: savedPage,
+    pageSize: 20,
+  });
+  const savedLeads = (savedData?.leads ?? []) as Lead[];
+  const savedTotal = savedData?.total ?? 0;
+  const savedTotalPages = Math.ceil(savedTotal / 20);
 
   const search = trpc.leadScrubber.apolloSearchLeads.useMutation({
     onSuccess: (data) => {
@@ -654,6 +667,11 @@ function ApolloSearchTab() {
       setTotal(data.total);
       setMessage(data.message ?? "");
       if (!data.success && data.message) toast.error(data.message);
+      else if (data.success && data.people.length > 0) {
+        // Auto-switch to saved view after search so results are visible even after navigation
+        refetchSaved();
+        setView("search");
+      }
     },
     onError: () => toast.error("Apollo search failed"),
   });
@@ -775,12 +793,62 @@ function ApolloSearchTab() {
         </Button>
       </div>
 
-      {/* Results */}
-      {message && (
+      {/* View Toggle */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setView("saved")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            view === "saved" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Saved Leads ({savedTotal})
+        </button>
+        {results.length > 0 && (
+          <button
+            onClick={() => setView("search")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              view === "search" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Latest Search ({results.length})
+          </button>
+        )}
+      </div>
+
+      {/* Search results message */}
+      {view === "search" && message && (
         <p className="text-sm text-gray-500">{message} {total > 10 && `(showing page ${page})`}</p>
       )}
 
-      {results.length > 0 && (
+      {/* Saved leads from DB — persists across navigation */}
+      {view === "saved" && (
+        <div className="space-y-3">
+          {savedLeads.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Users className="w-8 h-8 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">No saved Apollo leads yet. Run a search to find and save leads.</p>
+            </div>
+          ) : (
+            savedLeads.map((lead) => (
+              <LeadCard key={lead.id} lead={lead} onRefresh={refetchSaved} />
+            ))
+          )}
+          {savedTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <Button size="sm" variant="outline" disabled={savedPage <= 1} onClick={() => setSavedPage(p => p - 1)}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-gray-600">Page {savedPage} of {savedTotalPages}</span>
+              <Button size="sm" variant="outline" disabled={savedPage >= savedTotalPages} onClick={() => setSavedPage(p => p + 1)}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Latest search results — in-memory, shown immediately after search */}
+      {view === "search" && results.length > 0 && (
         <div className="space-y-3">
           {results.map((person) => (
             <div key={person.id} className="bg-white border rounded-xl p-4 space-y-2">
@@ -791,9 +859,7 @@ function ApolloSearchTab() {
                   {person.company && <p className="text-xs text-gray-400">{person.company}{person.location ? ` · ${person.location}` : ""}</p>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {savedIds.includes(person.id) && (
-                    <span className="text-xs text-green-600 font-medium">✓ Saved</span>
-                  )}
+                  <span className="text-xs text-green-600 font-medium">✓ Auto-saved</span>
                   {person.linkedinUrl && (
                     <a href={person.linkedinUrl} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="w-4 h-4 text-gray-400 hover:text-primary" />
@@ -811,14 +877,6 @@ function ApolloSearchTab() {
                 <p className="text-xs text-gray-400 italic">No email in Apollo database — use Email Finder tab to look up manually</p>
               )}
               <div className="flex items-center gap-3 flex-wrap">
-                {!savedIds.includes(person.id) && (
-                  <button
-                    onClick={() => setSavedIds((prev) => [...prev, person.id])}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    ✓ Mark as saved to queue
-                  </button>
-                )}
                 <button
                   onClick={() => setSequenceApolloLead({
                     id: 0,

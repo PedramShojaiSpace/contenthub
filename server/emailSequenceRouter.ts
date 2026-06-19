@@ -198,17 +198,14 @@ CRITICAL RULES:
 - Always spell "Daoist" and "Daoism" with a D (never Taoist/Taoism)
 - Emails are FROM Dr. Pedram Shojai, signed as "Pedram" or "Dr. Pedram"
 - NEVER use placeholder text like [Link to...] or [Insert URL] — always use the EXACT real URLs provided below
-- Email 2: Natural follow-up to Email 1 — reference the theme, share ONE of the real resource links below. Still no hard pitch. 150-250 words.
-- Email 3: Gentle, authentic invitation to Urban Monk Academy ($297/year) — use this exact link: https://theurbanmonk.com/academy/ — Frame it as an invitation, not a sale. Reference the journey from Emails 1 & 2. 150-250 words.
+- Email 2: Natural follow-up to Email 1 — reference the theme, add value, and include a natural link back to the Urban Monk homepage (https://theurbanmonk.com) as the CTA. Still no hard pitch. 150-250 words.
+- Email 3: Gentle, authentic invitation to join the Urban Monk Academy — use this EXACT link as the CTA: https://lights-on.theurbanmonk.com — Frame it as an invitation, not a sale. Reference the journey from Emails 1 & 2. 150-250 words.
 - Subject lines should be personal and curiosity-driven, not clickbait
 - Respond ONLY with valid JSON. No markdown fences.
 
-REAL RESOURCE LINKS TO USE IN EMAIL 2 (pick the most relevant one):
-${resourceLinkBlock}
-
-ACADEMY LINK FOR EMAIL 3: https://theurbanmonk.com/academy/
+CTA FOR EMAIL 2 (homepage): https://theurbanmonk.com
+CTA FOR EMAIL 3 (Academy opt-in): https://lights-on.theurbanmonk.com
 YOUTUBE CHANNEL: https://www.youtube.com/@PedramShojai
-MAIN WEBSITE: https://theurbanmonk.com/
 PODCAST: https://theurbanmonk.com/podcast/`;
 
       const email1Preview = chosenEmail

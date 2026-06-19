@@ -1454,7 +1454,7 @@ function EmailSequencesTab() {
           <Mail className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-amber-900">Gmail not connected</p>
-            <p className="text-xs text-amber-700 mt-0.5">Alyzza needs to connect her Gmail account to enable automatic sending. Emails will go out as Dr. Pedram Shojai from alyzza@theurbanmonk.com.</p>
+            <p className="text-xs text-amber-700 mt-0.5">Alyzza needs to connect her Gmail account to enable automatic sending. Emails will display as "The Urban Monk" from alyzza@theurbanmonk.com — replies land in her inbox.</p>
           </div>
           <button
             onClick={() => { if (gmailAuthUrlData?.url) window.location.href = gmailAuthUrlData.url; else alert("Could not get Gmail auth URL — try again in a moment."); }}
@@ -1467,7 +1467,7 @@ function EmailSequencesTab() {
       {gmailStatus?.authorized && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2 text-xs text-green-800">
           <span className="text-green-500">✓</span>
-          <span>Gmail connected — sequences will send automatically from alyzza@theurbanmonk.com as Dr. Pedram Shojai.</span>
+          <span>Gmail connected — sequences will send automatically as "The Urban Monk" from alyzza@theurbanmonk.com.</span>
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -895,8 +895,12 @@ function LeadsList({ source }: { source: "reddit" | "youtube" | "all" }) {
 
   const scanReddit = trpc.leadScrubber.scanReddit.useMutation({
     onSuccess: (res) => {
-      toast.success(res.message);
-      refetch();
+      if ((res as any).needsCredentials) {
+        toast.error(res.message, { duration: 8000 });
+      } else {
+        toast.success(res.message);
+        refetch();
+      }
     },
     onError: () => toast.error("Reddit scan failed"),
   });
@@ -991,6 +995,10 @@ function LeadsList({ source }: { source: "reddit" | "youtube" | "all" }) {
 // ─── Email Sequence Modal ─────────────────────────────────────────────────────
 
 function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+  // Stable lead ID: for Apollo leads (id=0) use a stable ref so it doesn't change on re-render
+  const stableLeadIdRef = React.useRef<number>(lead.id > 0 ? lead.id : -(Date.now()));
+  const stableLeadId = stableLeadIdRef.current;
+
   const [activeEmail, setActiveEmail] = useState<1 | 2 | 3>(1);
   const [drafts, setDrafts] = useState<{
     email1: { subject: string; body: string };
@@ -1037,14 +1045,14 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
     onError: (e) => toast.error(`Status update failed: ${e.message}`),
   });
 
-  // Load existing sequence on mount
+  // Load existing sequence on mount (only for real DB leads, not Apollo temp leads)
   const { data: existingSeqs } = trpc.emailSequence.getEmailSequences.useQuery(
     { leadId: lead.id > 0 ? lead.id : undefined },
     { enabled: lead.id > 0 }
   );
 
-  // Populate from existing sequence if found
-  useState(() => {
+  // Populate from existing sequence when data arrives — use useEffect, not useState
+  React.useEffect(() => {
     if (existingSeqs && existingSeqs.length > 0 && !drafts) {
       const seq = existingSeqs[0] as EmailSequence;
       if (seq.email1Subject) {
@@ -1057,11 +1065,11 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
         setSequenceStatus(seq.status as "draft" | "approved" | "sent" | "replied");
       }
     }
-  });
+  }, [existingSeqs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleGenerate = () => {
     generateMutation.mutate({
-      leadId: lead.id > 0 ? lead.id : Date.now(),
+      leadId: stableLeadId > 0 ? stableLeadId : Math.abs(stableLeadId),
       leadName: lead.author ?? undefined,
       leadEmail: lead.emailFound ?? undefined,
       leadCompany: lead.subredditOrChannel ?? undefined,

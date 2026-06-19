@@ -805,10 +805,12 @@ async function startServer() {
       // Look up assigned video URL for the Web of Life design
       let videoUrl: string | null = null;
       try {
-        const { db } = await import("../db");
+        const { getDb: getDbLocal } = await import("../db");
         const { qrDesigns } = await import("../../drizzle/schema");
         const { eq } = await import("drizzle-orm");
-        const design = await db.select().from(qrDesigns).where(eq(qrDesigns.slug, "weboflife")).limit(1);
+        const dbLocal = await getDbLocal();
+        if (!dbLocal) throw new Error("DB not available");
+        const design = await dbLocal.select().from(qrDesigns).where(eq(qrDesigns.slug, "weboflife")).limit(1);
         videoUrl = design[0]?.videoUrl ?? null;
       } catch (_) { /* no qrDesigns table yet — skip */ }
       res.setHeader("Content-Type", "text/html; charset=utf-8");

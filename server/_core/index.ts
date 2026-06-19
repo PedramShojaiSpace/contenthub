@@ -796,6 +796,22 @@ async function startServer() {
     }
   });
 
+  // ── Merchandise QR Landing Pages ─────────────────────────────────────────
+  // Each merchandise design has its own landing page at /weboflife, /design2, etc.
+  // These are the destinations for QR codes embedded in Urban Monk merchandise.
+  app.get("/weboflife", async (req, res) => {
+    try {
+      const { renderWebOfLifePage } = await import("../webOfLifePage");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
+      return res.send(renderWebOfLifePage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[weboflife] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
   // Campaigns: lo | gut | sleep | webinar

@@ -802,9 +802,18 @@ async function startServer() {
   app.get("/weboflife", async (req, res) => {
     try {
       const { renderWebOfLifePage } = await import("../webOfLifePage");
+      // Look up assigned video URL for the Web of Life design
+      let videoUrl: string | null = null;
+      try {
+        const { db } = await import("../db");
+        const { qrDesigns } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const design = await db.select().from(qrDesigns).where(eq(qrDesigns.slug, "weboflife")).limit(1);
+        videoUrl = design[0]?.videoUrl ?? null;
+      } catch (_) { /* no qrDesigns table yet — skip */ }
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
-      return res.send(renderWebOfLifePage());
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      return res.send(renderWebOfLifePage(videoUrl));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[weboflife] Error:`, msg);

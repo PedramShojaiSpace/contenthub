@@ -4,7 +4,7 @@
  * Mobile-first. Tone: "you found a secret."
  */
 
-export function renderWebOfLifePage(): string {
+export function renderWebOfLifePage(videoUrl?: string | null): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -85,6 +85,36 @@ export function renderWebOfLifePage(): string {
       max-width: 420px;
       margin: 0 auto 40px;
       line-height: 1.65;
+    }
+
+    /* ── Video Embed ── */
+    .video-section {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px 48px;
+    }
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%; /* 16:9 */
+      background: var(--ink);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(26,26,24,0.18);
+    }
+    .video-wrapper iframe,
+    .video-wrapper video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: none;
+    }
+    .video-caption {
+      text-align: center;
+      font-size: 12px;
+      color: var(--warm-gray);
+      margin-top: 12px;
+      letter-spacing: 0.06em;
     }
 
     /* ── Design Image ── */
@@ -278,6 +308,19 @@ export function renderWebOfLifePage(): string {
     <h1>The <em>Web of Life</em><br>is not a metaphor.</h1>
     <p class="hero-sub">The meditating figure at the center of that web — that's you. And the web is real.</p>
   </section>
+
+  <!-- Video Embed (shown only when a video is assigned) -->
+  ${videoUrl ? `
+  <section class="video-section fade-up fade-up-3">
+    <div class="video-wrapper">
+      ${videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')
+        ? `<iframe src="${videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}?autoplay=0&rel=0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+        : `<video src="${videoUrl}" controls playsinline preload="metadata"></video>`
+      }
+    </div>
+    <p class="video-caption">Watch before you scroll — this is the context for everything below.</p>
+  </section>
+  ` : ''}
 
   <!-- Design Image -->
   <div class="design-section fade-up fade-up-3">

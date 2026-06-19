@@ -2357,3 +2357,23 @@ export const emailSequences = mysqlTable("email_sequences", {
   createdAt: bigint("es_created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("es_updated_at", { mode: "number" }).notNull(),
 });
+
+// ─── QR Designs ───────────────────────────────────────────────────────────────
+// Each merchandise design that has a QR code embedded in it.
+// The slug maps to the landing page route (e.g. "weboflife" → /weboflife).
+export const qrDesigns = mysqlTable("qr_designs", {
+  id: int("id").primaryKey().autoincrement(),
+  slug: varchar("slug", { length: 128 }).notNull().unique(),
+  label: varchar("label", { length: 256 }).notNull(),
+  landingPageUrl: text("landing_page_url").notNull(),
+  videoUrl: text("video_url"),          // assigned after video production completes
+  videoJobId: int("video_job_id"),      // FK → video_jobs.id (nullable)
+  scriptText: text("script_text"),      // the 2-min script used to produce the video
+  scriptTitle: varchar("script_title", { length: 256 }),
+  theme: text("theme"),                 // the theme input from the QR Generator
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type QrDesign = typeof qrDesigns.$inferSelect;
+export type InsertQrDesign = typeof qrDesigns.$inferInsert;

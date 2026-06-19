@@ -111,14 +111,14 @@ export interface SendEmailResult {
 }
 
 /**
- * Send an outreach email from alyzza@theurbanmonk.com on behalf of Dr. Pedram Shojai.
- * The From header shows "Dr. Pedram Shojai <alyzza@theurbanmonk.com>" so the name
- * appears as Dr. Pedram Shojai and replies come back to Alyzza's inbox.
+ * Send an outreach email from alyzza@theurbanmonk.com as "The Urban Monk".
+ * The From header shows "The Urban Monk <alyzza@theurbanmonk.com>" so it reads
+ * as the brand and replies come back to Alyzza's inbox.
  */
 export async function sendGmailOutreach(params: SendEmailParams): Promise<SendEmailResult> {
   const gmail = getGmailClient();
 
-  const fromName = "Dr. Pedram Shojai";
+  const fromName = "The Urban Monk";
   const fromEmail = "alyzza@theurbanmonk.com";
 
   // Build RFC 2822 email

@@ -93,11 +93,10 @@ function StatusBadge({ status }: { status: Lead["status"] }) {
 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
 
-function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
+function LeadCard({ lead, onRefresh, onOpenEmailSequence }: { lead: Lead; onRefresh: () => void; onOpenEmailSequence?: (lead: Lead) => void }) {
   const [showNotes, setShowNotes] = useState(false);
   const [noteText, setNoteText] = useState(lead.notes ?? "");
   const [showEmailFinder, setShowEmailFinder] = useState(false);
-  const [showEmailSequence, setShowEmailSequence] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [domain, setDomain] = useState("");
@@ -306,7 +305,7 @@ function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
               size="sm"
               variant="outline"
               className="text-xs h-7 text-indigo-700 border-indigo-300 hover:bg-indigo-50"
-              onClick={() => setShowEmailSequence(true)}
+              onClick={() => onOpenEmailSequence ? onOpenEmailSequence(lead) : undefined}
             >
               <Sparkles className="w-3 h-3 mr-1" />
               Email Sequence
@@ -359,12 +358,6 @@ function LeadCard({ lead, onRefresh }: { lead: Lead; onRefresh: () => void }) {
           {new Date(lead.createdAt).toLocaleDateString()}
         </span>
       </div>
-      {showEmailSequence && (
-        <EmailSequenceModal
-          lead={lead}
-          onClose={() => setShowEmailSequence(false)}
-        />
-      )}
     </div>
   );
 }
@@ -830,7 +823,7 @@ function ApolloSearchTab() {
             </div>
           ) : (
             savedLeads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} onRefresh={refetchSaved} />
+              <LeadCard key={lead.id} lead={lead} onRefresh={refetchSaved} onOpenEmailSequence={setSequenceApolloLead} />
             ))
           )}
           {savedTotalPages > 1 && (
@@ -845,6 +838,14 @@ function ApolloSearchTab() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Email Sequence Modal for Apollo leads — lifted outside list divs so refetches can't close it */}
+      {sequenceApolloLead && (
+        <EmailSequenceModal
+          lead={sequenceApolloLead}
+          onClose={() => setSequenceApolloLead(null)}
+        />
       )}
 
       {/* Latest search results — in-memory, shown immediately after search */}
@@ -909,14 +910,6 @@ function ApolloSearchTab() {
             </div>
           ))}
 
-          {/* Email Sequence Modal for Apollo leads */}
-          {sequenceApolloLead && (
-            <EmailSequenceModal
-              lead={sequenceApolloLead}
-              onClose={() => setSequenceApolloLead(null)}
-            />
-          )}
-
           {/* Pagination */}
           <div className="flex items-center justify-between pt-2">
             <Button variant="outline" size="sm" onClick={() => handleSearch(page - 1)} disabled={page <= 1 || search.isPending}>
@@ -939,6 +932,8 @@ function LeadsList({ source }: { source: "reddit" | "youtube" | "all" }) {
   const [statusFilter, setStatusFilter] = useState<"active" | "archived">("active");
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  // Lifted modal state — lives outside LeadCard so refetches can't close it
+  const [sequenceLead, setSequenceLead] = useState<Lead | null>(null);
 
   const { data, isLoading, refetch } = trpc.leadScrubber.listLeads.useQuery({
     source,
@@ -1029,7 +1024,7 @@ function LeadsList({ source }: { source: "reddit" | "youtube" | "all" }) {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {leads.map((lead) => (
-            <LeadCard key={lead.id} lead={lead} onRefresh={refetch} />
+            <LeadCard key={lead.id} lead={lead} onRefresh={refetch} onOpenEmailSequence={setSequenceLead} />
           ))}
         </div>
       )}
@@ -1045,6 +1040,14 @@ function LeadsList({ source }: { source: "reddit" | "youtube" | "all" }) {
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
+      )}
+
+      {/* Email Sequence Modal — lifted here so list refetches don't unmount it */}
+      {sequenceLead && (
+        <EmailSequenceModal
+          lead={sequenceLead}
+          onClose={() => setSequenceLead(null)}
+        />
       )}
     </div>
   );
@@ -1176,7 +1179,7 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
   };
 
   return (
-    <Dialog open onOpenChange={() => onClose()}>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

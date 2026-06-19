@@ -66,6 +66,7 @@ import {
   Megaphone,
   UserSearch,
   QrCode,
+  Mail,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -111,6 +112,7 @@ const landingPagesItems = [
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
   { icon: Layout, label: "CH Landing Pages", path: "/ch-pages" },
   { icon: QrCode, label: "QR Generator", path: "/qr-generator" },
+  { icon: Mail, label: "Email Optimizer", path: "/email-optimizer" },
 ];
 
 const landingPagesPaths = new Set(landingPagesItems.map((i) => i.path));

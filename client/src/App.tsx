@@ -57,6 +57,7 @@ const SyndicationQueue = lazy(() => import("./pages/SyndicationQueue"));
 const VADashboard = lazy(() => import("./pages/VADashboard"));
 const AdsManager = lazy(() => import("./pages/AdsManager"));
 const LeadScrubber = lazy(() => import("./pages/LeadScrubber"));
+const EmailOptimizer = lazy(() => import("./pages/EmailOptimizer"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -121,6 +122,7 @@ function Router() {
         <Route path={"/va"} component={VADashboard} />
         <Route path={"/ads"} component={AdsManager} />
         <Route path={"/lead-scrubber"} component={LeadScrubber} />
+        <Route path={"/email-optimizer"} component={EmailOptimizer} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

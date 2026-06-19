@@ -119,6 +119,7 @@ import { metaAdsRouter } from "./metaAdsRouter";
 import { leadScrubberRouter } from "./leadScrubberRouter";
 import { emailSequenceRouter } from "./emailSequenceRouter";
 import { qrGeneratorRouter } from "./qrGeneratorRouter";
+import { emailOptimizerRouter } from "./emailOptimizerRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -473,6 +474,7 @@ export const appRouter = router({
   leadScrubber: leadScrubberRouter,
   emailSequence: emailSequenceRouter,
   qrGenerator: qrGeneratorRouter,
+  emailOptimizer: emailOptimizerRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

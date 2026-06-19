@@ -146,15 +146,70 @@ Return JSON: { "id": <number> }`;
       const recipientCompany = input.leadCompany ? ` at ${input.leadCompany}` : "";
 
       // ── Step 4: Generate Emails 2 & 3 (Email 1 comes from Content Hub) ────
+      // Build category-specific resource links for Email 2
+      const categoryLinks: Record<string, { label: string; url: string }[]> = {
+        gut_health: [
+          { label: "The Gut-Brain Connection (YouTube)", url: "https://www.youtube.com/@PedramShojai" },
+          { label: "Urban Monk Nutrition Guide", url: "https://theurbanmonk.com/resources/" },
+        ],
+        oral_health: [
+          { label: "Oral Health & the Microbiome (YouTube)", url: "https://www.youtube.com/@PedramShojai" },
+          { label: "Urban Monk Health Resources", url: "https://theurbanmonk.com/resources/" },
+        ],
+        meditation: [
+          { label: "Morning Meditation Practice (YouTube)", url: "https://www.youtube.com/@PedramShojai" },
+          { label: "Urban Monk Meditation Resources", url: "https://theurbanmonk.com/resources/" },
+        ],
+        stress: [
+          { label: "Stress & the Nervous System (YouTube)", url: "https://www.youtube.com/@PedramShojai" },
+          { label: "Urban Monk Stress Resources", url: "https://theurbanmonk.com/resources/" },
+        ],
+        burnout: [
+          { label: "Burnout Recovery Framework (YouTube)", url: "https://www.youtube.com/@PedramShojai" },
+          { label: "Urban Monk Energy Resources", url: "https://theurbanmonk.com/resources/" },
+        ],
+        longevity: [
+          { label: "Longevity & Healthy Aging (YouTube)", url: "https://www.youtube.com/@PedramShojai" },
+          { label: "Urban Monk Longevity Resources", url: "https://theurbanmonk.com/resources/" },
+        ],
+        supplements: [
+          { label: "Adaptogens & Natural Supplements (YouTube)", url: "https://www.youtube.com/@PedramShojai" },
+          { label: "Urban Monk Supplement Guide", url: "https://theurbanmonk.com/resources/" },
+        ],
+        ancient_wisdom: [
+          { label: "Daoist Philosophy for Modern Life (YouTube)", url: "https://www.youtube.com/@PedramShojai" },
+          { label: "Urban Monk Ancient Wisdom Resources", url: "https://theurbanmonk.com/resources/" },
+        ],
+      };
+
+      const catKey = input.category ?? "health";
+      const resourceLinks = categoryLinks[catKey] ?? [
+        { label: "Urban Monk YouTube Channel", url: "https://www.youtube.com/@PedramShojai" },
+        { label: "Urban Monk Resources", url: "https://theurbanmonk.com/resources/" },
+      ];
+
+      const resourceLinkBlock = resourceLinks
+        .map((r) => `- ${r.label}: ${r.url}`)
+        .join("\n");
+
       const systemPrompt = `You are Dr. Pedram Shojai — a doctor of Oriental Medicine, Daoist monk, filmmaker, and bestselling author of "The Urban Monk" and "Work Pray Code." You write warm, genuine, non-salesy emails that lead with value. Your voice is: knowledgeable but accessible, grounded in ancient wisdom and modern science, never pushy, always authentic.
 
 CRITICAL RULES:
 - Always spell "Daoist" and "Daoism" with a D (never Taoist/Taoism)
 - Emails are FROM Dr. Pedram Shojai, signed as "Pedram" or "Dr. Pedram"
-- Email 2: Natural follow-up to Email 1 — reference the theme from Email 1, share a specific Urban Monk resource (article, video, or guide). Still no hard pitch. 150-250 words.
-- Email 3: Gentle, authentic invitation to Urban Monk Academy ($297/year). Frame it as an invitation, not a sale. Reference the journey from Emails 1 & 2. 150-250 words.
+- NEVER use placeholder text like [Link to...] or [Insert URL] — always use the EXACT real URLs provided below
+- Email 2: Natural follow-up to Email 1 — reference the theme, share ONE of the real resource links below. Still no hard pitch. 150-250 words.
+- Email 3: Gentle, authentic invitation to Urban Monk Academy ($297/year) — use this exact link: https://theurbanmonk.com/academy/ — Frame it as an invitation, not a sale. Reference the journey from Emails 1 & 2. 150-250 words.
 - Subject lines should be personal and curiosity-driven, not clickbait
-- Respond ONLY with valid JSON. No markdown fences.`;
+- Respond ONLY with valid JSON. No markdown fences.
+
+REAL RESOURCE LINKS TO USE IN EMAIL 2 (pick the most relevant one):
+${resourceLinkBlock}
+
+ACADEMY LINK FOR EMAIL 3: https://theurbanmonk.com/academy/
+YOUTUBE CHANNEL: https://www.youtube.com/@PedramShojai
+MAIN WEBSITE: https://theurbanmonk.com/
+PODCAST: https://theurbanmonk.com/podcast/`;
 
       const email1Preview = chosenEmail
         ? `"${chosenEmail.title}" — ${chosenEmail.body.slice(0, 300)}...`

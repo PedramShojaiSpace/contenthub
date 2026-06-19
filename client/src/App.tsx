@@ -46,6 +46,7 @@ const CompetitiveIntelligence = lazy(() => import("./pages/CompetitiveIntelligen
 const KeywordStrategy = lazy(() => import("./pages/KeywordStrategy"));
 const Scoreboard = lazy(() => import("./pages/Scoreboard"));
 const LandingPageBuilder = lazy(() => import("./pages/LandingPageBuilder"));
+const QrGenerator = lazy(() => import("./pages/QrGenerator"));
 const BacklinkOutreach = lazy(() => import("./pages/BacklinkOutreach"));
 const VideoToBlog = lazy(() => import("./pages/VideoToBlog"));
 const BlogToYoutube = lazy(() => import("./pages/BlogToYoutube"));
@@ -109,6 +110,7 @@ function Router() {
         <Route path={"/competitive-intelligence"} component={CompetitiveIntelligence} />
         <Route path={"/keyword-strategy"} component={KeywordStrategy} />
         <Route path={"/ch-pages"} component={LandingPageBuilder} />
+        <Route path={"/qr-generator"} component={QrGenerator} />
         <Route path={"/backlink-outreach"} component={BacklinkOutreach} />
         <Route path={"/video-to-blog"} component={VideoToBlog} />
         <Route path={"/blog-to-youtube"} component={BlogToYoutube} />

@@ -65,6 +65,7 @@ import {
   Clock,
   Megaphone,
   UserSearch,
+  QrCode,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -109,6 +110,7 @@ const seoPaths = new Set(seoItems.map((i) => i.path));
 const landingPagesItems = [
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
   { icon: Layout, label: "CH Landing Pages", path: "/ch-pages" },
+  { icon: QrCode, label: "QR Generator", path: "/qr-generator" },
 ];
 
 const landingPagesPaths = new Set(landingPagesItems.map((i) => i.path));

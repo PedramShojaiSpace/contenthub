@@ -20,17 +20,59 @@ import { protectedProcedure, router } from "./_core/trpc";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// ── Reddit OAuth token cache ─────────────────────────────────────────────────
+let _redditToken: string | null = null;
+let _redditTokenExpiry = 0;
+
+async function getRedditToken(): Promise<string | null> {
+  const clientId = process.env.REDDIT_CLIENT_ID;
+  const clientSecret = process.env.REDDIT_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+
+  // Return cached token if still valid (with 60s buffer)
+  if (_redditToken && Date.now() < _redditTokenExpiry - 60_000) return _redditToken;
+
+  try {
+    const res = await fetch("https://www.reddit.com/api/v1/access_token", {
+      method: "POST",
+      headers: {
+        "Authorization": "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "UrbanMonkBot/1.0",
+      },
+      body: "grant_type=client_credentials",
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { access_token?: string; expires_in?: number; error?: string };
+    if (data.error || !data.access_token) return null;
+    _redditToken = data.access_token;
+    _redditTokenExpiry = Date.now() + (data.expires_in ?? 3600) * 1000;
+    return _redditToken;
+  } catch {
+    return null;
+  }
+}
+
 async function searchReddit(
   subreddit: string,
   keywords: Array<{ keyword: string; category: string }>,
   limit: number
 ): Promise<InsertLeadProspect[]> {
+  const token = await getRedditToken();
+  if (!token) {
+    // No OAuth credentials — return empty with a flag
+    return [];
+  }
+
   const results: InsertLeadProspect[] = [];
   for (const kw of keywords) {
     try {
-      const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(kw.keyword)}&restrict_sr=1&sort=new&limit=${limit}&t=week`;
+      const url = `https://oauth.reddit.com/r/${subreddit}/search?q=${encodeURIComponent(kw.keyword)}&restrict_sr=1&sort=new&limit=${limit}&t=week`;
       const res = await fetch(url, {
-        headers: { "User-Agent": "UrbanMonkContentHub/1.0 (research tool)" },
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "User-Agent": "UrbanMonkBot/1.0",
+        },
       });
       if (!res.ok) continue;
       const data = (await res.json()) as {
@@ -238,6 +280,16 @@ export const leadScrubberRouter = router({
 
       if (keywords.length === 0 || subreddits.length === 0) {
         return { saved: 0, scanned: 0, message: "No active keywords or subreddits configured." };
+      }
+
+      // Check for Reddit OAuth credentials
+      if (!process.env.REDDIT_CLIENT_ID || !process.env.REDDIT_CLIENT_SECRET) {
+        return {
+          saved: 0,
+          scanned: 0,
+          message: "Reddit API credentials not configured. Add REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET in Settings → Secrets. Get them at reddit.com/prefs/apps (create a 'script' app).",
+          needsCredentials: true,
+        };
       }
 
       const kwList = keywords.map((k) => ({ keyword: k.keyword, category: k.category }));

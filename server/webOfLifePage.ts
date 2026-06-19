@@ -283,7 +283,7 @@ export function renderWebOfLifePage(): string {
   <div class="design-section fade-up fade-up-3">
     <div class="design-frame">
       <img
-        src="https://cdn.manus.space/manus-storage/web-of-life-design_0dd46268.png"
+        src="https://cdn.manus.space/manus-storage/web-of-life-design_e8895b52.png"
         alt="Web of Life — Urban Monk scientific illustration of a meditating figure at the center of a microbiome web"
         loading="lazy"
       />
@@ -319,9 +319,9 @@ export function renderWebOfLifePage(): string {
   <!-- CTA -->
   <section class="cta-section">
     <p class="cta-label">If this resonates</p>
-    <h2 class="cta-heading">There's more where this came from.</h2>
+    <h2 class="cta-heading">There's more where this came from</h2>
     <p class="cta-body">
-      The Lights On course is Dr. Pedram Shojai's deep dive into the systems that govern your energy, clarity, and longevity — the microbiome, the nervous system, the circadian rhythm, and the practices that bring them into alignment.
+      The Lights On program is Dr. Pedram Shojai's deep dive into the systems that govern your energy, clarity, and longevity — the microbiome, the nervous system, the circadian rhythm, and the practices that bring them into alignment.
     </p>
     <a href="https://lightson.theurbanmonk.com" class="cta-btn" target="_blank" rel="noopener">
       Explore Lights On →
@@ -335,7 +335,7 @@ export function renderWebOfLifePage(): string {
     <p>One of the circular nodes in the illustration is a functional QR code.<br>You found it. That's the point.</p>
     <img
       class="qr-img"
-      src="https://cdn.manus.space/manus-storage/qr-weboflife_6450fd81.png"
+      src="https://cdn.manus.space/manus-storage/qr-weboflife_d86afd85.png"
       alt="Urban Monk QR code — Web of Life"
       loading="lazy"
     />

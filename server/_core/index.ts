@@ -697,6 +697,105 @@ async function startServer() {
     }
   });
 
+
+  // ── Email Sequence Scheduler ──────────────────────────────────────────────
+  // POST /api/scheduled/email-sequence-send — fires hourly, sends queued Emails 2 & 3
+  app.post("/api/scheduled/email-sequence-send", async (req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const { sendGmailOutreach, isGmailAuthorized } = await import("../gmail");
+
+      const db = await getDb();
+      if (!db) return res.json({ ok: true, skipped: "no db" });
+
+      if (!isGmailAuthorized()) {
+        console.warn("[Email Sequence Cron] Gmail not authorized, skipping");
+        return res.json({ ok: true, skipped: "gmail not authorized" });
+      }
+
+      const now = Date.now();
+      let sent2 = 0, sent3 = 0, errors = 0;
+
+      // Fetch sequences with pending Email 2 sends
+      const pending2 = await db.execute(
+        `SELECT id, leadEmail, leadName, email2Subject, email2Body, email1_thread_id
+         FROM email_sequences
+         WHERE email2_send_at IS NOT NULL
+           AND email2_send_at <= ${now}
+           AND email2_sent_at IS NULL
+           AND leadEmail IS NOT NULL
+         LIMIT 50`
+      ) as any;
+
+      const rows2: any[] = Array.isArray(pending2) ? pending2[0] as any[] : [];
+      for (const seq of rows2) {
+        try {
+          const result = await sendGmailOutreach({
+            to: seq.leadEmail,
+            toName: seq.leadName ?? undefined,
+            subject: seq.email2Subject,
+            body: seq.email2Body,
+            threadId: seq.email1_thread_id ?? undefined,
+          });
+          await db.execute(
+            `UPDATE email_sequences SET email2_sent_at = ${now}, email2_thread_id = '${result.threadId}', send_error = NULL, updatedAt = ${now} WHERE id = ${seq.id}`
+          );
+          sent2++;
+        } catch (err: any) {
+          const msg = err?.message ?? "Unknown error";
+          console.error(`[Email Sequence Cron] Email 2 failed for seq ${seq.id}:`, msg);
+          await db.execute(
+            `UPDATE email_sequences SET send_error = ${JSON.stringify(msg)}, updatedAt = ${now} WHERE id = ${seq.id}`
+          );
+          errors++;
+        }
+      }
+
+      // Fetch sequences with pending Email 3 sends
+      const pending3 = await db.execute(
+        `SELECT id, leadEmail, leadName, email3Subject, email3Body, email2_thread_id, email1_thread_id
+         FROM email_sequences
+         WHERE email3_send_at IS NOT NULL
+           AND email3_send_at <= ${now}
+           AND email3_sent_at IS NULL
+           AND leadEmail IS NOT NULL
+         LIMIT 50`
+      ) as any;
+
+      const rows3: any[] = Array.isArray(pending3) ? pending3[0] as any[] : [];
+      for (const seq of rows3) {
+        try {
+          const threadId = seq.email2_thread_id ?? seq.email1_thread_id ?? undefined;
+          const result = await sendGmailOutreach({
+            to: seq.leadEmail,
+            toName: seq.leadName ?? undefined,
+            subject: seq.email3Subject,
+            body: seq.email3Body,
+            threadId,
+          });
+          await db.execute(
+            `UPDATE email_sequences SET email3_sent_at = ${now}, email3_thread_id = '${result.threadId}', status = 'sent', send_error = NULL, updatedAt = ${now} WHERE id = ${seq.id}`
+          );
+          sent3++;
+        } catch (err: any) {
+          const msg = err?.message ?? "Unknown error";
+          console.error(`[Email Sequence Cron] Email 3 failed for seq ${seq.id}:`, msg);
+          await db.execute(
+            `UPDATE email_sequences SET send_error = ${JSON.stringify(msg)}, updatedAt = ${now} WHERE id = ${seq.id}`
+          );
+          errors++;
+        }
+      }
+
+      console.log(`[Email Sequence Cron] Done: email2_sent=${sent2}, email3_sent=${sent3}, errors=${errors}`);
+      res.json({ ok: true, sent2, sent3, errors });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Email Sequence Cron] Fatal error:", msg);
+      res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
+    }
+  });
+
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
   // Campaigns: lo | gut | sleep | webinar

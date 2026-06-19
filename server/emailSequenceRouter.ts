@@ -422,6 +422,78 @@ Return a JSON object with exactly this structure:
       return { success: true };
     }),
 
+  // ── Approve & Send: send Email 1 immediately, queue Emails 2 & 3 ──────────
+  approveAndSend: protectedProcedure
+    .input(z.object({ sequenceId: z.number() }))
+    .mutation(async ({ input }) => {
+      const { sendGmailOutreach, isGmailAuthorized } = await import("./gmail");
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      // Fetch the sequence
+      const rows = await db
+        .select()
+        .from(emailSequences)
+        .where(eq(emailSequences.id, input.sequenceId))
+        .limit(1);
+
+      if (!rows.length) throw new Error("Sequence not found");
+      const seq = rows[0] as any;
+
+      if (!seq.leadEmail) {
+        throw new Error("This lead has no email address. Use Find Email first.");
+      }
+
+      if (!isGmailAuthorized()) {
+        throw new Error("Gmail is not connected. Please connect Gmail in the Backlink Outreach settings.");
+      }
+
+      const now = Date.now();
+      const DAY_MS = 24 * 60 * 60 * 1000;
+
+      // Send Email 1 immediately
+      let email1ThreadId = "";
+      let sendError: string | null = null;
+
+      try {
+        const result = await sendGmailOutreach({
+          to: seq.leadEmail,
+          toName: seq.leadName ?? undefined,
+          subject: seq.email1Subject,
+          body: seq.email1Body,
+        });
+        email1ThreadId = result.threadId;
+      } catch (err: any) {
+        sendError = err?.message ?? "Unknown error sending Email 1";
+        await db
+          .update(emailSequences)
+          .set({ send_error: sendError, updatedAt: now } as any)
+          .where(eq(emailSequences.id, input.sequenceId));
+        throw new Error(`Failed to send Email 1: ${sendError}`);
+      }
+
+      // Queue Emails 2 & 3 with scheduled send times
+      await db
+        .update(emailSequences)
+        .set({
+          status: "approved",
+          email1_sent_at: now,
+          email1_thread_id: email1ThreadId,
+          email2_send_at: now + 3 * DAY_MS,
+          email3_send_at: now + 7 * DAY_MS,
+          send_error: null,
+          updatedAt: now,
+        } as any)
+        .where(eq(emailSequences.id, input.sequenceId));
+
+      return {
+        success: true,
+        email1Sent: true,
+        email2ScheduledAt: now + 3 * DAY_MS,
+        email3ScheduledAt: now + 7 * DAY_MS,
+      };
+    }),
+
   deleteEmailSequence: protectedProcedure
     .input(z.object({ sequenceId: z.number() }))
     .mutation(async ({ input }) => {

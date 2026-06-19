@@ -1106,6 +1106,19 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
     onError: (e) => toast.error(`Status update failed: ${e.message}`),
   });
 
+  const approveAndSendMutation = trpc.emailSequence.approveAndSend.useMutation({
+    onSuccess: (data) => {
+      setSequenceStatus("approved");
+      const d2 = new Date(data.email2ScheduledAt);
+      const d3 = new Date(data.email3ScheduledAt);
+      toast.success(
+        `✅ Email 1 sent! Email 2 queued for ${d2.toLocaleDateString()}, Email 3 for ${d3.toLocaleDateString()}.`,
+        { duration: 6000 }
+      );
+    },
+    onError: (e) => toast.error(`Send failed: ${e.message}`, { duration: 8000 }),
+  });
+
   // Load existing sequence on mount (only for real DB leads, not Apollo temp leads)
   const { data: existingSeqs } = trpc.emailSequence.getEmailSequences.useQuery(
     { leadId: lead.id > 0 ? lead.id : undefined },
@@ -1167,6 +1180,33 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
   const handleApprove = () => {
     if (!sequenceId) return;
     statusMutation.mutate({ sequenceId, status: "approved" });
+  };
+
+  const handleApproveAndSend = () => {
+    if (!sequenceId) return;
+    if (!lead.emailFound) {
+      toast.error("No email address found for this lead. Use Find Email first.");
+      return;
+    }
+    // Save latest edits first, then send
+    if (drafts) {
+      saveMutation.mutate(
+        {
+          sequenceId,
+          email1Subject: drafts.email1.subject,
+          email1Body: drafts.email1.body,
+          email2Subject: drafts.email2.subject,
+          email2Body: drafts.email2.body,
+          email3Subject: drafts.email3.subject,
+          email3Body: drafts.email3.body,
+        },
+        {
+          onSuccess: () => approveAndSendMutation.mutate({ sequenceId: sequenceId! }),
+        }
+      );
+    } else {
+      approveAndSendMutation.mutate({ sequenceId });
+    }
   };
 
   const currentDraft = drafts ? drafts[`email${activeEmail}`] : null;
@@ -1336,12 +1376,21 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
                 </button>
                 {sequenceStatus === "draft" && (
                   <button
-                    onClick={handleApprove}
-                    disabled={statusMutation.isPending || !sequenceId}
+                    onClick={handleApproveAndSend}
+                    disabled={approveAndSendMutation.isPending || saveMutation.isPending || !sequenceId}
                     className="flex-1 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50"
                   >
-                    {statusMutation.isPending ? "Approving..." : "✓ Approve Sequence"}
+                    {approveAndSendMutation.isPending || saveMutation.isPending
+                      ? "Sending Email 1..."
+                      : lead.emailFound
+                        ? "✉ Approve & Send"
+                        : "✓ Approve (Find Email to Send)"}
                   </button>
+                )}
+                {sequenceStatus === "approved" && (
+                  <div className="flex-1 text-center text-xs text-green-700 bg-green-50 rounded-lg py-2 px-3">
+                    ✅ Email 1 sent · Email 2 &amp; 3 queued automatically
+                  </div>
                 )}
                 {sequenceStatus === "approved" && lead.emailFound && (
                   <KajabiPushButton

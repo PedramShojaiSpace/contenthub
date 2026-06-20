@@ -84,6 +84,7 @@ const topNavItems = [
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
   { icon: Clock, label: "Review Queue", path: "/review-queue" },
+  { icon: Mail, label: "Email Optimizer", path: "/email-optimizer" },
 ];
 
 // Libraries sub-items
@@ -112,7 +113,6 @@ const landingPagesItems = [
   { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
   { icon: Layout, label: "CH Landing Pages", path: "/ch-pages" },
   { icon: QrCode, label: "QR Generator", path: "/qr-generator" },
-  { icon: Mail, label: "Email Optimizer", path: "/email-optimizer" },
 ];
 
 const landingPagesPaths = new Set(landingPagesItems.map((i) => i.path));

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MetaAdPushTab } from "@/components/MetaAdPushTab";
 import {
   AlertTriangle,
   TrendingUp,
@@ -35,6 +36,7 @@ import {
   Clapperboard,
   Copy,
   Check,
+  Send,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -214,6 +216,10 @@ export default function AdsManager() {
           <TabsTrigger value="optimizer" className="gap-1.5">
             <BarChart2 className="w-3.5 h-3.5" />
             Optimizer
+          </TabsTrigger>
+          <TabsTrigger value="pushtometa" className="gap-1.5">
+            <Send className="w-3.5 h-3.5" />
+            Push to Meta
           </TabsTrigger>
           <TabsTrigger value="digest" className="gap-1.5">
             <Activity className="w-3.5 h-3.5" />
@@ -512,6 +518,11 @@ export default function AdsManager() {
                 {/* ── Optimizer Tab (Phase 3) ────────────────────────────────────────────── */}
         <TabsContent value="optimizer" className="space-y-4 mt-4">
           <OptimizerTab />
+        </TabsContent>
+
+        {/* ── Push to Meta Tab ────────────────────────────────────────────────────── */}
+        <TabsContent value="pushtometa" className="space-y-4 mt-4">
+          <MetaAdPushTab />
         </TabsContent>
 
         {/* ── Weekly Digest Tab (Phase 3) ────────────────────────────────────────── */}

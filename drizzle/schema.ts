@@ -2377,3 +2377,29 @@ export const qrDesigns = mysqlTable("qr_designs", {
 
 export type QrDesign = typeof qrDesigns.$inferSelect;
 export type InsertQrDesign = typeof qrDesigns.$inferInsert;
+
+// ─── Meta Ad Push History ─────────────────────────────────────────────────────
+// Tracks every time a campaign batch is pushed to Meta from the Content Hub.
+export const metaAdPushes = mysqlTable("meta_ad_pushes", {
+  id: int("map_id").autoincrement().primaryKey(),
+  batchName: varchar("map_batch_name", { length: 256 }).notNull(),
+  variantSlug: varchar("map_variant_slug", { length: 64 }).notNull(),
+  adName: varchar("map_ad_name", { length: 256 }).notNull(),
+  imageFile: varchar("map_image_file", { length: 256 }).notNull(),
+  imageHash: varchar("map_image_hash", { length: 64 }).notNull(),
+  headline: text("map_headline").notNull(),
+  primaryText: longtext("map_primary_text").notNull(),
+  description: text("map_description"),
+  cta: varchar("map_cta", { length: 64 }).notNull().default("LEARN_MORE"),
+  landingUrl: text("map_landing_url").notNull(),
+  metaCampaignId: varchar("map_campaign_id", { length: 64 }),
+  metaAdSetId: varchar("map_adset_id", { length: 64 }),
+  metaCreativeId: varchar("map_creative_id", { length: 64 }),
+  metaAdId: varchar("map_ad_id", { length: 64 }),
+  status: mysqlEnum("map_status", ["pending", "pushed", "failed"]).notNull().default("pending"),
+  errorMessage: text("map_error"),
+  pushedAt: bigint("map_pushed_at", { mode: "number" }),
+  createdAt: timestamp("map_created_at").defaultNow().notNull(),
+});
+export type MetaAdPush = typeof metaAdPushes.$inferSelect;
+export type InsertMetaAdPush = typeof metaAdPushes.$inferInsert;

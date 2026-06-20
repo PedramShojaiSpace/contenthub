@@ -291,6 +291,47 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
 export { optimizeEmailHtml as optimizeEmailHtmlPublic };
 
 export const emailOptimizerRouter = router({
+  /** Bulk optimize multiple sequence emails at once */
+  bulkOptimize: protectedProcedure
+    .input(
+      z.object({
+        emails: z.array(
+          z.object({
+            label: z.string().min(1).max(200),
+            html: z.string().min(10).max(500_000),
+          })
+        ).min(1).max(50),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const results = await Promise.all(
+        input.emails.map(async (email) => {
+          try {
+            const result = await optimizeEmailHtml(email.html);
+            return {
+              label: email.label,
+              success: true,
+              ...result,
+              error: null,
+            };
+          } catch (err) {
+            return {
+              label: email.label,
+              success: false,
+              optimizedHtml: email.html,
+              originalBytes: Buffer.byteLength(email.html, "utf8"),
+              optimizedBytes: Buffer.byteLength(email.html, "utf8"),
+              reductionPercent: 0,
+              changes: [],
+              spamScore: { before: 0, after: 0, signals: [] },
+              error: err instanceof Error ? err.message : "Unknown error",
+            };
+          }
+        })
+      );
+      return { results };
+    }),
+
   /** Optimize raw HTML pasted by the user */
   optimizeHtml: protectedProcedure
     .input(

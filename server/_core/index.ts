@@ -856,6 +856,52 @@ async function startServer() {
     }
   });
 
+  // ── Email Optimizer Bookmarklet Endpoint ────────────────────────────────────
+  // Public endpoint called from a JavaScript bookmarklet running on app.kajabi.com.
+  // Accepts raw HTML, runs the optimization pipeline, returns optimized HTML + stats.
+  // CORS is explicitly allowed for kajabi.com origins so the bookmarklet can POST.
+  app.options("/api/email-optimizer/optimize", (req, res) => {
+    const origin = req.headers.origin || "";
+    const allowed = origin.includes("kajabi.com") || origin.includes("theurbanmonk.com") || origin.includes("localhost");
+    if (allowed) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Optimizer-Key");
+      res.setHeader("Access-Control-Max-Age", "86400");
+    }
+    res.status(204).end();
+  });
+  app.post("/api/email-optimizer/optimize", express.json({ limit: "2mb" }), async (req, res) => {
+    const origin = req.headers.origin || "";
+    const allowed = origin.includes("kajabi.com") || origin.includes("theurbanmonk.com") || origin.includes("localhost");
+    if (allowed) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "false");
+    }
+    // Validate shared key (prevents abuse from random callers)
+    const key = req.headers["x-optimizer-key"] || req.body?.key;
+    const expectedKey = process.env.INGEST_SECRET || "urban-monk-optimizer";
+    if (key !== expectedKey) {
+      return res.status(401).json({ error: "Invalid optimizer key" });
+    }
+    const html = req.body?.html;
+    if (!html || typeof html !== "string" || html.length < 10) {
+      return res.status(400).json({ error: "Missing or invalid html field" });
+    }
+    if (html.length > 500_000) {
+      return res.status(413).json({ error: "HTML too large (max 500KB)" });
+    }
+    try {
+      const { optimizeEmailHtmlPublic } = await import("../emailOptimizerRouter");
+      const result = await optimizeEmailHtmlPublic(html);
+      return res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[email-optimizer] Error:", msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

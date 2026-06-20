@@ -287,6 +287,9 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
   };
 }
 
+// Exported for use by the public bookmarklet endpoint in index.ts
+export { optimizeEmailHtml as optimizeEmailHtmlPublic };
+
 export const emailOptimizerRouter = router({
   /** Optimize raw HTML pasted by the user */
   optimizeHtml: protectedProcedure

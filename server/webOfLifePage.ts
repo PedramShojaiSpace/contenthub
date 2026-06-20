@@ -298,7 +298,7 @@ export function renderWebOfLifePage(videoUrl?: string | null): string {
   <!-- Header -->
   <header class="header fade-up">
     <a href="https://theurbanmonk.com" target="_blank" rel="noopener">
-      <img src="https://cdn.manus.space/manus-storage/logo-yang_f6cf1550.png" alt="The Urban Monk" />
+      <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/weboflife/logo-yang.png" alt="The Urban Monk" />
     </a>
   </header>
 
@@ -326,7 +326,7 @@ export function renderWebOfLifePage(videoUrl?: string | null): string {
   <div class="design-section fade-up fade-up-3">
     <div class="design-frame">
       <img
-        src="https://cdn.manus.space/manus-storage/web-of-life-design_e8895b52.png"
+        src="https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/weboflife/web-of-life-design.webp"
         alt="Web of Life — Urban Monk scientific illustration of a meditating figure at the center of a microbiome web"
         loading="lazy"
       />
@@ -378,7 +378,7 @@ export function renderWebOfLifePage(videoUrl?: string | null): string {
     <p>One of the circular nodes in the illustration is a functional QR code.<br>You found it. That's the point.</p>
     <img
       class="qr-img"
-      src="https://cdn.manus.space/manus-storage/qr-weboflife_d86afd85.png"
+      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/weboflife/qr-weboflife.png"
       alt="Urban Monk QR code — Web of Life"
       loading="lazy"
     />

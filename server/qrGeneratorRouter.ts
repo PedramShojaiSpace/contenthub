@@ -5,12 +5,11 @@
  * Also provides video script generation and production pipeline integration.
  */
 
-import { exec } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import * as os from "os";
-import { promisify } from "util";
 import { fileURLToPath } from "url";
+import QRCode from "qrcode";
+import sharp from "sharp";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -19,14 +18,11 @@ import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
 import { qrDesigns } from "../drizzle/schema";
 
-const execAsync = promisify(exec);
-
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirnameESM = path.dirname(__filename);
 
 const ICON_PATH = path.resolve(__dirnameESM, "./assets/urban_monk_icon.png");
-const SCRIPT_PATH = path.resolve(__dirnameESM, "../../skills/qr-generator/urban_monk_qr_generator.py");
 
 export const qrGeneratorRouter = router({
   /**
@@ -172,6 +168,7 @@ Write the video script now.`;
 
   /**
    * Generate a branded Urban Monk QR code PNG and return a download URL.
+   * Pure Node.js implementation using qrcode + sharp — works in production.
    */
   generate: protectedProcedure
     .input(
@@ -187,48 +184,35 @@ Write the video script now.`;
       // Sanitize label for use as filename
       const safeLabel = label.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
       const timestamp = Date.now();
-      const tmpFile = path.join(os.tmpdir(), `qr_${safeLabel}_${timestamp}.png`);
 
-      // Check if the Python script exists
-      if (!fs.existsSync(SCRIPT_PATH)) {
-        throw new Error(
-          `QR generator script not found at ${SCRIPT_PATH}. Ensure the skills/qr-generator directory is present.`
-        );
+      // Generate QR code as PNG buffer (high error correction for icon overlay)
+      const qrBuffer = await QRCode.toBuffer(url, {
+        errorCorrectionLevel: "H",
+        type: "png",
+        width: size,
+        margin: 2,
+        color: { dark: "#1a1a18", light: "#ffffff" },
+      });
+
+      // Overlay Urban Monk icon in the center (if icon exists)
+      let fileBuffer: Buffer;
+      if (fs.existsSync(ICON_PATH)) {
+        const iconSize = Math.round(size * 0.22); // 22% of QR size
+        const iconResized = await sharp(fs.readFileSync(ICON_PATH))
+          .resize(iconSize, iconSize, {
+            fit: "contain",
+            background: { r: 255, g: 255, b: 255, alpha: 1 },
+          })
+          .png()
+          .toBuffer();
+
+        fileBuffer = await sharp(qrBuffer)
+          .composite([{ input: iconResized, gravity: "center" }])
+          .png()
+          .toBuffer();
+      } else {
+        fileBuffer = qrBuffer;
       }
-
-      // Check if the icon exists
-      if (!fs.existsSync(ICON_PATH)) {
-        throw new Error(
-          `Urban Monk icon not found at ${ICON_PATH}. Ensure server/assets/urban_monk_icon.png is present.`
-        );
-      }
-
-      // Run the Python QR generator
-      const cmd = `python3 "${SCRIPT_PATH}" --url "${url}" --output "${tmpFile}" --size ${size} --icon "${ICON_PATH}"`;
-      try {
-        await execAsync(cmd, { timeout: 60_000 });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        // Try to install dependencies if missing
-        if (msg.includes("ModuleNotFoundError") || msg.includes("No module named")) {
-          try {
-            await execAsync("pip3 install qrcode[pil] pillow --quiet", { timeout: 120_000 });
-            await execAsync(cmd, { timeout: 60_000 });
-          } catch (err2) {
-            throw new Error(`QR generation failed: ${err2 instanceof Error ? err2.message : String(err2)}`);
-          }
-        } else {
-          throw new Error(`QR generation failed: ${msg}`);
-        }
-      }
-
-      // Read the generated file
-      if (!fs.existsSync(tmpFile)) {
-        throw new Error("QR generator ran but produced no output file.");
-      }
-
-      const fileBuffer = fs.readFileSync(tmpFile);
-      fs.unlinkSync(tmpFile); // clean up temp file
 
       // Upload to S3
       const s3Key = `qr-codes/${safeLabel}_${timestamp}.png`;

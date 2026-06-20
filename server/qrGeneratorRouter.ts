@@ -25,7 +25,7 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirnameESM = path.dirname(__filename);
 
-const ICON_PATH = path.resolve(__dirnameESM, "../assets/urban_monk_icon.png");
+const ICON_PATH = path.resolve(__dirnameESM, "./assets/urban_monk_icon.png");
 const SCRIPT_PATH = path.resolve(__dirnameESM, "../../skills/qr-generator/urban_monk_qr_generator.py");
 
 export const qrGeneratorRouter = router({

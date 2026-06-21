@@ -701,6 +701,10 @@ async function startServer() {
   // ── Email Sequence Scheduler ──────────────────────────────────────────────
   // POST /api/scheduled/email-sequence-send — fires hourly, sends queued Emails 2 & 3
   app.post("/api/scheduled/email-sequence-send", async (req, res) => {
+    // Only allow calls from the Manus cron platform
+    if (!req.headers["x-manus-cron-task-uid"]) {
+      return res.status(403).json({ ok: false, error: "Forbidden: cron callers only" });
+    }
     try {
       const { getDb } = await import("../db");
       const { sendGmailOutreach, isGmailAuthorized } = await import("../gmail");

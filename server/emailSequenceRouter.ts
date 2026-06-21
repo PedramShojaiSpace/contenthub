@@ -424,7 +424,7 @@ Return a JSON object with exactly this structure:
 
   // ── Approve & Send: send Email 1 immediately, queue Emails 2 & 3 ──────────
   approveAndSend: protectedProcedure
-    .input(z.object({ sequenceId: z.number() }))
+    .input(z.object({ sequenceId: z.number(), overrideEmail: z.string().email().optional() }))
     .mutation(async ({ input }) => {
       const { sendGmailOutreach, isGmailAuthorized } = await import("./gmail");
       const db = await getDb();
@@ -440,7 +440,9 @@ Return a JSON object with exactly this structure:
       if (!rows.length) throw new Error("Sequence not found");
       const seq = rows[0] as any;
 
-      if (!seq.leadEmail) {
+      // Allow overrideEmail from the modal (freshly found via Apollo but not yet persisted)
+      const recipientEmail = input.overrideEmail ?? seq.leadEmail;
+      if (!recipientEmail) {
         throw new Error("This lead has no email address. Use Find Email first.");
       }
 
@@ -457,7 +459,7 @@ Return a JSON object with exactly this structure:
 
       try {
         const result = await sendGmailOutreach({
-          to: seq.leadEmail,
+          to: recipientEmail,
           toName: seq.leadName ?? undefined,
           subject: seq.email1Subject,
           body: seq.email1Body,

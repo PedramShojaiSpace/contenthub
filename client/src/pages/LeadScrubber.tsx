@@ -1072,9 +1072,28 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
   const [leadContext, setLeadContext] = useState(lead.body?.slice(0, 300) ?? "");
   const [contentHubEmailId, setContentHubEmailId] = useState<number | undefined>(undefined);
   const [contentHubEmailTitle, setContentHubEmailTitle] = useState<string | null>(null);
+  // Find Email inline state for modal
+  const [showFindEmail, setShowFindEmail] = useState(false);
+  const [findFirstName, setFindFirstName] = useState("");
+  const [findLastName, setFindLastName] = useState("");
+  const [findDomain, setFindDomain] = useState("");
+  const [foundEmail, setFoundEmail] = useState<string | null>(lead.emailFound ?? null);
 
   // Load available Content Hub emails for manual override
   const { data: hubEmails = [] } = trpc.emailSequence.listContentHubEmails.useQuery();
+
+  const findEmailMutation = trpc.leadScrubber.findEmail.useMutation({
+    onSuccess: (data) => {
+      if (data.success && data.email) {
+        setFoundEmail(data.email);
+        setShowFindEmail(false);
+        toast.success(`Email found: ${data.email}`);
+      } else {
+        toast.error(data.message ?? "No email found for this person");
+      }
+    },
+    onError: () => toast.error("Email lookup failed"),
+  });
 
   const generateMutation = trpc.emailSequence.generateEmailSequence.useMutation({
     onSuccess: (data) => {
@@ -1182,9 +1201,9 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
     statusMutation.mutate({ sequenceId, status: "approved" });
   };
 
-  const handleApproveAndSend = () => {
+    const handleApproveAndSend = () => {
     if (!sequenceId) return;
-    if (!lead.emailFound) {
+    if (!foundEmail) {
       toast.error("No email address found for this lead. Use Find Email first.");
       return;
     }
@@ -1201,11 +1220,11 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
           email3Body: drafts.email3.body,
         },
         {
-          onSuccess: () => approveAndSendMutation.mutate({ sequenceId: sequenceId! }),
+          onSuccess: () => approveAndSendMutation.mutate({ sequenceId: sequenceId!, overrideEmail: foundEmail ?? undefined }),
         }
       );
     } else {
-      approveAndSendMutation.mutate({ sequenceId });
+      approveAndSendMutation.mutate({ sequenceId, overrideEmail: foundEmail ?? undefined });
     }
   };
 
@@ -1230,12 +1249,61 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Step 1: Find Email banner — shown when no email is on the lead */}
+          {!foundEmail && sequenceStatus === "draft" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-600 font-bold text-sm">Step 1</span>
+                  <span className="text-sm text-amber-800">Find this lead's email address before sending</span>
+                </div>
+                <button
+                  onClick={() => setShowFindEmail(!showFindEmail)}
+                  className="text-xs font-medium px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg"
+                >
+                  {showFindEmail ? "Cancel" : "Find Email"}
+                </button>
+              </div>
+              {showFindEmail && (
+                <div className="space-y-2 pt-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      placeholder="First name"
+                      value={findFirstName}
+                      onChange={(e) => setFindFirstName(e.target.value)}
+                      className="text-sm border rounded-lg px-3 py-1.5 bg-white"
+                    />
+                    <input
+                      placeholder="Last name"
+                      value={findLastName}
+                      onChange={(e) => setFindLastName(e.target.value)}
+                      className="text-sm border rounded-lg px-3 py-1.5 bg-white"
+                    />
+                  </div>
+                  <input
+                    placeholder="Company domain (e.g. company.com)"
+                    value={findDomain}
+                    onChange={(e) => setFindDomain(e.target.value)}
+                    className="w-full text-sm border rounded-lg px-3 py-1.5 bg-white"
+                  />
+                  <button
+                    onClick={() => findEmailMutation.mutate({ firstName: findFirstName, lastName: findLastName, domain: findDomain, prospectId: lead.id > 0 ? lead.id : undefined })}
+                    disabled={findEmailMutation.isPending || !findFirstName || !findLastName || !findDomain}
+                    className="w-full py-1.5 text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg disabled:opacity-50"
+                  >
+                    {findEmailMutation.isPending ? "Looking up..." : "Look Up Email via Apollo"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Lead context */}
           <div className="bg-gray-50 rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
-              {lead.emailFound && (
+              {foundEmail && (
                 <span className="flex items-center gap-1 text-green-700 font-medium">
-                  <Mail className="w-3 h-3" /> {lead.emailFound}
+                  <Mail className="w-3 h-3" /> {foundEmail}
                 </span>
               )}
               {lead.title && <span className="italic">{lead.title}</span>}
@@ -1376,15 +1444,26 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
                 </button>
                 {sequenceStatus === "draft" && (
                   <button
-                    onClick={handleApproveAndSend}
+                    onClick={() => {
+                      if (!foundEmail) {
+                        setShowFindEmail(true);
+                        toast.error("Step 1: Find this lead's email first (see the yellow banner above)");
+                        return;
+                      }
+                      handleApproveAndSend();
+                    }}
                     disabled={approveAndSendMutation.isPending || saveMutation.isPending || !sequenceId}
-                    className="flex-1 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50"
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg disabled:opacity-50 ${
+                      foundEmail
+                        ? "bg-green-600 hover:bg-green-700 text-white"
+                        : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    }`}
                   >
                     {approveAndSendMutation.isPending || saveMutation.isPending
                       ? "Sending Email 1..."
-                      : lead.emailFound
-                        ? "✉ Approve & Send"
-                        : "✓ Approve (Find Email to Send)"}
+                      : foundEmail
+                        ? "✉ Step 2: Approve & Send Email 1"
+                        : "⚠ Find Email First (Step 1 above)"}
                   </button>
                 )}
                 {sequenceStatus === "approved" && (

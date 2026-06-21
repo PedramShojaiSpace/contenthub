@@ -24,10 +24,23 @@ const BASE_URL = `https://graph.facebook.com/${API_VERSION}`;
 const LANDING_URL = "https://theacademy.theurbanmonk.com/a/2148285846/PpCdamnj";
 const PAGE_ID = process.env.META_PAGE_ID ?? "";
 
+// ─── Ad Catalog Entry Type ──────────────────────────────────────────────────
+interface AdEntry {
+  adId: string;
+  adName: string;
+  imageFile: string;
+  imageHash: string;
+  headline: string;
+  primaryText: string;
+  description: string;
+  cta: string;
+  landingUrl?: string;
+}
+
 // ─── Ad Copy Catalog ──────────────────────────────────────────────────────────
 // All 15 ads: 5 variants × 3 ads each
 // Images are already uploaded to Meta's ad image library
-export const AD_CATALOG = [
+export const AD_CATALOG: Array<{ variantNum: number; variantSlug: string; variantName: string; ads: AdEntry[] }> = [
   // VARIANT 1: /precision — Chronically fatigued, dismissed by conventional medicine
   {
     variantNum: 1,

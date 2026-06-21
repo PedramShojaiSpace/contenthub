@@ -19,11 +19,27 @@ const __dirname = path.dirname(__filename);
 // Absolute path to the Node.js binary that is currently running the server.
 const NODE_BIN = process.execPath;
 
-// tsx loader — use the version already installed in this project
-const TSX_LOADER = path.resolve(
-  __dirname,
-  "../../node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/loader.mjs"
-);
+// tsx loader — dynamically resolve whichever tsx version is installed
+// (avoids breakage when pnpm installs a different patch version)
+function findTsxLoader(): string {
+  const pnpmDir = path.resolve(__dirname, "../../node_modules/.pnpm");
+  const directPath = path.resolve(__dirname, "../../node_modules/tsx/dist/loader.mjs");
+  if (fs.existsSync(directPath)) return directPath;
+  try {
+    const entries = fs.readdirSync(pnpmDir);
+    const tsxEntry = entries
+      .filter(e => e.startsWith("tsx@"))
+      .map(e => path.join(pnpmDir, e, "node_modules", "tsx", "dist", "loader.mjs"))
+      .find(p => fs.existsSync(p));
+    if (tsxEntry) return tsxEntry;
+  } catch (_) { /* pnpm dir not found */ }
+  // Last resort: try require.resolve
+  try {
+    return require.resolve("tsx/dist/loader.mjs", { paths: [path.resolve(__dirname, "../../")] });
+  } catch (_) { /* not resolvable */ }
+  return "";
+}
+const TSX_LOADER = findTsxLoader();
 
 export function spawnUploadWorker(jobId: number): void {
   const workerScript = path.resolve(__dirname, "uploadWorker.ts");

@@ -381,7 +381,8 @@ async function pushAdToMeta(
   variantSlug: string,
   variantName: string,
   accessToken: string,
-  adAccountId: string
+  adAccountId: string,
+  customAudienceId?: string
 ): Promise<{
   campaignId: string;
   adSetId: string;
@@ -420,6 +421,7 @@ async function pushAdToMeta(
         publisher_platforms: ["facebook", "instagram"],
         facebook_positions: ["feed"],
         instagram_positions: ["stream"],
+        ...(customAudienceId ? { custom_audiences: [{ id: customAudienceId }] } : {}),
       }),
       status: "PAUSED",
     },
@@ -492,6 +494,7 @@ export const metaAdPushRouter = router({
         variantSlug: z.string(),
         adId: z.string(),
         batchName: z.string().optional(),
+        customAudienceId: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -531,7 +534,8 @@ export const metaAdPushRouter = router({
           input.variantSlug,
           variant.variantName,
           config.accessToken,
-          config.adAccountId
+          config.adAccountId,
+          input.customAudienceId
         );
 
         // Update DB with success
@@ -579,6 +583,7 @@ export const metaAdPushRouter = router({
       z.object({
         variantSlug: z.string(),
         batchName: z.string().optional(),
+        customAudienceId: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -616,7 +621,8 @@ export const metaAdPushRouter = router({
             input.variantSlug,
             variant.variantName,
             config.accessToken,
-            config.adAccountId
+            config.adAccountId,
+            input.customAudienceId
           );
 
           if (db && pushId) {
@@ -651,7 +657,7 @@ export const metaAdPushRouter = router({
 
   // Push ALL 15 ads across all 5 variants
   pushAllBatches: protectedProcedure
-    .input(z.object({ batchName: z.string().optional() }))
+    .input(z.object({ batchName: z.string().optional(), customAudienceId: z.string().optional() }))
     .mutation(async ({ input }) => {
       const config = getMetaAdsConfig();
       const db = await getDb();
@@ -679,13 +685,14 @@ export const metaAdPushRouter = router({
           }
 
           try {
-            const result = await pushAdToMeta(
-              ad,
-              variant.variantSlug,
-              variant.variantName,
-              config.accessToken,
-              config.adAccountId
-            );
+          const result = await pushAdToMeta(
+            ad,
+            variant.variantSlug,
+            variant.variantName,
+            config.accessToken,
+            config.adAccountId,
+            input.customAudienceId
+          );
 
             if (db && pushId) {
               await db

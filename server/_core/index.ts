@@ -23,6 +23,7 @@ import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import { storagePut } from "../storage";
 import { runStitchingJob } from "../videoVariantRouter";
+import { apolloDailyDrawHandler, apolloAudienceValidationHandler } from "../apolloDailyDrawHandler";
 import { videoVariants } from "../../drizzle/schema";
 import { getDriveAuthUrl, exchangeCodeForTokens, exportVariantsToDrive, isDriveAuthorized } from "../googleDrive";
 import { sdk } from "./sdk";
@@ -799,6 +800,15 @@ async function startServer() {
       res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
     }
   });
+
+  // ── Apollo Daily Lead Draw ─────────────────────────────────────────────────
+  // POST /api/scheduled/apollo-daily-draw — fires daily at 08:00 UTC
+  // Pulls ~133 professional emails/day across 9 health categories → Meta Custom Audiences
+  app.post("/api/scheduled/apollo-daily-draw", apolloDailyDrawHandler);
+
+  // POST /api/scheduled/apollo-audience-validation — fires 48h after first draw
+  // Validates lead counts and Meta Custom Audience sizes, notifies owner
+  app.post("/api/scheduled/apollo-audience-validation", apolloAudienceValidationHandler);
 
   // ── Merchandise QR Landing Pages ─────────────────────────────────────────
   // Each merchandise design has its own landing page at /weboflife, /design2, etc.

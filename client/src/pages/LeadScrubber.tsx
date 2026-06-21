@@ -624,6 +624,9 @@ const URBAN_MONK_PERSONAS = [
   { label: "Biohackers / Longevity", titles: ["biohacker", "longevity coach", "anti-aging specialist"], category: "biohacker" },
   { label: "Stress & Burnout", titles: ["burnout coach", "stress management coach", "executive wellness coach"], category: "burnout" },
   { label: "Nutritionists", titles: ["nutritionist", "dietitian", "holistic nutritionist"], category: "nutritionist" },
+  { label: "Medical Doctors (MDs)", titles: ["physician", "medical doctor", "internal medicine physician", "family medicine physician", "general practitioner", "integrative physician"], category: "medical_doctor" },
+  { label: "Nurses & Nurse Practitioners", titles: ["nurse practitioner", "registered nurse", "nurse", "advanced practice nurse", "clinical nurse specialist", "holistic nurse"], category: "nurse" },
+  { label: "Dentists", titles: ["dentist", "dental surgeon", "holistic dentist", "biological dentist", "oral health practitioner", "periodontist"], category: "dentist" },
 ];
 
 function ApolloSearchTab() {

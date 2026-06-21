@@ -22,9 +22,16 @@ const NODE_BIN = process.execPath;
 // tsx loader — dynamically resolve whichever tsx version is installed
 // (avoids breakage when pnpm installs a different patch version)
 function findTsxLoader(): string {
-  const pnpmDir = path.resolve(__dirname, "../../node_modules/.pnpm");
-  const directPath = path.resolve(__dirname, "../../node_modules/tsx/dist/loader.mjs");
+  // server/ is one level deep inside the project root, so ../node_modules is correct
+  // (../../node_modules would resolve to the parent of the project root — wrong)
+  const projectRoot = path.resolve(__dirname, "..");
+  const directPath = path.join(projectRoot, "node_modules", "tsx", "dist", "loader.mjs");
   if (fs.existsSync(directPath)) return directPath;
+  // Also try process.cwd() as a fallback (reliable in both dev and prod)
+  const cwdPath = path.join(process.cwd(), "node_modules", "tsx", "dist", "loader.mjs");
+  if (fs.existsSync(cwdPath)) return cwdPath;
+  // pnpm virtual store fallback
+  const pnpmDir = path.join(projectRoot, "node_modules", ".pnpm");
   try {
     const entries = fs.readdirSync(pnpmDir);
     const tsxEntry = entries
@@ -33,9 +40,9 @@ function findTsxLoader(): string {
       .find(p => fs.existsSync(p));
     if (tsxEntry) return tsxEntry;
   } catch (_) { /* pnpm dir not found */ }
-  // Last resort: try require.resolve
+  // Last resort: require.resolve from project root
   try {
-    return require.resolve("tsx/dist/loader.mjs", { paths: [path.resolve(__dirname, "../../")] });
+    return require.resolve("tsx/dist/loader.mjs", { paths: [projectRoot] });
   } catch (_) { /* not resolvable */ }
   return "";
 }

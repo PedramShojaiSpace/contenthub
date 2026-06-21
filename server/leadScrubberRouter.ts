@@ -772,6 +772,9 @@ function deriveKajabiTag(category?: string, source?: string): string {
     biohacker:       "Lead - Longevity",
     burnout:         "Lead - Personal Development",
     meditation_teacher: "Lead - Personal Development",
+    medical_doctor:  "Lead - Medical Professional",
+    nurse:           "Lead - Medical Professional",
+    dentist:         "Lead - Medical Professional",
   };
 
   if (category && categoryTagMap[category]) {

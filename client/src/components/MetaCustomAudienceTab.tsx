@@ -33,6 +33,12 @@ const CATEGORIES = [
   { value: "autoimmune", label: "Autoimmune" },
   { value: "biohacking", label: "Biohacking" },
   { value: "longevity", label: "Longevity" },
+  { value: "medical_doctor", label: "Medical Doctors (MDs)" },
+  { value: "nurse", label: "Nurses & Nurse Practitioners" },
+  { value: "dentist", label: "Dentists" },
+  { value: "wellness_coach", label: "Wellness Coaches" },
+  { value: "functional_med", label: "Functional Medicine" },
+  { value: "nutritionist", label: "Nutritionists" },
 ];
 
 export function MetaCustomAudienceTab() {

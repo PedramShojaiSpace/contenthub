@@ -240,11 +240,13 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
               domain: p.domain,
               hasEmail: p.hasEmail,
             });
+            const sourceId = `apollo_${p.apolloId || p.firstName.toLowerCase() + "_" + p.lastName.toLowerCase()}_${now}`;
             await db.execute(
               `INSERT IGNORE INTO lead_prospects
-                (lp_source, title, body, url, author, subredditOrChannel, keywordsMatched, category, lp_status, emailFound, emailConfidence, lp_createdAt, lp_updatedAt)
+                (lp_source, sourceId, title, body, url, author, subredditOrChannel, keywordsMatched, category, lp_status, emailFound, emailConfidence, lp_createdAt, lp_updatedAt)
                VALUES (
                 'apollo',
+                ${JSON.stringify(sourceId)},
                 ${JSON.stringify(p.name + (p.title ? ` — ${p.title}` : ""))},
                 ${JSON.stringify(bodyJson)},
                 ${p.linkedinUrl ? JSON.stringify(p.linkedinUrl) : "NULL"},
@@ -252,7 +254,7 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
                 ${JSON.stringify(p.company ?? cat.label)},
                 ${JSON.stringify(cat.titles.slice(0, 3).join(", "))},
                 ${JSON.stringify(cat.category)},
-                ${p.hasEmail ? "'has_email_flag'" : "'new'"},
+                ${p.email ? "'email_found'" : "'new'"},
                 ${p.email ? JSON.stringify(p.email) : "NULL"},
                 ${p.emailStatus === "verified" ? "'verified'" : p.email ? "'likely'" : "NULL"},
                 ${now},

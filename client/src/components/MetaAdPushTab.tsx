@@ -15,6 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertTriangle,
   CheckCircle2,
   ExternalLink,
@@ -27,6 +34,7 @@ import {
   Clock,
   XCircle,
   Info,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -288,6 +296,7 @@ function PushHistory() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function MetaAdPushTab() {
   const { data: catalog, isLoading } = trpc.metaAdPush.getCatalog.useQuery();
+  const { data: audiencesData } = trpc.metaCustomAudience.listAudiences.useQuery();
   const utils = trpc.useUtils();
 
   // Track per-ad push state
@@ -296,16 +305,21 @@ export function MetaAdPushTab() {
   const [pushingVariant, setPushingVariant] = useState<string | null>(null);
   const [pushingAll, setPushingAll] = useState(false);
   const [devModeError, setDevModeError] = useState(false);
+  const [selectedAudienceId, setSelectedAudienceId] = useState<string>("none");
+
+  const audiences = (audiencesData as any[]) ?? [];
 
   const pushAdMutation = trpc.metaAdPush.pushAd.useMutation();
   const pushVariantMutation = trpc.metaAdPush.pushVariantBatch.useMutation();
   const pushAllMutation = trpc.metaAdPush.pushAllBatches.useMutation();
 
+  const audienceId = selectedAudienceId === "none" ? undefined : selectedAudienceId;
+
   const handlePushAd = async (variantSlug: string, adId: string) => {
     const key = `${variantSlug}:${adId}`;
     setPushingAds((prev) => ({ ...prev, [key]: true }));
     try {
-      const result = await pushAdMutation.mutateAsync({ variantSlug, adId });
+      const result = await pushAdMutation.mutateAsync({ variantSlug, adId, customAudienceId: audienceId });
       setAdStatuses((prev) => ({ ...prev, [key]: "pushed" }));
       toast.success("Ad pushed to Meta!", {
         description: (
@@ -339,7 +353,7 @@ export function MetaAdPushTab() {
   const handlePushVariant = async (variantSlug: string) => {
     setPushingVariant(variantSlug);
     try {
-      const result = await pushVariantMutation.mutateAsync({ variantSlug });
+      const result = await pushVariantMutation.mutateAsync({ variantSlug, customAudienceId: audienceId });
       const pushed = result.results.filter((r) => r.success).length;
       const failed = result.results.filter((r) => !r.success).length;
 
@@ -368,7 +382,7 @@ export function MetaAdPushTab() {
   const handlePushAll = async () => {
     setPushingAll(true);
     try {
-      const result = await pushAllMutation.mutateAsync({});
+      const result = await pushAllMutation.mutateAsync({ customAudienceId: audienceId });
       result.results.forEach((r) => {
         const key = `${r.variantSlug}:${r.adId}`;
         setAdStatuses((prev) => ({ ...prev, [key]: r.success ? "pushed" : "failed" }));
@@ -418,6 +432,24 @@ export function MetaAdPushTab() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Audience Picker */}
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+            <Select value={selectedAudienceId} onValueChange={setSelectedAudienceId}>
+              <SelectTrigger className="h-8 text-xs w-52 bg-background">
+                <SelectValue placeholder="Target audience (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No custom audience</SelectItem>
+                {audiences.map((a: any) => (
+                  <SelectItem key={a.metaAudienceId} value={a.metaAudienceId}>
+                    {a.name}
+                    {a.approxCount ? ` · ${a.approxCount.toLocaleString()}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {totalPushed > 0 && (
             <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
               <CheckCircle2 className="w-3 h-3 mr-1" />

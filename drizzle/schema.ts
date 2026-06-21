@@ -2403,3 +2403,27 @@ export const metaAdPushes = mysqlTable("meta_ad_pushes", {
 });
 export type MetaAdPush = typeof metaAdPushes.$inferSelect;
 export type InsertMetaAdPush = typeof metaAdPushes.$inferInsert;
+
+// ── Meta Custom Audiences ─────────────────────────────────────────────────────
+export const metaCustomAudiences = mysqlTable("meta_custom_audiences", {
+  id: int("id").autoincrement().primaryKey(),
+  metaAudienceId: varchar("meta_audience_id", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 64 }), // e.g. "gut_health", "sleep", "all"
+  emailCount: int("email_count").notNull().default(0),
+  lookalikeSeedId: varchar("lookalike_seed_id", { length: 64 }), // Meta ID of the lookalike built from this
+  createdAt: timestamp("mca_createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("mca_updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MetaCustomAudience = typeof metaCustomAudiences.$inferSelect;
+
+export const metaAudienceLeads = mysqlTable("meta_audience_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  audienceId: int("audience_id").notNull(), // FK to metaCustomAudiences.id
+  leadProspectId: int("lead_prospect_id"),  // FK to leadProspects.id (nullable for manual uploads)
+  emailHash: varchar("email_hash", { length: 64 }).notNull(), // SHA256 of email
+  emailRaw: varchar("email_raw", { length: 320 }),            // stored for dedup only
+  addedAt: timestamp("mal_addedAt").defaultNow().notNull(),
+});
+export type MetaAudienceLead = typeof metaAudienceLeads.$inferSelect;

@@ -344,9 +344,12 @@ export const leadScrubberRouter = router({
 
   findEmail: protectedProcedure
     .input(z.object({
-      firstName: z.string().min(1),
-      lastName: z.string().min(1),
-      domain: z.string().min(3),
+      // All fields are now optional — we try with whatever we have
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      name: z.string().optional(),          // full name alternative
+      domain: z.string().optional(),
+      organizationName: z.string().optional(), // company name fallback
       prospectId: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
@@ -361,6 +364,16 @@ export const leadScrubberRouter = router({
         };
       }
 
+      // Build the Apollo payload with whatever we have
+      const apolloPayload: Record<string, string | boolean> = {
+        reveal_personal_emails: false,
+      };
+      if (input.firstName) apolloPayload.first_name = input.firstName;
+      if (input.lastName) apolloPayload.last_name = input.lastName;
+      if (input.name && !input.firstName) apolloPayload.name = input.name;
+      if (input.domain) apolloPayload.domain = input.domain;
+      if (input.organizationName && !input.domain) apolloPayload.organization_name = input.organizationName;
+
       try {
         const res = await fetch("https://api.apollo.io/api/v1/people/match", {
           method: "POST",
@@ -369,12 +382,7 @@ export const leadScrubberRouter = router({
             "Cache-Control": "no-cache",
             "X-Api-Key": apolloApiKey,
           },
-          body: JSON.stringify({
-            first_name: input.firstName,
-            last_name: input.lastName,
-            domain: input.domain,
-            reveal_personal_emails: false,
-          }),
+          body: JSON.stringify(apolloPayload),
         });
 
         if (!res.ok) {
@@ -390,11 +398,71 @@ export const leadScrubberRouter = router({
 
         if (email && input.prospectId) {
           const db = await getDb();
-      if (!db) throw new Error("Database unavailable");
+          if (!db) throw new Error("Database unavailable");
+          // Update the lead record
           await db
             .update(leadProspects)
             .set({ emailFound: email, emailConfidence: confidence, status: "email_found" })
             .where(eq(leadProspects.id, input.prospectId));
+
+          // Auto-push to matching Meta Custom Audience (fire-and-forget)
+          try {
+            const { metaCustomAudiences: mca, metaAudienceLeads: mal } = await import("../drizzle/schema");
+            const { isNotNull: _isNotNull } = await import("drizzle-orm");
+            // Get the lead's category
+            const [lead] = await db
+              .select({ category: leadProspects.category })
+              .from(leadProspects)
+              .where(eq(leadProspects.id, input.prospectId))
+              .limit(1);
+            const category = lead?.category ?? null;
+
+            // Find matching audiences (category match OR "all" audiences)
+            const allAudiences = await db.select().from(mca);
+            const matchingAudiences = allAudiences.filter(
+              (a) => !a.category || a.category === category
+            );
+
+            for (const audience of matchingAudiences) {
+              // Check if email already in this audience
+              const existing = await db
+                .select({ id: mal.id })
+                .from(mal)
+                .where(eq(mal.audienceId, audience.id))
+                .limit(1);
+              // Simple dedup by emailRaw
+              const alreadyIn = existing.length > 0;
+              if (alreadyIn) continue;
+
+              // Hash and push to Meta
+              const crypto = await import("crypto");
+              const emailHash = crypto.createHash("sha256").update(email.toLowerCase().trim()).digest("hex");
+              const token = process.env.META_AD_ACCESS_TOKEN;
+              if (!token) continue;
+              await fetch(`https://graph.facebook.com/v21.0/${audience.metaAudienceId}/users`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  payload: { schema: ["EMAIL_SHA256"], data: [[emailHash]] },
+                  access_token: token,
+                }),
+              });
+              // Track in DB
+              await db.insert(mal).values({
+                audienceId: audience.id,
+                leadProspectId: input.prospectId,
+                emailHash,
+                emailRaw: email,
+              });
+              await db
+                .update(mca)
+                .set({ emailCount: sql`${mca.emailCount} + 1` })
+                .where(eq(mca.id, audience.id));
+            }
+          } catch (autoErr) {
+            // Non-fatal: log but don't fail the findEmail response
+            console.warn("[findEmail] Auto-audience push failed:", autoErr);
+          }
         }
 
         return {

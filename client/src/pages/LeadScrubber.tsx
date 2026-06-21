@@ -1074,8 +1074,17 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
   const [contentHubEmailTitle, setContentHubEmailTitle] = useState<string | null>(null);
   // Find Email inline state for modal
   const [showFindEmail, setShowFindEmail] = useState(false);
-  const [findFirstName, setFindFirstName] = useState("");
-  const [findLastName, setFindLastName] = useState("");
+  // Auto-parse name from lead.author (e.g. "john_smith" → "John" / "Smith")
+  const parsedName = React.useMemo(() => {
+    if (!lead.author) return { first: "", last: "", full: "" };
+    const cleaned = lead.author.replace(/[_\-\.]/g, " ").replace(/\d+/g, "").trim();
+    const parts = cleaned.split(" ").filter(Boolean);
+    const first = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : "";
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0).toUpperCase() + parts[parts.length - 1].slice(1) : "";
+    return { first, last, full: cleaned };
+  }, [lead.author]);
+  const [findFirstName, setFindFirstName] = useState(parsedName.first);
+  const [findLastName, setFindLastName] = useState(parsedName.last);
   const [findDomain, setFindDomain] = useState("");
   const [foundEmail, setFoundEmail] = useState<string | null>(lead.emailFound ?? null);
 
@@ -1266,6 +1275,25 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
               </div>
               {showFindEmail && (
                 <div className="space-y-2 pt-1">
+                  <p className="text-xs text-amber-700">
+                    Apollo needs a real name + company domain. Fields below are auto-filled from the lead's username — correct if needed.
+                  </p>
+                  {/* Smart one-click lookup if we have enough data */}
+                  {parsedName.first && parsedName.last && (
+                    <button
+                      onClick={() => findEmailMutation.mutate({
+                        firstName: parsedName.first,
+                        lastName: parsedName.last,
+                        organizationName: lead.subredditOrChannel ?? undefined,
+                        prospectId: lead.id > 0 ? lead.id : undefined
+                      })}
+                      disabled={findEmailMutation.isPending}
+                      className="w-full py-1.5 text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg disabled:opacity-50"
+                    >
+                      {findEmailMutation.isPending ? "Searching..." : `⚡ Smart Lookup: "${parsedName.first} ${parsedName.last}" via Apollo`}
+                    </button>
+                  )}
+                  <p className="text-xs text-amber-600 font-medium">— or enter manually —</p>
                   <div className="grid grid-cols-2 gap-2">
                     <input
                       placeholder="First name"
@@ -1281,18 +1309,22 @@ function EmailSequenceModal({ lead, onClose }: { lead: Lead; onClose: () => void
                     />
                   </div>
                   <input
-                    placeholder="Company domain (e.g. company.com)"
+                    placeholder="Company domain (e.g. company.com) — optional"
                     value={findDomain}
                     onChange={(e) => setFindDomain(e.target.value)}
                     className="w-full text-sm border rounded-lg px-3 py-1.5 bg-white"
                   />
                   <button
-                    onClick={() => findEmailMutation.mutate({ firstName: findFirstName, lastName: findLastName, domain: findDomain, prospectId: lead.id > 0 ? lead.id : undefined })}
-                    disabled={findEmailMutation.isPending || !findFirstName || !findLastName || !findDomain}
-                    className="w-full py-1.5 text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg disabled:opacity-50"
+                    onClick={() => findEmailMutation.mutate({ firstName: findFirstName, lastName: findLastName, domain: findDomain || undefined, prospectId: lead.id > 0 ? lead.id : undefined })}
+                    disabled={findEmailMutation.isPending || !findFirstName}
+                    className="w-full py-1.5 text-sm font-medium bg-gray-700 hover:bg-gray-800 text-white rounded-lg disabled:opacity-50"
                   >
                     {findEmailMutation.isPending ? "Looking up..." : "Look Up Email via Apollo"}
                   </button>
+                  <p className="text-xs text-gray-500 italic">
+                    Note: Reddit/YouTube usernames are often pseudonyms. Apollo works best for real business contacts.
+                    For anonymous leads, use the Meta Custom Audience pipeline instead.
+                  </p>
                 </div>
               )}
             </div>

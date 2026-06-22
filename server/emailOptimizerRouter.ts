@@ -11,6 +11,9 @@
  * 5. Control character removal
  * 6. Redundant attribute cleanup
  * 7. Spam signal scoring (link count, image count, HTML:text ratio)
+ * 8. S3 raw URL detection (major spam signal — flags for manual fix)
+ * 9. target="_blank" + rel="noopener noreferrer" stripping (promotional pattern)
+ * 10. Redundant per-element font-size span consolidation
  */
 
 import { z } from "zod";
@@ -25,6 +28,7 @@ interface OptimizationResult {
   optimizedBytes: number;
   reductionPercent: number;
   changes: string[];
+  warnings: string[];
   spamScore: {
     before: number;
     after: number;
@@ -74,7 +78,7 @@ function analyzeHtml(html: string): { score: number; signals: SpamSignal[] } {
   const ratio = htmlLen > 0 ? Math.round((textLen / htmlLen) * 100) : 0;
   signals.push({
     name: "Text-to-HTML ratio",
-    value: `${ratio}%`,
+    value: ratio + "%",
     severity: ratio < 10 ? "bad" : ratio < 20 ? "warning" : "ok",
     tip: "Low text-to-HTML ratio signals a marketing template. Aim for >20% text.",
   });
@@ -107,7 +111,7 @@ function analyzeHtml(html: string): { score: number; signals: SpamSignal[] } {
   const sizeKb = Math.round(htmlLen / 1024);
   signals.push({
     name: "Email size",
-    value: `${sizeKb} KB`,
+    value: sizeKb + " KB",
     severity: sizeKb > 100 ? "bad" : sizeKb > 50 ? "warning" : "ok",
     tip: "Large emails are more likely to be clipped by Gmail and flagged as promotional.",
   });
@@ -133,12 +137,124 @@ function analyzeHtml(html: string): { score: number; signals: SpamSignal[] } {
     score += 1;
   }
 
+  // 8. Raw S3 / CDN links (major spam signal)
+  const s3Links: string[] = [];
+  $("a").each((_, el) => {
+    const href = $(el).attr("href") || "";
+    if (
+      href.includes("s3.amazonaws.com") ||
+      href.includes("kajabi-storefronts-production") ||
+      href.includes("cloudfront.net/") ||
+      href.includes("s3-us-west") ||
+      href.includes("s3-eu")
+    ) {
+      s3Links.push(href);
+    }
+  });
+  if (s3Links.length > 0) {
+    signals.push({
+      name: "Raw S3/CDN links",
+      value: s3Links.length,
+      severity: "bad",
+      tip: "Direct S3/CDN links are a major spam trigger. Host the file on your own domain and redirect (e.g. theurbanmonk.com/download/upstream-health).",
+    });
+    score += 4;
+  }
+
+  // 9. target="_blank" with rel="noopener noreferrer" (promotional pattern)
+  const blankLinks = $("a[target='_blank']").length;
+  if (blankLinks > 0) {
+    signals.push({
+      name: "target=\"_blank\" links",
+      value: blankLinks,
+      severity: blankLinks > 1 ? "warning" : "ok",
+      tip: "Multiple target=_blank links with rel=noopener noreferrer is a common email marketing template pattern. Removed by optimizer.",
+    });
+    if (blankLinks > 1) score += 1;
+  }
+
+  // 10. Per-element font-size spans (heavy inline styling)
+  const fontSizeSpans = (html.match(/font-size:/g) || []).length;
+  if (fontSizeSpans > 3) {
+    signals.push({
+      name: "Per-element font-size styles",
+      value: fontSizeSpans,
+      severity: fontSizeSpans > 8 ? "warning" : "ok",
+      tip: "Repeating font-size on every span adds noise. Optimizer consolidates these into a single wrapper style.",
+    });
+    if (fontSizeSpans > 8) score += 1;
+  }
+
   return { score, signals };
+}
+
+/**
+ * Consolidate repeated font-size spans into a single wrapper.
+ * If every top-level paragraph has font-size:18px on its first child span,
+ * we wrap the entire body in a div with that font-size and strip the per-element declarations.
+ */
+function consolidateFontSizes($: cheerio.CheerioAPI, changes: string[]): void {
+  // Collect all unique font-size values used in spans
+  const fontSizeValues: Map<string, number> = new Map();
+  $("span[style]").each((_, el) => {
+    const style = $(el).attr("style") || "";
+    const match = style.match(/font-size:\s*([^;]+)/);
+    if (match) {
+      const val = match[1].trim();
+      fontSizeValues.set(val, (fontSizeValues.get(val) || 0) + 1);
+    }
+  });
+
+  // Find the dominant font-size (used on 3+ spans)
+  let dominantSize: string | null = null;
+  let dominantCount = 0;
+  for (const [size, count] of fontSizeValues.entries()) {
+    if (count > dominantCount) {
+      dominantCount = count;
+      dominantSize = size;
+    }
+  }
+
+  if (!dominantSize || dominantCount < 3) return;
+
+  const dominant = dominantSize;
+
+  // Strip font-size from spans that use the dominant size
+  let stripped = 0;
+  $("span[style]").each((_, el) => {
+    const style = $(el).attr("style") || "";
+    const match = style.match(/font-size:\s*([^;]+)/);
+    if (match && match[1].trim() === dominant) {
+      const newStyle = style
+        .replace(/font-size:\s*[^;]+;?/g, "")
+        .replace(/;+/g, ";")
+        .replace(/^;|;$/g, "")
+        .trim();
+      if (newStyle) {
+        $(el).attr("style", newStyle);
+      } else {
+        // If span only had font-size, unwrap it (keep children)
+        $(el).replaceWith($(el).html() || "");
+      }
+      stripped++;
+    }
+  });
+
+  if (stripped > 0) {
+    // Wrap the body content in a div with the dominant font-size
+    const bodyHtml = $("body").html() || "";
+    $("body").html('<div style="font-size:' + dominant + '">' + bodyHtml + "</div>");
+    changes.push(
+      "Consolidated " + stripped + " per-element font-size:" + dominant +
+      " declarations into a single wrapper (reduces spam score)"
+    );
+  }
 }
 
 /** Run the full optimization pipeline */
 async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
   const changes: string[] = [];
+  const warnings: string[] = [];
   const originalBytes = Buffer.byteLength(rawHtml, "utf8");
 
   let html = rawHtml;
@@ -168,7 +284,7 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
     classIdCount++;
   });
   if (classIdCount > 0) {
-    changes.push(`Removed class/id attributes from ${classIdCount} elements`);
+    changes.push("Removed class/id attributes from " + classIdCount + " elements");
   }
 
   // Remove data-* attributes (tracking/template metadata)
@@ -183,7 +299,7 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
     }
   });
   if (dataAttrCount > 0) {
-    changes.push(`Removed ${dataAttrCount} data-* tracking attributes`);
+    changes.push("Removed " + dataAttrCount + " data-* tracking attributes");
   }
 
   // Remove tracking pixels (1x1 images)
@@ -203,7 +319,7 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
     }
   });
   if (pixelCount > 0) {
-    changes.push(`Removed ${pixelCount} tracking pixel(s)`);
+    changes.push("Removed " + pixelCount + " tracking pixel(s)");
   }
 
   // Add missing ALT tags to images
@@ -215,11 +331,51 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
     }
   });
   if (altCount > 0) {
-    changes.push(`Added missing ALT tags to ${altCount} image(s)`);
+    changes.push("Added missing ALT tags to " + altCount + " image(s)");
   }
 
   // Remove empty style attributes
   $("[style=''], [style=\"\"]").removeAttr("style");
+
+  // Strip target="_blank" and rel="noopener noreferrer" from links
+  // These are strong promotional email template signals
+  let blankTargetCount = 0;
+  $("a[target='_blank']").each((_, el) => {
+    $(el).removeAttr("target").removeAttr("rel");
+    blankTargetCount++;
+  });
+  if (blankTargetCount > 0) {
+    changes.push(
+      "Removed target=\"_blank\" and rel=\"noopener noreferrer\" from " +
+      blankTargetCount + " link(s) (promotional template signals)"
+    );
+  }
+
+  // Detect raw S3/CDN links and warn (cannot auto-fix — needs domain redirect)
+  const s3Links: string[] = [];
+  $("a").each((_, el) => {
+    const href = $(el).attr("href") || "";
+    if (
+      href.includes("s3.amazonaws.com") ||
+      href.includes("kajabi-storefronts-production") ||
+      href.includes("cloudfront.net/") ||
+      href.includes("s3-us-west") ||
+      href.includes("s3-eu")
+    ) {
+      s3Links.push(href);
+    }
+  });
+  if (s3Links.length > 0) {
+    warnings.push(
+      "RAW S3 LINK DETECTED — this is the #1 reason this email is going to Promotions. " +
+      "Replace the S3 URL with a redirect on your own domain " +
+      "(e.g. https://theurbanmonk.com/download/upstream-health → 301 redirect to the S3 PDF). " +
+      "Affected link: " + s3Links.join(", ")
+    );
+  }
+
+  // Consolidate repeated font-size declarations into a single wrapper
+  consolidateFontSizes($, changes);
 
   html = $.html();
 
@@ -234,14 +390,14 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
       .replace(/\u2026/g, "...") // ellipsis
       .replace(/\u00A0/g, " ") // non-breaking space
       .replace(/[\u200B-\u200D\uFEFF]/g, ""); // zero-width chars
-    changes.push(`Normalized ${nonAsciiCount} non-ASCII characters`);
+    changes.push("Normalized " + nonAsciiCount + " non-ASCII characters");
   }
 
   // Step 4: Control character removal
   const controlCount = (html.match(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g) || []).length;
   if (controlCount > 0) {
     html = html.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
-    changes.push(`Removed ${controlCount} control/non-printable characters`);
+    changes.push("Removed " + controlCount + " control/non-printable characters");
   }
 
   // Step 5: HTML minification
@@ -260,7 +416,7 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
 
   const commentsBefore = (html.match(/<!--/g) || []).length;
   if (commentsBefore > 0) {
-    changes.push(`Removed ${commentsBefore} HTML comments`);
+    changes.push("Removed " + commentsBefore + " HTML comments");
   }
   changes.push("Minified HTML (collapsed whitespace, optimized attributes)");
 
@@ -279,6 +435,7 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
     optimizedBytes,
     reductionPercent,
     changes,
+    warnings,
     spamScore: {
       before: beforeAnalysis.score,
       after: afterAnalysis.score,
@@ -323,6 +480,7 @@ export const emailOptimizerRouter = router({
               optimizedBytes: Buffer.byteLength(email.html, "utf8"),
               reductionPercent: 0,
               changes: [],
+              warnings: [],
               spamScore: { before: 0, after: 0, signals: [] },
               error: err instanceof Error ? err.message : "Unknown error",
             };

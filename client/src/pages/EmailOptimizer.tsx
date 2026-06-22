@@ -99,34 +99,8 @@ function ScoreBar({ score, max = 15 }: { score: number; max?: number }) {
 const OPTIMIZER_API = "https://content.theurbanmonk.com/api/email-optimizer/optimize";
 const OPTIMIZER_KEY = "dfagsdfghs993452345";
 
-const bookmarkletCode = `javascript:(async function(){
-  var editor=window.tinymce&&window.tinymce.activeEditor;
-  if(!editor){alert('Click inside the email text area first, then run this bookmarklet.');return;}
-  var html=editor.getContent();
-  if(!html||html.length<10){alert('No HTML found in editor. Make sure you have a text block selected.');return;}
-  var btn=document.createElement('div');
-  btn.style='position:fixed;top:20px;right:20px;z-index:99999;background:#1a1a2e;color:#fbbf24;padding:12px 20px;border-radius:8px;font-family:sans-serif;font-size:14px;border:1px solid #fbbf24;box-shadow:0 4px 20px rgba(0,0,0,0.5)';
-  btn.textContent='⚡ Optimizing email...';
-  document.body.appendChild(btn);
-  try{
-    var res=await fetch('${OPTIMIZER_API}',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Optimizer-Key':'${OPTIMIZER_KEY}'},
-      body:JSON.stringify({html:html})
-    });
-    var data=await res.json();
-    if(data.error){btn.textContent='❌ Error: '+data.error;setTimeout(function(){btn.remove()},4000);return;}
-    editor.setContent(data.optimizedHtml);
-    btn.style.background='#052e16';
-    btn.style.borderColor='#4ade80';
-    btn.style.color='#4ade80';
-    btn.textContent='✅ Optimized! -'+data.reductionPercent+'% smaller. Click Save in Kajabi.';
-    setTimeout(function(){btn.remove()},6000);
-  }catch(e){
-    btn.textContent='❌ Error: '+e.message;
-    setTimeout(function(){btn.remove()},5000);
-  }
-})();`;
+// v2: searches window + all iframes for TinyMCE (Kajabi embeds editor in iframe)
+const bookmarkletCode = `javascript:(async function(){var findMCE=function(){if(window.tinymce&&window.tinymce.activeEditor)return window.tinymce.activeEditor;var frames=document.querySelectorAll('iframe');for(var i=0;i<frames.length;i++){try{var fw=frames[i].contentWindow;if(fw&&fw.tinymce&&fw.tinymce.activeEditor)return fw.tinymce.activeEditor;var sub=fw.document.querySelectorAll('iframe');for(var j=0;j<sub.length;j++){try{var sw=sub[j].contentWindow;if(sw&&sw.tinymce&&sw.tinymce.activeEditor)return sw.tinymce.activeEditor;}catch(e){}}}catch(e){}}return null;};var editor=findMCE();if(!editor){alert('Could not find the Kajabi email editor.\n\nMake sure you are on the email editing page (not preview), click once inside the email body to focus it, then try again.');return;}var html=editor.getContent();if(!html||html.length<10){alert('No HTML found. Make sure the email body has content.');return;}var btn=document.createElement('div');btn.style='position:fixed;top:20px;right:20px;z-index:99999;background:#1a1a2e;color:#fbbf24;padding:12px 20px;border-radius:8px;font-family:sans-serif;font-size:14px;border:1px solid #fbbf24;box-shadow:0 4px 20px rgba(0,0,0,0.5)';btn.textContent='\u26a1 Optimizing email...';document.body.appendChild(btn);try{var res=await fetch('${OPTIMIZER_API}',{method:'POST',headers:{'Content-Type':'application/json','X-Optimizer-Key':'${OPTIMIZER_KEY}'},body:JSON.stringify({html:html})});var data=await res.json();if(data.error){btn.textContent='\u274c Error: '+data.error;setTimeout(function(){btn.remove();},4000);return;}editor.setContent(data.optimizedHtml);btn.style.background='#052e16';btn.style.borderColor='#4ade80';btn.style.color='#4ade80';btn.textContent='\u2705 Optimized! -'+data.reductionPercent+'% smaller. Click Save in Kajabi.';setTimeout(function(){btn.remove();},6000);}catch(e){btn.textContent='\u274c Error: '+e.message;setTimeout(function(){btn.remove();},5000);}})();`;
 
 let idCounter = 0;
 const newEntry = (label = "", html = ""): BulkEmailEntry => ({

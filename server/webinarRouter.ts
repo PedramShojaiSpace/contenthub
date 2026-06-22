@@ -919,6 +919,11 @@ Return ONLY the JSON array, no markdown wrapping.`;
       const apiKey = process.env.TYPEFORM_API_KEY;
       if (!apiKey) throw new Error("TYPEFORM_API_KEY is not configured");
 
+      // Guard: Typeform rejects forms with no fields
+      if (!input.questions || input.questions.length === 0) {
+        throw new Error("No survey questions to push. Please generate survey questions first, then push to Typeform.");
+      }
+
       // Typeform-supported field types — anything else falls back to long_text
       const VALID_TF_TYPES = new Set([
         "short_text", "long_text", "multiple_choice", "picture_choice",

@@ -364,11 +364,19 @@ Stop cycling through diets. Start eating for your actual metabolism.`,
 // ─── Meta API Helper ──────────────────────────────────────────────────────────
 async function metaPost<T = any>(
   endpoint: string,
-  params: Record<string, string>,
+  params: Record<string, unknown>,
   accessToken: string
 ): Promise<T> {
   const url = `${BASE_URL}/${endpoint}`;
-  const body = new URLSearchParams({ ...params, access_token: accessToken });
+  const flatParams: Record<string, string> = { access_token: accessToken };
+  for (const [k, v] of Object.entries(params)) {
+    if (Array.isArray(v) || (typeof v === 'object' && v !== null)) {
+      flatParams[k] = JSON.stringify(v);
+    } else {
+      flatParams[k] = String(v);
+    }
+  }
+  const body = new URLSearchParams(flatParams);
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -412,7 +420,8 @@ async function pushAdToMeta(
       name: campaignName,
       objective: "OUTCOME_TRAFFIC",
       status: "PAUSED",
-      special_ad_categories: "[]",
+      special_ad_categories: [],
+      is_adset_budget_sharing_enabled: false,
     },
     accessToken
   );
@@ -425,7 +434,7 @@ async function pushAdToMeta(
       campaign_id: campaignRes.id,
       daily_budget: "500", // $5.00 placeholder — must be set before activating
       billing_event: "IMPRESSIONS",
-      optimization_goal: "LINK_CLICKS",
+      optimization_goal: "IMPRESSIONS",
       bid_strategy: "LOWEST_COST_WITHOUT_CAP",
       targeting: JSON.stringify({
         age_min: 35,
@@ -434,6 +443,7 @@ async function pushAdToMeta(
         publisher_platforms: ["facebook", "instagram"],
         facebook_positions: ["feed"],
         instagram_positions: ["stream"],
+        targeting_automation: { advantage_audience: 0 },
         ...(customAudienceId ? { custom_audiences: [{ id: customAudienceId }] } : {}),
       }),
       status: "PAUSED",

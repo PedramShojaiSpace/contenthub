@@ -1990,6 +1990,28 @@ export default function CommandCenter() {
   // Teleprompter script state (for card detail modal)
   const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
   const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
+  // Production path for sending teleprompter script to HeyGen/Descript
+  const [teleprompterProductionPath, setTeleprompterProductionPath] = useState<"heygen_then_descript" | "heygen_only" | "descript_only">("heygen_then_descript");
+  const [sendingToProduction, setSendingToProduction] = useState(false);
+
+  const sendTeleprompterToProduction = async (item: ContentItem) => {
+    if (!teleprompterScript) return;
+    setSendingToProduction(true);
+    try {
+      const title = item.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || item.title;
+      await startVideoJobMutation.mutateAsync({
+        contentItemId: item.id,
+        scriptTitle: title,
+        scriptText: teleprompterScript,
+        productionPath: teleprompterProductionPath,
+        outputChannels: ["youtube"],
+      });
+      setSendingToProduction(false);
+    } catch (err: any) {
+      setSendingToProduction(false);
+      toast.error("Failed to send to production: " + (err?.message ?? "unknown error"));
+    }
+  };
 
   // Reader version state (blog posts only)
   const [readerVersion, setReaderVersion] = useState<string | null>(null);
@@ -4670,11 +4692,62 @@ export default function CommandCenter() {
                   </div>
                 )}
                 {teleprompterScript && !generatingTeleprompter && (
-                  <div className="rounded-lg border border-amber-500/20 bg-black/20 p-4 max-h-72 overflow-y-auto">
-                    <p className="text-[10px] text-amber-400/70 mb-2 font-medium uppercase tracking-wider">Teleprompter Script</p>
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 max-h-72 overflow-y-auto">
+                    <p className="text-[10px] text-amber-600 mb-2 font-medium uppercase tracking-wider">Teleprompter Script</p>
                     <div className="text-sm text-foreground leading-loose whitespace-pre-wrap font-mono">
                       {teleprompterScript}
                     </div>
+                  </div>
+                )}
+
+                {/* ── Send to Production (HeyGen / Descript) ── */}
+                {teleprompterScript && !generatingTeleprompter && (
+                  <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Send to Video Production</p>
+                    <div className="flex flex-col gap-2">
+                      {[
+                        { id: "heygen_then_descript" as const, label: "HeyGen → Descript", desc: "Avatar render + B-roll editing (~30 min)", icon: "🎬" },
+                        { id: "heygen_only" as const, label: "HeyGen Only", desc: "Cartoon avatar, no editing (~15 min)", icon: "🤖" },
+                        { id: "descript_only" as const, label: "Descript Only", desc: "AI voice narration + B-roll, no avatar (~20 min)", icon: "🎙️" },
+                      ].map((opt) => (
+                        <label
+                          key={opt.id}
+                          className={`flex items-start gap-3 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                            teleprompterProductionPath === opt.id
+                              ? "border-amber-500/50 bg-amber-500/10"
+                              : "border-border hover:bg-muted/50"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="teleprompterPath"
+                            value={opt.id}
+                            checked={teleprompterProductionPath === opt.id}
+                            onChange={() => setTeleprompterProductionPath(opt.id)}
+                            className="mt-0.5 accent-amber-500"
+                          />
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">{opt.icon} {opt.label}</p>
+                            <p className="text-[11px] text-muted-foreground">{opt.desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    <Button
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+                      size="sm"
+                      disabled={sendingToProduction || startVideoJobMutation.isPending}
+                      onClick={() => sendTeleprompterToProduction(selectedItem)}
+                    >
+                      {sendingToProduction || startVideoJobMutation.isPending ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Sending to production…</>
+                      ) : (
+                        <><Clapperboard className="h-3.5 w-3.5 mr-2" />Send to Production</>
+                      )}
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      The job will appear in the VA Dashboard for review once complete.
+                    </p>
                   </div>
                 )}
               </div>

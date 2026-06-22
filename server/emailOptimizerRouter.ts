@@ -208,12 +208,12 @@ function consolidateFontSizes($: cheerio.CheerioAPI, changes: string[]): void {
   // Find the dominant font-size (used on 3+ spans)
   let dominantSize: string | null = null;
   let dominantCount = 0;
-  for (const [size, count] of fontSizeValues.entries()) {
+  Array.from(fontSizeValues.entries()).forEach(([size, count]) => {
     if (count > dominantCount) {
       dominantCount = count;
       dominantSize = size;
     }
-  }
+  });
 
   if (!dominantSize || dominantCount < 3) return;
 
@@ -275,7 +275,8 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
   }
 
   // Step 2: Use cheerio for DOM-level cleanup
-  const $ = cheerio.load(html, { decodeEntities: false });
+  // decodeEntities option removed — not supported in this cheerio version; entities preserved by default
+  const $ = cheerio.load(html);
 
   // Remove class and id attributes (marketing template signals)
   let classIdCount = 0;
@@ -290,7 +291,7 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
   // Remove data-* attributes (tracking/template metadata)
   let dataAttrCount = 0;
   $("*").each((_, el) => {
-    const attribs = (el as cheerio.Element & { attribs?: Record<string, string> }).attribs || {};
+    const attribs = (el as unknown as { attribs?: Record<string, string> }).attribs || {};
     for (const attr of Object.keys(attribs)) {
       if (attr.startsWith("data-")) {
         $(el).removeAttr(attr);

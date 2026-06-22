@@ -632,7 +632,7 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
   const [loading, setLoading] = useState(false);
   const [requestingUrl, setRequestingUrl] = useState<string | null>(null);
 
-  const gscStatus = trpc.gsc.getConnectionStatus.useQuery(undefined, { retry: false });
+  const gscStatus = trpc.gsc.status.useQuery(undefined, { retry: false });
   const isGscConnected = gscStatus.data?.connected ?? false;
 
   const bulkInspect = trpc.gsc.bulkInspectUrls.useMutation({

@@ -442,8 +442,24 @@ export default function CreationStudio() {
       window.history.replaceState({}, "", "/studio");
     }
 
-    // Pick up context launched from LLM Projects queue
+    // Pick up context launched from Reddit Intelligence tool
     const source = urlParams.get("source");
+    if (source === "reddit") {
+      const title = urlParams.get("title") ?? "";
+      const subreddit = urlParams.get("subreddit") ?? "";
+      if (title) {
+        // Default to social content since Reddit insights map best to social/community posts
+        setPlatform("all");
+        const ideaText = subreddit
+          ? `Reddit thread from r/${subreddit}: "${title}"\n\nCreate content inspired by this community conversation.`
+          : `Reddit thread: "${title}"\n\nCreate content inspired by this community conversation.`;
+        setIdea(ideaText);
+        toast.success(`Reddit thread loaded — ready to generate content!`);
+      }
+      window.history.replaceState({}, "", "/studio");
+    }
+
+    // Pick up context launched from LLM Projects queue
     if (source === "llm_project") {
       const assetType = urlParams.get("type") ?? "blog";
       const title = urlParams.get("title") ?? "";

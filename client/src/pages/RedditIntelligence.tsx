@@ -414,7 +414,7 @@ function PostCard({
             size="sm"
             variant="outline"
             className="h-7 text-[10px] gap-1 text-primary border-primary/30 hover:bg-primary/10"
-            onClick={() => navigate(`/?title=${encodeURIComponent(post.title)}&source=reddit&subreddit=${post.subreddit}`)}
+            onClick={() => navigate(`/studio?title=${encodeURIComponent(post.title)}&source=reddit&subreddit=${encodeURIComponent(post.subreddit)}`)}
           >
             <Zap className="w-3 h-3" />
             Create Content

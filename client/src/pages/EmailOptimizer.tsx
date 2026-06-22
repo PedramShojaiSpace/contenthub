@@ -42,6 +42,7 @@ interface OptResult {
   optimizedBytes: number;
   reductionPercent: number;
   changes: string[];
+  warnings: string[];
   spamScore: {
     before: number;
     after: number;
@@ -756,6 +757,18 @@ export default function EmailOptimizer() {
                     ))}
                   </div>
                 </div>
+
+                {result.warnings && result.warnings.length > 0 && (
+                  <div className="rounded-xl border border-red-700/50 bg-red-950/30 p-5 space-y-2">
+                    <h3 className="text-sm font-semibold text-red-300 flex items-center gap-2">
+                      <XCircle className="w-4 h-4 text-red-400" />
+                      Action Required — Manual Fix Needed
+                    </h3>
+                    {result.warnings.map((w, i) => (
+                      <p key={i} className="text-xs text-red-200/80 leading-relaxed">{w}</p>
+                    ))}
+                  </div>
+                )}
 
                 <div className="rounded-xl border border-white/8 bg-white/4 p-5">
                   <h3 className="text-sm font-semibold text-white/90 mb-3 flex items-center gap-2">

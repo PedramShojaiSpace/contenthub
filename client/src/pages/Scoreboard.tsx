@@ -632,6 +632,9 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
   const [loading, setLoading] = useState(false);
   const [requestingUrl, setRequestingUrl] = useState<string | null>(null);
 
+  const gscStatus = trpc.gsc.getConnectionStatus.useQuery(undefined, { retry: false });
+  const isGscConnected = gscStatus.data?.connected ?? false;
+
   const bulkInspect = trpc.gsc.bulkInspectUrls.useMutation({
     onSuccess: (data) => {
       const map: Record<string, any> = {};
@@ -706,8 +709,23 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
         {Object.keys(results).length === 0 && !loading && (
           <div className="text-center py-6 text-muted-foreground text-sm">
             <Globe2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p>Click "Check All" to inspect up to 20 posts at once.</p>
-            <p className="text-xs mt-1">Requires Google Search Console to be connected in SEO Dashboard.</p>
+            {!isGscConnected ? (
+              <>
+                <p className="font-medium text-foreground">Google Search Console not connected</p>
+                <p className="text-xs mt-1 mb-3">Connect GSC to check indexing status and request crawls for your posts.</p>
+                <a
+                  href="/seo-dashboard"
+                  className="inline-flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
+                >
+                  Connect Google Search Console →
+                </a>
+              </>
+            ) : (
+              <>
+                <p>Click "Check All" to inspect up to 20 posts at once.</p>
+                <p className="text-xs mt-1">Submits a crawl hint to Google for any unindexed URLs.</p>
+              </>
+            )}
           </div>
         )}
         {loading && (
@@ -1275,6 +1293,14 @@ export default function Scoreboard() {
     onError: (e) => toast.error(e.message),
   });
 
+  const batchFetchYoastScores = trpc.content.batchFetchYoastScores.useMutation({
+    onSuccess: (data) => {
+      utils.scoreboard.getPublishedPosts.invalidate();
+      toast.success(`Yoast scores refreshed: ${data.fetched} fetched, ${data.errors} errors`);
+    },
+    onError: (e) => toast.error("Batch fetch failed: " + e.message),
+  });
+
   const generateSocialImage = trpc.scoreboard.generateSocialImage.useMutation({
     onSuccess: (data, variables) => {
       setGeneratingImageFor(null);
@@ -1372,10 +1398,24 @@ export default function Scoreboard() {
             All published blog posts — Yoast SEO + Google Search Console (last 28 days)
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => batchFetchYoastScores.mutate()}
+            disabled={batchFetchYoastScores.isPending || postsQuery.isLoading}
+            className="gap-2"
+          >
+            {batchFetchYoastScores.isPending
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <RefreshCw className="w-4 h-4" />}
+            {batchFetchYoastScores.isPending ? "Fetching Scores…" : "Fetch All Scores"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary cards */}

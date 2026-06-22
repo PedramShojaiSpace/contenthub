@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import * as schema from "../drizzle/schema";
 import {
   ContentItem,
   InsertContentItem,
@@ -13,12 +14,14 @@ import {
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      // Pass the full schema so Drizzle correctly translates JS field names
+      // (e.g. contentItemId) to their actual DB column names (e.g. gph_content_item_id).
+      _db = drizzle(process.env.DATABASE_URL, { schema, mode: "default" });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

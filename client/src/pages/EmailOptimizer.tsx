@@ -63,15 +63,15 @@ interface BulkResult extends OptResult {
 }
 
 const severityIcon = (s: Severity) => {
-  if (s === "ok") return <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />;
-  if (s === "warning") return <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />;
-  return <XCircle className="w-4 h-4 text-red-400 shrink-0" />;
+  if (s === "ok") return <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />;
+  if (s === "warning") return <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />;
+  return <XCircle className="w-4 h-4 text-red-500 shrink-0" />;
 };
 
 const severityBg = (s: Severity) => {
-  if (s === "ok") return "border-green-800/40 bg-green-950/20";
-  if (s === "warning") return "border-yellow-800/40 bg-yellow-950/20";
-  return "border-red-800/40 bg-red-950/20";
+  if (s === "ok") return "border-emerald-200 bg-emerald-50";
+  if (s === "warning") return "border-amber-200 bg-amber-50";
+  return "border-red-200 bg-red-50";
 };
 
 function formatBytes(b: number) {
@@ -81,15 +81,16 @@ function formatBytes(b: number) {
 
 function ScoreBar({ score, max = 15 }: { score: number; max?: number }) {
   const pct = Math.min(100, Math.round((score / max) * 100));
-  const color = score <= 3 ? "bg-green-500" : score <= 7 ? "bg-yellow-500" : "bg-red-500";
+  const color = score <= 3 ? "bg-emerald-500" : score <= 7 ? "bg-amber-500" : "bg-red-500";
   const label = score <= 3 ? "Low risk" : score <= 7 ? "Moderate risk" : "High risk";
+  const textColor = score <= 3 ? "text-emerald-700" : score <= 7 ? "text-amber-700" : "text-red-700";
   return (
     <div className="space-y-1">
-      <div className="flex justify-between text-xs text-white/50">
-        <span>{label}</span>
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span className={textColor}>{label}</span>
         <span>{score}/{max}</span>
       </div>
-      <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+      <div className="h-2 rounded-full bg-border overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -217,23 +218,23 @@ export default function EmailOptimizer() {
   const validBulkCount = bulkEntries.filter((e) => e.label.trim() && e.html.trim()).length;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <div className="border-b border-white/8 bg-[#0d0d14] px-8 py-6">
+      <div className="border-b border-border bg-card px-8 py-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
-              <Mail className="w-5 h-5 text-amber-400" />
+            <div className="w-9 h-9 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center">
+              <Mail className="w-5 h-5 text-amber-600" />
             </div>
-            <h1 className="text-xl font-semibold text-white">Email Optimizer</h1>
-            <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-xs">
+            <h1 className="text-xl font-semibold text-foreground">Email Optimizer</h1>
+            <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
               Inbox Placement
             </Badge>
-            <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-xs">
+            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
               Kajabi Integration
             </Badge>
           </div>
-          <p className="text-sm text-white/50 ml-12">
+          <p className="text-sm text-muted-foreground ml-12">
             Strips marketing template signals from Kajabi emails so they land in the Primary inbox instead of Promotions.
           </p>
         </div>
@@ -242,41 +243,41 @@ export default function EmailOptimizer() {
       <div className="max-w-6xl mx-auto px-8 py-8 space-y-8">
 
         {/* Tab switcher */}
-        <div className="flex gap-2 border-b border-white/8 pb-0">
+        <div className="flex gap-2 border-b border-border pb-0">
           <button
             onClick={() => setActiveTab("bookmarklet")}
             className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
               activeTab === "bookmarklet"
-                ? "border-amber-400 text-amber-400 bg-amber-500/5"
-                : "border-transparent text-white/50 hover:text-white/70"
+                ? "border-amber-500 text-amber-700 bg-amber-50"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <span className="flex items-center gap-2">
               <MousePointerClick className="w-4 h-4" />
               One-Click Bookmarklet
-              <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs ml-1">Broadcasts</Badge>
+              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs ml-1">Broadcasts</Badge>
             </span>
           </button>
           <button
             onClick={() => setActiveTab("bulk")}
             className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
               activeTab === "bulk"
-                ? "border-amber-400 text-amber-400 bg-amber-500/5"
-                : "border-transparent text-white/50 hover:text-white/70"
+                ? "border-purple-500 text-purple-700 bg-purple-50"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <span className="flex items-center gap-2">
               <Layers className="w-4 h-4" />
               Bulk Sequence Optimizer
-              <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs ml-1">Automations</Badge>
+              <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs ml-1">Automations</Badge>
             </span>
           </button>
           <button
             onClick={() => setActiveTab("manual")}
             className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
               activeTab === "manual"
-                ? "border-amber-400 text-amber-400 bg-amber-500/5"
-                : "border-transparent text-white/50 hover:text-white/70"
+                ? "border-primary text-primary bg-primary/5"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <span className="flex items-center gap-2">
@@ -289,34 +290,38 @@ export default function EmailOptimizer() {
         {/* BOOKMARKLET TAB */}
         {activeTab === "bookmarklet" && (
           <div className="space-y-6">
-            <div className="rounded-xl border border-amber-800/30 bg-amber-950/15 p-5">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
               <div className="flex gap-3">
-                <Bookmark className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <Bookmark className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-white/90">What is a bookmarklet?</p>
-                  <p className="text-sm text-white/60">
+                  <p className="text-sm font-semibold text-foreground">What is a bookmarklet?</p>
+                  <p className="text-sm text-muted-foreground">
                     A bookmarklet is a browser bookmark that runs JavaScript instead of opening a URL.
                     When you click it while editing a Kajabi email, it automatically reads the email HTML,
                     sends it to our optimizer, and injects the cleaned version back — all in under 2 seconds.
-                    No copy-paste needed. <strong className="text-amber-400">Best for broadcast emails you send manually.</strong>
+                    No copy-paste needed. <strong className="text-amber-700">Best for broadcast emails you send manually.</strong>
                   </p>
-                  <p className="text-sm text-white/50">
-                    For automation/sequence emails, use the <button onClick={() => setActiveTab("bulk")} className="text-purple-400 underline underline-offset-2">Bulk Sequence Optimizer</button> tab instead.
+                  <p className="text-sm text-muted-foreground">
+                    For automation/sequence emails, use the{" "}
+                    <button onClick={() => setActiveTab("bulk")} className="text-purple-600 underline underline-offset-2">
+                      Bulk Sequence Optimizer
+                    </button>{" "}
+                    tab instead.
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-sm font-semibold text-white/90 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs flex items-center justify-center font-bold">1</span>
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-xs flex items-center justify-center font-bold border border-amber-200">1</span>
                 Install the Bookmarklet (one-time setup)
               </h2>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl border border-white/8 bg-white/4 p-5 space-y-3">
-                  <p className="text-xs font-semibold text-white/70 uppercase tracking-wider">Method A — Drag to Bookmarks Bar</p>
-                  <p className="text-xs text-white/55">
+                <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Method A — Drag to Bookmarks Bar</p>
+                  <p className="text-xs text-muted-foreground">
                     Make sure your bookmarks bar is visible (Ctrl+Shift+B on Chrome/Edge, Cmd+Shift+B on Mac).
                     Then drag the button below directly to your bookmarks bar.
                   </p>
@@ -324,7 +329,7 @@ export default function EmailOptimizer() {
                     {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                     <a
                       href={bookmarkletCode}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-black text-sm font-semibold hover:bg-amber-400 transition-colors cursor-grab active:cursor-grabbing select-none"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition-colors cursor-grab active:cursor-grabbing select-none"
                       onClick={(e) => { e.preventDefault(); toast.info("Drag this button to your bookmarks bar — don't click it here"); }}
                       draggable
                     >
@@ -332,15 +337,15 @@ export default function EmailOptimizer() {
                       ⚡ Optimize Kajabi Email
                     </a>
                   </div>
-                  <p className="text-xs text-white/35 text-center">← Drag this to your bookmarks bar</p>
+                  <p className="text-xs text-muted-foreground text-center">← Drag this to your bookmarks bar</p>
                 </div>
 
-                <div className="rounded-xl border border-white/8 bg-white/4 p-5 space-y-3">
-                  <p className="text-xs font-semibold text-white/70 uppercase tracking-wider">Method B — Create Manually</p>
-                  <ol className="text-xs text-white/55 space-y-1.5 list-decimal list-inside">
+                <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Method B — Create Manually</p>
+                  <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
                     <li>Click the button below to copy the bookmarklet code</li>
-                    <li>Right-click your bookmarks bar → <strong className="text-white/70">Add bookmark</strong></li>
-                    <li>Name it <strong className="text-white/70">"⚡ Optimize Kajabi Email"</strong></li>
+                    <li>Right-click your bookmarks bar → <strong className="text-foreground">Add bookmark</strong></li>
+                    <li>Name it <strong className="text-foreground">"⚡ Optimize Kajabi Email"</strong></li>
                     <li>In the URL field, paste the copied code</li>
                     <li>Click Save</li>
                   </ol>
@@ -348,7 +353,7 @@ export default function EmailOptimizer() {
                     onClick={handleCopyBookmarklet}
                     size="sm"
                     variant="outline"
-                    className="w-full gap-2 border-white/15 text-white/70 hover:text-white hover:border-white/30 bg-transparent"
+                    className="w-full gap-2"
                   >
                     <Copy className="w-4 h-4" />
                     Copy Bookmarklet Code
@@ -358,12 +363,12 @@ export default function EmailOptimizer() {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-sm font-semibold text-white/90 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs flex items-center justify-center font-bold">2</span>
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-xs flex items-center justify-center font-bold border border-amber-200">2</span>
                 Use It Every Time You Send a Broadcast Email
               </h2>
 
-              <div className="rounded-xl border border-white/8 bg-white/4 p-5">
+              <div className="rounded-xl border border-border bg-card p-5">
                 <ol className="space-y-3">
                   {[
                     { step: "Open your Kajabi email broadcast", detail: "Go to Marketing → Email Campaigns → your email" },
@@ -373,10 +378,10 @@ export default function EmailOptimizer() {
                     { step: "Click Save in Kajabi, then send as normal", detail: "That's it — the email is now stripped of promotional signals" },
                   ].map((item, i) => (
                     <li key={i} className="flex gap-3">
-                      <span className="w-5 h-5 rounded-full bg-white/10 text-white/50 text-xs flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                      <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center shrink-0 mt-0.5 border border-border">{i + 1}</span>
                       <div>
-                        <p className="text-sm text-white/80">{item.step}</p>
-                        <p className="text-xs text-white/40 mt-0.5">{item.detail}</p>
+                        <p className="text-sm text-foreground">{item.step}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
                       </div>
                     </li>
                   ))}
@@ -384,16 +389,20 @@ export default function EmailOptimizer() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-blue-800/30 bg-blue-950/20 p-4">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
               <div className="flex gap-3">
-                <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                <div className="text-sm text-white/70 space-y-1">
-                  <p className="font-medium text-white/90">Important notes</p>
-                  <ul className="text-xs text-white/55 space-y-1 list-disc list-inside">
-                    <li>The bookmarklet works on the <strong className="text-white/70">Visual Editor</strong> in Kajabi. Make sure you click into a text block first.</li>
-                    <li>The bookmarklet connects to <strong className="text-white/70">content.theurbanmonk.com</strong> — it will only work when that server is running.</li>
+                <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-900 space-y-1">
+                  <p className="font-medium">Important notes</p>
+                  <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                    <li>The bookmarklet works on the <strong>Visual Editor</strong> in Kajabi. Make sure you click into a text block first.</li>
+                    <li>The bookmarklet connects to <strong>content.theurbanmonk.com</strong> — it will only work when that server is running.</li>
                     <li>Always preview your email in Kajabi after optimizing to confirm the visual layout is unchanged.</li>
-                    <li>For automation/sequence emails that fire automatically, use the <button onClick={() => setActiveTab("bulk")} className="text-purple-400 underline underline-offset-2">Bulk Sequence Optimizer</button> tab.</li>
+                    <li>For automation/sequence emails that fire automatically, use the{" "}
+                      <button onClick={() => setActiveTab("bulk")} className="text-purple-600 underline underline-offset-2">
+                        Bulk Sequence Optimizer
+                      </button>{" "}tab.
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -404,7 +413,7 @@ export default function EmailOptimizer() {
                 href="https://app.kajabi.com/admin/last_site/marketing/email_campaigns"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/15 text-white/60 text-sm hover:text-white hover:border-white/30 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-muted-foreground text-sm hover:text-foreground hover:border-foreground/30 transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 Open Kajabi Email Campaigns
@@ -417,26 +426,26 @@ export default function EmailOptimizer() {
         {activeTab === "bulk" && (
           <div className="space-y-6">
             {/* Explanation */}
-            <div className="rounded-xl border border-purple-800/30 bg-purple-950/15 p-5">
+            <div className="rounded-xl border border-purple-200 bg-purple-50 p-5">
               <div className="flex gap-3">
-                <Layers className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                <Layers className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-white/90">Bulk Sequence Email Optimizer</p>
-                  <p className="text-sm text-white/60">
+                  <p className="text-sm font-semibold text-foreground">Bulk Sequence Email Optimizer</p>
+                  <p className="text-sm text-muted-foreground">
                     Kajabi automation emails fire automatically — there is no "send" button to click before they go out.
-                    The solution is a <strong className="text-white/80">one-time cleanup session</strong>: paste the HTML from each
+                    The solution is a <strong className="text-foreground">one-time cleanup session</strong>: paste the HTML from each
                     automation email here, optimize them all at once, then paste the cleaned versions back into Kajabi.
                     Once saved, those emails stay optimized permanently — they fire clean every time.
                   </p>
                   <div className="flex gap-6 pt-1">
-                    <div className="text-xs text-white/50">
-                      <span className="text-purple-400 font-semibold">Step 1</span> — Go to each Kajabi sequence email → click the <code className="bg-white/10 px-1 rounded">&lt;/&gt;</code> Source Code button → copy all HTML
+                    <div className="text-xs text-muted-foreground">
+                      <span className="text-purple-700 font-semibold">Step 1</span> — Go to each Kajabi sequence email → click the <code className="bg-purple-100 px-1 rounded">&lt;/&gt;</code> Source Code button → copy all HTML
                     </div>
-                    <div className="text-xs text-white/50">
-                      <span className="text-purple-400 font-semibold">Step 2</span> — Paste each email below with a label → click Optimize All
+                    <div className="text-xs text-muted-foreground">
+                      <span className="text-purple-700 font-semibold">Step 2</span> — Paste each email below with a label → click Optimize All
                     </div>
-                    <div className="text-xs text-white/50">
-                      <span className="text-purple-400 font-semibold">Step 3</span> — Copy each result back into Kajabi → Save
+                    <div className="text-xs text-muted-foreground">
+                      <span className="text-purple-700 font-semibold">Step 3</span> — Copy each result back into Kajabi → Save
                     </div>
                   </div>
                 </div>
@@ -446,15 +455,15 @@ export default function EmailOptimizer() {
             {/* Email entry list */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-white/90">
+                <h2 className="text-sm font-semibold text-foreground">
                   Sequence Emails to Optimize
-                  <span className="ml-2 text-white/40 font-normal">({validBulkCount} ready)</span>
+                  <span className="ml-2 text-muted-foreground font-normal">({validBulkCount} ready)</span>
                 </h2>
                 <Button
                   onClick={addEntry}
                   size="sm"
                   variant="outline"
-                  className="gap-2 border-white/15 text-white/70 hover:text-white hover:border-white/30 bg-transparent"
+                  className="gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Add Email
@@ -463,18 +472,18 @@ export default function EmailOptimizer() {
 
               <div className="space-y-3">
                 {bulkEntries.map((entry, idx) => (
-                  <div key={entry.id} className="rounded-xl border border-white/8 bg-white/3 p-4 space-y-3">
+                  <div key={entry.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-white/30 w-5 text-center shrink-0">{idx + 1}</span>
+                      <span className="text-xs text-muted-foreground w-5 text-center shrink-0">{idx + 1}</span>
                       <Input
                         value={entry.label}
                         onChange={(e) => updateEntry(entry.id, "label", e.target.value)}
                         placeholder='e.g. "Welcome Email", "Day 3 Follow-up", "Abandoned Cart #1"'
-                        className="flex-1 h-8 text-sm bg-white/5 border-white/10 text-white/80 placeholder:text-white/25"
+                        className="flex-1 h-8 text-sm"
                       />
                       <button
                         onClick={() => removeEntry(entry.id)}
-                        className="p-1.5 rounded-md text-white/30 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="Remove this email"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -484,10 +493,10 @@ export default function EmailOptimizer() {
                       value={entry.html}
                       onChange={(e) => updateEntry(entry.id, "html", e.target.value)}
                       placeholder="Paste the HTML source code from this Kajabi sequence email here..."
-                      className="h-32 font-mono text-xs bg-white/5 border-white/10 text-white/70 placeholder:text-white/20 resize-none"
+                      className="h-32 font-mono text-xs resize-none"
                     />
                     {entry.html && (
-                      <p className="text-xs text-white/30">{formatBytes(new TextEncoder().encode(entry.html).length)}</p>
+                      <p className="text-xs text-muted-foreground">{formatBytes(new TextEncoder().encode(entry.html).length)}</p>
                     )}
                   </div>
                 ))}
@@ -496,7 +505,7 @@ export default function EmailOptimizer() {
               <Button
                 onClick={handleBulkOptimize}
                 disabled={bulkOptimize.isPending || validBulkCount === 0}
-                className="bg-purple-600 hover:bg-purple-500 text-white font-semibold gap-2 px-6"
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold gap-2 px-6"
               >
                 <Zap className="w-4 h-4" />
                 {bulkOptimize.isPending
@@ -509,15 +518,15 @@ export default function EmailOptimizer() {
             {bulkResults && (
               <div className="space-y-4 animate-in fade-in duration-300">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-white/90 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     Optimization Complete — {bulkResults.filter((r) => r.success).length} of {bulkResults.length} emails optimized
                   </h2>
                   <Button
                     onClick={downloadAllResults}
                     size="sm"
                     variant="outline"
-                    className="gap-2 border-white/15 text-white/70 hover:text-white hover:border-white/30 bg-transparent"
+                    className="gap-2"
                   >
                     <Download className="w-4 h-4" />
                     Download All as HTML
@@ -526,19 +535,19 @@ export default function EmailOptimizer() {
 
                 {/* Summary row */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="rounded-xl border border-white/8 bg-white/4 p-4 text-center">
-                    <p className="text-xs text-white/40 mb-1">Emails Processed</p>
-                    <p className="text-2xl font-bold text-white">{bulkResults.length}</p>
+                  <div className="rounded-xl border border-border bg-card p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Emails Processed</p>
+                    <p className="text-2xl font-bold text-foreground">{bulkResults.length}</p>
                   </div>
-                  <div className="rounded-xl border border-green-800/40 bg-green-950/20 p-4 text-center">
-                    <p className="text-xs text-white/40 mb-1">Avg. Reduction</p>
-                    <p className="text-2xl font-bold text-green-400">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Avg. Reduction</p>
+                    <p className="text-2xl font-bold text-emerald-700">
                       -{Math.round(bulkResults.filter(r => r.success).reduce((acc, r) => acc + r.reductionPercent, 0) / Math.max(1, bulkResults.filter(r => r.success).length))}%
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/8 bg-white/4 p-4 text-center">
-                    <p className="text-xs text-white/40 mb-1">Total Size Saved</p>
-                    <p className="text-2xl font-bold text-white">
+                  <div className="rounded-xl border border-border bg-card p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Total Size Saved</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {formatBytes(bulkResults.filter(r => r.success).reduce((acc, r) => acc + (r.originalBytes - r.optimizedBytes), 0))}
                     </p>
                   </div>
@@ -549,35 +558,35 @@ export default function EmailOptimizer() {
                   {bulkResults.map((res) => (
                     <div
                       key={res.label}
-                      className={`rounded-xl border ${res.success ? "border-white/8 bg-white/3" : "border-red-800/40 bg-red-950/15"}`}
+                      className={`rounded-xl border ${res.success ? "border-border bg-card" : "border-red-200 bg-red-50"}`}
                     >
                       {/* Result header */}
                       <div className="flex items-center gap-3 p-4">
                         {res.success ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         ) : (
-                          <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                          <XCircle className="w-4 h-4 text-red-500 shrink-0" />
                         )}
-                        <span className="flex-1 text-sm font-medium text-white/90">{res.label}</span>
+                        <span className="flex-1 text-sm font-medium text-foreground">{res.label}</span>
                         {res.success && (
                           <>
-                            <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-xs">
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
                               -{res.reductionPercent}% smaller
                             </Badge>
-                            <Badge className="bg-white/8 text-white/50 border-white/10 text-xs">
+                            <Badge variant="secondary" className="text-xs">
                               {res.changes.length} changes
                             </Badge>
                             <Button
                               onClick={() => copyBulkResult(res.optimizedHtml, res.label)}
                               size="sm"
-                              className="bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold gap-1.5 h-7 px-3"
+                              className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold gap-1.5 h-7 px-3"
                             >
                               <Copy className="w-3 h-3" />
                               Copy HTML
                             </Button>
                             <button
                               onClick={() => toggleExpand(res.label)}
-                              className="p-1.5 rounded-md text-white/40 hover:text-white/70 transition-colors"
+                              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
                             >
                               {expandedResults.has(res.label) ? (
                                 <ChevronDown className="w-4 h-4" />
@@ -588,32 +597,32 @@ export default function EmailOptimizer() {
                           </>
                         )}
                         {!res.success && (
-                          <span className="text-xs text-red-400">{res.error}</span>
+                          <span className="text-xs text-red-600">{res.error}</span>
                         )}
                       </div>
 
                       {/* Expanded result details */}
                       {res.success && expandedResults.has(res.label) && (
-                        <div className="border-t border-white/8 p-4 space-y-4">
+                        <div className="border-t border-border p-4 space-y-4">
                           {/* Score comparison */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-xs text-white/40 mb-2">Promotional Signal Score — Before</p>
+                              <p className="text-xs text-muted-foreground mb-2">Promotional Signal Score — Before</p>
                               <ScoreBar score={res.spamScore.before} />
                             </div>
                             <div>
-                              <p className="text-xs text-white/40 mb-2">Promotional Signal Score — After</p>
+                              <p className="text-xs text-muted-foreground mb-2">Promotional Signal Score — After</p>
                               <ScoreBar score={res.spamScore.after} />
                             </div>
                           </div>
 
                           {/* Changes */}
                           <div>
-                            <p className="text-xs text-white/50 font-medium mb-2">Optimizations Applied</p>
+                            <p className="text-xs text-muted-foreground font-medium mb-2">Optimizations Applied</p>
                             <ul className="space-y-1">
                               {res.changes.map((change, i) => (
-                                <li key={i} className="flex items-start gap-2 text-xs text-white/55">
-                                  <ArrowRight className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                                <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                  <ArrowRight className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
                                   {change}
                                 </li>
                               ))}
@@ -622,11 +631,11 @@ export default function EmailOptimizer() {
 
                           {/* Optimized HTML preview */}
                           <div className="space-y-2">
-                            <p className="text-xs text-white/50 font-medium">Optimized HTML</p>
+                            <p className="text-xs text-muted-foreground font-medium">Optimized HTML</p>
                             <Textarea
                               value={res.optimizedHtml}
                               readOnly
-                              className="h-36 font-mono text-xs bg-green-950/10 border-green-800/30 text-white/60 resize-none"
+                              className="h-36 font-mono text-xs bg-emerald-50 border-emerald-200 resize-none"
                             />
                           </div>
                         </div>
@@ -636,19 +645,19 @@ export default function EmailOptimizer() {
                 </div>
 
                 {/* Instructions for pasting back */}
-                <div className="rounded-xl border border-blue-800/30 bg-blue-950/20 p-4">
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
                   <div className="flex gap-3">
-                    <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                    <div className="text-sm text-white/70 space-y-1">
-                      <p className="font-medium text-white/90">How to paste back into Kajabi</p>
-                      <ol className="text-xs text-white/55 space-y-1 list-decimal list-inside">
-                        <li>Click <strong className="text-white/70">Copy HTML</strong> next to the email you want to update</li>
-                        <li>In Kajabi, open that sequence email → click the <code className="bg-white/10 px-1 rounded">&lt;/&gt;</code> Source Code button</li>
+                    <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-900 space-y-1">
+                      <p className="font-medium">How to paste back into Kajabi</p>
+                      <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                        <li>Click <strong>Copy HTML</strong> next to the email you want to update</li>
+                        <li>In Kajabi, open that sequence email → click the <code className="bg-blue-100 px-1 rounded">&lt;/&gt;</code> Source Code button</li>
                         <li>Select all existing content (Ctrl+A / Cmd+A) and paste the optimized HTML</li>
                         <li>Click OK, then Save the email</li>
                         <li>Repeat for each email in the sequence</li>
                       </ol>
-                      <p className="text-xs text-white/40 pt-1">
+                      <p className="text-xs text-blue-700 pt-1">
                         Once saved, the automation fires the optimized HTML every time — no further action needed.
                       </p>
                     </div>
@@ -662,15 +671,15 @@ export default function EmailOptimizer() {
         {/* MANUAL SINGLE EMAIL TAB */}
         {activeTab === "manual" && (
           <div className="space-y-6">
-            <div className="rounded-xl border border-blue-800/30 bg-blue-950/20 p-4">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
               <div className="flex gap-3">
-                <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                <div className="text-sm text-white/70 space-y-1">
-                  <p className="font-medium text-white/90">Manual single-email workflow</p>
-                  <ol className="list-decimal list-inside space-y-1 text-white/60">
-                    <li>In Kajabi, open your email and click <strong className="text-white/80">Source Code</strong> (the &lt;/&gt; button)</li>
+                <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-900 space-y-1">
+                  <p className="font-medium">Manual single-email workflow</p>
+                  <ol className="list-decimal list-inside space-y-1 text-blue-800">
+                    <li>In Kajabi, open your email and click <strong>Source Code</strong> (the &lt;/&gt; button)</li>
                     <li>Select all the HTML and paste it below</li>
-                    <li>Click <strong className="text-white/80">Optimize Email</strong></li>
+                    <li>Click <strong>Optimize Email</strong></li>
                     <li>Copy the optimized HTML and paste it back into Kajabi's source code view</li>
                     <li>Send as normal</li>
                   </ol>
@@ -680,24 +689,24 @@ export default function EmailOptimizer() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white/80 flex items-center gap-2">
-                  <FileCode2 className="w-4 h-4 text-white/40" />
+                <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <FileCode2 className="w-4 h-4 text-muted-foreground" />
                   Paste Kajabi Email HTML
                 </label>
                 {inputHtml && (
-                  <span className="text-xs text-white/40">{formatBytes(new TextEncoder().encode(inputHtml).length)}</span>
+                  <span className="text-xs text-muted-foreground">{formatBytes(new TextEncoder().encode(inputHtml).length)}</span>
                 )}
               </div>
               <Textarea
                 value={inputHtml}
                 onChange={(e) => setInputHtml(e.target.value)}
                 placeholder="Paste the full HTML source from your Kajabi email here..."
-                className="h-52 font-mono text-xs bg-white/5 border-white/10 text-white/80 placeholder:text-white/25 resize-none"
+                className="h-52 font-mono text-xs resize-none"
               />
               <Button
                 onClick={handleOptimize}
                 disabled={optimize.isPending || !inputHtml.trim()}
-                className="bg-amber-500 hover:bg-amber-400 text-black font-semibold gap-2"
+                className="bg-amber-500 hover:bg-amber-600 text-white font-semibold gap-2"
               >
                 <Zap className="w-4 h-4" />
                 {optimize.isPending ? "Optimizing..." : "Optimize Email"}
@@ -707,39 +716,39 @@ export default function EmailOptimizer() {
             {result && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="rounded-xl border border-white/8 bg-white/4 p-4 text-center">
-                    <p className="text-xs text-white/40 mb-1">Original Size</p>
-                    <p className="text-2xl font-bold text-white">{formatBytes(result.originalBytes)}</p>
+                  <div className="rounded-xl border border-border bg-card p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Original Size</p>
+                    <p className="text-2xl font-bold text-foreground">{formatBytes(result.originalBytes)}</p>
                   </div>
-                  <div className="rounded-xl border border-green-800/40 bg-green-950/20 p-4 text-center">
-                    <p className="text-xs text-white/40 mb-1">Reduction</p>
-                    <p className="text-2xl font-bold text-green-400">-{result.reductionPercent}%</p>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Reduction</p>
+                    <p className="text-2xl font-bold text-emerald-700">-{result.reductionPercent}%</p>
                   </div>
-                  <div className="rounded-xl border border-white/8 bg-white/4 p-4 text-center">
-                    <p className="text-xs text-white/40 mb-1">Optimized Size</p>
-                    <p className="text-2xl font-bold text-white">{formatBytes(result.optimizedBytes)}</p>
+                  <div className="rounded-xl border border-border bg-card p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Optimized Size</p>
+                    <p className="text-2xl font-bold text-foreground">{formatBytes(result.optimizedBytes)}</p>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-white/8 bg-white/4 p-5 space-y-4">
+                <div className="rounded-xl border border-border bg-card p-5 space-y-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <BarChart3 className="w-4 h-4 text-white/40" />
-                    <h3 className="text-sm font-semibold text-white/90">Promotional Signal Score</h3>
-                    <span className="text-xs text-white/40">(lower is better)</span>
+                    <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                    <h3 className="text-sm font-semibold text-foreground">Promotional Signal Score</h3>
+                    <span className="text-xs text-muted-foreground">(lower is better)</span>
                   </div>
                   <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <p className="text-xs text-white/50 mb-2">Before</p>
+                      <p className="text-xs text-muted-foreground mb-2">Before</p>
                       <ScoreBar score={result.spamScore.before} />
                     </div>
                     <div>
-                      <p className="text-xs text-white/50 mb-2">After</p>
+                      <p className="text-xs text-muted-foreground mb-2">After</p>
                       <ScoreBar score={result.spamScore.after} />
                     </div>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-white/8">
-                    <p className="text-xs text-white/50 font-medium">Signal Breakdown (after optimization)</p>
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground font-medium">Signal Breakdown (after optimization)</p>
                     {result.spamScore.signals.map((sig) => (
                       <div
                         key={sig.name}
@@ -748,10 +757,10 @@ export default function EmailOptimizer() {
                         {severityIcon(sig.severity)}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-white/80">{sig.name}</span>
-                            <span className="text-xs text-white/50">{sig.value}</span>
+                            <span className="text-xs font-medium text-foreground">{sig.name}</span>
+                            <span className="text-xs text-muted-foreground">{sig.value}</span>
                           </div>
-                          <p className="text-xs text-white/45 mt-0.5">{sig.tip}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{sig.tip}</p>
                         </div>
                       </div>
                     ))}
@@ -759,26 +768,26 @@ export default function EmailOptimizer() {
                 </div>
 
                 {result.warnings && result.warnings.length > 0 && (
-                  <div className="rounded-xl border border-red-700/50 bg-red-950/30 p-5 space-y-2">
-                    <h3 className="text-sm font-semibold text-red-300 flex items-center gap-2">
-                      <XCircle className="w-4 h-4 text-red-400" />
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-5 space-y-2">
+                    <h3 className="text-sm font-semibold text-red-700 flex items-center gap-2">
+                      <XCircle className="w-4 h-4 text-red-500" />
                       Action Required — Manual Fix Needed
                     </h3>
                     {result.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-red-200/80 leading-relaxed">{w}</p>
+                      <p key={i} className="text-xs text-red-700 leading-relaxed">{w}</p>
                     ))}
                   </div>
                 )}
 
-                <div className="rounded-xl border border-white/8 bg-white/4 p-5">
-                  <h3 className="text-sm font-semibold text-white/90 mb-3 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     {result.changes.length} Optimizations Applied
                   </h3>
                   <ul className="space-y-1.5">
                     {result.changes.map((change, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-white/60">
-                        <ArrowRight className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                      <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <ArrowRight className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
                         {change}
                       </li>
                     ))}
@@ -787,18 +796,18 @@ export default function EmailOptimizer() {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-white/80 flex items-center gap-2">
-                      <FileCode2 className="w-4 h-4 text-green-400" />
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <FileCode2 className="w-4 h-4 text-emerald-600" />
                       Optimized HTML — Copy this back into Kajabi
                     </label>
                     <Button
                       onClick={handleCopy}
                       size="sm"
                       variant="outline"
-                      className="gap-2 border-white/15 text-white/70 hover:text-white hover:border-white/30 bg-transparent"
+                      className="gap-2"
                     >
                       {copied ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                       ) : (
                         <Copy className="w-4 h-4" />
                       )}
@@ -808,9 +817,9 @@ export default function EmailOptimizer() {
                   <Textarea
                     value={result.optimizedHtml}
                     readOnly
-                    className="h-52 font-mono text-xs bg-green-950/10 border-green-800/30 text-white/70 resize-none"
+                    className="h-52 font-mono text-xs bg-emerald-50 border-emerald-200 resize-none"
                   />
-                  <p className="text-xs text-white/35">
+                  <p className="text-xs text-muted-foreground">
                     Paste this into Kajabi's email editor → click the &lt;/&gt; Source Code button → select all → paste → click Save.
                   </p>
                 </div>
@@ -818,6 +827,7 @@ export default function EmailOptimizer() {
             )}
           </div>
         )}
+
       </div>
     </div>
   );

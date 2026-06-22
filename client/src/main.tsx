@@ -21,11 +21,29 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   window.location.href = getLoginUrl();
 };
 
+// Transient errors that should be silently retried — don't surface in the error overlay
+const TRANSIENT_PATTERNS = [
+  "temporarily unavailable",
+  "ai service",
+  "bad gateway",
+  "gateway timeout",
+  "service unavailable",
+];
+const isTransientError = (error: unknown): boolean => {
+  const msg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return TRANSIENT_PATTERNS.some((p) => msg.includes(p));
+};
+
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    // Use warn (not error) for transient AI/gateway blips — they auto-retry and don't need the overlay
+    if (isTransientError(error)) {
+      console.warn("[API Query Transient]", error instanceof Error ? error.message : error);
+    } else {
+      console.error("[API Query Error]", error);
+    }
   }
 });
 
@@ -33,7 +51,11 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    if (isTransientError(error)) {
+      console.warn("[API Mutation Transient]", error instanceof Error ? error.message : error);
+    } else {
+      console.error("[API Mutation Error]", error);
+    }
   }
 });
 

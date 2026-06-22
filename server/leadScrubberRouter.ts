@@ -699,6 +699,64 @@ export const leadScrubberRouter = router({
     return rows;
   }),
 
+  // Apollo daily draw stats — total, email reveal rate, per-day breakdown
+  getDailyStats: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
+    const totalRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leadProspects)
+      .where(eq(leadProspects.source, "apollo"));
+    const total = Number(totalRows[0]?.count ?? 0);
+    const emailRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leadProspects)
+      .where(and(
+        eq(leadProspects.source, "apollo"),
+        sql`email_found IS NOT NULL AND email_found != ''`
+      ));
+    const emailFound = Number(emailRows[0]?.count ?? 0);
+    const metaRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leadProspects)
+      .where(and(
+        eq(leadProspects.source, "apollo"),
+        eq(leadProspects.status, "converted")
+      ));
+    const metaPushed = Number(metaRows[0]?.count ?? 0);
+    const dailyRows = await db
+      .select({
+        day: sql<string>`DATE(FROM_UNIXTIME(created_at / 1000))`,
+        count: sql<number>`count(*)`,
+        emailsFound: sql<number>`SUM(CASE WHEN email_found IS NOT NULL AND email_found != '' THEN 1 ELSE 0 END)`,
+      })
+      .from(leadProspects)
+      .where(and(
+        eq(leadProspects.source, "apollo"),
+        sql`created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 14 DAY)) * 1000`
+      ))
+      .groupBy(sql`DATE(FROM_UNIXTIME(created_at / 1000))`)
+      .orderBy(sql`DATE(FROM_UNIXTIME(created_at / 1000)) DESC`);
+    const categoryRows = await db
+      .select({
+        category: leadProspects.category,
+        count: sql<number>`count(*)`,
+        emailsFound: sql<number>`SUM(CASE WHEN email_found IS NOT NULL AND email_found != '' THEN 1 ELSE 0 END)`,
+      })
+      .from(leadProspects)
+      .where(eq(leadProspects.source, "apollo"))
+      .groupBy(leadProspects.category)
+      .orderBy(sql`count(*) DESC`);
+    return {
+      total,
+      emailFound,
+      metaPushed,
+      emailRevealRate: total > 0 ? Math.round((emailFound / total) * 100) : 0,
+      daily: dailyRows.map(r => ({ day: r.day, count: Number(r.count), emailsFound: Number(r.emailsFound) })),
+      byCategory: categoryRows.map(r => ({ category: r.category ?? "unknown", count: Number(r.count), emailsFound: Number(r.emailsFound) })),
+    };
+  }),
+
   /**
    * Push a lead to Kajabi as a tagged contact.
    * Works for any lead source (Reddit, YouTube, Apollo, manual).

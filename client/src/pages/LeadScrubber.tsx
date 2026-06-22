@@ -638,6 +638,9 @@ function ApolloSearchTab() {
   const [results, setResults] = useState<ApolloPerson[]>([]);
   const [total, setTotal] = useState(0);
   const [message, setMessage] = useState("");
+
+  // Daily draw stats
+  const { data: dailyStats } = trpc.leadScrubber.getDailyStats.useQuery(undefined, { refetchInterval: 60_000 });
   // Track which persona category was last selected for Kajabi tagging
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   // Email sequence modal for Apollo leads
@@ -695,9 +698,81 @@ function ApolloSearchTab() {
 
   return (
     <div className="space-y-6">
+      {/* Apollo Daily Draw Status Panel */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="font-semibold text-sm text-indigo-900">⚡ Apollo Daily Draw — Live Status</p>
+            <p className="text-xs text-indigo-600 mt-0.5">Runs automatically every day at 08:00 UTC · 15 leads/category · 9 categories</p>
+          </div>
+          <div className="text-xs text-indigo-500 bg-white border border-indigo-200 rounded-lg px-3 py-1.5">
+            Next run: <span className="font-semibold">08:00 UTC</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="bg-white rounded-lg p-3 border border-indigo-100 text-center">
+            <p className="text-2xl font-bold text-indigo-700">{dailyStats?.total ?? 0}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Total Leads</p>
+          </div>
+          <div className="bg-white rounded-lg p-3 border border-green-100 text-center">
+            <p className="text-2xl font-bold text-green-600">{dailyStats?.emailFound ?? 0}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Emails Found</p>
+          </div>
+          <div className="bg-white rounded-lg p-3 border border-blue-100 text-center">
+            <p className="text-2xl font-bold text-blue-600">{dailyStats?.emailRevealRate ?? 0}%</p>
+            <p className="text-xs text-gray-500 mt-0.5">Reveal Rate</p>
+          </div>
+          <div className="bg-white rounded-lg p-3 border border-purple-100 text-center">
+            <p className="text-2xl font-bold text-purple-600">{dailyStats?.metaPushed ?? 0}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Pushed to Meta</p>
+          </div>
+        </div>
+        {/* Per-day breakdown */}
+        {dailyStats && dailyStats.daily.length > 0 && (
+          <div className="bg-white rounded-lg border border-indigo-100 overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-indigo-50">
+                  <th className="text-left px-3 py-2 text-indigo-700 font-semibold">Date</th>
+                  <th className="text-right px-3 py-2 text-indigo-700 font-semibold">Leads Added</th>
+                  <th className="text-right px-3 py-2 text-indigo-700 font-semibold">Emails Found</th>
+                  <th className="text-right px-3 py-2 text-indigo-700 font-semibold">Reveal Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyStats.daily.map((row, i) => (
+                  <tr key={row.day} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <td className="px-3 py-2 text-gray-700 font-medium">{row.day}</td>
+                    <td className="px-3 py-2 text-right text-gray-800 font-semibold">{row.count}</td>
+                    <td className="px-3 py-2 text-right text-green-600 font-semibold">{row.emailsFound}</td>
+                    <td className="px-3 py-2 text-right text-blue-600">{row.count > 0 ? Math.round((row.emailsFound / row.count) * 100) : 0}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {dailyStats && dailyStats.daily.length === 0 && (
+          <p className="text-xs text-indigo-500 text-center py-2">No draws yet — first run tomorrow at 08:00 UTC. Check back in a couple of days.</p>
+        )}
+        {/* Category breakdown */}
+        {dailyStats && dailyStats.byCategory.length > 0 && (
+          <div className="mt-3">
+            <p className="text-xs font-semibold text-indigo-700 mb-2">By Category</p>
+            <div className="flex flex-wrap gap-2">
+              {dailyStats.byCategory.map(cat => (
+                <span key={cat.category} className="text-xs bg-white border border-indigo-200 rounded-full px-2.5 py-1 text-indigo-700">
+                  {cat.category.replace(/_/g, " ")}: <strong>{cat.count}</strong> leads · <span className="text-green-600">{cat.emailsFound} emails</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
         <p className="font-semibold mb-1">Apollo.io Cold Lead Search (Tier 3b)</p>
-        <p>Search Apollo's database of 275M+ contacts by job title, keywords, and location. Results are automatically saved to your lead queue. Uses your Apollo Basic plan credits.</p>
+        <p>Search Apollo's database of 275M+ contacts by job title, keywords, and location. Results are automatically saved to your lead queue. Uses your Apollo Professional plan credits (4,000/mo).</p>
       </div>
 
       {/* Persona Quick-Select */}

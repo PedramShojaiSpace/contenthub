@@ -723,6 +723,53 @@ export const appRouter = router({
 
         return { seoScore, readabilityScore, fetchedAt: Date.now() };
       }),
+
+    /**
+     * Batch-fetch Yoast SEO scores for all published blog posts that have a
+     * wpPostId but no yoastScore yet (or whose score is older than 7 days).
+     * Returns a summary { fetched, skipped, errors }.
+     */
+    batchFetchYoastScores: protectedProcedure.mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { contentItems: ci } = await import("../drizzle/schema");
+      const { eq, and, isNotNull, or, isNull, lt } = await import("drizzle-orm");
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const posts = await db
+        .select({ id: ci.id, wpPostId: ci.wpPostId })
+        .from(ci)
+        .where(
+          and(
+            eq(ci.status, "published"),
+            eq(ci.platform, "blog"),
+            isNotNull(ci.wpPostId),
+            or(isNull(ci.yoastScore), lt(ci.yoastScoreFetchedAt, sevenDaysAgo))
+          )
+        );
+
+      const { getWpYoastScore } = await import("./wordpress");
+      let fetched = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      for (const post of posts) {
+        if (!post.wpPostId) { skipped++; continue; }
+        try {
+          const { seoScore } = await getWpYoastScore(post.wpPostId);
+          await updateContentItem(post.id, {
+            yoastScore: seoScore ?? undefined,
+            yoastScoreFetchedAt: Date.now(),
+          });
+          fetched++;
+        } catch {
+          errors++;
+        }
+        // Small delay to avoid hammering WordPress REST API
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      return { fetched, skipped, errors, total: posts.length };
+    }),
   }),
   // ─── AI Generation ──────────────────────────────────────────────────────────
   ai: router({

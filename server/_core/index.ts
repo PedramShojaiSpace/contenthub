@@ -893,9 +893,14 @@ async function startServer() {
       res.setHeader("Access-Control-Allow-Credentials", "false");
     }
     // Validate shared key (prevents abuse from random callers)
+    // Accept INGEST_SECRET env var, the bookmarklet's hardcoded key, or the legacy fallback
     const key = req.headers["x-optimizer-key"] || req.body?.key;
-    const expectedKey = process.env.INGEST_SECRET || "urban-monk-optimizer";
-    if (key !== expectedKey) {
+    const validKeys = [
+      process.env.INGEST_SECRET,
+      "dfagsdfghs993452345", // bookmarklet key
+      "urban-monk-optimizer", // legacy fallback
+    ].filter(Boolean);
+    if (!validKeys.includes(key as string)) {
       return res.status(401).json({ error: "Invalid optimizer key" });
     }
     const html = req.body?.html;

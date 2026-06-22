@@ -2,16 +2,16 @@
  * Apollo Daily Draw Handler
  * ─────────────────────────
  * Fires daily at 08:00 UTC via Heartbeat cron.
- * Pulls ~133 professional emails/day (4,000/month ÷ 30) across 9 health
- * professional categories, deduplicates against existing leads, saves to
- * lead_prospects, and auto-pushes found emails to Meta Custom Audiences.
- *
- * Budget: 4,000 Apollo credits/month → 133/day → ~15 per category per day.
+ * Pulls ~450 profiles/day (50 per category x 9 categories) — FREE search.
+ * Immediately reveals emails for leads where has_email=true using export
+ * credits (1 credit per reveal). On Professional plan: 2,000 credits/month
+ * = ~66 reveals/day. On Organization plan: 4,000 credits/month = ~133/day.
+ * Deduplicates against existing leads, saves to lead_prospects, and
+ * auto-pushes found emails to Meta Custom Audiences.
  */
 
 import type { Request, Response } from "express";
 import { getDb } from "./db";
-import { inArray } from "drizzle-orm";
 import crypto from "crypto";
 
 // ── Category definitions ──────────────────────────────────────────────────────
@@ -72,19 +72,54 @@ const DAILY_CATEGORIES = [
   },
 ];
 
-// ── Daily profile fetch (FREE search, no credits) ────────────────────────────
-// Fetch 50 profiles per category = 450 leads/day at zero cost
-// Email reveal (1 credit each) is triggered separately via Lead Scrubber or batch reveal
+// Max reveals per category per run — prevents blowing the monthly export credit budget.
+// Professional plan: 2,000/month / 9 categories / 30 days ~ 7/category/day
+// Organization plan: 4,000/month / 9 categories / 30 days ~ 15/category/day
 const PER_CATEGORY = 50;
+const MAX_REVEALS_PER_CATEGORY = 15;
+
+// ── Apollo email reveal (uses 1 export credit per call) ─────────────────────
+async function apolloRevealEmail(apolloId: string): Promise<{ email: string | null; emailStatus: string | null }> {
+  const apiKey = process.env.APOLLO_API_KEY;
+  if (!apiKey || !apolloId) return { email: null, emailStatus: null };
+
+  const url = "https://api.apollo.io/api/v1/people/" + apolloId;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { "Content-Type": "application/json", "X-Api-Key": apiKey },
+  });
+
+  if (!res.ok) {
+    if (res.status === 429 || res.status === 403) {
+      throw new Error("CREDIT_LIMIT:" + res.status);
+    }
+    return { email: null, emailStatus: null };
+  }
+
+  const data = await res.json() as { person?: { email?: string; email_status?: string } };
+  return {
+    email: data.person?.email ?? null,
+    emailStatus: data.person?.email_status ?? null,
+  };
+}
 
 // ── Apollo search (FREE — no credits used) ──────────────────────────────────
-async function apolloSearch(titles: string[], perPage: number): Promise<Array<{
+interface ApolloProfile {
   apolloId: string | null;
-  firstName: string; lastName: string;
-  name: string; title: string; email: string | null; emailStatus: string | null;
+  firstName: string;
+  lastName: string;
+  name: string;
+  title: string;
+  email: string | null;
+  emailStatus: string | null;
   hasEmail: boolean;
-  company: string | null; domain: string | null; linkedinUrl: string | null; location: string;
-}>> {
+  company: string | null;
+  domain: string | null;
+  linkedinUrl: string | null;
+  location: string;
+}
+
+async function apolloSearch(titles: string[], perPage: number): Promise<ApolloProfile[]> {
   const apiKey = process.env.APOLLO_API_KEY;
   if (!apiKey) return [];
 
@@ -95,64 +130,59 @@ async function apolloSearch(titles: string[], perPage: number): Promise<Array<{
       person_titles: titles,
       person_locations: ["United States"],
       per_page: perPage,
-      page: Math.floor(Math.random() * 10) + 1, // rotate pages to avoid duplicate results
+      page: Math.floor(Math.random() * 10) + 1,
     }),
   });
 
-  if (!res.ok) {
-    console.error(`[Apollo Daily Draw] Search failed: ${res.status}`);
-    return [];
-  }
+  if (!res.ok) return [];
 
   const data = await res.json() as { people?: any[]; error?: string };
-  if (data.error) {
-    console.error(`[Apollo Daily Draw] API error: ${data.error}`);
-    return [];
-  }
+  if (data.error) return [];
 
-  return (data.people ?? []).map((p: any) => ({
+  return (data.people ?? []).map((p: any): ApolloProfile => ({
     apolloId: p.id ?? null,
     firstName: p.first_name ?? "",
     lastName: p.last_name_obfuscated ?? p.last_name ?? "",
-    name: p.name ?? `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
+    name: p.name ?? ((p.first_name ?? "") + " " + (p.last_name ?? "")).trim(),
     title: p.title ?? "",
     email: p.email ?? null,
     emailStatus: p.email_status ?? null,
     hasEmail: p.has_email === true,
     company: p.organization?.name ?? null,
-    domain: p.organization?.website_url?.replace(/^https?:\/\//, "").split("/")[0] ?? null,
+    domain: (p.organization?.website_url ?? "").replace(/^https?:\/\//, "").split("/")[0] || null,
     linkedinUrl: p.linkedin_url ?? null,
     location: [p.city, p.state, p.country].filter(Boolean).join(", "),
   }));
 }
 
 // ── Push emails to Meta Custom Audience ──────────────────────────────────────
-async function pushEmailsToMetaAudience(emails: string[], category: string): Promise<{ pushed: number; error?: string }> {
+async function pushEmailsToMetaAudience(
+  emails: string[],
+  category: string,
+  db: any
+): Promise<{ pushed: number; error?: string }> {
   try {
-    const { getDb: getDbLocal } = await import("../db");
-    const db = await getDbLocal();
-    if (!db) return { pushed: 0, error: "no db" };
+    const [rows] = await db.execute(
+      "SELECT meta_audience_id FROM meta_custom_audiences WHERE category = " +
+      JSON.stringify(category) +
+      " AND status = 'active' LIMIT 1"
+    ) as any[];
 
-    // Find the Meta Custom Audience for this category
-    const [audience] = await db.execute(
-      `SELECT id, meta_audience_id FROM meta_custom_audiences WHERE category = '${category}' AND status = 'active' LIMIT 1`
-    ) as any;
-
-    const rows: any[] = Array.isArray(audience) ? audience : [];
-    if (!rows.length || !rows[0]?.meta_audience_id) {
-      // No audience for this category yet — skip silently
+    const audienceRows: any[] = Array.isArray(rows) ? rows : [];
+    if (!audienceRows.length || !audienceRows[0]?.meta_audience_id) {
       return { pushed: 0 };
     }
 
-    const metaAudienceId = rows[0].meta_audience_id;
+    const metaAudienceId = audienceRows[0].meta_audience_id as string;
     const accessToken = process.env.META_AD_ACCESS_TOKEN;
     if (!accessToken) return { pushed: 0, error: "no meta token" };
 
-    // Hash emails SHA256 (Meta requirement)
-    const hashedEmails = emails.map(e => crypto.createHash("sha256").update(e.toLowerCase().trim()).digest("hex"));
+    const hashedEmails = emails.map(e =>
+      crypto.createHash("sha256").update(e.toLowerCase().trim()).digest("hex")
+    );
 
     const metaRes = await fetch(
-      `https://graph.facebook.com/v21.0/${metaAudienceId}/users`,
+      "https://graph.facebook.com/v21.0/" + metaAudienceId + "/users",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -168,21 +198,61 @@ async function pushEmailsToMetaAudience(emails: string[], category: string): Pro
 
     if (!metaRes.ok) {
       const errText = await metaRes.text();
-      return { pushed: 0, error: `Meta API ${metaRes.status}: ${errText.slice(0, 200)}` };
+      return { pushed: 0, error: "Meta API " + metaRes.status + ": " + errText.slice(0, 200) };
     }
 
-    const metaData = await metaRes.json() as { num_received?: number; num_invalid_entries?: number; error?: any };
-    if (metaData.error) return { pushed: 0, error: metaData.error.message };
-
+    const metaData = await metaRes.json() as { num_received?: number; error?: any };
+    if (metaData.error) return { pushed: 0, error: String(metaData.error.message) };
     return { pushed: metaData.num_received ?? emails.length };
   } catch (err: any) {
     return { pushed: 0, error: err?.message ?? "unknown" };
   }
 }
 
+// ── Build INSERT SQL (no nested template literals) ────────────────────────────
+function buildLeadInsertSql(
+  sourceId: string,
+  displayTitle: string,
+  bodyJson: string,
+  linkedinUrl: string | null,
+  authorName: string,
+  companyOrLabel: string,
+  keywordsMatched: string,
+  category: string,
+  email: string | null,
+  emailStatus: string | null,
+  now: number
+): string {
+  const q = (s: string) => JSON.stringify(s);
+  const statusVal = email ? "'email_found'" : "'new'";
+  const emailVal = email ? q(email) : "NULL";
+  const confVal = emailStatus === "verified" ? "'verified'" : email ? "'likely'" : "NULL";
+  const urlVal = linkedinUrl ? q(linkedinUrl) : "NULL";
+
+  return (
+    "INSERT IGNORE INTO lead_prospects " +
+    "(lp_source, sourceId, title, body, url, author, subredditOrChannel, keywordsMatched, category, lp_status, emailFound, emailConfidence, lp_createdAt, lp_updatedAt) " +
+    "VALUES (" +
+    "'apollo', " +
+    q(sourceId) + ", " +
+    q(displayTitle) + ", " +
+    q(bodyJson) + ", " +
+    urlVal + ", " +
+    q(authorName) + ", " +
+    q(companyOrLabel) + ", " +
+    q(keywordsMatched) + ", " +
+    q(category) + ", " +
+    statusVal + ", " +
+    emailVal + ", " +
+    confVal + ", " +
+    now + ", " +
+    now +
+    ")"
+  );
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function apolloDailyDrawHandler(req: Request, res: Response) {
-  // Allow cron platform OR manual trigger from admin (for first-run seeding)
   const isCron = !!req.headers["x-manus-cron-task-uid"];
   const isManual = req.headers["x-manual-trigger"] === process.env.INGEST_SECRET;
   if (!isCron && !isManual) {
@@ -191,7 +261,13 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
 
   const startTime = Date.now();
   const results: Array<{
-    category: string; searched: number; newLeads: number; emailsFound: number; metaPushed: number; error?: string;
+    category: string;
+    searched: number;
+    newLeads: number;
+    emailsFound: number;
+    revealsUsed: number;
+    metaPushed: number;
+    error?: string;
   }> = [];
 
   try {
@@ -200,36 +276,66 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
 
     for (const cat of DAILY_CATEGORIES) {
       try {
-        // 1. Search Apollo
-        const people = await apolloSearch(cat.titles, PER_CATEGORY + 5); // fetch a few extra to account for dupes
+        const people = await apolloSearch(cat.titles, PER_CATEGORY + 5);
 
         if (!people.length) {
-          results.push({ category: cat.category, searched: 0, newLeads: 0, emailsFound: 0, metaPushed: 0 });
+          results.push({ category: cat.category, searched: 0, newLeads: 0, emailsFound: 0, revealsUsed: 0, metaPushed: 0 });
           continue;
         }
 
-        // 2. Deduplicate: skip leads whose LinkedIn URL or name+company already exists
-        const linkedinUrls = people.filter(p => p.linkedinUrl).map(p => p.linkedinUrl!);
+        // Deduplicate against existing LinkedIn URLs
+        const linkedinUrls = people.filter(p => p.linkedinUrl).map(p => p.linkedinUrl as string);
         let existingUrls = new Set<string>();
         if (linkedinUrls.length) {
-          const existing = await db.execute(
-            `SELECT url FROM lead_prospects WHERE url IN (${linkedinUrls.map(u => `'${u.replace(/'/g, "''")}'`).join(",")}) LIMIT 500`
-          ) as any;
-          const existingRows: any[] = Array.isArray(existing) ? existing[0] as any[] : [];
-          existingUrls = new Set(existingRows.map((r: any) => r.url));
+          const [existingRows] = await db.execute(
+            "SELECT url FROM lead_prospects WHERE url IN (" +
+            linkedinUrls.map(u => JSON.stringify(u)).join(",") +
+            ") LIMIT 500"
+          ) as any[];
+          const rows: any[] = Array.isArray(existingRows) ? existingRows : [];
+          existingUrls = new Set(rows.map((r: any) => r.url as string));
         }
 
-        const newPeople = people.filter(p => !p.linkedinUrl || !existingUrls.has(p.linkedinUrl)).slice(0, PER_CATEGORY);
+        const newPeople = people
+          .filter(p => !p.linkedinUrl || !existingUrls.has(p.linkedinUrl))
+          .slice(0, PER_CATEGORY);
 
-        // 3. Insert new leads
         let newLeads = 0;
         let emailsFound = 0;
+        let revealsUsed = 0;
+        let creditLimitHit = false;
         const emailsToSync: string[] = [];
 
         for (const p of newPeople) {
           const now = Date.now();
           try {
-            // Store apolloId in the body JSON for later credit-based reveal
+            let resolvedEmail = p.email;
+            let resolvedEmailStatus = p.emailStatus;
+
+            // Auto-reveal email if Apollo signals the person has one
+            if (
+              !resolvedEmail &&
+              p.hasEmail &&
+              p.apolloId &&
+              revealsUsed < MAX_REVEALS_PER_CATEGORY &&
+              !creditLimitHit
+            ) {
+              try {
+                const revealed = await apolloRevealEmail(p.apolloId);
+                if (revealed.email) {
+                  resolvedEmail = revealed.email;
+                  resolvedEmailStatus = revealed.emailStatus;
+                  revealsUsed++;
+                  await new Promise(r => setTimeout(r, 200)); // rate-limit courtesy delay
+                }
+              } catch (revealErr: any) {
+                if ((revealErr?.message ?? "").startsWith("CREDIT_LIMIT")) {
+                  creditLimitHit = true;
+                  console.warn("[Apollo Daily Draw] Credit limit hit for " + cat.category);
+                }
+              }
+            }
+
             const bodyJson = JSON.stringify({
               title: p.title ?? "",
               company: p.company ?? "",
@@ -240,70 +346,90 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
               domain: p.domain,
               hasEmail: p.hasEmail,
             });
-            const sourceId = `apollo_${p.apolloId || p.firstName.toLowerCase() + "_" + p.lastName.toLowerCase()}_${now}`;
-            await db.execute(
-              `INSERT IGNORE INTO lead_prospects
-                (lp_source, sourceId, title, body, url, author, subredditOrChannel, keywordsMatched, category, lp_status, emailFound, emailConfidence, lp_createdAt, lp_updatedAt)
-               VALUES (
-                'apollo',
-                ${JSON.stringify(sourceId)},
-                ${JSON.stringify(p.name + (p.title ? ` — ${p.title}` : ""))},
-                ${JSON.stringify(bodyJson)},
-                ${p.linkedinUrl ? JSON.stringify(p.linkedinUrl) : "NULL"},
-                ${JSON.stringify(p.name)},
-                ${JSON.stringify(p.company ?? cat.label)},
-                ${JSON.stringify(cat.titles.slice(0, 3).join(", "))},
-                ${JSON.stringify(cat.category)},
-                ${p.email ? "'email_found'" : "'new'"},
-                ${p.email ? JSON.stringify(p.email) : "NULL"},
-                ${p.emailStatus === "verified" ? "'verified'" : p.email ? "'likely'" : "NULL"},
-                ${now},
-                ${now}
-              )`
+
+            const sourceId = "apollo_" +
+              (p.apolloId || (p.firstName.toLowerCase() + "_" + p.lastName.toLowerCase())) +
+              "_" + now;
+
+            const displayTitle = p.name + (p.title ? " \u2014 " + p.title : "");
+            const keywordsMatched = cat.titles.slice(0, 3).join(", ");
+
+            const sql = buildLeadInsertSql(
+              sourceId,
+              displayTitle,
+              bodyJson,
+              p.linkedinUrl,
+              p.name,
+              p.company ?? cat.label,
+              keywordsMatched,
+              cat.category,
+              resolvedEmail,
+              resolvedEmailStatus,
+              now
             );
+
+            await db.execute(sql);
             newLeads++;
-            if (p.email) {
+
+            if (resolvedEmail) {
               emailsFound++;
-              emailsToSync.push(p.email);
+              emailsToSync.push(resolvedEmail);
             }
           } catch (_) {
             // INSERT IGNORE handles duplicates silently
           }
         }
 
-        // 4. Push emails to Meta Custom Audience
+        if (revealsUsed > 0) {
+          console.log("[Apollo Daily Draw] " + cat.label + ": revealed " + revealsUsed + " emails");
+        }
+
+        // Push found emails to Meta Custom Audience
         let metaPushed = 0;
         if (emailsToSync.length) {
-          const metaResult = await pushEmailsToMetaAudience(emailsToSync, cat.metaAudienceCategory);
+          const metaResult = await pushEmailsToMetaAudience(emailsToSync, cat.metaAudienceCategory, db);
           metaPushed = metaResult.pushed;
           if (metaResult.error) {
-            console.warn(`[Apollo Daily Draw] Meta push warning for ${cat.category}: ${metaResult.error}`);
+            console.warn("[Apollo Daily Draw] Meta push warning for " + cat.category + ": " + metaResult.error);
           }
         }
 
-        results.push({ category: cat.category, searched: people.length, newLeads, emailsFound, metaPushed });
-        console.log(`[Apollo Daily Draw] ${cat.label}: searched=${people.length} new=${newLeads} emails=${emailsFound} meta=${metaPushed}`);
+        results.push({ category: cat.category, searched: people.length, newLeads, emailsFound, revealsUsed, metaPushed });
+        console.log(
+          "[Apollo Daily Draw] " + cat.label +
+          ": searched=" + people.length +
+          " new=" + newLeads +
+          " emails=" + emailsFound +
+          " reveals=" + revealsUsed +
+          " meta=" + metaPushed
+        );
 
-        // Small delay between categories to be respectful of rate limits
         await new Promise(r => setTimeout(r, 500));
 
       } catch (catErr: any) {
         const msg = catErr?.message ?? "unknown";
-        console.error(`[Apollo Daily Draw] Category ${cat.category} failed:`, msg);
-        results.push({ category: cat.category, searched: 0, newLeads: 0, emailsFound: 0, metaPushed: 0, error: msg });
+        console.error("[Apollo Daily Draw] Category " + cat.category + " failed:", msg);
+        results.push({ category: cat.category, searched: 0, newLeads: 0, emailsFound: 0, revealsUsed: 0, metaPushed: 0, error: msg });
       }
     }
 
     const totalNew = results.reduce((s, r) => s + r.newLeads, 0);
     const totalEmails = results.reduce((s, r) => s + r.emailsFound, 0);
+    const totalReveals = results.reduce((s, r) => s + r.revealsUsed, 0);
     const totalMeta = results.reduce((s, r) => s + r.metaPushed, 0);
     const elapsed = Date.now() - startTime;
 
-    console.log(`[Apollo Daily Draw] Complete: newLeads=${totalNew} emails=${totalEmails} metaPushed=${totalMeta} elapsed=${elapsed}ms`);
+    console.log(
+      "[Apollo Daily Draw] Complete: newLeads=" + totalNew +
+      " emails=" + totalEmails +
+      " reveals=" + totalReveals +
+      " metaPushed=" + totalMeta +
+      " elapsed=" + elapsed + "ms"
+    );
 
     res.json({
       ok: true,
-      summary: { totalNew, totalEmails, totalMeta, elapsed },
+      summary: { totalNew, totalEmails, totalReveals, totalMeta, elapsed },
       categories: results,
       timestamp: new Date().toISOString(),
     });
@@ -327,33 +453,31 @@ export async function apolloAudienceValidationHandler(req: Request, res: Respons
     const db = await getDb();
     if (!db) return res.status(503).json({ error: "Database unavailable" });
 
-    // Count leads added in the last 48 hours
     const cutoff = Date.now() - 48 * 60 * 60 * 1000;
     const [recentRows] = await db.execute(
-      `SELECT category, COUNT(*) as cnt, SUM(emailFound IS NOT NULL) as with_email
-       FROM lead_prospects
-       WHERE lp_source = 'apollo' AND lp_createdAt >= ${cutoff}
-       GROUP BY category`
-    ) as any;
+      "SELECT category, COUNT(*) as cnt, SUM(emailFound IS NOT NULL) as with_email " +
+      "FROM lead_prospects " +
+      "WHERE lp_source = 'apollo' AND lp_createdAt >= " + cutoff + " " +
+      "GROUP BY category"
+    ) as any[];
 
     const recent: any[] = Array.isArray(recentRows) ? recentRows : [];
 
-    // Check Meta Custom Audience sizes
     const accessToken = process.env.META_AD_ACCESS_TOKEN;
-    const adAccountId = process.env.META_AD_ACCOUNT_ID;
     const audienceStats: any[] = [];
 
-    if (accessToken && adAccountId) {
+    if (accessToken) {
       const [audienceRows] = await db.execute(
-        `SELECT id, name, category, meta_audience_id, status FROM meta_custom_audiences WHERE status = 'active'`
-      ) as any;
+        "SELECT id, name, category, meta_audience_id FROM meta_custom_audiences WHERE status = 'active'"
+      ) as any[];
       const audiences: any[] = Array.isArray(audienceRows) ? audienceRows : [];
 
       for (const aud of audiences.slice(0, 10)) {
         if (!aud.meta_audience_id) continue;
         try {
           const metaRes = await fetch(
-            `https://graph.facebook.com/v21.0/${aud.meta_audience_id}?fields=name,approximate_count_lower_bound,approximate_count_upper_bound,delivery_status&access_token=${accessToken}`
+            "https://graph.facebook.com/v21.0/" + aud.meta_audience_id +
+            "?fields=name,approximate_count_lower_bound,approximate_count_upper_bound,delivery_status&access_token=" + accessToken
           );
           if (metaRes.ok) {
             const metaData = await metaRes.json() as any;
@@ -369,18 +493,24 @@ export async function apolloAudienceValidationHandler(req: Request, res: Respons
       }
     }
 
-    // Notify owner with summary
     const { notifyOwner } = await import("./_core/notification").catch(() => ({ notifyOwner: null }));
     const totalLeads = recent.reduce((s: number, r: any) => s + Number(r.cnt), 0);
     const totalEmails = recent.reduce((s: number, r: any) => s + Number(r.with_email), 0);
 
-    const summary = `Apollo Daily Draw — 48-hour validation\n\nLeads added: ${totalLeads}\nEmails found: ${totalEmails}\n\nBy category:\n${recent.map((r: any) => `  ${r.category}: ${r.cnt} leads, ${r.with_email} emails`).join("\n")}\n\nMeta Custom Audiences:\n${audienceStats.map(a => `  ${a.name}: ${a.metaLower ?? "?"}–${a.metaUpper ?? "?"} matched`).join("\n") || "  (no audiences yet)"}`;
-
-    console.log("[Apollo Validation]", summary);
+    const summary =
+      "Apollo Daily Draw — 48-hour validation\n\n" +
+      "Leads added: " + totalLeads + "\n" +
+      "Emails found: " + totalEmails + "\n\n" +
+      "By category:\n" +
+      recent.map((r: any) => "  " + r.category + ": " + r.cnt + " leads, " + r.with_email + " emails").join("\n") + "\n\n" +
+      "Meta Custom Audiences:\n" +
+      (audienceStats.length
+        ? audienceStats.map(a => "  " + a.name + ": " + (a.metaLower ?? "?") + "-" + (a.metaUpper ?? "?") + " matched").join("\n")
+        : "  (no audiences yet)");
 
     if (notifyOwner) {
       await (notifyOwner as any)({
-        title: "✅ Apollo Lead Pipeline — 48hr Check",
+        title: "Apollo Lead Pipeline — 48hr Check",
         content: summary,
       }).catch(() => {});
     }
@@ -395,7 +525,6 @@ export async function apolloAudienceValidationHandler(req: Request, res: Respons
     });
 
   } catch (err: any) {
-    const msg = err?.message ?? "Unknown error";
-    res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
+    res.status(500).json({ error: err?.message ?? "Unknown error", timestamp: new Date().toISOString() });
   }
 }

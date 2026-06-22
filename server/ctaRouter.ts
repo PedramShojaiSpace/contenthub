@@ -75,6 +75,7 @@ export const KNOWN_CAMPAIGN_SLUGS = new Set([
   "barrier-breakdown",
   "brand-awareness",
   "retargeting",
+  "tantra-course",
 ]);
 
 /**
@@ -216,6 +217,14 @@ const DEFAULT_CTA_BLOCKS = [
     ctaText: "Before you can fix your health, you need to know what's actually broken. The Gateway to Health test gives you a comprehensive picture of your metabolic, hormonal, and gut health — so you can stop guessing and start targeting. Visit gth.theurbanmonk.com to get tested.",
     url: "https://gth.theurbanmonk.com",
     keywords: JSON.stringify(["gateway to health", "health test", "testing", "lab test", "blood test", "metabolic test", "hormone test", "gut test", "kbmo", "gi map", "orobiome", "biomarkers", "functional testing"]),
+    isDefault: false,
+    active: true,
+  },
+  {
+    label: "Tantra Course",
+    ctaText: "Your sexual energy is the most powerful life force you carry — and most people have never learned to work with it consciously. Dr. Pedram Shojai's Tantra course teaches the ancient Taoist and Hindu practices for harnessing that energy, moving it up the spine, and using it to fuel your spiritual awakening, deepen your relationships, and reclaim your vitality. This is a live course with weekly breathwork and partner practices. If you're ready to stop wasting your life force and start channeling it toward something real, visit join.theurbanmonk.com/tantra to enroll.",
+    url: "https://join.theurbanmonk.com/tantra/",
+    keywords: JSON.stringify(["tantra", "tantric", "sexuality", "sexual energy", "sacred sexuality", "kundalini", "life force", "sexual health", "intimacy", "relationships", "spiritual sexuality", "union", "dantien", "shakti", "yin yang", "sexual vitality", "porn addiction", "desire", "libido", "partner practice", "breathwork", "awakening", "consciousness", "making love", "sex and spirit"]),
     isDefault: false,
     active: true,
   },

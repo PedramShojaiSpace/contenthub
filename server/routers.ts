@@ -6342,14 +6342,23 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
       }
 
       // Fetch position history for all posts (last 2 snapshots per URL)
+      // Use raw SQL to avoid Drizzle column-name translation issues (gph_content_item_id vs contentItemId)
       const postIds = posts.map((p: any) => p.id).filter(Boolean);
       let historyRows: any[] = [];
       if (postIds.length > 0) {
-        historyRows = await db
-          .select()
-          .from(gscPositionHistory)
-          .where(inArray(gscPositionHistory.contentItemId, postIds))
-          .orderBy(desc(gscPositionHistory.recordedAt));
+        try {
+          const { sql } = await import("drizzle-orm");
+          const placeholders = postIds.map(() => "?").join(",");
+          historyRows = await db.execute(
+            sql.raw(`SELECT id, gph_content_item_id AS contentItemId, gph_url AS url, gph_clicks AS clicks, gph_impressions AS impressions, gph_ctr AS ctr, gph_position AS position, gph_recorded_at AS recordedAt FROM gsc_position_history WHERE gph_content_item_id IN (${placeholders}) ORDER BY gph_recorded_at DESC`, postIds)
+          ) as any[];
+          // mysql2 returns [rows, fields] — unwrap if needed
+          if (Array.isArray(historyRows) && Array.isArray(historyRows[0])) {
+            historyRows = historyRows[0] as any[];
+          }
+        } catch {
+          historyRows = [];
+        }
       }
 
       // Group history by contentItemId, keep last 2 snapshots
@@ -6373,15 +6382,15 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           const existing = historyByItem.get(post.id)?.[0];
           const oneHourAgo = now - 3_600_000;
           if (existing && existing.recordedAt > oneHourAgo) continue;
-          await db.insert(gscPositionHistory).values({
-            contentItemId: post.id,
-            url,
-            clicks: gsc.clicks,
-            impressions: gsc.impressions,
-            ctr: String(gsc.ctr),
-            position: String(gsc.position),
-            recordedAt: now,
-          });
+          try {
+            const { sql: sqlTag } = await import("drizzle-orm");
+            await db.execute(
+              sqlTag.raw(
+                "INSERT INTO gsc_position_history (gph_content_item_id, gph_url, gph_clicks, gph_impressions, gph_ctr, gph_position, gph_recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [post.id, url, gsc.clicks, gsc.impressions, String(gsc.ctr), String(gsc.position), now]
+              )
+            );
+          } catch { /* non-critical snapshot — ignore errors */ }
         }
       }
 

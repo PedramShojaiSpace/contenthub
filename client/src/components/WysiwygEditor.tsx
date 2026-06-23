@@ -3,6 +3,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
+import Image from "@tiptap/extension-image";
 import { useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +45,14 @@ export function WysiwygEditor({ value, onChange, disabled }: WysiwygEditorProps)
         HTMLAttributes: { class: "text-blue-600 underline" },
       }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      // Image extension — preserves <img> tags (including inline body images and CTA banners)
+      // when loading and saving WordPress HTML. Without this, TipTap silently strips all
+      // <img> nodes because they are not part of the default schema.
+      Image.configure({
+        inline: true,       // allow images inside paragraphs (not just block-level)
+        allowBase64: false, // no base64 blobs — only real URLs
+        HTMLAttributes: {},
+      }),
     ],
     content: value,
     editable: !disabled,
@@ -147,7 +156,7 @@ export function WysiwygEditor({ value, onChange, disabled }: WysiwygEditorProps)
       {/* Editor area */}
       <EditorContent
         editor={editor}
-        className="flex-1 overflow-y-auto px-4 py-3 blog-prose max-w-none focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:focus:outline-none"
+        className="flex-1 overflow-y-auto px-4 py-3 blog-prose max-w-none focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:focus:outline-none [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_img]:my-4"
       />
     </div>
   );

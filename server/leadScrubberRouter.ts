@@ -649,11 +649,12 @@ export const leadScrubberRouter = router({
         location: [p.city, p.state, p.country].filter(Boolean).join(", "),
       }));
 
-      // Save to lead_prospects DB so they appear in the main queue
+      // Save to lead_prospects DB — ONLY save leads that have an email address
       const db = await getDb();
       if (db && people.length > 0) {
         for (const p of people) {
           if (!p.name) continue;
+          if (!p.email) continue; // email-only policy — no email = not useful
           try {
             await db
               .insert(leadProspects)
@@ -713,7 +714,7 @@ export const leadScrubberRouter = router({
       .from(leadProspects)
       .where(and(
         eq(leadProspects.source, "apollo"),
-        sql`email_found IS NOT NULL AND email_found != ''`
+        sql`emailFound IS NOT NULL AND emailFound != ''`
       ));
     const emailFound = Number(emailRows[0]?.count ?? 0);
     const metaRows = await db
@@ -726,22 +727,22 @@ export const leadScrubberRouter = router({
     const metaPushed = Number(metaRows[0]?.count ?? 0);
     const dailyRows = await db
       .select({
-        day: sql<string>`DATE(FROM_UNIXTIME(created_at / 1000))`,
+        day: sql<string>`DATE(FROM_UNIXTIME(lp_createdAt / 1000))`,
         count: sql<number>`count(*)`,
-        emailsFound: sql<number>`SUM(CASE WHEN email_found IS NOT NULL AND email_found != '' THEN 1 ELSE 0 END)`,
+        emailsFound: sql<number>`SUM(CASE WHEN emailFound IS NOT NULL AND emailFound != '' THEN 1 ELSE 0 END)`,
       })
       .from(leadProspects)
       .where(and(
         eq(leadProspects.source, "apollo"),
-        sql`created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 14 DAY)) * 1000`
+        sql`lp_createdAt >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 14 DAY)) * 1000`
       ))
-      .groupBy(sql`DATE(FROM_UNIXTIME(created_at / 1000))`)
-      .orderBy(sql`DATE(FROM_UNIXTIME(created_at / 1000)) DESC`);
+      .groupBy(sql`DATE(FROM_UNIXTIME(lp_createdAt / 1000))`)
+      .orderBy(sql`DATE(FROM_UNIXTIME(lp_createdAt / 1000)) DESC`);
     const categoryRows = await db
       .select({
         category: leadProspects.category,
         count: sql<number>`count(*)`,
-        emailsFound: sql<number>`SUM(CASE WHEN email_found IS NOT NULL AND email_found != '' THEN 1 ELSE 0 END)`,
+        emailsFound: sql<number>`SUM(CASE WHEN emailFound IS NOT NULL AND emailFound != '' THEN 1 ELSE 0 END)`,
       })
       .from(leadProspects)
       .where(eq(leadProspects.source, "apollo"))

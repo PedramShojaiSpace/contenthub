@@ -249,6 +249,73 @@ async function generateTitleCardImage(snippet: BookSnippet, bookTitle: string): 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 export const bookLibraryRouter = router({
+  // ── Repurpose Engine helpers ──────────────────────────────────────────────
+
+  // Returns all uploaded books (id + title) that are ready
+  listBooksForRepurpose: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    return db
+      .select({ id: uploadedBooks.id, title: uploadedBooks.title, status: uploadedBooks.status })
+      .from(uploadedBooks)
+      .where(and(eq(uploadedBooks.userId, ctx.user.id), eq(uploadedBooks.status, "ready")))
+      .orderBy(uploadedBooks.title);
+  }),
+
+  // Returns distinct chapter names for a given book
+  getBookChapters: protectedProcedure
+    .input(z.object({ bookId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const [book] = await db
+        .select({ id: uploadedBooks.id })
+        .from(uploadedBooks)
+        .where(and(eq(uploadedBooks.id, input.bookId), eq(uploadedBooks.userId, ctx.user.id)));
+      if (!book) return [];
+      const rows = await db
+        .select({ chapter: bookSnippets.chapter })
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.bookId, input.bookId), isNotNull(bookSnippets.chapter)))
+        .groupBy(bookSnippets.chapter)
+        .orderBy(bookSnippets.chapter);
+      return rows
+        .map((r) => r.chapter)
+        .filter((c): c is string => !!c && c.trim().length > 0);
+    }),
+
+  // Returns concatenated passage text for all snippets in a chapter
+  getChapterText: protectedProcedure
+    .input(z.object({ bookId: z.number(), chapter: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [book] = await db
+        .select({ id: uploadedBooks.id, title: uploadedBooks.title })
+        .from(uploadedBooks)
+        .where(and(eq(uploadedBooks.id, input.bookId), eq(uploadedBooks.userId, ctx.user.id)));
+      if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
+      const snippets = await db
+        .select({ passageText: bookSnippets.passageText, pageNumber: bookSnippets.pageNumber })
+        .from(bookSnippets)
+        .where(
+          and(
+            eq(bookSnippets.bookId, input.bookId),
+            eq(bookSnippets.chapter, input.chapter),
+            eq(bookSnippets.userId, ctx.user.id)
+          )
+        )
+        .orderBy(bookSnippets.pageNumber);
+      if (snippets.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No content found for this chapter" });
+      }
+      return {
+        bookTitle: book.title,
+        chapter: input.chapter,
+        text: snippets.map((s) => s.passageText).join("\n\n"),
+      };
+    }),
+
   listBooks: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return [];

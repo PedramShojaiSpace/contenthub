@@ -60,6 +60,9 @@ import {
   Copy,
   Link2,
   BarChart2,
+  Smartphone,
+  ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -218,30 +221,193 @@ function Teleprompter({
 
 // ─── Generate Avatar Video Button ──────────────────────────────────────────
 
-function GenerateAvatarVideoButton({ sessionName, scripts }: { sessionName: string; scripts: SessionScript[] }) {
+// ─── Helper: strip everything except spoken words for BigVU ──────────────────
+function buildBigvuScript(scripts: SessionScript[]): string {
+  const approvedHooks = scripts.filter((s) => s.scriptType === "hook" && s.approved);
+  const body = scripts.find((s) => s.scriptType === "body");
+  const cta = scripts.find((s) => s.scriptType === "cta");
+  const parts = [...approvedHooks, body, cta].filter(Boolean).map((s) => s!.scriptText);
+  // Strip any lines that look like b-roll notes, stage directions, or labels:
+  // - Lines starting with [ or ( (stage directions / b-roll notes)
+  // - Lines that are ALL CAPS and short (section labels like "HOOK 1" "BODY" "CTA")
+  // - Lines starting with common instruction keywords
+  const stripped = parts.map((text) =>
+    text
+      .split("\n")
+      .filter((line) => {
+        const t = line.trim();
+        if (!t) return false;
+        if (t.startsWith("[") || t.startsWith("(")) return false; // b-roll / stage directions
+        if (/^[A-Z][A-Z\s\d\-—:]{0,30}$/.test(t)) return false; // ALL CAPS labels
+        if (/^(B-?roll|NOTE|INSTRUCTION|HOST|PEDRAM|CUT TO|FADE|SCENE|VISUAL|GRAPHIC|OVERLAY|LOWER THIRD)/i.test(t)) return false;
+        return true;
+      })
+      .join(" ")
+      .replace(/\s{2,}/g, " ")
+      .trim()
+  ).filter(Boolean);
+  return stripped.join("\n\n");
+}
+
+// ─── Video Destination Panel ──────────────────────────────────────────────────
+
+const DESTINATIONS = [
+  {
+    id: "heygen_then_descript" as const,
+    label: "HeyGen + Descript",
+    icon: "🎬",
+    desc: "Avatar render (HeyGen) → B-roll edit (Descript) → VA Dashboard",
+    color: "bg-red-600 hover:bg-red-700",
+  },
+  {
+    id: "heygen_only" as const,
+    label: "HeyGen Only",
+    icon: "🤖",
+    desc: "Avatar render only — no Descript editing. Raw avatar video in VA Dashboard.",
+    color: "bg-orange-600 hover:bg-orange-700",
+  },
+  {
+    id: "descript_only" as const,
+    label: "Descript Only",
+    icon: "✂️",
+    desc: "Skip HeyGen — send script directly to Descript for voice cloning + B-roll.",
+    color: "bg-violet-600 hover:bg-violet-700",
+  },
+  {
+    id: "bigvu" as const,
+    label: "BigVU Teleprompter",
+    icon: "📱",
+    desc: "Clean spoken-word script only — no b-roll notes, no labels. Copy & paste into BigVU.",
+    color: "bg-sky-600 hover:bg-sky-700",
+  },
+] as const;
+
+type DestinationId = (typeof DESTINATIONS)[number]["id"];
+
+function VideoDestinationPanel({ sessionName, scripts }: { sessionName: string; scripts: SessionScript[] }) {
+  const [selected, setSelected] = useState<DestinationId>("heygen_then_descript");
+  const [bigvuOpen, setBigvuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const startVideoJob = trpc.videoPipeline.startVideoJob.useMutation({
-    onSuccess: () => {
-      toast.success("Script queued! HeyGen → Descript B-roll → VA Dashboard for review.");
+    onSuccess: (_, vars) => {
+      const dest = DESTINATIONS.find((d) => d.id === vars.productionPath);
+      toast.success(`Script queued for ${dest?.label ?? "video pipeline"}! Check VA Dashboard for status.`);
     },
     onError: (e) => toast.error(`Video pipeline error: ${e.message}`),
   });
 
-  const handleGenerate = () => {
+  const handleSend = () => {
+    if (selected === "bigvu") {
+      setBigvuOpen(true);
+      return;
+    }
     const approvedHook = scripts.find((s) => s.scriptType === "hook" && s.approved);
     const body = scripts.find((s) => s.scriptType === "body");
     const cta = scripts.find((s) => s.scriptType === "cta");
     const parts = [approvedHook, body, cta].filter(Boolean).map((s) => s!.scriptText);
     if (parts.length === 0) { toast.error("No approved scripts to send"); return; }
     const fullScript = parts.join("\n\n");
-    if (!confirm(`Generate avatar video for "${sessionName}"?\n\nHeyGen will render the avatar, Descript adds B-roll, then it appears in the VA Dashboard for review.`)) return;
-    startVideoJob.mutate({ contentItemId: 0, scriptTitle: sessionName, scriptText: fullScript });
+    const dest = DESTINATIONS.find((d) => d.id === selected)!;
+    if (!confirm(`Send to ${dest.label}?\n\n${dest.desc}`)) return;
+    startVideoJob.mutate({ contentItemId: 0, scriptTitle: sessionName, scriptText: fullScript, productionPath: selected as any });
   };
 
+  const bigvuScript = buildBigvuScript(scripts);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(bigvuScript).then(() => {
+      setCopied(true);
+      toast.success("Script copied! Open BigVU → New Script → Paste.");
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  const selectedDest = DESTINATIONS.find((d) => d.id === selected)!;
+
   return (
-    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white h-8" disabled={startVideoJob.isPending} onClick={handleGenerate}>
-      {startVideoJob.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Video className="w-3 h-3 mr-1" />}
-      Generate Avatar Video
-    </Button>
+    <>
+      <div className="flex items-center gap-2">
+        <Select value={selected} onValueChange={(v) => setSelected(v as DestinationId)}>
+          <SelectTrigger className="h-8 text-xs w-52 bg-background border-border">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DESTINATIONS.map((d) => (
+              <SelectItem key={d.id} value={d.id} className="text-xs">
+                {d.icon} {d.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          className={`${selectedDest.color} text-white h-8`}
+          disabled={startVideoJob.isPending}
+          onClick={handleSend}
+        >
+          {startVideoJob.isPending ? (
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          ) : selected === "bigvu" ? (
+            <Smartphone className="w-3 h-3 mr-1" />
+          ) : (
+            <Video className="w-3 h-3 mr-1" />
+          )}
+          {selected === "bigvu" ? "Open BigVU Script" : "Send to Pipeline"}
+        </Button>
+      </div>
+
+      {/* BigVU Clean Script Dialog */}
+      <Dialog open={bigvuOpen} onOpenChange={setBigvuOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-sky-500" />
+              BigVU Teleprompter Script
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Spoken words only — all b-roll notes, labels, and instructions have been stripped.
+              Copy this, open BigVU → tap <strong>+</strong> → <strong>New Script</strong> → paste.
+            </p>
+            <div className="relative">
+              <textarea
+                readOnly
+                value={bigvuScript}
+                className="w-full h-72 p-4 text-sm font-mono bg-muted/40 border border-border rounded-lg resize-none focus:outline-none leading-relaxed"
+              />
+            </div>
+            <div className="flex items-center gap-2 justify-between">
+              <p className="text-xs text-muted-foreground">
+                {bigvuScript.split(/\s+/).filter(Boolean).length} words
+                {" · "}
+                ~{Math.round(bigvuScript.split(/\s+/).filter(Boolean).length / 130)} min read
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => window.open("https://bigvu.tv", "_blank")}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Open BigVU
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-sky-600 hover:bg-sky-700 text-white"
+                  onClick={handleCopy}
+                >
+                  {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  {copied ? "Copied!" : "Copy Script"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -743,8 +909,8 @@ function SessionDetail({ sessionId, onBack }: { sessionId: number; onBack: () =>
             <Download className="w-3 h-3 mr-1" /> Export Teleprompter DOCX
           </Button>
         )}
-        {allApproved && session.platform === "youtube" && (
-          <GenerateAvatarVideoButton sessionName={session.sessionName} scripts={scripts} />
+        {allApproved && (
+          <VideoDestinationPanel sessionName={session.sessionName} scripts={scripts} />
         )}
         <Button
           size="sm"

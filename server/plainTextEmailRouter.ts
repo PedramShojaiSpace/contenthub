@@ -46,7 +46,7 @@ REWRITING RULES:
 - Remove ALL excessive exclamation marks (max 1 per email)
 - Keep it under 250 words — brevity signals personal email
 - Keep only the most important link (the main CTA link)
-- Start with "Hi {{first_name}}," (Kajabi merge tag)
+- ${input.isContinuation ? 'DO NOT add a salutation or greeting (no "Hi {{first_name}}," or any opener) — this is a CONTINUATION block that follows a separate opening email. Start directly with the body text.' : 'Start with "Hi {{first_name}}," (Kajabi merge tag)'}
 - Write in first person as Pedram — conversational, like a letter from a friend who happens to be a doctor
 - If the original email already has a sign-off (e.g. "Pedram", "Dr. Pedram Shojai", "Warmly,") — KEEP IT at the end of the body, rewritten in the same plain-text style
 - If the original email already has a P.S. line — KEEP IT, rewritten to remove any promotional language

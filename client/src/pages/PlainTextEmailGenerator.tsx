@@ -222,12 +222,36 @@ function HistoryItem({
   );
 }
 
-// The bookmarklet JS — grabs page text and opens the rewriter with it pre-filled
+// The bookmarklet JS — grabs page text (including Kajabi iframe editor) and opens the rewriter
+// It tries: 1) Kajabi's email body iframe, 2) visible input/textarea fields, 3) full page text
 const BOOKMARKLET_CODE = `javascript:(function(){
-  var t=document.body.innerText||'';
-  var s=document.title||'';
-  var u=encodeURIComponent(t.slice(0,8000));
-  var h=encodeURIComponent(s);
+  var text='';
+  var subject='';
+  // Try to grab subject line from Kajabi's subject input field
+  var subjectInput=document.querySelector('input[name="subject"],input[placeholder*="subject" i],input[placeholder*="Subject" i],input[id*="subject" i]');
+  if(subjectInput) subject=subjectInput.value||'';
+  // Try to grab text from Kajabi's email body iframe (visual editor)
+  var frames=document.querySelectorAll('iframe');
+  for(var i=0;i<frames.length;i++){
+    try{
+      var fd=frames[i].contentDocument||frames[i].contentWindow.document;
+      var ft=fd.body?fd.body.innerText:'';
+      if(ft&&ft.length>text.length) text=ft;
+    }catch(e){}
+  }
+  // Fallback: grab all textarea content
+  if(!text){
+    var areas=document.querySelectorAll('textarea');
+    for(var j=0;j<areas.length;j++){
+      if(areas[j].value.length>text.length) text=areas[j].value;
+    }
+  }
+  // Final fallback: visible page text
+  if(!text) text=document.body.innerText||'';
+  // If still no subject, use page title
+  if(!subject) subject=document.title||'';
+  var u=encodeURIComponent(text.slice(0,8000));
+  var h=encodeURIComponent(subject);
   window.open('https://content.theurbanmonk.com/plain-text-email?grab=1&text='+u+'&subject='+h,'_blank');
 })();`;
 

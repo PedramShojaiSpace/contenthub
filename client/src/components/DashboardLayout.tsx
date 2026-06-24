@@ -67,6 +67,7 @@ import {
   UserSearch,
   QrCode,
   Mail,
+  Microscope,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -157,6 +158,7 @@ const intelligenceItems = [
   { icon: Inbox, label: "Ingest Inbox", path: "/ingest" },
   { icon: ShieldCheck, label: "Verified Links", path: "/verified-links" },
   { icon: UserSearch, label: "Lead Scrubber", path: "/lead-scrubber" },
+  { icon: Microscope, label: "Kids Research", path: "/kids-review" },
 ];
 
 const intelligencePaths = new Set(intelligenceItems.map((i) => i.path));

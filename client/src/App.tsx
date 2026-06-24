@@ -58,6 +58,8 @@ const VADashboard = lazy(() => import("./pages/VADashboard"));
 const AdsManager = lazy(() => import("./pages/AdsManager"));
 const LeadScrubber = lazy(() => import("./pages/LeadScrubber"));
 const EmailOptimizer = lazy(() => import("./pages/EmailOptimizer"));
+const KidsResearch = lazy(() => import("./pages/KidsResearch"));
+const KidsReview = lazy(() => import("./pages/KidsReview"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -123,6 +125,8 @@ function Router() {
         <Route path={"/ads"} component={AdsManager} />
         <Route path={"/lead-scrubber"} component={LeadScrubber} />
         <Route path={"/email-optimizer"} component={EmailOptimizer} />
+        <Route path={"/kids-research"} component={KidsResearch} />
+        <Route path={"/kids-review"} component={KidsReview} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

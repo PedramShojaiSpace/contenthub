@@ -685,6 +685,9 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
   const [loading, setLoading] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   const [requestingUrl, setRequestingUrl] = useState<string | null>(null);
+  const [checkingUrl, setCheckingUrl] = useState<string | null>(null);
+  const [checkedCount, setCheckedCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   const gscStatus = trpc.gsc.status.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
@@ -695,27 +698,53 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
     setCheckError(null);
   }, [utils]);
 
-  const bulkInspect = trpc.gsc.bulkInspectUrls.useMutation({
-    onSuccess: (data) => {
-      const map: Record<string, any> = {};
-      for (const item of data) {
-        map[item.url] = item.status
-          ? { verdict: item.status.verdict, coverageState: item.status.coverageState, lastCrawlTime: item.status.lastCrawlTime, error: null }
-          : { verdict: "FAIL", coverageState: "Error", lastCrawlTime: null, error: item.error };
+  const inspectSingle = trpc.gsc.inspectSingleUrl.useMutation();
+
+  // Keep a stable ref to inspectSingle.mutateAsync for use in handleCheckAll
+  const inspectSingleRef = useRef(inspectSingle.mutateAsync);
+  useEffect(() => { inspectSingleRef.current = inspectSingle.mutateAsync; });
+
+  const handleCheckAll = useCallback(async () => {
+    const urls = posts.filter((p) => p.publishUrl).slice(0, 20).map((p) => p.publishUrl!);
+    if (!urls.length) return;
+    setLoading(true);
+    setCheckError(null);
+    setResults({});
+    setCheckedCount(0);
+    setTotalCount(urls.length);
+    let completed = 0;
+    for (const url of urls) {
+      setCheckingUrl(url);
+      try {
+        const item = await inspectSingleRef.current({ url });
+        setResults((prev) => ({
+          ...prev,
+          [item.url]: item.status
+            ? { verdict: item.status.verdict, coverageState: item.status.coverageState, lastCrawlTime: item.status.lastCrawlTime, error: null }
+            : { verdict: "FAIL", coverageState: "Error", lastCrawlTime: null, error: item.error },
+        }));
+      } catch (err: any) {
+        const msg = err?.message ?? "Inspection failed";
+        if (msg.includes("timed out") || msg.includes("scope") || msg.includes("not connected")) {
+          setCheckError("GSC token needs to be reconnected. Click the button below.");
+          setLoading(false);
+          setCheckingUrl(null);
+          return;
+        }
+        setResults((prev) => ({ ...prev, [url]: { verdict: "FAIL", coverageState: "Error", lastCrawlTime: null, error: msg } }));
       }
-      setResults(map);
-      setLoading(false);
-      toast.success("Indexing status refreshed for " + data.length + " posts");
-    },
-    onError: (err) => {
-      setLoading(false);
-      const msg = err.message.includes("timed out") || err.message.includes("scope")
-        ? "GSC token needs to be reconnected. Go to SEO Dashboard → Reconnect Google Search Console."
-        : "Failed to check indexing status: " + err.message;
-      setCheckError(msg);
-      toast.error(msg);
-    },
-  });
+      completed++;
+      setCheckedCount(completed);
+      // Small delay between requests to respect GSC rate limits
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    setLoading(false);
+    setCheckingUrl(null);
+    toast.success("Indexing status refreshed for " + completed + " posts");
+  }, [posts]);
+
+  // Legacy bulkInspect kept for compatibility (not used in UI anymore)
+  const bulkInspect = trpc.gsc.bulkInspectUrls.useMutation({});
 
   const requestIndex = trpc.gsc.requestIndexing.useMutation({
     onSuccess: (data, vars) => {
@@ -733,13 +762,6 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
   });
 
   const publishedWithUrl = posts.filter((p) => p.publishUrl);
-
-  const handleCheckAll = () => {
-    const urls = publishedWithUrl.slice(0, 20).map((p) => p.publishUrl!);
-    if (!urls.length) return;
-    setLoading(true);
-    bulkInspect.mutate({ urls });
-  };
 
   const verdictColor = (v: string) =>
     v === "PASS" ? "text-green-500" : v === "NEUTRAL" ? "text-amber-500" : "text-red-500";
@@ -762,7 +784,7 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
             className="h-7 px-3 text-xs gap-1.5"
           >
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-            Check All ({Math.min(publishedWithUrl.length, 20)})
+            {loading ? `Checking ${checkedCount}/${totalCount}...` : `Check All (${Math.min(publishedWithUrl.length, 20)})`}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
@@ -795,8 +817,13 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
             )}
           </div>
         )}
-        {loading && (
+        {loading && Object.keys(results).length === 0 && (
           <div className="space-y-2">
+            <div className="text-xs text-muted-foreground px-1 pb-1">
+              {checkingUrl ? (
+                <span className="truncate block max-w-full">Checking: {checkingUrl.replace('https://', '')}</span>
+              ) : 'Starting...'}
+            </div>
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-3 p-2 rounded-md bg-muted/30">
                 <Skeleton className="w-3.5 h-3.5 rounded-full" />
@@ -806,7 +833,7 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
             ))}
           </div>
         )}
-        {!loading && Object.keys(results).length > 0 && (
+        {Object.keys(results).length > 0 && (
           <div className="space-y-1.5">
             {publishedWithUrl.slice(0, 20).map((post) => {
               const r = results[post.publishUrl!];

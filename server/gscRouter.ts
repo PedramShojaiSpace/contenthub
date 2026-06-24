@@ -243,6 +243,25 @@ export const gscRouter = router({
     }),
 
   /**
+   * Inspect a single URL — called one at a time by the frontend for progressive loading.
+   * Returns quickly (8s max timeout) so the HTTP request never hangs.
+   */
+  inspectSingleUrl: protectedProcedure
+    .input(z.object({ url: z.string().url() }))
+    .mutation(async ({ input }) => {
+      const creds = await getGscCredentials();
+      if (!creds.gscSiteUrl) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No site URL configured." });
+      }
+      try {
+        const status = await inspectUrl(creds.gscRefreshToken!, creds.gscSiteUrl, input.url);
+        return { url: input.url, status, error: null };
+      } catch (err: any) {
+        return { url: input.url, status: null, error: err?.message ?? "Inspection failed" };
+      }
+    }),
+
+  /**
    * Bulk inspect up to 20 URLs at once (rate-limited to avoid GSC quota).
    * Returns an array of index status results in the same order as input.
    */

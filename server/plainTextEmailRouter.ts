@@ -47,9 +47,9 @@ REWRITING RULES:
 - Keep it under 250 words — brevity signals personal email
 - Keep only the most important link (the main CTA link)
 - Start with "Hi {{first_name}}," (Kajabi merge tag)
-- Sign off as "Dr. Pedram Shojai" or "Pedram" — keep it warm
 - Write in first person as Pedram — conversational, like a letter from a friend who happens to be a doctor
-- End with a P.S. that adds one extra reason to act (curiosity, personal story, or surprising fact from the original email)
+- DO NOT add a sign-off, signature, or closing (no "Pedram", no "Dr. Pedram Shojai", no "Warmly," etc.) — the Kajabi template already adds the signature automatically
+- DO NOT add a P.S. line — keep the body clean and let the template handle any extras
 - DO NOT invent new content — only rewrite what's already there
 
 OUTPUT FORMAT — return a JSON object with these exact keys:
@@ -146,9 +146,9 @@ RULES FOR INBOX-FRIENDLY PLAIN TEXT EMAILS:
 - Keep it under 250 words — brevity signals personal email
 - One link only — the episode URL
 - Start with "Hi {{first_name}}," (Kajabi merge tag)
-- Sign off as "Dr. Pedram Shojai"
 - Write in first person as Pedram — conversational, like a letter from a friend who happens to be a doctor
-- End with a P.S. that adds one extra reason to watch
+- DO NOT add a sign-off, signature, or closing (no "Pedram", no "Dr. Pedram Shojai", no "Warmly," etc.) — the Kajabi template already adds the signature automatically
+- DO NOT add a P.S. line — keep the body clean and let the template handle any extras
 
 OUTPUT FORMAT — return a JSON object with these exact keys:
 {

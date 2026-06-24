@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,17 +17,6 @@ const SOURCE_TYPES = [
   { value: "blog_post", label: "Blog Post / Article" },
   { value: "interview", label: "Interview / Q&A" },
   { value: "speech", label: "Speech / Talk" },
-];
-
-const BOOKS = [
-  "The Urban Monk",
-  "Exhausted to Energized",
-  "Becoming a Superhuman",
-  "The Art of Stopping Time",
-  "Fast This Way",
-  "Grow a Pair",
-  "The Longevity Paradox",
-  "Custom / Paste Below",
 ];
 
 // Map repurpose platform names to Kanban platform enum values
@@ -158,7 +147,11 @@ function PostCard({
 export default function RepurposeEngine() {
   const [, setLocation] = useLocation();
   const [sourceType, setSourceType] = useState("book_chapter");
-  const [selectedBook, setSelectedBook] = useState(BOOKS[0]);
+
+  // DB-driven book/chapter selection
+  const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+
   const [sourceTitle, setSourceTitle] = useState("");
   const [content, setContent] = useState("");
   const [platforms, setPlatforms] = useState<string[]>(["tiktok", "instagram", "youtube", "linkedin"]);
@@ -167,6 +160,52 @@ export default function RepurposeEngine() {
   const [sendingPlatform, setSendingPlatform] = useState<string | null>(null);
   const [isSavingAll, setIsSavingAll] = useState(false);
   const [allSaved, setAllSaved] = useState(false);
+
+  // Load uploaded books from DB (only when source type is book_chapter)
+  const booksQuery = trpc.bookLibrary.listBooksForRepurpose.useQuery(undefined, {
+    enabled: sourceType === "book_chapter",
+  });
+
+  // Auto-select first book when list loads
+  useEffect(() => {
+    if (booksQuery.data && booksQuery.data.length > 0 && selectedBookId === null) {
+      setSelectedBookId(booksQuery.data[0].id);
+    }
+  }, [booksQuery.data, selectedBookId]);
+
+  // Load chapters for selected book
+  const chaptersQuery = trpc.bookLibrary.getBookChapters.useQuery(
+    { bookId: selectedBookId! },
+    { enabled: sourceType === "book_chapter" && selectedBookId !== null }
+  );
+
+  // Reset chapter + content when book changes
+  useEffect(() => {
+    setSelectedChapter(null);
+    setContent("");
+    setSourceTitle("");
+  }, [selectedBookId]);
+
+  // Auto-select first chapter when list loads
+  useEffect(() => {
+    if (chaptersQuery.data && chaptersQuery.data.length > 0 && selectedChapter === null) {
+      setSelectedChapter(chaptersQuery.data[0]);
+    }
+  }, [chaptersQuery.data, selectedChapter]);
+
+  // Fetch chapter text when chapter is selected
+  const chapterTextQuery = trpc.bookLibrary.getChapterText.useQuery(
+    { bookId: selectedBookId!, chapter: selectedChapter! },
+    { enabled: sourceType === "book_chapter" && selectedBookId !== null && selectedChapter !== null }
+  );
+
+  // Auto-fill content textarea when chapter text loads
+  useEffect(() => {
+    if (chapterTextQuery.data) {
+      setContent(chapterTextQuery.data.text);
+      setSourceTitle(`${chapterTextQuery.data.bookTitle} — ${chapterTextQuery.data.chapter}`);
+    }
+  }, [chapterTextQuery.data]);
 
   const generateMutation = trpc.viralStudio.repurposeContent.useMutation({
     onSuccess: (data) => {
@@ -211,14 +250,11 @@ export default function RepurposeEngine() {
   };
 
   const handleGenerate = () => {
-    if (!content.trim()) { toast.error("Paste your content first"); return; }
+    if (!content.trim()) { toast.error("Select a chapter or paste content first"); return; }
     if (platforms.length === 0) { toast.error("Select at least one platform"); return; }
-    const title = sourceType === "book_chapter" && selectedBook !== "Custom / Paste Below"
-      ? selectedBook
-      : sourceTitle || undefined;
     generateMutation.mutate({
       sourceType: sourceType as "book_chapter",
-      sourceTitle: title ?? "",
+      sourceTitle: sourceTitle || "",
       sourceText: content.trim(),
       targetPlatforms: platforms as ["tiktok"],
     });
@@ -271,7 +307,7 @@ export default function RepurposeEngine() {
           Turn Your Books &amp; Podcasts Into Viral Content
         </h3>
         <p className="text-sm text-green-700">
-          Paste any chapter, transcript, or article and get platform-optimized short-form video scripts for every channel simultaneously. This is the highest-leverage feature — your 8 books contain hundreds of viral video ideas waiting to be unlocked.
+          Select a book and chapter — the content loads automatically. Then hit Repurpose to generate platform-optimized scripts for every channel simultaneously.
         </p>
       </div>
 
@@ -285,9 +321,10 @@ export default function RepurposeEngine() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Source Type */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Source Type</Label>
-              <Select value={sourceType} onValueChange={setSourceType}>
+              <Select value={sourceType} onValueChange={(v) => { setSourceType(v); setContent(""); setSourceTitle(""); }}>
                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {SOURCE_TYPES.map((s) => (
@@ -297,24 +334,82 @@ export default function RepurposeEngine() {
               </Select>
             </div>
 
+            {/* Book + Chapter dropdowns — only for book_chapter source type */}
             {sourceType === "book_chapter" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Book</Label>
-                <Select value={selectedBook} onValueChange={setSelectedBook}>
-                  <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {BOOKS.map((b) => (
-                      <SelectItem key={b} value={b}>{b}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Book</Label>
+                  {booksQuery.isLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Loading books...
+                    </div>
+                  ) : booksQuery.data && booksQuery.data.length > 0 ? (
+                    <Select
+                      value={selectedBookId?.toString() ?? ""}
+                      onValueChange={(v) => setSelectedBookId(Number(v))}
+                    >
+                      <SelectTrigger className="text-sm"><SelectValue placeholder="Select a book" /></SelectTrigger>
+                      <SelectContent>
+                        {booksQuery.data.map((b) => (
+                          <SelectItem key={b.id} value={b.id.toString()}>{b.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                      No books uploaded yet. Go to <strong>Book Library</strong> to upload your books first.
+                    </p>
+                  )}
+                </div>
+
+                {selectedBookId !== null && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Chapter</Label>
+                    {chaptersQuery.isLoading ? (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Loading chapters...
+                      </div>
+                    ) : chaptersQuery.data && chaptersQuery.data.length > 0 ? (
+                      <Select
+                        value={selectedChapter ?? ""}
+                        onValueChange={(v) => setSelectedChapter(v)}
+                      >
+                        <SelectTrigger className="text-sm"><SelectValue placeholder="Select a chapter" /></SelectTrigger>
+                        <SelectContent>
+                          {chaptersQuery.data.map((ch) => (
+                            <SelectItem key={ch} value={ch}>{ch}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No chapters found — paste content below manually.
+                      </p>
+                    )}
+                    {chapterTextQuery.isLoading && (
+                      <div className="flex items-center gap-2 text-xs text-green-600">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Loading chapter text...
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
+            {/* Content textarea */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Content to Repurpose *</Label>
+              <Label className="text-xs font-medium">
+                Content to Repurpose *
+                {sourceType === "book_chapter" && selectedChapter && (
+                  <span className="ml-2 text-green-600 font-normal">— auto-loaded from {selectedChapter}</span>
+                )}
+              </Label>
               <Textarea
-                placeholder="Paste a chapter excerpt, podcast transcript, blog post, or any long-form content here..."
+                placeholder={
+                  sourceType === "book_chapter"
+                    ? "Select a book and chapter above to auto-load the content, or paste manually here..."
+                    : "Paste a podcast transcript, blog post, or any long-form content here..."
+                }
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={8}
@@ -323,6 +418,7 @@ export default function RepurposeEngine() {
               <p className="text-xs text-muted-foreground">{content.length} characters</p>
             </div>
 
+            {/* Platform toggles */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Output Platforms</Label>
               <div className="flex flex-wrap gap-2">
@@ -359,83 +455,33 @@ export default function RepurposeEngine() {
         {/* Results */}
         <div className="space-y-4">
           {result ? (
-            <>
-              {/* Save all to Command Center CTA */}
-              <div className="flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Kanban className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      {allSaved ? "All posts saved to Kanban!" : `${result.posts.length} posts ready`}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {allSaved
-                        ? "Find them in the Idea column of the Command Center"
-                        : "Save all as draft cards in the Command Center Kanban"}
-                    </p>
-                  </div>
-                </div>
-                {allSaved ? (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    {result.posts.length} Posts Generated
+                  </CardTitle>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="shrink-0 text-xs"
-                    onClick={() => setLocation("/")}
-                  >
-                    <Kanban className="w-3.5 h-3.5 mr-1.5" />
-                    View Kanban
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    className="shrink-0 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                    className={`text-xs h-7 ${allSaved ? "text-green-600 border-green-300" : ""}`}
                     onClick={handleSaveAllToKanban}
-                    disabled={isSavingAll || createBulkMutation.isPending}
+                    disabled={isSavingAll || allSaved}
                   >
-                    {isSavingAll ? (
-                      <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving...</>
+                    {allSaved ? (
+                      <><CheckCircle2 className="w-3 h-3 mr-1" />All Saved</>
+                    ) : isSavingAll ? (
+                      <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
                     ) : (
-                      <><Kanban className="w-3.5 h-3.5 mr-1.5" />Save all to Command Center</>
+                      <><Kanban className="w-3 h-3 mr-1" />Save All to Kanban</>
                     )}
                   </Button>
+                </div>
+                {result.sourceTitle && (
+                  <p className="text-xs text-muted-foreground">Source: {result.sourceTitle}</p>
                 )}
-              </div>
-
-              {/* Key Insights */}
-              {result.keyInsights?.length > 0 && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-xs font-semibold text-amber-700 mb-2">Key Insights Extracted</p>
-                  <ul className="space-y-1">
-                    {result.keyInsights.map((insight, i) => (
-                      <li key={i} className="text-xs text-foreground flex items-start gap-1.5">
-                        <span className="text-amber-500 mt-0.5">•</span>
-                        {insight}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Quotable Lines */}
-              {result.quotableLines?.length > 0 && (
-                <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
-                  <p className="text-xs font-semibold text-violet-700 mb-2">Quotable Lines</p>
-                  <div className="space-y-1.5">
-                    {result.quotableLines.map((line, i) => (
-                      <div key={i} className="flex items-start justify-between gap-2">
-                        <p className="text-xs text-foreground italic">"{line}"</p>
-                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={() => handleCopy(`"${line}"`)}>
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Posts */}
-              <div className="space-y-2">
-                <p className="text-sm font-semibold">{result.posts.length} Platform Posts</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 {result.posts.map((post, i) => (
                   <PostCard
                     key={i}
@@ -446,67 +492,90 @@ export default function RepurposeEngine() {
                     isSent={sentPlatforms.has(post.platform)}
                   />
                 ))}
-              </div>
-            </>
+
+                {result.keyInsights && result.keyInsights.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Key Insights</p>
+                      <ul className="space-y-1">
+                        {result.keyInsights.map((insight, i) => (
+                          <li key={i} className="text-xs text-foreground flex gap-2">
+                            <span className="text-green-500 shrink-0">•</span>
+                            {insight}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </>
+                )}
+
+                {result.quotableLines && result.quotableLines.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Quotable Lines</p>
+                      <div className="space-y-2">
+                        {result.quotableLines.map((line, i) => (
+                          <div key={i} className="flex items-start gap-2 group">
+                            <p className="text-xs italic text-foreground flex-1">"{line}"</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 text-xs px-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                              onClick={() => handleCopy(`"${line}"`)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-border rounded-xl text-center p-6">
-              <RefreshCw className="w-8 h-8 text-muted-foreground/40 mb-3" />
-              <p className="text-sm text-muted-foreground">Paste content from your books or podcasts to generate platform-ready posts</p>
-            </div>
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <RefreshCw className="w-8 h-8 text-muted-foreground/40 mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">No content repurposed yet</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Select a book chapter or paste content, then click Repurpose
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* History */}
+          {historyQuery.data && historyQuery.data.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5" />
+                  Recent Jobs
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {historyQuery.data.map((job: any) => (
+                  <div
+                    key={job.id}
+                    className="flex items-center justify-between text-xs py-1.5 border-b border-border last:border-0 cursor-pointer hover:text-green-600 transition-colors"
+                    onClick={() => setResult(job as RepurposeResult)}
+                  >
+                    <span className="truncate text-muted-foreground max-w-[200px]">
+                      {job.sourceTitle || job.sourceType}
+                    </span>
+                    <span className="shrink-0 text-muted-foreground/60 ml-2">
+                      {job.posts?.length ?? 0} posts
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
-
-      {/* History */}
-      {historyQuery.data && historyQuery.data.length > 0 && (
-        <>
-          <Separator />
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Recent Repurposing Sessions</h3>
-            </div>
-            <div className="space-y-2">
-              {historyQuery.data.map((r: unknown) => {
-                const parsed = r as RepurposeResult;
-                return (
-                  <HistoryItem key={parsed.id} r={parsed} onCopy={handleCopy} />
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// Separate component to avoid hooks-in-map issue
-function HistoryItem({ r, onCopy }: { r: RepurposeResult; onCopy: (t: string) => void }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border border-border rounded-lg overflow-hidden">
-      <button
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-        onClick={() => setOpen(!open)}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <Badge variant="outline" className="text-xs shrink-0">{r.sourceType}</Badge>
-          <span className="text-sm font-medium truncate">{r.sourceTitle ?? "Untitled"}</span>
-          <Badge variant="secondary" className="text-xs shrink-0">{r.posts?.length ?? 0} posts</Badge>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
-          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </div>
-      </button>
-      {open && r.posts && (
-        <div className="px-4 pb-4 border-t border-border space-y-2 mt-3">
-          {r.posts.map((post, i) => (
-            <PostCard key={i} post={post} onCopy={onCopy} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

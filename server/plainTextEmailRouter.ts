@@ -48,8 +48,9 @@ REWRITING RULES:
 - Keep only the most important link (the main CTA link)
 - Start with "Hi {{first_name}}," (Kajabi merge tag)
 - Write in first person as Pedram — conversational, like a letter from a friend who happens to be a doctor
-- DO NOT add a sign-off, signature, or closing (no "Pedram", no "Dr. Pedram Shojai", no "Warmly," etc.) — the Kajabi template already adds the signature automatically
-- DO NOT add a P.S. line — keep the body clean and let the template handle any extras
+- If the original email already has a sign-off (e.g. "Pedram", "Dr. Pedram Shojai", "Warmly,") — KEEP IT at the end of the body, rewritten in the same plain-text style
+- If the original email already has a P.S. line — KEEP IT, rewritten to remove any promotional language
+- If the original email has NO sign-off or P.S. — do NOT add one; the Kajabi template handles the signature
 - DO NOT invent new content — only rewrite what's already there
 
 OUTPUT FORMAT — return a JSON object with these exact keys:

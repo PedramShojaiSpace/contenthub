@@ -2354,6 +2354,8 @@ export const emailSequences = mysqlTable("email_sequences", {
   email3Body: longtext("es_email3_body"),
   status: mysqlEnum("es_status", ["draft", "approved", "sent", "replied"]).default("draft"),
   notes: text("es_notes"),
+  kajabiPushed: boolean("es_kajabi_pushed").default(false).notNull(),
+  kajabiPushError: text("es_kajabi_push_error"),
   createdAt: bigint("es_created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("es_updated_at", { mode: "number" }).notNull(),
 });

@@ -812,7 +812,7 @@ export const leadScrubberRouter = router({
  * This ensures gut/oral health leads are tagged differently from
  * personal development or longevity leads.
  */
-function deriveKajabiTag(category?: string, source?: string): string {
+export function deriveKajabiTag(category?: string, source?: string): string {
   const categoryTagMap: Record<string, string> = {
     gut_health:      "Lead - Gut Health",
     oral_health:     "Lead - Oral Health",

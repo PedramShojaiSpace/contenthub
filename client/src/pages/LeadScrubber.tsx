@@ -78,6 +78,8 @@ type EmailSequence = {
   email3Body: string | null;
   status: "draft" | "approved" | "sent" | "replied";
   notes: string | null;
+  kajabiPushed: boolean;
+  kajabiPushError: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -148,6 +150,29 @@ function KajabiPushButton({ email, name, leadId, category, source }: { email: st
     >
       <Send className="w-3 h-3" />
       {pushToKajabi.isPending ? "Pushing..." : pushToKajabi.isSuccess ? "In Kajabi ✓" : "Push to Kajabi"}
+    </button>
+  );
+}
+
+// ─── Repush to Kajabi Button (for email sequences) ──────────────────────────────
+
+function RepushKajabiButton({ sequenceId, onSuccess }: { sequenceId: number; onSuccess: () => void }) {
+  const repush = trpc.emailSequence.repushToKajabi.useMutation({
+    onSuccess: (data) => { toast.success(`Pushed to Kajabi → ${data.tag}`); onSuccess(); },
+    onError: (err) => toast.error(`Kajabi push failed: ${err.message}`),
+  });
+  return (
+    <button
+      onClick={() => repush.mutate({ sequenceId })}
+      disabled={repush.isPending || repush.isSuccess}
+      className={`text-xs font-medium px-2 py-1 rounded border transition-colors flex items-center gap-1 ${
+        repush.isSuccess
+          ? "text-green-700 border-green-300 bg-green-50 cursor-default"
+          : "text-green-700 border-green-300 hover:bg-green-50"
+      }`}
+    >
+      <Send className="w-3 h-3" />
+      {repush.isPending ? "Pushing..." : repush.isSuccess ? "In Kajabi ✓" : "Push to Kajabi"}
     </button>
   );
 }
@@ -953,7 +978,7 @@ function SequencesTab() {
     <div className="space-y-4">
       <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm text-indigo-800">
         <p className="font-semibold mb-1">Cold Email Sequences</p>
-        <p>AI-generated 3-email sequences in Dr. Pedram's voice. Draft → Approve &amp; Send → Push to Kajabi. Email 1 sends immediately, Emails 2 &amp; 3 auto-send on Day 3 and Day 7.</p>
+        <p>AI-generated 3-email sequences in Dr. Pedram's voice. Draft → Approve &amp; Send. Email 1 sends immediately and the contact is <strong>automatically pushed to Kajabi</strong>. Emails 2 &amp; 3 auto-send on Day 3 and Day 7. If the Kajabi push fails, a re-push button appears on the card.</p>
       </div>
 
       {gmailStatus && !gmailStatus.authorized && (
@@ -1019,6 +1044,23 @@ function SequencesTab() {
                   </button>
                 </div>
               </div>
+              {/* Kajabi push status */}
+              {seq.status !== "draft" && (
+                <div className="flex items-center gap-2">
+                  {seq.kajabiPushed ? (
+                    <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5 flex items-center gap-1">
+                      <span>✓</span> In Kajabi
+                    </span>
+                  ) : seq.kajabiPushError ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">Kajabi push failed</span>
+                      <RepushKajabiButton sequenceId={seq.id} onSuccess={refetch} />
+                    </div>
+                  ) : (
+                    <RepushKajabiButton sequenceId={seq.id} onSuccess={refetch} />
+                  )}
+                </div>
+              )}
               <p className="text-xs text-gray-400">Created {new Date(seq.createdAt).toLocaleDateString()} · Updated {new Date(seq.updatedAt).toLocaleDateString()}</p>
             </div>
           ))}

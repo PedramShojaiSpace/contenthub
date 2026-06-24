@@ -422,8 +422,16 @@ export async function processVideoJob(jobId: number): Promise<void> {
       }
 
       // ── Step A1: Poll HeyGen until completed → download → S3 ─────────────
-      if (job.status === "rendering" && job.heygenVideoId && !job.descriptImportJobId) {
-        const heygenStatus = await pollHeyGenStatus(job.heygenVideoId);
+      // Also handles "pending" with a heygenVideoId — this covers the edge case where
+      // HeyGen was called successfully but the DB update to "rendering" failed silently.
+      if ((job.status === "rendering" || (job.status === "pending" && job.heygenVideoId)) && job.heygenVideoId && !job.descriptImportJobId) {
+        // Ensure status is "rendering" in DB if we got here via the pending+heygenVideoId path
+        if (job.status === "pending") {
+          console.log(`${jobLabel} [Avatar] Recovering: job has heygenVideoId but status=pending — advancing to rendering`);
+          await db.update(videoJobs).set({ status: "rendering", errorMessage: null }).where(eq(videoJobs.id, jobId));
+          job = { ...job, status: "rendering" };
+        }
+        const heygenStatus = await pollHeyGenStatus(job.heygenVideoId!);
         console.log(`${jobLabel} [Avatar] HeyGen status: ${heygenStatus.status}`);
 
         if (heygenStatus.status === "failed") {

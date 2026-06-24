@@ -940,7 +940,7 @@ function SequencesTab() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const { data: sequences = [], isLoading, refetch } = trpc.emailSequence.getEmailSequences.useQuery({});
   const { data: gmailStatus } = trpc.backlink.getGmailStatus.useQuery();
-  const { data: gmailAuthUrlData } = trpc.backlink.getGmailAuthUrl.useQuery(undefined, { enabled: gmailStatus !== undefined && !gmailStatus?.authorized });
+  const { data: gmailAuthUrlData } = trpc.backlink.getGmailAuthUrl.useQuery(undefined, { enabled: gmailStatus !== undefined });
 
   const deleteMutation = trpc.emailSequence.deleteEmailSequence.useMutation({
     onSuccess: () => { refetch(); toast.success("Sequence deleted"); },
@@ -963,7 +963,7 @@ function SequencesTab() {
             <p className="text-sm font-semibold text-amber-900">Gmail not connected</p>
             <p className="text-xs text-amber-700 mt-0.5">Connect Gmail to enable automatic sending as "The Urban Monk" from alyzza@theurbanmonk.com.</p>
           </div>
-          <button onClick={() => { if (gmailAuthUrlData?.url) window.location.href = gmailAuthUrlData.url; }} className="shrink-0 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg">
+          <button onClick={() => { if (gmailAuthUrlData?.url) { const popup = window.open(gmailAuthUrlData.url, 'gmail_auth', 'width=600,height=700,scrollbars=yes'); const timer = setInterval(() => { if (popup?.closed) { clearInterval(timer); trpc.useUtils().backlink.getGmailStatus.invalidate(); } }, 1000); } }} className="shrink-0 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg">
             Connect Gmail
           </button>
         </div>
@@ -971,7 +971,10 @@ function SequencesTab() {
       {gmailStatus?.authorized && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2 text-xs text-green-800">
           <span className="text-green-500">✓</span>
-          <span>Gmail connected — sequences will send automatically as "The Urban Monk" from alyzza@theurbanmonk.com.</span>
+          <span className="flex-1">Gmail connected — sequences will send automatically as "The Urban Monk" from alyzza@theurbanmonk.com.</span>
+          <button onClick={() => { const url = gmailAuthUrlData?.url; if (url) { const popup = window.open(url, 'gmail_auth', 'width=600,height=700,scrollbars=yes'); const timer = setInterval(() => { if (popup?.closed) { clearInterval(timer); trpc.useUtils().backlink.getGmailStatus.invalidate(); } }, 1000); } }} className="shrink-0 px-2 py-1 text-xs font-medium bg-green-700 hover:bg-green-800 text-white rounded-md">
+            Reconnect
+          </button>
         </div>
       )}
 

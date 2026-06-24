@@ -1084,7 +1084,7 @@ function QuickShareDialog({
                 size="sm"
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => {
-                  window.open("https://www.facebook.com/theurbanmonk", "_blank");
+                  window.open("https://www.facebook.com/1078850248798985", "_blank");
                   setShowFbGroupReminder(false);
                   onClose();
                 }}

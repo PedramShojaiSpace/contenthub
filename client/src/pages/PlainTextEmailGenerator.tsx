@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import {
   ArrowRight,
   MailCheck,
   PenLine,
+  Bookmark,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -221,6 +222,71 @@ function HistoryItem({
   );
 }
 
+// The bookmarklet JS — grabs page text and opens the rewriter with it pre-filled
+const BOOKMARKLET_CODE = `javascript:(function(){
+  var t=document.body.innerText||'';
+  var s=document.title||'';
+  var u=encodeURIComponent(t.slice(0,8000));
+  var h=encodeURIComponent(s);
+  window.open('https://content.theurbanmonk.com/plain-text-email?grab=1&text='+u+'&subject='+h,'_blank');
+})();`;
+
+function BookmarkletSection() {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(BOOKMARKLET_CODE);
+    setCopied(true);
+    toast.success("Bookmarklet code copied!");
+    setTimeout(() => setCopied(false), 3000);
+  };
+  return (
+    <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
+      <div className="px-5 py-4 border-b border-stone-100 flex items-center gap-2">
+        <Bookmark className="w-4 h-4 text-stone-500" />
+        <h2 className="font-semibold text-stone-800 text-sm">Browser Bookmarklet</h2>
+        <span className="text-xs text-stone-400 ml-1">— one-click email grabber for your VA</span>
+      </div>
+      <div className="p-5 space-y-4">
+        <p className="text-sm text-stone-600">
+          Drag the button below to your browser's bookmarks bar. When your VA is viewing a Kajabi email or a Gmail message, one click on the bookmark will open this tool with the email text already pasted in.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 items-start">
+          {/* The draggable bookmarklet button */}
+          <a
+            href={BOOKMARKLET_CODE}
+            onClick={(e) => { e.preventDefault(); toast.info("Drag this button to your bookmarks bar — don't click it here."); }}
+            className="inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 cursor-grab select-none hover:bg-emerald-100 transition-colors shrink-0"
+            title="Drag me to your bookmarks bar"
+          >
+            📧 Grab for Rewriter
+          </a>
+          <div className="text-sm text-stone-500 space-y-1">
+            <p className="font-medium text-stone-700">How to install:</p>
+            <ol className="list-decimal list-inside space-y-1 text-stone-500">
+              <li>Make sure your bookmarks bar is visible (Ctrl+Shift+B on Chrome)</li>
+              <li>Drag the green button to your bookmarks bar</li>
+              <li>When viewing any Kajabi email or Gmail message, click the bookmark</li>
+              <li>This tool opens in a new tab with the text pre-filled</li>
+            </ol>
+          </div>
+        </div>
+        <div className="rounded-lg bg-stone-50 border border-stone-200 p-3 flex items-start gap-3">
+          <p className="text-xs text-stone-500 flex-1">
+            <span className="font-semibold text-stone-600">Can't drag?</span> Copy the bookmarklet code, then in Chrome go to Bookmarks → Add new bookmark → paste the code as the URL and name it "📧 Grab for Rewriter".
+          </p>
+          <button
+            onClick={handleCopy}
+            className="shrink-0 inline-flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-900 font-medium"
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? "Copied" : "Copy code"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type Mode = "rewrite" | "build";
 
 export default function PlainTextEmailGenerator() {
@@ -230,6 +296,23 @@ export default function PlainTextEmailGenerator() {
   // Rewrite mode state
   const [rawCopy, setRawCopy] = useState("");
   const [subjectHint, setSubjectHint] = useState("");
+
+  // Auto-populate from bookmarklet URL params (?grab=1&text=...&subject=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("grab") === "1") {
+      const text = params.get("text");
+      const subject = params.get("subject");
+      if (text) {
+        setRawCopy(decodeURIComponent(text));
+        setMode("rewrite");
+        toast.success("Email text grabbed! Click \"Rewrite for Primary Inbox\" to continue.");
+      }
+      if (subject) setSubjectHint(decodeURIComponent(subject));
+      // Clean the URL so it doesn't re-trigger on refresh
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   // Build mode state
   const [buildForm, setBuildForm] = useState({
@@ -479,6 +562,11 @@ export default function PlainTextEmailGenerator() {
               )}
             </Button>
           </div>
+        )}
+
+        {/* Bookmarklet section */}
+        {!result && (
+          <BookmarkletSection />
         )}
 
         {/* History */}

@@ -354,8 +354,8 @@ function EmailDraftDialog({
   const [activeEmailId, setActiveEmailId] = useState<number | null>(null);
   const utils = trpc.useUtils();
 
-  const { data: gmailStatus } = trpc.backlink.getGmailStatus.useQuery();
-  const { data: gmailAuthUrlData } = trpc.backlink.getGmailAuthUrl.useQuery(undefined, { enabled: gmailStatus !== undefined && !gmailStatus?.authorized });
+  const { data: gmailStatus, refetch: refetchGmailStatus } = trpc.backlink.getGmailStatus.useQuery();
+  const { data: gmailAuthUrlData } = trpc.backlink.getGmailAuthUrl.useQuery(undefined, { enabled: gmailStatus !== undefined });
 
   const { data: emails } = trpc.backlink.listEmails.useQuery(
     { prospectId: prospect?.id ?? 0 },
@@ -467,7 +467,17 @@ function EmailDraftDialog({
                 size="sm"
                 variant="outline"
                 className="shrink-0 h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-100"
-                onClick={() => { if (gmailAuthUrlData?.url) window.location.href = gmailAuthUrlData.url; else toast.error("Could not get Gmail auth URL"); }}
+                onClick={() => {
+                  if (!gmailAuthUrlData?.url) { toast.error("Could not get Gmail auth URL"); return; }
+                  const popup = window.open(gmailAuthUrlData.url, 'gmail_auth', 'width=600,height=700,scrollbars=yes');
+                  const timer = setInterval(() => {
+                    if (popup?.closed) {
+                      clearInterval(timer);
+                      utils.backlink.getGmailStatus.invalidate();
+                      refetchGmailStatus();
+                    }
+                  }, 1000);
+                }}
               >
                 Connect Gmail
               </Button>
@@ -806,8 +816,8 @@ export default function BacklinkOutreach() {
 
   const utils = trpc.useUtils();
 
-  const { data: gmailStatus } = trpc.backlink.getGmailStatus.useQuery();
-  const { data: gmailAuthUrlData } = trpc.backlink.getGmailAuthUrl.useQuery(undefined, { enabled: gmailStatus !== undefined && !gmailStatus?.authorized });
+  const { data: gmailStatus, refetch: refetchGmailStatus } = trpc.backlink.getGmailStatus.useQuery();
+  const { data: gmailAuthUrlData } = trpc.backlink.getGmailAuthUrl.useQuery(undefined, { enabled: gmailStatus !== undefined });
   const { data: stats } = trpc.backlink.getStats.useQuery();
   const { data: prospects, isLoading: loadingProspects } = trpc.backlink.listProspects.useQuery({
     status: filterStatus === "all" ? undefined : filterStatus,
@@ -942,7 +952,17 @@ export default function BacklinkOutreach() {
             <Button
               size="sm"
               className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => { if (gmailAuthUrlData?.url) window.location.href = gmailAuthUrlData.url; else toast.error("Could not get Gmail auth URL"); }}
+              onClick={() => {
+                if (!gmailAuthUrlData?.url) { toast.error("Could not get Gmail auth URL"); return; }
+                const popup = window.open(gmailAuthUrlData.url, 'gmail_auth', 'width=600,height=700,scrollbars=yes');
+                const timer = setInterval(() => {
+                  if (popup?.closed) {
+                    clearInterval(timer);
+                    utils.backlink.getGmailStatus.invalidate();
+                    refetchGmailStatus();
+                  }
+                }, 1000);
+              }}
             >
               <Mail className="w-3.5 h-3.5 mr-1.5" />
               Connect Gmail
@@ -952,7 +972,24 @@ export default function BacklinkOutreach() {
         {gmailStatus?.authorized && (
           <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
             <CheckCircle2 className="w-4 h-4 text-green-600" />
-            <p className="text-xs text-green-800 font-medium">Gmail connected — emails will be sent directly from Alyzza's account</p>
+            <p className="text-xs text-green-800 font-medium flex-1">Gmail connected — emails will be sent directly from Alyzza's account</p>
+            <button
+              onClick={() => {
+                const url = gmailAuthUrlData?.url;
+                if (!url) { toast.error("Could not get Gmail auth URL"); return; }
+                const popup = window.open(url, 'gmail_auth', 'width=600,height=700,scrollbars=yes');
+                const timer = setInterval(() => {
+                  if (popup?.closed) {
+                    clearInterval(timer);
+                    utils.backlink.getGmailStatus.invalidate();
+                    refetchGmailStatus();
+                  }
+                }, 1000);
+              }}
+              className="shrink-0 px-2 py-1 text-xs font-medium bg-green-700 hover:bg-green-800 text-white rounded-md"
+            >
+              Reconnect
+            </button>
           </div>
         )}
 

@@ -367,12 +367,20 @@ async function startServer() {
           await db.insert(userCredentials).values({ userId: 1, gmailRefreshToken: refreshToken } as any);
         }
       }
+      const safeEmail = email.replace(/'/g, "\\'").replace(/"/g, '&quot;');
       return res.send(`
         <html><body style="font-family:sans-serif;padding:40px;max-width:600px">
           <h2>&#x2705; Gmail Connected!</h2>
           <p>Outreach emails will now be sent from <strong>${email}</strong> as Dr. Pedram Shojai.</p>
-          <p><a href="/backlink-outreach">&larr; Return to Backlink Outreach</a></p>
-          <script>setTimeout(() => { window.location.href = '/backlink-outreach'; }, 2000);</script>
+          <p>This window will close automatically.</p>
+          <script>
+            if (window.opener && !window.opener.closed) {
+              window.opener.postMessage({ type: 'GMAIL_AUTH_SUCCESS', email: '${safeEmail}' }, window.location.origin);
+              setTimeout(() => window.close(), 800);
+            } else {
+              setTimeout(() => { window.location.href = '/backlink-outreach'; }, 2000);
+            }
+          <\/script>
         </body></html>
       `);
     } catch (err) {

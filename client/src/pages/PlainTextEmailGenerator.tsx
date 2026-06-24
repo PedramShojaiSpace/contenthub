@@ -13,8 +13,9 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
-  AlertCircle,
-  Info,
+  ArrowRight,
+  MailCheck,
+  PenLine,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -25,95 +26,119 @@ type GeneratedEmail = {
   body: string;
 };
 
-function DeliverabilityTips() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-      <button
-        className="flex w-full items-center justify-between text-left"
-        onClick={() => setOpen(!open)}
-      >
-        <div className="flex items-center gap-2 text-amber-800 font-medium text-sm">
-          <Info className="w-4 h-4" />
-          Why plain text beats Kajabi templates for inbox delivery
-        </div>
-        {open ? (
-          <ChevronUp className="w-4 h-4 text-amber-600" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-amber-600" />
-        )}
-      </button>
-      {open && (
-        <div className="mt-3 text-sm text-amber-900 space-y-2">
-          <p>
-            Your Kajabi "Encore" template sends <strong>80 images</strong> (74
-            invisible spacers), <strong>177 CSS classes</strong>, and a{" "}
-            <strong>76 KB file</strong> — Gmail's machine learning recognizes
-            this pattern instantly as a marketing newsletter and routes it to
-            Promotions.
-          </p>
-          <p>
-            A plain-text email with one link, under 250 words, and no images
-            looks exactly like a personal email from a friend. Gmail routes
-            those to Primary.
-          </p>
-          <p className="font-medium">
-            How to send this in Kajabi: Create a new email → choose "Plain
-            Text" template → paste the body → paste your chosen subject line →
-            send.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CopyButton({ text, label }: { text: string; label?: string }) {
+function CopyButton({ text, label, large }: { text: string; label?: string; large?: boolean }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
     toast.success(label ? `${label} copied!` : "Copied!");
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2500);
   };
+  if (large) {
+    return (
+      <Button
+        onClick={handleCopy}
+        className={`w-full transition-colors ${
+          copied
+            ? "bg-emerald-600 hover:bg-emerald-600 text-white"
+            : "bg-stone-900 hover:bg-stone-800 text-white"
+        }`}
+      >
+        {copied ? (
+          <><Check className="w-4 h-4 mr-2" /> Copied — paste into Kajabi</>
+        ) : (
+          <><Copy className="w-4 h-4 mr-2" /> Copy Email Body</>
+        )}
+      </Button>
+    );
+  }
   return (
     <button
       onClick={handleCopy}
       className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-900 font-medium transition-colors"
     >
-      {copied ? (
-        <Check className="w-3.5 h-3.5" />
-      ) : (
-        <Copy className="w-3.5 h-3.5" />
-      )}
+      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
       {copied ? "Copied" : "Copy"}
     </button>
   );
 }
 
-function SubjectLineCard({
-  label,
-  subject,
-  note,
-}: {
-  label: string;
-  subject: string;
-  note: string;
-}) {
+function ResultPanel({ result, onReset }: { result: GeneratedEmail; onReset: () => void }) {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-3">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-            {label}
-          </span>
-          <span className="text-xs text-stone-400 italic">{note}</span>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
+            <Check className="w-4 h-4 text-emerald-600" />
+          </div>
+          <h2 className="font-semibold text-stone-900">Rewritten Email Ready</h2>
         </div>
-        <p className="text-sm font-medium text-stone-800 break-words">
-          {subject}
-        </p>
+        <button
+          onClick={onReset}
+          className="text-xs text-stone-400 hover:text-stone-600 underline"
+        >
+          Rewrite another
+        </button>
       </div>
-      <CopyButton text={subject} label={label} />
+
+      {/* Subject lines */}
+      <div className="rounded-xl border border-stone-200 bg-white p-4 space-y-3">
+        <p className="text-sm font-semibold text-stone-700">
+          Step 1 — Pick a subject line and copy it:
+        </p>
+        {[
+          { label: "Option A", value: result.subjectA, note: "Curious / question-based" },
+          { label: "Option B", value: result.subjectB, note: "Benefit-led" },
+          { label: "Option C", value: result.subjectC, note: "Personal / story-based" },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="flex items-start justify-between gap-3 rounded-lg border border-stone-100 bg-stone-50 px-3 py-2.5"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-xs font-semibold text-stone-400 uppercase tracking-wide">
+                  {s.label}
+                </span>
+                <span className="text-xs text-stone-400 italic">{s.note}</span>
+              </div>
+              <p className="text-sm font-medium text-stone-800">{s.value}</p>
+            </div>
+            <CopyButton text={s.value} label={s.label} />
+          </div>
+        ))}
+      </div>
+
+      {/* Body */}
+      <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-stone-50 border-b border-stone-100">
+          <p className="text-sm font-semibold text-stone-700">
+            Step 2 — Copy the email body:
+          </p>
+          <span className="text-xs text-stone-400">
+            {result.body.split(/\s+/).length} words
+          </span>
+        </div>
+        <pre className="text-sm text-stone-800 whitespace-pre-wrap font-sans leading-relaxed p-4 max-h-[420px] overflow-y-auto">
+          {result.body}
+        </pre>
+        <div className="px-4 pb-4">
+          <CopyButton text={result.body} label="Email body" large />
+        </div>
+      </div>
+
+      {/* Kajabi instructions */}
+      <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+        <p className="text-sm font-semibold text-amber-900 mb-2">
+          Step 3 — Send in Kajabi:
+        </p>
+        <ol className="list-decimal list-inside space-y-1 text-sm text-amber-800">
+          <li>Email → New Broadcast → choose <strong>"Plain Text"</strong> template</li>
+          <li>Paste your chosen subject line into the Subject field</li>
+          <li>Paste the email body into the body field</li>
+          <li>Send a test to yourself first — it should land in Primary</li>
+        </ol>
+      </div>
     </div>
   );
 }
@@ -130,7 +155,7 @@ function HistoryItem({
     subjectLineA: string | null;
     subjectLineB: string | null;
     subjectLineC: string | null;
-    pte_createdAt: Date;
+    pte_createdAt: Date | string;
   };
   onDelete: (id: number) => void;
 }) {
@@ -156,11 +181,7 @@ function HistoryItem({
             className="text-xs text-stone-500 hover:text-stone-700 flex items-center gap-1"
           >
             {expanded ? "Hide" : "View"}
-            {expanded ? (
-              <ChevronUp className="w-3 h-3" />
-            ) : (
-              <ChevronDown className="w-3 h-3" />
-            )}
+            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
           <button
             onClick={() => onDelete(item.id)}
@@ -174,16 +195,11 @@ function HistoryItem({
         <div className="border-t border-stone-100 p-3 space-y-3 bg-stone-50">
           {item.subjectLineA && (
             <div className="space-y-1.5">
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-                Subject Lines
-              </p>
+              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Subject Lines</p>
               {[item.subjectLineA, item.subjectLineB, item.subjectLineC]
                 .filter(Boolean)
                 .map((s, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between gap-2 text-sm text-stone-700"
-                  >
+                  <div key={i} className="flex items-center justify-between gap-2 text-sm text-stone-700">
                     <span className="flex-1">{s}</span>
                     <CopyButton text={s!} />
                   </div>
@@ -192,9 +208,7 @@ function HistoryItem({
           )}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-                Email Body
-              </p>
+              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Email Body</p>
               <CopyButton text={item.generatedText} label="Email body" />
             </div>
             <pre className="text-xs text-stone-700 whitespace-pre-wrap font-sans leading-relaxed bg-white rounded border border-stone-200 p-3 max-h-48 overflow-y-auto">
@@ -207,8 +221,18 @@ function HistoryItem({
   );
 }
 
+type Mode = "rewrite" | "build";
+
 export default function PlainTextEmailGenerator() {
-  const [form, setForm] = useState({
+  const [mode, setMode] = useState<Mode>("rewrite");
+  const [result, setResult] = useState<GeneratedEmail | null>(null);
+
+  // Rewrite mode state
+  const [rawCopy, setRawCopy] = useState("");
+  const [subjectHint, setSubjectHint] = useState("");
+
+  // Build mode state
+  const [buildForm, setBuildForm] = useState({
     episodeTitle: "",
     episodeNumber: "",
     seriesName: "",
@@ -217,320 +241,251 @@ export default function PlainTextEmailGenerator() {
     callToAction: "",
     tone: "personal" as "personal" | "educational" | "urgent",
   });
-  const [result, setResult] = useState<GeneratedEmail | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+
+  const rewriteMutation = trpc.plainTextEmail.rewrite.useMutation({
+    onSuccess: (data) => {
+      setResult(data);
+      toast.success("Done! Pick a subject line and copy the body.");
+    },
+    onError: (err) => toast.error(`Failed: ${err.message}`),
+  });
 
   const generateMutation = trpc.plainTextEmail.generate.useMutation({
     onSuccess: (data) => {
       setResult(data);
-      setSelectedSubject(data.subjectA);
-      toast.success("Email generated! Choose a subject line and copy the body.");
+      toast.success("Done! Pick a subject line and copy the body.");
     },
-    onError: (err) => {
-      toast.error(`Generation failed: ${err.message}`);
-    },
+    onError: (err) => toast.error(`Failed: ${err.message}`),
   });
 
-  const { data: history, refetch: refetchHistory } =
-    trpc.plainTextEmail.list.useQuery();
-
+  const { data: history, refetch: refetchHistory } = trpc.plainTextEmail.list.useQuery();
   const deleteMutation = trpc.plainTextEmail.delete.useMutation({
-    onSuccess: () => {
-      refetchHistory();
-      toast.success("Deleted");
-    },
+    onSuccess: () => { refetchHistory(); toast.success("Deleted"); },
   });
 
-  const handleGenerate = () => {
-    if (!form.episodeTitle.trim()) {
-      toast.error("Please enter the episode title");
-      return;
-    }
-    if (!form.keyPoints.trim()) {
-      toast.error("Please enter at least one key point from the episode");
-      return;
-    }
-    generateMutation.mutate({
-      episodeTitle: form.episodeTitle,
-      episodeNumber: form.episodeNumber
-        ? parseInt(form.episodeNumber)
-        : undefined,
-      seriesName: form.seriesName || undefined,
-      episodeUrl: form.episodeUrl || undefined,
-      keyPoints: form.keyPoints,
-      callToAction: form.callToAction || undefined,
-      tone: form.tone,
-    });
+  const isPending = rewriteMutation.isPending || generateMutation.isPending;
+
+  const handleRewrite = () => {
+    if (!rawCopy.trim()) { toast.error("Please paste your email copy first"); return; }
+    rewriteMutation.mutate({ rawCopy, subjectHint: subjectHint || undefined });
   };
 
-  const [bodyCopied, setBodyCopied] = useState(false);
-  const handleCopyBody = async () => {
-    if (!result) return;
-    await navigator.clipboard.writeText(result.body);
-    setBodyCopied(true);
-    toast.success("Email body copied — paste into Kajabi's plain-text editor");
-    setTimeout(() => setBodyCopied(false), 3000);
+  const handleBuild = () => {
+    if (!buildForm.episodeTitle.trim()) { toast.error("Please enter the episode title"); return; }
+    if (!buildForm.keyPoints.trim()) { toast.error("Please enter at least one key point"); return; }
+    generateMutation.mutate({
+      episodeTitle: buildForm.episodeTitle,
+      episodeNumber: buildForm.episodeNumber ? parseInt(buildForm.episodeNumber) : undefined,
+      seriesName: buildForm.seriesName || undefined,
+      episodeUrl: buildForm.episodeUrl || undefined,
+      keyPoints: buildForm.keyPoints,
+      callToAction: buildForm.callToAction || undefined,
+      tone: buildForm.tone,
+    });
   };
 
   return (
     <DashboardLayout>
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center">
-              <Mail className="w-5 h-5 text-emerald-700" />
-            </div>
-            <h1 className="text-2xl font-bold text-stone-900">
-              Plain Text Email Generator
-            </h1>
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+            <MailCheck className="w-5 h-5 text-emerald-700" />
           </div>
-          <p className="text-stone-500 text-sm ml-12">
-            Generate inbox-friendly emails that land in Primary, not Promotions
-          </p>
+          <div>
+            <h1 className="text-2xl font-bold text-stone-900">Plain Text Email</h1>
+            <p className="text-stone-500 text-sm mt-0.5">
+              Rewrite existing emails into inbox-friendly plain text — or build from scratch
+            </p>
+          </div>
         </div>
 
-        <DeliverabilityTips />
+        {/* Mode tabs */}
+        <div className="flex gap-1 rounded-xl bg-stone-100 p-1">
+          <button
+            onClick={() => { setMode("rewrite"); setResult(null); }}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors ${
+              mode === "rewrite"
+                ? "bg-white text-stone-900 shadow-sm"
+                : "text-stone-500 hover:text-stone-700"
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            Paste &amp; Rewrite
+          </button>
+          <button
+            onClick={() => { setMode("build"); setResult(null); }}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors ${
+              mode === "build"
+                ? "bg-white text-stone-900 shadow-sm"
+                : "text-stone-500 hover:text-stone-700"
+            }`}
+          >
+            <PenLine className="w-4 h-4" />
+            Build from Scratch
+          </button>
+        </div>
 
-        {/* Form */}
-        <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-5">
-          <h2 className="font-semibold text-stone-800">Episode Details</h2>
+        {/* Result panel */}
+        {result ? (
+          <ResultPanel result={result} onReset={() => setResult(null)} />
+        ) : mode === "rewrite" ? (
+          /* ── REWRITE MODE ── */
+          <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-5">
+            <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-3 flex gap-3">
+              <ArrowRight className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-emerald-800">
+                Paste any existing email — Kajabi HTML source, plain text, or a draft — and the AI rewrites it as a short, personal email that lands in Primary.
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="episodeTitle">
-                Episode Title <span className="text-red-500">*</span>
+            <div className="space-y-1.5">
+              <Label htmlFor="subjectHint">
+                Existing subject line{" "}
+                <span className="text-stone-400 font-normal">(optional — helps preserve intent)</span>
               </Label>
               <Input
-                id="episodeTitle"
-                placeholder="e.g. The Trouble with Toxins"
-                value={form.episodeTitle}
-                onChange={(e) =>
-                  setForm({ ...form, episodeTitle: e.target.value })
-                }
+                id="subjectHint"
+                placeholder="e.g. The Trouble with Toxins [Interconnected Episode 4]"
+                value={subjectHint}
+                onChange={(e) => setSubjectHint(e.target.value)}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="episodeNumber">Episode Number</Label>
-              <Input
-                id="episodeNumber"
-                type="number"
-                placeholder="e.g. 4"
-                value={form.episodeNumber}
-                onChange={(e) =>
-                  setForm({ ...form, episodeNumber: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="seriesName">Series Name</Label>
-              <Input
-                id="seriesName"
-                placeholder="e.g. Interconnected"
-                value={form.seriesName}
-                onChange={(e) =>
-                  setForm({ ...form, seriesName: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="episodeUrl">Episode URL</Label>
-              <Input
-                id="episodeUrl"
-                type="url"
-                placeholder="https://theacademy.theurbanmonk.com/..."
-                value={form.episodeUrl}
-                onChange={(e) =>
-                  setForm({ ...form, episodeUrl: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="keyPoints">
-                Key Points Covered <span className="text-red-500">*</span>
+              <Label htmlFor="rawCopy">
+                Paste your email copy here{" "}
+                <span className="text-red-500">*</span>
               </Label>
               <Textarea
-                id="keyPoints"
-                rows={4}
-                placeholder={`What will the viewer learn? Enter each point on a new line:\n- The microbiome's role in detoxification\n- Hidden toxins in the home\n- How to rebuild gut health in 2 weeks`}
-                value={form.keyPoints}
-                onChange={(e) =>
-                  setForm({ ...form, keyPoints: e.target.value })
-                }
+                id="rawCopy"
+                rows={12}
+                placeholder={`Paste anything here:\n• The full email body text from Kajabi\n• HTML source (View Source from Gmail → Show Original)\n• A draft you wrote in Google Docs\n• Even a rough outline\n\nThe AI will strip all the template junk and rewrite it as a clean, personal email.`}
+                value={rawCopy}
+                onChange={(e) => setRawCopy(e.target.value)}
+                className="font-mono text-xs resize-y"
               />
+              {rawCopy.length > 0 && (
+                <p className="text-xs text-stone-400 text-right">
+                  {rawCopy.length.toLocaleString()} characters pasted
+                </p>
+              )}
             </div>
 
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="callToAction">Call to Action</Label>
-              <Input
-                id="callToAction"
-                placeholder="e.g. Watch Episode 4 (leave blank for default)"
-                value={form.callToAction}
-                onChange={(e) =>
-                  setForm({ ...form, callToAction: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label>Tone</Label>
-              <div className="flex gap-2 flex-wrap">
-                {(
-                  [
-                    {
-                      value: "personal",
-                      label: "Personal",
-                      desc: "Like a letter from a trusted friend",
-                    },
-                    {
-                      value: "educational",
-                      label: "Educational",
-                      desc: "Informative, teacher-to-student",
-                    },
-                    {
-                      value: "urgent",
-                      label: "Timely",
-                      desc: "Something they need to know now",
-                    },
-                  ] as const
-                ).map((t) => (
-                  <button
-                    key={t.value}
-                    onClick={() => setForm({ ...form, tone: t.value })}
-                    className={`flex-1 min-w-[140px] rounded-lg border px-3 py-2 text-left transition-colors ${
-                      form.tone === t.value
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                        : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"
-                    }`}
-                  >
-                    <p className="text-sm font-medium">{t.label}</p>
-                    <p className="text-xs opacity-70 mt-0.5">{t.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <Button
+              onClick={handleRewrite}
+              disabled={isPending || !rawCopy.trim()}
+              className="w-full bg-emerald-700 hover:bg-emerald-800 text-white"
+            >
+              {isPending ? (
+                <><Sparkles className="w-4 h-4 mr-2 animate-spin" /> Rewriting...</>
+              ) : (
+                <><Sparkles className="w-4 h-4 mr-2" /> Rewrite for Primary Inbox</>
+              )}
+            </Button>
           </div>
+        ) : (
+          /* ── BUILD MODE ── */
+          <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-5">
+            <p className="text-sm text-stone-500">
+              Don't have existing copy? Describe the episode and the AI writes the email from scratch.
+            </p>
 
-          <Button
-            onClick={handleGenerate}
-            disabled={generateMutation.isPending}
-            className="w-full bg-emerald-700 hover:bg-emerald-800 text-white"
-          >
-            {generateMutation.isPending ? (
-              <>
-                <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Generate Plain-Text Email
-              </>
-            )}
-          </Button>
-        </div>
-
-        {/* Result */}
-        {result && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 space-y-5">
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-emerald-600" />
-              <h2 className="font-semibold text-emerald-900">
-                Email Generated
-              </h2>
-            </div>
-
-            {/* Subject line picker */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-stone-700">
-                Step 1 — Choose a subject line (click to select, then copy):
-              </p>
-              <div className="space-y-2">
-                <SubjectLineCard
-                  label="Option A"
-                  subject={result.subjectA}
-                  note="Curious / question-based"
-                />
-                <SubjectLineCard
-                  label="Option B"
-                  subject={result.subjectB}
-                  note="Benefit-led"
-                />
-                <SubjectLineCard
-                  label="Option C"
-                  subject={result.subjectC}
-                  note="Personal / story-based"
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 space-y-1.5">
+                <Label htmlFor="episodeTitle">Episode Title <span className="text-red-500">*</span></Label>
+                <Input
+                  id="episodeTitle"
+                  placeholder="e.g. The Trouble with Toxins"
+                  value={buildForm.episodeTitle}
+                  onChange={(e) => setBuildForm({ ...buildForm, episodeTitle: e.target.value })}
                 />
               </div>
-            </div>
-
-            {/* Body */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-stone-700">
-                Step 2 — Copy the email body:
-              </p>
-              <div className="rounded-lg border border-stone-200 bg-white overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-stone-100 bg-stone-50">
-                  <div className="flex items-center gap-2 text-xs text-stone-500">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {result.body.split(/\s+/).length} words ·{" "}
-                    {Math.ceil(result.body.split(/\s+/).length / 200)} min read
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={handleCopyBody}
-                    className={`text-xs h-7 px-3 ${
-                      bodyCopied
-                        ? "bg-emerald-600 text-white"
-                        : "bg-stone-800 text-white hover:bg-stone-900"
-                    }`}
-                  >
-                    {bodyCopied ? (
-                      <>
-                        <Check className="w-3 h-3 mr-1" /> Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3 mr-1" /> Copy Body
-                      </>
-                    )}
-                  </Button>
+              <div className="space-y-1.5">
+                <Label htmlFor="episodeNumber">Episode Number</Label>
+                <Input
+                  id="episodeNumber"
+                  type="number"
+                  placeholder="e.g. 4"
+                  value={buildForm.episodeNumber}
+                  onChange={(e) => setBuildForm({ ...buildForm, episodeNumber: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="seriesName">Series Name</Label>
+                <Input
+                  id="seriesName"
+                  placeholder="e.g. Interconnected"
+                  value={buildForm.seriesName}
+                  onChange={(e) => setBuildForm({ ...buildForm, seriesName: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2 space-y-1.5">
+                <Label htmlFor="episodeUrl">Episode URL</Label>
+                <Input
+                  id="episodeUrl"
+                  type="url"
+                  placeholder="https://theacademy.theurbanmonk.com/..."
+                  value={buildForm.episodeUrl}
+                  onChange={(e) => setBuildForm({ ...buildForm, episodeUrl: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2 space-y-1.5">
+                <Label htmlFor="keyPoints">
+                  Key Points Covered <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="keyPoints"
+                  rows={4}
+                  placeholder={`What will the viewer learn? One point per line:\n- The microbiome's role in detoxification\n- Hidden toxins in the home\n- How to rebuild gut health in 2 weeks`}
+                  value={buildForm.keyPoints}
+                  onChange={(e) => setBuildForm({ ...buildForm, keyPoints: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2 space-y-1.5">
+                <Label>Tone</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {([
+                    { value: "personal", label: "Personal", desc: "Like a letter from a trusted friend" },
+                    { value: "educational", label: "Educational", desc: "Informative, teacher-to-student" },
+                    { value: "urgent", label: "Timely", desc: "Something they need to know now" },
+                  ] as const).map((t) => (
+                    <button
+                      key={t.value}
+                      onClick={() => setBuildForm({ ...buildForm, tone: t.value })}
+                      className={`flex-1 min-w-[130px] rounded-lg border px-3 py-2 text-left transition-colors ${
+                        buildForm.tone === t.value
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                          : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"
+                      }`}
+                    >
+                      <p className="text-sm font-medium">{t.label}</p>
+                      <p className="text-xs opacity-70 mt-0.5">{t.desc}</p>
+                    </button>
+                  ))}
                 </div>
-                <pre className="text-sm text-stone-800 whitespace-pre-wrap font-sans leading-relaxed p-4 max-h-96 overflow-y-auto">
-                  {result.body}
-                </pre>
               </div>
             </div>
 
-            {/* Kajabi instructions */}
-            <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600 space-y-1">
-              <p className="font-medium text-stone-800">
-                Step 3 — Send in Kajabi:
-              </p>
-              <ol className="list-decimal list-inside space-y-1 text-stone-600">
-                <li>
-                  In Kajabi → Email → New Broadcast → choose{" "}
-                  <strong>"Plain Text"</strong> template
-                </li>
-                <li>Paste your chosen subject line into the Subject field</li>
-                <li>Paste the email body into the body field</li>
-                <li>
-                  Send a test to yourself first — it should land in Primary
-                </li>
-              </ol>
-            </div>
+            <Button
+              onClick={handleBuild}
+              disabled={isPending}
+              className="w-full bg-emerald-700 hover:bg-emerald-800 text-white"
+            >
+              {isPending ? (
+                <><Sparkles className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+              ) : (
+                <><Mail className="w-4 h-4 mr-2" /> Generate Plain-Text Email</>
+              )}
+            </Button>
           </div>
         )}
 
         {/* History */}
-        {history && history.length > 0 && (
+        {history && history.length > 0 && !result && (
           <div className="space-y-3">
-            <h2 className="font-semibold text-stone-800">
-              Previously Generated ({history.length})
+            <h2 className="font-semibold text-stone-700 text-sm uppercase tracking-wide">
+              Recent Emails ({history.length})
             </h2>
             <div className="space-y-2">
               {history.map((item) => (

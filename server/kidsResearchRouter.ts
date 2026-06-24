@@ -2,6 +2,7 @@ import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { TRPCError } from "@trpc/server";
+import { sql } from "drizzle-orm";
 
 // ─── Mission Data ─────────────────────────────────────────────────────────────
 // Six missions derived from Pedram's five books.
@@ -327,7 +328,7 @@ export const kidsResearchRouter = router({
     .input(z.object({
       researcherId: z.number(),
       missionId: z.string(),
-      findings: z.record(z.string()),
+      findings: z.record(z.string(), z.string()),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -337,20 +338,21 @@ export const kidsResearchRouter = router({
       if (!mission) throw new TRPCError({ code: "NOT_FOUND", message: "Mission not found" });
 
       const findingsJson = JSON.stringify(findings);
-      const [existingRows] = await db.execute(
+      const dbAny = db as any;
+      const [existingRows] = await dbAny.execute(
         "SELECT id FROM kids_mission_submissions WHERE kms_researcher_id = " +
         researcherId + " AND kms_mission_id = " + JSON.stringify(missionId) + " LIMIT 1"
       ) as any[];
       const existing = Array.isArray(existingRows) ? existingRows[0] : null;
 
       if (existing) {
-        await db.execute(
+        await dbAny.execute(
           "UPDATE kids_mission_submissions SET kms_findings = " +
           JSON.stringify(findingsJson) + ", kms_status = 'draft' WHERE id = " + existing.id
         );
         return { id: existing.id, saved: true };
       } else {
-        const [result] = await db.execute(
+        const [result] = await dbAny.execute(
           "INSERT INTO kids_mission_submissions (kms_researcher_id, kms_mission_id, kms_mission_title, kms_findings, kms_status) VALUES (" +
           researcherId + ", " + JSON.stringify(missionId) + ", " +
           JSON.stringify(mission.title) + ", " + JSON.stringify(findingsJson) + ", 'draft')"
@@ -364,7 +366,7 @@ export const kidsResearchRouter = router({
     .input(z.object({
       researcherId: z.number(),
       missionId: z.string(),
-      findings: z.record(z.string()),
+      findings: z.record(z.string(), z.string()),
       recommendation: z.string().min(10),
     }))
     .mutation(async ({ input }) => {

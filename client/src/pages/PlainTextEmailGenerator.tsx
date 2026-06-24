@@ -129,16 +129,35 @@ function ResultPanel({ result, onReset }: { result: GeneratedEmail; onReset: () 
       </div>
 
       {/* Kajabi instructions */}
-      <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-        <p className="text-sm font-semibold text-amber-900 mb-2">
+      <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 space-y-3">
+        <p className="text-sm font-semibold text-amber-900">
           Step 3 — Send in Kajabi:
         </p>
-        <ol className="list-decimal list-inside space-y-1 text-sm text-amber-800">
-          <li>Email → New Broadcast → choose <strong>"Plain Text"</strong> template</li>
+        <ol className="list-decimal list-inside space-y-1.5 text-sm text-amber-800">
+          <li>Email → New Broadcast → choose <strong>"Simple Text"</strong> template (Kajabi's name for plain text)</li>
+          <li>Remove any button blocks — keep only the text block + mandatory footer</li>
           <li>Paste your chosen subject line into the Subject field</li>
           <li>Paste the email body into the body field</li>
-          <li>Send a test to yourself first — it should land in Primary</li>
+          <li>Send a test to yourself first</li>
         </ol>
+        <div className="rounded-lg bg-amber-100/60 border border-amber-200 px-3 py-2 space-y-1">
+          <p className="text-xs font-semibold text-amber-900">About the URLs in the email body</p>
+          <p className="text-xs text-amber-800">
+            Links appear as naked URLs (e.g. <span className="font-mono">https://...</span>) — this is intentional.
+            Every email client (Gmail, Apple Mail, Outlook) auto-links them so readers can click normally.
+            Using HTML anchor tags instead would add code that triggers Gmail's Promotions filter.
+            <strong> Do not manually re-insert hyperlinks</strong> — the naked URL is the clickable link.
+          </p>
+        </div>
+        <div className="rounded-lg bg-amber-100/60 border border-amber-200 px-3 py-2 space-y-1">
+          <p className="text-xs font-semibold text-amber-900">Why some emails still land in Promotions</p>
+          <p className="text-xs text-amber-800">
+            Gmail's inbox placement is mostly driven by <strong>per-recipient history</strong>, not email content.
+            A subscriber who has opened/clicked your emails before will almost always get Primary.
+            A brand-new address with no history may still see Promotions on the first send — that's normal and improves over time as they engage.
+            The plain text format reduces content-side risk; engagement history does the rest.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -272,8 +291,13 @@ function BookmarkletSection() {
       </div>
       <div className="p-5 space-y-4">
         <p className="text-sm text-stone-600">
-          Drag the button below to your browser's bookmarks bar. When your VA is viewing a Kajabi email or a Gmail message, one click on the bookmark will open this tool with the email text already pasted in.
+          Drag the button below to your browser's bookmarks bar. Works on Gmail messages and most web pages.
         </p>
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+          <p className="text-xs text-amber-800">
+            <span className="font-semibold">⚠️ Doesn't work inside Kajabi's email editor</span> — Kajabi runs its editor in a sandboxed iframe that blocks bookmarklets. Use the <strong>Manual Copy method</strong> for Kajabi: copy the email body text directly, paste it into the box above.
+          </p>
+        </div>
         <div className="flex flex-col sm:flex-row gap-4 items-start">
           {/* The draggable bookmarklet button */}
           <a
@@ -285,12 +309,12 @@ function BookmarkletSection() {
             📧 Grab for Rewriter
           </a>
           <div className="text-sm text-stone-500 space-y-1">
-            <p className="font-medium text-stone-700">How to install:</p>
+            <p className="font-medium text-stone-700">How to install (for Gmail / other pages):</p>
             <ol className="list-decimal list-inside space-y-1 text-stone-500">
               <li>Make sure your bookmarks bar is visible (Ctrl+Shift+B on Chrome)</li>
               <li>Drag the green button to your bookmarks bar</li>
-              <li>When viewing any Kajabi email or Gmail message, click the bookmark</li>
-              <li>This tool opens in a new tab with the text pre-filled</li>
+              <li>When viewing a Gmail message, click the bookmark</li>
+              <li>This tool opens in a new tab with the email text pre-filled</li>
             </ol>
           </div>
         </div>

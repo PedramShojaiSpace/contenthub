@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
  * with cluster view toggle and competitor gap column.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { BufferChannelSelector } from "@/components/BufferChannelSelector";
 import { trpc } from "@/lib/trpc";
@@ -627,6 +627,59 @@ function PillarCoverageBar() {
 
 // ── Indexing Status Panel ────────────────────────────────────────────────────
 
+function GscReconnectButton({ onConnected }: { onConnected: () => void }) {
+  const [connecting, setConnecting] = useState(false);
+  const popupRef = useRef<Window | null>(null);
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'GSC_AUTH_SUCCESS') {
+        toast.success('Google Search Console connected! Loading your data...');
+        onConnected();
+        if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onConnected]);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const res = await fetch('/api/gsc/auth-url', { credentials: 'include' });
+      const data = await res.json();
+      if (data.url) {
+        const popup = window.open(data.url, 'gsc-oauth', 'width=600,height=700,left=200,top=100');
+        popupRef.current = popup;
+        toast.info('Complete the Google authorization in the popup window.');
+        const pollTimer = setInterval(() => {
+          if (popup && popup.closed) {
+            clearInterval(pollTimer);
+            setTimeout(() => onConnected(), 500);
+          }
+        }, 500);
+      } else {
+        toast.error(data.error ?? 'Failed to get authorization URL');
+      }
+    } catch {
+      toast.error('Failed to connect to Google Search Console');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleConnect}
+      disabled={connecting}
+      className="inline-flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-60"
+    >
+      {connecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />}
+      {connecting ? 'Opening...' : 'Reconnect Google Search Console'}
+    </button>
+  );
+}
+
 function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; publishUrl: string | null }[] }) {
   const [results, setResults] = useState<Record<string, { verdict: string; coverageState: string; lastCrawlTime: string | null; error: string | null }>>({});
   const [loading, setLoading] = useState(false);
@@ -634,7 +687,13 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
   const [requestingUrl, setRequestingUrl] = useState<string | null>(null);
 
   const gscStatus = trpc.gsc.status.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
   const isGscConnected = gscStatus.data?.connected ?? false;
+
+  const handleGscConnected = useCallback(() => {
+    utils.gsc.status.invalidate();
+    setCheckError(null);
+  }, [utils]);
 
   const bulkInspect = trpc.gsc.bulkInspectUrls.useMutation({
     onSuccess: (data) => {
@@ -716,12 +775,7 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
             <XCircle className="w-8 h-8 mx-auto mb-2 text-red-500 opacity-70" />
             <p className="font-medium text-foreground">Indexing check failed</p>
             <p className="text-xs mt-1 mb-3 text-muted-foreground max-w-xs mx-auto">{checkError}</p>
-            <a
-              href="/seo-dashboard"
-              className="inline-flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Reconnect Google Search Console →
-            </a>
+            <GscReconnectButton onConnected={handleGscConnected} />
           </div>
         )}
         {!checkError && Object.keys(results).length === 0 && !loading && (
@@ -731,12 +785,7 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
               <>
                 <p className="font-medium text-foreground">Google Search Console not connected</p>
                 <p className="text-xs mt-1 mb-3">Connect GSC to check indexing status and request crawls for your posts.</p>
-                <a
-                  href="/seo-dashboard"
-                  className="inline-flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
-                >
-                  Connect Google Search Console →
-                </a>
+                <GscReconnectButton onConnected={handleGscConnected} />
               </>
             ) : (
               <>

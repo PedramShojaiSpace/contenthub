@@ -28,6 +28,7 @@ export const plainTextEmailRouter = router({
       z.object({
         rawCopy: z.string().min(10, "Please paste your email copy"),
         subjectHint: z.string().optional(), // optional existing subject line
+        isContinuation: z.boolean().optional(), // true = continuation block, no salutation
       })
     )
     .mutation(async ({ input }) => {
@@ -55,10 +56,11 @@ REWRITING RULES:
 
 OUTPUT FORMAT — return a JSON object with these exact keys:
 {
-  "subject_a": "subject line option A (curious/question-based, under 50 chars)",
-  "subject_b": "subject line option B (benefit-led, under 50 chars)",
-  "subject_c": "subject line option C (personal/story-based, under 50 chars)",
-  "body": "the full rewritten plain-text email body"
+  "subject_a": "subject line option A — MUST include {{first_name}} Kajabi token, e.g. 'Hey {{first_name}}, this is why...' (under 55 chars)",
+  "subject_b": "subject line option B (benefit-led, under 50 chars, no first_name token)",
+  "subject_c": "subject line option C (personal/story-based, under 50 chars, no first_name token)",
+  "body": "the full rewritten plain-text email body",
+  "reply_prompt": "a single warm sentence to append at the very end of the body — invites the reader to hit reply with a quick personal reaction. Under 20 words. Match Pedram's voice. Example: 'Hit reply — I'd love to know if this has ever happened to you.'"
 }`;
 
       const userPrompt = `Here is the existing email copy to rewrite:
@@ -86,8 +88,9 @@ Rewrite this as a short, personal plain-text email following all the rules above
                 subject_b: { type: "string" },
                 subject_c: { type: "string" },
                 body: { type: "string" },
+                reply_prompt: { type: "string" },
               },
-              required: ["subject_a", "subject_b", "subject_c", "body"],
+              required: ["subject_a", "subject_b", "subject_c", "body", "reply_prompt"],
               additionalProperties: false,
             },
           },
@@ -120,6 +123,7 @@ Rewrite this as a short, personal plain-text email following all the rules above
         subjectB: parsed.subject_b,
         subjectC: parsed.subject_c,
         body: parsed.body,
+        replyPrompt: parsed.reply_prompt ?? "",
       };
     }),
 

@@ -25,6 +25,7 @@ type GeneratedEmail = {
   subjectB: string;
   subjectC: string;
   body: string;
+  replyPrompt?: string;
 };
 
 function CopyButton({ text, label, large }: { text: string; label?: string; large?: boolean }) {
@@ -128,6 +129,24 @@ function ResultPanel({ result, onReset }: { result: GeneratedEmail; onReset: () 
         </div>
       </div>
 
+      {/* Reply prompt suggestion */}
+      {result.replyPrompt && (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-blue-900">
+              Suggested reply prompt{" "}
+              <span className="font-normal text-blue-600">(optional — paste at the very end of the body)</span>
+            </p>
+            <CopyButton text={result.replyPrompt} label="Reply prompt" />
+          </div>
+          <p className="text-sm text-blue-800 italic">"{result.replyPrompt}"</p>
+          <p className="text-xs text-blue-600">
+            Adding a reply prompt is the single strongest signal to Gmail that this is a personal email.
+            Even a 0.5% reply rate moves your domain toward Primary for that subscriber permanently.
+          </p>
+        </div>
+      )}
+
       {/* Kajabi instructions */}
       <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 space-y-3">
         <p className="text-sm font-semibold text-amber-900">
@@ -156,6 +175,14 @@ function ResultPanel({ result, onReset }: { result: GeneratedEmail; onReset: () 
             A subscriber who has opened/clicked your emails before will almost always get Primary.
             A brand-new address with no history may still see Promotions on the first send — that's normal and improves over time as they engage.
             The plain text format reduces content-side risk; engagement history does the rest.
+          </p>
+        </div>
+        <div className="rounded-lg bg-amber-100/60 border border-amber-200 px-3 py-2 space-y-1">
+          <p className="text-xs font-semibold text-amber-900">Check your domain authentication score</p>
+          <p className="text-xs text-amber-800">
+            Send a test email to{" "}
+            <a href="https://www.mail-tester.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">mail-tester.com</a>{" "}
+            and aim for <strong>9/10 or higher</strong>. A low score means SPF, DKIM, or DMARC isn't fully configured — fixing that is the highest-impact deliverability improvement available.
           </p>
         </div>
       </div>

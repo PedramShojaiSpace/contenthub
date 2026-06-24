@@ -156,7 +156,7 @@ function HistoryItem({
     subjectLineA: string | null;
     subjectLineB: string | null;
     subjectLineC: string | null;
-    pte_createdAt: Date | string;
+    createdAt: Date | string;
   };
   onDelete: (id: number) => void;
 }) {
@@ -169,7 +169,7 @@ function HistoryItem({
             {item.episodeTitle || item.subject}
           </p>
           <p className="text-xs text-stone-400 mt-0.5">
-            {new Date(item.pte_createdAt).toLocaleDateString("en-US", {
+            {new Date(item.createdAt).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
@@ -433,18 +433,27 @@ export default function PlainTextEmailGenerator() {
           </button>
         </div>
 
-        {/* Result panel */}
-        {result ? (
+        {/* Result panel — shown above the input when available, input stays visible */}
+        {result && mode === "rewrite" && (
           <ResultPanel result={result} onReset={() => setResult(null)} />
-        ) : mode === "rewrite" ? (
+        )}
+
+        {/* Build mode result panel */}
+        {result && mode === "build" && (
+          <ResultPanel result={result} onReset={() => setResult(null)} />
+        )}
+
+        {mode === "rewrite" ? (
           /* ── REWRITE MODE ── */
           <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-5">
-            <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-3 flex gap-3">
-              <ArrowRight className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-emerald-800">
-                Paste any existing email — Kajabi HTML source, plain text, or a draft — and the AI rewrites it as a short, personal email that lands in Primary.
-              </p>
-            </div>
+            {!result && (
+              <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-3 flex gap-3">
+                <ArrowRight className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-emerald-800">
+                  Paste any existing email — Kajabi HTML source, plain text, or a draft — and the AI rewrites it as a short, personal email that lands in Primary.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="subjectHint">
@@ -486,6 +495,8 @@ export default function PlainTextEmailGenerator() {
             >
               {isPending ? (
                 <><Sparkles className="w-4 h-4 mr-2 animate-spin" /> Rewriting...</>
+              ) : result ? (
+                <><Sparkles className="w-4 h-4 mr-2" /> Rewrite Again</>
               ) : (
                 <><Sparkles className="w-4 h-4 mr-2" /> Rewrite for Primary Inbox</>
               )}

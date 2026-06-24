@@ -344,6 +344,7 @@ export default function PlainTextEmailGenerator() {
   // Rewrite mode state
   const [rawCopy, setRawCopy] = useState("");
   const [subjectHint, setSubjectHint] = useState("");
+  const [isContinuation, setIsContinuation] = useState(false);
 
   // Auto-populate from bookmarklet URL params (?grab=1&text=...&subject=...)
   useEffect(() => {
@@ -398,7 +399,7 @@ export default function PlainTextEmailGenerator() {
 
   const handleRewrite = () => {
     if (!rawCopy.trim()) { toast.error("Please paste your email copy first"); return; }
-    rewriteMutation.mutate({ rawCopy, subjectHint: subjectHint || undefined });
+    rewriteMutation.mutate({ rawCopy, subjectHint: subjectHint || undefined, isContinuation });
   };
 
   const handleBuild = () => {
@@ -490,6 +491,21 @@ export default function PlainTextEmailGenerator() {
                 value={subjectHint}
                 onChange={(e) => setSubjectHint(e.target.value)}
               />
+            </div>
+
+            {/* Continuation toggle */}
+            <div className="flex items-center gap-3 rounded-lg bg-stone-50 border border-stone-200 px-4 py-3">
+              <input
+                type="checkbox"
+                id="isContinuation"
+                checked={isContinuation}
+                onChange={(e) => setIsContinuation(e.target.checked)}
+                className="w-4 h-4 accent-emerald-700 cursor-pointer"
+              />
+              <label htmlFor="isContinuation" className="text-sm text-stone-700 cursor-pointer select-none">
+                <span className="font-medium">This is a continuation block</span>{" "}
+                <span className="text-stone-400">(closing / second box — skip the salutation)</span>
+              </label>
             </div>
 
             <div className="space-y-1.5">

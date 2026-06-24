@@ -60,6 +60,7 @@ const LeadScrubber = lazy(() => import("./pages/LeadScrubber"));
 const EmailOptimizer = lazy(() => import("./pages/EmailOptimizer"));
 const KidsResearch = lazy(() => import("./pages/KidsResearch"));
 const KidsReview = lazy(() => import("./pages/KidsReview"));
+const PlainTextEmailGenerator = lazy(() => import("./pages/PlainTextEmailGenerator"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -127,6 +128,7 @@ function Router() {
         <Route path={"/email-optimizer"} component={EmailOptimizer} />
         <Route path={"/kids-research"} component={KidsResearch} />
         <Route path={"/kids-review"} component={KidsReview} />
+        <Route path={"/plain-text-email"} component={PlainTextEmailGenerator} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

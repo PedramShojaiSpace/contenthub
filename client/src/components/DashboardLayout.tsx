@@ -67,6 +67,7 @@ import {
   UserSearch,
   QrCode,
   Mail,
+  MailCheck,
   Microscope,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -86,6 +87,7 @@ const topNavItems = [
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
   { icon: Clock, label: "Review Queue", path: "/review-queue" },
   { icon: Mail, label: "Email Optimizer", path: "/email-optimizer" },
+  { icon: MailCheck, label: "Plain Text Email", path: "/plain-text-email" },
 ];
 
 // Libraries sub-items

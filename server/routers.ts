@@ -120,6 +120,7 @@ import { leadScrubberRouter } from "./leadScrubberRouter";
 import { emailSequenceRouter } from "./emailSequenceRouter";
 import { qrGeneratorRouter } from "./qrGeneratorRouter";
 import { emailOptimizerRouter } from "./emailOptimizerRouter";
+import { plainTextEmailRouter } from "./plainTextEmailRouter";
 import { metaAdPushRouter } from "./metaAdPushRouter";
 import { metaCustomAudienceRouter } from "./metaCustomAudienceRouter";
 import { kidsResearchRouter } from "./kidsResearchRouter";
@@ -481,6 +482,7 @@ export const appRouter = router({
   metaAdPush: metaAdPushRouter,
   metaCustomAudience: metaCustomAudienceRouter,
   kidsResearch: kidsResearchRouter,
+  plainTextEmail: plainTextEmailRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

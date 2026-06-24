@@ -2427,3 +2427,22 @@ export const metaAudienceLeads = mysqlTable("meta_audience_leads", {
   addedAt: timestamp("mal_addedAt").defaultNow().notNull(),
 });
 export type MetaAudienceLead = typeof metaAudienceLeads.$inferSelect;
+
+// ── Plain-Text Email Generator ────────────────────────────────────────────────
+export const plainTextEmails = mysqlTable("plain_text_emails", {
+  id: int("id").autoincrement().primaryKey(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  episodeTitle: varchar("episode_title", { length: 255 }),
+  episodeUrl: text("episode_url"),
+  episodeNumber: int("episode_number"),
+  seriesName: varchar("series_name", { length: 255 }),
+  keyPoints: text("key_points"),       // user-entered bullet points
+  callToAction: text("call_to_action"),
+  generatedText: text("generated_text").notNull(),  // final plain-text email body
+  subjectLineA: varchar("subject_line_a", { length: 255 }),
+  subjectLineB: varchar("subject_line_b", { length: 255 }),
+  subjectLineC: varchar("subject_line_c", { length: 255 }),
+  createdAt: timestamp("pte_createdAt").defaultNow().notNull(),
+});
+export type PlainTextEmail = typeof plainTextEmails.$inferSelect;
+export type InsertPlainTextEmail = typeof plainTextEmails.$inferInsert;

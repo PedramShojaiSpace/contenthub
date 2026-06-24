@@ -488,12 +488,70 @@ Return a JSON object with exactly this structure:
         } as any)
         .where(eq(emailSequences.id, input.sequenceId));
 
+      // ── Auto-push to Kajabi (non-blocking) ──────────────────────────────────
+      // Fire-and-forget: push the contact to Kajabi immediately after Email 1
+      // sends. A Kajabi failure does NOT block the email send — it just records
+      // the error so Elizza can manually re-push from the UI.
+      let kajabiPushed = false;
+      let kajabiPushError: string | null = null;
+      try {
+        const { kajabiOptIn } = await import("./kajabiApi");
+        const { deriveKajabiTag } = await import("./leadScrubberRouter");
+        const tag = deriveKajabiTag(seq.category ?? undefined, "apollo");
+        await kajabiOptIn({ email: recipientEmail, name: seq.leadName ?? undefined, tagName: tag });
+        kajabiPushed = true;
+      } catch (kErr: any) {
+        kajabiPushError = kErr?.message ?? "Unknown Kajabi push error";
+      }
+
+      await db
+        .update(emailSequences)
+        .set({ kajabiPushed, kajabiPushError, updatedAt: Date.now() } as any)
+        .where(eq(emailSequences.id, input.sequenceId));
+
       return {
         success: true,
         email1Sent: true,
         email2ScheduledAt: now + 3 * DAY_MS,
         email3ScheduledAt: now + 7 * DAY_MS,
+        kajabiPushed,
+        kajabiPushError,
       };
+    }),
+
+  // ── Manual re-push to Kajabi (fallback if auto-push failed) ─────────────────
+  repushToKajabi: protectedProcedure
+    .input(z.object({ sequenceId: z.number() }))
+    .mutation(async ({ input }) => {
+      const { kajabiOptIn } = await import("./kajabiApi");
+      const { deriveKajabiTag } = await import("./leadScrubberRouter");
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      const rows = await db
+        .select()
+        .from(emailSequences)
+        .where(eq(emailSequences.id, input.sequenceId))
+        .limit(1);
+
+      if (!rows.length) throw new Error("Sequence not found");
+      const seq = rows[0] as any;
+
+      if (!seq.leadEmail) throw new Error("No email address on this sequence");
+
+      const tag = deriveKajabiTag(seq.category ?? undefined, "apollo");
+      const { contactId } = await kajabiOptIn({
+        email: seq.leadEmail,
+        name: seq.leadName ?? undefined,
+        tagName: tag,
+      });
+
+      await db
+        .update(emailSequences)
+        .set({ kajabiPushed: true, kajabiPushError: null, updatedAt: Date.now() } as any)
+        .where(eq(emailSequences.id, input.sequenceId));
+
+      return { success: true, contactId, tag };
     }),
 
   deleteEmailSequence: protectedProcedure

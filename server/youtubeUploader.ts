@@ -46,22 +46,28 @@ function getYouTubeOAuthClient() {
 // ── Get stored refresh token ──────────────────────────────────────────────────
 
 async function getYouTubeRefreshToken(): Promise<string> {
+  // Always read from DB first — the env var is a startup cache and goes stale
+  // after the user reconnects YouTube via the OAuth popup.
+  const db = await getDb();
+  if (db) {
+    const rows = await db
+      .select({ youtubeRefreshToken: userCredentials.youtubeRefreshToken })
+      .from(userCredentials)
+      .limit(1);
+    const token = rows[0]?.youtubeRefreshToken;
+    if (token) {
+      console.log("[YouTube] Using refresh token from database.");
+      return token;
+    }
+  }
+  // Fall back to env var (e.g. local dev without DB)
   if (process.env.YOUTUBE_REFRESH_TOKEN) {
+    console.log("[YouTube] Using refresh token from environment variable.");
     return process.env.YOUTUBE_REFRESH_TOKEN;
   }
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-  const rows = await db
-    .select({ youtubeRefreshToken: userCredentials.youtubeRefreshToken })
-    .from(userCredentials)
-    .limit(1);
-  const token = rows[0]?.youtubeRefreshToken;
-  if (!token) {
-    throw new Error(
-      "YouTube refresh token not found. Please authorize YouTube via /api/youtube/auth-url first."
-    );
-  }
-  return token;
+  throw new Error(
+    "YouTube refresh token not found. Please authorize YouTube via /api/youtube/auth-url first."
+  );
 }
 
 // ── Get fresh access token ────────────────────────────────────────────────────

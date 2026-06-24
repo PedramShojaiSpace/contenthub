@@ -98,13 +98,22 @@ export async function inspectUrl(
   inspectionUrl: string
 ): Promise<UrlIndexStatus> {
   const oauth2Client = getOAuthClientWithToken(refreshToken);
-  const { data } = await (google as any).searchconsole({ version: "v1", auth: oauth2Client })
+
+  // Wrap in a 15-second timeout — the URL Inspection API can hang if the token
+  // lacks the webmasters scope or the site is not verified in Search Console.
+  const timeoutMs = 15_000;
+  const inspectPromise = (google as any).searchconsole({ version: "v1", auth: oauth2Client })
     .urlInspection.index.inspect({
       requestBody: {
         inspectionUrl,
         siteUrl,
       },
     });
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("URL Inspection API timed out after 15s. Ensure GSC is reconnected with the webmasters scope.")), timeoutMs)
+  );
+
+  const { data } = await Promise.race([inspectPromise, timeoutPromise]);
   const result = data?.inspectionResult ?? {};
   const indexResult = result.indexStatusResult ?? {};
   return {

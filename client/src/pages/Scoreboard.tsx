@@ -630,6 +630,7 @@ function PillarCoverageBar() {
 function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; publishUrl: string | null }[] }) {
   const [results, setResults] = useState<Record<string, { verdict: string; coverageState: string; lastCrawlTime: string | null; error: string | null }>>({});
   const [loading, setLoading] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
   const [requestingUrl, setRequestingUrl] = useState<string | null>(null);
 
   const gscStatus = trpc.gsc.status.useQuery(undefined, { retry: false });
@@ -649,7 +650,11 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
     },
     onError: (err) => {
       setLoading(false);
-      toast.error("Failed to check indexing status: " + err.message);
+      const msg = err.message.includes("timed out") || err.message.includes("scope")
+        ? "GSC token needs to be reconnected. Go to SEO Dashboard → Reconnect Google Search Console."
+        : "Failed to check indexing status: " + err.message;
+      setCheckError(msg);
+      toast.error(msg);
     },
   });
 
@@ -706,7 +711,20 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
         </p>
       </CardHeader>
       <CardContent className="pt-0">
-        {Object.keys(results).length === 0 && !loading && (
+        {checkError && Object.keys(results).length === 0 && !loading && (
+          <div className="text-center py-6 text-sm">
+            <XCircle className="w-8 h-8 mx-auto mb-2 text-red-500 opacity-70" />
+            <p className="font-medium text-foreground">Indexing check failed</p>
+            <p className="text-xs mt-1 mb-3 text-muted-foreground max-w-xs mx-auto">{checkError}</p>
+            <a
+              href="/seo-dashboard"
+              className="inline-flex items-center gap-1.5 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
+            >
+              Reconnect Google Search Console →
+            </a>
+          </div>
+        )}
+        {!checkError && Object.keys(results).length === 0 && !loading && (
           <div className="text-center py-6 text-muted-foreground text-sm">
             <Globe2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
             {!isGscConnected ? (

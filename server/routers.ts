@@ -6380,10 +6380,10 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
           const { getTopPages: gscGetTopPages } = await import("./googleSearchConsole");
           // Wrap in a 10-second timeout so a slow/hanging GSC API never blocks the entire procedure
           const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("GSC timeout")), 10_000)
+            setTimeout(() => reject(new Error("GSC timeout")), 20_000)
           );
           const gscPages = await Promise.race([
-            gscGetTopPages(creds.gscRefreshToken, creds.gscSiteUrl, 100),
+            gscGetTopPages(creds.gscRefreshToken, creds.gscSiteUrl, 500),
             timeoutPromise,
           ]);
           for (const p of gscPages) {

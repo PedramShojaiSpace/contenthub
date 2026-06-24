@@ -129,16 +129,22 @@ export async function kajabiCreateContact(params: {
   const firstName = nameParts[0] ?? "";
   const lastName = nameParts.slice(1).join(" ") ?? "";
 
+  const attributes: Record<string, string> = { email: params.email };
+  if (firstName) attributes.first_name = firstName;
+  if (lastName) attributes.last_name = lastName;
+
   const res = await fetch(`${KAJABI_API_BASE}/contacts`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/vnd.api+json",
+      Accept: "application/vnd.api+json",
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      email: params.email,
-      first_name: firstName || undefined,
-      last_name: lastName || undefined,
+      data: {
+        type: "contacts",
+        attributes,
+      },
     }),
   });
 
@@ -147,8 +153,8 @@ export async function kajabiCreateContact(params: {
     throw new Error(`Kajabi createContact failed (${res.status}): ${text}`);
   }
 
-  const data = await safeParseJson<{ id: string; email: string }>(res, "Kajabi createContact");
-  return data;
+  const data = await safeParseJson<{ data: { id: string; attributes: { email: string } } }>(res, "Kajabi createContact");
+  return { id: data.data.id, email: data.data.attributes.email };
 }
 
 /**

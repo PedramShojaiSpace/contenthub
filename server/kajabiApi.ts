@@ -133,6 +133,9 @@ export async function kajabiCreateContact(params: {
   if (firstName) attributes.first_name = firstName;
   if (lastName) attributes.last_name = lastName;
 
+  // Site ID for "The Urban Monk Academy" — required by Kajabi API for contact creation
+  const URBAN_MONK_SITE_ID = "2148432935";
+
   const res = await fetch(`${KAJABI_API_BASE}/contacts`, {
     method: "POST",
     headers: {
@@ -144,12 +147,30 @@ export async function kajabiCreateContact(params: {
       data: {
         type: "contacts",
         attributes,
+        relationships: {
+          site: {
+            data: {
+              type: "sites",
+              id: URBAN_MONK_SITE_ID,
+            },
+          },
+        },
       },
     }),
   });
 
   if (!res.ok) {
     const text = await res.text();
+    // Surface undeliverable address as a clear, actionable error
+    try {
+      const errBody = JSON.parse(text);
+      const detail = errBody?.errors?.[0]?.detail ?? "";
+      if (detail.toLowerCase().includes("undeliverable")) {
+        throw new Error(`Kajabi rejected this email as undeliverable — the address may be invalid or inactive. Archive this lead.`);
+      }
+    } catch (parseErr: any) {
+      if (parseErr.message.includes("undeliverable")) throw parseErr;
+    }
     throw new Error(`Kajabi createContact failed (${res.status}): ${text}`);
   }
 

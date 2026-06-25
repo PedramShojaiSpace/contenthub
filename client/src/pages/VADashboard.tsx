@@ -774,6 +774,20 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
     onError: (err) => toast.error(`Avatar retry failed: ${err.message}`),
   });
 
+  const recoverStuckJob = trpc.heygen.recoverStuckJob.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message ?? "Recovery started. Dashboard will update shortly.", { duration: 10000 });
+        const pollInterval = setInterval(() => { onRefresh(); }, 30_000);
+        setTimeout(() => clearInterval(pollInterval), 90 * 60 * 1000);
+      } else {
+        toast.info(data.message ?? `HeyGen status: ${data.heygenStatus}`);
+      }
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Recovery failed: ${err.message}`),
+  });
+
   const archiveVideoJob = trpc.videoPipeline.archiveVideoJob.useMutation({
     onSuccess: () => { toast.success("Moved to Finished Bin."); onRefresh(); },
     onError: (err) => toast.error(`Error: ${err.message}`),
@@ -1352,6 +1366,26 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                   <Bot className="w-4 h-4 mr-2" />
                 )}
                 {generateAvatarVideo.isPending ? "Starting Avatar Render..." : "Generate Avatar Video"}
+              </Button>
+            )}
+
+            {/* Resume Stuck Job — for avatar jobs stuck in 'rendering' where HeyGen already finished */}
+            {isAvatar && job.status === "rendering" && (
+              <Button
+                className="bg-amber-600 hover:bg-amber-700 text-foreground text-sm"
+                onClick={() => {
+                  if (confirm("Check if HeyGen already finished and resume the S3/YouTube upload? Use this if the job has been stuck in rendering for a long time.")) {
+                    recoverStuckJob.mutate({ jobId: job.id });
+                  }
+                }}
+                disabled={recoverStuckJob.isPending}
+              >
+                {recoverStuckJob.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                {recoverStuckJob.isPending ? "Checking HeyGen..." : "Resume Stuck Job"}
               </Button>
             )}
 

@@ -28,8 +28,8 @@ describe("GA4 campaign slug validation", () => {
     expect(validateCampaignSlug("upstream-webinar")).toBeNull();
   });
 
-  it("covers all 14 known campaigns", () => {
-    expect(KNOWN_CAMPAIGN_SLUGS.size).toBe(14);
+  it("covers all 15 known campaigns", () => {
+    expect(KNOWN_CAMPAIGN_SLUGS.size).toBe(15);
   });
 });
 

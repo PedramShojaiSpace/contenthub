@@ -6908,15 +6908,208 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
           `Aspect ratio: square (1:1). High resolution.`,
         ].join(" ");
 
-        const { url } = await generateImage({ prompt });
-
+                const { url } = await generateImage({ prompt });
         // Persist the generated image URL on the content item so the Share dialog can use it
         await updateContentItem(input.contentItemId, { imageUrl: url });
-
         return { imageUrl: url };
       }),
-  }),
 
+    /**
+     * Manually trigger the weekly scoreboard digest ("Send Digest Now" button).
+     */
+    sendWeeklyDigest: protectedProcedure.mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const { userCredentials, users, contentItems: ci, gscPositionHistory } = await import("../drizzle/schema");
+      const { eq, and, isNotNull, desc } = await import("drizzle-orm");
+      const ownerOpenId = process.env.OWNER_OPEN_ID;
+      if (!ownerOpenId) throw new Error("OWNER_OPEN_ID not configured");
+      const [owner] = await db.select().from(users).where(eq(users.openId, ownerOpenId)).limit(1);
+      if (!owner) throw new Error("Owner not found");
+      const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, owner.id)).limit(1);
+      const refreshToken = creds?.gscRefreshToken ?? null;
+      const siteUrl = creds?.gscSiteUrl ?? null;
+
+      let publishNextSection = "";
+      try {
+        if (refreshToken && siteUrl) {
+          const publishedPosts = await db
+            .select({ focusKeyword: ci.focusKeyword, title: ci.title })
+            .from(ci)
+            .where(and(eq(ci.status, "published"), eq(ci.platform, "blog")));
+          const coveredKeywords = new Set(
+            publishedPosts.map((p: any) => (p.focusKeyword ?? "").toLowerCase().trim()).filter(Boolean)
+          );
+          const { getTopQueries } = await import("./googleSearchConsole");
+          const allKws = await getTopQueries(refreshToken, siteUrl, 200);
+          const striking = allKws
+            .filter((k: any) => k.position >= 4 && k.position <= 20 && k.impressions >= 50)
+            .filter((k: any) => !coveredKeywords.has(k.query.toLowerCase().trim()))
+            .map((k: any) => ({ keyword: k.query, position: k.position, impressions: k.impressions }))
+            .sort((a: any, b: any) => (b.impressions * (1 / b.position)) - (a.impressions * (1 / a.position)))
+            .slice(0, 3);
+          if (striking.length > 0) {
+            publishNextSection = `\n\ud83d\udcdd TOP 3 POSTS TO PUBLISH THIS WEEK\n${"-".repeat(40)}\n`;
+            striking.forEach((k: any, i: number) => {
+              publishNextSection += `\n${i + 1}. "${k.keyword}"\n   Position: #${k.position.toFixed(1)} | Impressions: ${k.impressions.toLocaleString()}\n`;
+            });
+          } else {
+            publishNextSection = "\n\ud83d\udcdd PUBLISH NEXT\nNo striking-distance keywords found this week.\n";
+          }
+        } else {
+          publishNextSection = "\n\ud83d\udcdd PUBLISH NEXT\nConnect Google Search Console to unlock keyword recommendations.\n";
+        }
+      } catch { publishNextSection = "\n\ud83d\udcdd PUBLISH NEXT\nUnable to fetch recommendations.\n"; }
+
+      let gainersSection = "";
+      try {
+        const recentHistory = await db
+          .select()
+          .from(gscPositionHistory)
+          .where(isNotNull(gscPositionHistory.contentItemId))
+          .orderBy(desc(gscPositionHistory.recordedAt))
+          .limit(200);
+        const byItem: Record<number, Array<{ position: number; recordedAt: Date }>> = {};
+        for (const row of recentHistory) {
+          if (!row.contentItemId) continue;
+          if (!byItem[row.contentItemId]) byItem[row.contentItemId] = [];
+          byItem[row.contentItemId].push({ position: row.position, recordedAt: row.recordedAt });
+        }
+        const gainers: Array<{ title: string; delta: number; current: number }> = [];
+        for (const [itemId, history] of Object.entries(byItem)) {
+          if (history.length < 2) continue;
+          const sorted = history.sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
+          const latest = sorted[0].position;
+          const previous = sorted[sorted.length - 1].position;
+          const delta = previous - latest;
+          if (delta > 0) {
+            const [item] = await db.select({ title: ci.title }).from(ci).where(eq(ci.id, Number(itemId))).limit(1);
+            if (item) gainers.push({ title: item.title, delta, current: latest });
+          }
+        }
+        gainers.sort((a, b) => b.delta - a.delta);
+        const top3 = gainers.slice(0, 3);
+        if (top3.length > 0) {
+          gainersSection = `\n\ud83d\udcc8 TOP POSITION GAINERS THIS WEEK\n${"-".repeat(40)}\n`;
+          top3.forEach((g, i) => {
+            gainersSection += `\n${i + 1}. ${g.title}\n   Moved up ${g.delta.toFixed(1)} positions \u2192 now #${g.current.toFixed(1)}\n`;
+          });
+        } else {
+          gainersSection = "\n\ud83d\udcc8 POSITION GAINERS\nNo significant position gains this week.\n";
+        }
+      } catch { gainersSection = "\n\ud83d\udcc8 POSITION GAINERS\nUnable to fetch position data.\n"; }
+
+      const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      const content = `Weekly Content Scoreboard Digest \u2014 ${dateStr}\n${"=".repeat(50)}\n${publishNextSection}\n${gainersSection}\n${"=".repeat(50)}\nView full scoreboard: https://content.theurbanmonk.com/scoreboard`;
+      await notifyOwner({ title: `\ud83d\udcca Weekly Scoreboard Digest \u2014 ${dateStr}`, content });
+      return { ok: true };
+    }),
+
+    /**
+     * Keith Gap 1 \u2014 GSC Feedback Flywheel.
+     * Returns the top 10 posts with the biggest position improvement in stored history.
+     */
+    getMovingPosts: protectedProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const { userCredentials, users, contentItems: ci, gscPositionHistory } = await import("../drizzle/schema");
+      const { eq, isNotNull, desc } = await import("drizzle-orm");
+      const ownerOpenId = process.env.OWNER_OPEN_ID;
+      if (!ownerOpenId) return [];
+      const [owner] = await db.select().from(users).where(eq(users.openId, ownerOpenId)).limit(1);
+      if (!owner) return [];
+      const [creds] = await db.select().from(userCredentials).where(eq(userCredentials.userId, owner.id)).limit(1);
+      if (!creds?.gscRefreshToken || !creds?.gscSiteUrl) return [];
+
+      const recentHistory = await db
+        .select()
+        .from(gscPositionHistory)
+        .where(isNotNull(gscPositionHistory.contentItemId))
+        .orderBy(desc(gscPositionHistory.recordedAt))
+        .limit(500);
+
+      const byItem: Record<number, Array<{ position: number; url: string; clicks: number; impressions: number; recordedAt: Date }>> = {};
+      for (const row of recentHistory) {
+        if (!row.contentItemId) continue;
+        if (!byItem[row.contentItemId]) byItem[row.contentItemId] = [];
+        byItem[row.contentItemId].push({ position: row.position, url: row.url ?? "", clicks: row.clicks ?? 0, impressions: row.impressions ?? 0, recordedAt: row.recordedAt });
+      }
+
+      const movers: Array<{ contentItemId: number; title: string; url: string; positionDelta: number; currentPosition: number; clicks: number; impressions: number }> = [];
+      for (const [itemId, history] of Object.entries(byItem)) {
+        if (history.length < 2) continue;
+        const sorted = history.sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
+        const latest = sorted[0];
+        const oldest = sorted[sorted.length - 1];
+        const delta = oldest.position - latest.position;
+        if (delta > 0.5) {
+          const [item] = await db.select({ title: ci.title, publishUrl: ci.publishUrl }).from(ci).where(eq(ci.id, Number(itemId))).limit(1);
+          if (item) {
+            movers.push({
+              contentItemId: Number(itemId),
+              title: item.title,
+              url: item.publishUrl ?? latest.url,
+              positionDelta: Math.round(delta * 10) / 10,
+              currentPosition: Math.round(latest.position * 10) / 10,
+              clicks: latest.clicks,
+              impressions: latest.impressions,
+            });
+          }
+        }
+      }
+      movers.sort((a, b) => b.positionDelta - a.positionDelta);
+      return movers.slice(0, 10);
+    }),
+
+    /**
+     * Keith Gap 1 \u2014 Suggest follow-up article ideas for a moving post.
+     */
+    suggestFollowUp: protectedProcedure
+      .input(z.object({ contentItemId: z.number(), title: z.string(), focusKeyword: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const llmRes = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are an SEO content strategist for The Urban Monk (Dr. Pedram Shojai). A blog post is gaining search ranking momentum. Suggest 3 follow-up article ideas that would strengthen the content silo and capture related long-tail keywords. Each idea should be distinct, actionable, and in Pedram's voice (bridges ancient wisdom + modern science). Return JSON: {"ideas": [{"title": "...", "keyword": "...", "rationale": "..."}]}`,
+            },
+            {
+              role: "user",
+              content: `Moving post: "${input.title}"${input.focusKeyword ? ` (focus keyword: ${input.focusKeyword})` : ""}\n\nSuggest 3 follow-up article ideas to strengthen this content silo.`,
+            },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "followup_ideas",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  ideas: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        keyword: { type: "string" },
+                        rationale: { type: "string" },
+                      },
+                      required: ["title", "keyword", "rationale"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["ideas"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        const parsed = JSON.parse(llmRes.choices[0].message.content as string);
+        return { ideas: (parsed.ideas ?? []) as Array<{ title: string; keyword: string; rationale: string }> };
+      }),
+  }),
   optin: router({
     submit: publicProcedure
       .input(

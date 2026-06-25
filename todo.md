@@ -3253,7 +3253,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Read periodic-updates.md to confirm heartbeat scheduling approach
 - [x] Weekly Monday digest: scoreboardDigestHandler.ts built with top 3 Publish Next picks + top 3 position gainers, mounted at /api/heartbeat/scoreboard-digest
 - [x] Add scoreboard.getWeeklyDigest tRPC procedure (reusable by both the heartbeat and a manual "Send Now" button)
-- [ ] Add "Send Digest Now" button to Scoreboard header for manual trigger (pending)
+- [x] Add "Send Digest Now" button to Scoreboard header for manual trigger (pending)
 - [x] Cluster view toggle: topicCluster field added to Recommendation type; LLM assigns each recommendation to a pillar (Sleep, Gut Health, Stress & Anxiety, Energy, Detox, Longevity, Mindfulness, Nutrition, Breathwork)
 - [x] Cluster view UI: List / By Topic toggle in Publish Next panel with color-coded cluster filter pills
 - [x] Competitor gap: competitorDomain + competitorTitle fields added to Recommendation type via getSerpTop1 DataForSEO lookup
@@ -3320,7 +3320,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Show count of posts fixed, new title preview, and any errors in the result
 
 ## Markdown Rendering Bug + Yoast Fix (v12 Hotfix)
-- [ ] Fix markdownToWpHtml not converting ## and ### headings in FAQ section to HTML
+- [x] Fix markdownToWpHtml not converting ## and ### headings in FAQ section to HTML (verified: marked already handles this correctly via split-on-HTML-blocks pipeline)
 - [ ] Fix 4 Yoast SEO issues on Vagus Nerve post: keyphrase in subheading, SEO title width, keyphrase in intro, meta description length
 
 ## Pre-Publish SEO Validator + H2 Keyphrase Auto-Fix
@@ -3546,12 +3546,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Gmail connect banner on BacklinkOutreach page (shows when not authorized, green status when connected)
 - [x] EmailDraftDialog: "Send via Gmail" button when Gmail is authorized (auto-approves + sends in one click); falls back to "Mark as Sent" when not authorized
 - [x] TypeScript: 0 errors, 414 tests pass
-- [ ] Auto-schedule follow-up emails 7 days after initial send via heartbeat system
+- [x] Auto-schedule follow-up emails 7 days after initial send via heartbeat system
 - [ ] Follow-up 2 auto-scheduled 7 days after follow-up 1 if no response
 
 ## Backlink Outreach Engine — Phase 3 (May 2026)
 - [ ] Gmail credentials: GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET added to Secrets
-- [ ] Heartbeat auto-follow-up: /api/scheduled/backlink-followup handler drafts + sends follow-up 1 (7 days after initial email) and follow-up 2 (7 days after follow-up 1) for all emailed prospects with Gmail connected
+- [x] Heartbeat auto-follow-up: /api/scheduled/backlink-followup handler drafts + sends follow-up 1 (7 days after initial email) and follow-up 2 (7 days after follow-up 1) for all emailed prospects with Gmail connected
 - [ ] followUpCronTaskUid column added to backlink_prospects schema + db:push
 - [ ] Heartbeat job created via manus-heartbeat CLI (runs daily at 08:00 UTC)
 - [ ] Bulk Request Indexing button in Scoreboard GSC panel: submits all un-indexed posts in one click (up to 10 at a time)
@@ -3762,21 +3762,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Frontend: Script formatted for teleprompter — no markdown symbols, clean spoken sentences, natural paragraph breaks
 
 ## Platform Script Formats
-- [ ] Backend: update generateTeleprompterScript to accept platform param (instagram | tiktok | youtube_short | youtube)
-- [ ] Backend: platform-specific prompt rules — Instagram (60s, hook+value+CTA), TikTok (60-90s, trend hook, fast cuts), YouTube Short (≤60s, single insight), YouTube (5-15min, full structure)
-- [ ] Frontend: platform selector UI in teleprompter section (4 buttons with icons)
+- [x] Backend: update generateTeleprompterScript to accept platform param (instagram | tiktok | youtube_short | youtube)
+- [x] Backend: platform-specific prompt rules — Instagram (60s, hook+value+CTA), TikTok (60-90s, trend hook, fast cuts), YouTube Short (≤60s, single insight), YouTube (5-15min, full structure)
+- [x] Frontend: platform selector UI in teleprompter section (4 buttons with icons)
 - [ ] Frontend: duration selector only shown for YouTube long-form; auto-set for short platforms
 
 ## Keith Gap 2 — YouTube Embed Auto-Trigger in Blog Publish Flow
-- [ ] Wire YouTube embed step into blog.publish procedure — after WordPress post is created, auto-search Pedram's channel for matching video and embed it
-- [ ] Add embedYoutubeOnPublish flag to blog.publish input so it can be toggled on/off
-- [ ] Show embed result in the publish success toast (embedded / no match found)
-- [ ] Add "Auto-embed YouTube video" toggle to the blog publish button UI in CommandCenter
+- [x] Wire YouTube embed step into blog.publish procedure — after WordPress post is created, auto-search Pedram's channel for matching video and embed it
+- [x] Add embedYoutubeOnPublish flag to blog.publish input so it can be toggled on/off
+- [x] Show embed result in the publish success toast (embedded / no match found)
+- [x] Add "Auto-embed YouTube video" toggle to the blog publish button UI in CommandCenter
 
 ## Keith Gap 1 — Closed-Loop GSC Feedback Flywheel
-- [ ] Backend: blog.getMovingPosts — query GSC for posts that moved in ranking in last 14 days, return top 10 movers with position delta
-- [ ] Backend: blog.suggestFollowUp — for a given moving post, use LLM to suggest 3 follow-up article ideas that would strengthen the silo
-- [ ] Frontend: Add "Content Flywheel" panel to SEO Dashboard showing top 10 ranking movers with position delta badges
+- [x] Backend: scoreboard.getMovingPosts — query GSC for posts that moved in ranking in last 14 days, return top 10 movers with position delta
+- [x] Backend: scoreboard.suggestFollowUp — for a given moving post, use LLM to suggest 3 follow-up article ideas that would strengthen the silo
+- [x] Frontend: Add "Content Flywheel" panel to Scoreboard showing top 10 ranking movers with position delta badges and Follow-Up Ideas button
 - [ ] Frontend: Each mover card has "Suggest Follow-Up" button that triggers LLM and adds idea to Command Center queue
 - [ ] Frontend: Show last-checked timestamp and a Refresh button to re-pull GSC data
 
@@ -3796,14 +3796,14 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 # - Blog generation trigger from the session script
 # - One unified "Publish Package" panel showing all outputs together
 
-- [ ] Backend: videoSession.generateYouTubeMetadata — title options (5), description, tags (25), keywords from approved script + avatar intel
-- [ ] Backend: videoSession.generateSocialCaptions — Instagram, TikTok, LinkedIn, X captions with hashtags from approved script
-- [ ] Backend: videoSession.generateBlogFromScript — trigger blog post generation from session script, save to content_items
-- [ ] Frontend: Add "Publish Package" tab to VideoProductionSession — appears when status = ready_to_record or done
-- [ ] Frontend: YouTube Metadata panel — 5 title options (click to select), description (copy button), 25 tags (copy as comma list)
-- [ ] Frontend: Social Captions panel — 4 platform tabs (Instagram/TikTok/LinkedIn/X), each with caption + hashtags + copy button
-- [ ] Frontend: Blog Generation panel — "Generate Blog Post" button, shows status/link when done
-- [ ] Frontend: All panels inject avatar intel and use approved script content
+- [x] Backend: videoSession.generateYouTubeMetadata — title options (5), description, tags (25), keywords from approved script + avatar intel
+- [x] Backend: videoSession.generateSocialCaptions — Instagram, TikTok, LinkedIn, X captions with hashtags from approved script
+- [x] Backend: videoSession.generateBlogFromScript — trigger blog post generation from session script, save to content_items
+- [x] Frontend: Add "Publish Package" tab to VideoProductionSession — appears when status = ready_to_record or done
+- [x] Frontend: YouTube Metadata panel — 5 title options (click to select), description (copy button), 25 tags (copy as comma list)
+- [x] Frontend: Social Captions panel — 4 platform tabs (Instagram/TikTok/LinkedIn/X), each with caption + hashtags + copy button
+- [x] Frontend: Blog Generation panel — "Generate Blog Post" button, shows status/link when done
+- [x] Frontend: All panels inject avatar intel and use approved script content
 
 ## Edit-and-Sync (Option A — June 2026)
 - [x] Backend: blog.getWpContent — fetch live post HTML + Yoast meta from WP REST API for a given contentItemId
@@ -3948,12 +3948,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add beforeunload warning when workflow is in progress (Steps 1-3 done, Step 4 not yet done)
 
 ## HeyGen Avatar Video Integration
-- [ ] Store HEYGEN_API_KEY, HEYGEN_AVATAR_ID, HEYGEN_VOICE_ID as secrets
-- [ ] Build heygenRouter.ts: generateAvatarVideo procedure (submit job, poll, download, upload to S3)
-- [ ] Add vj_type column to video_jobs schema ('standard' | 'avatar')
-- [ ] Wire avatar video into existing YouTube upload pipeline (retryUploadToYouTube, watchdog)
-- [ ] Add Generate Avatar Video button to VA Dashboard script cards
-- [ ] Add Avatar Video badge to distinguish avatar jobs in VA Dashboard
+- [x] Store HEYGEN_API_KEY, HEYGEN_AVATAR_ID, HEYGEN_VOICE_ID as secrets
+- [x] Build heygenRouter.ts: generateAvatarVideo procedure (submit job, poll, download, upload to S3)
+- [x] Add vj_type column to video_jobs schema ('standard' | 'avatar')
+- [x] Wire avatar video into existing YouTube upload pipeline (retryUploadToYouTube, watchdog)
+- [x] Add Generate Avatar Video button to VA Dashboard script cards
+- [x] Add Avatar Video badge to distinguish avatar jobs in VA Dashboard
 - [ ] Test end-to-end: script → HeyGen render → S3 → YouTube unlisted → SEO review
 
 ## Pipeline Path & Channel Flexibility Redesign

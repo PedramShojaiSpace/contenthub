@@ -1990,6 +1990,8 @@ export default function CommandCenter() {
   // Teleprompter script state (for card detail modal)
   const [teleprompterScript, setTeleprompterScript] = useState<string | null>(null);
   const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
+  // Platform selector for teleprompter script generation
+  const [teleprompterPlatform, setTeleprompterPlatform] = useState<"youtube" | "youtube_short" | "instagram" | "tiktok">("youtube");
   // Production path for sending teleprompter script to HeyGen/Descript
   const [teleprompterProductionPath, setTeleprompterProductionPath] = useState<"heygen_then_descript" | "heygen_only" | "descript_only">("heygen_then_descript");
   const [sendingToProduction, setSendingToProduction] = useState(false);
@@ -2132,11 +2134,12 @@ export default function CommandCenter() {
     },
   });
 
-  const handleGenerateTeleprompter = (item: ContentItem) => {
+  const handleGenerateTeleprompter = (item: ContentItem, platformOverride?: "youtube" | "youtube_short" | "instagram" | "tiktok") => {
     const title = item.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || item.rawIdea || item.title;
+    const platform = platformOverride ?? teleprompterPlatform;
     setTeleprompterScript(null);
     setGeneratingTeleprompter(true);
-    teleprompterMutation.mutate({ title, platform: "youtube" });
+    teleprompterMutation.mutate({ title, platform });
   };
 
   // TikTok 60-second script state
@@ -4609,6 +4612,27 @@ export default function CommandCenter() {
             {/* Teleprompter Script — YouTube only */}
             {selectedItem.platform === "youtube" && (
               <div className="space-y-3">
+                {/* Platform selector for teleprompter */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {([
+                    { id: "youtube" as const, label: "YouTube", emoji: "🎬" },
+                    { id: "youtube_short" as const, label: "YT Short", emoji: "⚡" },
+                    { id: "instagram" as const, label: "Instagram", emoji: "📸" },
+                    { id: "tiktok" as const, label: "TikTok", emoji: "🎵" },
+                  ] as const).map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setTeleprompterPlatform(p.id); setTeleprompterScript(null); }}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                        teleprompterPlatform === p.id
+                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                          : "bg-muted text-muted-foreground hover:text-foreground border border-transparent"
+                      }`}
+                    >
+                      {p.emoji} {p.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="flex items-center justify-between">
                   <Button
                     variant="outline"
@@ -4622,7 +4646,7 @@ export default function CommandCenter() {
                     ) : (
                       <Wand2 className="h-3 w-3 mr-1" />
                     )}
-                    {generatingTeleprompter ? "Generating script…" : "Generate Teleprompter Script"}
+                    {generatingTeleprompter ? "Generating script…" : `Generate ${teleprompterPlatform === "youtube" ? "Teleprompter" : teleprompterPlatform === "youtube_short" ? "YT Short" : teleprompterPlatform === "instagram" ? "Instagram Reel" : "TikTok"} Script`}
                   </Button>
                   {teleprompterScript && (
                     <div className="flex gap-1">

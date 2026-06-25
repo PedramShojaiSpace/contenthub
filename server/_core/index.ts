@@ -862,6 +862,54 @@ async function startServer() {
     }
   });
 
+  // ── Competitor Channel Weekly Digest ───────────────────────────────────────
+  // POST /api/scheduled/channel-digest — fires weekly (Monday 08:00 UTC)
+  // Checks all tracked competitor channels for new uploads in the last 7 days
+  // and sends a digest notification to the owner
+  app.post("/api/scheduled/channel-digest", async (req, res) => {
+    try {
+      // Call the runChannelDigest logic directly
+      const { getDb } = await import("../db");
+      const { competitorChannels } = await import("../../drizzle/schema");
+      const db = await getDb();
+      if (!db) return res.json({ ok: false, error: "DB not available" });
+      const channels = await db.select().from(competitorChannels);
+      if (channels.length === 0) return res.json({ ok: true, sent: false, message: "No channels tracked" });
+      const { getSupadata } = await import("../supadata");
+      const supadata = getSupadata();
+      const sections: string[] = [];
+      for (const ch of channels) {
+        try {
+          const results = await supadata.youtube.search({
+            query: `channel:${ch.channelId}`,
+            type: "video",
+            limit: 3,
+            sortBy: "date",
+            uploadDate: "week",
+          });
+          const videos = (results as any).results ?? [];
+          if (videos.length > 0) {
+            const lines = videos.map((v: any) => `  - ${v.title} (${v.viewCount?.toLocaleString() ?? "?"} views) https://youtube.com/watch?v=${v.id}`);
+            sections.push(`**${ch.channelName}** — ${videos.length} new this week:\n${lines.join("\n")}`);
+          } else {
+            sections.push(`**${ch.channelName}** — No new uploads this week.`);
+          }
+        } catch {
+          sections.push(`**${ch.channelName}** — Error fetching uploads.`);
+        }
+      }
+      const content = `# Competitor Channel Weekly Digest\n\n${sections.join("\n\n")}`;
+      const { notifyOwner } = await import("./notification");
+      await notifyOwner({ title: "Competitor Channel Digest", content });
+      console.log(`[Channel Digest] Sent digest for ${channels.length} channels`);
+      res.json({ ok: true, sent: true, channelCount: channels.length });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Channel Digest Cron] Error:", msg);
+      res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
+    }
+  });
+
   // ── Apollo Daily Lead Draw ─────────────────────────────────────────────────
   // POST /api/scheduled/apollo-daily-draw — fires daily at 08:00 UTC
   // Pulls ~133 professional emails/day across 9 health categories → Meta Custom Audiences

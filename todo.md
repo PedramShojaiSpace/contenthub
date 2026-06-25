@@ -193,12 +193,12 @@
 ## v7 Features
 
 ### Auto-Image with Content Generation
-- [ ] Backend: generate platform-specific image in parallel with content text generation
-- [ ] Backend: return imageUrl per platform output alongside the copy
-- [ ] Frontend: display generated image inline in each platform output panel (above the copy)
-- [ ] Frontend: show image loading skeleton while image generates
-- [ ] Frontend: "Regenerate Image" button per panel to swap the image without regenerating copy
-- [ ] Frontend: "Attach to Card" auto-includes the image when saving to Kanban
+- [x] Backend: generate platform-specific image in parallel with content text generation
+- [x] Backend: return imageUrl per platform output alongside the copy
+- [x] Frontend: display generated image inline in each platform output panel (above the copy)
+- [x] Frontend: show image loading skeleton while image generates
+- [x] Frontend: "Regenerate Image" button per panel to swap the image without regenerating copy
+- [x] Frontend: "Attach to Card" auto-includes the image when saving to Kanban
 
 ## v8 Features
 
@@ -208,11 +208,11 @@
 - [x] Ensure generated copy is directly copy-paste ready for each platform
 
 ### Push to Buffer (Per Panel)
-- [ ] Add "Push to Buffer" button directly on each platform output panel in Creation Studio
-- [ ] Button sends the panel's clean copy + attached image URL to Buffer in one click
-- [ ] Show success/error toast on the panel after push
-- [ ] Disable button with tooltip if Buffer is not configured
-- [ ] Auto-update content item status to "scheduled" after successful push
+- [x] Add "Push to Buffer" button directly on each platform output panel in Creation Studio
+- [x] Button sends the panel's clean copy + attached image URL to Buffer in one click
+- [x] Show success/error toast on the panel after push
+- [x] Disable button with tooltip if Buffer is not configured
+- [x] Auto-update content item status to "scheduled" after successful push
 
 ## v9 Features
 
@@ -293,21 +293,21 @@
 ## v14 Features
 
 ### WordPress Direct Publish
-- [ ] Add WORDPRESS_URL, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD secrets
-- [ ] Add wordpress.ts server module: uploadMedia() and createPost() using WP REST API
-- [ ] Add blog.publish tRPC procedure: upload hero image to WP media, create draft post with featured image
-- [ ] Add "Publish to WordPress" button in Blog panel (replaces placeholder)
-- [ ] Show published post URL and "View on WordPress" link after successful publish
-- [ ] Handle errors gracefully (auth failure, duplicate slug, etc.)
-- [ ] Write vitest test for WordPress publish procedure
+- [x] Add WORDPRESS_URL, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD secrets
+- [x] Add wordpress.ts server module: uploadMedia() and createPost() using WP REST API
+- [x] Add blog.publish tRPC procedure: upload hero image to WP media, create draft post with featured image
+- [x] Add "Publish to WordPress" button in Blog panel (replaces placeholder)
+- [x] Show published post URL and "View on WordPress" link after successful publish
+- [x] Handle errors gracefully (auth failure, duplicate slug, etc.)
+- [x] Write vitest test for WordPress publish procedure (server/wordpress.publish.test.ts)
 
 ### Kanban Card Image Regeneration
-- [ ] Add "Regenerate Image" button to each Kanban card in Command Center
-- [ ] Clicking opens a small popover/modal with the current image and a "Regenerate" button
-- [ ] Calls ai.generateImage mutation with the card's platform and text content
-- [ ] Updates the card's imageUrl in the database after regeneration
-- [ ] Show loading spinner during regeneration
-- [ ] Write vitest test for image regeneration from Kanban
+- [x] Add "Regenerate Image" button to each Kanban card in Command Center
+- [x] Clicking opens a small popover/modal with the current image and a "Regenerate" button
+- [x] Calls ai.generateImage mutation with the card's platform and text content
+- [x] Updates the card's imageUrl in the database after regeneration
+- [x] Show loading spinner during regeneration
+- [x] Write vitest test for image regeneration from Kanban (server/kanbanImageRegen.test.ts)
 
 ## v14 Features — Completed
 
@@ -330,29 +330,29 @@
 ## v15 Features
 
 ### Buffer X/Twitter Account Fix
-- [ ] Investigate why X/Twitter account is not appearing in the syndication panel
-- [ ] Check the Buffer GraphQL channels query — confirm X channel is returned from API
-- [ ] Check the platform-to-service mapping for X (currently maps to "twitter") vs what Buffer returns
-- [ ] Fix service name mapping so X account appears in the filtered channel list
+- [x] Investigate why X/Twitter account is not appearing in the syndication panel
+- [x] Check the Buffer GraphQL channels query — confirm X channel is returned from API
+- [x] Check the platform-to-service mapping for X (currently maps to "twitter") vs what Buffer returns
+- [x] Fix service name mapping so X account appears in the filtered channel list (x: ["twitter"] mapping is correct; issue is Buffer account connectivity)
 
 ### Clean Card Titles
-- [ ] Update AI content generation prompt to produce a clean short title (under 60 chars) per platform
-- [ ] Update generateBlog to return a clean title (already does — check why cards show "## Urban Monk Content Brief:...")
-- [ ] Fix auto-save to use the AI-generated title, not the raw idea text truncated
-- [ ] Update content.create to accept and store the AI title separately from rawIdea
+- [x] Update AI content generation prompt to produce a clean short title (under 60 chars) per platform
+- [x] Update generateBlog to return a clean title (v.title used when available; content.renameStaleItems handles old items)
+- [x] Fix auto-save to use the AI-generated title, not the raw idea text truncated (v.title ?? idea.slice(0,80))
+- [x] Update content.create to accept and store the AI title separately from rawIdea (rawIdea field added)
 
 ### Batch Publish All Approved to WordPress
-- [ ] Add "Publish All Approved" button in Command Center header
-- [ ] Batch mutation: iterate all items in "approved" status, call blog.publish for blog platform items
-- [ ] Show progress toast: "Publishing X of Y..."
-- [ ] Move items to "scheduled" or "published" status after batch publish
-- [ ] Non-blog items in Approved: show "Mark as Published" dialog instead
+- [x] Add "Publish All Approved" button in Command Center header
+- [x] Batch mutation: iterate all items in "approved" status, call blog.publish for blog platform items
+- [x] Show progress toast: "Publishing X of Y..."
+- [x] Move items to "scheduled" or "published" status after batch publish
+- [x] Non-blog items in Approved: show "Mark as Published" dialog instead
 
 ### Calendar-to-WordPress Scheduling Sync
-- [ ] When a content item is scheduled (scheduledAt set) and platform is "blog", push to WordPress as a scheduled post
-- [ ] Use WordPress REST API post status "future" with date field set to scheduledAt timestamp
-- [ ] Update content item status to "scheduled" after successful WP scheduling
-- [ ] Show "Scheduled in WordPress" badge on calendar cards for synced items
+- [x] When a content item is scheduled (scheduledAt set) and platform is "blog", push to WordPress as a scheduled post
+- [x] Use WordPress REST API post status "future" with date field set to scheduledAt timestamp
+- [x] Update content item status to "scheduled" after successful WP scheduling
+- [x] Show "Scheduled in WordPress" badge on calendar cards for synced items
 
 ## CRITICAL BUG — Content Not Saving — FIXED
 
@@ -433,19 +433,19 @@
 - [x] Auto-suggest persona based on content text (LLM classification)
 
 ### Phase 6: Social Strategy Rebalance
-- [ ] Update Creation Studio goal selector to reflect balanced strategy:
+- [x] Update Creation Studio goal selector to reflect balanced strategy:
   - Audience Growth (community building, relationship, The Holistic Psychologist model)
   - LLM SEO (answer-engine optimization, search query targeting)
   - Community Engagement (comments, shares, conversation starters)
-- [ ] Update AI prompts to weight Audience Growth posts differently from LLM SEO posts
-- [ ] Audience Growth posts: conversational, story-driven, community-first, not robotic
-- [ ] LLM SEO posts: answer-format, authoritative, structured for AI indexing
-- [ ] Community posts: question-led, engagement hooks, reply bait
+- [x] Update AI prompts to weight Audience Growth posts differently from LLM SEO posts
+- [x] Audience Growth posts: conversational, story-driven, community-first, not robotic
+- [x] LLM SEO posts: answer-format, authoritative, structured for AI indexing
+- [x] Community posts: question-led, engagement hooks, reply bait
 
 ### Phase 7: TikTok Panel Fix
-- [ ] Verify TikTok platform selector works in Creation Studio
-- [ ] Test generating a TikTok script end-to-end
-- [ ] Confirm TikTok cards appear in Kanban with TikTok filter pill
+- [x] Verify TikTok platform selector works in Creation Studio
+- [x] Test generating a TikTok script end-to-end
+- [x] Confirm TikTok cards appear in Kanban with TikTok filter pill
 
 - [x] TypeScript clean (0 errors), 20/20 tests pass
 - [x] Fix Buffer X/Twitter routing bug: X posts showing up as TikTok in Buffer queue — root cause: handleSyndicate was sending selectedProfileIds without filtering by target platform; fixed to cross-reference bufferProfiles service field against PLATFORM_SERVICE_MAP before sending
@@ -600,43 +600,32 @@
 
 ## v18 Features — YouTube CI Enhancements (April 9, 2026)
 - [x] Add summarizeVideo tRPC procedure to youtubeRouter
-- [ ] Add "Summarize This Video" button per competitor card in CreationStudio
-- [ ] Add saveToScript tRPC procedure (creates Script Library entry from brief)
-- [ ] Add "Save to Script Library" button in differentiation brief panel
-- [ ] Add competitor_channels DB table (channelId, channelName, thumbnail, trackedAt)
-- [ ] Run pnpm db:push for competitor_channels migration
-- [ ] Add trackChannel, listTracked, untrackChannel, getChannelNewUploads procedures to youtubeRouter
-- [ ] Build Competitor Channel Watchlist page/panel with track/untrack UI and latest uploads
-- [ ] Add weekly digest for tracked channel new uploads
-- [ ] Write Vitest tests for new procedures
-- [ ] TypeScript clean, all tests pass
-
+- [x] Add "Summarize This Video" button per competitor card in CreationStudio
+- [x] Add saveToScript tRPC procedure (creates Script Library entry from brief)
+- [x] Add "Save to Script Library" button in differentiation brief panel
+- [x] Add competitor_channels DB table (channelId, channelName, thumbnail, trackedAt)
+- [x] Run pnpm db:push for competitor_channels migration
+- [x] Add trackChannel, listTracked, untrackChannel, getChannelNewUploads procedures to youtubeRouter
+- [x] Build Competitor Channel Watchlist page/panel with track/untrack UI and latest uploads (ChannelWatchlist.tsx at /channels)
+- [x] Add weekly digest for tracked channel new uploads (/api/scheduled/channel-digest registered)
+- [x] Write Vitest tests for new procedures (v18YouTubeCI.test.ts — 8 tests)
+- [x] TypeScript clean, all tests pass
 ## v19 Features — Typeform Audience Intelligence (April 9, 2026)
-- [ ] Store TYPEFORM_API_KEY as secret
-- [ ] Add typeformRouter.ts with listForms, getResponses, analyzeAudience, enrichPersona procedures
-- [ ] Wire typeformRouter into main appRouter
-- [ ] Build Typeform Audience Intelligence page: form selector, response viewer, AI pain point analysis
-- [ ] Add "Enrich Persona" button that appends Typeform insights to a persona profile
-- [ ] Write Vitest tests for typeformRouter
-- [ ] TypeScript clean, all tests pass
+- [x] Store TYPEFORM_API_KEY as secret
+- [x] Add typeformRouter.ts with listForms, getResponses, analyzeAudience, enrichPersona procedures
+- [x] Wire typeformRouter into main appRouter
+- [x] Build Typeform Audience Intelligence page: form selector, response viewer, AI pain point analysis
+- [x] Add "Enrich Persona" button that appends Typeform insights to a persona profile
+- [x] Write Vitest tests for typeformRouter (typeform.test.ts)
+- [x] TypeScript clean, all tests pass
 
 ## v20 Features — Typeform Deep Integration
-
 - [x] Add segmentByPersona tRPC procedure — maps Typeform responses to 8 Urban Monk personas, stores enriched pain points per persona in DB
 - [ ] Run Gut Microbiome segmentation analysis (m6EyBDzz, 2416 responses) mapped to all 8 personas
-- [ ] Add "Generate Landing Page" button in TypeformIntelligence results → pre-fills LandingPageGenerator via URL state
-- [ ] Inject persona Typeform pain points into every LLM call in Creation Studio (generateContent) and Landing Page Generator (generateCopy)
-- [ ] Add Typeform insights badge/panel on persona profiles in Strategy Brain
-- [ ] All tests passing, TypeScript clean
-
-## v20 Features — Typeform Deep Integration
-
-- [x] Add segmentByPersona tRPC procedure
-- [ ] Run Gut Microbiome segmentation (m6EyBDzz, 2416 responses) mapped to 8 personas
-- [ ] Add Generate Landing Page button in TypeformIntelligence
-- [ ] Inject persona Typeform pain points into Creation Studio and Landing Page Generator LLM calls
-- [ ] Add Typeform insights badge on persona profiles
-- [ ] All tests passing, TypeScript clean
+- [x] Add "Generate Landing Page" button in TypeformIntelligence results → pre-fills LandingPageGenerator via URL state
+- [x] Inject persona Typeform pain points into every LLM call in Creation Studio (generateContent) and Landing Page Generator (generateCopy)
+- [x] Add Typeform insights badge/panel on persona profiles in Strategy Brain (implemented in IntelligenceDashboard)
+- [x] All tests passing, TypeScript clean
 
 ## v21 Features — Enrichment Badges & Segment Comparison
 
@@ -646,21 +635,21 @@
 - [x] Run tests, TypeScript clean, save checkpoint
 
 ## v22 Features — Press Intelligence & SEO/LLM Credibility
-- [ ] Add `press_hits` DB table (id, outlet, medium, description, impressions, date, url, topicTags, authorityTier)
-- [ ] Seed DB with all ~130 press hits from both CSVs (parsed and normalized)
-- [ ] Build pressRouter: list, getByTopic, getAuthoritySignals, generateSEOSnippet, generateLLMBio
-- [ ] Build Press Intelligence page (/press): coverage browser, authority dashboard, topic clusters, SEO snippet generator
-- [ ] Wire press authority signals into Creation Studio LLM prompts (as-seen-in credibility block)
-- [ ] Wire press authority signals into Landing Page Generator LLM prompts
-- [ ] Run tests, TypeScript clean, save checkpoint
+- [x] Add `press_hits` DB table (id, outlet, medium, description, impressions, date, url, topicTags, authorityTier)
+- [x] Seed DB with all ~130 press hits from both CSVs (parsed and normalized)
+- [x] Build pressRouter: list, getByTopic, getAuthoritySignals, generateSEOSnippet, generateLLMBio
+- [x] Build Press Intelligence page (/press): coverage browser, authority dashboard, topic clusters, SEO snippet generator
+- [x] Wire press authority signals into Creation Studio LLM prompts (as-seen-in credibility block)
+- [x] Wire press authority signals into Landing Page Generator LLM prompts
+- [x] Run tests, TypeScript clean, save checkpoint
 
 ## v24 — Real Offer Catalog Update (April 9, 2026)
-- [ ] Replace placeholder OFFERS with 9 real Urban Monk offers + correct URLs in LandingPageGenerator.tsx
-- [ ] Replace placeholder OFFERS in server/landingPagesRouter.ts (LLM prompts)
-- [ ] Update personasRouter.ts CTA copy to reference real offer names
-- [ ] Update scriptsRouter.ts script ideas that reference old Academy $297/year placeholder
-- [ ] Update server/routers.ts system prompts to reference real offer names and URLs
-- [ ] Run tests, TypeScript check, save checkpoint
+- [x] Replace placeholder OFFERS with 9 real Urban Monk offers + correct URLs in LandingPageGenerator.tsx (upstream_bundle, upstream_course, explorer_tier, lights_on_webinar, deep_sleep_webinar, homesick_screening, interconnected_screening, kbmo_testing, gateway_to_health)
+- [x] Replace placeholder OFFERS in server/landingPagesRouter.ts (LLM prompts)
+- [x] Update personasRouter.ts CTA copy to reference real offer names
+- [x] Update scriptsRouter.ts script ideas that reference old Academy $297/year placeholder
+- [x] Update server/routers.ts system prompts to reference real offer names and URLs
+- [x] Run tests, TypeScript check, save checkpoint
 
 ## v14 Features
 
@@ -728,30 +717,28 @@
 - [x] Ingest sales_team_training_document.md (797 lines, Josh Lyons sales mastery training)
 
 ### Database Schema
-- [ ] Add avatar_pain_points table (stage, category, title, description, emotionalHook, contentTopics, headlineFormula)
-- [ ] Add avatar_personas table (name, profile, communicationStyle, contentNeeds, salesApproach)
-- [ ] Add avatar_messaging_frameworks table (name, structure, example, useCase)
-- [ ] Add avatar_objections table (objection, underlyingFear, responseFramework, contentExample)
-- [ ] Run db:push after schema changes
-- [ ] Seed all tables from both documents
-
+- [x] Add avatar_pain_points table (stage, category, title, description, emotionalHook, contentTopics, headlineFormula)
+- [x] Add avatar_personas table (name, profile, communicationStyle, contentNeeds, salesApproach)
+- [x] Add avatar_messaging_frameworks table (name, structure, example, useCase)
+- [x] Add avatar_objections table (objection, underlyingFear, responseFramework, contentExample)
+- [x] Run db:push after schema changes
+- [x] Seed all tables from both documents
 ### Backend — Avatar Context Injector
-- [ ] Add avatarRouter with list, getByStage, getContextBlock procedures
-- [ ] Build getAvatarContextBlock(topic, journeyStage) — returns relevant pain points + persona + messaging framework
-- [ ] Upgrade generateContent to inject avatar intelligence (pain point + persona + emotional hook)
-- [ ] Upgrade generateTeleprompterScript to inject avatar pain points and journey stage
-- [ ] Upgrade generateBlog to inject avatar messaging framework
-- [ ] Upgrade generatePostAndImage to inject avatar emotional hooks and headline formulas
-- [ ] Upgrade landing page generation to inject avatar objections and transformation messaging
-
+- [x] Add avatarRouter with list, getByStage, getContextBlock procedures
+- [x] Build getAvatarContextBlock(topic, journeyStage) — returns relevant pain points + persona + messaging framework
+- [x] Upgrade generateContent to inject avatar intelligence (pain point + persona + emotional hook)
+- [x] Upgrade generateTeleprompterScript to inject avatar pain points and journey stage
+- [x] Upgrade generateBlog to inject avatar messaging framework
+- [x] Upgrade generatePostAndImage to inject avatar emotional hooks and headline formulas
+- [x] Upgrade landing page generation to inject avatar objections and transformation messaging
 ### Frontend — Avatar Intelligence UI
-- [ ] New "Avatar Intel" sidebar nav item
-- [ ] Pain Point Journey Map — visual 4-stage journey (Surface → Maze → Deep Pain → Root Cause)
-- [ ] Buyer Persona cards (The Researcher, Desperate Seeker, Skeptical Executive, Holistic Believer)
-- [ ] Messaging Framework library (Validation, Differentiation, Urgency, Transformation, Authority)
-- [ ] Objection Handler — browse all objections with response frameworks
-- [ ] "Generate content for this persona" button on each persona card
-- [ ] Headline Formula generator — pick a formula, enter a topic, get 5 headline options
+- [x] New "Avatar Intel" sidebar nav item
+- [x] Pain Point Journey Map — visual 4-stage journey (Surface → Maze → Deep Pain → Root Cause)
+- [x] Buyer Persona cards (The Researcher, Desperate Seeker, Skeptical Executive, Holistic Believer)
+- [x] Messaging Framework library (Validation, Differentiation, Urgency, Transformation, Authority)
+- [x] Objection Handler — browse all objections with response frameworks
+- [x] "Generate content for this persona" button on each persona card
+- [x] Headline Formula generator — pick a formula, enter a topic, get 5 headline options
 
 ## v19 Features — X Character Limit Fix, Verbatim Pain Points, Persona Selector (April 10, 2026)
 
@@ -770,20 +757,17 @@
 - [x] Add "Copy Full Script" button to each script card in the Script Library (copies entire scriptBody to clipboard in one click, ready to paste into teleprompter app)
 
 ## v21 Features — Intelligence Audit Fixes (April 9, 2026)
-
-- [ ] Fix generateBriefFromGap to inject avatar + press + media context (currently uses static prompt only)
-- [ ] Fix getAvatarContextBlock to pick the most relevant persona based on topic (not always persona[0])
-- [ ] Add Gumshoe gap query text injection into generateContent when called from Research Intelligence
-- [ ] Update IntelligenceDashboard to show all 5 intelligence sources with live counts and injection status (media_assets, avatar_pain_points currently missing)
-- [ ] Fix IntelligenceDashboard to show media vault stats and avatar intelligence stats
-
+- [x] Fix generateBriefFromGap to inject avatar + press + media context (currently uses static prompt only)
+- [x] Fix getAvatarContextBlock to pick the most relevant persona based on topic (not always persona[0])
+- [x] Add Gumshoe gap query text injection into generateContent when called from Research Intelligence
+- [x] Update IntelligenceDashboard to show all 5 intelligence sources with live counts and injection status
+- [x] Fix IntelligenceDashboard to show media vault stats and avatar intelligence stats
 ## v22 Features — Generate from Gap (Research → Creation Studio, April 9, 2026)
-
-- [ ] Add "Generate from Gap" button to each gap card on the Research page
-- [ ] Navigate to Creation Studio with gap query pre-filled as topic via URL params (?gap=...&persona=...&tags=...)
-- [ ] Add "From Research Gap" panel in Creation Studio showing top 5 unanswered gap queries
-- [ ] Allow user to pick a gap from the panel to instantly pre-fill topic + persona + platform
-- [ ] Show gap source metadata (competitor brands, topic tags) in the pre-fill UI
+- [x] Add "Generate from Gap" button to each gap card on the Research page (sessionStorage gumshoe_gap_query_id)
+- [x] Navigate to Creation Studio with gap query pre-filled as topic via URL params
+- [x] Add "From Research Gap" panel in Creation Studio showing top 5 unanswered gap queries
+- [x] Allow user to pick a gap from the panel to instantly pre-fill topic + persona + platform
+- [x] Show gap source metadata (competitor brands, topic tags) in the pre-fill UI
 
 ## v23 Features — X Post Fix + Persona-Wired Landing Page Generator (April 10, 2026)
 
@@ -888,20 +872,20 @@
 - [x] Update landingPages.test.ts to expect "creme" instead of the old invalid theme ID
 
 ## v38 — Thank You Page Gamma Publish
-- [ ] Add publishThankYouToGamma procedure to webinarRouter (same pattern as publishToGamma)
-- [ ] Add pollThankYouGamma procedure to webinarRouter
-- [ ] Store thankYouGammaUrl and thankYouGammaGenerationId in webinar_sessions
-- [ ] Add "Publish to Gamma" button in Step 4 after thank you copy is generated
-- [ ] Add Gamma polling UI to Step 4 (same spinner + URL display as Step 3)
+- [x] Add publishThankYouToGamma procedure to webinarRouter (same pattern as publishToGamma)
+- [x] Add pollThankYouGamma procedure to webinarRouter
+- [x] Store thankYouGammaUrl and thankYouGammaGenerationId in webinar_sessions
+- [x] Add "Publish to Gamma" button in Step 4 after thank you copy is generated
+- [x] Add Gamma polling UI to Step 4 (same spinner + URL display as Step 3)
 
 ## Webinar Date/Time Fields
 - [x] Add webinarDate, webinarTime, webinarTimezone columns to webinar_sessions DB schema
 - [x] Update webinarRouter create/update procedures to accept date/time/timezone
 - [x] Add date, time, timezone inputs to WebinarBuilder Step 1 UI
 - [x] Wire date/time/timezone into generateOutline prompt
-- [ ] Wire date/time/timezone into generateLandingCopy prompt
+- [x] Wire date/time/timezone into generateLandingCopy prompt (lines 311-313 in webinarRouter.ts)
 - [x] Wire date/time/timezone into generateThankYouCopy prompt
-- [ ] Wire date/time/timezone into exportKajabiPlan prompt (email timing/urgency)
+- [x] Wire date/time/timezone into exportKajabiPlan prompt (lines 626-628 in webinarRouter.ts)
 
 ## Wistia + Typeform Thank You Page Fix
 - [x] Add thankYouWistiaEmbed (text) column to webinar_sessions schema — stores full embed code
@@ -943,19 +927,18 @@
 - [x] Add SEO & AEO Intelligence review panel to blog output UI (meta description char count, focus keyword + semantic variants, hook family, emotional driver, FAQ preview, waterfall map, schema status badges)
 
 ## LLM Projects Module (v45)
-- [ ] Add llm_projects table (id, name, description, topicCluster, status: active|archived, createdAt)
-- [ ] Add llm_assets table (id, projectId, assetType: faq|youtube|blog|social|email, title, question, targetKeyword, priority: high|medium|low, status: queued|in_progress|produced|published, contentItemId FK, notes, createdAt)
-- [ ] Run db:push for new tables
-- [ ] Build llmProjectsRouter: createProject, listProjects, updateProject, archiveProject, addAsset, listAssets, updateAssetStatus, bulkAddAssets (AI-generated queue from topic)
-- [ ] AI queue generator: given a topic cluster, generate a full prioritized queue of 20-30 FAQ articles, YouTube video ideas, blog posts, and social threads
-- [ ] Build LLMProjects.tsx page: project cards grid, per-project asset queue view, weekly cadence tracker (how many assets produced this week)
-- [ ] Asset queue view: grouped by type (FAQ, YouTube, Blog, Social), sortable by priority, status filter tabs
-- [ ] Weekly cadence: show X assets produced this week vs. target (e.g., 3/week), progress bar
-- [ ] "Generate This Asset" button on each queue item: pre-fills Creation Studio with the asset title/question as the idea
-- [ ] "Mark as Produced" button: links asset to a content item, updates status
-- [ ] Add LLM Projects to sidebar navigation
-- [ ] Write vitest tests for llmProjectsRouter
-
+- [x] Add llm_projects table (id, name, description, topicCluster, status: active|archived, createdAt)
+- [x] Add llm_assets table (id, projectId, assetType: faq|youtube|blog|social|email, title, question, targetKeyword, priority: high|medium|low, status: queued|in_progress|produced|published, contentItemId FK, notes, createdAt)
+- [x] Run db:push for new tables
+- [x] Build llmProjectsRouter: createProject, listProjects, updateProject, archiveProject, addAsset, listAssets, updateAssetStatus, bulkAddAssets (AI-generated queue from topic)
+- [x] AI queue generator: given a topic cluster, generate a full prioritized queue of 20-30 FAQ articles, YouTube video ideas, blog posts, and social threads
+- [x] Build LLMProjects.tsx page: project cards grid, per-project asset queue view, weekly cadence tracker (how many assets produced this week)
+- [x] Asset queue view: grouped by type (FAQ, YouTube, Blog, Social), sortable by priority, status filter tabs
+- [x] Weekly cadence: show X assets produced this week vs. target (e.g., 3/week), progress bar
+- [x] "Generate This Asset" button on each queue item: pre-fills Creation Studio with the asset title/question as the idea
+- [x] "Mark as Produced" button: links asset to a content item, updates status
+- [x] Add LLM Projects to sidebar navigation
+- [x] Write vitest tests for llmProjectsRouter (llmProjects.test.ts)
 ## LLM Projects Module (v45)
 - [x] Add llm_projects and llm_assets tables to DB schema
 - [x] Run db:push for new tables
@@ -982,8 +965,8 @@
 - [x] Add getAllProjectsCadence tRPC query: aggregate this-week production across all active projects
 - [x] Add cross-project weekly cadence strip to LLM Projects page header
 - [x] Write vitest tests for llmProjectsRouter (createProject, listProjects, generateQueue, getWeeklyCadence) — 11 tests, 112 total passing
-- [ ] Add generateImages toggle to Creation Studio UI (checkbox to enable/disable auto-image with content)
-- [ ] Show per-platform image generation status indicator (generating... / ready / failed) in Creation Studio
+- [x] Add generateImages toggle to Creation Studio UI (checkbox to enable/disable auto-image with content)
+- [x] Show per-platform image generation status indicator (generating... / ready / failed) in Creation Studio
 
 ## Mark as Published Flow (v53)
 - [x] Add publishedUrl column to llm_assets schema
@@ -1044,11 +1027,11 @@
 - [x] All 118 tests passing
 
 ## Save to Script Library + TikTok Script (v59)
-- [ ] Find saveScript tRPC mutation and Script Library data model
-- [ ] Add "Save to Script Library" button in teleprompter panel (Kanban modal)
-- [ ] Add "Generate 60s TikTok Script" button on TikTok cards in Kanban modal
-- [ ] TikTok script renders inline with Copy, Download, Save to Library buttons
-- [ ] Run tests
+- [x] Find saveScript tRPC mutation and Script Library data model
+- [x] Add "Save to Script Library" button in teleprompter panel (Kanban modal)
+- [x] Add "Generate 60s TikTok Script" button on TikTok cards in Kanban modal
+- [x] TikTok script renders inline with Copy, Download, Save to Library buttons
+- [x] Run tests
 
 ## Blank Screen Fix v2 (v58c)
 - [x] Root cause: vendor-react and vendor-react-dom were split into separate async chunks. The manus-runtime script (injected before app) bundles its own React and initializes the Scheduler. When the app's async React chunk loaded, it tried to re-initialize the Scheduler, causing: "Cannot set properties of undefined (setting 'unstable_now')" — a silent crash.
@@ -1057,12 +1040,11 @@
 - [x] All 118 tests passing
 
 ## Save to Script Library + TikTok Script (v59) — QUEUED FOR NEXT SESSION
-- [ ] Add "Save to Script Library" button in the teleprompter panel (Kanban modal + Creation Studio)
-- [ ] Wire to scriptsRouter.create mutation with title, content, platform=youtube, type=teleprompter
-- [ ] Add TikTok 60-second script button on TikTok cards in CommandCenter Kanban modal
-- [ ] Reuse generateTeleprompterScript with a "tiktok" format flag (60-sec punchy, hook + 3 points + CTA)
-- [ ] Run tests
-
+- [x] Add "Save to Script Library" button in the teleprompter panel (Kanban modal + Creation Studio)
+- [x] Wire to scriptsRouter.create mutation with title, content, platform=youtube, type=teleprompter
+- [x] Add TikTok 60-second script button on TikTok cards in CommandCenter Kanban modal
+- [x] Reuse generateTeleprompterScript with a "tiktok" format flag (60-sec punchy, hook + 3 points + CTA)
+- [x] Run tests (632 passing)
 ## Typeform Push Fix (v60)
 - [x] Root cause: validations object was sent on ALL field types, but Typeform only accepts it on short_text, long_text, email, phone_number, number, date, website
 - [x] Fix: added TYPES_WITH_VALIDATIONS set; validations only added when field type is in that set
@@ -1153,11 +1135,10 @@
 - [x] 121 tests passing, 0 TypeScript errors
 
 ## Fix X/Twitter 280-Character Limit (v68)
-- [ ] Audit X prompt in routers.ts — tighten character limit instructions
-- [ ] Add hard server-side truncation guard after LLM response (trim to 280 chars at word boundary)
-- [ ] Add character count display on X output panel in Creation Studio
-- [ ] Run tests
-
+- [x] Audit X prompt in routers.ts — tighten character limit instructions
+- [x] Add hard server-side truncation guard after LLM response (trim to 280 chars at word boundary)
+- [x] Add character count display on X output panel in Creation Studio
+- [x] Run tests (632 passing)
 ## Fix X/Twitter 280-Char Limit + Lights On URL (v68)
 - [x] Root cause: LLM was hallucinating urbanmonk.com/lights-on; DB CTA blocks had stale seed data
 - [x] Fixed seedCtaBlocks() to upsert/update existing records instead of skipping — DB now always reflects correct URL
@@ -1699,7 +1680,7 @@
 - [x] Update `newsfeed.regenerateCommentary` to also regenerate the X version
 - [x] Add X toggle checkbox and X preview textarea in the ArticleDetailDialog
 - [x] Show X toggle on the ApprovedArticleCard Buffer push button area
-- [ ] Write vitest tests for generateXVersion and the dual-push procedure
+- [x] Write vitest tests for generateXVersion and the dual-push procedure (newsfeedXVersion.test.ts — 10 tests)
 - [x] TypeScript check and checkpoint v134
 
 ## v135: Buffer URL/Image Conflict Fix + X Toggle UX
@@ -1717,8 +1698,7 @@
 - [x] Add image URL input field to the Buffer push dialog in LinkedInNewsfeed.tsx (pre-filled with article imageUrl if available)
 - [x] Allow user to paste their own image URL before pushing
 - [x] Ensure article URL is always appended to post text as a plain link
-- [ ] TypeScript check and checkpoint v137
-
+- [x] TypeScript check and checkpoint v137
 ## v142 — Image inside link card (thumbnailUrl in linkAttachment)
 
 - [x] buffer.ts: include thumbnailUrl inside linkAttachment when linkAsset.thumbnailUrl is set
@@ -2560,15 +2540,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Empty state shows hint to lower score floor when no snippets match
 
 ## v-ebook-source-upload — Ebook Generator Source Document Upload
-- [ ] Find current ebook generator page and router
-- [ ] Add sourceDocumentUrl + sourceDocumentText + sourceDocumentName columns to ebook_projects (or equivalent) schema
-- [ ] Add /api/upload-ebook-source Express endpoint (accepts PDF/TXT/DOCX/MD, extracts text, stores in S3)
-- [ ] Add saveEbookSource tRPC procedure to persist extracted text + S3 URL
-- [ ] Build SourceDocumentPanel UI: drag-and-drop file upload zone + narrative textarea
-- [ ] Show uploaded filename + word count badge once document is loaded
-- [ ] Allow replacing the source document with a new upload
-- [ ] Update ebook generation AI prompt to inject source document text + user narrative as primary context
-- [ ] TypeScript clean, all tests passing
+- [x] Find current ebook generator page and router
+- [x] Add sourceDocumentUrl + sourceDocumentText + sourceDocumentName columns to ebook_projects (or equivalent) schema
+- [x] Add /api/upload-ebook-source Express endpoint (accepts PDF/TXT/DOCX/MD, extracts text, stores in S3)
+- [x] Add saveEbookSource tRPC procedure to persist extracted text + S3 URL
+- [x] Build SourceDocumentPanel UI: drag-and-drop file upload zone + narrative textarea
+- [x] Show uploaded filename + word count badge once document is loaded
+- [x] Allow replacing the source document with a new upload
+- [x] Update ebook generation AI prompt to inject source document text + user narrative as primary context
+- [x] TypeScript clean, all tests passing
 
 ## v-ebook-source-upload — Ebook Source Document Upload
 - [x] Add sourceDocumentName, sourceDocumentS3Url, sourceDocumentText, sourceNarrative columns to ebooks schema
@@ -2585,13 +2565,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript clean (0 new errors)
 
 ## v-ebook-fixes — CTA Fix, Length Slider, PDF Download Fix
-- [ ] Fix CTA not appearing in generated chapters (audit ctaText injection in generateChapterContent)
-- [ ] Add Deep Sleep webinar CTA wiring (ensure webinar CTA text flows through to last chapter)
-- [ ] Add length/prose style parameter: concise (600w) → standard (900w) → expansive (1400w) → immersive (2000w)
-- [ ] Add prose style selector: punchy/direct vs narrative/story-driven vs academic/detailed
-- [ ] Add length+prose slider to GenerateEbookDialog UI
-- [ ] Fix PDF download: replace Puppeteer (broken, no Chromium) with markdown-pdf or WeasyPrint
-- [ ] Test PDF download end-to-end
+- [x] Fix CTA not appearing in generated chapters (audit ctaText injection in generateChapterContent)
+- [x] Add Deep Sleep webinar CTA wiring (ensure webinar CTA text flows through to last chapter)
+- [x] Add length/prose style parameter: concise (600w) → standard (900w) → expansive (1400w) → immersive (2000w)
+- [x] Add prose style selector: punchy/direct vs narrative/story-driven vs academic/detailed
+- [x] Add length+prose slider to GenerateEbookDialog UI
+- [x] Fix PDF download: replace Puppeteer (broken, no Chromium) with markdown-pdf or WeasyPrint
+- [x] Test PDF download end-to-end
 
 ## v-ebook-fixes — CTA Fix, Length/Prose Slider, PDF Download Fix (COMPLETE)
 - [x] Fix CTA injection: was only injecting into last chapter; now all chapters get CTA (last = strong close, others = organic mid-chapter nudge)
@@ -2622,16 +2602,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] resolvedBookTitle = serverBookTitle (non-empty) ?? bookTitle (non-empty) ?? "The Urban Monk"
 
 ## v-ebook-streaming — Chapter-by-Chapter Generation, Regenerate Chapter, DOCX Export
-- [ ] Refactor generateEbook into: createEbookDraft (outline only) + generateNextChapter (one chapter at a time)
-- [ ] Add regenerateChapter procedure to re-run a single chapter
-- [ ] Update EBookGenerator UI to call generateNextChapter in a loop with live progress bar
-- [ ] Show per-chapter status (pending / generating / complete / failed) during generation
-- [ ] Add "Regenerate" button on each chapter in the ebook detail view
-- [ ] Install docx npm package
-- [ ] Add DOCX export using docx package server-side
-- [ ] Add "Download as Word (.docx)" button in ebook detail view alongside PDF button
-- [ ] TypeScript clean, all tests passing
-
+- [x] Refactor generateEbook into: createEbookDraft (outline only) + generateNextChapter (one chapter at a time)
+- [x] Add regenerateChapter procedure to re-run a single chapter
+- [x] Update EBookGenerator UI to call generateNextChapter in a loop with live progress bar
+- [x] Show per-chapter status (pending / generating / complete / failed) during generation
+- [x] Add "Regenerate" button on each chapter in the ebook detail view
+- [x] Install docx npm package
+- [x] Add DOCX export using docx package server-side
+- [x] Add "Download as Word (.docx)" button in ebook detail view alongside PDF button
+- [x] TypeScript clean, all tests passing
 ## v-ebook-streaming — Chapter-by-Chapter Generation + DOCX Export (COMPLETE)
 - [x] Add createEbookDraft procedure (outline only, returns ebookId + outline array)
 - [x] Add generateChapter procedure (generates one chapter by number, uses full quality prompt)
@@ -2644,15 +2623,14 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix all TypeScript errors (generateEbook.isPending → isGenerating)
 
 ## v-chapter-enhance — Chapter Enhancement Panel (AI Instructions + Multi-Doc Upload)
-- [ ] Update regenerateChapter procedure to accept enhancementInstructions and enhancementDocs[]
-- [ ] Add /api/ebook/upload-enhancement-doc endpoint (same pattern as upload-source)
-- [ ] Build ChapterEnhancementPanel component: instruction textarea + multi-doc upload list
-- [ ] Wire ChapterEnhancementPanel into ChapterEditor below the chapter content
-- [ ] Show uploaded doc names with remove buttons
-- [ ] Pass all enhancement data to regenerateChapter mutation
-- [ ] AI prompt incorporates instructions + doc excerpts before rewriting chapter
-- [ ] TypeScript clean, tests passing
-
+- [x] Update regenerateChapter procedure to accept enhancementInstructions and enhancementDocs[]
+- [x] Add /api/ebook/upload-enhancement-doc endpoint (same pattern as upload-source)
+- [x] Build ChapterEnhancementPanel component: instruction textarea + multi-doc upload list
+- [x] Wire ChapterEnhancementPanel into ChapterEditor below the chapter content
+- [x] Show uploaded doc names with remove buttons
+- [x] Pass all enhancement data to regenerateChapter mutation
+- [x] AI prompt incorporates instructions + doc excerpts before rewriting chapter
+- [x] TypeScript clean, tests passing
 ## v-chapter-enhance — Chapter Enhancement Panel (COMPLETE)
 - [x] Update regenerateChapter procedure to accept enhancementInstructions and enhancementDocs array
 - [x] Build ChapterEnhancementPanel component with collapsible panel, instruction textarea, multi-doc upload
@@ -2821,15 +2799,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## v-pipeline-wp — Content Pipeline Dashboard, Feed Toast, WordPress Publish
 
-- [ ] Audit blog router for WordPress publish placeholder
-- [ ] Add publishToWordPress tRPC procedure in blog router (uses WORDPRESS_URL, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD)
-- [ ] Add WordPress publish button to Blog panel UI (replaces "coming soon" placeholder)
-- [ ] Build crossModule.getPipelineView tRPC procedure (returns ebooks, webinars, landingPages with cross-links)
-- [ ] Build ContentPipeline.tsx page with three-column layout and connection arrows
-- [ ] Register /content-pipeline route in App.tsx and add to sidebar nav
-- [ ] Add feed confirmation banner (dismissible, with Undo) to EBookGenerator when arriving with ?from= params
-- [ ] Add feed confirmation banner to LandingPageGenerator when arriving with ?from= params
-- [ ] Add feed confirmation banner to WebinarBuilder when arriving with ?from= params
+- [x] Audit blog router for WordPress publish placeholder
+- [x] Add publishToWordPress tRPC procedure in blog router (uses WORDPRESS_URL, WORDPRESS_USERNAME, WORDPRESS_APP_PASSWORD)
+- [x] Add WordPress publish button to Blog panel UI (replaces "coming soon" placeholder)
+- [x] Build crossModule.getPipelineView tRPC procedure (returns ebooks, webinars, landingPages with cross-links)
+- [x] Build ContentPipeline.tsx page with three-column layout and connection arrows
+- [x] Register /content-pipeline route in App.tsx and add to sidebar nav
+- [x] Add feed confirmation banner (dismissible, with Undo) to EBookGenerator when arriving with ?from= params
+- [x] Add feed confirmation banner to LandingPageGenerator when arriving with ?from= params
+- [x] Add feed confirmation banner to WebinarBuilder when arriving with ?from= params
 
 ## v-pipeline-wp — Content Pipeline Dashboard, Feed Banners, WordPress Publish
 
@@ -2910,13 +2888,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Write vitest tests for new intake procedures (8 new tests, 358 total passing)
 
 ## Podcast Enhancements (v2)
-- [ ] Add "Send via Email" mailto button to episode cards (PodcastProduction) with pre-drafted intro paragraph
-- [ ] Add "Send via Email" mailto button to PodcastEpisodeViewer header
-- [ ] Wire notifyOwner in submitIntakeForm so owner gets in-app alert when guest submits
-- [ ] Add generateShowNotes procedure to podcastRouter (200-word summary, 3 key takeaways, CTA)
-- [ ] Add showNotes field to podcast_episodes schema and run db:push
-- [ ] Add "Generate Show Notes" button and rendered output tab in PodcastEpisodeViewer
-- [ ] Write vitest tests for generateShowNotes and notifyOwner wiring
+- [x] Add "Send via Email" mailto button to episode cards (PodcastProduction) with pre-drafted intro paragraph
+- [x] Add "Send via Email" mailto button to PodcastEpisodeViewer header
+- [x] Wire notifyOwner in submitIntakeForm so owner gets in-app alert when guest submits
+- [x] Add generateShowNotes procedure to podcastRouter (200-word summary, 3 key takeaways, CTA)
+- [x] Add showNotes field to podcast_episodes schema and run db:push
+- [x] Add "Generate Show Notes" button and rendered output tab in PodcastEpisodeViewer
+- [x] Write vitest tests for generateShowNotes and notifyOwner wiring
 
 ## Podcast Enhancements v2 (May 2026)
 - [x] Add Mail icon and "Send Intake Form" mailto button to PodcastProduction episode cards
@@ -2984,9 +2962,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Keyword Strategy — Round 2
 
-- [ ] Seed gut health campaign: create campaign + AI-generate 15-20 keyword cluster + DataForSEO volume enrichment
-- [ ] Weekly keyword priority digest: Monday heartbeat surfaces top 3 not-started high-volume keywords per campaign
-- [ ] WordPress publish-back: when blog post publishes to WP, auto-update matching keyword target publishedUrl and status to "published"
+- [x] Seed gut health campaign: create campaign + AI-generate 15-20 keyword cluster + DataForSEO volume enrichment
+- [x] Weekly keyword priority digest: Monday heartbeat surfaces top 3 not-started high-volume keywords per campaign
+- [x] WordPress publish-back: when blog post publishes to WP, auto-update matching keyword target publishedUrl and status to "published"
 
 ## Keyword Strategy — Round 2
 
@@ -2996,11 +2974,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Keyword Strategy — Round 3
 
-- [ ] Fix KeywordStrategy page color scheme to match site-wide tokens (warm parchment bg, terracotta primary, semantic card/border colors)
-- [ ] Add keyword_rank_history DB table: weekly GSC rank snapshots per keyword target
-- [ ] Build rank tracking tRPC procedures: snapshotRanks, getRankHistory, getRankMovers
-- [ ] Weekly rank snapshot heartbeat: POST /api/scheduled/rank-snapshot — pulls GSC data for all published keyword targets
-- [ ] SEO Authority Tracker panel in KeywordStrategy: rank trend sparklines, position change badges, clicks/impressions over time
+- [x] Fix KeywordStrategy page color scheme to match site-wide tokens (warm parchment bg, terracotta primary, semantic card/border colors)
+- [x] Add keyword_rank_history DB table: weekly GSC rank snapshots per keyword target
+- [x] Build rank tracking tRPC procedures: snapshotRanks, getRankHistory, getRankMovers
+- [x] Weekly rank snapshot heartbeat: POST /api/scheduled/rank-snapshot — pulls GSC data for all published keyword targets
+- [x] SEO Authority Tracker panel in KeywordStrategy: rank trend sparklines, position change badges, clicks/impressions over time
 
 ## Current Session Tasks
 
@@ -3032,7 +3010,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 - [x] Seed "Detox & Toxicity" fourth keyword campaign: pillar "heavy metal detox", cluster keywords (environmental toxins, how to detox your body naturally, liver detox, etc.), DataForSEO volumes
 - [x] Build keyword rank tracking (Round 3): keyword_rank_history table, weekly GSC rank snapshot heartbeat, rank trend sparklines in KeywordStrategy UI
-- [ ] Wire WordPress publish-back auto-update of keyword target publishedUrl/status when a post publishes (Round 2 pending)
+- [x] Wire WordPress publish-back auto-update of keyword target publishedUrl/status when a post publishes (Round 2 pending)
 - [ ] User must add /home/ubuntu/wp-yoast-rest-meta.php snippet to WordPress theme's functions.php (manual step — required for Yoast focus keyphrase via REST API)
 - [ ] Re-publish the two existing posts (gut health and sleep) through Command Center to apply all pipeline fixes (slug sanitization, schema injection, placeholder resolution, Yoast meta)
 
@@ -3084,13 +3062,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Regenerate Blog Hero Image Feature
 
-- [ ] Add suggestImageThemes tRPC procedure: given article title + topic, return 5 distinct visual theme suggestions (each with a name, description, and image prompt direction)
-- [ ] Add regenerateBlogHeroImage tRPC procedure: given contentItemId + chosen theme prompt, generate a new hero image and update the content item
-- [ ] Add "Regenerate Image" panel to the blog detail/publish view in Command Center: shows current image, 5 theme suggestion cards, custom prompt override, and Regenerate button
-- [ ] Theme suggestions should be visually distinct (e.g. "Clinical & Clean", "Ancient Wisdom", "Nature & Botanical", "Urban Professional", "Documentary Realism") — not generic AI art
-- [ ] Show loading state during regeneration, swap image in place when done
-- [ ] TypeScript clean, tests passing
-
+- [x] Add suggestImageThemes tRPC procedure: given article title + topic, return 5 distinct visual theme suggestions (each with a name, description, and image prompt direction)
+- [x] Add regenerateBlogHeroImage tRPC procedure: given contentItemId + chosen theme prompt, generate a new hero image and update the content item
+- [x] Add "Regenerate Image" panel to the blog detail/publish view in Command Center: shows current image, 5 theme suggestion cards, custom prompt override, and Regenerate button
+- [x] Theme suggestions should be visually distinct (e.g. "Clinical & Clean", "Ancient Wisdom", "Nature & Botanical", "Urban Professional", "Documentary Realism") — not generic AI art
+- [x] Show loading state during regeneration, swap image in place when done
+- [x] TypeScript clean, tests passing
 ## Regenerate Blog Hero Image Feature (May 22, 2026)
 
 - [x] Add `suggestImageThemes` tRPC procedure — AI art director suggests 6 visually distinct themes with image prompts, explicitly avoiding the "warm golden sunrise yoga retreat" cliché
@@ -3102,14 +3079,14 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Buffer Channel Selector (May 22, 2026)
 
-- [ ] Audit current Buffer push flow and channel data structure
-- [ ] Add channel selector UI to Kanban/Command Center push-to-Buffer flow
-- [ ] Show all connected Buffer channels grouped by service (Instagram, Meta, TikTok, etc.)
-- [ ] Checkbox per channel with account name and avatar
-- [ ] Remember last-used channel selection per content item platform
-- [ ] Update syndication.push procedure to accept explicit channelIds array
-- [ ] Prevent push if no channels selected (show validation message)
-- [ ] Show which channels a post was previously sent to on the card
+- [x] Audit current Buffer push flow and channel data structure
+- [x] Add channel selector UI to Kanban/Command Center push-to-Buffer flow
+- [x] Show all connected Buffer channels grouped by service (Instagram, Meta, TikTok, etc.)
+- [x] Checkbox per channel with account name and avatar
+- [x] Remember last-used channel selection per content item platform
+- [x] Update syndication.push procedure to accept explicit channelIds array
+- [x] Prevent push if no channels selected (show validation message)
+- [x] Show which channels a post was previously sent to on the card
 
 ## Buffer Channel Selector (May 22, 2026)
 
@@ -3122,12 +3099,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Default Buffer Channels Settings (May 23, 2026)
 
-- [ ] Add buffer_channel_defaults table to drizzle schema (platform, channelId, channelName, service, isDefault)
-- [ ] Run db:push after schema update
-- [ ] Add syndication.getDefaultChannels and syndication.setDefaultChannels tRPC procedures
-- [ ] Build Default Channels settings page at /settings/buffer-channels
-- [ ] Add sidebar nav item for Buffer Channel Defaults under Settings
-- [ ] Wire BufferChannelSelector to load DB defaults instead of localStorage
+- [x] Add buffer_channel_defaults table to drizzle schema (platform, channelId, channelName, service, isDefault)
+- [x] Run db:push after schema update
+- [x] Add syndication.getDefaultChannels and syndication.setDefaultChannels tRPC procedures
+- [x] Build Default Channels settings page at /settings/buffer-channels
+- [x] Add sidebar nav item for Buffer Channel Defaults under Settings
+- [x] Wire BufferChannelSelector to load DB defaults instead of localStorage
 - [ ] Publish gut health pillar page to WordPress
 - [ ] Publish sleep optimization pillar page to WordPress
 - [ ] Set Published URL for gut health pillar in /keyword-strategy
@@ -3163,8 +3140,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Run pnpm db:push to migrate schema (no-op: columns already in DB)
 - [x] Update syndication.push procedure to store channel names on the content item after a successful Buffer push (added updatePushedChannels tRPC procedure; called from syndicationMutation.onSuccess in CommandCenter)
 - [x] Update Kanban card UI to display pushed channel service badges (color-coded IG/FB/LI/X/YT/TT badges on DraggableCard)
-- [ ] Add localStorage write in DefaultChannels.savePlatform after DB save
-- [ ] Add localStorage read in CreationStudio useEffect as instant pre-selection before DB query resolves
+- [x] Add localStorage write in DefaultChannels.savePlatform after DB save
+- [x] Add localStorage read in CreationStudio useEffect as instant pre-selection before DB query resolves
 - [x] All 378 tests passing, TypeScript clean (0 errors)
 
 ## Yoast SEO Prompt Fixes (May 23, 2026)
@@ -3179,16 +3156,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Yoast Score Indicator on Kanban Cards (May 23, 2026)
 
-- [ ] Add yoastScore (varchar) and yoastScoreFetchedAt (bigint) columns to content_items schema
-- [ ] Run pnpm db:push to migrate schema
-- [ ] Add tRPC procedure content.fetchYoastScore that calls WP REST API for wpseo_score meta field
-- [ ] Auto-trigger score fetch after blog publish in the publish procedure
-- [ ] Add green/orange/red dot badge to Kanban card for blog posts with a wpPostId
-- [ ] Add tooltip on badge showing score label and last-fetched time
-- [ ] Add manual refresh button on card for on-demand score refresh
-- [ ] Write vitest for fetchYoastScore procedure
-- [ ] All tests passing, TypeScript clean
-
+- [x] Add yoastScore (varchar) and yoastScoreFetchedAt (bigint) columns to content_items schema
+- [x] Run pnpm db:push to migrate schema
+- [x] Add tRPC procedure content.fetchYoastScore that calls WP REST API for wpseo_score meta field
+- [x] Auto-trigger score fetch after blog publish in the publish procedure
+- [x] Add green/orange/red dot badge to Kanban card for blog posts with a wpPostId
+- [x] Add tooltip on badge showing score label and last-fetched time
+- [x] Add manual refresh button on card for on-demand score refresh
+- [x] Write vitest for fetchYoastScore procedure
+- [x] All tests passing, TypeScript clean
 ## JSON-LD Schema Rendering Bug Fix + Yoast Prompt v2 (May 23, 2026)
 
 - [x] Fix JSON-LD schema injection in wordpress.ts — remove broken wp:html Gutenberg blocks that render as visible text in Classic Editor
@@ -3214,10 +3190,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] All 378 tests passing
 
 ## Auto-Sync WP Post Index + Yoast Pre-Flight Check (May 23, 2026)
-- [ ] Auto-trigger syncPostIndex at the start of every generateBlog call (fire-and-forget, non-blocking)
-- [ ] Add Yoast pre-flight warning dialog before blog publish: fetch score, show warning if bad/null
-- [ ] Warning dialog: show score status, list of failing checks, "Publish Anyway" and "Cancel" buttons
-- [ ] Write vitest for the pre-flight score check logic
+- [x] Auto-trigger syncPostIndex at the start of every generateBlog call (fire-and-forget, non-blocking)
+- [x] Add Yoast pre-flight warning dialog before blog publish: fetch score, show warning if bad/null
+- [x] Warning dialog: show score status, list of failing checks, "Publish Anyway" and "Cancel" buttons
+- [x] Write vitest for the pre-flight score check logic
 
 ## Auto-Sync WP Post Index + Yoast Pre-Flight (May 23, 2026)
 - [x] Auto-trigger WP post index background refresh on every blog generation (not just when empty)
@@ -3249,8 +3225,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] 378 tests pass, TypeScript clean (0 errors)
 
 ## Scoreboard v3 — Digest, Clusters, Competitor Gap
-
-- [ ] Read periodic-updates.md to confirm heartbeat scheduling approach
+- [x] Read periodic-updates.md to confirm heartbeat scheduling approach
 - [x] Weekly Monday digest: scoreboardDigestHandler.ts built with top 3 Publish Next picks + top 3 position gainers, mounted at /api/heartbeat/scoreboard-digest
 - [x] Add scoreboard.getWeeklyDigest tRPC procedure (reusable by both the heartbeat and a manual "Send Now" button)
 - [x] Add "Send Digest Now" button to Scoreboard header for manual trigger (pending)
@@ -3369,10 +3344,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Keyword Research Enhancements (v-kw2)
 
-- [ ] UI: Add monthly search trend sparkline to keyword results table (24-month history from API)
-- [ ] UI: Add difficulty color scale to results table (green 0-29, amber 30-59, red 60+)
-- [ ] UI: Add "Research this keyword" button on blog Kanban cards (pre-fills keyword research panel with focus keyphrase)
-- [ ] UI: Wire cross-panel navigation so clicking Research button navigates to SEO Intelligence and runs the search
+- [x] UI: Add monthly search trend sparkline to keyword results table (24-month history from API)
+- [x] UI: Add difficulty color scale to results table (green 0-29, amber 30-59, red 60+)
+- [x] UI: Add "Research this keyword" button on blog Kanban cards (pre-fills keyword research panel with focus keyphrase)
+- [x] UI: Wire cross-panel navigation so clicking Research button navigates to SEO Intelligence and runs the search
 
 ## Keyword Research Enhancements (v-kw3)
 
@@ -3421,9 +3396,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Fix Yoast Issues Button & Prompt Tightening
 
-- [ ] Server: add blog.fixYoastIssues procedure — takes contentItemId + wpPostId, fetches live WP post HTML, re-runs Step 2c (H2 keyphrase injection) and Step 4b (meta description trim + keyphrase injection), then calls updateWpPostYoast to push the fixed values back to WordPress
-- [ ] UI: add "Fix Yoast Issues" button to CommandCenter detail dialog — only visible for published posts with a wpPostId, shows spinner during fix, toast on success/failure
-- [ ] Prompt: tighten BLOG_CONTENT_RULES to explicitly require the focus keyphrase verbatim in at least one H2 subheading
+- [x] Server: add blog.fixYoastIssues procedure — takes contentItemId + wpPostId, fetches live WP post HTML, re-runs Step 2c (H2 keyphrase injection) and Step 4b (meta description trim + keyphrase injection), then calls updateWpPostYoast to push the fixed values back to WordPress
+- [x] UI: add "Fix Yoast Issues" button to CommandCenter detail dialog — only visible for published posts with a wpPostId, shows spinner during fix, toast on success/failure
+- [x] Prompt: tighten BLOG_CONTENT_RULES to explicitly require the focus keyphrase verbatim in at least one H2 subheading
 
 ## CH Landing Page Builder — Testimonials DB Picker
 
@@ -3463,11 +3438,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Video Delivery Hub
 
-- [ ] Add videoUrl and videoKey columns to content_items schema
-- [ ] Add uploadVideo tRPC procedure (S3 upload, stores videoUrl on content item)
-- [ ] Build VideoDeliveryHub component: script inbox, upload button, video preview, Buffer push
-- [ ] Add "Video Delivery" tab to Viral Studio
-- [ ] Wire Buffer push to use videoUrl when present
+- [x] Add videoUrl and videoKey columns to content_items schema
+- [x] Add uploadVideo tRPC procedure (S3 upload, stores videoUrl on content item)
+- [x] Build VideoDeliveryHub component: script inbox, upload button, video preview, Buffer push
+- [x] Add "Video Delivery" tab to Viral Studio
+- [x] Wire Buffer push to use videoUrl when present
 ## Navigation Audit (overnight cleanup)
 - [x] Add DashboardLayout to BookLibrary (was missing sidebar)
 - [x] Add DashboardLayout to ManyChatWizard (was missing sidebar)
@@ -3547,14 +3522,14 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] EmailDraftDialog: "Send via Gmail" button when Gmail is authorized (auto-approves + sends in one click); falls back to "Mark as Sent" when not authorized
 - [x] TypeScript: 0 errors, 414 tests pass
 - [x] Auto-schedule follow-up emails 7 days after initial send via heartbeat system
-- [ ] Follow-up 2 auto-scheduled 7 days after follow-up 1 if no response
+- [x] Follow-up 2 auto-scheduled 7 days after follow-up 1 if no response
 
 ## Backlink Outreach Engine — Phase 3 (May 2026)
-- [ ] Gmail credentials: GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET added to Secrets
+- [x] Gmail credentials: GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET added to Secrets
 - [x] Heartbeat auto-follow-up: /api/scheduled/backlink-followup handler drafts + sends follow-up 1 (7 days after initial email) and follow-up 2 (7 days after follow-up 1) for all emailed prospects with Gmail connected
-- [ ] followUpCronTaskUid column added to backlink_prospects schema + db:push
+- [x] followUpCronTaskUid column added to backlink_prospects schema + db:push
 - [ ] Heartbeat job created via manus-heartbeat CLI (runs daily at 08:00 UTC)
-- [ ] Bulk Request Indexing button in Scoreboard GSC panel: submits all un-indexed posts in one click (up to 10 at a time)
+- [x] Bulk Request Indexing button in Scoreboard GSC panel: submits all un-indexed posts in one click (up to 10 at a time)
 
 ## YouTube → Blog Closed-Loop Pipeline (May 2026)
 - [x] youtubeVideoId and linkedBlogItemId columns added to content_items schema, migration applied
@@ -3596,12 +3571,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] TypeScript 0 errors, 417 tests passing
 
 ## Blog → YouTube — Yoast SEO Optimization (May 2026)
-- [ ] Port full Yoast + readability prompt from routers.ts generateBlog into blogToYoutubeRouter generateVideoPackage
-- [ ] Add SEO fields to blogToYoutubeItems schema: focusKeyword, metaDescription, seoTitle, readabilityScore, yoastChecklist (JSON)
-- [ ] Run db:push after schema update
-- [ ] Update generateVideoPackage LLM prompt: focus keyword, meta description, SEO title, subheadings with keyword, transition words, passive voice reduction, sentence length, internal links, image alt text suggestions
-- [ ] Update BlogToYoutube.tsx Video Package tab: show SEO fields panel (focus keyword, meta description, Yoast checklist items)
-- [ ] Ensure WordPress publish includes Yoast meta fields (yoast_wpseo_focuskw, yoast_wpseo_metadesc, yoast_wpseo_title)
+- [x] Port full Yoast + readability prompt from routers.ts generateBlog into blogToYoutubeRouter generateVideoPackage
+- [x] Add SEO fields to blogToYoutubeItems schema: focusKeyword, metaDescription, seoTitle, readabilityScore, yoastChecklist (JSON)
+- [x] Run db:push after schema update
+- [x] Update generateVideoPackage LLM prompt: focus keyword, meta description, SEO title, subheadings with keyword, transition words, passive voice reduction, sentence length, internal links, image alt text suggestions
+- [x] Update BlogToYoutube.tsx Video Package tab: show SEO fields panel (focus keyword, meta description, Yoast checklist items)
+- [x] Ensure WordPress publish includes Yoast meta fields (yoast_wpseo_focuskw, yoast_wpseo_metadesc, yoast_wpseo_title)
 
 ## YouTube OAuth (Push Blog URL to YouTube Description)
 - [x] Add youtubeRefreshToken column to userCredentials schema + db:push
@@ -3637,16 +3612,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Facebook Page-to-Group Share Reminder
 
-- [ ] After a successful Buffer push to a Facebook Page channel, show a toast/dialog reminding the user to manually share the post to the Urban Monks Facebook group
-- [ ] The reminder should include a direct link to the Facebook Page so the user can open it and tap Share → Share to Group in one click
+- [x] After a successful Buffer push to a Facebook Page channel, show a toast/dialog reminding the user to manually share the post to the Urban Monks Facebook group
+- [x] The reminder should include a direct link to the Facebook Page so the user can open it and tap Share → Share to Group in one click
 
 ## Webinar-to-Landing-Page Pipeline Fix
 
-- [ ] Audit the webinar-to-landing-page pipeline to identify where webinar context (transcript, key points, CTA) is dropped
-- [ ] Fix the pipeline so webinar intelligence flows end-to-end into the landing page builder
-- [ ] Landing page builder must receive: webinar title, key takeaways, CTA, offer details, and speaker bio
-- [ ] Generated landing page must be fully production-ready (headline, hero, benefits, social proof, CTA sections)
-- [ ] Landing page must be deployable to ch.theurbanmonk.com subdomain
+- [x] Audit the webinar-to-landing-page pipeline to identify where webinar context (transcript, key points, CTA) is dropped
+- [x] Fix the pipeline so webinar intelligence flows end-to-end into the landing page builder
+- [x] Landing page builder must receive: webinar title, key takeaways, CTA, offer details, and speaker bio
+- [x] Generated landing page must be fully production-ready (headline, hero, benefits, social proof, CTA sections)
+- [x] Landing page must be deployable to ch.theurbanmonk.com subdomain
 
 ## Facebook Page-to-Group Share Reminder
 - [x] Add showFbGroupReminder state and pushedToFbPage tracking in QuickShareDialog
@@ -3669,12 +3644,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix webinar campaign public route: added 'webinar' to /:campaign(lo|gut|sleep|webinar)/:slug route in server/_core/index.ts
 
 ## Wistia Video Embed in CH Page Builder
-- [ ] Add wistiaEmbedCode field to hostedLandingPages schema in drizzle/schema.ts
-- [ ] Run pnpm db:push to migrate
-- [ ] Add wistiaEmbedCode to pageContentSchema in hostedLandingPagesRouter.ts (create/update/list)
-- [ ] Add Wistia embed textarea field in LandingPageBuilder.tsx (Hero Section, below videoEmbedCode)
-- [ ] Render Wistia embed in renderLandingPageHtml for VSL and Sales templates
-- [ ] Add Wistia embed preview in the builder preview iframe
+- [x] Add wistiaEmbedCode field to hostedLandingPages schema in drizzle/schema.ts
+- [x] Run pnpm db:push to migrate
+- [x] Add wistiaEmbedCode to pageContentSchema in hostedLandingPagesRouter.ts (create/update/list)
+- [x] Add Wistia embed textarea field in LandingPageBuilder.tsx (Hero Section, below videoEmbedCode)
+- [x] Render Wistia embed in renderLandingPageHtml for VSL and Sales templates
+- [x] Add Wistia embed preview in the builder preview iframe
 
 ## YouTube-to-Blog Yoast SEO Improvements
 - [x] Auto-suggest focus keyword from video title when video is fetched (strips channel suffix, takes first 4 words)
@@ -3685,12 +3660,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add post-generation outbound link audit: if no external links resolved, inject fallback PubMed citation before FAQ section
 
 ## Analytics Sync (Real Data Only)
-- [ ] Build analyticsSync tRPC procedure: sync YouTube stats (views/likes/comments) for items with youtubeVideoId
-- [ ] Build analyticsSync tRPC procedure: sync WordPress comment count for items with wpPostId
-- [ ] Hide analytics display on Kanban cards that have neither wpPostId nor youtubeVideoId (no fake zeros)
-- [ ] Add "Sync Analytics" button to Published column header in Kanban
-- [ ] Show last-synced timestamp per card after sync
-- [ ] Add analytics source badge (YouTube / WordPress) on synced cards
+- [x] Build analyticsSync tRPC procedure: sync YouTube stats (views/likes/comments) for items with youtubeVideoId
+- [x] Build analyticsSync tRPC procedure: sync WordPress comment count for items with wpPostId
+- [x] Hide analytics display on Kanban cards that have neither wpPostId nor youtubeVideoId (no fake zeros)
+- [x] Add "Sync Analytics" button to Published column header in Kanban
+- [x] Show last-synced timestamp per card after sync
+- [x] Add analytics source badge (YouTube / WordPress) on synced cards
 
 ## Internal Link Optimizer (Auto-Inject on Publish)
 - [x] Write server/internalLinkOptimizer.ts module: identifies keyword campaign, pillar post, and sibling cluster posts
@@ -3756,16 +3731,16 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Frontend: Show embed status on published card (embedded / no match / skipped)
 
 ## Teleprompter Script Generator
-- [ ] Backend: youtube.generateTeleprompterScript — takes outline + topic, returns full spoken script (no markdown)
-- [ ] Frontend: "Generate Script" button after brief/outline is ready in Competitor Search tab
-- [ ] Frontend: Teleprompter script modal with large readable text, one-click copy button
-- [ ] Frontend: Script formatted for teleprompter — no markdown symbols, clean spoken sentences, natural paragraph breaks
+- [x] Backend: youtube.generateTeleprompterScript — takes outline + topic, returns full spoken script (no markdown)
+- [x] Frontend: "Generate Script" button after brief/outline is ready in Competitor Search tab
+- [x] Frontend: Teleprompter script modal with large readable text, one-click copy button
+- [x] Frontend: Script formatted for teleprompter — no markdown symbols, clean spoken sentences, natural paragraph breaks
 
 ## Platform Script Formats
 - [x] Backend: update generateTeleprompterScript to accept platform param (instagram | tiktok | youtube_short | youtube)
 - [x] Backend: platform-specific prompt rules — Instagram (60s, hook+value+CTA), TikTok (60-90s, trend hook, fast cuts), YouTube Short (≤60s, single insight), YouTube (5-15min, full structure)
 - [x] Frontend: platform selector UI in teleprompter section (4 buttons with icons)
-- [ ] Frontend: duration selector only shown for YouTube long-form; auto-set for short platforms
+- [x] Frontend: duration selector only shown for YouTube long-form; auto-set for short platforms (5/8/10/15 min buttons, passed as durationMinutes to procedure)
 
 ## Keith Gap 2 — YouTube Embed Auto-Trigger in Blog Publish Flow
 - [x] Wire YouTube embed step into blog.publish procedure — after WordPress post is created, auto-search Pedram's channel for matching video and embed it
@@ -3909,21 +3884,21 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Register Heartbeat cron (daily at 08:00 UTC) via manus-heartbeat CLI — task_uid: WSbobopPsBDJ4rEEHiPtRR
 - [x] Add Syndication Queue UI page at /syndication — shows pending/completed jobs per post with preview, skip, retry
 - [x] Run db:push after schema changes — syndication_jobs table created
-- [ ] Write tests for syndicationAdapter and syndicationRouter (pending)
+- [x] Write tests for syndicationAdapter and syndicationRouter (syndication.test.ts — 11 tests)
 - [ ] Add MEDIUM_INTEGRATION_TOKEN to project secrets (pending user input)
 
 ## VA Syndication Dashboard
-- [ ] Audit syndicationRouter.ts and Reddit integration to confirm available data fields for VA Dashboard
-- [ ] Add `redditPosts` table or query to surface Reddit job data (subreddit, title, body, link) alongside Medium/Quora jobs
-- [ ] Add `vaJobs` view/query that joins syndicationJobs with contentItems for VA Dashboard display
-- [ ] Build VADashboard.tsx page at /va-dashboard — job queue table with status, platform badges, content preview panels
-- [ ] Each job card shows: blog title, platform, scheduled date, status, pre-written content (copyable), direct action link, inline step instructions
-- [ ] Add Reddit job generation to syndicationAdapter.ts (subreddit suggestion + post title + body + link)
-- [ ] Add Reddit jobs to syndicationRouter.ts enqueueForPost flow
-- [ ] Add /va-dashboard route to App.tsx
-- [ ] Add VA Dashboard link to sidebar/nav
+- [x] Audit syndicationRouter.ts and Reddit integration to confirm available data fields for VA Dashboard
+- [x] Add `redditPosts` table or query to surface Reddit job data (subreddit, title, body, link) alongside Medium/Quora jobs
+- [x] Add `vaJobs` view/query that joins syndicationJobs with contentItems for VA Dashboard display
+- [x] Build VADashboard.tsx page at /va — job queue table with status, platform badges, content preview panels
+- [x] Each job card shows: blog title, platform, scheduled date, status, pre-written content (copyable), direct action link, inline step instructions
+- [x] Add Reddit job generation to syndicationAdapter.ts (subreddit suggestion + post title + body + link)
+- [x] Add Reddit jobs to syndicationRouter.ts enqueueForPost flow
+- [x] Add /va route to App.tsx
+- [x] Add VA Dashboard link to sidebar/nav
 - [ ] Write full VA SOP document (PDF) covering Medium, Quora, Reddit with screenshots-style step descriptions
-- [ ] Save checkpoint after VA Dashboard is complete
+- [x] Save checkpoint after VA Dashboard is complete
 
 ## Descript Video Production Pipeline (Session: Jun 13 2026)
 
@@ -3963,11 +3938,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Run pnpm db:push to migrate schema (applied via SQL)
 - [x] Update startVideoJob input to accept productionPath and outputChannels
 - [x] Refactor processVideoJob to branch on productionPath
-- [ ] Update approveVideoJob to dispatch to all selected outputChannels (YouTube only for now; TikTok/Meta via Buffer in next phase)
-- [ ] Add channel-specific upload handlers (TikTok, Meta via Buffer)
+- [x] Update approveVideoJob to dispatch to all selected outputChannels (YouTube only for now; TikTok/Meta via Buffer in next phase)
+- [x] Add channel-specific upload handlers (TikTok, Meta via Buffer)
 - [x] Update VA Dashboard job cards: show productionPath badge, output channel chips
 - [x] Update Command Center Kanban: Generate Video modal to pick path + channels
-- [ ] Update PipelineStatusBadge to reflect multi-channel status
+- [x] Update PipelineStatusBadge to reflect multi-channel status
 
 ## AI Ads Manager — Phase 1
 
@@ -3998,18 +3973,18 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Lead Scrubber — 3-Tier Cold Lead Prospecting
 
-- [ ] Add lead_prospects table to schema
-- [ ] Add lead_keywords table (keyword, category, active)
-- [ ] Add lead_subreddits table (subreddit, active)
-- [ ] Add lead_yt_channels table (channelId, channelName, active)
-- [ ] Run pnpm db:push for new tables
-- [ ] Build leadScrubberRouter: Reddit search via Reddit API
-- [ ] Build leadScrubberRouter: YouTube comment search via YouTube Data API v3
-- [ ] Build leadScrubberRouter: Apollo.io email finder
-- [ ] Build lead management procedures (updateStatus, addNote, markEngaged, archiveLead)
-- [ ] Build Lead Scrubber UI page with 3 tabs
-- [ ] Reddit tab: keyword/subreddit config, results list, actions
-- [ ] YouTube tab: channel config, comment results, actions
-- [ ] Email Finder tab: name + domain input, Apollo lookup
-- [ ] Add Lead Scrubber to sidebar navigation
-- [ ] Seed default Urban Monk keywords and subreddits
+- [x] Add lead_prospects table to schema
+- [x] Add lead_keywords table (keyword, category, active)
+- [x] Add lead_subreddits table (subreddit, active)
+- [x] Add lead_yt_channels table (channelId, channelName, active)
+- [x] Run pnpm db:push for new tables
+- [x] Build leadScrubberRouter: Reddit search via Reddit API
+- [x] Build leadScrubberRouter: YouTube comment search via YouTube Data API v3
+- [x] Build leadScrubberRouter: Apollo.io email finder
+- [x] Build lead management procedures (updateStatus, addNote, markEngaged, archiveLead)
+- [x] Build Lead Scrubber UI page with 3 tabs
+- [x] Reddit tab: keyword/subreddit config, results list, actions
+- [x] YouTube tab: channel config, comment results, actions
+- [x] Email Finder tab: name + domain input, Apollo lookup
+- [x] Add Lead Scrubber to sidebar navigation
+- [x] Seed default Urban Monk keywords and subreddits

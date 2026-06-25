@@ -1992,6 +1992,8 @@ export default function CommandCenter() {
   const [generatingTeleprompter, setGeneratingTeleprompter] = useState(false);
   // Platform selector for teleprompter script generation
   const [teleprompterPlatform, setTeleprompterPlatform] = useState<"youtube" | "youtube_short" | "instagram" | "tiktok">("youtube");
+  // Duration selector — only shown for YouTube long-form; auto-set for short platforms
+  const [teleprompterDuration, setTeleprompterDuration] = useState<5 | 8 | 10 | 15>(8);
   // Production path for sending teleprompter script to HeyGen/Descript
   const [teleprompterProductionPath, setTeleprompterProductionPath] = useState<"heygen_then_descript" | "heygen_only" | "descript_only">("heygen_then_descript");
   const [sendingToProduction, setSendingToProduction] = useState(false);
@@ -2137,9 +2139,11 @@ export default function CommandCenter() {
   const handleGenerateTeleprompter = (item: ContentItem, platformOverride?: "youtube" | "youtube_short" | "instagram" | "tiktok") => {
     const title = item.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || item.rawIdea || item.title;
     const platform = platformOverride ?? teleprompterPlatform;
+    // Only pass durationMinutes for YouTube long-form; short platforms have fixed durations
+    const durationMinutes = platform === "youtube" ? teleprompterDuration : undefined;
     setTeleprompterScript(null);
     setGeneratingTeleprompter(true);
-    teleprompterMutation.mutate({ title, platform });
+    teleprompterMutation.mutate({ title, platform, durationMinutes });
   };
 
   // TikTok 60-second script state
@@ -4633,6 +4637,27 @@ export default function CommandCenter() {
                     </button>
                   ))}
                 </div>
+                {/* Duration selector — only for YouTube long-form */}
+                {teleprompterPlatform === "youtube" && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Duration:</span>
+                    <div className="flex items-center gap-1">
+                      {([5, 8, 10, 15] as const).map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setTeleprompterDuration(d)}
+                          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                            teleprompterDuration === d
+                              ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                              : "bg-muted text-muted-foreground hover:text-foreground border border-transparent"
+                          }`}
+                        >
+                          {d} min
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <Button
                     variant="outline"
@@ -4646,7 +4671,7 @@ export default function CommandCenter() {
                     ) : (
                       <Wand2 className="h-3 w-3 mr-1" />
                     )}
-                    {generatingTeleprompter ? "Generating script…" : `Generate ${teleprompterPlatform === "youtube" ? "Teleprompter" : teleprompterPlatform === "youtube_short" ? "YT Short" : teleprompterPlatform === "instagram" ? "Instagram Reel" : "TikTok"} Script`}
+                    {generatingTeleprompter ? "Generating script…" : `Generate ${teleprompterPlatform === "youtube" ? `${teleprompterDuration}-min Teleprompter` : teleprompterPlatform === "youtube_short" ? "YT Short" : teleprompterPlatform === "instagram" ? "Instagram Reel" : "TikTok"} Script`}
                   </Button>
                   {teleprompterScript && (
                     <div className="flex gap-1">

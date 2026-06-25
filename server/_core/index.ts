@@ -702,6 +702,10 @@ async function startServer() {
   const { handleBufferSync } = await import("../bufferSyncHandler");
   app.post("/api/scheduled/buffer-sync", handleBufferSync);
 
+  // Backlink auto-follow-up — daily at 09:00 UTC, drafts follow-up emails for prospects due a nudge
+  const { backlinkFollowUpHandler } = await import("../backlinkFollowUpHandler");
+  app.post("/api/scheduled/backlink-followup", backlinkFollowUpHandler);
+
   // Syndication pipeline — runs daily at 08:00 UTC
   // Processes pending syndication jobs: Substack (Day 1), Medium (Day 2), Quora (Day 3)
   app.post("/api/scheduled/syndication", async (req, res) => {

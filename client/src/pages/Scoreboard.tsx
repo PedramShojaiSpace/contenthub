@@ -1182,6 +1182,146 @@ function QuickShareDialog({
   );
 }
 
+// ── Content Flywheel Panel (Keith Gap 1 — GSC Feedback Flywheel) ─────────────
+
+function ContentFlywheelPanel() {
+  const [expanded, setExpanded] = useState(true);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<{ contentItemId: number; title: string; focusKeyword?: string } | null>(null);
+
+  const moversQuery = trpc.scoreboard.getMovingPosts.useQuery(undefined, {
+    retry: false,
+    staleTime: 1000 * 60 * 15,
+  });
+
+  const suggestFollowUp = trpc.scoreboard.suggestFollowUp.useMutation({
+    onError: (e) => toast.error("Failed to generate ideas: " + e.message),
+  });
+
+  const movers = (moversQuery.data ?? []) as Array<{
+    contentItemId: number;
+    title: string;
+    url: string;
+    positionDelta: number;
+    currentPosition: number;
+    clicks: number;
+    impressions: number;
+  }>;
+
+  const handleSuggestFollowUp = (post: { contentItemId: number; title: string }) => {
+    setSelectedPost({ contentItemId: post.contentItemId, title: post.title });
+    setFollowUpOpen(true);
+    suggestFollowUp.mutate({ contentItemId: post.contentItemId, title: post.title });
+  };
+
+  return (
+    <>
+      <Card className="bg-card border-border border-green-500/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded((v) => !v)}>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-500" />
+              Content Flywheel — Posts Gaining Momentum
+              <Badge className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/30 ml-1">
+                {movers.length > 0 ? `${movers.length} moving` : moversQuery.isLoading ? "Loading…" : "0"}
+              </Badge>
+            </CardTitle>
+            <button className="text-muted-foreground hover:text-foreground transition-colors">
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+          {expanded && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Posts climbing in Google rankings — double down on these with follow-up content to accelerate the flywheel.
+            </p>
+          )}
+        </CardHeader>
+        {expanded && (
+          <CardContent className="pt-0">
+            {moversQuery.isLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12" />)}
+              </div>
+            ) : movers.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No position gains detected yet. Connect Google Search Console and publish a few posts to start tracking.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {movers.map((post) => (
+                  <div key={post.contentItemId} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/30 border border-border hover:border-green-500/30 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <ArrowUpRight className="w-4 h-4 text-green-500 shrink-0" />
+                        <span className="text-sm font-medium text-foreground truncate">{post.title}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">↑ {post.positionDelta} positions</span>
+                        <span className="text-xs text-muted-foreground">Now #{post.currentPosition}</span>
+                        <span className="text-xs text-muted-foreground">{post.clicks} clicks</span>
+                        <span className="text-xs text-muted-foreground">{post.impressions.toLocaleString()} impressions</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {post.url && (
+                        <Button variant="ghost" size="sm" asChild className="h-7 px-2">
+                          <a href={post.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => handleSuggestFollowUp(post)}
+                      >
+                        <Wand2 className="w-3.5 h-3.5" />
+                        Follow-Up Ideas
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Follow-Up Ideas Dialog */}
+      <Dialog open={followUpOpen} onOpenChange={setFollowUpOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="w-5 h-5 text-primary" />
+              Follow-Up Content Ideas
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {selectedPost?.title}
+            </DialogDescription>
+          </DialogHeader>
+          {suggestFollowUp.isPending ? (
+            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Generating ideas…
+            </div>
+          ) : suggestFollowUp.data ? (
+            <div className="space-y-3">
+              {suggestFollowUp.data.ideas.map((idea, i) => (
+                <div key={i} className="p-3 rounded-lg border border-border bg-muted/30">
+                  <div className="font-medium text-sm text-foreground">{idea.title}</div>
+                  <div className="text-xs text-primary mt-0.5">Keyword: {idea.keyword}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{idea.rationale}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ── Publish Next Panel ────────────────────────────────────────────────────────
 
 function PublishNextPanel() {
@@ -1395,6 +1535,11 @@ export default function Scoreboard() {
     onError: (e) => toast.error("Batch fetch failed: " + e.message),
   });
 
+  const sendDigestMutation = trpc.scoreboard.sendWeeklyDigest.useMutation({
+    onSuccess: () => toast.success("Weekly digest sent to your Manus inbox!"),
+    onError: (e) => toast.error("Failed to send digest: " + e.message),
+  });
+
   const generateSocialImage = trpc.scoreboard.generateSocialImage.useMutation({
     onSuccess: (data, variables) => {
       setGeneratingImageFor(null);
@@ -1509,6 +1654,18 @@ export default function Scoreboard() {
             <RefreshCw className="w-4 h-4" />
             Refresh
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => sendDigestMutation.mutate()}
+            disabled={sendDigestMutation.isPending}
+            className="gap-2"
+          >
+            {sendDigestMutation.isPending
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Send className="w-4 h-4" />}
+            {sendDigestMutation.isPending ? "Sending…" : "Send Digest Now"}
+          </Button>
         </div>
       </div>
 
@@ -1571,6 +1728,9 @@ export default function Scoreboard() {
 
       {/* Publish Next recommendations */}
       <PublishNextPanel />
+
+      {/* Content Flywheel — Keith Gap 1 */}
+      <ContentFlywheelPanel />
 
       {/* Filters + search */}
       <div className="space-y-2">

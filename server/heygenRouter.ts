@@ -8,7 +8,7 @@
  *
  * HeyGen API reference:
  *   POST https://api.heygen.com/v2/video/generate   → { video_id }
- *   GET  https://api.heygen.com/v1/video.status.get?video_id={id} → { status, video_url }
+ *   GET  https://api.heygen.com/v1/video_status.get?video_id={id} → { status, video_url }
  *
  * Avatar pipeline flow:
  *   script → HeyGen render (async, 5-20 min) → download video → S3 → YouTube upload (unlisted) → SEO Review → Make Public
@@ -118,7 +118,7 @@ async function startHeyGenRender(scriptText: string): Promise<string> {
 }
 
 /**
- * Polls HeyGen GET /v1/video.status.get?video_id={id} until completed or failed.
+ * Polls HeyGen GET /v1/video_status.get?video_id={id} until completed or failed.
  * Returns the video_url when complete.
  * Throws on failure or timeout (max 90 minutes).
  */
@@ -130,7 +130,7 @@ async function pollHeyGenUntilComplete(
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, 30_000));
 
-    const res = await heygenFetch(`/v1/video.status.get?video_id=${heygenVideoId}`);
+    const res = await heygenFetch(`/v1/video_status.get?video_id=${heygenVideoId}`);
     if (!res.ok) {
       console.warn(`${jobLabel} HeyGen status check failed (${res.status}), will retry...`);
       continue;
@@ -412,6 +412,96 @@ export const heygenRouter = router({
         success: true,
         heygenVideoId,
         message: "HeyGen avatar render restarted. Dashboard will update when done.",
+      };
+    }),
+
+  /**
+   * recoverStuckJob
+   * ─────────────────────────────────────────────────────────────────────────
+   * For jobs stuck in 'rendering' status where HeyGen has ALREADY completed
+   * the render but the polling loop was interrupted (e.g. server restart).
+   * Checks HeyGen status; if completed, resumes the S3 download + YouTube upload.
+   */
+  recoverStuckJob: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      const jobs = await db
+        .select()
+        .from(videoJobs)
+        .where(eq(videoJobs.id, input.jobId))
+        .limit(1);
+      if (!jobs.length) throw new Error(`Video job ${input.jobId} not found`);
+      const job = jobs[0];
+      if (!job.heygenVideoId) throw new Error("Job has no heygenVideoId — cannot recover");
+
+      // Check current HeyGen status using the correct v1 endpoint
+      const statusRes = await heygenFetch(`/v1/video_status.get?video_id=${job.heygenVideoId}`); // correct endpoint confirmed
+      if (!statusRes.ok) {
+        const text = await statusRes.text();
+        throw new Error(`HeyGen status check failed (${statusRes.status}): ${text}`);
+      }
+      const statusJson = (await statusRes.json()) as { code: number; data: { status: string; video_url?: string } };
+      const heygenStatus = statusJson.data?.status;
+      const videoUrl = statusJson.data?.video_url;
+
+      if (heygenStatus !== "completed" || !videoUrl) {
+        return {
+          success: false,
+          heygenStatus,
+          message: `HeyGen status is '${heygenStatus}' — not yet ready to recover. Try again later.`,
+        };
+      }
+
+      // HeyGen is done — resume the pipeline in background
+      const jobLabel = `[HeyGen Recover Job #${input.jobId}]`;
+      console.log(`${jobLabel} HeyGen already completed. Resuming S3 download + YouTube upload.`);
+
+      (async () => {
+        const bgDb = await getDb();
+        if (!bgDb) return;
+        try {
+          await bgDb
+            .update(videoJobs)
+            .set({ status: "uploading", errorMessage: null })
+            .where(eq(videoJobs.id, input.jobId));
+
+          const { s3Key, s3Url } = await downloadAndUploadToS3(videoUrl, input.jobId, jobLabel);
+          await bgDb
+            .update(videoJobs)
+            .set({ s3VideoKey: s3Key, s3VideoUrl: s3Url })
+            .where(eq(videoJobs.id, input.jobId));
+
+          const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
+          const uploadResult = await uploadToYouTube({
+            videoUrl: s3Url,
+            title: job.youtubeTitle ?? "Urban Monk Avatar Video",
+            description: job.youtubeDescription ?? "",
+            tags,
+            privacyStatus: "unlisted",
+            jobId: input.jobId,
+          });
+          await bgDb
+            .update(videoJobs)
+            .set({ status: "uploaded_unlisted", youtubeVideoId: uploadResult.videoId })
+            .where(eq(videoJobs.id, input.jobId));
+          console.log(`${jobLabel} ✅ Recovery complete. YouTube video ID: ${uploadResult.videoId}`);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`${jobLabel} ❌ Recovery failed: ${message}`);
+          await bgDb
+            .update(videoJobs)
+            .set({ status: "failed", errorMessage: message })
+            .where(eq(videoJobs.id, input.jobId));
+        }
+      })();
+
+      return {
+        success: true,
+        heygenStatus,
+        message: "HeyGen render was already complete. Resuming S3 download and YouTube upload in background — dashboard will update shortly.",
       };
     }),
 });

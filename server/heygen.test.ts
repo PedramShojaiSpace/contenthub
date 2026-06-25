@@ -71,30 +71,16 @@ describe("HeyGen API credentials", () => {
   );
 
   it(
-    "should have the configured avatar ID accessible",
-    async () => {
-      const apiKey = process.env.HEYGEN_API_KEY;
-      const avatarId = process.env.HEYGEN_AVATAR_ID;
-      if (!apiKey || !avatarId) {
-        throw new Error("HEYGEN_API_KEY or HEYGEN_AVATAR_ID is not set");
-      }
-
-      // List avatars to verify the avatar ID exists in the account
-      const res = await fetch(`${HEYGEN_API_BASE}/v2/avatars`, {
-        method: "GET",
-        headers: {
-          "X-Api-Key": apiKey,
-          "Content-Type": "application/json",
-        },
-        signal: AbortSignal.timeout(15_000),
-      });
-
-      // Accept 200 (success) or 403 (key valid, permission issue) as "API is reachable"
-      expect(
-        [200, 403, 404].includes(res.status),
-        `HeyGen avatars endpoint returned unexpected status ${res.status}`
-      ).toBe(true);
-    },
-    20_000
+    "should have HEYGEN_AVATAR_ID (look_id) configured as a valid 32-char hex string",
+    () => {
+      // HEYGEN_AVATAR_ID now holds the look_id (not the avatar_id).
+      // The avatar_id is hardcoded in heygenRouter.ts as Pedram's avatar.
+      const lookId = process.env.HEYGEN_AVATAR_ID;
+      expect(lookId, "HEYGEN_AVATAR_ID (look_id) must be set").toBeTruthy();
+      // A valid HeyGen look_id is a 32-char hex string (no dashes)
+      expect(/^[0-9a-f]{32}$/.test(lookId!), `look_id "${lookId}" should be a 32-char lowercase hex string`).toBe(true);
+      // Must not be the old broken look_id
+      expect(lookId, "look_id should not be the old broken value").not.toBe("517e3a662b6845c29e140ec6ccdb991a");
+    }
   );
 });

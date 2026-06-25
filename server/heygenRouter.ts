@@ -76,8 +76,9 @@ async function startHeyGenRender(scriptText: string): Promise<string> {
       {
         character: {
           type: "avatar",
-          avatar_id: avatarId,
+          avatar_id: "517e3a662b6845c29e140ec6ccdb991a", // Pedram's avatar
           avatar_style: "normal",
+          look_id: avatarId, // look_id from HEYGEN_AVATAR_ID env var
         },
         voice: {
           type: "text",

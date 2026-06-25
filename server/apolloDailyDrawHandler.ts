@@ -86,6 +86,38 @@ const DAILY_CATEGORIES = [
 const SEARCH_PER_CATEGORY = 50;   // free search — fetch 50 candidates
 const MAX_REVEALS_PER_CATEGORY = 15; // ~135 reveals/day total across 9 categories
 
+// ── Email quality guard — checked BEFORE spending a reveal credit ─────────────
+// Apollo sometimes returns placeholder or unrevealable emails even when has_email=true.
+// These patterns indicate a bad lead that will waste a credit and never convert.
+const BLOCKED_EMAIL_PATTERNS = [
+  /^email_not_unlocked@/i,
+  /^not_unlocked@/i,
+  /^noreply@/i,
+  /^no-reply@/i,
+  /^donotreply@/i,
+  /^bounced@/i,
+  /^invalid@/i,
+  /^placeholder@/i,
+  /^test@/i,
+  /@domain\.com$/i,
+  /@example\.com$/i,
+  /@test\.com$/i,
+  /@b\.cmail\d+\.com$/i,   // Constant Contact bounce domains
+  /@cmail\d+\.com$/i,
+  /@mcsv\.net$/i,            // Mailchimp bounce domain
+  /@bounce\.com$/i,
+];
+const BLOCKED_EMAIL_STATUSES = ["invalid", "do_not_email", "spam", "deactivated", "unsubscribed", "bounced"];
+
+function isValidEmail(email: string | null | undefined, status?: string | null): boolean {
+  if (!email) return false;
+  // Must have exactly one @ and a real TLD
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) return false;
+  if (BLOCKED_EMAIL_PATTERNS.some(p => p.test(email))) return false;
+  if (status && BLOCKED_EMAIL_STATUSES.includes(status.toLowerCase())) return false;
+  return true;
+}
+
 // ── Page cursor helpers (stored in app_settings) ─────────────────────────────
 const CURSOR_KEY_PREFIX = "apollo_page_cursor_";
 
@@ -308,7 +340,13 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
           let resolvedEmail = p.email;
           let resolvedEmailStatus = p.emailStatus;
 
-          // Attempt reveal if Apollo signals this person has an email
+          // Attempt reveal if Apollo signals this person has an email.
+          // Guard: if Apollo already returned an email in the search result,
+          // validate it first — if it's bad, skip the reveal to save the credit.
+          if (resolvedEmail && !isValidEmail(resolvedEmail, resolvedEmailStatus)) {
+            resolvedEmail = null; // discard bad pre-filled email
+          }
+
           if (
             !resolvedEmail &&
             p.hasEmail &&
@@ -319,9 +357,12 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
             try {
               revealsAttempted++;
               const revealed = await apolloRevealEmail(p.apolloId);
-              if (revealed.email) {
+              if (revealed.email && isValidEmail(revealed.email, revealed.emailStatus)) {
                 resolvedEmail = revealed.email;
                 resolvedEmailStatus = revealed.emailStatus;
+              } else if (revealed.email) {
+                // Apollo returned an email but it failed quality check — don't save it
+                console.warn("[Apollo Daily Draw] Blocked bad email after reveal for " + p.name + ": " + revealed.email);
               }
               await new Promise(r => setTimeout(r, 200));
             } catch (revealErr: any) {

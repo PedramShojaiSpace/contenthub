@@ -1369,8 +1369,8 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
               </Button>
             )}
 
-            {/* Resume Stuck Job — for avatar jobs stuck in 'rendering' where HeyGen already finished */}
-            {isAvatar && job.status === "rendering" && (
+            {/* Resume Stuck Job — for avatar jobs stuck in 'rendering' or 'failed' where HeyGen already finished */}
+            {isAvatar && (job.status === "rendering" || job.status === "failed") && (
               <Button
                 className="bg-amber-600 hover:bg-amber-700 text-foreground text-sm"
                 onClick={() => {

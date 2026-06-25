@@ -787,6 +787,7 @@ export const appRouter = router({
           personaId: z.number().optional(), // inject Typeform-enriched persona pain points
           gapQueryText: z.string().optional(), // Research Intelligence: inject competitor gap query
           utmContentOverride: z.string().optional(), // override utm_content placement type (e.g. "bio-link", "story", "reel")
+          contentGoal: z.enum(["audience_growth", "llm_seo", "community_engagement"]).optional(), // content strategy goal weighting
         })
       )
       .mutation(async ({ input }) => {
@@ -905,6 +906,13 @@ export const appRouter = router({
           platforms.map(async (platform) => {
             const systemPrompt = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.linkedin;
             const gapQueryLine = input.gapQueryText ? `\n\nThis content should directly address the competitor gap query: "${input.gapQueryText}" — position Pedram's unique perspective as the answer.` : "";
+            // Content goal weighting — injects strategic tone/format instructions
+            const CONTENT_GOAL_INSTRUCTIONS: Record<string, string> = {
+              audience_growth: `\n\nCONTENT GOAL — AUDIENCE GROWTH: This post is optimized for reach and new follower acquisition. Write in a conversational, story-driven, community-first style. Lead with a relatable human moment or question. Avoid jargon. The goal is for a new reader to feel instantly seen and want to follow for more. Do NOT be robotic, listy, or overly structured. Think: a friend sharing a discovery over coffee.`,
+              llm_seo: `\n\nCONTENT GOAL — LLM SEO / AEO: This content is optimized to be cited by AI search engines (ChatGPT, Perplexity, Gemini). Write in a clear, answer-first, authoritative format. Structure the response so the key answer appears in the first 2 sentences. Use structured, factual language. Include the target keyword naturally in the first sentence. Think: a Wikipedia-quality answer that an AI would quote verbatim.`,
+              community_engagement: `\n\nCONTENT GOAL — COMMUNITY ENGAGEMENT: This post is optimized for replies, saves, and shares within the existing community. Lead with a direct question that invites the audience to reflect and respond. Use engagement hooks: "Drop a 🔥 if this resonates", "What's your experience with this?", "Tag someone who needs to hear this.". Think: a conversation starter, not a broadcast.`,
+            };
+            const contentGoalLine = input.contentGoal ? (CONTENT_GOAL_INSTRUCTIONS[input.contentGoal] ?? "") : "";
             // Build platform-specific CTA injection with UTM params auto-appended
             let ctaInjection = "";
             if (ctaBlockData) {
@@ -915,8 +923,8 @@ export const appRouter = router({
               ctaInjection = `\n\n[CTA BLOCK — ${ctaBlockData.label}]\n${ctaBlockData.ctaText}\n[END CTA BLOCK]\nCRITICAL URL RULE: If this content includes a link or URL, you MUST use EXACTLY this URL: ${urlForPrompt}. Do NOT invent, shorten, or substitute any other URL. Include this CTA naturally at the end of your content. Do not add any other call to action.`;
             }
             const userMessage = input.customInstructions
-              ? `Raw idea: ${cleanIdea}\n\nAdditional instructions: ${input.customInstructions}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`
-              : `Raw idea: ${cleanIdea}${gapQueryLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`;
+              ? `Raw idea: ${cleanIdea}\n\nAdditional instructions: ${input.customInstructions}${gapQueryLine}${contentGoalLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`
+              : `Raw idea: ${cleanIdea}${gapQueryLine}${contentGoalLine}${personaContext}${pressAuthorityContext}${mediaAuthorityContext}${avatarIntelligenceContext}${webinarIntelligenceContext}${ctaInjection}`;
 
             const response = await safeLLM({
               messages: [

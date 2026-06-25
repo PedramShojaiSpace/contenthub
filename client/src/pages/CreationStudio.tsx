@@ -243,6 +243,8 @@ export default function CreationStudio() {
   // Strike Zone SEO targeting — set from Keyword Strategy tool URL params
   const [focusKeyword, setFocusKeyword] = useState<string>("");
   const [currentPosition, setCurrentPosition] = useState<string>("");
+  // generateImages toggle — controls whether auto-image generation runs alongside content
+  const [generateImagesEnabled, setGenerateImagesEnabled] = useState(true);
 
   const generateContentMutation = trpc.ai.generateContent.useMutation({
     onSuccess: (data) => {
@@ -561,10 +563,11 @@ export default function CreationStudio() {
       idea,
       platform: platform as any,
       customInstructions: customInstructions || undefined,
-      generateImages: true,
+      generateImages: generateImagesEnabled,
       personaId: selectedPersonaId ?? undefined,
       gapQueryText: activeGapQueryText ?? undefined,
       utmContentOverride: utmContentOverride || undefined,
+      contentGoal: selectedContentGoal ?? undefined,
     });
   };
 
@@ -1329,7 +1332,7 @@ export default function CreationStudio() {
       platform: carouselPlatform,
       slideCount: carouselSlideCount,
       customInstructions: customInstructions || undefined,
-      generateImages: true,
+      generateImages: generateImagesEnabled,
       personaId: selectedPersonaId ?? undefined,
     });
   };
@@ -1978,7 +1981,19 @@ export default function CreationStudio() {
                 )}
               </div>
             )}
-
+            {/* Auto-image toggle — only show for platforms that support image generation */}
+            {platform !== "blog" && platform !== "reframe" && (
+              <div className="flex items-center gap-2 py-1">
+                <Checkbox
+                  id="generate-images-toggle"
+                  checked={generateImagesEnabled}
+                  onCheckedChange={(checked) => setGenerateImagesEnabled(checked === true)}
+                />
+                <Label htmlFor="generate-images-toggle" className="text-xs text-muted-foreground cursor-pointer select-none">
+                  Auto-generate images with content
+                </Label>
+              </div>
+            )}
             <Button
               onClick={
                 platform === "blog" ? handleGenerateBlog

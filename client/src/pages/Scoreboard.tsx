@@ -763,6 +763,24 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
     },
   });
 
+  const bulkRequestIndexing = trpc.gsc.bulkRequestIndexing.useMutation({
+    onSuccess: (data) => {
+      const succeeded = data.results.filter((r: any) => r.success).length;
+      const failed = data.results.filter((r: any) => !r.success).length;
+      if (succeeded > 0) {
+        toast.success(`Bulk indexing: ${succeeded} URL${succeeded !== 1 ? 's' : ''} submitted${failed > 0 ? `, ${failed} failed` : ''}.`);
+      } else {
+        toast.error(`Bulk indexing failed for all ${failed} URL${failed !== 1 ? 's' : ''}.`);
+      }
+    },
+    onError: (err) => toast.error("Bulk indexing failed: " + err.message),
+  });
+
+  const unindexedUrls = Object.entries(results)
+    .filter(([, r]) => r.verdict !== "PASS")
+    .map(([url]) => url)
+    .slice(0, 10);
+
   const publishedWithUrl = posts.filter((p) => p.publishUrl);
 
   const verdictColor = (v: string) =>
@@ -778,16 +796,31 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
             <Globe2 className="w-4 h-4 text-primary" />
             <CardTitle className="text-sm font-semibold">Google Indexing Status</CardTitle>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleCheckAll}
-            disabled={loading || publishedWithUrl.length === 0}
-            className="h-7 px-3 text-xs gap-1.5"
-          >
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-            {loading ? `Checking ${checkedCount}/${totalCount}...` : `Check All (${Math.min(publishedWithUrl.length, 20)})`}
-          </Button>
+          <div className="flex items-center gap-2">
+            {unindexedUrls.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => bulkRequestIndexing.mutate({ urls: unindexedUrls })}
+                disabled={bulkRequestIndexing.isPending}
+                className="h-7 px-3 text-xs gap-1.5 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                title={`Submit ${unindexedUrls.length} un-indexed URL${unindexedUrls.length !== 1 ? 's' : ''} to Google`}
+              >
+                {bulkRequestIndexing.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                Bulk Index ({unindexedUrls.length})
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCheckAll}
+              disabled={loading || publishedWithUrl.length === 0}
+              className="h-7 px-3 text-xs gap-1.5"
+            >
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              {loading ? `Checking ${checkedCount}/${totalCount}...` : `Check All (${Math.min(publishedWithUrl.length, 20)})`}
+            </Button>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
           Check whether Google has indexed your posts. Click "Request Indexing" to submit a crawl hint for any unindexed URL.

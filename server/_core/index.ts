@@ -103,6 +103,55 @@ async function startServer() {
   app.post("/api/scheduled/scoreboard-digest", scoreboardDigestHandler);
   // Daily GSC indexing backfill — submits up to 200 unindexed URLs per day
   app.post("/api/scheduled/gsc-backfill", gscBackfillHandler);
+
+  // ── WordPress publish webhook — real-time Google indexing ──────────────────
+  // WordPress calls this endpoint immediately when a post is published or updated.
+  // Secured with INGEST_SECRET header (same secret used by the research ingest endpoint).
+  app.post("/api/wp/publish-webhook", async (req, res) => {
+    try {
+      const secret = req.headers["x-ingest-secret"] || req.headers["x-wp-secret"];
+      if (secret !== process.env.INGEST_SECRET) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const { url, post_status } = req.body;
+      if (!url || typeof url !== "string") {
+        return res.status(400).json({ error: "Missing url in request body" });
+      }
+      if (post_status && post_status !== "publish") {
+        return res.json({ ok: true, skipped: "not_published" });
+      }
+      console.log(`[WP Webhook] Indexing request for: ${url}`);
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "DB unavailable" });
+      const { userCredentials, gscIndexingLog } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { requestIndexing } = await import("../googleSearchConsole");
+      const [creds] = await db
+        .select({ gscRefreshToken: userCredentials.gscRefreshToken })
+        .from(userCredentials)
+        .where(eq(userCredentials.userId, 1));
+      if (!creds?.gscRefreshToken) {
+        return res.json({ ok: true, skipped: "no_gsc_credentials" });
+      }
+      const result = await requestIndexing(creds.gscRefreshToken, url);
+      await db.insert(gscIndexingLog).values({
+        userId: "1",
+        url,
+        submittedAt: Date.now(),
+        success: result.success,
+        message: result.success ? null : result.message,
+        source: "auto_publish",
+      }).onDuplicateKeyUpdate({
+        set: { submittedAt: Date.now(), success: result.success, message: result.success ? null : result.message },
+      });
+      console.log(`[WP Webhook] ${result.success ? "✅" : "❌"} ${url}: ${result.message}`);
+      return res.json({ ok: true, url, indexed: result.success, message: result.message });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[WP Webhook] Error:", msg);
+      return res.status(500).json({ error: msg });
+    }
+  });
   // ── Stitch job endpoint ─────────────────────────────────────────────────────
   // Runs the full stitching job SYNCHRONOUSLY within an HTTP request.
   // This keeps the Cloud Run container alive (active request) for the full

@@ -83,7 +83,7 @@ export function MetaCustomAudienceTab() {
     onError: (e) => toast.error(`Lookalike failed: ${e.message}`),
   });
 
-  const statsMap = new Map(stats.map((s) => s && [s.id, s]));
+  const statsMap = new Map(stats.filter((s): s is NonNullable<typeof s> => s != null).map((s) => [s.id, s] as [number, typeof s]));
 
   return (
     <div className="space-y-6">

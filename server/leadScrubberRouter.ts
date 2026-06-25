@@ -393,8 +393,24 @@ export const leadScrubberRouter = router({
           person?: { email?: string; email_status?: string };
         };
 
-        const email = data?.person?.email ?? null;
-        const confidence = data?.person?.email_status ?? null;
+        const rawEmail = data?.person?.email ?? null;
+        const rawConfidence = data?.person?.email_status ?? null;
+
+        // Filter out Apollo placeholder / invalid emails before saving
+        const FIND_BLOCKED_PATTERNS = [
+          /^email_not_unlocked@/i, /^not_unlocked@/i, /^email@/i,
+          /^noreply@/i, /^no-reply@/i, /^donotreply@/i, /^bounced@/i,
+          /^invalid@/i, /^placeholder@/i, /^test@/i,
+          /@domain\.com$/i, /@example\.com$/i, /@test\.com$/i,
+        ];
+        const FIND_BLOCKED_STATUSES = ["invalid", "do_not_email", "spam", "deactivated", "unsubscribed"];
+        const isValidFindEmail = rawEmail &&
+          !FIND_BLOCKED_PATTERNS.some((p) => p.test(rawEmail)) &&
+          !(rawConfidence && FIND_BLOCKED_STATUSES.includes(rawConfidence.toLowerCase())) &&
+          /^[^@]+@[^@]+\.[^@]{2,}$/.test(rawEmail);
+
+        const email = isValidFindEmail ? rawEmail : null;
+        const confidence = isValidFindEmail ? rawConfidence : null;
 
         if (email && input.prospectId) {
           const db = await getDb();
@@ -469,7 +485,11 @@ export const leadScrubberRouter = router({
           success: !!email,
           email,
           confidence,
-          message: email ? `Found: ${email} (${confidence})` : "No email found for this person.",
+          message: email
+            ? `Found: ${email} (${confidence})`
+            : rawEmail
+              ? `Blocked: Apollo returned a placeholder or invalid email (${rawEmail}). No credit charged.`
+              : "No email found for this person.",
         };
       } catch {
         return { success: false, email: null, confidence: null, message: "Apollo lookup failed." };
@@ -637,12 +657,42 @@ export const leadScrubberRouter = router({
         return { success: false, people: [], total: 0, message: data.error };
       }
 
+      // ── Email quality filter ─────────────────────────────────────────────────
+      // Apollo returns placeholder emails like email_not_unlocked@domain.com,
+      // bounced@b.cmail20.com, or emails with status "invalid" / "do_not_email".
+      // These waste credits and pollute the list — filter them out before saving.
+      const BLOCKED_EMAIL_PATTERNS = [
+        /^email_not_unlocked@/i,
+        /^not_unlocked@/i,
+        /^email@/i,
+        /^noreply@/i,
+        /^no-reply@/i,
+        /^donotreply@/i,
+        /^bounced@/i,
+        /^invalid@/i,
+        /^placeholder@/i,
+        /^test@/i,
+        /@domain\.com$/i,
+        /@example\.com$/i,
+        /@test\.com$/i,
+      ];
+      const BLOCKED_EMAIL_STATUSES = ["invalid", "do_not_email", "spam", "deactivated", "unsubscribed"];
+
+      const isValidApolloEmail = (email: string | null | undefined, status: string | null | undefined): boolean => {
+        if (!email) return false;
+        if (BLOCKED_EMAIL_PATTERNS.some((p) => p.test(email))) return false;
+        if (status && BLOCKED_EMAIL_STATUSES.includes(status.toLowerCase())) return false;
+        // Must have a real TLD and @ sign
+        if (!/^[^@]+@[^@]+\.[^@]{2,}$/.test(email)) return false;
+        return true;
+      };
+
       const people = (data.people ?? []).map((p) => ({
         id: p.id ?? "",
         name: p.name ?? `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
         title: p.title ?? "",
-        email: p.email ?? null,
-        emailStatus: p.email_status ?? null,
+        email: isValidApolloEmail(p.email, p.email_status) ? (p.email ?? null) : null,
+        emailStatus: isValidApolloEmail(p.email, p.email_status) ? (p.email_status ?? null) : null,
         linkedinUrl: p.linkedin_url ?? null,
         company: p.organization?.name ?? null,
         domain: p.organization?.website_url?.replace(/^https?:\/\//, "").split("/")[0] ?? null,

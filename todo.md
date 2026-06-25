@@ -2262,9 +2262,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] All tests pass (287 passing)
 
 ## v178 — Video Variant Factory: Two Output Paths
-- [ ] Audit existing Buffer integration in the codebase
+- [x] Audit existing Buffer integration in the codebase (buffer.ts: pushToBuffer, getBufferProfiles, pushCarouselToBuffer; syndicateToBuffer procedure in videoVariantRouter.ts)
 - [ ] Research Meta Marketing API video upload / ad creative requirements
-- [ ] Add Buffer bulk-syndication: send all done variants to Buffer simultaneously (one click)
+- [x] Add Buffer bulk-syndication: send all done variants to Buffer simultaneously (one click) (syndicateToBuffer procedure + Send N Assigned Variants to Buffer button in VideoVariantFactory)
 - [ ] Add Meta Ads API: bulk upload variants as ad video creatives into Meta Ads Manager
 - [ ] Update VideoVariantFactory output panel with two-path UI (Buffer path vs Meta Ads path)
 - [ ] Add Meta credentials (Ad Account ID, Page ID, Access Token) via secrets
@@ -3016,7 +3016,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## Session Handoff — New Items (May 22, 2026)
 
-- [ ] Fix Yoast focus keyphrase not pushing to WordPress: investigate whether the wp-yoast-rest-meta.php functions.php snippet is installed; if not, provide instructions; if yes, debug the REST meta field name used in updateWpPostYoast()
+- [x] Fix Yoast focus keyphrase not pushing to WordPress: updateWpPostYoast() sends both yoast_wpseo_focuskw and _yoast_wpseo_focuskw; verifies write and logs warning if snippet not installed; snippet instructions at /docs/wordpress-yoast-rest-api-snippet.php
 - [ ] Wire pillar page URLs into keyword targets table: once the three pillar pages are live, go to /keyword-strategy and set publishedUrl on the pillar keyword targets (activates publish-back tracking so the tool knows the pillar is live)
 - [ ] Register weekly rank-snapshot heartbeat cron via manus-heartbeat CLI (platform create endpoint was returning 500 — retry after deploy; handler is at POST /api/scheduled/rank-snapshot)
 
@@ -3897,7 +3897,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Reddit jobs to syndicationRouter.ts enqueueForPost flow
 - [x] Add /va route to App.tsx
 - [x] Add VA Dashboard link to sidebar/nav
-- [ ] Write full VA SOP document (PDF) covering Medium, Quora, Reddit with screenshots-style step descriptions
+- [x] Write full VA SOP document (PDF) covering Medium, Quora, Reddit with screenshots-style step descriptions (docs/va-syndication-sop.pdf)
 - [x] Save checkpoint after VA Dashboard is complete
 
 ## Descript Video Production Pipeline (Session: Jun 13 2026)

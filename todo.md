@@ -203,9 +203,9 @@
 ## v8 Features
 
 ### Clean Publishable Copy
-- [ ] Fix AI system prompt to produce clean copy with zero internal markup, stage labels, or section headers
-- [ ] Remove all non-publishable text from generated output (e.g., "Hook:", "CTA:", "---", "[Image suggestion:]")
-- [ ] Ensure generated copy is directly copy-paste ready for each platform
+- [x] Fix AI system prompt to produce clean copy with zero internal markup, stage labels, or section headers
+- [x] Remove all non-publishable text from generated output (e.g., "Hook:", "CTA:", "---", "[Image suggestion:"])
+- [x] Ensure generated copy is directly copy-paste ready for each platform
 
 ### Push to Buffer (Per Panel)
 - [ ] Add "Push to Buffer" button directly on each platform output panel in Creation Studio
@@ -390,16 +390,16 @@
 ## v17 Overnight Build (Apr 9)
 
 ### Phase 1: WordPress Post ID Deduplication
-- [ ] Add wpPostId (varchar) field to contentItems schema in drizzle/schema.ts
-- [ ] Run pnpm db:push to migrate
-- [ ] Update blog.publish procedure: if wpPostId exists, PATCH the existing WP post instead of creating new
-- [ ] Update blog.publishBatch to use same dedup logic
-- [ ] Store returned WP post ID after publish/update
+- [x] Add wpPostId (varchar) field to contentItems schema in drizzle/schema.ts
+- [x] Run pnpm db:push to migrate
+- [x] Update blog.publish procedure: if wpPostId exists, PATCH the existing WP post instead of creating new (dedup guard at Step 0 pre)
+- [x] Update blog.publishBatch to use same dedup logic
+- [x] Store returned WP post ID after publish/update
 
 ### Phase 2: #urbanmonk Hashtag on All Posts
-- [ ] Add #urbanmonk to all PLATFORM_PROMPTS in routers.ts (LinkedIn, Meta, X, YouTube, TikTok)
-- [ ] Add #urbanmonk to blog CTA section prompt
-- [ ] Ensure it appears at the end of every generated post naturally
+- [x] Add #urbanmonk to all PLATFORM_PROMPTS in routers.ts (LinkedIn, Meta, X, YouTube, TikTok)
+- [x] Add #urbanmonk to blog CTA section prompt
+- [x] Ensure it appears at the end of every generated post naturally
 
 ### Phase 3: Personas Schema + Intelligence Reports
 - [x] Add personas table to drizzle/schema.ts with: id, name, description, painPoints, aspirations, topQuestions (JSON), ctaCopy, landingPageUrl, contentGoal
@@ -3777,8 +3777,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Backend: scoreboard.getMovingPosts — query GSC for posts that moved in ranking in last 14 days, return top 10 movers with position delta
 - [x] Backend: scoreboard.suggestFollowUp — for a given moving post, use LLM to suggest 3 follow-up article ideas that would strengthen the silo
 - [x] Frontend: Add "Content Flywheel" panel to Scoreboard showing top 10 ranking movers with position delta badges and Follow-Up Ideas button
-- [ ] Frontend: Each mover card has "Suggest Follow-Up" button that triggers LLM and adds idea to Command Center queue
-- [ ] Frontend: Show last-checked timestamp and a Refresh button to re-pull GSC data
+- [x] Frontend: Each mover card has "Suggest Follow-Up" button that triggers LLM and adds idea to Command Center queue
+- [x] Frontend: Show last-checked timestamp and a Refresh button to re-pull GSC data
 
 ## Full Content Pipeline — End-to-End Wiring
 

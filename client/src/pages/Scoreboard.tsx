@@ -53,6 +53,8 @@ import {
   Send,
   ImageIcon,
   ArrowLeft,
+  CheckCircle,
+  Plus,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1188,6 +1190,7 @@ function ContentFlywheelPanel() {
   const [expanded, setExpanded] = useState(true);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<{ contentItemId: number; title: string; focusKeyword?: string } | null>(null);
+  const [addedIdeas, setAddedIdeas] = useState<Set<number>>(new Set());
 
   const moversQuery = trpc.scoreboard.getMovingPosts.useQuery(undefined, {
     retry: false,
@@ -1197,6 +1200,25 @@ function ContentFlywheelPanel() {
   const suggestFollowUp = trpc.scoreboard.suggestFollowUp.useMutation({
     onError: (e) => toast.error("Failed to generate ideas: " + e.message),
   });
+
+  const addToQueueMutation = trpc.content.create.useMutation({
+    onSuccess: (_, variables) => {
+      toast.success(`"${(variables as any).title ?? "Follow-up idea"}" added to Command Center queue`);
+    },
+    onError: (e) => toast.error("Failed to add to queue: " + e.message),
+  });
+
+  const handleAddToQueue = (idea: { title: string; keyword: string; rationale: string }, idx: number) => {
+    addToQueueMutation.mutate({
+      platform: "blog",
+      rawIdea: idea.title,
+      title: idea.title,
+      content: `Follow-up content idea\n\nKeyword: ${idea.keyword}\n\nRationale: ${idea.rationale}`,
+      focusKeyword: idea.keyword,
+      status: "drafting",
+    } as any);
+    setAddedIdeas((prev) => new Set([...prev, idx]));
+  };
 
   const movers = (moversQuery.data ?? []) as Array<{
     contentItemId: number;
@@ -1218,17 +1240,33 @@ function ContentFlywheelPanel() {
     <>
       <Card className="bg-card border-border border-green-500/20">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded((v) => !v)}>
-            <CardTitle className="text-base flex items-center gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
               <TrendingUp className="w-5 h-5 text-green-500" />
-              Content Flywheel — Posts Gaining Momentum
-              <Badge className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/30 ml-1">
+              <CardTitle className="text-base">Content Flywheel — Posts Gaining Momentum</CardTitle>
+              <Badge className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/30">
                 {movers.length > 0 ? `${movers.length} moving` : moversQuery.isLoading ? "Loading…" : "0"}
               </Badge>
-            </CardTitle>
-            <button className="text-muted-foreground hover:text-foreground transition-colors">
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {moversQuery.dataUpdatedAt > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Last checked {new Date(moversQuery.dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); moversQuery.refetch(); }}
+                disabled={moversQuery.isFetching}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${moversQuery.isFetching ? "animate-spin" : ""}`} />
+              </Button>
+              <button className="text-muted-foreground hover:text-foreground transition-colors" onClick={() => setExpanded((v) => !v)}>
+                {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
           {expanded && (
             <p className="text-xs text-muted-foreground mt-1">
@@ -1312,6 +1350,21 @@ function ContentFlywheelPanel() {
                   <div className="font-medium text-sm text-foreground">{idea.title}</div>
                   <div className="text-xs text-primary mt-0.5">Keyword: {idea.keyword}</div>
                   <div className="text-xs text-muted-foreground mt-1">{idea.rationale}</div>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs gap-1"
+                      disabled={addedIdeas.has(i) || addToQueueMutation.isPending}
+                      onClick={() => handleAddToQueue(idea, i)}
+                    >
+                      {addedIdeas.has(i) ? (
+                        <><CheckCircle className="w-3 h-3 text-green-500" /> Added to Queue</>
+                      ) : (
+                        <><Plus className="w-3 h-3" /> Add to Command Center</>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

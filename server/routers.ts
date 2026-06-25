@@ -3214,6 +3214,41 @@ Return BOTH in this exact format:
       .mutation(async ({ input, ctx }) => {
         const wpBaseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
 
+        // Step 0 (pre): wpPostId deduplication guard
+        // If this content item already has a WordPress post ID, PATCH the existing
+        // post instead of creating a duplicate. This prevents double-publishing when
+        // the user clicks "Publish" a second time after an edit.
+        try {
+          const { contentItems: ciTablePre } = await import("../drizzle/schema");
+          const { eq: eqPre } = await import("drizzle-orm");
+          const dbPre = await getDb();
+          if (dbPre) {
+            const [existingItem] = await dbPre
+              .select({ wpPostId: ciTablePre.wpPostId, publishUrl: ciTablePre.publishUrl })
+              .from(ciTablePre)
+              .where(eqPre(ciTablePre.id, input.contentItemId));
+            if (existingItem?.wpPostId) {
+              // Item already published — PATCH the existing WP post instead of creating a new one
+              console.log(`[WP Dedup] Content item ${input.contentItemId} already has wpPostId=${existingItem.wpPostId} — patching existing post`);
+              const { updateWpPostContent } = await import("./wordpress");
+              const { markdownToWpHtml } = await import("./wpContentUtils");
+              const patchBody = markdownToWpHtml(input.body);
+              await updateWpPostContent(existingItem.wpPostId, patchBody);
+              return {
+                wpPostId: existingItem.wpPostId,
+                publishUrl: existingItem.publishUrl ?? "",
+                status: "updated" as const,
+                message: `Existing WordPress post #${existingItem.wpPostId} updated (dedup guard).`,
+                campaignValidationWarning: null,
+                youtubeEmbedResult: { embedded: false, message: "skipped (dedup update)" },
+              };
+            }
+          }
+        } catch (dedupErr) {
+          // Non-fatal — if the dedup check fails, fall through to normal publish
+          console.warn("[WP Dedup] Pre-publish dedup check failed (non-fatal):", dedupErr);
+        }
+
         // Step 0a: Sanitize and guarantee a clean permalink slug
         // WordPress falls back to ?p=<id> URLs when the slug is empty, contains
         // special characters, or conflicts with an existing post.
@@ -4806,6 +4841,14 @@ STRICT RULES:
               continue;
             }
 
+            // Dedup guard: if item already has a wpPostId, PATCH instead of creating a new post
+            if (item.wpPostId) {
+              const { updateWpPostContent } = await import("./wordpress");
+              await updateWpPostContent(item.wpPostId, markdownToWpHtml(item.textContent ?? ""));
+              results.push({ id, success: true, postUrl: item.publishUrl ?? undefined });
+              continue;
+            }
+
             // Generate a slug from the title
             const slug = item.title
               .toLowerCase()
@@ -4833,7 +4876,7 @@ STRICT RULES:
               categories: DEFAULT_WP_CATEGORIES,
             });
 
-            await updateContentItem(id, { status: "scheduled", publishUrl: post.link });
+            await updateContentItem(id, { status: "scheduled", publishUrl: post.link, wpPostId: post.id });
             results.push({ id, success: true, postUrl: post.link });
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);

@@ -223,8 +223,13 @@ export const videoPipelineRouter = router({
       if (!allowedStatuses.includes(job.status)) {
         throw new Error(`Job is in status '${job.status}' — can only retry from: ${allowedStatuses.join(", ")}`);
       }
-      if (!job.descriptProjectId && !job.descriptDownloadUrl) {
-        throw new Error("No Descript project ID or download URL — cannot retry");
+      // Allow retry if we have Descript data OR an S3 URL OR a HeyGen video ID
+      // (HeyGen-only jobs that never went through Descript can still upload to YouTube)
+      const hasDescriptData = !!(job.descriptProjectId || job.descriptDownloadUrl);
+      const hasS3Url = !!(job as any).s3VideoUrl;
+      const hasHeygenId = !!(job as any).heygenVideoId;
+      if (!hasDescriptData && !hasS3Url && !hasHeygenId) {
+        throw new Error("No Descript project, S3 URL, or HeyGen video ID — cannot upload to YouTube");
       }
 
       await db.update(videoJobs).set({
@@ -270,35 +275,65 @@ export const videoPipelineRouter = router({
           }
 
           if (!downloadUrl) {
-            // Fresh Descript export (either no cached URL or it expired)
-            if (!job.descriptProjectId) throw new Error("No Descript project ID — cannot re-export");
-            console.log(`${jobLabel} Triggering fresh Descript export for project: ${job.descriptProjectId}`);
-            const exportResp = await exportProject({ projectId: job.descriptProjectId! });
-            const publishJobId = exportResp.job_id;
-            console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
-
-            const maxAttempts = 80; // 80 x 15s = 20 min
-            for (let i = 0; i < maxAttempts; i++) {
-              await new Promise(r => setTimeout(r, 15_000));
-              const jobStatus = await getJobStatus(publishJobId);
-              console.log(`${jobLabel} Descript poll ${i + 1}/${maxAttempts}: job_state=${jobStatus.job_state}`);
-              if (jobStatus.job_state === "stopped") {
-                if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
-                  downloadUrl = jobStatus.result.download_url;
-                  // Cache the fresh URL for the next retry window
-                  await bgDb.update(videoJobs).set({ descriptDownloadUrl: downloadUrl }).where(eq(videoJobs.id, input.jobId));
-                  console.log(`${jobLabel} Descript export complete. Fresh URL cached.`);
-                  break;
-                } else {
-                  throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+            // ── Fallback: if no Descript data, check if we have an S3 URL or HeyGen video ──
+            const jobAny = job as any;
+            if (!job.descriptProjectId) {
+              if (jobAny.s3VideoUrl) {
+                // Already downloaded to S3 from HeyGen — use it directly
+                downloadUrl = jobAny.s3VideoUrl;
+                console.log(`${jobLabel} No Descript data — using existing S3 URL: ${downloadUrl}`);
+              } else if (jobAny.heygenVideoId) {
+                // Fetch the video URL directly from HeyGen
+                console.log(`${jobLabel} No Descript data — fetching video URL from HeyGen...`);
+                const heygenRes = await fetch(
+                  `https://api.heygen.com/v1/video_status.get?video_id=${jobAny.heygenVideoId}`,
+                  { headers: { "X-Api-Key": process.env.HEYGEN_API_KEY ?? "" } }
+                );
+                if (!heygenRes.ok) throw new Error(`HeyGen status check failed: ${heygenRes.status}`);
+                const heygenJson = await heygenRes.json() as { data?: { status: string; video_url?: string } };
+                const heygenVideoUrl = heygenJson.data?.video_url;
+                if (!heygenVideoUrl) throw new Error(`HeyGen video not ready (status: ${heygenJson.data?.status})`);
+                // Download from HeyGen and upload to S3
+                const s3Res = await fetch(heygenVideoUrl, { signal: AbortSignal.timeout(300_000) });
+                if (!s3Res.ok) throw new Error(`Failed to download HeyGen video: ${s3Res.status}`);
+                const buffer = Buffer.from(await s3Res.arrayBuffer());
+                const { storagePut } = await import("./storage");
+                const s3Key = `heygen-videos/${input.jobId}-${Date.now()}.mp4`;
+                const { url: s3Url } = await storagePut(s3Key, buffer, "video/mp4");
+                await bgDb.update(videoJobs).set({ s3VideoKey: s3Key, s3VideoUrl: s3Url } as any).where(eq(videoJobs.id, input.jobId));
+                downloadUrl = s3Url;
+                console.log(`${jobLabel} Downloaded HeyGen video to S3: ${s3Url}`);
+              } else {
+                throw new Error("No Descript project ID, S3 URL, or HeyGen video ID — cannot upload");
+              }
+            } else {
+              // Fresh Descript export (either no cached URL or it expired)
+              console.log(`${jobLabel} Triggering fresh Descript export for project: ${job.descriptProjectId}`);
+              const exportResp = await exportProject({ projectId: job.descriptProjectId! });
+              const publishJobId = exportResp.job_id;
+              console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
+              const maxAttempts = 80; // 80 x 15s = 20 min
+              for (let i = 0; i < maxAttempts; i++) {
+                await new Promise(r => setTimeout(r, 15_000));
+                const jobStatus = await getJobStatus(publishJobId);
+                console.log(`${jobLabel} Descript poll ${i + 1}/${maxAttempts}: job_state=${jobStatus.job_state}`);
+                if (jobStatus.job_state === "stopped") {
+                  if (jobStatus.result?.status === "success" && jobStatus.result.download_url) {
+                    downloadUrl = jobStatus.result.download_url;
+                    await bgDb.update(videoJobs).set({ descriptDownloadUrl: downloadUrl }).where(eq(videoJobs.id, input.jobId));
+                    console.log(`${jobLabel} Descript export complete. Fresh URL cached.`);
+                    break;
+                  } else {
+                    throw new Error(`Descript publish failed: ${jobStatus.result?.status ?? "unknown"}`);
+                  }
+                }
+                if (jobStatus.job_state === "cancelled") {
+                  throw new Error("Descript publish job was cancelled");
                 }
               }
-              if (jobStatus.job_state === "cancelled") {
-                throw new Error("Descript publish job was cancelled");
-              }
-            }
-            if (!downloadUrl) throw new Error("Descript publish timed out after 20 minutes");
-          }
+              if (!downloadUrl) throw new Error("Descript publish timed out after 20 minutes");
+            } // end else (Descript path)
+          } // end if (!downloadUrl)
 
           const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
           const uploadResult = await uploadToYouTube({

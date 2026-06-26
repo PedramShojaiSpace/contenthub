@@ -459,9 +459,11 @@ export async function processVideoJob(jobId: number): Promise<void> {
           return;
         }
 
-        // HeyGen done — download and upload to S3
+        // HeyGen done — pass the CDN URL directly to Descript (no S3 download needed).
+        // Descript's import API accepts any public URL, so we skip the expensive
+        // download-to-memory step entirely. This avoids OOM on large videos.
         const heygenVideoUrl = heygenStatus.video_url!;
-        const { s3Key, s3Url } = await downloadAndUploadToS3(heygenVideoUrl, jobId, jobLabel);
+        console.log(`${jobLabel} [Avatar] HeyGen video ready. Skipping S3 — importing directly into Descript from CDN URL.`);
 
         // ── Step A2: Generate B-roll prompt + YouTube metadata ──────────────
         const brollResult = await generateBrollPrompt({
@@ -472,18 +474,17 @@ export async function processVideoJob(jobId: number): Promise<void> {
           blogUrl: job.blogUrl ?? undefined,
         });
 
-        // ── Step A3: Import avatar video into Descript ──────────────────────
+        // ── Step A3: Import avatar video into Descript directly from HeyGen CDN ──
         const projectName = (brollResult.youtubeTitle ?? job.youtubeTitle ?? "Urban Monk Video").substring(0, 100);
-        console.log(`${jobLabel} [Avatar] Importing S3 video into Descript project: ${projectName}`);
+        console.log(`${jobLabel} [Avatar] Importing HeyGen CDN video into Descript project: ${projectName}`);
         const importResult = await importVideoFromUrl({
           projectName,
-          videoUrl: s3Url,
+          videoUrl: heygenVideoUrl,
           compositionName: projectName,
         });
 
         await db.update(videoJobs).set({
-          s3VideoKey: s3Key,
-          s3VideoUrl: s3Url,
+          // s3VideoKey/s3VideoUrl left null — Descript imports directly from HeyGen CDN
           brollPrompt: brollResult.underlordPrompt,
           youtubeTitle: (brollResult.youtubeTitle ?? job.youtubeTitle ?? "Urban Monk Video").substring(0, 512),
           youtubeDescription: brollResult.youtubeDescription,

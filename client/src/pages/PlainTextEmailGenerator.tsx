@@ -154,9 +154,9 @@ function ResultPanel({ result, onReset }: { result: GeneratedEmail; onReset: () 
         </p>
         <ol className="list-decimal list-inside space-y-1.5 text-sm text-amber-800">
           <li>Email → New Broadcast → choose <strong>"Simple Text"</strong> template (Kajabi's name for plain text)</li>
-          <li>Remove any button blocks — keep only the text block + mandatory footer</li>
+          <li><strong>Delete ALL blocks except ONE text block + the mandatory footer.</strong> No button blocks, no image blocks, no second text block — one text block only. (Two text blocks = Promotions, confirmed by testing.)</li>
           <li>Paste your chosen subject line into the Subject field</li>
-          <li>Paste the email body into the body field</li>
+          <li>Paste the email body into the <strong>single text block</strong></li>
           <li>Send a test to yourself first</li>
         </ol>
         <div className="rounded-lg bg-amber-100/60 border border-amber-200 px-3 py-2 space-y-1">
@@ -168,13 +168,21 @@ function ResultPanel({ result, onReset }: { result: GeneratedEmail; onReset: () 
             <strong> Do not manually re-insert hyperlinks</strong> — the naked URL is the clickable link.
           </p>
         </div>
+        <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 space-y-1">
+          <p className="text-xs font-semibold text-red-900">⚠️ Still landing in Promotions? The #1 cause: two text blocks</p>
+          <p className="text-xs text-red-800">
+            If you use <strong>two text blocks</strong> in Kajabi (e.g. opening + closing), the second block is raw Kajabi HTML that hasn't been optimized — Gmail reads it as a marketing template. <strong>Two blocks → Promotions. One block → Primary.</strong> This was confirmed by testing.
+          </p>
+          <p className="text-xs text-red-800 mt-1">
+            <strong>Fix:</strong> Combine everything into a single text block. Use the "Continuation block" toggle above to generate the closing section without a salutation, then manually combine both outputs into one text block in Kajabi.
+          </p>
+        </div>
         <div className="rounded-lg bg-amber-100/60 border border-amber-200 px-3 py-2 space-y-1">
-          <p className="text-xs font-semibold text-amber-900">Why some emails still land in Promotions</p>
+          <p className="text-xs font-semibold text-amber-900">Other reasons emails still land in Promotions</p>
           <p className="text-xs text-amber-800">
-            Gmail's inbox placement is mostly driven by <strong>per-recipient history</strong>, not email content.
+            Gmail's inbox placement is also driven by <strong>per-recipient history</strong>.
             A subscriber who has opened/clicked your emails before will almost always get Primary.
-            A brand-new address with no history may still see Promotions on the first send — that's normal and improves over time as they engage.
-            The plain text format reduces content-side risk; engagement history does the rest.
+            A brand-new address with no history may still see Promotions on the first send — that's normal and improves as they engage.
           </p>
         </div>
         <div className="rounded-lg bg-amber-100/60 border border-amber-200 px-3 py-2 space-y-1">

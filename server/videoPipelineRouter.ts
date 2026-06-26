@@ -294,9 +294,21 @@ export const videoPipelineRouter = router({
                 const heygenVideoUrl = heygenJson.data?.video_url;
                 if (!heygenVideoUrl) throw new Error(`HeyGen video not ready (status: ${heygenJson.data?.status})`);
                 // Download from HeyGen and upload to S3
-                const s3Res = await fetch(heygenVideoUrl, { signal: AbortSignal.timeout(300_000) });
+                // 30-minute timeout — HeyGen videos can be 300–900 MB; 5 min was too short for 8+ min renders
+                let s3Res: Response;
+                try {
+                  s3Res = await fetch(heygenVideoUrl, { signal: AbortSignal.timeout(1_800_000) });
+                } catch (dlErr: any) {
+                  const dlMsg = dlErr?.message ?? String(dlErr);
+                  throw new Error(`HEYGEN_DOWNLOAD_TIMEOUT: ${dlMsg}. The video may be very large — try again.`);
+                }
                 if (!s3Res.ok) throw new Error(`Failed to download HeyGen video: ${s3Res.status}`);
-                const buffer = Buffer.from(await s3Res.arrayBuffer());
+                let buffer: Buffer;
+                try {
+                  buffer = Buffer.from(await s3Res.arrayBuffer());
+                } catch (bufErr: any) {
+                  throw new Error(`HEYGEN_BUFFER_TIMEOUT: ${bufErr?.message ?? String(bufErr)}`);
+                }
                 const { storagePut } = await import("./storage");
                 const s3Key = `heygen-videos/${input.jobId}-${Date.now()}.mp4`;
                 const { url: s3Url } = await storagePut(s3Key, buffer, "video/mp4");

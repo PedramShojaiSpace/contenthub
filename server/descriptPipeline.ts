@@ -516,7 +516,7 @@ export async function processVideoJob(jobId: number): Promise<void> {
           : "";
 
         const brollPrompt = (job.brollPrompt ??
-          "MANDATORY B-ROLL RULE: Place a new B-roll clip at EVERY 5 to 8 seconds throughout the ENTIRE video. No single shot may stay on screen longer than 8 seconds. Also: remove filler words and long pauses, add auto-captions with Studio Sound, use stock footage that matches the content being discussed.") + ctaSuffix;
+          "AVATAR-LED VIDEO — TASTEFUL B-ROLL CUTAWAYS ONLY. The Dr. Pedram Shojai avatar must remain on screen for at least 60-70% of the video. B-roll is used ONLY for brief cutaways (3-6 seconds each) when the speaker mentions a specific visual concept, statistic, body part, food, or science concept. Cut back to the avatar immediately after each cutaway. Space cutaways roughly every 20-40 seconds. NEVER cover the avatar during the intro, conclusion, or personal moments. CLEANUP: Remove filler words and long pauses. CAPTIONS: Auto-captions, white text, lower third. MUSIC: Ambient background at -18dB.") + ctaSuffix;
 
         console.log(`${jobLabel} [Avatar] Running Underlord B-roll agent...`);
         const editResult = await runUnderlordAgent({

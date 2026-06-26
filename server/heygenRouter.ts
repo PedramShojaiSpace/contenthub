@@ -168,10 +168,24 @@ async function downloadAndUploadToS3(
 ): Promise<{ s3Key: string; s3Url: string }> {
   console.log(`${jobLabel} Downloading HeyGen video from: ${videoUrl}`);
 
-  const res = await fetch(videoUrl, { signal: AbortSignal.timeout(300_000) }); // 5 min download timeout
-  if (!res.ok) throw new Error(`Failed to download HeyGen video (${res.status})`);
+  // 30-minute timeout — HeyGen videos can be 300–900 MB and CDN throughput is variable.
+  // 5 minutes was too short for 8+ minute renders.
+  let res: Response;
+  try {
+    res = await fetch(videoUrl, { signal: AbortSignal.timeout(1_800_000) });
+  } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    throw new Error(`HEYGEN_DOWNLOAD_TIMEOUT: Failed to download HeyGen video (${msg}). The video may be very large — try again or use a faster connection.`);
+  }
+  if (!res.ok) throw new Error(`HEYGEN_DOWNLOAD_FAILED: HTTP ${res.status} when downloading HeyGen video`);
 
-  const buffer = Buffer.from(await res.arrayBuffer());
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(await res.arrayBuffer());
+  } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    throw new Error(`HEYGEN_BUFFER_TIMEOUT: Failed to buffer HeyGen video into memory (${msg}). Video may be too large.`);
+  }
   console.log(`${jobLabel} Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB. Uploading to S3...`);
 
   const timestamp = Date.now();
@@ -468,15 +482,29 @@ export const heygenRouter = router({
             .set({ status: "uploading", errorMessage: null })
             .where(eq(videoJobs.id, input.jobId));
 
-          const { s3Key, s3Url } = await downloadAndUploadToS3(videoUrl, input.jobId, jobLabel);
-          await bgDb
-            .update(videoJobs)
-            .set({ s3VideoKey: s3Key, s3VideoUrl: s3Url })
-            .where(eq(videoJobs.id, input.jobId));
+          // Try to download to S3 first (preferred — gives us a persistent copy).
+          // If the download times out (large video on slow CDN), fall back to uploading
+          // directly from the HeyGen CDN URL to YouTube without buffering through S3.
+          let uploadSourceUrl: string;
+          try {
+            const { s3Key, s3Url } = await downloadAndUploadToS3(videoUrl, input.jobId, jobLabel);
+            await bgDb
+              .update(videoJobs)
+              .set({ s3VideoKey: s3Key, s3VideoUrl: s3Url })
+              .where(eq(videoJobs.id, input.jobId));
+            uploadSourceUrl = s3Url;
+            console.log(`${jobLabel} S3 download complete. Uploading to YouTube from S3.`);
+          } catch (s3Err: any) {
+            const s3Msg = s3Err?.message ?? String(s3Err);
+            console.warn(`${jobLabel} S3 download failed (${s3Msg}). Falling back to direct HeyGen URL for YouTube upload.`);
+            // Update error message to show we're retrying from HeyGen directly
+            await bgDb.update(videoJobs).set({ errorMessage: `S3 download failed, uploading directly from HeyGen: ${s3Msg}` }).where(eq(videoJobs.id, input.jobId));
+            uploadSourceUrl = videoUrl; // Use HeyGen CDN URL directly
+          }
 
           const tags = job.youtubeTags ? JSON.parse(job.youtubeTags) : [];
           const uploadResult = await uploadToYouTube({
-            videoUrl: s3Url,
+            videoUrl: uploadSourceUrl,
             title: job.youtubeTitle ?? "Urban Monk Avatar Video",
             description: job.youtubeDescription ?? "",
             tags,

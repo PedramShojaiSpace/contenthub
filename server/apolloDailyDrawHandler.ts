@@ -306,6 +306,7 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
   }
 
   const startTime = Date.now();
+  const triggeredBy = req.headers["x-manual-trigger"] ? "manual" : "cron";
   const results: Array<{
     category: string;
     page: number;
@@ -500,6 +501,28 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
       " elapsed=" + elapsed + "ms"
     );
 
+    // ── Persist sync run result for Last Run Status indicator ─────────────────
+    try {
+      const hasErrors = results.some(r => r.error);
+      const runStatus = totalEmails === 0 && hasErrors ? "error" : hasErrors ? "partial" : "success";
+      await db.execute(
+        "INSERT INTO apollo_sync_runs (ran_at, status, total_searched, total_reveals, total_emails, total_meta_pushed, elapsed_ms, category_summary, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+          Date.now(),
+          runStatus,
+          totalSearched,
+          totalReveals,
+          totalEmails,
+          totalMeta,
+          elapsed,
+          JSON.stringify(results.map(r => ({ category: r.category, searched: r.searched, emails: r.emailsFound, reveals: r.revealsAttempted, error: r.error ?? null }))),
+          triggeredBy,
+        ]
+      );
+    } catch (logErr: any) {
+      console.warn("[Apollo Daily Draw] Failed to write sync run log:", logErr?.message);
+    }
+
     res.json({
       ok: true,
       summary: { totalSearched, totalEmails, totalReveals, totalMeta, elapsed },
@@ -510,6 +533,16 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     console.error("[Apollo Daily Draw] Fatal:", msg);
+    // Log the fatal error to sync runs table too
+    try {
+      const db2 = await getDb();
+      if (db2) {
+        await db2.execute(
+          "INSERT INTO apollo_sync_runs (ran_at, status, total_searched, total_reveals, total_emails, total_meta_pushed, elapsed_ms, error_message, triggered_by) VALUES (?, 'error', 0, 0, 0, 0, ?, ?, ?)",
+          [Date.now(), Date.now() - startTime, msg.slice(0, 500), triggeredBy]
+        );
+      }
+    } catch (_) { /* ignore log errors */ }
     res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
   }
 }

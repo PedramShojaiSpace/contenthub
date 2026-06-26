@@ -37,6 +37,9 @@ import {
   MessageSquare,
   Zap,
   TrendingUp,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -578,6 +581,7 @@ function PipelineTab() {
   const pageSize = 20;
 
   const { data: dailyStats } = trpc.leadScrubber.getDailyStats.useQuery(undefined, { refetchInterval: 60_000 });
+  const { data: lastSyncRun, refetch: refetchLastSync } = trpc.leadScrubber.getLastSyncRun.useQuery(undefined, { refetchInterval: 120_000 });
   const { data, isLoading, refetch } = trpc.leadScrubber.listLeads.useQuery({
     source: "apollo",
     status: statusFilter === "archived" ? "archived" : "active",
@@ -680,6 +684,101 @@ function PipelineTab() {
             No draws yet — first run tomorrow at 08:00 UTC. The pipeline is set up and ready.
           </p>
         )}
+
+        {/* Last Run Status */}
+        <div className="mt-4 pt-4 border-t border-indigo-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-indigo-800 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              Last Run Status
+            </p>
+            <button
+              onClick={() => refetchLastSync()}
+              className="text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" /> Refresh
+            </button>
+          </div>
+          {!lastSyncRun ? (
+            <p className="text-xs text-indigo-400 italic">No runs recorded yet — will update after the first automated draw.</p>
+          ) : (
+            <div className="bg-white rounded-lg border border-indigo-100 p-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                {/* Status badge */}
+                <div className="flex items-center gap-2">
+                  {lastSyncRun.status === "success" && (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-0.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Success
+                    </span>
+                  )}
+                  {lastSyncRun.status === "partial" && (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-full px-2.5 py-0.5">
+                      <AlertCircle className="w-3.5 h-3.5" /> Partial
+                    </span>
+                  )}
+                  {lastSyncRun.status === "error" && (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
+                      <AlertCircle className="w-3.5 h-3.5" /> Error
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-500">
+                    {new Date(lastSyncRun.ranAt).toLocaleString()} · {lastSyncRun.triggeredBy === "manual" ? "Manual" : "Scheduled"}
+                  </span>
+                </div>
+                {/* Elapsed */}
+                <span className="text-xs text-gray-400">{Math.round((lastSyncRun.elapsedMs ?? 0) / 1000)}s elapsed</span>
+              </div>
+              {/* Stats row */}
+              <div className="flex flex-wrap gap-4 mt-2.5">
+                <div className="text-center">
+                  <p className="text-base font-bold text-indigo-700">{lastSyncRun.totalSearched ?? 0}</p>
+                  <p className="text-xs text-gray-400">Searched</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-bold text-green-600">{lastSyncRun.totalEmails ?? 0}</p>
+                  <p className="text-xs text-gray-400">Emails Found</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-bold text-blue-600">{lastSyncRun.totalReveals ?? 0}</p>
+                  <p className="text-xs text-gray-400">Credits Used</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-bold text-purple-600">{lastSyncRun.totalMetaPushed ?? 0}</p>
+                  <p className="text-xs text-gray-400">Meta Pushed</p>
+                </div>
+              </div>
+              {/* Error message */}
+              {lastSyncRun.errorMessage && (
+                <p className="mt-2 text-xs text-red-600 bg-red-50 rounded px-2 py-1 border border-red-100">
+                  {lastSyncRun.errorMessage}
+                </p>
+              )}
+              {/* Category summary */}
+              {lastSyncRun.categorySummary && lastSyncRun.categorySummary.length > 0 && (
+                <div className="mt-2.5">
+                  <p className="text-xs font-medium text-gray-500 mb-1.5">By Category</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(lastSyncRun.categorySummary as Array<{category: string; searched: number; emails: number; reveals: number; error?: string | null}>).map((cat) => (
+                      <span
+                        key={cat.category}
+                        className={`text-xs rounded-full px-2 py-0.5 border ${
+                          cat.error
+                            ? "bg-red-50 border-red-200 text-red-700"
+                            : cat.emails > 0
+                            ? "bg-green-50 border-green-200 text-green-700"
+                            : "bg-gray-50 border-gray-200 text-gray-500"
+                        }`}
+                      >
+                        {cat.category.replace(/_/g, " ")}: <strong>{cat.emails}</strong> emails
+                        {cat.error && " ⚠"}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* By category */}
         {dailyStats && dailyStats.byCategory.length > 0 && (

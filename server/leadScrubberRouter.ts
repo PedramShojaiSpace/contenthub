@@ -853,6 +853,35 @@ export const leadScrubberRouter = router({
 
       return { success: true, contactId, tag };
     }),
+
+  /**
+   * Returns the most recent Apollo sync run record for the Last Run Status indicator.
+   */
+  getLastSyncRun: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    try {
+      const rows = await db.execute("SELECT * FROM apollo_sync_runs ORDER BY ran_at DESC LIMIT 1");
+      const row = (rows[0] as any[])[0] ?? null;
+      if (!row) return null;
+      return {
+        id: row.id as number,
+        ranAt: row.ran_at as number,
+        status: row.status as "success" | "partial" | "error",
+        totalSearched: row.total_searched as number,
+        totalReveals: row.total_reveals as number,
+        totalEmails: row.total_emails as number,
+        totalMetaPushed: row.total_meta_pushed as number,
+        elapsedMs: row.elapsed_ms as number,
+        errorMessage: row.error_message as string | null,
+        categorySummary: row.category_summary ? JSON.parse(row.category_summary as string) : null,
+        triggeredBy: row.triggered_by as string | null,
+      };
+    } catch (e: any) {
+      console.warn("[getLastSyncRun] Failed to query apollo_sync_runs:", e?.message);
+      return null;
+    }
+  }),
 });
 
 // ─── Tag Derivation Helper ────────────────────────────────────────────────────

@@ -2448,3 +2448,20 @@ export const plainTextEmails = mysqlTable("plain_text_emails", {
 });
 export type PlainTextEmail = typeof plainTextEmails.$inferSelect;
 export type InsertPlainTextEmail = typeof plainTextEmails.$inferInsert;
+
+// ── Apollo Sync Run Log ───────────────────────────────────────────────────────
+export const apolloSyncRuns = mysqlTable("apollo_sync_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  ranAt: bigint("ran_at", { mode: "number" }).notNull(),
+  status: mysqlEnum("asr_status", ["success", "error", "partial"]).notNull(),
+  totalSearched: int("total_searched").notNull().default(0),
+  totalReveals: int("total_reveals").notNull().default(0),
+  totalEmails: int("total_emails").notNull().default(0),
+  totalMetaPushed: int("total_meta_pushed").notNull().default(0),
+  elapsedMs: int("elapsed_ms").notNull().default(0),
+  errorMessage: text("error_message"),
+  categorySummary: text("category_summary"),
+  triggeredBy: varchar("triggered_by", { length: 32 }).default("cron"),
+});
+export type ApolloSyncRun = typeof apolloSyncRuns.$inferSelect;
+export type InsertApolloSyncRun = typeof apolloSyncRuns.$inferInsert;

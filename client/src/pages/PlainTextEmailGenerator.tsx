@@ -177,6 +177,18 @@ function ResultPanel({ result, onReset }: { result: GeneratedEmail; onReset: () 
             <strong>Fix:</strong> Combine everything into a single text block. Use the "Continuation block" toggle above to generate the closing section without a salutation, then manually combine both outputs into one text block in Kajabi.
           </p>
         </div>
+        <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2 space-y-1">
+          <p className="text-xs font-semibold text-orange-900">⚠️ Testing with a new/unused email address will always show Promotions</p>
+          <p className="text-xs text-orange-800">
+            If you test with an email address that has <strong>never received or engaged with your Kajabi emails before</strong>, Gmail will put it in Promotions — every time, regardless of how clean the email is. This is Gmail's cold-sender rule.
+          </p>
+          <p className="text-xs text-orange-800 mt-1">
+            <strong>How to test correctly:</strong> Use an email address that has previously opened or replied to your Kajabi broadcasts. That address has a positive sender history and will reflect real-world inbox placement for your actual subscribers.
+          </p>
+          <p className="text-xs text-orange-800 mt-1">
+            <strong>Why Kajabi's footer still triggers Promotions on cold addresses:</strong> Even with a single clean text block, Kajabi appends its own footer HTML (unsubscribe link, mailing address, Kajabi branding). Gmail recognizes this footer pattern as a bulk email service and routes the first send to Promotions. After the subscriber opens once, Gmail learns it's a trusted sender and future emails go to Primary.
+          </p>
+        </div>
         <div className="rounded-lg bg-amber-100/60 border border-amber-200 px-3 py-2 space-y-1">
           <p className="text-xs font-semibold text-amber-900">Other reasons emails still land in Promotions</p>
           <p className="text-xs text-amber-800">

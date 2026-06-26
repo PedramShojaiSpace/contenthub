@@ -23,6 +23,8 @@
 import type { Request, Response } from "express";
 import { getDb } from "./db";
 import crypto from "crypto";
+import { sdk } from "./_core/sdk";
+import { ENV } from "./_core/env";
 
 // ── Category definitions ──────────────────────────────────────────────────────
 const DAILY_CATEGORIES = [
@@ -271,11 +273,35 @@ async function pushEmailsToMetaAudience(
   }
 }
 
+// ── Auth helper (same pattern as newsfeedScheduled) ─────────────────────────
+async function isAuthorized(req: Request): Promise<boolean> {
+  // Method 1: legacy x-manus-cron-task-uid header
+  if (req.headers["x-manus-cron-task-uid"]) return true;
+  // Method 2: INGEST_SECRET manual trigger
+  if (req.headers["x-manual-trigger"] === process.env.INGEST_SECRET) return true;
+  // Method 3: Valid cron cookie JWT (openId starts with "cron_") — used by Manus heartbeat
+  try {
+    const cookieHeader = req.headers.cookie ?? "";
+    const match = cookieHeader.match(/app_session_id=([^;]+)/);
+    const cookieValue = match ? match[1] : null;
+    if (cookieValue) {
+      const session = await sdk.verifySession(cookieValue);
+      if (session && session.openId.startsWith("cron_") && session.appId === ENV.appId) {
+        console.log("[apollo-daily-draw] Authenticated via cron cookie:", session.openId);
+        return true;
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return false;
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function apolloDailyDrawHandler(req: Request, res: Response) {
-  const isCron = !!req.headers["x-manus-cron-task-uid"];
-  const isManual = req.headers["x-manual-trigger"] === process.env.INGEST_SECRET;
-  if (!isCron && !isManual) {
+  const authorized = await isAuthorized(req);
+  if (!authorized) {
+    console.warn("[apollo-daily-draw] Unauthorized request from", req.ip);
     return res.status(403).json({ error: "Forbidden: cron or manual trigger only" });
   }
 
@@ -490,9 +516,9 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
 
 // ── 2-day validation check handler ───────────────────────────────────────────
 export async function apolloAudienceValidationHandler(req: Request, res: Response) {
-  const isCron = !!req.headers["x-manus-cron-task-uid"];
-  const isManual = req.headers["x-manual-trigger"] === process.env.INGEST_SECRET;
-  if (!isCron && !isManual) {
+  const authorized = await isAuthorized(req);
+  if (!authorized) {
+    console.warn("[apollo-audience-validation] Unauthorized request from", req.ip);
     return res.status(403).json({ error: "Forbidden" });
   }
 

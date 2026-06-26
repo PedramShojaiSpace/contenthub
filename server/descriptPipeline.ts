@@ -237,30 +237,34 @@ async function pollHeyGenStatus(heygenVideoId: string): Promise<{
   video_url?: string;
   error?: { code: string; detail: string };
 }> {
-  // Primary: v1 status endpoint
-  const res = await heygenFetch(`/v1/video.status.get?video_id=${heygenVideoId}`);
-  
-  // Some multi-clip videos return HTML 404 from the status endpoint but are visible in the list.
-  // Fall back to v1/video.list to find the video by ID.
-  if (!res.ok || res.headers.get("content-type")?.includes("text/html")) {
-    console.log(`[HeyGen] Status endpoint returned ${res.status}/HTML for ${heygenVideoId}, falling back to list endpoint...`);
-    const listRes = await heygenFetch("/v1/video.list?limit=20");
-    if (!listRes.ok) throw new Error(`HeyGen status check failed (${res.status}) and list fallback also failed (${listRes.status})`);
-    const listJson = (await listRes.json()) as { data: { videos: Array<{ video_id: string; status: string; video_url?: string; error?: { code: string; detail: string } }> } };
-    const found = listJson.data?.videos?.find(v => v.video_id === heygenVideoId);
-    if (!found) throw new Error(`HeyGen status check failed (${res.status}) — video ${heygenVideoId} not found in list`);
-    return found as { status: "pending" | "processing" | "waiting" | "failed" | "completed"; video_url?: string; error?: { code: string; detail: string } };
+  // Use the underscore endpoint (/v1/video_status.get) — the dot variant (/v1/video.status.get)
+  // returns 404 HTML for many videos. The underscore endpoint is the correct one per HeyGen docs.
+  const res = await heygenFetch(`/v1/video_status.get?video_id=${heygenVideoId}`);
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HeyGen status check failed (${res.status}): ${text.substring(0, 200)}`);
   }
-  
+
   const json = (await res.json()) as {
-    error: null | string;
+    code: number;
     data: {
-      video_id: string;
+      id?: string;
+      video_id?: string;
       status: "pending" | "processing" | "waiting" | "failed" | "completed";
       video_url?: string;
       error?: { code: string; detail: string };
     };
   };
+
+  if (!json.data) throw new Error(`HeyGen status response missing data field for video ${heygenVideoId}`);
+
+  // Guard: if status is completed but video_url is missing, throw a clear error rather than
+  // letting fetch(undefined) produce a cryptic "Failed to parse URL from undefined" error.
+  if (json.data.status === "completed" && !json.data.video_url) {
+    throw new Error(`HeyGen video ${heygenVideoId} is 'completed' but video_url is missing — retry in a few minutes.`);
+  }
+
   return json.data;
 }
 
@@ -270,9 +274,20 @@ async function downloadAndUploadToS3(
   jobLabel: string
 ): Promise<{ s3Key: string; s3Url: string }> {
   console.log(`${jobLabel} Downloading HeyGen video from: ${videoUrl}`);
-  const res = await fetch(videoUrl, { signal: AbortSignal.timeout(300_000) });
-  if (!res.ok) throw new Error(`Failed to download HeyGen video (${res.status})`);
-  const buffer = Buffer.from(await res.arrayBuffer());
+  // 30-minute timeout — HeyGen videos can be 200–900 MB; 5 min was too short for long renders
+  let res: Response;
+  try {
+    res = await fetch(videoUrl, { signal: AbortSignal.timeout(1_800_000) });
+  } catch (err: any) {
+    throw new Error(`HEYGEN_DOWNLOAD_TIMEOUT: ${err?.message ?? String(err)}. The video may be very large — try again.`);
+  }
+  if (!res.ok) throw new Error(`HEYGEN_DOWNLOAD_FAILED: HTTP ${res.status} when downloading HeyGen video`);
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(await res.arrayBuffer());
+  } catch (err: any) {
+    throw new Error(`HEYGEN_BUFFER_TIMEOUT: ${err?.message ?? String(err)}. Video may be too large.`);
+  }
   console.log(`${jobLabel} Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB. Uploading to S3...`);
   const s3Key = `avatar-videos/job-${jobId}-${Date.now()}.mp4`;
   const { url: s3Url } = await storagePut(s3Key, buffer, "video/mp4");

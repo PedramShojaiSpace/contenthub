@@ -11,6 +11,18 @@ interface State {
   error: Error | null;
 }
 
+// Session key to prevent infinite reload loops on chunk errors
+const CHUNK_RELOAD_KEY = "__chunk_reload_attempted";
+
+function isChunkLoadError(error: Error): boolean {
+  return (
+    error?.message?.includes("Failed to fetch dynamically imported module") ||
+    error?.message?.includes("Importing a module script failed") ||
+    error?.message?.includes("Unable to preload CSS") ||
+    error?.name === "ChunkLoadError"
+  );
+}
+
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -18,6 +30,20 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // Stale chunk errors happen when a new deployment invalidates old JS bundles
+    // that the browser cached. Auto-reload once to pick up the new build.
+    if (isChunkLoadError(error)) {
+      const alreadyTried = sessionStorage.getItem(CHUNK_RELOAD_KEY);
+      if (!alreadyTried) {
+        sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
+        // Reload with cache-bust to force fresh assets
+        window.location.reload();
+        // Return no-error state so nothing renders during reload
+        return { hasError: false, error: null };
+      }
+    }
+    // Clear the reload flag for non-chunk errors so future chunk errors can retry
+    sessionStorage.removeItem(CHUNK_RELOAD_KEY);
     return { hasError: true, error };
   }
 
@@ -35,12 +61,15 @@ class ErrorBoundary extends Component<Props, State> {
 
             <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
               <pre className="text-sm text-muted-foreground whitespace-break-spaces">
-                {this.state.error?.stack}
+                {this.state.error?.message}
               </pre>
             </div>
 
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+                window.location.reload();
+              }}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg",
                 "bg-primary text-primary-foreground",

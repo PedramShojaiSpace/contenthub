@@ -124,6 +124,7 @@ import { plainTextEmailRouter } from "./plainTextEmailRouter";
 import { metaAdPushRouter } from "./metaAdPushRouter";
 import { metaCustomAudienceRouter } from "./metaCustomAudienceRouter";
 import { kidsResearchRouter } from "./kidsResearchRouter";
+import { collectiveRouter } from "./collectiveRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -476,6 +477,7 @@ export const appRouter = router({
   heygen: heygenRouter,
   metaAds: metaAdsRouter,
   leadScrubber: leadScrubberRouter,
+  collective: collectiveRouter,
   emailSequence: emailSequenceRouter,
   qrGenerator: qrGeneratorRouter,
   emailOptimizer: emailOptimizerRouter,

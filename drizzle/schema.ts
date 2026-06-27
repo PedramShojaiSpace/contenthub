@@ -2465,3 +2465,27 @@ export const apolloSyncRuns = mysqlTable("apollo_sync_runs", {
 });
 export type ApolloSyncRun = typeof apolloSyncRuns.$inferSelect;
 export type InsertApolloSyncRun = typeof apolloSyncRuns.$inferInsert;
+
+// ─── Shopify Collective Sourcing ────────────────────────────────────────────
+export const collectiveSourcingCandidates = mysqlTable("collective_sourcing_candidates", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 512 }).notNull(),
+  vendor: varchar("vendor", { length: 256 }),
+  productType: varchar("product_type", { length: 256 }),
+  description: text("description"),
+  price: varchar("price", { length: 64 }),
+  imageUrl: text("image_url"),
+  tags: text("tags"),
+  supplierName: varchar("supplier_name", { length: 256 }),
+  supplierDomain: varchar("supplier_domain", { length: 256 }),
+  brandFitScore: int("brand_fit_score"),
+  brandFitReason: text("brand_fit_reason"),
+  toxicFlags: text("toxic_flags"),
+  status: varchar("status", { length: 32 }).default("candidate").notNull(),
+  shopifyProductId: varchar("shopify_product_id", { length: 128 }),
+  notes: text("notes"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type CollectiveSourcingCandidate = typeof collectiveSourcingCandidates.$inferSelect;
+export type InsertCollectiveSourcingCandidate = typeof collectiveSourcingCandidates.$inferInsert;

@@ -310,11 +310,39 @@ function MissionFlow({
     onError: (err) => toast.error(err.message),
   });
 
+  // Reset copied state whenever the step changes
+  useEffect(() => {
+    setCopied(false);
+  }, [currentStep]);
+
   const handleCopy = useCallback((text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    // Try modern Clipboard API first, fall back to execCommand for older/mobile browsers
+    const doFallbackCopy = () => {
+      try {
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // silent fail — user can manually select the text
+      }
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => doFallbackCopy());
+    } else {
+      doFallbackCopy();
+    }
   }, []);
 
   const handleSave = useCallback(
@@ -325,8 +353,11 @@ function MissionFlow({
   );
 
   const handleNext = () => {
-    handleSave(findings);
+    // Navigate immediately — save happens in background (onBlur already fired or fires here)
+    // Don't block navigation on the save mutation
     if (mission && currentStep < mission.steps.length - 1) {
+      // Fire save without awaiting it
+      saveProgressMutation.mutate({ researcherId: researcher.id, missionId, findings });
       setCurrentStep((s) => s + 1);
     }
   };
@@ -409,7 +440,12 @@ function MissionFlow({
             <textarea
               value={stepValue}
               onChange={(e) => setFindings({ ...findings, [step.id]: e.target.value })}
-              onBlur={() => handleSave(findings)}
+              onBlur={() => {
+              // Only auto-save on blur if not already saving
+              if (!saveProgressMutation.isPending) {
+                handleSave(findings);
+              }
+            }}
               rows={8}
               placeholder="Type or paste your answer here..."
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-emerald-400 resize-none"

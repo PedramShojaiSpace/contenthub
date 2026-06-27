@@ -69,6 +69,7 @@ import {
   Mail,
   MailCheck,
   Microscope,
+  ShoppingBag,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -161,6 +162,7 @@ const intelligenceItems = [
   { icon: ShieldCheck, label: "Verified Links", path: "/verified-links" },
   { icon: UserSearch, label: "Lead Scrubber", path: "/lead-scrubber" },
   { icon: Microscope, label: "Kids Research", path: "/kids-review" },
+  { icon: ShoppingBag, label: "Collective Sourcing", path: "/collective-sourcing" },
 ];
 
 const intelligencePaths = new Set(intelligenceItems.map((i) => i.path));

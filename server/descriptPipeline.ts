@@ -119,7 +119,7 @@ async function checkHeyGenQuota(): Promise<void> {
  *  - Timestamps e.g. [0:00], (0:00-0:08)
  *  - Empty lines collapsed to single blank
  */
-function cleanScriptForHeyGen(raw: string): string {
+export function cleanScriptForHeyGen(raw: string): string {
   // Step 1: Remove the entire PRODUCTION NOTES block (=== PRODUCTION NOTES === to end of string)
   let text = raw.replace(/===\s*PRODUCTION NOTES\s*===[\s\S]*/i, "").trim();
 
@@ -183,10 +183,28 @@ function cleanScriptForHeyGen(raw: string): string {
   }
 
   // Collapse multiple blank lines into one, trim leading/trailing whitespace
-  return cleaned
+  let result = cleaned
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  // Step 5: Remove third-person name references that would sound unnatural
+  // when the avatar reads them (e.g. "Dr. Pedram says...", "The Urban Monk teaches...")
+  // These are prompt artifacts — the avatar IS Dr. Pedram, so it should speak in first person.
+  result = result
+    .replace(/\bDr\.?\s*Pedram\s+Shojai\b/gi, "I")
+    .replace(/\bDr\.?\s*Pedram\b/gi, "I")
+    .replace(/\bDr\.?\s*Shojai\b/gi, "I")
+    .replace(/\bThe Urban Monk\b/gi, "I")
+    .replace(/\bUrban Monk\b/gi, "I")
+    // Fix grammar artifacts from name replacement (e.g. "I's approach" → "my approach")
+    .replace(/\bI's\b/g, "my")
+    .replace(/\bI am going to teach you\b/gi, "We're going to explore")
+    // Remove lines that are just metadata/prompt instructions
+    .replace(/^(Host|Speaker|Narrator|Pedram|Dr\. Pedram):?\s*/gim, "")
+    .trim();
+
+  return result;
 }
 
 async function startHeyGenRender(scriptText: string): Promise<string> {

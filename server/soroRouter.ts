@@ -162,22 +162,38 @@ export const soroRouter = router({
           const hasFeaturedImage = post.featured_media > 0;
 
           // Check if already synced
-          const existing = await db.execute(
-            "SELECT id FROM soro_posts WHERE wp_post_id = ?",
-            [post.id]
-          );
+          const [existingRows] = await db.execute(
+            "SELECT id FROM soro_posts WHERE wp_post_id = " + JSON.stringify(post.id) + " LIMIT 1"
+          ) as any[];
 
-          if ((existing as any[])[0]?.length === 0) {
+          if ((existingRows as any[]).length === 0) {
             newPosts++;
           }
 
-          await db.execute(`
-            INSERT INTO soro_posts (
+          const esc = (v: string) => JSON.stringify(String(v ?? ""));
+          const titleVal = esc(post.title?.rendered || "");
+          const slugVal = esc(post.slug);
+          const urlVal = esc(`https://www.theurbanmonk.com/${post.slug}`);
+          const publishedVal = esc(new Date(post.date).toISOString().slice(0, 19).replace("T", " "));
+          const catsVal = esc(JSON.stringify(post.categories || []));
+          const tagsVal = esc(JSON.stringify(post.tags || []));
+          const previewVal = esc(contentText.slice(0, 500));
+          const fullVal = esc(contentText.slice(0, 10000));
+          const yTitleVal = esc(post.yoast_head_json?.title || "");
+          const yDescVal = esc(post.yoast_head_json?.description || "");
+
+          await db.execute(
+            `INSERT INTO soro_posts (
               wp_post_id, title, slug, url, published_at,
               wp_categories, wp_tags, word_count, has_featured_image,
               has_meta_description, content_preview, full_content,
               yoast_title, yoast_description, is_uncategorized, synced_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (
+              ${post.id}, ${titleVal}, ${slugVal}, ${urlVal}, ${publishedVal},
+              ${catsVal}, ${tagsVal}, ${wordCount}, ${hasFeaturedImage ? 1 : 0},
+              ${hasMetaDesc ? 1 : 0}, ${previewVal}, ${fullVal},
+              ${yTitleVal}, ${yDescVal}, ${isUncategorized ? 1 : 0}, NOW()
+            )
             ON DUPLICATE KEY UPDATE
               title = VALUES(title),
               wp_categories = VALUES(wp_categories),
@@ -186,24 +202,8 @@ export const soroRouter = router({
               has_featured_image = VALUES(has_featured_image),
               has_meta_description = VALUES(has_meta_description),
               is_uncategorized = VALUES(is_uncategorized),
-              synced_at = NOW()
-          `, [
-            post.id,
-            post.title?.rendered || "",
-            post.slug,
-            `https://www.theurbanmonk.com/${post.slug}`,
-            new Date(post.date),
-            JSON.stringify(post.categories || []),
-            JSON.stringify(post.tags || []),
-            wordCount,
-            hasFeaturedImage ? 1 : 0,
-            hasMetaDesc ? 1 : 0,
-            contentText.slice(0, 500),
-            contentText.slice(0, 10000),
-            post.yoast_head_json?.title || "",
-            post.yoast_head_json?.description || "",
-            isUncategorized ? 1 : 0,
-          ]);
+              synced_at = NOW()`
+          );
 
           synced++;
         }
@@ -228,8 +228,7 @@ export const soroRouter = router({
       else if (input.filter === "enhanced") where = "enhancement_status = 'enhanced'";
 
       const [rows] = await db.execute(
-        `SELECT * FROM soro_posts WHERE ${where} ORDER BY published_at DESC LIMIT ?`,
-        [input.limit]
+        `SELECT * FROM soro_posts WHERE ${where} ORDER BY published_at DESC LIMIT ${input.limit}`
       ) as any[];
 
       return (rows as any[]).map((r: any) => ({
@@ -272,8 +271,7 @@ export const soroRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
       const [rows] = await db.execute(
-        "SELECT * FROM soro_posts WHERE id = ?",
-        [input.postId]
+        "SELECT * FROM soro_posts WHERE id = " + input.postId + " LIMIT 1"
       ) as any[];
       const post = (rows as any[])[0];
       if (!post) throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
@@ -293,35 +291,20 @@ export const soroRouter = router({
 
       const analysis = await analyzePostWithAI(wpPost);
 
-      await db.execute(`
-        UPDATE soro_posts SET
-          seo_score = ?,
-          readability_score = ?,
-          ai_suggested_categories = ?,
-          ai_suggested_tags = ?,
-          ai_best_practices = ?,
-          ai_enhancement_suggestions = ?,
-          ai_lessons_learned = ?,
-          is_uncategorized = ?,
+      const e = (v: string) => JSON.stringify(String(v ?? ""));
+      await db.execute(
+        `UPDATE soro_posts SET
+          seo_score = ${e(analysis.seo_score)},
+          readability_score = ${e(analysis.readability_score)},
+          ai_suggested_categories = ${e(JSON.stringify({ found: analysis.best_practices_found, missing: analysis.best_practices_missing, primary_keyword: analysis.primary_keyword }))},
+          ai_suggested_tags = ${e(JSON.stringify(analysis.suggested_tags))},
+          ai_best_practices = ${e(JSON.stringify({ category_ids: analysis.suggested_category_ids }))},
+          ai_enhancement_suggestions = ${e(analysis.enhancement_suggestions)},
+          ai_lessons_learned = ${e(analysis.lessons_for_content_hub)},
+          is_uncategorized = ${analysis.is_uncategorized ? 1 : 0},
           updated_at = NOW()
-        WHERE id = ?
-      `, [
-        analysis.seo_score,
-        analysis.readability_score,
-        JSON.stringify({
-          found: analysis.best_practices_found,
-          missing: analysis.best_practices_missing,
-          primary_keyword: analysis.primary_keyword,
-        }),
-        JSON.stringify(analysis.suggested_tags),
-        JSON.stringify({
-          category_ids: analysis.suggested_category_ids,
-        }),
-        analysis.enhancement_suggestions,
-        analysis.lessons_for_content_hub,
-        analysis.is_uncategorized ? 1 : 0,
-        input.postId,
-      ]);
+        WHERE id = ${input.postId}`
+      );
 
       return { success: true, analysis };
     }),
@@ -334,8 +317,7 @@ export const soroRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
       const [rows] = await db.execute(
-        "SELECT * FROM soro_posts WHERE id = ?",
-        [input.postId]
+        "SELECT * FROM soro_posts WHERE id = " + input.postId + " LIMIT 1"
       ) as any[];
       const post = (rows as any[])[0];
       if (!post) throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
@@ -345,14 +327,14 @@ export const soroRouter = router({
 
       await fixPostCategories(post.wp_post_id, categoryIds);
 
-      await db.execute(`
-        UPDATE soro_posts SET
-          wp_categories = ?,
+      await db.execute(
+        `UPDATE soro_posts SET
+          wp_categories = ${JSON.stringify(JSON.stringify(categoryIds))},
           is_uncategorized = 0,
           category_fix_status = 'fixed',
           updated_at = NOW()
-        WHERE id = ?
-      `, [JSON.stringify(categoryIds), input.postId]);
+        WHERE id = ${input.postId}`
+      );
 
       return { success: true, categoryIds };
     }),
@@ -364,8 +346,7 @@ export const soroRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db.execute(
-        "UPDATE soro_posts SET enhancement_status = 'enhanced', updated_at = NOW() WHERE id = ?",
-        [input.postId]
+        "UPDATE soro_posts SET enhancement_status = 'enhanced', updated_at = NOW() WHERE id = " + input.postId
       );
       return { success: true };
     }),

@@ -163,6 +163,7 @@ const intelligenceItems = [
   { icon: UserSearch, label: "Lead Scrubber", path: "/lead-scrubber" },
   { icon: Microscope, label: "Kids Research", path: "/kids-review" },
   { icon: ShoppingBag, label: "Collective Sourcing", path: "/collective-sourcing" },
+  { icon: Rss, label: "Soro Intelligence", path: "/soro-intelligence" },
 ];
 
 const intelligencePaths = new Set(intelligenceItems.map((i) => i.path));

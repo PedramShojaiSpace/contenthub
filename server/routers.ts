@@ -125,6 +125,7 @@ import { metaAdPushRouter } from "./metaAdPushRouter";
 import { metaCustomAudienceRouter } from "./metaCustomAudienceRouter";
 import { kidsResearchRouter } from "./kidsResearchRouter";
 import { collectiveRouter } from "./collectiveRouter";
+import { soroRouter } from "./soroRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -478,6 +479,7 @@ export const appRouter = router({
   metaAds: metaAdsRouter,
   leadScrubber: leadScrubberRouter,
   collective: collectiveRouter,
+  soro: soroRouter,
   emailSequence: emailSequenceRouter,
   qrGenerator: qrGeneratorRouter,
   emailOptimizer: emailOptimizerRouter,

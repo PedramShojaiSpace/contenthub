@@ -760,6 +760,19 @@ async function startServer() {
   });
 
 
+  // ── Soro Intelligence Sync — every 6 hours, pulls new WP posts ──────────────
+  app.post("/api/scheduled/soro-sync", async (req, res) => {
+    try {
+      const { syncSoroPosts } = await import("../soroRouter");
+      const result = await syncSoroPosts(3);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Soro Sync Cron] Handler error:", msg);
+      res.status(500).json({ error: msg, timestamp: new Date().toISOString() });
+    }
+  });
+
   // ── Email Sequence Scheduler ──────────────────────────────────────────────
   // POST /api/scheduled/email-sequence-send — fires hourly, sends queued Emails 2 & 3
   app.post("/api/scheduled/email-sequence-send", async (req, res) => {

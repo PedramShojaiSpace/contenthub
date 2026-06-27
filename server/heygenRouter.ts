@@ -22,6 +22,7 @@ import { videoJobs } from "../drizzle/schema";
 import { uploadToYouTube } from "./youtubeUploader";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
+import { cleanScriptForHeyGen } from "./descriptPipeline";
 
 const HEYGEN_API_BASE = "https://api.heygen.com";
 
@@ -71,6 +72,11 @@ async function startHeyGenRender(scriptText: string): Promise<string> {
   if (!avatarId) throw new Error("HEYGEN_AVATAR_ID is not configured");
   if (!voiceId) throw new Error("HEYGEN_VOICE_ID is not configured");
 
+  // Strip all production directions, stage notes, name references, and prompt artifacts
+  // so HeyGen only receives clean spoken dialogue
+  const spokenText = cleanScriptForHeyGen(scriptText);
+  console.log(`[HeyGen] Script cleaned: ${scriptText.length} chars → ${spokenText.length} chars`);
+
   const body = {
     video_inputs: [
       {
@@ -82,7 +88,7 @@ async function startHeyGenRender(scriptText: string): Promise<string> {
         },
         voice: {
           type: "text",
-          input_text: scriptText,
+          input_text: spokenText,
           voice_id: voiceId,
           speed: 1.0,
         },

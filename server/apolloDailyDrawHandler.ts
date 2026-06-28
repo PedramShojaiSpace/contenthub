@@ -144,13 +144,20 @@ async function advancePageCursor(db: any, category: string, currentPage: number)
 }
 
 // ── Apollo email reveal (uses 1 export credit per call) ─────────────────────
+// NOTE: Must use POST /api/v1/people/match with reveal_personal_emails:true
+// GET /api/v1/people/:id always returns email_not_unlocked regardless of plan
 async function apolloRevealEmail(apolloId: string): Promise<{ email: string | null; emailStatus: string | null }> {
   const apiKey = process.env.APOLLO_API_KEY;
   if (!apiKey || !apolloId) return { email: null, emailStatus: null };
 
-  const res = await fetch("https://api.apollo.io/api/v1/people/" + apolloId, {
-    method: "GET",
+  const res = await fetch("https://api.apollo.io/api/v1/people/match", {
+    method: "POST",
     headers: { "Content-Type": "application/json", "X-Api-Key": apiKey },
+    body: JSON.stringify({
+      id: apolloId,
+      reveal_personal_emails: true,
+      reveal_phone_number: false,
+    }),
   });
 
   if (!res.ok) {
@@ -226,13 +233,21 @@ async function pushEmailsToMetaAudience(
   db: any
 ): Promise<{ pushed: number; error?: string }> {
   try {
-    const [rows] = await db.execute(
+    // Try to find audience by category first, then fall back to any available audience
+    let [rows] = await db.execute(
       "SELECT meta_audience_id FROM meta_custom_audiences WHERE category = " +
       JSON.stringify(category) +
       " LIMIT 1"
     ) as any[];
 
-    const audienceRows: any[] = Array.isArray(rows) ? rows : [];
+    let audienceRows: any[] = Array.isArray(rows) ? rows : [];
+    if (!audienceRows.length || !audienceRows[0]?.meta_audience_id) {
+      // Fall back to first available audience
+      const [fallbackRows] = await db.execute(
+        "SELECT meta_audience_id FROM meta_custom_audiences WHERE meta_audience_id IS NOT NULL LIMIT 1"
+      ) as any[];
+      audienceRows = Array.isArray(fallbackRows) ? fallbackRows : [];
+    }
     if (!audienceRows.length || !audienceRows[0]?.meta_audience_id) {
       return { pushed: 0 };
     }
@@ -520,7 +535,7 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
         ]
       );
     } catch (logErr: any) {
-      console.warn("[Apollo Daily Draw] Failed to write sync run log:", logErr?.message);
+      console.warn("[Apollo Daily Draw] Failed to write sync run log:", logErr?.message, logErr?.sqlMessage ?? "", logErr?.sql?.slice(0, 200) ?? "");
     }
 
     res.json({

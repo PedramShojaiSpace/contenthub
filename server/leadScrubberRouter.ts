@@ -383,8 +383,9 @@ export const leadScrubberRouter = router({
       }
 
       // Build the Apollo payload with whatever we have
+      // reveal_personal_emails: true is required to actually use export credits and get real emails
       const apolloPayload: Record<string, string | boolean> = {
-        reveal_personal_emails: false,
+        reveal_personal_emails: true,
       };
       if (input.firstName) apolloPayload.first_name = input.firstName;
       if (input.lastName) apolloPayload.last_name = input.lastName;

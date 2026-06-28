@@ -4019,3 +4019,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix Apollo audience validation endpoint: same status='active' bug
 - [x] Apollo pipeline confirmed working - issue is account plan (email reveals returning email_not_unlocked)
 - [ ] Upgrade Apollo plan to Professional ($79/mo) for 2,000 email reveals/month
+
+## Apollo Pipeline Fixes (Jun 28)
+- [x] Fix Apollo reveal endpoint: GET /api/v1/people/:id → POST /api/v1/people/match with reveal_personal_emails:true
+- [x] Fix findEmail procedure: reveal_personal_emails was false, now true
+- [x] Fix Meta push: category=null fallback to first available audience
+- [x] Improve sync run log error logging
+- [ ] Fix apollo_sync_runs INSERT failure (minor - status dashboard only)

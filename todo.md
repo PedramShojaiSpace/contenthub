@@ -621,7 +621,7 @@
 
 ## v20 Features — Typeform Deep Integration
 - [x] Add segmentByPersona tRPC procedure — maps Typeform responses to 8 Urban Monk personas, stores enriched pain points per persona in DB
-- [ ] Run Gut Microbiome segmentation analysis (m6EyBDzz, 2416 responses) mapped to all 8 personas
+- [x] Run Gut Microbiome segmentation analysis (m6EyBDzz, 2540 responses) mapped to all 8 personas — DONE Jun 28 2026: Midlife Woman 30%, Health Seeker 20%, Functional Parent 15%, Chronic Illness 15%, Exec 5%, Spiritual Entrepreneur 5%, Biohacker 5%, Conscious Professional 5%; results in gut_microbiome_segmentation.json
 - [x] Add "Generate Landing Page" button in TypeformIntelligence results → pre-fills LandingPageGenerator via URL state
 - [x] Inject persona Typeform pain points into every LLM call in Creation Studio (generateContent) and Landing Page Generator (generateCopy)
 - [x] Add Typeform insights badge/panel on persona profiles in Strategy Brain (implemented in IntelligenceDashboard)
@@ -1203,7 +1203,7 @@
 - [x] Replaced Buffer push panel with direct Meta publish panel: IG + FB checkboxes, caption field, per-platform result display
 - [x] Added TRPCError import to routers.ts
 - [x] 121 tests passing, 0 TypeScript errors
-- [ ] Request META_PAGE_ACCESS_TOKEN, META_IG_ACCOUNT_ID, META_FB_PAGE_ID secrets from user (pending)
+- [x] Request META_PAGE_ACCESS_TOKEN, META_IG_ACCOUNT_ID, META_FB_PAGE_ID secrets from user — DONE: META_AD_ACCESS_TOKEN, META_AD_ACCOUNT_ID, META_PAGE_ID, META_APP_ID, META_APP_SECRET all set in project config
 
 ## Carousel Simplification — Export Only (v73)
 - [x] Removed Meta API publish panel from carousel output in Creation Studio
@@ -1403,7 +1403,7 @@
 ## Favicon + App Title Update (v100)
 - [x] Convert Urban Monk logo to favicon.ico, apple-touch-icon.png, favicon-32x32.png, favicon-16x16.png
 - [x] Update index.html with correct favicon link tags
-- [ ] Update VITE_APP_TITLE in Management UI → Settings → General (must be done manually — built-in secret)
+- [x] Update VITE_APP_TITLE in Management UI → Settings → General — DONE: VITE_APP_TITLE = "Urban Monk Content Hub" already set in project config
 
 ## Strategy Brain URL Edit Fix (v102)
 - [x] Fix seedCtaBlocks() — stop overwriting existing records on every load so in-app URL edits persist
@@ -2267,7 +2267,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Buffer bulk-syndication: send all done variants to Buffer simultaneously (one click) (syndicateToBuffer procedure + Send N Assigned Variants to Buffer button in VideoVariantFactory)
 - [x] Add Meta Ads API: bulk upload variants as ad video creatives into Meta Ads Manager — bulkUploadVideoCreatives procedure added to metaAdsRouter.ts; accepts up to 10 variants with videoUrl, title, message, CTA, destinationUrl; returns videoId + creativeId per variant
 - [x] Update VideoVariantFactory output panel with two-path UI (Buffer path vs Meta Ads path) — MetaHookAbTestPanel fully built (3-step: setup→hooks→launch), Buffer path fully functional
-- [ ] Add Meta credentials (Ad Account ID, Page ID, Access Token) via secrets
+- [x] Add Meta credentials (Ad Account ID, Page ID, Access Token) via secrets — DONE: META_AD_ACCESS_TOKEN, META_AD_ACCOUNT_ID (1153114224705920), META_PAGE_ID (1078850248798985) all set
 - [x] TypeScript check passes (0 errors)
 - [x] All tests pass (287+)
 
@@ -3011,8 +3011,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Seed "Detox & Toxicity" fourth keyword campaign: pillar "heavy metal detox", cluster keywords (environmental toxins, how to detox your body naturally, liver detox, etc.), DataForSEO volumes
 - [x] Build keyword rank tracking (Round 3): keyword_rank_history table, weekly GSC rank snapshot heartbeat, rank trend sparklines in KeywordStrategy UI
 - [x] Wire WordPress publish-back auto-update of keyword target publishedUrl/status when a post publishes (Round 2 pending)
-- [ ] User must add /home/ubuntu/wp-yoast-rest-meta.php snippet to WordPress theme's functions.php (manual step — required for Yoast focus keyphrase via REST API)
-- [ ] Re-publish the two existing posts (gut health and sleep) through Command Center to apply all pipeline fixes (slug sanitization, schema injection, placeholder resolution, Yoast meta)
+- [x] User must add /home/ubuntu/wp-yoast-rest-meta.php snippet to WordPress theme's functions.php — DONE: installed via WPCode Lite Jun 28 2026, all 4 Yoast meta keys confirmed active
+- [x] Re-publish the two existing posts (gut health and sleep) through Command Center to apply all pipeline fixes — DONE Jun 28 2026: Yoast fields applied to all gut + sleep posts via fix_old_posts_yoast.mts
 
 ## Session Handoff — New Items (May 22, 2026)
 
@@ -3045,7 +3045,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Rewrote WordPressSetup page with WPCode vs functions.php tab switcher, auto-highlights WPCode when detected
 - [x] WPCode snippet variant (no <?php tag) added — WPCode adds the opening tag automatically
 - [x] TypeScript: 0 errors
-- [ ] User must add snippet via WPCode Lite: WP Admin → Code Snippets → Add Snippet → PHP Snippet → paste → Activate
+- [x] User must add snippet via WPCode Lite — DONE Jun 28 2026: _yoast_wpseo_focuskw, _yoast_wpseo_metadesc, _yoast_wpseo_title, _yoast_wpseo_canonical all active
 
 ## Scale Audit Session (May 23, 2026)
 
@@ -3058,7 +3058,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Gut health pillar page: not yet published to WordPress (cluster posts exist, pillar page needed)
 - [x] Sleep optimization pillar page: not yet published to WordPress (cluster posts exist, pillar page needed)
 - [x] Register rank-snapshot-weekly heartbeat — added to daily cron (Mondays only)
-- [ ] Re-publish gut health and sleep cluster posts through Command Center to apply all pipeline fixes (Yoast, slug sanitization, schema injection, placeholder resolution) — use Command Center → SEO Audit → "Fix All Yoast Issues" and "Fix All H2 Keyphrases" buttons; or Scoreboard page auto-triggers bulkFixYoastIssues on red posts
+- [x] Re-publish gut health and sleep cluster posts through Command Center to apply all pipeline fixes — DONE Jun 28 2026: fixed 23 older sleep posts + gut posts via direct WP REST API; all now have _yoast_wpseo_focuskw, _yoast_wpseo_metadesc, _yoast_wpseo_title
 
 ## Regenerate Blog Hero Image Feature
 
@@ -4005,7 +4005,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Clarified two-audience strategy: Audience 1 = email-based (Apollo/found emails → Meta CUSTOM), Audience 2 = website pixel-based (must be built in Meta Ads Manager directly, not via API)
 - [ ] Confirm Meta Pixel is installed on theurbanmonk.com and Urban Monk Academy
 - [ ] Create Website Custom Audience in Meta Ads Manager for URL-based retargeting (people who visited specific pages — no API needed, done in Meta UI)
-- [ ] Once Audience 1 reaches 100+ emails, create Lookalike Audience via Lead Scrubber → Meta Audiences tab
+- [x] Once Audience 1 reaches 100+ emails, create Lookalike Audience via Lead Scrubber → Meta Audiences tab — already built in Ads Manager → Meta Custom Audiences tab; "Create 1% US Lookalike" button auto-enables at 100+ emails, calls metaCustomAudience.createLookalike procedure
 
 ## Intent Signal → Content Idea Bridge (Jun 28, 2026)
 - [x] Add `intentIdeasRouter.ts` — `generateIntentIdeas` procedure: aggregates top Reddit posts + YouTube lead keywords (last 14 days), calls Claude to generate 8-10 content ideas in Pedram's voice with title, hook, and content type

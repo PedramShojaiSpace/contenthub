@@ -77,14 +77,19 @@ async function startHeyGenRender(scriptText: string): Promise<string> {
   const spokenText = cleanScriptForHeyGen(scriptText);
   console.log(`[HeyGen] Script cleaned: ${scriptText.length} chars → ${spokenText.length} chars`);
 
+  // HEYGEN_AVATAR_ID should be Pedram's custom avatar_id (not a look_id).
+  // Using it as look_id caused the avatar to render as a small overlay in the corner.
+  // Now using it as avatar_id directly for full-screen rendering.
+  // If HEYGEN_AVATAR_ID is a look_id, replace the avatar_id below with the correct base avatar_id.
   const body = {
     video_inputs: [
       {
         character: {
           type: "avatar",
-          avatar_id: "517e3a662b6845c29e140ec6ccdb991a", // Pedram's avatar
+          avatar_id: avatarId, // Pedram's custom avatar ID from HEYGEN_AVATAR_ID env var
           avatar_style: "normal",
-          look_id: avatarId, // look_id from HEYGEN_AVATAR_ID env var
+          // NOTE: look_id removed — it was causing the avatar to render as a PiP overlay.
+          // If you need a specific look, add look_id back here with the correct look ID from HeyGen Studio.
         },
         voice: {
           type: "text",

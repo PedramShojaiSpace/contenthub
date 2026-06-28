@@ -229,7 +229,7 @@ async function pushEmailsToMetaAudience(
     const [rows] = await db.execute(
       "SELECT meta_audience_id FROM meta_custom_audiences WHERE category = " +
       JSON.stringify(category) +
-      " AND status = 'active' LIMIT 1"
+      " LIMIT 1"
     ) as any[];
 
     const audienceRows: any[] = Array.isArray(rows) ? rows : [];
@@ -574,7 +574,7 @@ export async function apolloAudienceValidationHandler(req: Request, res: Respons
 
     if (accessToken) {
       const [audienceRows] = await db.execute(
-        "SELECT id, name, category, meta_audience_id FROM meta_custom_audiences WHERE status = 'active'"
+        "SELECT id, name, category, meta_audience_id FROM meta_custom_audiences"
       ) as any[];
       const audiences: any[] = Array.isArray(audienceRows) ? audienceRows : [];
 

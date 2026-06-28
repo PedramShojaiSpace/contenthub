@@ -20,37 +20,82 @@ import { protectedProcedure, router } from "./_core/trpc";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// ── Reddit OAuth token cache ─────────────────────────────────────────────────
-let _redditToken: string | null = null;
-let _redditTokenExpiry = 0;
+// ── Reddit public JSON/RSS scanner (no API credentials required) ─────────────
 
-async function getRedditToken(): Promise<string | null> {
-  const clientId = process.env.REDDIT_CLIENT_ID;
-  const clientSecret = process.env.REDDIT_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return null;
+const REDDIT_USER_AGENTS = [
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+];
 
-  // Return cached token if still valid (with 60s buffer)
-  if (_redditToken && Date.now() < _redditTokenExpiry - 60_000) return _redditToken;
+function randomUA(): string {
+  return REDDIT_USER_AGENTS[Math.floor(Math.random() * REDDIT_USER_AGENTS.length)];
+}
 
-  try {
-    const res = await fetch("https://www.reddit.com/api/v1/access_token", {
-      method: "POST",
-      headers: {
-        "Authorization": "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "UrbanMonkBot/1.0",
-      },
-      body: "grant_type=client_credentials",
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as { access_token?: string; expires_in?: number; error?: string };
-    if (data.error || !data.access_token) return null;
-    _redditToken = data.access_token;
-    _redditTokenExpiry = Date.now() + (data.expires_in ?? 3600) * 1000;
-    return _redditToken;
-  } catch {
-    return null;
+async function fetchRedditPublicJSON(
+  subreddit: string,
+  limit = 25
+): Promise<Array<{ id: string; title: string; selftext: string; author: string; permalink: string; score: number }>> {
+  // Try public .json endpoint first (no auth needed)
+  const endpoints = [
+    `https://www.reddit.com/r/${subreddit}/new.json?limit=${limit}&raw_json=1`,
+    `https://www.reddit.com/r/${subreddit}/hot.json?limit=${limit}&raw_json=1`,
+  ];
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": randomUA(),
+          "Accept": "application/json",
+        },
+      });
+      if (!res.ok) continue;
+      const data = await res.json() as { data?: { children?: Array<{ data: Record<string, unknown> }> } };
+      const posts = (data?.data?.children ?? []).map((c) => ({
+        id: c.data.id as string,
+        title: (c.data.title as string) || "",
+        selftext: (c.data.selftext as string) || "",
+        author: (c.data.author as string) || "[deleted]",
+        permalink: (c.data.permalink as string) || "",
+        score: (c.data.score as number) || 0,
+      }));
+      if (posts.length > 0) return posts;
+    } catch { /* try next */ }
   }
+  // RSS fallback
+  try {
+    const rssRes = await fetch(`https://www.reddit.com/r/${subreddit}/new.rss?limit=${limit}`, {
+      headers: { "User-Agent": randomUA(), "Accept": "application/rss+xml" },
+    });
+    if (rssRes.ok) {
+      const xml = await rssRes.text();
+      const posts: Array<{ id: string; title: string; selftext: string; author: string; permalink: string; score: number }> = [];
+      const entryRegex = /<entry>([\ \S]*?)<\/entry>/g;
+      let match; let idx = 0;
+      while ((match = entryRegex.exec(xml)) !== null && idx < limit) {
+        const entry = match[1];
+        const titleM = entry.match(/<title[^>]*>(?:<![CDATA\[)?([^\]<]+)(?:\]\]>)?<\/title>/);
+        const linkM = entry.match(/<link[^>]*href="([^"]+)"/);
+        const idM = entry.match(/<id>([^<]+)<\/id>/);
+        const authorM = entry.match(/<name>([^<]+)<\/name>/);
+        const contentM = entry.match(/<content[^>]*>(?:<![CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/content>/);
+        if (titleM) {
+          const postId = idM?.[1].match(/comments\/([a-z0-9]+)/)?.[1] ?? `rss_${idx}`;
+          posts.push({
+            id: postId,
+            title: titleM[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim(),
+            selftext: contentM ? contentM[1].replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").trim().slice(0, 1000) : "",
+            author: authorM?.[1] ?? "[unknown]",
+            permalink: linkM?.[1] ?? `https://reddit.com/r/${subreddit}`,
+            score: 0,
+          });
+          idx++;
+        }
+      }
+      if (posts.length > 0) return posts;
+    }
+  } catch { /* ignore */ }
+  return [];
 }
 
 async function searchReddit(
@@ -58,47 +103,30 @@ async function searchReddit(
   keywords: Array<{ keyword: string; category: string }>,
   limit: number
 ): Promise<InsertLeadProspect[]> {
-  const token = await getRedditToken();
-  if (!token) {
-    // No OAuth credentials — return empty with a flag
-    return [];
-  }
-
+  const posts = await fetchRedditPublicJSON(subreddit, Math.min(limit, 50));
   const results: InsertLeadProspect[] = [];
-  for (const kw of keywords) {
-    try {
-      const url = `https://oauth.reddit.com/r/${subreddit}/search?q=${encodeURIComponent(kw.keyword)}&restrict_sr=1&sort=new&limit=${limit}&t=week`;
-      const res = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "User-Agent": "UrbanMonkBot/1.0",
-        },
-      });
-      if (!res.ok) continue;
-      const data = (await res.json()) as {
-        data?: { children?: Array<{ data: Record<string, unknown> }> };
-      };
-      const posts = data?.data?.children ?? [];
-      for (const post of posts) {
-        const p = post.data;
-        const body = ((p.selftext as string) || (p.title as string) || "").slice(0, 2000);
-        if (!body.trim()) continue;
-        results.push({
-          source: "reddit",
-          sourceId: `reddit_${p.id as string}`,
-          title: (p.title as string) || null,
-          body,
-          url: `https://www.reddit.com${p.permalink as string}`,
-          author: (p.author as string) || null,
-          subredditOrChannel: subreddit,
-          keywordsMatched: JSON.stringify([kw.keyword]),
-          category: kw.category,
-          status: "new",
-        });
-      }
-    } catch {
-      // skip on error
-    }
+
+  for (const p of posts) {
+    const fullText = `${p.title} ${p.selftext}`.toLowerCase();
+    const matched = keywords.filter((kw) => fullText.includes(kw.keyword.toLowerCase()));
+    if (matched.length === 0) continue;
+
+    const primaryCategory = matched[0]?.category ?? "general";
+    const body = (p.selftext || p.title).slice(0, 2000);
+    const permalink = p.permalink.startsWith("http") ? p.permalink : `https://www.reddit.com${p.permalink}`;
+
+    results.push({
+      source: "reddit",
+      sourceId: `reddit_${p.id}`,
+      title: p.title || null,
+      body,
+      url: permalink,
+      author: p.author || null,
+      subredditOrChannel: subreddit,
+      keywordsMatched: JSON.stringify(matched.map((m) => m.keyword)),
+      category: primaryCategory,
+      status: "new",
+    });
   }
   return results;
 }
@@ -280,16 +308,6 @@ export const leadScrubberRouter = router({
 
       if (keywords.length === 0 || subreddits.length === 0) {
         return { saved: 0, scanned: 0, message: "No active keywords or subreddits configured." };
-      }
-
-      // Check for Reddit OAuth credentials
-      if (!process.env.REDDIT_CLIENT_ID || !process.env.REDDIT_CLIENT_SECRET) {
-        return {
-          saved: 0,
-          scanned: 0,
-          message: "Reddit API credentials not configured. Add REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET in Settings → Secrets. Get them at reddit.com/prefs/apps (create a 'script' app).",
-          needsCredentials: true,
-        };
       }
 
       const kwList = keywords.map((k) => ({ keyword: k.keyword, category: k.category }));

@@ -284,10 +284,18 @@ function SnippetSocialPanel({
   const [correctedQuote, setCorrectedQuote] = useState(snippet.passageText);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
 
+  // Live snippet query so image URLs refresh immediately after regeneration
+  const { data: liveSnippet, refetch: refetchSnippet } = trpc.bookLibrary.getSnippet.useQuery(
+    { snippetId: snippet.id },
+    { initialData: snippet, refetchOnWindowFocus: false }
+  );
+  const s = liveSnippet ?? snippet;
+
   const { data: channels } = trpc.bookLibrary.getBufferChannels.useQuery();
 
   const regenerate = trpc.bookLibrary.regenerateTitleCard.useMutation({
     onSuccess: (res) => {
+      refetchSnippet();
       utils.bookLibrary.getBook.invalidate({ bookId });
       toast.success(`${res.platform} title card regenerated!`);
     },
@@ -311,15 +319,15 @@ function SnippetSocialPanel({
   });
 
   const hashtags: string[] = (() => {
-    try { return JSON.parse(snippet.hashtags ?? "[]"); } catch { return []; }
+    try { return JSON.parse(s.hashtags ?? "[]"); } catch { return []; }
   })();
 
   const platformConfig = {
     linkedin: {
       label: "LinkedIn",
       icon: Linkedin,
-      copy: snippet.linkedinCopy,
-      imageUrl: snippet.titleCardLinkedinUrl ?? snippet.titleCardUrl,
+      copy: s.linkedinCopy,
+      imageUrl: s.titleCardLinkedinUrl ?? s.titleCardUrl,
       color: "text-blue-500",
       charLimit: 3000,
       imageFormat: "1200×627",
@@ -328,8 +336,8 @@ function SnippetSocialPanel({
     x: {
       label: "X / Twitter",
       icon: Twitter,
-      copy: snippet.xCopy,
-      imageUrl: snippet.titleCardXUrl ?? snippet.titleCardUrl,
+      copy: s.xCopy,
+      imageUrl: s.titleCardXUrl ?? s.titleCardUrl,
       color: "text-sky-400",
       charLimit: 280,
       imageFormat: "1600×900",
@@ -338,8 +346,8 @@ function SnippetSocialPanel({
     meta: {
       label: "Meta",
       icon: Facebook,
-      copy: snippet.metaCopy,
-      imageUrl: snippet.titleCardMetaUrl ?? snippet.titleCardUrl,
+      copy: s.metaCopy,
+      imageUrl: s.titleCardMetaUrl ?? s.titleCardUrl,
       color: "text-indigo-400",
       charLimit: 2200,
       imageFormat: "1080×1080",
@@ -348,8 +356,8 @@ function SnippetSocialPanel({
     instagram_feed: {
       label: "IG Feed",
       icon: Instagram,
-      copy: snippet.instagramCopy,
-      imageUrl: snippet.titleCardInstagramFeedUrl ?? snippet.titleCardUrl,
+      copy: s.instagramCopy,
+      imageUrl: s.titleCardInstagramFeedUrl ?? s.titleCardUrl,
       color: "text-pink-500",
       charLimit: 2200,
       imageFormat: "1080×1080",
@@ -358,8 +366,8 @@ function SnippetSocialPanel({
     instagram_reel: {
       label: "IG Reel",
       icon: Instagram,
-      copy: snippet.instagramReelCopy,
-      imageUrl: snippet.titleCardInstagramReelUrl ?? snippet.titleCardUrl,
+      copy: s.instagramReelCopy,
+      imageUrl: s.titleCardInstagramReelUrl ?? s.titleCardUrl,
       color: "text-fuchsia-500",
       charLimit: 300,
       imageFormat: "1080×1920",
@@ -368,8 +376,8 @@ function SnippetSocialPanel({
     instagram_story: {
       label: "IG Story",
       icon: Instagram,
-      copy: snippet.instagramCopy,
-      imageUrl: snippet.titleCardInstagramStoryUrl ?? snippet.titleCardUrl,
+      copy: s.instagramCopy,
+      imageUrl: s.titleCardInstagramStoryUrl ?? s.titleCardUrl,
       color: "text-rose-500",
       charLimit: 2200,
       imageFormat: "1080×1920",
@@ -384,12 +392,12 @@ function SnippetSocialPanel({
 
   // Per-platform published state — used to lock the Push button and show status
   const platformPublishedAt: Record<SocialPlatform, Date | null> = {
-    linkedin: snippet.publishedLinkedinAt ?? null,
-    x: snippet.publishedXAt ?? null,
-    meta: snippet.publishedMetaAt ?? null,
-    instagram_feed: snippet.publishedInstagramFeedAt ?? null,
-    instagram_reel: snippet.publishedInstagramReelAt ?? null,
-    instagram_story: snippet.publishedInstagramStoryAt ?? null,
+    linkedin: s.publishedLinkedinAt ?? null,
+    x: s.publishedXAt ?? null,
+    meta: s.publishedMetaAt ?? null,
+    instagram_feed: s.publishedInstagramFeedAt ?? null,
+    instagram_reel: s.publishedInstagramReelAt ?? null,
+    instagram_story: s.publishedInstagramStoryAt ?? null,
   };
   const isCurrentPlatformPublished = !!platformPublishedAt[activePlatform];
 
@@ -408,7 +416,7 @@ function SnippetSocialPanel({
       return;
     }
     pushToBuffer.mutate({
-      snippetId: snippet.id,
+      snippetId: s.id,
       platform: activePlatform,
       channelIds: selectedChannels,
       copyOverride: editingCopy ? editedCopy : undefined,
@@ -448,7 +456,7 @@ function SnippetSocialPanel({
                     <Check className="w-3.5 h-3.5" />
                     Done
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setCorrectedQuote(snippet.passageText); setEditingQuote(false); }}>
+                  <Button size="sm" variant="ghost" onClick={() => { setCorrectedQuote(s.passageText); setEditingQuote(false); }}>
                     Cancel
                   </Button>
                 </div>
@@ -470,8 +478,8 @@ function SnippetSocialPanel({
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              {snippet.theme && <span className="capitalize">{snippet.theme}</span>}
-              {snippet.chapter && <span> · {snippet.chapter}</span>}
+              {s.theme && <span className="capitalize">{s.theme}</span>}
+              {s.chapter && <span> · {s.chapter}</span>}
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0">
@@ -486,7 +494,7 @@ function SnippetSocialPanel({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => generateCopy.mutate({ snippetId: snippet.id })}
+              onClick={() => generateCopy.mutate({ snippetId: s.id })}
               disabled={generateCopy.isPending}
             >
               {generateCopy.isPending ? (
@@ -494,15 +502,15 @@ function SnippetSocialPanel({
               ) : (
                 <Sparkles className="w-3.5 h-3.5" />
               )}
-              {snippet.linkedinCopy ? "Regenerate Copy" : "Generate Copy + Hashtags"}
+              {s.linkedinCopy ? "Regenerate Copy" : "Generate Copy + Hashtags"}
             </Button>
             <Button
               size="sm"
               variant="outline"
               className="gap-1.5"
               onClick={() => regenerate.mutate({
-                snippetId: snippet.id,
-                correctedText: correctedQuote !== snippet.passageText ? correctedQuote : undefined,
+                snippetId: s.id,
+                correctedText: correctedQuote !== s.passageText ? correctedQuote : undefined,
                 platform: activePlatform === "x" ? "x" : activePlatform,
               })}
               disabled={regenerate.isPending}
@@ -586,10 +594,10 @@ function SnippetSocialPanel({
                           </p>
                         </div>
                       )}
-                      {snippet.bufferSentAt && (
+                      {s.bufferSentAt && (
                         <p className="text-xs text-emerald-600 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" />
-                          Pushed {new Date(snippet.bufferSentAt).toLocaleDateString()}
+                          Pushed {new Date(s.bufferSentAt).toLocaleDateString()}
                         </p>
                       )}
                     </div>

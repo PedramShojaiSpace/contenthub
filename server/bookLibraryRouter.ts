@@ -348,6 +348,19 @@ export const bookLibraryRouter = router({
       return { book, snippets };
     }),
 
+  getSnippet: protectedProcedure
+    .input(z.object({ snippetId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [snippet] = await db
+        .select()
+        .from(bookSnippets)
+        .where(and(eq(bookSnippets.id, input.snippetId), eq(bookSnippets.userId, ctx.user.id)));
+      if (!snippet) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+      return snippet;
+    }),
+
   createBook: protectedProcedure
     .input(
       z.object({

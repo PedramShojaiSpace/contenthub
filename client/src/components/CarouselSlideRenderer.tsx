@@ -1,7 +1,7 @@
 /**
  * CarouselSlideRenderer
  * Renders branded Urban Monk carousel slides on an HTML Canvas.
- * Each slide is 1080×1080 (1:1 square) for Meta.
+ * Each slide is 1080×1080 (1:1 square) for Meta/Instagram/Facebook.
  *
  * Design system: The Urban Monk Visual Identity Guidelines (May 2020)
  *   - Daoist five-element color palette
@@ -10,6 +10,13 @@
  *   - Dark (#161513) text on cream backgrounds
  *   - Urban Monk logo mark (circle + infinity/wave) bottom-right
  *   - "Life Garden" abstract decorative elements as watermarks
+ *
+ * Typography hierarchy (La Perla / premium editorial standard):
+ *   - Headline: 72px bold, max 2 lines, generous leading
+ *   - Body: 52px regular, 72px line-height — large enough to read on phone
+ *   - Slide number: 26px, muted
+ *   - Minimum gap between headline bottom and body top: 100px
+ *   - Content zone starts at y=180 (top padding) and ends at y=900 (bottom padding)
  *
  * Template types:
  *   cover   — large hook headline, solid brand color bg, white text
@@ -51,12 +58,38 @@ const COVER_COLORS = [BRAND.fire, BRAND.wood, BRAND.water, BRAND.earth];
 
 const SLIDE_SIZE = 1080;
 
+// ── Layout constants ──────────────────────────────────────────────────────────
+// These define the "safe zone" — content never bleeds into margins or logo area
+const MARGIN_X = 72;          // left/right margin
+const CONTENT_WIDTH = SLIDE_SIZE - MARGIN_X * 2;  // 936px usable width
+const SLIDE_NUM_Y = 68;       // slide number baseline
+const CONTENT_TOP = 170;      // where headline starts (generous top padding)
+const CONTENT_BOTTOM = 900;   // content must not go below this (logo lives at 1000)
+
+// Typography scale
+const TYPE = {
+  // Cover slide
+  coverHeadline:    { font: "700 76px 'Nunito', 'DM Sans', system-ui, sans-serif", lineH: 94 },
+  coverSlideNum:    { font: "400 26px 'DM Sans', system-ui, sans-serif" },
+
+  // Content slide
+  contentHeadline:  { font: "700 68px 'Nunito', 'DM Sans', system-ui, sans-serif", lineH: 84 },
+  contentBody:      { font: "400 48px 'DM Sans', system-ui, sans-serif", lineH: 70 },
+  contentBullet:    { font: "400 46px 'DM Sans', system-ui, sans-serif", lineH: 66 },
+  contentSlideNum:  { font: "400 26px 'DM Sans', system-ui, sans-serif" },
+
+  // CTA slide
+  ctaHeadline:      { font: "700 68px 'Nunito', 'DM Sans', system-ui, sans-serif", lineH: 84 },
+  ctaBody:          { font: "400 44px 'DM Sans', system-ui, sans-serif", lineH: 64 },
+  ctaButton:        { font: "700 32px 'DM Sans', system-ui, sans-serif" },
+  ctaSub:           { font: "400 28px 'DM Sans', system-ui, sans-serif" },
+};
+
 // ── Font loading helper ───────────────────────────────────────────────────────
 let fontsLoaded = false;
 async function ensureFonts() {
   if (fontsLoaded) return;
   try {
-    // Load Google Fonts equivalents for Raisonne Pro / Sofia Pro
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = "https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Nunito:wght@400;600;700;800&display=swap";
@@ -71,6 +104,10 @@ async function ensureFonts() {
 }
 
 // ── Text wrapping helper ──────────────────────────────────────────────────────
+/**
+ * Wraps text onto canvas. Returns the Y coordinate of the line AFTER the last drawn line.
+ * align: "left" | "center"
+ */
 function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -113,29 +150,20 @@ function wrapText(
 }
 
 // ── Urban Monk Logo Variants ───────────────────────────────────────────────────
-// All 7 official color variants from the brand identity package.
-// Each logo file is pre-colored — no pixel manipulation needed.
-//
-// Usage rules (from brand spec):
-//   Colored bg (Fire/Wood/Water/Earth) → Yang (white) logo
-//   Cream/Metal bg                     → Yin (black) or element-colored logo
-//   Dark bg                            → Yang (white) logo
-
 const CDN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ";
 
 export const LOGO_URLS = {
-  yin:   `${CDN}/The_Urban_Monk-Icon-Yin_90acff39.png`,   // black
-  yang:  `${CDN}/The_Urban_Monk-Icon-Yang_b22ccc65.png`,  // white
-  fire:  `${CDN}/The_Urban_Monk-Icon-Fire_0b452e9b.png`,  // red-orange #ed5939
-  wood:  `${CDN}/The_Urban_Monk-Icon-Wood_0a2e7212.png`,  // forest green #3d7e51
-  water: `${CDN}/The_Urban_Monk-Icon-Water_86df5580.png`, // muted blue #5870aa
-  earth: `${CDN}/The_Urban_Monk-Icon-Earth_04456ace.png`, // warm amber #f6a032
-  metal: `${CDN}/The_Urban_Monk-Icon-Metal_47202c2f.png`, // cream (use on dark bg)
+  yin:   `${CDN}/The_Urban_Monk-Icon-Yin_90acff39.png`,
+  yang:  `${CDN}/The_Urban_Monk-Icon-Yang_b22ccc65.png`,
+  fire:  `${CDN}/The_Urban_Monk-Icon-Fire_0b452e9b.png`,
+  wood:  `${CDN}/The_Urban_Monk-Icon-Wood_0a2e7212.png`,
+  water: `${CDN}/The_Urban_Monk-Icon-Water_86df5580.png`,
+  earth: `${CDN}/The_Urban_Monk-Icon-Earth_04456ace.png`,
+  metal: `${CDN}/The_Urban_Monk-Icon-Metal_47202c2f.png`,
 } as const;
 
 export type LogoVariant = keyof typeof LOGO_URLS;
 
-// Image cache — one entry per variant
 const _logoCache: Partial<Record<LogoVariant, HTMLImageElement>> = {};
 const _logoPromises: Partial<Record<LogoVariant, Promise<HTMLImageElement>>> = {};
 
@@ -152,27 +180,17 @@ function getLogoImage(variant: LogoVariant): Promise<HTMLImageElement> {
   return _logoPromises[variant]!;
 }
 
-/**
- * Map a brand background color to the correct logo variant.
- * - Colored backgrounds (Fire/Wood/Water/Earth) → Yang (white)
- * - Cream (Metal) background → Yin (black)
- * - Explicit element override → matching element logo
- */
 export function logoVariantForBg(bgColor: string): LogoVariant {
   switch (bgColor) {
-    case BRAND.fire:  return "yang";  // white on red-orange
-    case BRAND.wood:  return "yang";  // white on green
-    case BRAND.water: return "yang";  // white on blue
-    case BRAND.earth: return "yang";  // white on amber
-    case BRAND.metal: return "yin";   // black on cream
+    case BRAND.fire:  return "yang";
+    case BRAND.wood:  return "yang";
+    case BRAND.water: return "yang";
+    case BRAND.earth: return "yang";
+    case BRAND.metal: return "yin";
     default:          return "yin";
   }
 }
 
-/**
- * Map a brand background color to the element-colored logo variant.
- * Used on cream/content slides where the logo echoes the accent color.
- */
 export function logoVariantForAccent(accentColor: string): LogoVariant {
   switch (accentColor) {
     case BRAND.fire:  return "fire";
@@ -183,10 +201,6 @@ export function logoVariantForAccent(accentColor: string): LogoVariant {
   }
 }
 
-/**
- * Draw the Urban Monk logo onto the canvas using the correct pre-colored variant.
- * cx/cy = center point, size = width & height in canvas pixels.
- */
 async function drawLogoMark(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -202,7 +216,6 @@ async function drawLogoMark(
     ctx.drawImage(img, cx - half, cy - half, size, size);
     ctx.restore();
   } catch {
-    // Fallback: simple circle outline
     ctx.save();
     ctx.strokeStyle = variant === "yang" ? "#ffffff" : "#161513";
     ctx.lineWidth = size * 0.06;
@@ -215,7 +228,6 @@ async function drawLogoMark(
 
 // ── Life Garden decorative elements ──────────────────────────────────────────
 
-// Scattered dot cluster (like "Seeds" or "Water" pattern)
 function drawDotCluster(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -241,7 +253,6 @@ function drawDotCluster(
   ctx.restore();
 }
 
-// Zigzag / mountain line (like "Mountains" element)
 function drawZigzag(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -272,7 +283,6 @@ function drawZigzag(
   ctx.restore();
 }
 
-// Organic oval rings (like "Crops" element)
 function drawOvalRings(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -294,7 +304,6 @@ function drawOvalRings(
   ctx.restore();
 }
 
-// Sketch circle (like "Moon" element)
 function drawSketchCircle(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -322,49 +331,42 @@ async function renderCover(
 ) {
   const bgColor = COVER_COLORS[colorIndex % COVER_COLORS.length];
 
-  // Solid brand color background (NO gradient — brand spec)
+  // Solid brand color background
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
 
-  // Watermark: faint Life Garden elements (same hue, lighter tone)
-  const watermarkColor = BRAND.yang; // white at low opacity
-
-  // Dot cluster — top-right area
-  drawDotCluster(ctx, SLIDE_SIZE - 260, 60, watermarkColor, 0.12, 9, 4, 5, 36);
-
-  // Oval rings — bottom-left
-  drawOvalRings(ctx, 60, SLIDE_SIZE - 120, 4, watermarkColor, 0.1);
-
-  // Sketch circle — mid-right
-  drawSketchCircle(ctx, SLIDE_SIZE - 120, SLIDE_SIZE / 2, 90, watermarkColor, 0.08);
+  // Watermark elements
+  const watermarkColor = BRAND.yang;
+  drawDotCluster(ctx, SLIDE_SIZE - 260, 60, watermarkColor, 0.10, 9, 4, 5, 36);
+  drawOvalRings(ctx, 60, SLIDE_SIZE - 120, 4, watermarkColor, 0.09);
+  drawSketchCircle(ctx, SLIDE_SIZE - 120, SLIDE_SIZE / 2, 90, watermarkColor, 0.07);
 
   // Swipe hint — top right
-  ctx.font = "500 24px 'DM Sans', system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.font = "500 26px 'DM Sans', system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.60)";
   ctx.textAlign = "right";
-  ctx.fillText("swipe →", SLIDE_SIZE - 56, 72);
+  ctx.fillText("swipe →", SLIDE_SIZE - MARGIN_X, SLIDE_NUM_Y);
 
   // Slide number — top left
-  ctx.font = "400 22px 'DM Sans', system-ui, sans-serif";
+  ctx.font = TYPE.coverSlideNum.font;
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.textAlign = "left";
-  ctx.fillText(`${slide.slide} of ${total}`, 56, 72);
+  ctx.fillText(`${slide.slide} of ${total}`, MARGIN_X, SLIDE_NUM_Y);
 
-  // Headline — large, centered, white, sentence case
-  ctx.font = "700 80px 'Nunito', 'DM Sans', system-ui, sans-serif";
+  // Headline — large, white, vertically centered in the slide
+  ctx.font = TYPE.coverHeadline.font;
   ctx.fillStyle = BRAND.yang;
   ctx.textAlign = "left";
 
-  // Vertically center the headline block
-  const headlineMaxWidth = SLIDE_SIZE - 112;
-  const lineH = 96;
-  const approxLines = Math.ceil((slide.headline.length * 40) / headlineMaxWidth) + 1;
+  const lineH = TYPE.coverHeadline.lineH;
+  // Estimate block height for vertical centering (max 4 lines)
+  const approxLines = Math.min(4, Math.ceil((slide.headline.length * 38) / CONTENT_WIDTH) + 1);
   const blockH = approxLines * lineH;
   const startY = (SLIDE_SIZE - blockH) / 2 + lineH;
 
-  wrapText(ctx, slide.headline, 56, startY, headlineMaxWidth, lineH, 5, "left");
+  wrapText(ctx, slide.headline, MARGIN_X, startY, CONTENT_WIDTH, lineH, 4, "left");
 
-  // Logo mark — bottom-right: Yang (white) on colored bg
+  // Logo mark — bottom-right
   await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, logoVariantForBg(bgColor));
 }
 
@@ -379,57 +381,83 @@ async function renderContent(
   ctx.fillStyle = BRAND.metal;
   ctx.fillRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
 
-  // Pick an accent color for this slide (cycles through brand colors)
   const accentColor = COVER_COLORS[colorIndex % COVER_COLORS.length];
 
-  // Watermark: faint Life Garden elements in accent color
-  drawDotCluster(ctx, SLIDE_SIZE - 220, SLIDE_SIZE - 280, accentColor, 0.1, 10, 3, 4, 38);
-  drawZigzag(ctx, 40, SLIDE_SIZE - 160, 300, 22, 8, accentColor, 0.12, 5);
+  // Watermark: Life Garden elements — pushed to bottom corners, low opacity
+  drawDotCluster(ctx, SLIDE_SIZE - 200, SLIDE_SIZE - 260, accentColor, 0.08, 10, 3, 4, 38);
+  drawZigzag(ctx, 40, SLIDE_SIZE - 170, 280, 20, 8, accentColor, 0.10, 5);
 
-  // Slide number — top left
-  ctx.font = "400 22px 'DM Sans', system-ui, sans-serif";
-  ctx.fillStyle = "rgba(22,21,19,0.4)";
-  ctx.textAlign = "left";
-  ctx.fillText(`${slide.slide} of ${total}`, 56, 72);
-
-  // Accent color bar — left edge
+  // Accent color bar — left edge (full height)
   ctx.fillStyle = accentColor;
   ctx.fillRect(0, 0, 12, SLIDE_SIZE);
 
-  // Headline — dark, large
-  ctx.font = "700 64px 'Nunito', 'DM Sans', system-ui, sans-serif";
+  // Slide number — top left, muted
+  ctx.font = TYPE.contentSlideNum.font;
+  ctx.fillStyle = "rgba(22,21,19,0.38)";
+  ctx.textAlign = "left";
+  ctx.fillText(`${slide.slide} of ${total}`, MARGIN_X, SLIDE_NUM_Y);
+
+  // ── Headline ──────────────────────────────────────────────────────────────
+  // Starts at CONTENT_TOP (170px). Max 2 lines to preserve space for body.
+  ctx.font = TYPE.contentHeadline.font;
   ctx.fillStyle = BRAND.yin;
   ctx.textAlign = "left";
-  const afterHeadline = wrapText(ctx, slide.headline, 72, 160, SLIDE_SIZE - 128, 78, 3);
 
-  // Divider line in accent color
+  const headlineLineH = TYPE.contentHeadline.lineH;
+  const afterHeadline = wrapText(
+    ctx,
+    slide.headline,
+    MARGIN_X,
+    CONTENT_TOP,
+    CONTENT_WIDTH,
+    headlineLineH,
+    2,   // ← hard cap: 2 lines max so body always has room
+    "left"
+  );
+
+  // ── Divider ───────────────────────────────────────────────────────────────
+  // 48px gap below headline, then a 4px accent rule, then 60px gap before body
+  const dividerY = afterHeadline + 48;
   ctx.fillStyle = accentColor;
-  ctx.fillRect(72, afterHeadline + 16, 80, 4);
+  ctx.fillRect(MARGIN_X, dividerY, 80, 4);
 
-  // Body text
-  const bodyY = afterHeadline + 56;
+  // ── Body text ─────────────────────────────────────────────────────────────
+  // Body starts 60px below the divider line — generous breathing room
+  const bodyY = dividerY + 60;
+
   if (slide.bullets && slide.bullets.length > 0) {
     let bulletY = bodyY;
-    ctx.font = "400 38px 'DM Sans', system-ui, sans-serif";
+    ctx.font = TYPE.contentBullet.font;
     ctx.fillStyle = BRAND.yin;
-    for (const bullet of slide.bullets.slice(0, 5)) {
-      // Bullet dot in accent color
+    const bulletLineH = TYPE.contentBullet.lineH;
+    const bulletIndent = MARGIN_X + 36;
+    const bulletWidth = CONTENT_WIDTH - 36;
+
+    for (const bullet of slide.bullets.slice(0, 4)) {
+      // Bullet dot in accent color — vertically centered on first line
       ctx.fillStyle = accentColor;
       ctx.beginPath();
-      ctx.arc(72 + 10, bulletY - 12, 7, 0, Math.PI * 2);
+      ctx.arc(MARGIN_X + 10, bulletY - 14, 8, 0, Math.PI * 2);
       ctx.fill();
+
       // Bullet text
       ctx.fillStyle = BRAND.yin;
-      const nextY = wrapText(ctx, bullet, 72 + 32, bulletY, SLIDE_SIZE - 160, 48, 2);
-      bulletY = nextY + 20;
+      const nextY = wrapText(ctx, bullet, bulletIndent, bulletY, bulletWidth, bulletLineH, 2);
+      bulletY = nextY + 24;
+
+      // Stop if we'd overflow the content zone
+      if (bulletY > CONTENT_BOTTOM - 60) break;
     }
   } else if (slide.body) {
-    ctx.font = "400 40px 'DM Sans', system-ui, sans-serif";
+    ctx.font = TYPE.contentBody.font;
     ctx.fillStyle = BRAND.yin;
-    wrapText(ctx, slide.body, 72, bodyY, SLIDE_SIZE - 128, 58, 6);
+    // Max lines calculated from available vertical space
+    const availableH = CONTENT_BOTTOM - bodyY;
+    const maxLines = Math.floor(availableH / TYPE.contentBody.lineH);
+    wrapText(ctx, slide.body, MARGIN_X, bodyY, CONTENT_WIDTH, TYPE.contentBody.lineH, Math.max(3, maxLines), "left");
   }
 
-  // Logo mark — bottom-right: element-colored logo on cream bg
+  // Logo mark — bottom-right, element-colored on cream
   await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, logoVariantForAccent(accentColor));
 }
 
@@ -439,55 +467,55 @@ async function renderCta(ctx: CanvasRenderingContext2D, slide: CarouselSlideData
   ctx.fillStyle = BRAND.metal;
   ctx.fillRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
 
-  // Fire accent — top color block (top 1/3)
+  // Fire accent — top color block (top ~35%)
   ctx.fillStyle = BRAND.fire;
-  ctx.fillRect(0, 0, SLIDE_SIZE, 340);
+  ctx.fillRect(0, 0, SLIDE_SIZE, 370);
 
-  // Watermark on fire block: oval rings
-  drawOvalRings(ctx, 60, 280, 5, BRAND.yang, 0.12);
-  drawDotCluster(ctx, SLIDE_SIZE - 240, 40, BRAND.yang, 0.1, 9, 4, 3, 34);
+  // Watermarks on fire block
+  drawOvalRings(ctx, 60, 310, 5, BRAND.yang, 0.12);
+  drawDotCluster(ctx, SLIDE_SIZE - 240, 40, BRAND.yang, 0.10, 9, 4, 3, 34);
 
   // Slide number
-  ctx.font = "400 22px 'DM Sans', system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.font = TYPE.coverSlideNum.font;
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.textAlign = "left";
-  ctx.fillText(`${slide.slide} of ${total}`, 56, 56);
+  ctx.fillText(`${slide.slide} of ${total}`, MARGIN_X, SLIDE_NUM_Y);
 
-  // Headline — white on fire block
-  ctx.font = "700 68px 'Nunito', 'DM Sans', system-ui, sans-serif";
+  // Headline — white on fire block, max 2 lines
+  ctx.font = TYPE.ctaHeadline.font;
   ctx.fillStyle = BRAND.yang;
   ctx.textAlign = "left";
-  wrapText(ctx, slide.headline, 56, 120, SLIDE_SIZE - 112, 82, 3);
+  wrapText(ctx, slide.headline, MARGIN_X, 130, CONTENT_WIDTH, TYPE.ctaHeadline.lineH, 2);
 
-  // Body — dark on cream
+  // Body — dark on cream, centered, starts below fire block
   if (slide.body) {
-    ctx.font = "400 38px 'DM Sans', system-ui, sans-serif";
+    ctx.font = TYPE.ctaBody.font;
     ctx.fillStyle = BRAND.yin;
     ctx.textAlign = "center";
-    wrapText(ctx, slide.body, 56, 400, SLIDE_SIZE - 112, 54, 4, "center");
+    wrapText(ctx, slide.body, MARGIN_X, 430, CONTENT_WIDTH, TYPE.ctaBody.lineH, 4, "center");
   }
 
-  // CTA button pill — Fire color
-  const btnY = SLIDE_SIZE - 260;
-  const btnW = 680;
-  const btnH = 88;
+  // CTA button pill
+  const btnY = SLIDE_SIZE - 290;
+  const btnW = 700;
+  const btnH = 92;
   const btnX = (SLIDE_SIZE - btnW) / 2;
   ctx.fillStyle = BRAND.fire;
   ctx.beginPath();
-  ctx.roundRect(btnX, btnY, btnW, btnH, 44);
+  ctx.roundRect(btnX, btnY, btnW, btnH, 46);
   ctx.fill();
 
-  ctx.font = "700 30px 'DM Sans', system-ui, sans-serif";
+  ctx.font = TYPE.ctaButton.font;
   ctx.fillStyle = BRAND.yang;
   ctx.textAlign = "center";
-  ctx.fillText("lightson.theurbanmonk.com", SLIDE_SIZE / 2, btnY + 56);
+  ctx.fillText("lightson.theurbanmonk.com", SLIDE_SIZE / 2, btnY + 60);
 
-  // "Free access" sub-label
-  ctx.font = "400 26px 'DM Sans', system-ui, sans-serif";
-  ctx.fillStyle = "rgba(22,21,19,0.5)";
-  ctx.fillText("Start your Lights On journey today", SLIDE_SIZE / 2, btnY + 120);
+  // Sub-label below button
+  ctx.font = TYPE.ctaSub.font;
+  ctx.fillStyle = "rgba(22,21,19,0.48)";
+  ctx.fillText("Start your Lights On journey today", SLIDE_SIZE / 2, btnY + 130);
 
-  // Logo mark — bottom-right: Fire-colored logo on CTA cream section
+  // Logo mark
   await drawLogoMark(ctx, SLIDE_SIZE - 80, SLIDE_SIZE - 80, 110, "fire");
 }
 
@@ -504,7 +532,6 @@ export async function renderSlideToCanvas(
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, SLIDE_SIZE, SLIDE_SIZE);
 
-  // colorIndex cycles through brand palette per slide
   const idx = colorIndex !== undefined ? colorIndex : slide.slide - 1;
 
   if (slide.type === "cover") {

@@ -3999,3 +3999,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Verify YouTube scan is collecting leads (18 leads exist from manual runs)
 - [ ] Confirm Meta Custom Audience "Urban Monk Lead Scraper" (ID: 52568399217005) is active in Meta Ads Manager
 - [ ] Verify the 6 existing meta_audience_leads were actually pushed to Meta successfully
+
+## Cron & Meta Audience Strategy (Jun 27-28, 2026)
+- [x] Set cron runAsNewTask=true so daily scans run autonomously (no more ask_user blocking)
+- [x] Clarified two-audience strategy: Audience 1 = email-based (Apollo/found emails → Meta CUSTOM), Audience 2 = website pixel-based (must be built in Meta Ads Manager directly, not via API)
+- [ ] Confirm Meta Pixel is installed on theurbanmonk.com and Urban Monk Academy
+- [ ] Create Website Custom Audience in Meta Ads Manager for URL-based retargeting (people who visited specific pages — no API needed, done in Meta UI)
+- [ ] Once Audience 1 reaches 100+ emails, create Lookalike Audience via Lead Scrubber → Meta Audiences tab

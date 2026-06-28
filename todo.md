@@ -3988,3 +3988,14 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Email Finder tab: name + domain input, Apollo lookup
 - [x] Add Lead Scrubber to sidebar navigation
 - [x] Seed default Urban Monk keywords and subreddits
+
+## Lead Scrubber Pipeline Audit & Fixes (Jun 27, 2026)
+- [x] Purge 124 bad Apollo placeholder emails (email_not_unlocked@domain.com) from DB
+- [x] Purge 15 Apollo leads with no email at all
+- [x] Diagnose cron run mode: schedule is set to ask_user (requires manual approval daily) — NOT autonomous
+- [x] Fix TypeScript errors in routers.ts: gscPositionHistory.position is varchar (string|null), recordedAt is bigint (number), not Date
+- [ ] Change cron runMode from ask_user to run_as_new_task so Apollo/Reddit/YouTube scans run autonomously (requires deploy first)
+- [ ] Verify Reddit nightly scan is actually collecting leads (0 Reddit leads in DB currently — cron never ran autonomously)
+- [ ] Verify YouTube scan is collecting leads (18 leads exist from manual runs)
+- [ ] Confirm Meta Custom Audience "Urban Monk Lead Scraper" (ID: 52568399217005) is active in Meta Ads Manager
+- [ ] Verify the 6 existing meta_audience_leads were actually pushed to Meta successfully

@@ -7024,7 +7024,7 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
           .where(isNotNull(gscPositionHistory.contentItemId))
           .orderBy(desc(gscPositionHistory.recordedAt))
           .limit(200);
-        const byItem: Record<number, Array<{ position: number; recordedAt: Date }>> = {};
+        const byItem: Record<number, Array<{ position: string | null; recordedAt: number }>> = {};
         for (const row of recentHistory) {
           if (!row.contentItemId) continue;
           if (!byItem[row.contentItemId]) byItem[row.contentItemId] = [];
@@ -7033,9 +7033,9 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
         const gainers: Array<{ title: string; delta: number; current: number }> = [];
         for (const [itemId, history] of Object.entries(byItem)) {
           if (history.length < 2) continue;
-          const sorted = history.sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
-          const latest = sorted[0].position;
-          const previous = sorted[sorted.length - 1].position;
+          const sorted = history.sort((a, b) => b.recordedAt - a.recordedAt);
+          const latest = parseFloat(sorted[0].position ?? "0");
+          const previous = parseFloat(sorted[sorted.length - 1].position ?? "0");
           const delta = previous - latest;
           if (delta > 0) {
             const [item] = await db.select({ title: ci.title }).from(ci).where(eq(ci.id, Number(itemId))).limit(1);
@@ -7083,7 +7083,7 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
         .orderBy(desc(gscPositionHistory.recordedAt))
         .limit(500);
 
-      const byItem: Record<number, Array<{ position: number; url: string; clicks: number; impressions: number; recordedAt: Date }>> = {};
+      const byItem: Record<number, Array<{ position: string | null; url: string; clicks: number; impressions: number; recordedAt: number }>> = {};
       for (const row of recentHistory) {
         if (!row.contentItemId) continue;
         if (!byItem[row.contentItemId]) byItem[row.contentItemId] = [];
@@ -7093,10 +7093,12 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
       const movers: Array<{ contentItemId: number; title: string; url: string; positionDelta: number; currentPosition: number; clicks: number; impressions: number }> = [];
       for (const [itemId, history] of Object.entries(byItem)) {
         if (history.length < 2) continue;
-        const sorted = history.sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
+        const sorted = history.sort((a, b) => b.recordedAt - a.recordedAt);
         const latest = sorted[0];
         const oldest = sorted[sorted.length - 1];
-        const delta = oldest.position - latest.position;
+        const latestPos = parseFloat(latest.position ?? "0");
+        const oldestPos = parseFloat(oldest.position ?? "0");
+        const delta = oldestPos - latestPos;
         if (delta > 0.5) {
           const [item] = await db.select({ title: ci.title, publishUrl: ci.publishUrl }).from(ci).where(eq(ci.id, Number(itemId))).limit(1);
           if (item) {
@@ -7105,7 +7107,7 @@ Return JSON: {"enriched": [{"keyword": string, "suggestedTitle": string, "ration
               title: item.title,
               url: item.publishUrl ?? latest.url,
               positionDelta: Math.round(delta * 10) / 10,
-              currentPosition: Math.round(latest.position * 10) / 10,
+              currentPosition: Math.round(latestPos * 10) / 10,
               clicks: latest.clicks,
               impressions: latest.impressions,
             });

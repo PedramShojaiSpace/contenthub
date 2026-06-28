@@ -126,6 +126,7 @@ import { metaCustomAudienceRouter } from "./metaCustomAudienceRouter";
 import { kidsResearchRouter } from "./kidsResearchRouter";
 import { collectiveRouter } from "./collectiveRouter";
 import { soroRouter } from "./soroRouter";
+import { intentIdeasRouter } from "./intentIdeasRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -487,6 +488,7 @@ export const appRouter = router({
   metaCustomAudience: metaCustomAudienceRouter,
   kidsResearch: kidsResearchRouter,
   plainTextEmail: plainTextEmailRouter,
+  intentIdeas: intentIdeasRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

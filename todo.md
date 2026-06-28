@@ -4006,3 +4006,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Confirm Meta Pixel is installed on theurbanmonk.com and Urban Monk Academy
 - [ ] Create Website Custom Audience in Meta Ads Manager for URL-based retargeting (people who visited specific pages — no API needed, done in Meta UI)
 - [ ] Once Audience 1 reaches 100+ emails, create Lookalike Audience via Lead Scrubber → Meta Audiences tab
+
+## Intent Signal → Content Idea Bridge (Jun 28, 2026)
+- [x] Add `intentIdeasRouter.ts` — `generateIntentIdeas` procedure: aggregates top Reddit posts + YouTube lead keywords (last 14 days), calls Claude to generate 8-10 content ideas in Pedram's voice with title, hook, and content type
+- [x] Add `pushIdeaToPipeline` procedure in intentIdeasRouter — creates a content_item with status="idea" from a generated idea, returns new item id
+- [x] Wire intentIdeasRouter into main app router in routers.ts
+- [x] Add "Intent Ideas" tab to IntelligenceDashboard.tsx — shows generated ideas with one-click "Add to Pipeline" button per idea, links back to Content Pipeline after push

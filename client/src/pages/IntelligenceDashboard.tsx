@@ -33,6 +33,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { Link , useLocation } from "wouter";
+import IntentIdeasPanel from "@/components/IntentIdeasPanel";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -497,6 +498,9 @@ export default function IntelligenceDashboard() {
             </div>
           </CardContent>
         </Card>
+        {/* ── Intent Ideas from Signals ─────────────────────────────────────── */}
+        <IntentIdeasPanel />
+
       </div>
     </DashboardLayout>
   );

@@ -1,0 +1,231 @@
+{
+  "formId": "m6EyBDzz",
+  "formTitle": "Gut Microbiome Assessment",
+  "totalResponses": 2540,
+  "sampleSize": 150,
+  "analyzedAt": "2026-06-28T16:21:30.712Z",
+  "segments": [
+    {
+      "personaId": "burned-out-executive",
+      "personaName": "The Burned-Out Executive",
+      "percentage": 5,
+      "painPoints": [
+        "Brain fog or difficulty concentrating",
+        "Unexplained fatigue",
+        "Chronic stress",
+        "Poor sleep",
+        "Gut issues from travel and bad food"
+      ],
+      "aspirations": [
+        "Mental clarity for my career",
+        "Perform without burning out",
+        "Overall quality of life improvement",
+        "Better mood and relationships"
+      ],
+      "voiceOfCustomer": "My career demands so much, and I'm constantly battling brain fog and fatigue. I need a solution that helps me stay sharp and productive without completely burning out.",
+      "contentHooks": [
+        "Boost Your Brainpower: Gut Health Strategies for Executives",
+        "Stress-Proof Your Gut: How to Thrive in a High-Pressure Career",
+        "Travel-Friendly Gut Solutions for Busy Professionals",
+        "Reclaim Your Energy: Beat Executive Burnout with Gut Health",
+        "Optimize Performance: The Gut-Brain Connection for Leaders"
+      ]
+    },
+    {
+      "personaId": "awakening-health-seeker",
+      "personaName": "The Awakening Health Seeker",
+      "percentage": 20,
+      "painPoints": [
+        "Bloating after meals",
+        "Brain fog or difficulty concentrating",
+        "Unexplained fatigue",
+        "Skin issues (acne, eczema, rashes)",
+        "Mood swings or anxiety",
+        "Not knowing the root cause",
+        "Doctors dismissing my symptoms"
+      ],
+      "aspirations": [
+        "Overall quality of life improvement",
+        "Mental clarity for my career",
+        "Better mood and relationships",
+        "Freedom to eat without fear",
+        "Root-cause solutions, not symptom management"
+      ],
+      "voiceOfCustomer": "I'm tired of just treating symptoms; I know there's a deeper issue with my gut affecting everything from my mood to my energy. I'm ready to find real solutions that address the root cause.",
+      "contentHooks": [
+        "Beyond Symptoms: Uncovering the Root Causes of Your Gut Issues",
+        "Holistic Gut Healing: Why Conventional Medicine Falls Short",
+        "Your Gut, Your Mood: A Holistic Approach to Anxiety and Brain Fog",
+        "The Gut-Skin Connection: Natural Solutions for Eczema and Acne",
+        "Empower Your Health Journey: Finding Answers Beyond Conventional Doctors"
+      ]
+    },
+    {
+      "personaId": "spiritual-entrepreneur",
+      "personaName": "The Spiritual Entrepreneur",
+      "percentage": 5,
+      "painPoints": [
+        "Feeling scattered and depleted",
+        "Brain fog or difficulty concentrating",
+        "Unexplained fatigue",
+        "Stress impacting gut health",
+        "Lack of personalized guidance"
+      ],
+      "aspirations": [
+        "Mental clarity for my career",
+        "Integrate mindfulness and ancient wisdom",
+        "Sustained energy for purpose-driven work",
+        "Better mood and relationships",
+        "Overall quality of life improvement"
+      ],
+      "voiceOfCustomer": "I'm building something meaningful, but I feel scattered and my energy is constantly low. I need to integrate my health with my purpose, finding ancient wisdom that supports modern performance.",
+      "contentHooks": [
+        "Ancient Wisdom for a Modern Gut: Fuel Your Purpose-Driven Life",
+        "Mindful Eating & Gut Health: The Entrepreneur's Secret Weapon",
+        "Beyond Burnout: Holistic Strategies for Spiritual Entrepreneurs",
+        "The Gut-Brain Axis: Enhancing Intuition and Focus",
+        "Integrate Your Health: Aligning Gut Wellness with Your Business Vision"
+      ]
+    },
+    {
+      "personaId": "midlife-woman-in-transition",
+      "personaName": "The Midlife Woman in Transition",
+      "percentage": 30,
+      "painPoints": [
+        "Difficulty losing weight",
+        "Unexplained fatigue",
+        "Joint pain or stiffness",
+        "Mood swings or anxiety",
+        "Sugar cravings",
+        "Bloating after meals",
+        "Hormonal shifts impacting gut health"
+      ],
+      "aspirations": [
+        "Weight loss that actually lasts",
+        "Feel vital and reclaim myself",
+        "Overall quality of life improvement",
+        "Energy to play with my kids/grandkids",
+        "Better mood and relationships"
+      ],
+      "voiceOfCustomer": "Midlife has brought so many changes, and I'm struggling with weight, energy, and mood. I want to feel like myself again, vibrant and in control, and I'm open to holistic solutions.",
+      "contentHooks": [
+        "Reclaim Your Vitality: Gut Health for Midlife Women",
+        "Hormones & Your Gut: Navigating Midlife Changes with Ease",
+        "Sustainable Weight Loss: A Gut-First Approach for Women Over 45",
+        "Boost Your Energy: Conquer Midlife Fatigue Naturally",
+        "Beyond Hot Flashes: Holistic Gut Support for Menopause"
+      ]
+    },
+    {
+      "personaId": "functional-parent",
+      "personaName": "The Functional Parent",
+      "percentage": 15,
+      "painPoints": [
+        "Unexplained fatigue",
+        "Energy crashes",
+        "Bloating after meals",
+        "Mood swings or anxiety",
+        "Difficulty losing weight",
+        "Putting family first at expense of own health"
+      ],
+      "aspirations": [
+        "Energy to play with my kids/grandkids",
+        "Show up fully for my kids",
+        "Overall quality of life improvement",
+        "Better mood and relationships",
+        "Freedom to eat without fear"
+      ],
+      "voiceOfCustomer": "I'm always putting my kids first, but I'm so exhausted and my gut issues are making it hard to be the parent I want to be. I need practical solutions that fit into my busy life and give me back my energy.",
+      "contentHooks": [
+        "Energy for Parenthood: Fueling Your Body & Mind",
+        "Gut Health for Busy Parents: Simple Strategies for More Energy",
+        "Beyond Exhaustion: Reclaiming Your Vitality as a Parent",
+        "Family-Friendly Gut Healing: Nourishing Yourself and Your Kids",
+        "From Inflamed to Energized: A Parent's Guide to Gut Wellness"
+      ]
+    },
+    {
+      "personaId": "biohacker-optimizer",
+      "personaName": "The Biohacker & Optimizer",
+      "percentage": 5,
+      "painPoints": [
+        "Not knowing the root cause",
+        "Conflicting information online",
+        "Temporary relief that doesn't last",
+        "Cost of testing and treatments",
+        "Generic solutions that don't work for me"
+      ],
+      "aspirations": [
+        "Next level health optimization",
+        "Ancient wisdom meets cutting-edge science",
+        "Prevention of serious disease",
+        "Mental clarity for my career",
+        "Overall quality of life improvement"
+      ],
+      "voiceOfCustomer": "I've tried all the latest biohacks, but I'm looking for deeper, more personalized insights. I want to combine cutting-edge science with ancient wisdom to truly optimize my health and prevent future issues.",
+      "contentHooks": [
+        "Beyond Basic Biohacking: Advanced Gut Optimization Strategies",
+        "Ancient Wisdom, Modern Science: The Ultimate Gut Health Protocol",
+        "Precision Gut Health: Unlocking Your Genetic Potential",
+        "Data-Driven Wellness: Interpreting Your Gut Microbiome Tests",
+        "The Future of Health: Integrating Holistic Practices for Longevity"
+      ]
+    },
+    {
+      "personaId": "chronic-illness-warrior",
+      "personaName": "The Chronic Illness Warrior",
+      "percentage": 15,
+      "painPoints": [
+        "Severely limiting my activities",
+        "Doctors dismissing my symptoms",
+        "Not knowing the root cause",
+        "Temporary relief that doesn't last",
+        "Generic solutions that don't work for me",
+        "Cost of testing and treatments",
+        "Dealing with autoimmune, IBS, SIBO, Lyme, or mystery symptoms"
+      ],
+      "aspirations": [
+        "Overall quality of life improvement",
+        "Freedom to eat without fear",
+        "Prevention of serious disease",
+        "Finding a guide who understands complexity",
+        "Better mood and relationships"
+      ],
+      "voiceOfCustomer": "I've been battling chronic issues for years, and conventional medicine hasn't given me answers. I need someone who understands the complexity of my condition and can guide me to lasting relief.",
+      "contentHooks": [
+        "Beyond Diagnosis: A Holistic Path for Chronic Gut Illness",
+        "When Doctors Can't Help: Finding Answers for Mystery Symptoms",
+        "IBS, SIBO, Autoimmune: Comprehensive Gut Healing Strategies",
+        "Reclaiming Your Life: Overcoming Chronic Illness with Gut Health",
+        "The Missing Piece: Personalized Solutions for Complex Gut Conditions"
+      ]
+    },
+    {
+      "personaId": "conscious-professional",
+      "personaName": "The Conscious Professional",
+      "percentage": 5,
+      "painPoints": [
+        "Conflicting information online",
+        "Lack of personalised guidance",
+        "Not knowing the root cause",
+        "Temporary relief that doesn't last",
+        "Balancing personal health with helping clients"
+      ],
+      "aspirations": [
+        "Deepen their own practice",
+        "Help clients more effectively",
+        "Mental clarity for my career",
+        "Overall quality of life improvement",
+        "Better mood and relationships"
+      ],
+      "voiceOfCustomer": "As a wellness professional, I want to deepen my own understanding of gut health, not just for myself, but to better serve my clients. I need clear, effective strategies that I can trust and implement.",
+      "contentHooks": [
+        "Gut Health for Wellness Professionals: Deepen Your Practice",
+        "Empower Your Clients: The Gut-Brain Connection for Coaches",
+        "Beyond the Basics: Advanced Gut Health for Practitioners",
+        "Holistic Healing: Integrating Gut Wisdom into Your Client Work",
+        "Lead by Example: Optimize Your Own Gut Health for Greater Impact"
+      ]
+    }
+  ]
+}

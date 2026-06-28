@@ -753,6 +753,18 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   });
 
   // ── HeyGen Avatar mutations ───────────────────────────────────────────────
+  const [avatarProductionPath, setAvatarProductionPath] = useState<"heygen_then_descript" | "heygen_only">("heygen_then_descript");
+
+  const startVideoJobMutation = trpc.videoPipeline.startVideoJob.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message ?? "Avatar video job started. Dashboard will update when done.", { duration: 10000 });
+      const pollInterval = setInterval(() => { onRefresh(); }, 30_000);
+      setTimeout(() => clearInterval(pollInterval), 90 * 60 * 1000);
+      onRefresh();
+    },
+    onError: (err) => toast.error(`Avatar generation failed: ${err.message}`),
+  });
+
   const generateAvatarVideo = trpc.heygen.generateAvatarVideo.useMutation({
     onSuccess: (data) => {
       toast.success(data.message ?? "HeyGen avatar render started. Dashboard will update when done.", { duration: 10000 });
@@ -1349,24 +1361,45 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
           <div className="flex gap-3 flex-wrap">
             {/* Generate Avatar Video — shown for non-avatar jobs in pending/approved/failed/ready_for_review */}
             {!isAvatar && !isRendering && !isUploading && !isPublished && !isUploadedUnlisted && (
-              <Button
-                variant="outline"
-                className="text-sm border-violet-500/40 text-violet-400 hover:bg-violet-950/30"
-                onClick={() => {
-                  if (confirm("Generate a cartoon avatar video from this script using HeyGen? This will use your HeyGen Creator plan quota (~15 min/month). The avatar video will be uploaded to YouTube automatically when done.")) {
-                    generateAvatarVideo.mutate({ jobId: job.id });
-                  }
-                }}
-                disabled={generateAvatarVideo.isPending}
-                title="Generate a HeyGen cartoon avatar video from this script"
-              >
-                {generateAvatarVideo.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Bot className="w-4 h-4 mr-2" />
-                )}
-                {generateAvatarVideo.isPending ? "Starting Avatar Render..." : "Generate Avatar Video"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Path selector: HeyGen+Descript (B-roll) vs HeyGen-only (raw) */}
+                <select
+                  value={avatarProductionPath}
+                  onChange={(e) => setAvatarProductionPath(e.target.value as "heygen_then_descript" | "heygen_only")}
+                  className="text-xs bg-background border border-violet-500/30 text-violet-300 rounded px-2 py-1 cursor-pointer"
+                  title="Choose production path: HeyGen+Descript adds B-roll editing after the avatar render; HeyGen-only skips Descript"
+                >
+                  <option value="heygen_then_descript">✨ HeyGen + Descript (B-roll)</option>
+                  <option value="heygen_only">⚡ HeyGen Only (raw)</option>
+                </select>
+                <Button
+                  variant="outline"
+                  className="text-sm border-violet-500/40 text-violet-400 hover:bg-violet-950/30"
+                  onClick={() => {
+                    const pathLabel = avatarProductionPath === "heygen_then_descript"
+                      ? "HeyGen + Descript B-roll editing (recommended)"
+                      : "HeyGen only — raw avatar video, no B-roll";
+                    if (confirm(`Generate avatar video using: ${pathLabel}?\n\nThis uses your HeyGen Creator plan quota. The video will be processed automatically.`)) {
+                      startVideoJobMutation.mutate({
+                        contentItemId: job.contentItemId,
+                        scriptTitle: job.youtubeTitle ?? "Urban Monk Video",
+                        scriptText: job.scriptText,
+                        productionPath: avatarProductionPath,
+                        outputChannels: ["youtube"],
+                      });
+                    }
+                  }}
+                  disabled={startVideoJobMutation.isPending}
+                  title="Generate a HeyGen cartoon avatar video from this script"
+                >
+                  {startVideoJobMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Bot className="w-4 h-4 mr-2" />
+                  )}
+                  {startVideoJobMutation.isPending ? "Starting..." : "Generate Avatar Video"}
+                </Button>
+              </div>
             )}
 
             {/* Resume Stuck Job — for avatar jobs stuck in 'rendering' or 'failed' where HeyGen already finished */}

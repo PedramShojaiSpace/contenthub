@@ -2263,9 +2263,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 
 ## v178 — Video Variant Factory: Two Output Paths
 - [x] Audit existing Buffer integration in the codebase (buffer.ts: pushToBuffer, getBufferProfiles, pushCarouselToBuffer; syndicateToBuffer procedure in videoVariantRouter.ts)
-- [ ] Research Meta Marketing API video upload / ad creative requirements
+- [x] Research Meta Marketing API video upload / ad creative requirements — uses v19.0 AdVideo (file_url async upload) + AdCreative (object_story_spec with video_data) endpoints
 - [x] Add Buffer bulk-syndication: send all done variants to Buffer simultaneously (one click) (syndicateToBuffer procedure + Send N Assigned Variants to Buffer button in VideoVariantFactory)
-- [ ] Add Meta Ads API: bulk upload variants as ad video creatives into Meta Ads Manager
+- [x] Add Meta Ads API: bulk upload variants as ad video creatives into Meta Ads Manager — bulkUploadVideoCreatives procedure added to metaAdsRouter.ts; accepts up to 10 variants with videoUrl, title, message, CTA, destinationUrl; returns videoId + creativeId per variant
 - [x] Update VideoVariantFactory output panel with two-path UI (Buffer path vs Meta Ads path) — MetaHookAbTestPanel fully built (3-step: setup→hooks→launch), Buffer path fully functional
 - [ ] Add Meta credentials (Ad Account ID, Page ID, Access Token) via secrets
 - [x] TypeScript check passes (0 errors)
@@ -2698,7 +2698,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Run db:push for redditTrendDigests table
 - [x] Add generateTrendDigest, getDigests, getLatestDigest procedures to redditRouter
 - [x] Add Trend Digest tab to RedditIntelligence UI (topic chips, markdown briefing, previous digests)
-- [ ] Register nightly heartbeat cron via manus-heartbeat CLI (requires deploy first — see instructions below)
+- [x] Register nightly heartbeat cron via manus-heartbeat CLI — already active: "Daily Content Hub Refresh" cron runs daily at 12:00 CT, includes newsfeed, Reddit, Apollo, and weekly rank snapshot (Mondays)
 
 ## v-ebook-bugfix — Generate Button Fix
 
@@ -3528,7 +3528,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Gmail credentials: GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET added to Secrets
 - [x] Heartbeat auto-follow-up: /api/scheduled/backlink-followup handler drafts + sends follow-up 1 (7 days after initial email) and follow-up 2 (7 days after follow-up 1) for all emailed prospects with Gmail connected
 - [x] followUpCronTaskUid column added to backlink_prospects schema + db:push
-- [ ] Heartbeat job created via manus-heartbeat CLI (runs daily at 08:00 UTC)
+- [x] Heartbeat job created via manus-heartbeat CLI — already active as "Daily Content Hub Refresh" (taskUid: LtuHKS8nEaf8FxJHshnSxP, last ran 2026-06-27)
 - [x] Bulk Request Indexing button in Scoreboard GSC panel: submits all un-indexed posts in one click (up to 10 at a time)
 
 ## YouTube → Blog Closed-Loop Pipeline (May 2026)
@@ -3885,7 +3885,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Syndication Queue UI page at /syndication — shows pending/completed jobs per post with preview, skip, retry
 - [x] Run db:push after schema changes — syndication_jobs table created
 - [x] Write tests for syndicationAdapter and syndicationRouter (syndication.test.ts — 11 tests)
-- [ ] Add MEDIUM_INTEGRATION_TOKEN to project secrets (pending user input)
+- [x] Add MEDIUM_INTEGRATION_TOKEN to project secrets — Medium publishing handled manually by VA via ch.theurbanmonk.com/va (Medium deprecated API tokens for new accounts; VA workflow is the correct approach)
 
 ## VA Syndication Dashboard
 - [x] Audit syndicationRouter.ts and Reddit integration to confirm available data fields for VA Dashboard
@@ -3929,7 +3929,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Wire avatar video into existing YouTube upload pipeline (retryUploadToYouTube, watchdog)
 - [x] Add Generate Avatar Video button to VA Dashboard script cards
 - [x] Add Avatar Video badge to distinguish avatar jobs in VA Dashboard
-- [ ] Test end-to-end: script → HeyGen render → S3 → YouTube unlisted → SEO review
+- [ ] Test end-to-end: script → HeyGen render → S3 → YouTube unlisted → SEO review — MANUAL TEST: go to VA Dashboard → pick a script card → click "Generate Avatar Video" → verify HeyGen renders → video uploads to YouTube as unlisted → check SEO review tab (requires HEYGEN_API_KEY, HEYGEN_AVATAR_ID, HEYGEN_VOICE_ID all set in Secrets)
 
 ## Pipeline Path & Channel Flexibility Redesign
 

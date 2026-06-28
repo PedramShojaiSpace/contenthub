@@ -4020,6 +4020,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Apollo pipeline confirmed working - issue is account plan (email reveals returning email_not_unlocked)
 - [x] Upgrade Apollo plan to Professional ($79/mo) for 2,000 email reveals/month — confirmed by user Jun 28
 
+## Book Card Image Generation Fix (Jun 28, 2026)
+- [x] Fix "Compositor returned no URL" error: replace Puppeteer/Chromium with sharp for serverless-safe image compositing
+- [x] Rewrite titleCardCompositor.ts to use sharp + SVG overlay (no browser dependency, works in production)
+- [x] Verified: 0 TypeScript errors, 655 tests passing, sharp compositor produces valid PNG output
+
 ## Apollo Pipeline Fixes (Jun 28)
 - [x] Fix Apollo reveal endpoint: GET /api/v1/people/:id → POST /api/v1/people/match with reveal_personal_emails:true
 - [x] Fix findEmail procedure: reveal_personal_emails was false, now true

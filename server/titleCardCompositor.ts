@@ -108,11 +108,15 @@ function buildHtml(opts: {
   const m = MOODS[mood];
   const scale = FONT_SCALE[fontSize];
 
-  // Base font sizes relative to card width, then scaled
-  const quoteFontSize = Math.round(w * 0.042 * scale);
+  // Auto-scale font for long quotes so text never crowds attribution
+  const charCount = quoteText.length;
+  const autoScale = charCount > 300 ? 0.72 : charCount > 200 ? 0.84 : charCount > 140 ? 0.93 : 1.0;
+  const quoteFontSize = Math.round(w * 0.042 * scale * autoScale);
   const attrFontSize  = Math.round(w * 0.022 * scale);
   const brandFontSize = Math.round(w * 0.020);
   const padding       = Math.round(w * 0.085);
+  // Bottom safe zone: content must not enter the bottom 18% of the card (brand lives there)
+  const bottomSafeZone = Math.round(h * 0.18);
 
   // Escape HTML entities
   const esc = (s: string) =>
@@ -145,6 +149,7 @@ function buildHtml(opts: {
     align-items: center;
     justify-content: center;
     padding: ${padding}px;
+    padding-bottom: ${bottomSafeZone}px;
   }
   .bg {
     position: absolute;
@@ -210,7 +215,7 @@ function buildHtml(opts: {
   }
   .brand {
     position: absolute;
-    bottom: ${Math.round(h * 0.055)}px;
+    bottom: ${Math.round(h * 0.06)}px;
     left: 0;
     right: 0;
     text-align: center;

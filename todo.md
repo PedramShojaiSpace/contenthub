@@ -493,7 +493,7 @@
 - [x] Include 5+ research citations (PubMed/peer-reviewed)
 - [x] Full FAQ section answering top 10 Gumshoe gap queries for Burnout Recovery Seeker persona
 - [x] Published to theurbanmonk.com via WordPress REST API — Post ID 9574, status: draft, edit at /wp-admin/post.php?post=9574&action=edit
-- [ ] Store as a Script Library entry (type: blog) with status: published (manual step)
+- [ ] Store as a Script Library entry (type: blog) with status: published — MANUAL: go to Content Hub → Script Library → Add Script → type: blog, title: "The East-West Approach to Burnout Recovery", status: published, notes: "WP Post ID 9574"
 
 ### Instagram Reframe Post Carousel Library
 - [x] Generate 20 carousel outlines (10 slides each) for the Reframe Post series

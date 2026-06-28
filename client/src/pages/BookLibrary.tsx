@@ -270,10 +270,12 @@ function UploadBookDialog({ onSuccess }: { onSuccess: () => void }) {
 function SnippetSocialPanel({
   snippet,
   bookId,
+  bookTitle,
   onClose,
 }: {
   snippet: Snippet;
   bookId: number;
+  bookTitle: string;
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
@@ -283,6 +285,8 @@ function SnippetSocialPanel({
   const [editingQuote, setEditingQuote] = useState(false);
   const [correctedQuote, setCorrectedQuote] = useState(snippet.passageText);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+  const [isClientGenerating, setIsClientGenerating] = useState(false);
+  const [clientProgress, setClientProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Live snippet query so image URLs refresh immediately after regeneration
   const { data: liveSnippet, refetch: refetchSnippet } = trpc.bookLibrary.getSnippet.useQuery(
@@ -293,14 +297,55 @@ function SnippetSocialPanel({
 
   const { data: channels } = trpc.bookLibrary.getBufferChannels.useQuery();
 
-  const regenerate = trpc.bookLibrary.regenerateTitleCard.useMutation({
-    onSuccess: (res) => {
+  const getCardBackground = trpc.bookLibrary.getCardBackground.useMutation();
+  const saveCardUrls = trpc.bookLibrary.saveCardUrls.useMutation();
+
+  const handleRegenerateAllCards = useCallback(async () => {
+    setIsClientGenerating(true);
+    setClientProgress({ done: 0, total: 6 });
+    try {
+      const mood = (s.cardMood ?? "forest_dark") as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber";
+      const fontSize = (s.cardFontSize ?? "medium") as "large" | "medium" | "small";
+      const { backgroundUrl, bookTitle: serverBookTitle } = await getCardBackground.mutateAsync({
+        snippetId: s.id,
+        mood,
+      });
+      const resolvedBookTitle = (bookTitle && bookTitle.trim().length > 0)
+        ? bookTitle
+        : (serverBookTitle && serverBookTitle.trim().length > 0 ? serverBookTitle : "The Urban Monk");
+      const quoteToUse = correctedQuote !== s.passageText ? correctedQuote : s.passageText;
+      const urls = await generateAllCards({
+        quoteText: quoteToUse,
+        authorName: "Dr. Pedram Shojai",
+        bookTitle: resolvedBookTitle,
+        brandName: "The Urban Monk",
+        backgroundUrl: backgroundUrl ?? null,
+        mood,
+        fontSize,
+        onProgress: (done, total) => setClientProgress({ done, total }),
+      });
+      const result = await saveCardUrls.mutateAsync({
+        snippetId: s.id,
+        urls: {
+          linkedin:        urls.linkedin        ?? null,
+          x:               urls.x               ?? null,
+          meta:            urls.meta            ?? null,
+          instagram_feed:  urls.instagram_feed  ?? null,
+          instagram_reel:  urls.instagram_reel  ?? null,
+          instagram_story: urls.instagram_story ?? null,
+        },
+      });
+      toast.success(`Generated ${result.generated}/6 platform cards!`);
       refetchSnippet();
       utils.bookLibrary.getBook.invalidate({ bookId });
-      toast.success(`${res.platform} title card regenerated!`);
-    },
-    onError: (err) => toast.error(err.message),
-  });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Card generation failed";
+      toast.error(msg);
+    } finally {
+      setIsClientGenerating(false);
+      setClientProgress(null);
+    }
+  }, [s.id, s.passageText, s.cardMood, s.cardFontSize, bookTitle, correctedQuote, bookId]);
 
   const generateCopy = trpc.bookLibrary.generateSocialCopy.useMutation({
     onSuccess: () => {
@@ -508,19 +553,20 @@ function SnippetSocialPanel({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => regenerate.mutate({
-                snippetId: s.id,
-                correctedText: correctedQuote !== s.passageText ? correctedQuote : undefined,
-                platform: activePlatform === "x" ? "x" : activePlatform,
-              })}
-              disabled={regenerate.isPending}
+              onClick={handleRegenerateAllCards}
+              disabled={isClientGenerating}
             >
-              {regenerate.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {isClientGenerating ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  {clientProgress ? `${clientProgress.done}/${clientProgress.total}` : "Generating..."}
+                </>
               ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Regenerate Image
+                </>
               )}
-              Regenerate Image
             </Button>
           </div>
 
@@ -1062,6 +1108,7 @@ function SnippetCard({
         <SnippetSocialPanel
           snippet={snippet}
           bookId={bookId}
+          bookTitle={bookTitle}
           onClose={() => setShowPanel(false)}
         />
       )}

@@ -452,6 +452,102 @@ export const metaAdsRouter = router({
       return getHookAbTests(input.limit);
     }),
 
+  // ── Video Creative Upload: Bulk upload video variants as Meta ad creatives ──
+  // Uses Meta Marketing API v19.0 AdVideo + AdCreative endpoints
+  // Docs: https://developers.facebook.com/docs/marketing-api/reference/ad-video/
+  bulkUploadVideoCreatives: protectedProcedure
+    .input(z.object({
+      variants: z.array(z.object({
+        variantId: z.number(),
+        videoUrl: z.string().url(),
+        title: z.string().max(255),
+        message: z.string().max(600).optional(),
+        callToAction: z.enum(["LEARN_MORE", "SHOP_NOW", "SIGN_UP", "WATCH_MORE", "GET_OFFER"]).default("LEARN_MORE"),
+        destinationUrl: z.string().url().optional(),
+      })).min(1).max(10),
+    }))
+    .mutation(async ({ input }) => {
+      const config = getMetaAdsConfig();
+      const apiBase = `https://graph.facebook.com/v19.0`;
+      const actId = `act_${config.adAccountId}`;
+
+      type UploadResult = {
+        variantId: number;
+        success: boolean;
+        videoId?: string;
+        creativeId?: string;
+        error?: string;
+      };
+      const results: UploadResult[] = [];
+
+      for (const variant of input.variants) {
+        try {
+          // Step 1: Upload video by URL (async upload — Meta fetches from URL)
+          const videoUploadRes = await fetch(
+            `${apiBase}/${actId}/advideos`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                access_token: config.accessToken,
+                name: variant.title.slice(0, 100),
+                file_url: variant.videoUrl,
+                description: variant.message ?? "",
+              }),
+            }
+          );
+          const videoData = await videoUploadRes.json() as any;
+          if (!videoUploadRes.ok || videoData.error) {
+            results.push({ variantId: variant.variantId, success: false, error: videoData.error?.message ?? "Video upload failed" });
+            continue;
+          }
+          const videoId = videoData.id as string;
+
+          // Step 2: Create AdCreative with the uploaded video
+          const creativeBody: Record<string, unknown> = {
+            access_token: config.accessToken,
+            name: `Hook Test Creative — ${variant.title.slice(0, 80)}`,
+            object_story_spec: {
+              page_id: process.env.META_PAGE_ID,
+              video_data: {
+                video_id: videoId,
+                title: variant.title.slice(0, 255),
+                message: variant.message ?? "",
+                call_to_action: {
+                  type: variant.callToAction,
+                  value: variant.destinationUrl ? { link: variant.destinationUrl } : undefined,
+                },
+              },
+            },
+          };
+
+          const creativeRes = await fetch(
+            `${apiBase}/${actId}/adcreatives`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(creativeBody),
+            }
+          );
+          const creativeData = await creativeRes.json() as any;
+          if (!creativeRes.ok || creativeData.error) {
+            results.push({ variantId: variant.variantId, success: false, videoId, error: creativeData.error?.message ?? "Creative creation failed" });
+            continue;
+          }
+
+          results.push({ variantId: variant.variantId, success: true, videoId, creativeId: creativeData.id as string });
+        } catch (err: any) {
+          results.push({ variantId: variant.variantId, success: false, error: err?.message ?? "Unknown error" });
+        }
+
+        // Rate limit: 1 upload per second
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+
+      const succeeded = results.filter((r) => r.success).length;
+      return { results, succeeded, total: results.length };
+    }),
+
   // ── Hook Testing: Check winner for a specific test ───────────────────────────
   checkHookWinner: protectedProcedure
     .input(z.object({ testId: z.number() }))

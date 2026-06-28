@@ -932,6 +932,96 @@ async function startServer() {
   // Validates lead counts and Meta Custom Audience sizes, notifies owner
   app.post("/api/scheduled/apollo-audience-validation", apolloAudienceValidationHandler);
 
+  // POST /api/scheduled/daily-book-pull — fires daily at 06:00 CT
+  // Rotates through Pedram's books, picks the best unposted snippet, generates all platform title cards
+  // VA reviews and approves via Book Library → Daily Book Pull panel
+  app.post("/api/scheduled/daily-book-pull", async (req, res) => {
+    if (!req.headers["x-manus-cron-task-uid"]) {
+      return res.status(403).json({ ok: false, error: "Forbidden: cron callers only" });
+    }
+    try {
+      const { getDb: getDbLocal } = await import("../db");
+      const { uploadedBooks, bookSnippets, dailyBookRotation } = await import("../../drizzle/schema");
+      const { eq: eqLocal, desc: descLocal, and: andLocal } = await import("drizzle-orm");
+      const { compositeAllPlatformCards } = await import("../titleCardCompositor");
+      const db = await getDbLocal();
+      if (!db) return res.json({ ok: false, error: "DB unavailable" });
+
+      const today = new Date().toISOString().split("T")[0];
+      const usersWithBooks = await db
+        .selectDistinct({ userId: uploadedBooks.userId })
+        .from(uploadedBooks)
+        .where(eqLocal(uploadedBooks.status, "ready"));
+
+      let prepared = 0;
+      for (const { userId } of usersWithBooks) {
+        try {
+          const [existing] = await db.select().from(dailyBookRotation)
+            .where(eqLocal(dailyBookRotation.userId, userId)).limit(1);
+          if (existing?.lastPullDate === today && existing.todaySnippetId) continue;
+
+          const books = await db.select({ id: uploadedBooks.id, title: uploadedBooks.title })
+            .from(uploadedBooks)
+            .where(andLocal(eqLocal(uploadedBooks.userId, userId), eqLocal(uploadedBooks.status, "ready")))
+            .orderBy(uploadedBooks.id);
+          if (books.length === 0) continue;
+
+          const currentIndex = existing?.rotationIndex ?? 0;
+          const book = books[currentIndex % books.length];
+
+          const candidates = await db.select().from(bookSnippets)
+            .where(andLocal(eqLocal(bookSnippets.bookId, book.id), eqLocal(bookSnippets.userId, userId), eqLocal(bookSnippets.softRejected, false)))
+            .orderBy(descLocal(bookSnippets.qualityScore)).limit(50);
+          const unposted = candidates.filter(
+            (s: any) => !s.publishedLinkedinAt && !s.publishedMetaAt && !s.publishedInstagramFeedAt && !s.publishedXAt
+          );
+          if (unposted.length === 0) continue;
+          const snippet = unposted[0];
+
+          if (!snippet.titleCardLinkedinUrl || !snippet.titleCardMetaUrl) {
+            try {
+              const cards = await compositeAllPlatformCards({
+                quoteText: snippet.passageText,
+                bookTitle: book.title,
+                snippetId: snippet.id,
+                mood: (snippet.cardMood ?? "warm_amber") as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber",
+              });
+              await db.update(bookSnippets).set({
+                titleCardLinkedinUrl: cards.linkedin ?? snippet.titleCardLinkedinUrl,
+                titleCardMetaUrl: cards.meta ?? snippet.titleCardMetaUrl,
+                titleCardInstagramFeedUrl: cards.instagramFeed ?? snippet.titleCardInstagramFeedUrl,
+                titleCardXUrl: cards.x ?? snippet.titleCardXUrl,
+                titleCardStatus: "ready",
+              }).where(eqLocal(bookSnippets.id, snippet.id));
+            } catch (cardErr) {
+              console.error("[daily-book-pull] Card generation failed:", cardErr);
+            }
+          }
+
+          if (existing) {
+            await db.update(dailyBookRotation).set({
+              rotationIndex: currentIndex + 1, lastPullDate: today,
+              todaySnippetId: snippet.id, todayStatus: "ready",
+              approvedPlatforms: null, approvedAt: null, postedAt: null,
+            }).where(eqLocal(dailyBookRotation.userId, userId));
+          } else {
+            await db.insert(dailyBookRotation).values({
+              userId, rotationIndex: 1, lastPullDate: today,
+              todaySnippetId: snippet.id, todayStatus: "ready",
+            });
+          }
+          prepared++;
+        } catch (userErr) {
+          console.error(`[daily-book-pull] Error for user ${userId}:`, userErr);
+        }
+      }
+      return res.json({ ok: true, prepared, today });
+    } catch (err) {
+      console.error("[daily-book-pull] Fatal error:", err);
+      return res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+
   // ── Merchandise QR Landing Pages ─────────────────────────────────────────
   // Each merchandise design has its own landing page at /weboflife, /design2, etc.
   // These are the destinations for QR codes embedded in Urban Monk merchandise.

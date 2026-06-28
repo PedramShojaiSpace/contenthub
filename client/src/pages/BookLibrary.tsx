@@ -61,6 +61,7 @@ import {
   Eye,
   ArrowUpDown,
 } from "lucide-react";
+import DailyBookPullPanel from "@/components/DailyBookPullPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1405,6 +1406,9 @@ export default function BookLibrary() {
         </div>
         <UploadBookDialog onSuccess={() => utils.bookLibrary.listBooks.invalidate()} />
       </div>
+
+      {/* Daily Book Pull */}
+      <DailyBookPullPanel />
 
       {/* Books grid */}
       {isLoading ? (

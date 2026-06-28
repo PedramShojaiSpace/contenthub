@@ -4048,3 +4048,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix server/apolloDailyDrawHandler.ts: db.execute called with 2 args — converted to sql template literals
 - [x] Fix server/leadScrubberRouter.ts: ResultSetHeader cast to any[] — use sql template + (rows as any).rows
 - [x] TypeScript: 0 errors after all fixes
+
+## Daily Book Pull Feature (Jun 28, 2026)
+
+- [x] Add daily_book_rotation table to schema.ts (tracks rotation order, last posted snippet per book, daily pull queue) — created via SQL directly
+- [x] Run pnpm db:push to migrate the new table — table created via webdev_execute_sql
+- [x] Add getDailyBookPull, prepareDailyBookPull, and approveDailyBookPull procedures to bookLibraryRouter.ts
+- [x] Wire daily cron handler to call prepareDailyBookPull each morning — added /api/scheduled/daily-book-pull endpoint to index.ts and updated cron task
+- [x] Add Daily Book Pull panel to BookLibrary.tsx page — DailyBookPullPanel component added above books grid
+- [x] Update VA Content Production Protocol with Daily Book Pull workflow — protocol document updated

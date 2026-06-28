@@ -4012,3 +4012,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add `pushIdeaToPipeline` procedure in intentIdeasRouter — creates a content_item with status="idea" from a generated idea, returns new item id
 - [x] Wire intentIdeasRouter into main app router in routers.ts
 - [x] Add "Intent Ideas" tab to IntelligenceDashboard.tsx — shows generated ideas with one-click "Add to Pipeline" button per idea, links back to Content Pipeline after push
+
+## Lead Pipeline Fixes (Jun 28)
+- [x] Rebuild Reddit scanner to use credential-free public JSON/RSS feeds (no Reddit API key needed)
+- [x] Fix Apollo daily draw: remove invalid status='active' query on meta_custom_audiences (no status column)
+- [x] Fix Apollo audience validation endpoint: same status='active' bug
+- [x] Apollo pipeline confirmed working - issue is account plan (email reveals returning email_not_unlocked)
+- [ ] Upgrade Apollo plan to Professional ($79/mo) for 2,000 email reveals/month

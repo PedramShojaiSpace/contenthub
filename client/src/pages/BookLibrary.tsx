@@ -289,9 +289,11 @@ function SnippetSocialPanel({
   const [clientProgress, setClientProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Live snippet query so image URLs refresh immediately after regeneration
+  // Note: We can't use initialData here due to type mismatch (Snippet vs full DB row type)
+  // Instead we use snippet as fallback until the query resolves
   const { data: liveSnippet, refetch: refetchSnippet } = trpc.bookLibrary.getSnippet.useQuery(
     { snippetId: snippet.id },
-    { initialData: snippet, refetchOnWindowFocus: false }
+    { refetchOnWindowFocus: false }
   );
   const s = liveSnippet ?? snippet;
 

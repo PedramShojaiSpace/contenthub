@@ -541,19 +541,30 @@ Write the complete script now:`;
         title: input.title,
         scriptType: "video",
         platform: "youtube",
-        productionStatus: input.destination === "heygen" ? "in_production" : input.destination === "record_self" ? "ready_to_record" : "idea",
+        // Map destination to valid scriptStatusEnum values
+        // ready_to_record is not in the enum — use "scripted" instead
+        productionStatus: input.destination === "heygen" ? "in_production" : "scripted",
         scriptBody: input.scriptBody,
         notes: `Generated from YouTube Competitive Intelligence.${input.topic ? ` Topic: ${input.topic}` : ""}`,
       });
       const scriptId = (scriptResult as any).insertId as number;
 
       if (input.destination === "heygen") {
-        const [jobResult] = await db.insert(videoJobs).values({
+        // videoJobs requires contentItemId — create a placeholder content_item first
+        const { contentItems } = await import("../drizzle/schema");
+        const [ciResult] = await db.insert(contentItems).values({
           title: input.title,
-          scriptBody: input.scriptBody,
-          status: "pending",
-          pipeline: "heygen_then_descript",
-          linkedScriptId: scriptId,
+          platform: "youtube",
+          status: "approved",
+          textContent: input.scriptBody.substring(0, 5000),
+        });
+        const contentItemId = (ciResult as any).insertId as number;
+
+        const [jobResult] = await db.insert(videoJobs).values({
+          contentItemId,
+          scriptText: input.scriptBody,
+          productionPath: "heygen_then_descript",
+          youtubeTitle: input.title,
           brollPrompt: `Generate b-roll cutaways for a YouTube video about: ${input.title}. Topic: ${input.topic ?? input.title}`,
         });
         const jobId = (jobResult as any).insertId as number;

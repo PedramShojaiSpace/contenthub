@@ -45,7 +45,9 @@ import {
   runUnderlordAgent,
   getJobStatus,
   exportProject,
+  addMediaToProject,
 } from "./descriptClient";
+import { gatherStockFootage, buildPexelsQueries } from "./pexelsClient";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
 
@@ -326,6 +328,7 @@ async function fetchJobRow(jobId: number) {
       brollPrompt: videoJobs.brollPrompt,
       descriptProjectId: videoJobs.descriptProjectId,
       descriptImportJobId: videoJobs.descriptImportJobId,
+      pexelsMediaImportJobId: videoJobs.pexelsMediaImportJobId,
       descriptAgentJobId: videoJobs.descriptAgentJobId,
       descriptPublishJobId: videoJobs.descriptPublishJobId,
       descriptShareUrl: videoJobs.descriptShareUrl,
@@ -518,8 +521,8 @@ export async function processVideoJob(jobId: number): Promise<void> {
         return;
       }
 
-      // ── Step A4: Poll Descript import job ─────────────────────────────────
-      if (job.status === "importing" && job.descriptImportJobId && !job.descriptAgentJobId) {
+      // ── Step A4: Poll Descript avatar import job ─────────────────────────────
+      if (job.status === "importing" && job.descriptImportJobId && !job.pexelsMediaImportJobId && !job.descriptAgentJobId) {
         const importStatus = await getJobStatus(job.descriptImportJobId);
         console.log(`${jobLabel} [Avatar] Descript import status: ${importStatus.job_state}`);
 
@@ -528,15 +531,90 @@ export async function processVideoJob(jobId: number): Promise<void> {
           throw new Error(`Descript import failed: ${importStatus.result?.agent_response ?? "unknown"}`);
         }
 
-        // Import done — run Underlord B-roll agent on the avatar video
+        // Avatar import done — now source Pexels stock footage and add to the project
+        // so Underlord has real cutaway material to work with (not PiP overlays).
+        console.log(`${jobLabel} [Avatar] Avatar import complete. Sourcing Pexels stock footage...`);
+
+        // Build search queries from the script's scene directions (stored in brollPrompt)
+        // We extract topic keywords from the youtube title and script text
+        const scriptTitle = job.youtubeTitle ?? "Urban Monk Video";
+        const scriptExcerpt = job.scriptText.substring(0, 2000);
+
+        // Extract scene directions from brollPrompt if it contains them
+        const sceneDirectionMatches = (job.brollPrompt ?? "").match(/At \d+:\d+[^;\n]*/g) ?? [];
+        const pexelsQueries = buildPexelsQueries(scriptTitle, sceneDirectionMatches);
+        console.log(`${jobLabel} [Avatar] Pexels queries: ${pexelsQueries.join(" | ")}`);
+
+        const stockClips = await gatherStockFootage(pexelsQueries, 5);
+        console.log(`${jobLabel} [Avatar] Found ${stockClips.length} Pexels stock clips`);
+
+        if (stockClips.length > 0 && job.descriptProjectId) {
+          // Name each clip descriptively so Underlord can reference them by content type
+          const mediaFiles = stockClips.slice(0, 25).map((clip, i) => ({
+            name: `broll_${String(i + 1).padStart(2, "0")}_${clip.query.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 40)}_${clip.duration}s`,
+            url: clip.url,
+          }));
+
+          const pexelsImportResult = await addMediaToProject({
+            projectId: job.descriptProjectId,
+            mediaFiles,
+          });
+
+          console.log(`${jobLabel} [Avatar] Pexels media import job: ${pexelsImportResult.job_id}`);
+
+          await db.update(videoJobs).set({
+            pexelsMediaImportJobId: pexelsImportResult.job_id,
+          }).where(eq(videoJobs.id, jobId));
+
+          job = { ...job, pexelsMediaImportJobId: pexelsImportResult.job_id };
+          // Return — cron will poll for Pexels import completion on next tick
+          return;
+        } else {
+          // No Pexels clips found (API key missing or no results) — proceed directly to Underlord
+          console.log(`${jobLabel} [Avatar] No Pexels clips available — proceeding to Underlord without stock footage`);
+          // Fall through to Underlord step below by leaving pexelsMediaImportJobId null
+          // and setting a sentinel to skip the Pexels poll step
+          await db.update(videoJobs).set({
+            pexelsMediaImportJobId: "skipped",
+          }).where(eq(videoJobs.id, jobId));
+          job = { ...job, pexelsMediaImportJobId: "skipped" };
+        }
+      }
+
+      // ── Step A4b: Poll Pexels media import job ────────────────────────────────
+      if (job.status === "importing" && job.pexelsMediaImportJobId && job.pexelsMediaImportJobId !== "skipped" && !job.descriptAgentJobId) {
+        const pexelsImportStatus = await getJobStatus(job.pexelsMediaImportJobId);
+        console.log(`${jobLabel} [Avatar] Pexels media import status: ${pexelsImportStatus.job_state}`);
+
+        if (pexelsImportStatus.job_state === "running") return;
+        // Even if partial/failed, proceed — we'll just have fewer clips for Underlord
+        if (pexelsImportStatus.job_state === "cancelled") {
+          console.warn(`${jobLabel} [Avatar] Pexels import cancelled — proceeding to Underlord anyway`);
+        }
+        // Fall through to Underlord step
+      }
+
+      // ── Step A4c: Run Underlord with stock footage in the project ─────────────
+      if (job.status === "importing" && (job.pexelsMediaImportJobId) && !job.descriptAgentJobId) {
         const ctaSuffix = job.ctaText
           ? `\n\nEND SCREEN CTA (last 5 seconds): Add a title card at the very end of the video with this exact text: "${job.ctaText}" and the URL: "${job.ctaUrl ?? 'theurbanmonk.com'}". White text on dark background, visible for 5 seconds.`
           : "";
 
-        const brollPrompt = (job.brollPrompt ??
-          "AVATAR-LED VIDEO — FREQUENT B-ROLL CUTAWAYS REQUIRED. B-ROLL FREQUENCY RULE (NON-NEGOTIABLE): Place AT LEAST 3 B-roll cutaways per minute of video. Each cutaway must last a MINIMUM of 10 seconds before cutting back to the avatar. Calculate the total video duration, divide by 60, and place that many cutaways evenly distributed across the video (e.g. a 9-minute video needs at least 27 cutaways). Space cutaways every 15-25 seconds. NEVER use B-roll during the very first 10 seconds or the very last 10 seconds. NEVER reuse the same clip. The avatar must remain visible for the remaining time. CLEANUP: Remove filler words and long pauses over 0.5s. CAPTIONS: Auto-captions, white text, lower third. MUSIC: Ambient background at -18dB. B-ROLL CONTENT: Specific stock footage matching the concept spoken at each moment — anatomy, healthy food, nature, science imagery, wellness scenes.") + ctaSuffix;
+        // Build the Underlord prompt — if we added Pexels footage, explicitly instruct
+        // Underlord to use the project media library clips as actual cutaway b-roll
+        const hasPexelsFootage = job.pexelsMediaImportJobId && job.pexelsMediaImportJobId !== "skipped";
+        const stockFootageInstruction = hasPexelsFootage
+          ? `\n\nSTOCK FOOTAGE AVAILABLE: This project's media library contains stock footage clips named broll_01_*, broll_02_*, etc. These are Pexels royalty-free clips covering the video's visual themes. USE THESE CLIPS AS THE FULL-SCREEN BACKGROUND behind the presenter circle. Place them as the background layer so they fill the full frame while the presenter circle stays in the lower-right corner on top. Select each clip based on its name matching the concept being spoken about at that moment. Cycle through all available clips — use each clip for 10-20 seconds then switch to the next one. NEVER reuse the same clip.`
+          : "";
 
-        console.log(`${jobLabel} [Avatar] Running Underlord B-roll agent...`);
+        // VIDEO STYLE: Persistent presenter circle (avatar in lower-right corner) with
+        // continuous full-screen b-roll running behind it. This is the intended look —
+        // the circular presenter overlay Descript adds is CORRECT and should stay.
+        // B-roll should cover nearly the entire video (90%+ of runtime).
+        const brollPrompt = (job.brollPrompt ??
+          "PRESENTER CIRCLE + CONTINUOUS B-ROLL STYLE: Keep the circular presenter avatar in the lower-right corner visible throughout the ENTIRE video — this is the intended look. Behind the presenter circle, run full-screen b-roll footage for 90% or more of the total video duration. B-ROLL COVERAGE RULE (NON-NEGOTIABLE): B-roll should be playing almost constantly. Only show the bare avatar (no b-roll) for the very first 5 seconds and the very last 5 seconds. For everything in between, full-screen b-roll runs behind the presenter circle. CLIP VARIETY: Use a different b-roll clip every 10-20 seconds — never hold the same clip longer than 20 seconds. NEVER reuse the same clip. CLEANUP: Remove filler words (um, uh, like, you know) and long pauses over 0.5 seconds. CAPTIONS: Add auto-captions in white text, lower third position — make sure captions are readable over the b-roll. MUSIC: Add subtle ambient background music at -18dB (nature/meditation/wellness style). B-ROLL CONTENT: Match each clip to the concept being spoken about at that moment — anatomy visuals, healthy food, nature scenes, science imagery, wellness and mindfulness scenes, people meditating, herbs, supplements, gut health imagery.") + stockFootageInstruction + ctaSuffix;
+
+        console.log(`${jobLabel} [Avatar] Running Underlord B-roll agent (${hasPexelsFootage ? "with Pexels stock footage" : "without stock footage"})...`);
         const editResult = await runUnderlordAgent({
           projectId: job.descriptProjectId!,
           prompt: brollPrompt,

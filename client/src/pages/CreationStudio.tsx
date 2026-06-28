@@ -1382,12 +1382,16 @@ export default function CreationStudio() {
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
       const slug = idea.slice(0, 40).replace(/[^a-z0-9]/gi, "-").toLowerCase();
-      // Add each rendered PNG
-      for (let i = 0; i < carouselRenderedUrls.length; i++) {
+      // Add each rendered PNG — reversed numbering so Facebook alphabetical sort = correct carousel order
+      const totalSlides = carouselRenderedUrls.length;
+      for (let i = 0; i < totalSlides; i++) {
         const dataUrl = carouselRenderedUrls[i];
         const base64 = dataUrl.split(",")[1];
         const slide = carouselSlides[i];
-        const filename = `slide-${String(i + 1).padStart(2, "0")}-${slide.headline.slice(0, 30).replace(/[^a-z0-9]/gi, "-").toLowerCase()}.png`;
+        // Reverse: slide 1 gets the highest number, last slide gets 01
+        // Facebook reads files alphabetically, so 01 shows first in the carousel
+        const fileNum = String(totalSlides - i).padStart(2, "0");
+        const filename = `slide-${fileNum}-${slide.headline.slice(0, 30).replace(/[^a-z0-9]/gi, "-").toLowerCase()}.png`;
         zip.file(filename, base64, { base64: true });
       }
       // Add copy doc
@@ -3463,10 +3467,14 @@ export default function CreationStudio() {
                           const JSZip = (await import("jszip")).default;
                           const zip = new JSZip();
                           const folder = zip.folder("reframe-slides")!;
-                          for (let i = 0; i < reframeRenderedUrls.length; i++) {
+                          const total = reframeRenderedUrls.length;
+                          for (let i = 0; i < total; i++) {
                             const dataUrl = reframeRenderedUrls[i];
                             const base64 = dataUrl.split(",")[1];
-                            folder.file(`slide-${String(i + 1).padStart(2, "0")}.png`, base64, { base64: true });
+                            // Reverse numbering: slide 1 → highest number, last slide → 01
+                            // Facebook reads files alphabetically, so 01 appears first in the carousel
+                            const fileNum = String(total - i).padStart(2, "0");
+                            folder.file(`slide-${fileNum}.png`, base64, { base64: true });
                           }
                           // Add caption as text file
                           if (reframeCaption) {

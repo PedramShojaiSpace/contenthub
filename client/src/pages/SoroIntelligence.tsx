@@ -375,9 +375,9 @@ export default function SoroIntelligence() {
                   <RefreshCw className="h-4 w-4 animate-spin" />
                   Analyzing patterns across all posts...
                 </div>
-              ) : insightsData?.insights?.length > 0 ? (
+              ) : (insightsData?.insights?.length ?? 0) > 0 ? (
                 <div className="space-y-3">
-                  {insightsData.insights.map((insight: any, i: number) => (
+                  {insightsData?.insights?.map((insight: any, i: number) => (
                     <div key={i} className="bg-white rounded-lg p-3 border border-purple-100">
                       <div className="flex items-start gap-2">
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${

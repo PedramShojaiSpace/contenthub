@@ -1419,7 +1419,7 @@ export default function CreationStudio() {
   const publishToWPMutation = trpc.blog.publish.useMutation({
     onSuccess: (data) => {
       setIsPublishingToWP(false);
-      setWpPublishResult({ postUrl: data.postUrl, editUrl: data.editUrl });
+      setWpPublishResult({ postUrl: data.postUrl ?? "", editUrl: data.editUrl ?? "" });
       toast.success(
         wpPublishStatus === "publish"
           ? "Published to WordPress!"

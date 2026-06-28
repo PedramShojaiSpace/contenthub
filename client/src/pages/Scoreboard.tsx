@@ -765,8 +765,9 @@ function IndexingStatusPanel({ posts }: { posts: { id: number; title: string; pu
 
   const bulkRequestIndexing = trpc.gsc.bulkRequestIndexing.useMutation({
     onSuccess: (data) => {
-      const succeeded = data.results.filter((r: any) => r.success).length;
-      const failed = data.results.filter((r: any) => !r.success).length;
+      const resultItems = (data as any).results ?? data;
+      const succeeded = resultItems.filter((r: any) => r.success).length;
+      const failed = resultItems.filter((r: any) => !r.success).length;
       if (succeeded > 0) {
         toast.success(`Bulk indexing: ${succeeded} URL${succeeded !== 1 ? 's' : ''} submitted${failed > 0 ? `, ${failed} failed` : ''}.`);
       } else {
@@ -1250,7 +1251,7 @@ function ContentFlywheelPanel() {
       focusKeyword: idea.keyword,
       status: "drafting",
     } as any);
-    setAddedIdeas((prev) => new Set([...prev, idx]));
+    setAddedIdeas((prev) => new Set(Array.from(prev).concat(idx)));
   };
 
   const movers = (moversQuery.data ?? []) as Array<{

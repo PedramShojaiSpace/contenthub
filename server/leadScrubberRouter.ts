@@ -880,8 +880,10 @@ export const leadScrubberRouter = router({
     const db = await getDb();
     if (!db) return null;
     try {
-      const rows = await db.execute("SELECT * FROM apollo_sync_runs ORDER BY ran_at DESC LIMIT 1");
-      const row = (rows[0] as any[])[0] ?? null;
+      const { sql: sqlTag } = await import("drizzle-orm");
+      const rows = await db.execute(sqlTag`SELECT * FROM apollo_sync_runs ORDER BY ran_at DESC LIMIT 1`);
+      const rowsArr = (rows as any).rows ?? rows;
+      const row = (rowsArr as any[])[0] ?? null;
       if (!row) return null;
       return {
         id: row.id as number,

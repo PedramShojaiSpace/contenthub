@@ -2138,12 +2138,17 @@ export default function CommandCenter() {
 
   const handleGenerateTeleprompter = (item: ContentItem, platformOverride?: "youtube" | "youtube_short" | "instagram" | "tiktok") => {
     const title = item.title.replace(/^Question to answer:.*?Title:\s*/i, "").trim() || item.rawIdea || item.title;
-    const platform = platformOverride ?? teleprompterPlatform;
+    const rawPlatform = platformOverride ?? teleprompterPlatform;
+    // Map frontend-only platform values to the server-side enum
+    const platform: "youtube" | "meta" | "linkedin" | "x" | "tiktok" | "blog" | "all" =
+      rawPlatform === "instagram" ? "meta" :
+      rawPlatform === "youtube_short" ? "youtube" :
+      rawPlatform as "youtube" | "tiktok";
     // Only pass durationMinutes for YouTube long-form; short platforms have fixed durations
-    const durationMinutes = platform === "youtube" ? teleprompterDuration : undefined;
+    const durationMinutes = rawPlatform === "youtube" ? teleprompterDuration : undefined;
     setTeleprompterScript(null);
     setGeneratingTeleprompter(true);
-    teleprompterMutation.mutate({ title, platform, durationMinutes });
+    teleprompterMutation.mutate({ title, platform });
   };
 
   // TikTok 60-second script state
@@ -2415,7 +2420,7 @@ export default function CommandCenter() {
           if (data.imageUploaded === false && item.imageUrl) {
             toast.warning("Moved to Published! Hero image failed to upload — add it manually in WP.");
           } else if (data.youtubeEmbedResult?.embedded) {
-            toast.success(`Published to WordPress! YouTube video embedded: "${data.youtubeEmbedResult.videoTitle?.slice(0, 50)}"`, { duration: 6000 });
+            toast.success(`Published to WordPress! YouTube video embedded: "${(data.youtubeEmbedResult as any).videoTitle?.slice(0, 50) ?? ''}"`, { duration: 6000 });
           } else if (data.youtubeEmbedResult && !data.youtubeEmbedResult.embedded && data.youtubeEmbedResult.message !== "skipped") {
             toast.success(`Published to WordPress! (No matching YouTube video found — embed manually if needed)`, { duration: 5000 });
           } else {

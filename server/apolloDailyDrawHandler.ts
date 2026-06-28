@@ -520,20 +520,9 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
     try {
       const hasErrors = results.some(r => r.error);
       const runStatus = totalEmails === 0 && hasErrors ? "error" : hasErrors ? "partial" : "success";
-      await db.execute(
-        "INSERT INTO apollo_sync_runs (ran_at, status, total_searched, total_reveals, total_emails, total_meta_pushed, elapsed_ms, category_summary, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          Date.now(),
-          runStatus,
-          totalSearched,
-          totalReveals,
-          totalEmails,
-          totalMeta,
-          elapsed,
-          JSON.stringify(results.map(r => ({ category: r.category, searched: r.searched, emails: r.emailsFound, reveals: r.revealsAttempted, error: r.error ?? null }))),
-          triggeredBy,
-        ]
-      );
+      const { sql: sqlTag } = await import("drizzle-orm");
+      const categorySummaryJson = JSON.stringify(results.map(r => ({ category: r.category, searched: r.searched, emails: r.emailsFound, reveals: r.revealsAttempted, error: r.error ?? null })));
+      await db.execute(sqlTag`INSERT INTO apollo_sync_runs (ran_at, status, total_searched, total_reveals, total_emails, total_meta_pushed, elapsed_ms, category_summary, triggered_by) VALUES (${Date.now()}, ${runStatus}, ${totalSearched}, ${totalReveals}, ${totalEmails}, ${totalMeta}, ${elapsed}, ${categorySummaryJson}, ${triggeredBy})`);
     } catch (logErr: any) {
       console.warn("[Apollo Daily Draw] Failed to write sync run log:", logErr?.message, logErr?.sqlMessage ?? "", logErr?.sql?.slice(0, 200) ?? "");
     }
@@ -552,10 +541,11 @@ export async function apolloDailyDrawHandler(req: Request, res: Response) {
     try {
       const db2 = await getDb();
       if (db2) {
-        await db2.execute(
-          "INSERT INTO apollo_sync_runs (ran_at, status, total_searched, total_reveals, total_emails, total_meta_pushed, elapsed_ms, error_message, triggered_by) VALUES (?, 'error', 0, 0, 0, 0, ?, ?, ?)",
-          [Date.now(), Date.now() - startTime, msg.slice(0, 500), triggeredBy]
-        );
+        const { sql: sqlTag2 } = await import("drizzle-orm");
+        const ranAt2 = Date.now();
+        const elapsed2 = ranAt2 - startTime;
+        const msgSlice = msg.slice(0, 500);
+        await db2.execute(sqlTag2`INSERT INTO apollo_sync_runs (ran_at, status, total_searched, total_reveals, total_emails, total_meta_pushed, elapsed_ms, error_message, triggered_by) VALUES (${ranAt2}, 'error', 0, 0, 0, 0, ${elapsed2}, ${msgSlice}, ${triggeredBy})`);
       }
     } catch (_) { /* ignore log errors */ }
     res.status(500).json({ error: msg, timestamp: new Date().toISOString() });

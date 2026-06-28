@@ -1437,10 +1437,11 @@ ${ragContext}
         await db
           .update(bookSnippets)
           .set({
-            titleCardLinkedinUrl: cards.linkedin ?? snippet.titleCardLinkedinUrl,
-            titleCardMetaUrl: cards.meta ?? snippet.titleCardMetaUrl,
-            titleCardInstagramFeedUrl: cards.instagramFeed ?? snippet.titleCardInstagramFeedUrl,
-            titleCardXUrl: cards.x ?? snippet.titleCardXUrl,
+            titleCardLinkedinUrl: cards["linkedin"] ?? snippet.titleCardLinkedinUrl,
+            titleCardMetaUrl: cards["meta"] ?? snippet.titleCardMetaUrl,
+            titleCardInstagramFeedUrl: cards["instagram_feed"] ?? snippet.titleCardInstagramFeedUrl,
+            titleCardXUrl: cards["x"] ?? snippet.titleCardXUrl,
+            titleCardUrl: cards["meta"] ?? cards["linkedin"] ?? cards["instagram_feed"] ?? snippet.titleCardUrl,
             titleCardStatus: "ready",
           })
           .where(eq(bookSnippets.id, snippet.id));

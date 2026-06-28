@@ -473,6 +473,96 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
       return { id: (result as any).insertId, title: input.title };
     }),
 
+  // ── New: Generate Full Script from Differentiation Brief ─────────────────
+
+  generateScriptFromBrief: publicProcedure
+    .input(
+      z.object({
+        brief: z.string().min(50),
+        idea: z.string().min(3).max(500),
+        targetDurationMinutes: z.number().min(3).max(20).default(8),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const avatarContext = await getAvatarContextBlock(input.idea).catch(() => "");
+      const wordTarget = Math.round(input.targetDurationMinutes * 130);
+
+      const prompt = `You are a professional scriptwriter for Dr. Pedram Shojai (The Urban Monk).
+Using the differentiation brief below, write a complete, teleprompter-ready YouTube video script.
+
+${PEDRAM_VOICE_GUIDE}
+
+${avatarContext ? avatarContext + "\n\n" : ""}DIFFERENTIATION BRIEF:
+${input.brief}
+
+SCRIPT REQUIREMENTS:
+- Target length: approximately ${wordTarget} words (${input.targetDurationMinutes} minutes at teleprompter pace)
+- Format: Full spoken script — every word Pedram will say, no bullet points, no stage directions in brackets
+- Open with a STRONG hook (first 30 seconds must grab attention — use a surprising stat, bold claim, or relatable pain point)
+- Follow the Urban Monk structure: Hook → Problem/Agitate → East-meets-West insight → Practical steps → Empowerment close → CTA
+- CTA: Direct viewers to lightson.theurbanmonk.com or the Urban Monk Academy
+- Voice: Warm, authoritative, conversational — like a wise mentor talking to a smart friend
+- Include natural pauses and emphasis cues using em-dashes and ellipses where appropriate
+- Do NOT include [brackets], stage directions, or scene descriptions — pure spoken text only
+- End with a clear, specific call to action
+
+Write the complete script now:`;
+
+      const response = await wrapLLM(() => invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert scriptwriter specializing in health and wellness YouTube content for Dr. Pedram Shojai. You write compelling, teleprompter-ready scripts that sound natural when spoken aloud." },
+          { role: "user", content: prompt },
+        ],
+      }));
+
+      const scriptBody = response.choices?.[0]?.message?.content ?? "";
+      const wordCount = typeof scriptBody === "string" ? scriptBody.split(/\s+/).filter(Boolean).length : 0;
+      return { scriptBody: typeof scriptBody === "string" ? scriptBody : String(scriptBody), wordCount };
+    }),
+
+  // ── New: Create Video Job from Script ───────────────────────────────────
+
+  createVideoJobFromScript: publicProcedure
+    .input(
+      z.object({
+        title: z.string().min(1).max(255),
+        scriptBody: z.string().min(50),
+        brief: z.string().optional(),
+        destination: z.enum(["heygen", "script_library", "record_self"]),
+        topic: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const { scripts, videoJobs } = await import("../drizzle/schema");
+
+      const [scriptResult] = await db.insert(scripts).values({
+        title: input.title,
+        scriptType: "video",
+        platform: "youtube",
+        productionStatus: input.destination === "heygen" ? "in_production" : input.destination === "record_self" ? "ready_to_record" : "idea",
+        scriptBody: input.scriptBody,
+        notes: `Generated from YouTube Competitive Intelligence.${input.topic ? ` Topic: ${input.topic}` : ""}`,
+      });
+      const scriptId = (scriptResult as any).insertId as number;
+
+      if (input.destination === "heygen") {
+        const [jobResult] = await db.insert(videoJobs).values({
+          title: input.title,
+          scriptBody: input.scriptBody,
+          status: "pending",
+          pipeline: "heygen_then_descript",
+          linkedScriptId: scriptId,
+          brollPrompt: `Generate b-roll cutaways for a YouTube video about: ${input.title}. Topic: ${input.topic ?? input.title}`,
+        });
+        const jobId = (jobResult as any).insertId as number;
+        return { destination: "heygen" as const, scriptId, jobId, title: input.title };
+      }
+
+      return { destination: input.destination as "script_library" | "record_self", scriptId, jobId: null as null, title: input.title };
+    }),
+
   // ── Existing: Channel Watchlist ───────────────────────────────────────────
 
   trackChannel: publicProcedure

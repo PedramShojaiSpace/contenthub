@@ -227,6 +227,11 @@ export default function CreationStudio() {
   const [ytTranscripts, setYtTranscripts] = useState<YTTranscript[]>([]);
   const [ytBrief, setYtBrief] = useState("");
   const [ytStep, setYtStep] = useState<"idle" | "searched" | "transcripts" | "brief">("idle");
+  const [ytGeneratedScript, setYtGeneratedScript] = useState("");
+  const [ytScriptWordCount, setYtScriptWordCount] = useState(0);
+  const [ytScriptTitle, setYtScriptTitle] = useState("");
+  const [ytScriptDuration, setYtScriptDuration] = useState(8);
+  const [ytRoutingResult, setYtRoutingResult] = useState<{destination: string; scriptId: number; jobId: number | null; title: string} | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -845,6 +850,54 @@ export default function CreationStudio() {
       brief: ytBrief,
       topic: ytSearchQuery || idea,
       competitorAngle: ytVideos.slice(0, 3).map((v) => v.title).join(" | "),
+    });
+  };
+
+  // ── Generate Script from Brief + Route to Production ───────────────────────────
+  const ytGenerateScriptMutation = trpc.youtube.generateScriptFromBrief.useMutation({
+    onSuccess: (data) => {
+      setYtGeneratedScript(data.scriptBody);
+      setYtScriptWordCount(data.wordCount);
+      toast.success(`Script ready — ${data.wordCount.toLocaleString()} words (~${Math.round(data.wordCount / 130)} min)`);
+    },
+    onError: (err) => toast.error("Script generation failed: " + err.message),
+  });
+
+  const ytCreateVideoJobMutation = trpc.youtube.createVideoJobFromScript.useMutation({
+    onSuccess: (data) => {
+      setYtRoutingResult(data);
+      if (data.destination === "heygen") {
+        toast.success(`Video job #${data.jobId} created — HeyGen will render the avatar video. Track it in the VA Dashboard.`);
+      } else if (data.destination === "record_self") {
+        toast.success(`Script saved (ID ${data.scriptId}) — ready for you to record.`);
+      } else {
+        toast.success(`Script saved to Script Library (ID ${data.scriptId}).`);
+      }
+    },
+    onError: (err) => toast.error("Routing failed: " + err.message),
+  });
+
+  const handleYTGenerateScript = () => {
+    if (!ytBrief) { toast.error("Generate a differentiation brief first."); return; }
+    const autoTitle = `${ytSearchQuery || idea || "Urban Monk"} — ${new Date().toLocaleDateString()}`;
+    setYtScriptTitle(autoTitle);
+    setYtGeneratedScript("");
+    setYtRoutingResult(null);
+    ytGenerateScriptMutation.mutate({
+      brief: ytBrief,
+      idea: ytSearchQuery || idea || "Urban Monk content",
+      targetDurationMinutes: ytScriptDuration,
+    });
+  };
+
+  const handleYTRouteScript = (destination: "heygen" | "script_library" | "record_self") => {
+    if (!ytGeneratedScript) { toast.error("Generate a script first."); return; }
+    ytCreateVideoJobMutation.mutate({
+      title: ytScriptTitle || `YT Script — ${new Date().toLocaleDateString()}`,
+      scriptBody: ytGeneratedScript,
+      brief: ytBrief,
+      destination,
+      topic: ytSearchQuery || idea,
     });
   };
 
@@ -2256,54 +2309,135 @@ export default function CreationStudio() {
                 </div>
               )}
 
-              {/* Step 5: Differentiation Brief */}
+              {/* Step 5: Differentiation Brief + Script Generation + Routing */}
               {ytBrief && (
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Brief display */}
                   <div className="flex items-center justify-between">
                     <Label className="text-muted-foreground text-xs uppercase tracking-wider">Differentiation Brief</Label>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(ytBrief);
-                          toast.success("Brief copied!");
-                        }}
-                        className="text-xs h-7 border-border"
-                      >
-                        <Copy className="h-3 w-3 mr-1" />Copy
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleYTInformScript}
-                        className="text-xs h-7 bg-primary text-primary-foreground hover:bg-primary/90"
-                      >
-                        <Wand2 className="h-3 w-3 mr-1" />Inform Script
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleYTSaveToScript}
-                        disabled={ytSaveToScriptMutation.isPending || ytSavedToScript}
-                        className="text-xs h-7 border-green-500/40 text-green-400 hover:bg-green-500/10"
-                      >
-                        {ytSaveToScriptMutation.isPending ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : ytSavedToScript ? (
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                        ) : (
-                          <Save className="h-3 w-3 mr-1" />
-                        )}
-                        {ytSavedToScript ? "Saved!" : "Save to Script Library"}
-                      </Button>
-                    </div>
+                    <Button size="sm" variant="outline"
+                      onClick={() => { navigator.clipboard.writeText(ytBrief); toast.success("Brief copied!"); }}
+                      className="text-xs h-7 border-border"
+                    >
+                      <Copy className="h-3 w-3 mr-1" />Copy Brief
+                    </Button>
                   </div>
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 max-h-96 overflow-y-auto">
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 max-h-64 overflow-y-auto">
                     <pre className="text-xs text-foreground/90 whitespace-pre-wrap font-sans leading-relaxed">{ytBrief}</pre>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Click <strong>Inform Script</strong> to inject the differentiation brief into Custom Instructions — then hit Generate Content.
-                  </p>
+
+                  {/* Step 5b: Write Full Script */}
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                    <Label className="text-muted-foreground text-xs uppercase tracking-wider">Step 5 — Write Full Script</Label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Target length:</span>
+                        <select
+                          value={ytScriptDuration}
+                          onChange={(e) => setYtScriptDuration(Number(e.target.value))}
+                          className="text-xs bg-background border border-border rounded px-2 py-1 text-foreground"
+                        >
+                          <option value={5}>5 min (~650 words)</option>
+                          <option value={8}>8 min (~1,040 words)</option>
+                          <option value={10}>10 min (~1,300 words)</option>
+                          <option value={15}>15 min (~1,950 words)</option>
+                        </select>
+                      </div>
+                      <Button
+                        onClick={handleYTGenerateScript}
+                        disabled={ytGenerateScriptMutation.isPending}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        {ytGenerateScriptMutation.isPending ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Writing script (20–40 sec)...</>
+                        ) : (
+                          <><Wand2 className="h-4 w-4 mr-2" />Write Script from Brief</>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Generated Script */}
+                    {ytGeneratedScript && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            {ytScriptWordCount.toLocaleString()} words · ~{Math.round(ytScriptWordCount / 130)} min at teleprompter pace
+                          </span>
+                          <Button size="sm" variant="outline"
+                            onClick={() => { navigator.clipboard.writeText(ytGeneratedScript); toast.success("Script copied!"); }}
+                            className="text-xs h-7 border-border"
+                          >
+                            <Copy className="h-3 w-3 mr-1" />Copy Script
+                          </Button>
+                        </div>
+                        <div className="rounded-lg border border-border bg-background p-4 max-h-80 overflow-y-auto">
+                          <pre className="text-xs text-foreground/90 whitespace-pre-wrap font-sans leading-relaxed">{ytGeneratedScript}</pre>
+                        </div>
+
+                        {/* Step 6: Route to Production */}
+                        {!ytRoutingResult ? (
+                          <div className="space-y-2">
+                            <Label className="text-muted-foreground text-xs uppercase tracking-wider">Step 6 — Route to Production</Label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <Button
+                                onClick={() => handleYTRouteScript("heygen")}
+                                disabled={ytCreateVideoJobMutation.isPending}
+                                className="bg-primary text-primary-foreground hover:bg-primary/90 h-auto py-3 flex-col gap-1"
+                              >
+                                {ytCreateVideoJobMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                                <span className="text-xs font-semibold">Send to HeyGen</span>
+                                <span className="text-xs opacity-70">Avatar renders automatically</span>
+                              </Button>
+                              <Button
+                                onClick={() => handleYTRouteScript("record_self")}
+                                disabled={ytCreateVideoJobMutation.isPending}
+                                variant="outline"
+                                className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 h-auto py-3 flex-col gap-1"
+                              >
+                                <BookOpen className="h-4 w-4" />
+                                <span className="text-xs font-semibold">I&apos;ll Record Myself</span>
+                                <span className="text-xs opacity-70">Saves to Script Library</span>
+                              </Button>
+                              <Button
+                                onClick={() => handleYTRouteScript("script_library")}
+                                disabled={ytCreateVideoJobMutation.isPending}
+                                variant="outline"
+                                className="border-green-500/40 text-green-400 hover:bg-green-500/10 h-auto py-3 flex-col gap-1"
+                              >
+                                <Save className="h-4 w-4" />
+                                <span className="text-xs font-semibold">Save for Later</span>
+                                <span className="text-xs opacity-70">Script Library — decide later</span>
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-3 space-y-1">
+                            <div className="flex items-center gap-2 text-green-400">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span className="text-sm font-medium">
+                                {ytRoutingResult.destination === "heygen"
+                                  ? `Video job #${ytRoutingResult.jobId} queued for HeyGen`
+                                  : ytRoutingResult.destination === "record_self"
+                                  ? "Script saved — ready for you to record"
+                                  : "Script saved to Script Library"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {ytRoutingResult.destination === "heygen"
+                                ? "Track progress in the VA Dashboard. HeyGen → Descript → b-roll → export."
+                                : `Script Library ID: ${ytRoutingResult.scriptId}. Open Script Library to view or export as DOCX for teleprompter.`}
+                            </p>
+                            <Button size="sm" variant="outline"
+                              onClick={() => { setYtGeneratedScript(""); setYtRoutingResult(null); }}
+                              className="text-xs h-7 mt-1"
+                            >
+                              Write Another Script
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>

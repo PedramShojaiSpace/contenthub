@@ -1,17 +1,16 @@
 /**
  * titleCardCompositor.ts
  *
- * Hybrid title card generation:
+ * Hybrid title card generation using sharp (no Puppeteer/Chromium required):
  *   1. Ask the AI to generate a BACKGROUND ONLY (no text in the image prompt)
- *   2. Render an HTML template with the real quote text via Puppeteer
- *   3. Upload the final composite PNG to S3
+ *   2. Download the background image
+ *   3. Composite an SVG text overlay on top using sharp
+ *   4. Upload the final composite PNG to S3
  *
- * This completely eliminates AI text-rendering typos because the quote is
- * rendered as real CSS typography, not painted by the image model.
- *
+ * Works in both local dev and serverless production (no browser dependency).
  * Supports 4 mood styles and 3 font sizes.
  */
-import puppeteer from "puppeteer-core";
+import sharp, { type Sharp } from "sharp";
 import { storagePut } from "./storage";
 import { generateImage } from "./_core/imageGeneration";
 
@@ -31,10 +30,10 @@ export type CardFontSize = "large" | "medium" | "small";
 
 interface MoodConfig {
   bgPrompt: (ratio: string) => string;
-  fallbackBg: string;       // CSS background for when AI fails
-  overlayGradient: string;  // CSS gradient for the dark overlay
+  fallbackBg: string;       // hex fallback background color
+  overlayColor: string;     // rgba for the dark overlay
   quoteColor: string;       // Quote text color
-  accentColor: string;      // Gold/accent color for attribution + lines
+  accentColor: string;      // Gold/accent color
   brandColor: string;       // Brand name color
 }
 
@@ -45,10 +44,10 @@ const MOODS: Record<CardMood, MoodConfig> = {
       `Dark forest green and deep charcoal tones, subtle organic texture like aged leather or moss, ` +
       `soft vignette edges, no text, no people, no objects, no symbols. Minimalist and sophisticated.`,
     fallbackBg: "#1a2a1a",
-    overlayGradient: "linear-gradient(to bottom, rgba(10,20,10,0.45) 0%, rgba(10,20,10,0.60) 50%, rgba(10,20,10,0.72) 100%)",
+    overlayColor: "rgba(10,20,10,0.60)",
     quoteColor: "#f5f0e8",
     accentColor: "#d4af37",
-    brandColor: "rgba(212,175,55,0.80)",
+    brandColor: "#d4af37",
   },
   stone_gray: {
     bgPrompt: (ratio) =>
@@ -56,10 +55,10 @@ const MOODS: Record<CardMood, MoodConfig> = {
       `Cool stone gray and slate tones, subtle concrete or granite texture, ` +
       `soft vignette edges, no text, no people, no objects, no symbols. Minimalist and sophisticated.`,
     fallbackBg: "#2a2a2a",
-    overlayGradient: "linear-gradient(to bottom, rgba(20,20,20,0.40) 0%, rgba(20,20,20,0.58) 50%, rgba(20,20,20,0.70) 100%)",
+    overlayColor: "rgba(20,20,20,0.58)",
     quoteColor: "#f0f0f0",
     accentColor: "#c8c8c8",
-    brandColor: "rgba(200,200,200,0.75)",
+    brandColor: "#c8c8c8",
   },
   ink_black: {
     bgPrompt: (ratio) =>
@@ -67,10 +66,10 @@ const MOODS: Record<CardMood, MoodConfig> = {
       `Deep black and near-black tones, subtle paper or linen texture, very dark, ` +
       `soft vignette edges, no text, no people, no objects, no symbols. Minimalist and elegant.`,
     fallbackBg: "#0a0a0a",
-    overlayGradient: "linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.78) 100%)",
+    overlayColor: "rgba(0,0,0,0.65)",
     quoteColor: "#f8f4ee",
     accentColor: "#e8c96a",
-    brandColor: "rgba(232,201,106,0.85)",
+    brandColor: "#e8c96a",
   },
   warm_amber: {
     bgPrompt: (ratio) =>
@@ -78,10 +77,10 @@ const MOODS: Record<CardMood, MoodConfig> = {
       `Rich amber, burnt sienna, and deep ochre tones, subtle aged parchment or warm wood texture, ` +
       `soft vignette edges, no text, no people, no objects, no symbols. Warm and sophisticated.`,
     fallbackBg: "#2a1a08",
-    overlayGradient: "linear-gradient(to bottom, rgba(20,10,0,0.42) 0%, rgba(20,10,0,0.58) 50%, rgba(20,10,0,0.70) 100%)",
+    overlayColor: "rgba(20,10,0,0.58)",
     quoteColor: "#fdf6e3",
     accentColor: "#e8a030",
-    brandColor: "rgba(232,160,48,0.85)",
+    brandColor: "#e8a030",
   },
 };
 
@@ -92,159 +91,181 @@ const FONT_SCALE: Record<CardFontSize, number> = {
   small:  0.80,
 };
 
-// ─── HTML template ────────────────────────────────────────────────────────────
-function buildHtml(opts: {
+// ─── SVG text wrapping helper ─────────────────────────────────────────────────
+/**
+ * Wrap text into lines that fit within maxCharsPerLine.
+ * Tries to break on word boundaries.
+ */
+function wrapText(text: string, maxCharsPerLine: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if ((current + " " + word).trim().length <= maxCharsPerLine) {
+      current = (current + " " + word).trim();
+    } else {
+      if (current) lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+/** Escape XML/SVG special characters */
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// ─── SVG overlay builder ──────────────────────────────────────────────────────
+function buildSvgOverlay(opts: {
   quoteText: string;
   authorName: string;
   bookTitle: string;
   brandName: string;
-  backgroundUrl: string;
   w: number;
   h: number;
   mood: CardMood;
   fontSize: CardFontSize;
-}): string {
-  const { quoteText, authorName, bookTitle, brandName, backgroundUrl, w, h, mood, fontSize } = opts;
+}): Buffer {
+  const { quoteText, authorName, bookTitle, brandName, w, h, mood, fontSize } = opts;
   const m = MOODS[mood];
   const scale = FONT_SCALE[fontSize];
 
-  // Auto-scale font for long quotes so text never crowds attribution
+  // Auto-scale font for long quotes
   const charCount = quoteText.length;
   const autoScale = charCount > 300 ? 0.72 : charCount > 200 ? 0.84 : charCount > 140 ? 0.93 : 1.0;
-  const quoteFontSize = Math.round(w * 0.042 * scale * autoScale);
-  const attrFontSize  = Math.round(w * 0.022 * scale);
-  const brandFontSize = Math.round(w * 0.020);
-  const padding       = Math.round(w * 0.085);
-  // Bottom safe zone: content must not enter the bottom 18% of the card (brand lives there)
-  const bottomSafeZone = Math.round(h * 0.18);
 
-  // Escape HTML entities
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const quoteFontSize  = Math.round(w * 0.042 * scale * autoScale);
+  const attrFontSize   = Math.round(w * 0.022 * scale);
+  const brandFontSize  = Math.round(w * 0.020);
+  const padding        = Math.round(w * 0.085);
+  const lineHeight     = Math.round(quoteFontSize * 1.55);
 
-  const bgStyle = backgroundUrl
-    ? `background-image: url("${backgroundUrl}"); background-size: cover; background-position: center;`
-    : `background: ${m.fallbackBg};`;
+  // Wrap quote text
+  const charsPerLine = Math.floor((w - padding * 2) / (quoteFontSize * 0.52));
+  const lines = wrapText(quoteText, Math.max(charsPerLine, 20));
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    width: ${w}px;
-    height: ${h}px;
-    overflow: hidden;
-    font-family: 'Playfair Display', Georgia, serif;
-    background: ${m.fallbackBg};
-  }
-  .card {
-    position: relative;
-    width: ${w}px;
-    height: ${h}px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: ${padding}px;
-    padding-bottom: ${bottomSafeZone}px;
-  }
-  .bg {
-    position: absolute;
-    inset: 0;
-    ${bgStyle}
-  }
-  .overlay {
-    position: absolute;
-    inset: 0;
-    background: ${m.overlayGradient};
-  }
-  .accent-top, .accent-bottom {
-    position: absolute;
-    left: ${padding}px;
-    right: ${padding}px;
-    height: 1px;
-    background: linear-gradient(to right, transparent, ${m.accentColor}99, transparent);
-  }
-  .accent-top    { top: ${Math.round(h * 0.08)}px; }
-  .accent-bottom { bottom: ${Math.round(h * 0.08)}px; }
-  .content {
-    position: relative;
-    z-index: 10;
-    text-align: center;
-    max-width: ${w - padding * 2}px;
-  }
-  .open-quote {
-    font-family: 'Playfair Display', serif;
-    font-size: ${Math.round(quoteFontSize * 3.2)}px;
-    line-height: 0.6;
-    color: ${m.accentColor}88;
-    display: block;
-    margin-bottom: ${Math.round(h * 0.02)}px;
-    font-style: normal;
-  }
-  .quote {
-    font-family: 'Playfair Display', serif;
-    font-size: ${quoteFontSize}px;
-    font-weight: 400;
-    font-style: italic;
-    color: ${m.quoteColor};
-    line-height: 1.55;
-    letter-spacing: 0.01em;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
-    margin-bottom: ${Math.round(h * 0.04)}px;
-  }
-  .attribution {
-    font-family: 'Lato', sans-serif;
-    font-size: ${attrFontSize}px;
-    font-weight: 300;
-    color: ${m.accentColor};
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: ${Math.round(h * 0.010)}px;
-  }
-  .book-title {
-    font-family: 'Lato', sans-serif;
-    font-size: ${Math.round(attrFontSize * 0.82)}px;
-    font-weight: 300;
-    color: ${m.accentColor}aa;
-    letter-spacing: 0.06em;
-    font-style: italic;
-  }
-  .brand {
-    position: absolute;
-    bottom: ${Math.round(h * 0.06)}px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-family: 'Lato', sans-serif;
-    font-size: ${brandFontSize}px;
-    font-weight: 400;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: ${m.brandColor};
-    z-index: 10;
-  }
-</style>
-</head>
-<body>
-  <div class="card">
-    <div class="bg"></div>
-    <div class="overlay"></div>
-    <div class="accent-top"></div>
-    <div class="accent-bottom"></div>
-    <div class="content">
-      <span class="open-quote">&ldquo;</span>
-      <p class="quote">${esc(quoteText)}</p>
-      <p class="attribution">&mdash; ${esc(authorName)}</p>
-      <p class="book-title">${esc(bookTitle)}</p>
-    </div>
-    <div class="brand">${esc(brandName)}</div>
-  </div>
-</body>
-</html>`;
+  // Calculate text block height
+  const openQuoteH   = Math.round(quoteFontSize * 1.8);
+  const quoteBlockH  = lines.length * lineHeight;
+  const attrH        = attrFontSize + Math.round(h * 0.015);
+  const bookH        = Math.round(attrFontSize * 0.82) + Math.round(h * 0.01);
+  const totalTextH   = openQuoteH + quoteBlockH + attrH + bookH;
+
+  // Center the text block vertically (leaving bottom 18% for brand)
+  const usableH      = h - Math.round(h * 0.18) - Math.round(h * 0.08);
+  const textStartY   = Math.round(h * 0.08) + Math.max(0, Math.round((usableH - totalTextH) / 2));
+
+  // Build SVG tspan elements for wrapped quote lines
+  let currentY = textStartY + openQuoteH;
+  const quoteTspans = lines.map((line) => {
+    const y = currentY;
+    currentY += lineHeight;
+    return `<tspan x="${w / 2}" dy="0" y="${y}">${esc(line)}</tspan>`;
+  }).join("\n      ");
+
+  const attrY   = currentY + Math.round(h * 0.03);
+  const bookY   = attrY + attrFontSize + Math.round(h * 0.012);
+  const brandY  = h - Math.round(h * 0.06);
+
+  // Accent line positions
+  const accentTopY    = Math.round(h * 0.08);
+  const accentBottomY = Math.round(h * 0.92);
+
+  // Parse overlay color for SVG
+  const overlayMatch = m.overlayColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+  const overlayR = overlayMatch ? overlayMatch[1] : "0";
+  const overlayG = overlayMatch ? overlayMatch[2] : "0";
+  const overlayB = overlayMatch ? overlayMatch[3] : "0";
+  const overlayA = overlayMatch ? parseFloat(overlayMatch[4]) : 0.6;
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+  <defs>
+    <linearGradient id="overlayGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgb(${overlayR},${overlayG},${overlayB})" stop-opacity="${Math.max(0, overlayA - 0.15)}"/>
+      <stop offset="50%" stop-color="rgb(${overlayR},${overlayG},${overlayB})" stop-opacity="${overlayA}"/>
+      <stop offset="100%" stop-color="rgb(${overlayR},${overlayG},${overlayB})" stop-opacity="${Math.min(1, overlayA + 0.12)}"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="${m.accentColor}" stop-opacity="0"/>
+      <stop offset="50%" stop-color="${m.accentColor}" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="${m.accentColor}" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark gradient overlay -->
+  <rect width="${w}" height="${h}" fill="url(#overlayGrad)"/>
+
+  <!-- Accent lines -->
+  <line x1="${padding}" y1="${accentTopY}" x2="${w - padding}" y2="${accentTopY}" stroke="url(#accentGrad)" stroke-width="1"/>
+  <line x1="${padding}" y1="${accentBottomY}" x2="${w - padding}" y2="${accentBottomY}" stroke="url(#accentGrad)" stroke-width="1"/>
+
+  <!-- Open quote mark -->
+  <text
+    x="${w / 2}"
+    y="${textStartY + Math.round(quoteFontSize * 1.2)}"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="${Math.round(quoteFontSize * 3.2)}"
+    fill="${m.accentColor}"
+    fill-opacity="0.5"
+    font-style="normal">\u201C</text>
+
+  <!-- Quote text -->
+  <text
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="${quoteFontSize}"
+    font-style="italic"
+    fill="${m.quoteColor}"
+    filter="url(#textShadow)">
+      ${quoteTspans}
+  </text>
+
+  <!-- Attribution -->
+  <text
+    x="${w / 2}"
+    y="${attrY}"
+    text-anchor="middle"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="${attrFontSize}"
+    font-weight="300"
+    fill="${m.accentColor}"
+    letter-spacing="${Math.round(attrFontSize * 0.08)}">\u2014 ${esc(authorName)}</text>
+
+  <!-- Book title -->
+  <text
+    x="${w / 2}"
+    y="${bookY}"
+    text-anchor="middle"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="${Math.round(attrFontSize * 0.82)}"
+    font-style="italic"
+    font-weight="300"
+    fill="${m.accentColor}"
+    fill-opacity="0.7">${esc(bookTitle)}</text>
+
+  <!-- Brand name -->
+  <text
+    x="${w / 2}"
+    y="${brandY}"
+    text-anchor="middle"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="${brandFontSize}"
+    font-weight="400"
+    letter-spacing="${Math.round(brandFontSize * 0.22)}"
+    fill="${m.brandColor}"
+    fill-opacity="0.85">${esc(brandName.toUpperCase())}</text>
+</svg>`;
+
+  return Buffer.from(svg, "utf-8");
 }
 
 // ─── Main compositor ──────────────────────────────────────────────────────────
@@ -277,64 +298,75 @@ export async function compositeCard(opts: {
   const ratio = w > h ? "landscape" : w === h ? "square" : "portrait";
 
   // Step 1: Get background image
-  let backgroundUrl = existingBackgroundUrl ?? null;
-  if (!backgroundUrl) {
+  let backgroundBuffer: Buffer | null = null;
+
+  if (existingBackgroundUrl) {
     try {
-      const prompt = MOODS[mood].bgPrompt(ratio) + ` ${w}×${h}px.`;
-      const result = await generateImage({ prompt });
-      backgroundUrl = result.url ?? null;
+      const res = await fetch(existingBackgroundUrl, { signal: AbortSignal.timeout(15_000) });
+      if (res.ok) {
+        backgroundBuffer = Buffer.from(await res.arrayBuffer());
+      }
     } catch (err) {
-      console.error(`[compositor] background generation failed for ${platform}:`, err);
-      backgroundUrl = null;
+      console.error(`[compositor] Failed to download existing background:`, err);
     }
   }
 
-  // Step 2: Build HTML with real text
-  const html = buildHtml({
-    quoteText,
-    authorName,
-    bookTitle: bookTitle || "The Urban Monk",
-    brandName,
-    backgroundUrl: backgroundUrl ?? "",
-    w,
-    h,
-    mood,
-    fontSize,
-  });
+  if (!backgroundBuffer) {
+    try {
+      const prompt = MOODS[mood].bgPrompt(ratio) + ` ${w}×${h}px.`;
+      const result = await generateImage({ prompt });
+      if (result.url) {
+        const res = await fetch(result.url, { signal: AbortSignal.timeout(15_000) });
+        if (res.ok) {
+          backgroundBuffer = Buffer.from(await res.arrayBuffer());
+        }
+      }
+    } catch (err) {
+      console.error(`[compositor] background generation failed for ${platform}:`, err);
+    }
+  }
 
-  // Step 3: Render with Puppeteer
-  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
   try {
-    browser = await puppeteer.launch({
-      executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--font-render-hinting=none",
-      ],
-      headless: true,
+    // Step 2: Build base image (background or solid color fallback)
+    let base: Sharp;
+    if (backgroundBuffer) {
+      base = sharp(backgroundBuffer).resize(w, h, { fit: "cover", position: "center" });
+    } else {
+      // Parse fallback hex color
+      const hex = MOODS[mood].fallbackBg.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      base = sharp({
+        create: { width: w, height: h, channels: 3, background: { r, g, b } },
+      });
+    }
+
+    // Step 3: Build SVG overlay with text
+    const svgOverlay = buildSvgOverlay({
+      quoteText,
+      authorName,
+      bookTitle: bookTitle || "The Urban Monk",
+      brandName,
+      w,
+      h,
+      mood,
+      fontSize,
     });
 
-    const page = await browser.newPage();
-    await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
-    await page.setContent(html, { waitUntil: "load", timeout: 30_000 });
+    // Step 4: Composite SVG on top of background
+    const outputBuffer = await base
+      .composite([{ input: svgOverlay, top: 0, left: 0 }])
+      .png()
+      .toBuffer();
 
-    // Give Google Fonts a moment to load
-    await new Promise((r) => setTimeout(r, 1500));
-
-    const screenshotBuffer = await page.screenshot({ type: "png" });
-
-    // Step 4: Upload to S3
+    // Step 5: Upload to S3
     const key = `title-cards/${snippetId}-${platform}-${mood}-${Date.now()}.png`;
-    const { url: s3Url } = await storagePut(key, screenshotBuffer as Buffer, "image/png");
+    const { url: s3Url } = await storagePut(key, outputBuffer, "image/png");
     return s3Url;
   } catch (err) {
-    console.error(`[compositor] Puppeteer render failed for ${platform}:`, err);
+    console.error(`[compositor] sharp render failed for ${platform}:`, err);
     return null;
-  } finally {
-    if (browser) await browser.close().catch(() => {});
   }
 }
 
@@ -357,13 +389,13 @@ export async function compositeAllPlatformCards(opts: {
   const results: Record<string, string | null> = {};
 
   // Generate a single square background first (reused for all platforms)
-  let sharedBackground: string | null = null;
+  let sharedBackgroundUrl: string | null = null;
   try {
     const prompt = MOODS[mood].bgPrompt("square") + ` 1080×1080px.`;
     const result = await generateImage({ prompt });
-    sharedBackground = result.url ?? null;
+    sharedBackgroundUrl = result.url ?? null;
   } catch {
-    sharedBackground = null;
+    sharedBackgroundUrl = null;
   }
 
   // Composite all 6 platforms in parallel, sharing the background
@@ -374,7 +406,7 @@ export async function compositeAllPlatformCards(opts: {
         platform,
         mood,
         fontSize,
-        existingBackgroundUrl: sharedBackground ?? undefined,
+        existingBackgroundUrl: sharedBackgroundUrl ?? undefined,
       });
       results[platform] = url;
     })

@@ -137,6 +137,77 @@ async function fixPostCategories(wpPostId: number, categoryIds: number[]) {
   return await res.json();
 }
 
+// Exported standalone function for use in scheduled cron handlers
+export async function syncSoroPosts(pages = 2): Promise<{ synced: number; newPosts: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  let synced = 0;
+  let newPosts = 0;
+
+  for (let page = 1; page <= pages; page++) {
+    const { posts } = await fetchWpPosts(page, 20);
+
+    for (const post of posts) {
+      if (post.status !== "publish") continue;
+
+      const contentHtml = post.content?.rendered || "";
+      const contentText = contentHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const wordCount = contentText.split(/\s+/).filter(Boolean).length;
+      const isUncategorized = post.categories?.length === 1 && post.categories[0] === 1;
+      const hasMetaDesc = !!post.yoast_head_json?.description;
+      const hasFeaturedImage = post.featured_media > 0;
+
+      const [existingRows] = await db.execute(
+        "SELECT id FROM soro_posts WHERE wp_post_id = " + JSON.stringify(post.id) + " LIMIT 1"
+      ) as any[];
+
+      if ((existingRows as any[]).length === 0) {
+        newPosts++;
+      }
+
+      const esc = (v: string) => JSON.stringify(String(v ?? ""));
+      const titleVal = esc(post.title?.rendered || "");
+      const slugVal = esc(post.slug);
+      const urlVal = esc(`https://www.theurbanmonk.com/${post.slug}`);
+      const publishedVal = esc(new Date(post.date).toISOString().slice(0, 19).replace("T", " "));
+      const catsVal = esc(JSON.stringify(post.categories || []));
+      const tagsVal = esc(JSON.stringify(post.tags || []));
+      const previewVal = esc(contentText.slice(0, 500));
+      const fullVal = esc(contentText.slice(0, 10000));
+      const yTitleVal = esc(post.yoast_head_json?.title || "");
+      const yDescVal = esc(post.yoast_head_json?.description || "");
+
+      await db.execute(
+        `INSERT INTO soro_posts (
+          wp_post_id, title, slug, url, published_at,
+          wp_categories, wp_tags, word_count, has_featured_image,
+          has_meta_description, content_preview, full_content,
+          yoast_title, yoast_description, is_uncategorized, synced_at
+        ) VALUES (
+          ${post.id}, ${titleVal}, ${slugVal}, ${urlVal}, ${publishedVal},
+          ${catsVal}, ${tagsVal}, ${wordCount}, ${hasFeaturedImage ? 1 : 0},
+          ${hasMetaDesc ? 1 : 0}, ${previewVal}, ${fullVal},
+          ${yTitleVal}, ${yDescVal}, ${isUncategorized ? 1 : 0}, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+          title = VALUES(title),
+          wp_categories = VALUES(wp_categories),
+          wp_tags = VALUES(wp_tags),
+          word_count = VALUES(word_count),
+          has_featured_image = VALUES(has_featured_image),
+          has_meta_description = VALUES(has_meta_description),
+          is_uncategorized = VALUES(is_uncategorized),
+          synced_at = NOW()`
+      );
+
+      synced++;
+    }
+  }
+
+  return { synced, newPosts };
+}
+
 export const soroRouter = router({
   // Sync recent posts from WordPress
   syncPosts: protectedProcedure

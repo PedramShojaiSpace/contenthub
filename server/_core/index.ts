@@ -888,7 +888,7 @@ async function startServer() {
       if (!db) return res.json({ ok: false, error: "DB not available" });
       const channels = await db.select().from(competitorChannels);
       if (channels.length === 0) return res.json({ ok: true, sent: false, message: "No channels tracked" });
-      const { getSupadata } = await import("../supadata");
+      const { getSupadata } = await import("../youtubeRouter");
       const supadata = getSupadata();
       const sections: string[] = [];
       for (const ch of channels) {

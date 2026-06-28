@@ -2489,3 +2489,29 @@ export const collectiveSourcingCandidates = mysqlTable("collective_sourcing_cand
 });
 export type CollectiveSourcingCandidate = typeof collectiveSourcingCandidates.$inferSelect;
 export type InsertCollectiveSourcingCandidate = typeof collectiveSourcingCandidates.$inferInsert;
+
+// ─── Daily Book Pull Rotation ────────────────────────────────────────────────
+// Tracks which book is next in the daily rotation and the daily pull queue.
+// One row per user; the rotationIndex cycles through all books in order.
+export const dailyBookRotation = mysqlTable("daily_book_rotation", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  // Index into the ordered list of books for this user (wraps around)
+  rotationIndex: int("rotation_index").notNull().default(0),
+  // Date of the last pull (YYYY-MM-DD string) to prevent duplicate pulls on same day
+  lastPullDate: varchar("last_pull_date", { length: 10 }),
+  // The snippet that was selected for today's pull (null if not yet prepared)
+  todaySnippetId: int("today_snippet_id"),
+  // Status of today's pull: pending | cards_generating | ready | approved | posted
+  todayStatus: varchar("today_status", { length: 32 }).default("pending"),
+  // Which platforms the VA approved for posting (JSON array of platform strings)
+  approvedPlatforms: text("approved_platforms"),
+  // Timestamp when the VA clicked approve
+  approvedAt: bigint("approved_at", { mode: "number" }),
+  // Timestamp when Buffer push completed
+  postedAt: bigint("posted_at", { mode: "number" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type DailyBookRotation = typeof dailyBookRotation.$inferSelect;
+export type InsertDailyBookRotation = typeof dailyBookRotation.$inferInsert;

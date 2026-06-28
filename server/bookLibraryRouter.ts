@@ -7,6 +7,7 @@ import {
   bookSnippets,
   urbanMonkChatSessions,
   urbanMonkChatMessages,
+  dailyBookRotation,
   type BookSnippet,
 } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -1330,6 +1331,245 @@ ${ragContext}
         .where(eq(urbanMonkChatMessages.sessionId, input.sessionId))
         .orderBy(urbanMonkChatMessages.createdAt);
       return { session, messages };
+    }),
+
+  // ─── Daily Book Pull ─────────────────────────────────────────────────────────
+  // Returns today's daily book pull (or null if not yet prepared)
+  getDailyBookPull: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return null;
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const [rotation] = await db
+      .select()
+      .from(dailyBookRotation)
+      .where(eq(dailyBookRotation.userId, ctx.user.id))
+      .limit(1);
+    if (!rotation || rotation.lastPullDate !== today) return { status: "not_prepared", today };
+    if (!rotation.todaySnippetId) return { status: "not_prepared", today };
+    // Fetch the snippet with book title
+    const [snippetRow] = await db
+      .select({
+        snippet: bookSnippets,
+        bookTitle: uploadedBooks.title,
+        bookAuthor: uploadedBooks.author,
+      })
+      .from(bookSnippets)
+      .innerJoin(uploadedBooks, eq(bookSnippets.bookId, uploadedBooks.id))
+      .where(eq(bookSnippets.id, rotation.todaySnippetId));
+    if (!snippetRow) return { status: "not_prepared", today };
+    return {
+      status: rotation.todayStatus ?? "pending",
+      today,
+      rotationIndex: rotation.rotationIndex,
+      approvedPlatforms: rotation.approvedPlatforms ? JSON.parse(rotation.approvedPlatforms) as string[] : [],
+      approvedAt: rotation.approvedAt,
+      postedAt: rotation.postedAt,
+      snippet: snippetRow.snippet,
+      bookTitle: snippetRow.bookTitle,
+      bookAuthor: snippetRow.bookAuthor,
+    };
+  }),
+
+  // Prepares today's daily book pull: picks the next book in rotation, selects the best
+  // unposted snippet from that book, generates all platform title cards.
+  prepareDailyBookPull: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const today = new Date().toISOString().split("T")[0];
+
+    // Check if already prepared today
+    const [existing] = await db
+      .select()
+      .from(dailyBookRotation)
+      .where(eq(dailyBookRotation.userId, ctx.user.id))
+      .limit(1);
+    if (existing?.lastPullDate === today && existing.todaySnippetId) {
+      return { success: true, message: "Already prepared for today", snippetId: existing.todaySnippetId };
+    }
+
+    // Get all ready books for this user
+    const books = await db
+      .select({ id: uploadedBooks.id, title: uploadedBooks.title })
+      .from(uploadedBooks)
+      .where(and(eq(uploadedBooks.userId, ctx.user.id), eq(uploadedBooks.status, "ready")))
+      .orderBy(uploadedBooks.id);
+    if (books.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "No books uploaded yet" });
+
+    // Determine which book to pull from today (round-robin)
+    const currentIndex = existing?.rotationIndex ?? 0;
+    const bookIndex = currentIndex % books.length;
+    const book = books[bookIndex];
+
+    // Find the best unposted snippet from this book (highest quality score, not yet posted)
+    const candidates = await db
+      .select()
+      .from(bookSnippets)
+      .where(
+        and(
+          eq(bookSnippets.bookId, book.id),
+          eq(bookSnippets.userId, ctx.user.id),
+          eq(bookSnippets.softRejected, false)
+        )
+      )
+      .orderBy(desc(bookSnippets.qualityScore))
+      .limit(50);
+
+    // Filter to snippets not yet posted on any platform
+    const unposted = candidates.filter(
+      (s) => !s.publishedLinkedinAt && !s.publishedMetaAt && !s.publishedInstagramFeedAt && !s.publishedXAt
+    );
+    if (unposted.length === 0) {
+      throw new TRPCError({ code: "NOT_FOUND", message: `No unposted snippets left in "${book.title}" — all quotes have been used` });
+    }
+
+    const snippet = unposted[0];
+
+    // Generate all platform title cards if not already generated
+    const needsCards = !snippet.titleCardLinkedinUrl || !snippet.titleCardMetaUrl || !snippet.titleCardInstagramFeedUrl;
+    if (needsCards) {
+      try {
+        const cards = await compositeAllPlatformCards({
+          quoteText: snippet.passageText,
+          bookTitle: book.title,
+          snippetId: snippet.id,
+          mood: (snippet.cardMood ?? "warm_amber") as "forest_dark" | "stone_gray" | "ink_black" | "warm_amber",
+        });
+        await db
+          .update(bookSnippets)
+          .set({
+            titleCardLinkedinUrl: cards.linkedin ?? snippet.titleCardLinkedinUrl,
+            titleCardMetaUrl: cards.meta ?? snippet.titleCardMetaUrl,
+            titleCardInstagramFeedUrl: cards.instagramFeed ?? snippet.titleCardInstagramFeedUrl,
+            titleCardXUrl: cards.x ?? snippet.titleCardXUrl,
+            titleCardStatus: "ready",
+          })
+          .where(eq(bookSnippets.id, snippet.id));
+      } catch (err) {
+        console.error("[dailyBookPull] Card generation failed:", err);
+        // Continue even if card generation fails — VA can regenerate manually
+      }
+    }
+
+    // Upsert the rotation record
+    if (existing) {
+      await db
+        .update(dailyBookRotation)
+        .set({
+          rotationIndex: currentIndex + 1,
+          lastPullDate: today,
+          todaySnippetId: snippet.id,
+          todayStatus: "ready",
+          approvedPlatforms: null,
+          approvedAt: null,
+          postedAt: null,
+        })
+        .where(eq(dailyBookRotation.userId, ctx.user.id));
+    } else {
+      await db.insert(dailyBookRotation).values({
+        userId: ctx.user.id,
+        rotationIndex: 1,
+        lastPullDate: today,
+        todaySnippetId: snippet.id,
+        todayStatus: "ready",
+      });
+    }
+
+    return { success: true, snippetId: snippet.id, bookTitle: book.title, bookIndex };
+  }),
+
+  // VA approves today's pull and pushes selected platforms to Buffer
+  approveDailyBookPull: protectedProcedure
+    .input(
+      z.object({
+        platforms: z.array(z.enum(["linkedin", "meta", "instagram", "x", "instagram_reel", "instagram_story"])),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const today = new Date().toISOString().split("T")[0];
+
+      const [rotation] = await db
+        .select()
+        .from(dailyBookRotation)
+        .where(eq(dailyBookRotation.userId, ctx.user.id))
+        .limit(1);
+      if (!rotation || rotation.lastPullDate !== today || !rotation.todaySnippetId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No daily pull prepared for today" });
+      }
+
+      // Fetch snippet + book
+      const [snippetRow] = await db
+        .select({ snippet: bookSnippets, bookTitle: uploadedBooks.title })
+        .from(bookSnippets)
+        .innerJoin(uploadedBooks, eq(bookSnippets.bookId, uploadedBooks.id))
+        .where(eq(bookSnippets.id, rotation.todaySnippetId));
+      if (!snippetRow) throw new TRPCError({ code: "NOT_FOUND", message: "Snippet not found" });
+
+      const { snippet, bookTitle } = snippetRow;
+      const results: { platform: string; success: boolean; error?: string }[] = [];
+
+      // Push to Buffer for each approved platform
+      const profiles = await getBufferProfiles();
+      for (const platform of input.platforms) {
+        let imageUrl: string | null = null;
+        let copy = "";
+        let bufferService = "";
+
+        if (platform === "linkedin") {
+          imageUrl = snippet.titleCardLinkedinUrl ?? snippet.titleCardUrl;
+          copy = snippet.linkedinCopy ?? `"${snippet.passageText}"\n\n— from "${bookTitle}" by Dr. Pedram Shojai`;
+          bufferService = "linkedin";
+        } else if (platform === "meta") {
+          imageUrl = snippet.titleCardMetaUrl ?? snippet.titleCardUrl;
+          copy = snippet.metaCopy ?? `"${snippet.passageText}"\n\n— from "${bookTitle}" by Dr. Pedram Shojai`;
+          bufferService = "facebook";
+        } else if (platform === "instagram" || platform === "instagram_reel") {
+          imageUrl = snippet.titleCardInstagramFeedUrl ?? snippet.titleCardUrl;
+          copy = snippet.instagramCopy ?? `"${snippet.passageText}"\n\n— from "${bookTitle}" by Dr. Pedram Shojai`;
+          bufferService = "instagram";
+        } else if (platform === "instagram_story") {
+          imageUrl = snippet.titleCardInstagramStoryUrl ?? snippet.titleCardUrl;
+          copy = snippet.instagramCopy ?? `"${snippet.passageText}"\n\n— from "${bookTitle}" by Dr. Pedram Shojai`;
+          bufferService = "instagram";
+        } else if (platform === "x") {
+          imageUrl = snippet.titleCardXUrl ?? snippet.titleCardUrl;
+          copy = snippet.xCopy ?? `"${snippet.passageText}"\n\n— from "${bookTitle}" by Dr. Pedram Shojai`;
+          bufferService = "twitter";
+        }
+
+        const matchingProfile = profiles.find(
+          (p) => p.service?.toLowerCase() === bufferService.toLowerCase()
+        );
+        if (!matchingProfile) {
+          results.push({ platform, success: false, error: `No Buffer profile found for ${bufferService}` });
+          continue;
+        }
+
+        try {
+          await pushToBuffer({
+            profileId: matchingProfile.id,
+            text: copy,
+            imageUrl: imageUrl ?? undefined,
+          });
+          results.push({ platform, success: true });
+        } catch (err) {
+          results.push({ platform, success: false, error: String(err) });
+        }
+      }
+
+      // Mark as approved + posted
+      await db
+        .update(dailyBookRotation)
+        .set({
+          todayStatus: "posted",
+          approvedPlatforms: JSON.stringify(input.platforms),
+          approvedAt: Date.now(),
+          postedAt: Date.now(),
+        })
+        .where(eq(dailyBookRotation.userId, ctx.user.id));
+
+      return { success: true, results };
     }),
 
   // ─── Delete a chat session ───────────────────────────────────────────────────

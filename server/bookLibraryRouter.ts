@@ -1482,7 +1482,7 @@ ${ragContext}
   approveDailyBookPull: protectedProcedure
     .input(
       z.object({
-        platforms: z.array(z.enum(["linkedin", "meta", "instagram", "x", "instagram_reel", "instagram_story"])),
+        platforms: z.array(z.enum(["linkedin", "meta", "instagram", "x", "instagram_reel", "instagram_story", "instagram_feed"])),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1525,7 +1525,7 @@ ${ragContext}
           imageUrl = snippet.titleCardMetaUrl ?? snippet.titleCardUrl;
           copy = snippet.metaCopy ?? `"${snippet.passageText}"\n\n— from "${bookTitle}" by Dr. Pedram Shojai`;
           bufferService = "facebook";
-        } else if (platform === "instagram" || platform === "instagram_reel") {
+        } else if (platform === "instagram" || platform === "instagram_feed" || platform === "instagram_reel") {
           imageUrl = snippet.titleCardInstagramFeedUrl ?? snippet.titleCardUrl;
           copy = snippet.instagramCopy ?? `"${snippet.passageText}"\n\n— from "${bookTitle}" by Dr. Pedram Shojai`;
           bufferService = "instagram";
@@ -1570,7 +1570,8 @@ ${ragContext}
         })
         .where(eq(dailyBookRotation.userId, ctx.user.id));
 
-      return { success: true, results };
+      const postedCount = results.filter((r) => r.success).length;
+      return { success: true, results, postedCount };
     }),
 
   // ─── Delete a chat session ───────────────────────────────────────────────────

@@ -25,14 +25,14 @@ const PLATFORM_OPTIONS = [
   { id: "linkedin", label: "LinkedIn", icon: Linkedin },
   { id: "x", label: "X / Twitter", icon: Twitter },
   { id: "meta", label: "Meta / Facebook", icon: Facebook },
-  { id: "instagram_feed", label: "Instagram Feed", icon: Share2 },
+  { id: "instagram", label: "Instagram Feed", icon: Share2 },
 ] as const;
 
 type Platform = (typeof PLATFORM_OPTIONS)[number]["id"];
 
 export default function DailyBookPullPanel() {
   const utils = trpc.useUtils();
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(["linkedin", "x", "meta", "instagram_feed"]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(["linkedin", "x", "meta", "instagram"]);
   const [activePlatform, setActivePlatform] = useState<Platform>("linkedin");
 
   const { data: pull, isLoading, refetch } = trpc.bookLibrary.getDailyBookPull.useQuery(undefined, {
@@ -68,7 +68,7 @@ export default function DailyBookPullPanel() {
       case "linkedin": return s.titleCardLinkedinUrl ?? null;
       case "x": return s.titleCardXUrl ?? null;
       case "meta": return s.titleCardMetaUrl ?? null;
-      case "instagram_feed": return s.titleCardInstagramFeedUrl ?? null;
+      case "instagram": return s.titleCardInstagramFeedUrl ?? null;
       default: return null;
     }
   };

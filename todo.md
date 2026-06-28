@@ -3029,8 +3029,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Wire cortisol pillar URL: updated keyword_targets id=39 to real permalink https://theurbanmonk.com/cortisol-stress-reclaim-vitality-ckqp/
 - [x] Confirm gut health and sleep optimization pillar posts not yet published to WordPress (cluster posts exist, pillar pages still needed)
 - [x] Install wp-yoast-rest-meta.php snippet in WordPress functions.php (see docs/wordpress-yoast-rest-api-snippet.php) — snippet in functions.php not loading; WPCode Lite detected as preferred method
-- [ ] Publish gut health pillar page to WordPress, then set Published URL in /keyword-strategy
-- [ ] Publish sleep optimization pillar page to WordPress, then set Published URL in /keyword-strategy
+- [x] Publish gut health pillar page to WordPress, then set Published URL in /keyword-strategy
+- [x] Publish sleep optimization pillar page to WordPress, then set Published URL in /keyword-strategy
 - [ ] Publish heavy metal detox pillar page to WordPress, then set Published URL in /keyword-strategy
 - [ ] Register rank-snapshot-weekly heartbeat cron (platform create endpoint returning 500 — use Settings → Schedules UI after deploy, or retry manus-heartbeat create)
 
@@ -3105,8 +3105,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Build Default Channels settings page at /settings/buffer-channels
 - [x] Add sidebar nav item for Buffer Channel Defaults under Settings
 - [x] Wire BufferChannelSelector to load DB defaults instead of localStorage
-- [ ] Publish gut health pillar page to WordPress
-- [ ] Publish sleep optimization pillar page to WordPress
+- [x] Publish gut health pillar page to WordPress
+- [x] Publish sleep optimization pillar page to WordPress
 - [ ] Set Published URL for gut health pillar in /keyword-strategy
 - [ ] Set Published URL for sleep optimization pillar in /keyword-strategy
 
@@ -3995,10 +3995,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Diagnose cron run mode: schedule is set to ask_user (requires manual approval daily) — NOT autonomous
 - [x] Fix TypeScript errors in routers.ts: gscPositionHistory.position is varchar (string|null), recordedAt is bigint (number), not Date
 - [ ] Change cron runMode from ask_user to run_as_new_task so Apollo/Reddit/YouTube scans run autonomously (requires deploy first)
-- [ ] Verify Reddit nightly scan is actually collecting leads (0 Reddit leads in DB currently — cron never ran autonomously)
-- [ ] Verify YouTube scan is collecting leads (18 leads exist from manual runs)
+- [x] Verify Reddit nightly scan is actually collecting leads (0 Reddit leads in DB currently — cron never ran autonomously)
+- [x] Verify YouTube scan is collecting leads (18 leads exist from manual runs)
 - [ ] Confirm Meta Custom Audience "Urban Monk Lead Scraper" (ID: 52568399217005) is active in Meta Ads Manager
-- [ ] Verify the 6 existing meta_audience_leads were actually pushed to Meta successfully
+- [x] Verify the 6 existing meta_audience_leads were actually pushed to Meta successfully
 
 ## Cron & Meta Audience Strategy (Jun 27-28, 2026)
 - [x] Set cron runAsNewTask=true so daily scans run autonomously (no more ask_user blocking)
@@ -4025,4 +4025,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix findEmail procedure: reveal_personal_emails was false, now true
 - [x] Fix Meta push: category=null fallback to first available audience
 - [x] Improve sync run log error logging
-- [ ] Fix apollo_sync_runs INSERT failure (minor - status dashboard only)
+- [x] Fix apollo_sync_runs INSERT failure (minor - status dashboard only)
+
+## Yoast SEO Fixes
+- [x] Fix 4 Yoast SEO issues on Vagus Nerve post (9878): keyphrase in intro, keyphrase in subheading, meta description truncated, SEO title
+
+## Pillar Pages Published
+- [x] Publish gut health pillar page to WordPress — https://theurbanmonk.com/gut-health-complete-guide/ (ID: 10196)
+- [x] Publish sleep optimization pillar page to WordPress — https://theurbanmonk.com/sleep-optimization-complete-guide/ (ID: 10197)

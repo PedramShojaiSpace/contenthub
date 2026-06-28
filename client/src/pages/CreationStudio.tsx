@@ -1151,11 +1151,34 @@ export default function CreationStudio() {
   }> | null>(null);
   const [reframeCaption, setReframeCaption] = useState<string>("");
   const [commonBelief, setCommonBelief] = useState<string>("");
+  const [reframeRenderedUrls, setReframeRenderedUrls] = useState<string[]>([]);
+  const [reframeIsRendering, setReframeIsRendering] = useState(false);
+
   const generateReframeMutation = trpc.ai.generateReframePost.useMutation({
-    onSuccess: (data: { slides: Array<{ number: number; text: string }>; caption: string; ctaLabel: string }) => {
+    onSuccess: async (data: { slides: Array<{ number: number; text: string }>; caption: string; ctaLabel: string }) => {
       setReframeSlides(data.slides);
       setReframeCaption(data.caption ?? "");
-      toast.success("Reframe Post generated!");
+      setReframeRenderedUrls([]);
+      toast.success("Reframe Post generated — rendering images...");
+      // Auto-render slides to canvas images
+      setReframeIsRendering(true);
+      try {
+        const total = data.slides.length;
+        const mapped: CarouselSlideData[] = data.slides.map((s, i) => ({
+          slide: s.number,
+          type: (i === 0 ? "cover" : i === total - 1 ? "cta" : "content") as SlideType,
+          headline: s.text.split("\n")[0].slice(0, 80),
+          body: s.text,
+        }));
+        const urls = await slidesToDataUrls(mapped);
+        setReframeRenderedUrls(urls);
+        toast.success(`${urls.length} slide images ready — download or upload to Facebook!`);
+      } catch (err) {
+        console.warn("[Reframe] Render failed:", err);
+        toast.error("Image rendering failed — text slides still available above");
+      } finally {
+        setReframeIsRendering(false);
+      }
     },
     onError: (err: { message: string }) => {
       toast.error("Reframe Post generation failed: " + err.message);
@@ -3423,61 +3446,158 @@ export default function CreationStudio() {
                   <CardTitle className="text-base font-semibold text-foreground">Reframe Post — {reframeSlides.length}-Slide Carousel</CardTitle>
                   <Badge variant="outline" className="text-[10px] border-violet-500/40 text-violet-400">LePera Format</Badge>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => {
-                    const text = reframeSlides.map((s) => `SLIDE ${s.number}:\n${s.text}`).join("\n\n") + (reframeCaption ? `\n\nCAPTION:\n${reframeCaption}` : "");
-                    navigator.clipboard.writeText(text);
-                    toast.success("Copied all slides to clipboard");
-                  }}
-                >
-                  <Copy className="h-3 w-3 mr-1" />
-                  Copy All
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-3">
-              {reframeSlides.map((slide, idx) => (
-                <div key={idx} className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-violet-400 bg-violet-400/10 rounded px-2 py-0.5">
-                        Slide {slide.number} / {reframeSlides.length}
-                      </span>
-                    </div>
+                <div className="flex items-center gap-2">
+                  {reframeIsRendering && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Rendering images...
+                    </span>
+                  )}
+                  {reframeRenderedUrls.length > 0 && (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => {
-                        navigator.clipboard.writeText(slide.text);
-                        toast.success(`Slide ${slide.number} copied`);
+                      className="h-7 px-2 text-xs border-violet-500/40 text-violet-400 hover:bg-violet-400/10"
+                      onClick={async () => {
+                        try {
+                          const JSZip = (await import("jszip")).default;
+                          const zip = new JSZip();
+                          const folder = zip.folder("reframe-slides")!;
+                          for (let i = 0; i < reframeRenderedUrls.length; i++) {
+                            const dataUrl = reframeRenderedUrls[i];
+                            const base64 = dataUrl.split(",")[1];
+                            folder.file(`slide-${String(i + 1).padStart(2, "0")}.png`, base64, { base64: true });
+                          }
+                          // Add caption as text file
+                          if (reframeCaption) {
+                            folder.file("caption.txt", reframeCaption);
+                          }
+                          const blob = await zip.generateAsync({ type: "blob" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `reframe-${idea.slice(0, 40).replace(/[^a-z0-9]/gi, "-")}.zip`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success(`Downloaded ${reframeRenderedUrls.length} slide images as ZIP!`);
+                        } catch (err) {
+                          toast.error("ZIP download failed");
+                        }
                       }}
                     >
-                      <Copy className="h-3 w-3" />
+                      <Download className="h-3 w-3 mr-1" />
+                      Download ZIP
                     </Button>
-                  </div>
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{slide.text}</p>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      const text = reframeSlides!.map((s) => `SLIDE ${s.number}:\n${s.text}`).join("\n\n") + (reframeCaption ? `\n\nCAPTION:\n${reframeCaption}` : "");
+                      navigator.clipboard.writeText(text);
+                      toast.success("Copied all slides to clipboard");
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy All
+                  </Button>
                 </div>
-              ))}
-              {reframeCaption && (
-                <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-400 bg-amber-400/10 rounded px-2 py-0.5">CAPTION</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => { navigator.clipboard.writeText(reframeCaption); toast.success("Caption copied"); }}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Rendered Image Previews */}
+              {reframeRenderedUrls.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-violet-400">Slide Images (1080×1080 PNG — ready for Facebook/Instagram)</span>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{reframeCaption}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {reframeRenderedUrls.map((url, idx) => (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={url}
+                          alt={`Slide ${idx + 1}`}
+                          className="w-full aspect-square object-contain rounded-lg border border-border"
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => {
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `reframe-slide-${String(idx + 1).padStart(2, "0")}.png`;
+                              a.click();
+                            }}
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            Save
+                          </Button>
+                        </div>
+                        <span className="absolute bottom-1 left-1 text-[10px] font-bold text-white bg-black/50 rounded px-1">
+                          {idx + 1}/{reframeRenderedUrls.length}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded-lg bg-violet-400/5 border border-violet-500/20 p-3 text-xs text-muted-foreground space-y-1">
+                    <p className="font-semibold text-violet-400">How to upload to Facebook/Instagram:</p>
+                    <p>1. Click <strong>Download ZIP</strong> above — you get all {reframeRenderedUrls.length} slides as 1080×1080 PNG files + caption.txt</p>
+                    <p>2. In Facebook Creator Studio or Meta Business Suite: <strong>Create Post → Photo/Video → select all PNG files</strong> (they upload as a carousel)</p>
+                    <p>3. Paste the caption from caption.txt into the post body</p>
+                    <p>4. Schedule or publish</p>
+                  </div>
                 </div>
               )}
+
+              {/* Text fallback / slide text */}
+              <div className="space-y-3">
+                <span className="text-xs font-semibold text-muted-foreground">Slide Text</span>
+                {reframeSlides.map((slide, idx) => (
+                  <div key={idx} className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-violet-400 bg-violet-400/10 rounded px-2 py-0.5">
+                          Slide {slide.number} / {reframeSlides.length}
+                        </span>
+                        {reframeRenderedUrls[idx] && (
+                          <span className="text-[10px] text-green-400">Image ready</span>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => {
+                          navigator.clipboard.writeText(slide.text);
+                          toast.success(`Slide ${slide.number} copied`);
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{slide.text}</p>
+                  </div>
+                ))}
+                {reframeCaption && (
+                  <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-400 bg-amber-400/10 rounded px-2 py-0.5">CAPTION</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => { navigator.clipboard.writeText(reframeCaption); toast.success("Caption copied"); }}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{reframeCaption}</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

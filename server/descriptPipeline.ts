@@ -534,7 +534,7 @@ export async function processVideoJob(jobId: number): Promise<void> {
           : "";
 
         const brollPrompt = (job.brollPrompt ??
-          "AVATAR-LED VIDEO — TASTEFUL B-ROLL CUTAWAYS ONLY. The Dr. Pedram Shojai avatar must remain on screen for at least 60-70% of the video. B-roll is used ONLY for brief cutaways (3-6 seconds each) when the speaker mentions a specific visual concept, statistic, body part, food, or science concept. Cut back to the avatar immediately after each cutaway. Space cutaways roughly every 20-40 seconds. NEVER cover the avatar during the intro, conclusion, or personal moments. CLEANUP: Remove filler words and long pauses. CAPTIONS: Auto-captions, white text, lower third. MUSIC: Ambient background at -18dB.") + ctaSuffix;
+          "AVATAR-LED VIDEO — FREQUENT B-ROLL CUTAWAYS REQUIRED. B-ROLL FREQUENCY RULE (NON-NEGOTIABLE): Place AT LEAST 3 B-roll cutaways per minute of video. Each cutaway must last a MINIMUM of 10 seconds before cutting back to the avatar. Calculate the total video duration, divide by 60, and place that many cutaways evenly distributed across the video (e.g. a 9-minute video needs at least 27 cutaways). Space cutaways every 15-25 seconds. NEVER use B-roll during the very first 10 seconds or the very last 10 seconds. NEVER reuse the same clip. The avatar must remain visible for the remaining time. CLEANUP: Remove filler words and long pauses over 0.5s. CAPTIONS: Auto-captions, white text, lower third. MUSIC: Ambient background at -18dB. B-ROLL CONTENT: Specific stock footage matching the concept spoken at each moment — anatomy, healthy food, nature, science imagery, wellness scenes.") + ctaSuffix;
 
         console.log(`${jobLabel} [Avatar] Running Underlord B-roll agent...`);
         const editResult = await runUnderlordAgent({
@@ -663,7 +663,7 @@ export async function processVideoJob(jobId: number): Promise<void> {
         : "";
 
       const brollPrompt = (job.brollPrompt ??
-        "MANDATORY B-ROLL RULE: Place a new B-roll clip at EVERY 5 to 8 seconds — non-negotiable. No single shot may stay on screen longer than 8 seconds. Cut to a new clip immediately at the 8-second mark throughout the ENTIRE video from start to finish with zero gaps. Also: remove filler words and long pauses, add auto-captions, use stock footage that matches the content being discussed.") + ctaSuffix;
+        "FREQUENT B-ROLL CUTAWAYS REQUIRED. B-ROLL FREQUENCY RULE (NON-NEGOTIABLE): Place AT LEAST 3 B-roll cutaways per minute of video. Each cutaway must last a MINIMUM of 10 seconds. Calculate the total video duration, divide by 60, and place that many cutaways evenly distributed across the video. Space cutaways every 15-25 seconds. NEVER use B-roll during the very first 10 seconds or the very last 10 seconds. NEVER reuse the same clip. CLEANUP: Remove filler words and long pauses over 0.5s. CAPTIONS: Auto-captions, white text, lower third. MUSIC: Ambient background at -18dB. B-ROLL CONTENT: Specific stock footage matching the concept spoken at each moment.") + ctaSuffix;
 
       const editResult = await runUnderlordAgent({
         projectId: job.descriptProjectId!,

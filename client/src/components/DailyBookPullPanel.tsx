@@ -92,9 +92,9 @@ export default function DailyBookPullPanel() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {pull?.rotation && (
+            {pull?.rotationIndex != null && (
               <Badge variant="outline" className="text-xs">
-                Book {(pull.rotation.rotationIndex % (pull.totalBooks || 1)) + 1} of {pull.totalBooks}
+                Rotation #{(pull.rotationIndex ?? 0) + 1}
               </Badge>
             )}
             <Button
@@ -135,14 +135,14 @@ export default function DailyBookPullPanel() {
               Prepare Today's Pull
             </Button>
           </div>
-        ) : pull.rotation?.todayStatus === "posted" ? (
+        ) : pull.postedAt != null ? (
           /* Already posted today */
           <div className="flex items-center gap-3 py-4 px-3 rounded-lg bg-green-500/10 border border-green-500/20">
             <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
             <div>
               <p className="text-sm font-medium text-green-700 dark:text-green-400">Posted today</p>
               <p className="text-xs text-muted-foreground">
-                From <span className="font-medium">{pull.bookTitle}</span> — {pull.rotation.approvedPlatforms?.split(",").join(", ")}
+                From <span className="font-medium">{pull.bookTitle}</span> — {pull.approvedPlatforms?.join(", ")}
               </p>
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function DailyBookPullPanel() {
               disabled={approve.isPending || selectedPlatforms.length === 0}
               onClick={() =>
                 approve.mutate({
-                  platforms: selectedPlatforms as string[],
+                  platforms: selectedPlatforms as ("meta" | "linkedin" | "x" | "instagram" | "instagram_feed" | "instagram_reel" | "instagram_story")[],
                 })
               }
             >

@@ -2066,6 +2066,8 @@ export const videoJobs = mysqlTable("video_jobs", {
   brollPrompt: text("vj_broll_prompt"),
   descriptProjectId: varchar("vj_descript_project_id", { length: 256 }),
   descriptImportJobId: varchar("vj_descript_import_job_id", { length: 256 }),
+  // Pexels stock footage import job — runs after avatar import, before Underlord
+  pexelsMediaImportJobId: varchar("vj_pexels_media_import_job_id", { length: 256 }),
   descriptAgentJobId: varchar("vj_descript_agent_job_id", { length: 256 }),
   descriptPublishJobId: varchar("vj_descript_publish_job_id", { length: 256 }),
   descriptShareUrl: text("vj_descript_share_url"),

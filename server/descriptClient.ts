@@ -225,6 +225,46 @@ export async function importVideoFromUrl(params: {
 }
 
 /**
+ * Add stock footage media files to an existing Descript project.
+ * This must be called BEFORE running Underlord so the agent has footage to cut to.
+ *
+ * Uses the /jobs/import/project_media endpoint with an existing project_id.
+ * Each media file is given a descriptive name so Underlord can reference it by type.
+ *
+ * @param projectId - The Descript project ID to add media to
+ * @param mediaFiles - Array of {name, url} objects (name should describe the clip content)
+ * @returns job_id of the import job (poll with getJobStatus to confirm completion)
+ */
+export async function addMediaToProject(params: {
+  projectId: string;
+  mediaFiles: Array<{ name: string; url: string }>;
+}): Promise<{ job_id: string }> {
+  // Build the add_media map: { "filename.mp4": { url: "..." }, ... }
+  const addMedia: Record<string, { url: string }> = {};
+  for (const file of params.mediaFiles) {
+    // Sanitize filename: replace spaces/special chars with underscores
+    const safeName = file.name
+      .replace(/[^a-zA-Z0-9_\-\.]/g, "_")
+      .replace(/_+/g, "_")
+      .substring(0, 80);
+    const fileName = safeName.endsWith(".mp4") ? safeName : `${safeName}.mp4`;
+    addMedia[fileName] = { url: file.url };
+  }
+
+  const result = await descriptFetch<{ job_id: string; project_id?: string }>("/jobs/import/project_media", {
+    method: "POST",
+    body: JSON.stringify({
+      project_id: params.projectId,
+      add_media: addMedia,
+      // No add_compositions — we're just adding media to the library,
+      // not creating new compositions. Underlord will place them.
+    }),
+  });
+
+  return { job_id: result.job_id };
+}
+
+/**
  * List all projects in the authenticated drive.
  */
 export async function listProjects(): Promise<{ data: Array<{ id: string; name: string; project_url: string }> }> {

@@ -1562,7 +1562,7 @@ ${ragContext}
 
         try {
           await pushToBuffer({
-            profileId: matchingProfile.id,
+            profileIds: [matchingProfile.id],
             text: copy,
             imageUrl: imageUrl ?? undefined,
           });

@@ -563,7 +563,7 @@ Write the complete script now:`;
         const [jobResult] = await db.insert(videoJobs).values({
           contentItemId,
           scriptText: input.scriptBody,
-          productionPath: "heygen_then_descript",
+          productionPath: "heygen_only",
           youtubeTitle: input.title,
           brollPrompt: `Generate b-roll cutaways for a YouTube video about: ${input.title}. Topic: ${input.topic ?? input.title}`,
         });

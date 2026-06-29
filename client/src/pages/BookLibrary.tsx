@@ -352,6 +352,7 @@ function SnippetSocialPanel({
   const generateCopy = trpc.bookLibrary.generateSocialCopy.useMutation({
     onSuccess: () => {
       utils.bookLibrary.getBook.invalidate({ bookId });
+      refetchSnippet(); // refresh live snippet so copy fields update immediately and Push button enables
       toast.success("Social copy generated for all platforms!");
     },
     onError: (err) => toast.error(err.message),

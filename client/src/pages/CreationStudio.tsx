@@ -1435,15 +1435,16 @@ export default function CreationStudio() {
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
       const slug = idea.slice(0, 40).replace(/[^a-z0-9]/gi, "-").toLowerCase();
-      // Add each rendered PNG — reversed numbering so Facebook alphabetical sort = correct carousel order
+      // Add each rendered PNG — forward numbering so Facebook alphabetical sort = correct carousel order
+      // Facebook displays files in alphabetical order: slide-01 first, slide-02 second, etc.
       const totalSlides = carouselRenderedUrls.length;
       for (let i = 0; i < totalSlides; i++) {
         const dataUrl = carouselRenderedUrls[i];
         const base64 = dataUrl.split(",")[1];
         const slide = carouselSlides[i];
-        // Reverse: slide 1 gets the highest number, last slide gets 01
+        // Forward: slide 1 gets 01, slide 2 gets 02, etc.
         // Facebook reads files alphabetically, so 01 shows first in the carousel
-        const fileNum = String(totalSlides - i).padStart(2, "0");
+        const fileNum = String(i + 1).padStart(2, "0");
         const filename = `slide-${fileNum}-${slide.headline.slice(0, 30).replace(/[^a-z0-9]/gi, "-").toLowerCase()}.png`;
         zip.file(filename, base64, { base64: true });
       }
@@ -3605,9 +3606,9 @@ export default function CreationStudio() {
                           for (let i = 0; i < total; i++) {
                             const dataUrl = reframeRenderedUrls[i];
                             const base64 = dataUrl.split(",")[1];
-                            // Reverse numbering: slide 1 → highest number, last slide → 01
+                            // Forward numbering: slide 1 → 01, slide 2 → 02, etc.
                             // Facebook reads files alphabetically, so 01 appears first in the carousel
-                            const fileNum = String(total - i).padStart(2, "0");
+                            const fileNum = String(i + 1).padStart(2, "0");
                             folder.file(`slide-${fileNum}.png`, base64, { base64: true });
                           }
                           // Add caption as text file

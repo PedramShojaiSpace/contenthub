@@ -127,6 +127,7 @@ import { kidsResearchRouter } from "./kidsResearchRouter";
 import { collectiveRouter } from "./collectiveRouter";
 import { soroRouter } from "./soroRouter";
 import { intentIdeasRouter } from "./intentIdeasRouter";
+import { vaTasksRouter } from "./vaTasksRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -489,6 +490,7 @@ export const appRouter = router({
   kidsResearch: kidsResearchRouter,
   plainTextEmail: plainTextEmailRouter,
   intentIdeas: intentIdeasRouter,
+  vaTasks: vaTasksRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

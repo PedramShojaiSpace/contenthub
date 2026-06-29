@@ -70,6 +70,7 @@ import {
   MailCheck,
   Microscope,
   ShoppingBag,
+  CheckSquare,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -129,6 +130,7 @@ const videoItems = [
   { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
   { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
   { icon: Users, label: "VA Dashboard", path: "/va" },
+  { icon: CheckSquare, label: "VA Task Hub", path: "/va-tasks" },
   { icon: Megaphone, label: "Ads Manager", path: "/ads" },
 ];
 

@@ -2517,3 +2517,56 @@ export const dailyBookRotation = mysqlTable("daily_book_rotation", {
 });
 export type DailyBookRotation = typeof dailyBookRotation.$inferSelect;
 export type InsertDailyBookRotation = typeof dailyBookRotation.$inferInsert;
+
+// ─── VA Task Hub ─────────────────────────────────────────────────────────────
+export const vaTaskCategoryEnum = mysqlEnum("va_task_category", [
+  "content_distribution",
+  "seo_authority",
+  "community_engagement",
+  "influencer_outreach",
+  "professional_outreach",
+  "podcast_outreach",
+  "reputation",
+  "video_strategy",
+]);
+
+export const vaTaskChannelEnum = mysqlEnum("va_task_channel", [
+  "medium", "quora", "youtube_comments", "youtube_channel",
+  "seo_blog", "ai_video", "backlink", "reddit",
+  "google_reviews", "amazon_reviews", "video_testimonial", "google_business",
+  "substack", "title_card", "influencer_shopify", "influencer_youtube",
+  "influencer_meta", "linkedin", "podcast_guest", "podcast_host",
+  "doctor_burnout", "dentist", "executive", "other",
+]);
+
+export const vaTaskStatusEnum = mysqlEnum("va_task_status", [
+  "todo", "in_progress", "needs_review", "done", "blocked",
+]);
+
+export const vaTaskPriorityEnum = mysqlEnum("va_task_priority", [
+  "high", "medium", "low",
+]);
+
+export const vaTasks = mysqlTable("va_tasks", {
+  id: int("id").autoincrement().primaryKey(),
+  category: vaTaskCategoryEnum.notNull(),
+  channel: vaTaskChannelEnum.notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  priority: vaTaskPriorityEnum.default("medium").notNull(),
+  status: vaTaskStatusEnum.default("todo").notNull(),
+  assignee: varchar("assignee", { length: 100 }).default("Jim").notNull(),
+  dueDate: bigint("due_date", { mode: "number" }),
+  aiDraft: text("ai_draft"),
+  notes: text("notes"),
+  publishedUrl: varchar("published_url", { length: 2048 }),
+  sourceContentId: int("source_content_id"),
+  isRecurring: boolean("is_recurring").default(false).notNull(),
+  recurrenceInterval: varchar("recurrence_interval", { length: 20 }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  completedAt: bigint("completed_at", { mode: "number" }),
+});
+
+export type VaTask = typeof vaTasks.$inferSelect;
+export type InsertVaTask = typeof vaTasks.$inferInsert;

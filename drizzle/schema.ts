@@ -2087,7 +2087,7 @@ export const videoJobs = mysqlTable("video_jobs", {
   // descript_only = AI narration + Descript B-roll (original)
   // heygen_only = HeyGen avatar render only, no Descript
   // heygen_then_descript = HeyGen avatar → Descript B-roll overlay
-  productionPath: videoProductionPathEnum.default("heygen_then_descript").notNull(),
+  productionPath: videoProductionPathEnum.default("heygen_only").notNull(),
   // Output channels: JSON array e.g. ["youtube","tiktok","meta"]
   // Determines where the final video is distributed after VA approval
   outputChannels: text("vj_output_channels").default(JSON.stringify(["youtube"])).notNull(),

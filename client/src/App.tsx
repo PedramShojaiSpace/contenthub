@@ -64,6 +64,7 @@ const CollectiveSourcing = lazy(() => import("./pages/CollectiveSourcing"));
 const SoroIntelligence = lazy(() => import("./pages/SoroIntelligence"));
 const PlainTextEmailGenerator = lazy(() => import("./pages/PlainTextEmailGenerator"));
 const VATaskHub = lazy(() => import("./pages/VATaskHub"));
+const KajabiLiveHub = lazy(() => import("./pages/KajabiLiveHub"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -135,6 +136,7 @@ function Router() {
         <Route path={"/soro-intelligence"} component={SoroIntelligence} />
         <Route path={"/plain-text-email"} component={PlainTextEmailGenerator} />
         <Route path={"/va-tasks"} component={VATaskHub} />
+        <Route path={"/kajabi-live"} component={KajabiLiveHub} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

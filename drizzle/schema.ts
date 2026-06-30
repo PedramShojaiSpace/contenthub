@@ -2570,3 +2570,27 @@ export const vaTasks = mysqlTable("va_tasks", {
 
 export type VaTask = typeof vaTasks.$inferSelect;
 export type InsertVaTask = typeof vaTasks.$inferInsert;
+
+// ─── Kajabi Live Sessions ─────────────────────────────────────────────────────
+export const kajabiLiveSessions = mysqlTable("kajabi_live_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  sessionDate: bigint("session_date", { mode: "number" }).notNull(),
+  recordingUrl: varchar("recording_url", { length: 2048 }),
+  transcript: text("transcript"),
+  bestClipStart: int("best_clip_start"),
+  bestClipEnd: int("best_clip_end"),
+  bestClipReason: text("best_clip_reason"),
+  sharePostDraft: text("share_post_draft"),
+  sharePostInstagram: text("share_post_instagram"),
+  sharePostLinkedin: text("share_post_linkedin"),
+  sharePostFacebook: text("share_post_facebook"),
+  memberAskText: text("member_ask_text"),
+  carouselSlides: text("carousel_slides"),
+  status: varchar("status", { length: 50 }).default("uploaded").notNull(),
+  notes: text("notes"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type KajabiLiveSession = typeof kajabiLiveSessions.$inferSelect;
+export type InsertKajabiLiveSession = typeof kajabiLiveSessions.$inferInsert;

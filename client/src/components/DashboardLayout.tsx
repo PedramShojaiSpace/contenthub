@@ -131,6 +131,7 @@ const videoItems = [
   { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
   { icon: Users, label: "VA Dashboard", path: "/va" },
   { icon: CheckSquare, label: "VA Task Hub", path: "/va-tasks" },
+  { icon: Users, label: "Kajabi Live Hub", path: "/kajabi-live" },
   { icon: Megaphone, label: "Ads Manager", path: "/ads" },
 ];
 

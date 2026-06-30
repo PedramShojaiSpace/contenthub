@@ -95,10 +95,20 @@ const CAMPAIGN_CONFIG: Record<string, { label: string; accentColor: string; desc
 
 // ── HTML renderer ─────────────────────────────────────────────────────────────
 
-const DEFAULT_GA4_ID = "G-166813991";
+const DEFAULT_GA4_ID = "G-CXZK2Q275S";
 
 function renderTrackingScripts(fbPixelId: string, ga4Id?: string | null, customHead?: string | null): string {
   const resolvedGa4Id = ga4Id || DEFAULT_GA4_ID;
+
+  const gtmScript = `
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-MTRVLTFX');</script>
+<!-- End Google Tag Manager -->`;
+
   const fbPixel = `
 <!-- Meta Pixel Code -->
 <script>
@@ -119,7 +129,7 @@ src="https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1"
 <!-- End Meta Pixel Code -->`;
 
   const ga4Script = `
-<!-- Google Analytics GA4 -->
+<!-- Google Analytics GA4 (direct fallback) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=${resolvedGa4Id}"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -128,7 +138,7 @@ src="https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1"
   gtag('config', '${resolvedGa4Id}');
 </script>`;
 
-  return fbPixel + ga4Script + (customHead || "");
+  return gtmScript + fbPixel + ga4Script + (customHead || "");
 }
 
 // Helper to render a single testimonial card (shared across all templates)

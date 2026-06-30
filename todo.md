@@ -4062,3 +4062,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Wire daily cron handler to call prepareDailyBookPull each morning — added /api/scheduled/daily-book-pull endpoint to index.ts and updated cron task
 - [x] Add Daily Book Pull panel to BookLibrary.tsx page — DailyBookPullPanel component added above books grid
 - [x] Update VA Content Production Protocol with Daily Book Pull workflow — protocol document updated
+
+## Kajabi Live Hub (Jun 30, 2026)
+- [x] Add kajabi_live_sessions table to schema.ts — created via SQL
+- [x] Build kajabiLiveRouter.ts with CRUD + AI content generation (getDb() pattern, all procedures)
+- [x] Build KajabiLiveHub.tsx UI page — session cards, transcript paste, generate content, review posts, approve, mark posted
+- [x] Add route /kajabi-live to App.tsx
+- [x] Add "Kajabi Live Hub" nav entry to DashboardLayout.tsx videoItems section
+- [x] Register kajabiLiveRouter in server/routers.ts
+- [x] 665 tests passing, 0 TypeScript errors, checkpoint a7f658fe saved

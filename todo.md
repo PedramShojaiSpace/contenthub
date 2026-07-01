@@ -4071,3 +4071,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add "Kajabi Live Hub" nav entry to DashboardLayout.tsx videoItems section
 - [x] Register kajabiLiveRouter in server/routers.ts
 - [x] 665 tests passing, 0 TypeScript errors, checkpoint a7f658fe saved
+
+## Olympus Series Shopify SKUs
+- [ ] Create Olympus Series Shopify draft products and SKUs from the Olympus SKU map and package files, ready for review
+
+## Olympus Series Shopify Build (Handoff Prompt v2)
+- [ ] Create Olympus Max Peak (OLY-HIS-005, $195) — new 8th SKU missing from initial build
+- [ ] Fix Olympus+ (OLY-HIS-002) description: correct Tadalafil dose from 10mg to 5mg
+- [ ] Create 3 Shopify collections: Olympus Her Series, Olympus Series, Sexual Wellness
+- [ ] Assign all 8 products to correct collections per handoff prompt
+- [ ] Add Olympus Max image as placeholder for Olympus Max Peak (OLY-HIS-005)

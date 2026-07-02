@@ -65,6 +65,10 @@ const SoroIntelligence = lazy(() => import("./pages/SoroIntelligence"));
 const PlainTextEmailGenerator = lazy(() => import("./pages/PlainTextEmailGenerator"));
 const VATaskHub = lazy(() => import("./pages/VATaskHub"));
 const KajabiLiveHub = lazy(() => import("./pages/KajabiLiveHub"));
+const UpstreamHome = lazy(() => import("./pages/UpstreamHome"));
+const UpstreamRegister = lazy(() => import("./pages/UpstreamRegister"));
+const UpstreamOral = lazy(() => import("./pages/UpstreamOral"));
+const UpstreamProgram = lazy(() => import("./pages/UpstreamProgram"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -137,6 +141,10 @@ function Router() {
         <Route path={"/plain-text-email"} component={PlainTextEmailGenerator} />
         <Route path={"/va-tasks"} component={VATaskHub} />
         <Route path={"/kajabi-live"} component={KajabiLiveHub} />
+        <Route path={"/upstream"} component={UpstreamHome} />
+        <Route path={"/upstream/register"} component={UpstreamRegister} />
+        <Route path={"/upstream/oral"} component={UpstreamOral} />
+        <Route path={"/upstream/program"} component={UpstreamProgram} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

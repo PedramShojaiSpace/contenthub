@@ -60,6 +60,40 @@ const CHANNEL_BASE_TAGS = [
   "ancient wisdom modern science",
 ];
 
+/**
+ * Build a short, numbered Underlord prompt that Descript's AI can reliably follow.
+ * Descript Underlord works best with 5-7 clear sequential steps, NOT a wall of text.
+ * The prompt is intentionally concise — one instruction per line.
+ */
+export function buildUnderlordPrompt(params: {
+  topic: string;
+  sceneDirections: string[];
+  hasPexelsFootage: boolean;
+  ctaSuffix?: string;
+}): string {
+  const { topic, sceneDirections, hasPexelsFootage, ctaSuffix = "" } = params;
+
+  // Build a concise scene-by-scene B-roll guide from the LLM-generated directions
+  const sceneGuide = sceneDirections.length > 0
+    ? `\nB-ROLL TIMING GUIDE (match clips to these moments):\n${sceneDirections.slice(0, 8).map((d, i) => `${i + 1}. ${d}`).join("\n")}`
+    : `\nB-ROLL CONTENT: Use visuals related to ${topic} — nature, wellness, anatomy, food, mindfulness, science imagery.`;
+
+  const footageSource = hasPexelsFootage
+    ? `Use the stock clips in the media library (named broll_01_*, broll_02_*, etc.) as the full-screen background.`
+    : `Search for and add stock footage clips matching the B-roll timing guide above.`;
+
+  const prompt = `Edit this video with the following steps in order:
+
+1. LAYOUT: Keep the circular presenter avatar in the lower-right corner for the entire video. This is intentional — do not remove it.
+2. B-ROLL: ${footageSource} Place each clip as the full-screen background layer behind the presenter circle. Switch to a new clip every 10-15 seconds. Never reuse the same clip. B-roll should cover 85-90% of the video — only show bare avatar for the first 5 seconds and last 5 seconds.
+3. CLEANUP: Remove filler words (um, uh, like, you know) and silence gaps longer than 0.5 seconds.
+4. CAPTIONS: Add auto-captions in white text at the lower third. Captions must be readable over the background footage.
+5. MUSIC: Add ambient background music at -18dB volume (nature, meditation, or wellness style).
+6. END CARD: Add a 5-second end card at the very end: white text on dark background reading "Learn More at theurbanmonk.com".${sceneGuide}${ctaSuffix}`;
+
+  return prompt;
+}
+
 export interface BrollPromptResult {
   underlordPrompt: string;
   sceneDirections: string[];
@@ -107,7 +141,10 @@ export async function generateBrollPrompt(params: {
   const resolvedBlogUrl = params.blogUrl ?? "https://www.theurbanmonk.com";
   const footerWithBlogUrl = CHANNEL_FOOTER.replace(/BLOG_URL_PLACEHOLDER/g, resolvedBlogUrl);
 
-  // ── Step 2: Generate B-roll prompt + YouTube metadata via LLM ────────────
+  // ── Step 2: Generate scene directions + YouTube metadata via LLM ──────────
+  // NOTE: We no longer ask the LLM to generate the underlordPrompt — that is built
+  // programmatically by buildUnderlordPrompt() to ensure consistent, reliable output.
+  // The LLM only generates: sceneDirections, YouTube metadata.
   const response = await invokeLLM({
     messages: [
       {
@@ -134,7 +171,7 @@ Always output valid JSON matching the requested schema.`,
       },
       {
         role: "user",
-        content: `Generate a Descript Underlord B-roll prompt and fully optimized YouTube metadata for this video.
+        content: `Generate B-roll scene directions and fully optimized YouTube metadata for this video.
 
 TITLE: ${params.scriptTitle}
 TOPIC: ${params.topic}
@@ -151,8 +188,7 @@ ${footerWithBlogUrl}
 
 Return JSON with this exact structure:
 {
-  "underlordPrompt": "PRESENTER CIRCLE + CONTINUOUS B-ROLL STYLE: This video uses a circular presenter avatar in the lower-right corner with full-screen b-roll running behind it. KEEP THE PRESENTER CIRCLE — it is intentional and correct. VIDEO STRUCTURE: (1) First 5 seconds: show the avatar full-frame with no b-roll (intro hook). (2) From 5 seconds to the end: run full-screen b-roll footage CONTINUOUSLY behind the presenter circle. The presenter circle stays visible in the lower-right corner at all times. (3) Last 5 seconds: return to full-frame avatar for the CTA. B-ROLL COVERAGE RULE (NON-NEGOTIABLE): B-roll must cover 90% or more of the total video duration. CLIP VARIETY: Switch to a new b-roll clip every 10-20 seconds — never hold the same clip longer than 20 seconds. NEVER reuse the same clip. B-ROLL CONTENT: Each clip must match the concept being spoken about at that moment — anatomy visuals, healthy food, nature scenes, science imagery, wellness and mindfulness scenes, people meditating, herbs, supplements, gut health imagery, brain imagery, energy and vitality scenes. CLEANUP: Remove all filler words (um, uh, like, you know) and long pauses over 0.5 seconds. CAPTIONS: Add auto-captions in white text, lower third position — ensure captions are readable over the b-roll background. MUSIC: Add subtle ambient background music at -18dB (nature/meditation/wellness style). END CARD: Add a 5-second end card with white text on dark background: 'Learn More at theurbanmonk.com'",
-  "sceneDirections": ["array of 10-15 specific B-roll direction strings with timestamps, e.g. 'At 0:00-0:08: aerial shot of mountains at sunrise to establish calm tone; cut at 8 seconds'"],
+  "sceneDirections": ["8-12 specific B-roll direction strings with timestamps, e.g. 'At 0:00-0:08: aerial shot of mountains at sunrise to establish calm tone'"],
   "youtubeTitle": "vidIQ-optimized title 55-65 chars, primary keyword front-loaded",
   "youtubeDescription": "Full description: 200-300 words of original SEO content with chapter timestamps, then EXACT channel footer provided above",
   "youtubeTags": ["exactly 10 topic-specific tags — do NOT include channel brand tags like Urban Monk or Pedram Shojai"],
@@ -164,12 +200,11 @@ Return JSON with this exact structure:
     response_format: {
       type: "json_schema",
       json_schema: {
-        name: "broll_prompt",
+        name: "broll_metadata",
         strict: true,
         schema: {
           type: "object",
           properties: {
-            underlordPrompt: { type: "string" },
             sceneDirections: { type: "array", items: { type: "string" } },
             youtubeTitle: { type: "string" },
             youtubeDescription: { type: "string" },
@@ -177,7 +212,7 @@ Return JSON with this exact structure:
             hashtags: { type: "array", items: { type: "string" } },
             primaryKeyword: { type: "string" },
           },
-          required: ["underlordPrompt", "sceneDirections", "youtubeTitle", "youtubeDescription", "youtubeTags", "hashtags", "primaryKeyword"],
+          required: ["sceneDirections", "youtubeTitle", "youtubeDescription", "youtubeTags", "hashtags", "primaryKeyword"],
           additionalProperties: false,
         },
       },
@@ -188,17 +223,34 @@ Return JSON with this exact structure:
   const content = typeof rawContent === "string" ? rawContent : null;
   if (!content) throw new Error("No response from LLM for B-roll prompt generation");
 
-  const result = JSON.parse(content) as BrollPromptResult;
+  const llmResult = JSON.parse(content) as Omit<BrollPromptResult, "underlordPrompt">;
 
-  // ── Step 3: Merge channel base tags with generated tags (deduplicated, max 20) ─
-  const allTags = Array.from(new Set([...CHANNEL_BASE_TAGS, ...result.youtubeTags])).slice(0, 20);
-  result.youtubeTags = allTags;
+  // ── Step 3: Build the Underlord prompt programmatically (NOT from LLM) ────
+  // This ensures consistent, reliable output every time — the LLM was echoing
+  // a hardcoded 400-word wall of text that overwhelmed Descript's AI editor.
+  const underlordPrompt = buildUnderlordPrompt({
+    topic: params.topic,
+    sceneDirections: llmResult.sceneDirections,
+    hasPexelsFootage: false, // will be overridden in descriptPipeline.ts with stock footage info
+  });
 
-  // ── Step 4: Append hashtags to end of description if not already present ──
-  const hashtagLine = result.hashtags.join(" ");
-  if (!result.youtubeDescription.includes("#UrbanMonk")) {
-    result.youtubeDescription = result.youtubeDescription.trimEnd() + "\n\n" + hashtagLine;
+  // ── Step 4: Merge channel base tags with generated tags (deduplicated, max 20) ─
+  const allTags = Array.from(new Set([...CHANNEL_BASE_TAGS, ...llmResult.youtubeTags])).slice(0, 20);
+
+  // ── Step 5: Append hashtags to end of description if not already present ──
+  const hashtagLine = llmResult.hashtags.join(" ");
+  let youtubeDescription = llmResult.youtubeDescription;
+  if (!youtubeDescription.includes("#UrbanMonk")) {
+    youtubeDescription = youtubeDescription.trimEnd() + "\n\n" + hashtagLine;
   }
 
-  return result;
+  return {
+    underlordPrompt,
+    sceneDirections: llmResult.sceneDirections,
+    youtubeTitle: llmResult.youtubeTitle,
+    youtubeDescription,
+    youtubeTags: allTags,
+    hashtags: llmResult.hashtags,
+    primaryKeyword: llmResult.primaryKeyword,
+  };
 }

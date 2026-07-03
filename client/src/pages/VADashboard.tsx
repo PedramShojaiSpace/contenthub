@@ -4,7 +4,7 @@
  * Tab 1 (Syndication): Medium, Quora, Reddit job queue with pre-written content
  * Tab 2 (Video Review): Descript-rendered videos awaiting VA approval before YouTube publish
  */
-import { useState } from "react";
+import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -169,49 +169,117 @@ const PLATFORM_CONFIG: Record<Platform, {
   },
 };
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+/**
+ * Strip Markdown syntax to produce clean plain text suitable for
+ * plain-text editors like Quora's answer box.
+ */
+function markdownToPlainText(md: string): string {
+  return md
+    // Remove ATX headings (## Heading)
+    .replace(/^#{1,6}\s+/gm, "")
+    // Remove bold/italic (**text**, *text*, __text__, _text_)
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/(\*|_)(.*?)\1/g, "$2")
+    // Remove inline code
+    .replace(/`([^`]+)`/g, "$1")
+    // Remove code blocks
+    .replace(/```[\s\S]*?```/g, "")
+    // Convert [link text](url) → link text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    // Remove horizontal rules
+    .replace(/^[-*_]{3,}\s*$/gm, "")
+    // Collapse multiple blank lines
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-border bg-muted/50 text-xs text-foreground/70 hover:bg-muted hover:text-foreground transition-colors"
+    >
+      {copied ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+      {copied ? "Copied!" : label}
+    </button>
+  );
+}
+
 // ─── Content Renderer ─────────────────────────────────────────────────────────
 function renderAdaptedContent(platform: Platform, adaptedContent: Record<string, unknown>) {
   if (platform === "medium") {
+    const title = adaptedContent.title as string;
+    const bodyMarkdown = adaptedContent.bodyMarkdown as string;
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
+        {/* Headline */}
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Headline</p>
-          <p className="text-foreground font-semibold text-lg">{adaptedContent.title as string}</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Headline</p>
+            <CopyButton text={title} label="Copy Headline" />
+          </div>
+          <p className="text-foreground font-semibold text-lg">{title}</p>
         </div>
+        {/* Article Body */}
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Article Body (Markdown)</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Article Body</p>
+            <div className="flex gap-2">
+              <CopyButton text={bodyMarkdown} label="Copy Markdown" />
+              <CopyButton text={markdownToPlainText(bodyMarkdown)} label="Copy Plain Text" />
+            </div>
+          </div>
           <Textarea
             readOnly
-            value={adaptedContent.bodyMarkdown as string}
-            className="min-h-[200px] font-mono text-xs bg-card border-border text-foreground/80 resize-y"
+            value={bodyMarkdown}
+            className="min-h-[220px] font-mono text-xs bg-card border-border text-foreground/80 resize-y"
           />
         </div>
-        <div className="flex items-center gap-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
-          <AlertCircle className="w-3 h-3 flex-shrink-0" />
-          <span>Canonical URL will be set automatically when you use the Medium Import Tool — no action needed.</span>
+        {/* Instructions */}
+        <div className="space-y-1.5 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
+          <p className="font-semibold text-blue-200">How to publish on Medium:</p>
+          <p>Option A (easiest): Go to <strong>medium.com/p/import</strong>, paste the WordPress URL — Medium imports the article and sets the canonical URL automatically. Then review and publish.</p>
+          <p>Option B (manual): Copy the <strong>Markdown</strong> body above, paste into Medium's editor. Use <strong>Copy Plain Text</strong> if the editor shows raw symbols instead of formatting.</p>
         </div>
       </div>
     );
   }
 
   if (platform === "quora") {
+    const targetQuestion = adaptedContent.targetQuestion as string;
+    const answerMarkdown = adaptedContent.answerMarkdown as string;
+    const plainAnswer = markdownToPlainText(answerMarkdown);
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
+        {/* Target Question */}
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Target Question to Find on Quora</p>
-          <p className="text-foreground font-semibold">{adaptedContent.targetQuestion as string}</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Target Question to Find on Quora</p>
+            <CopyButton text={targetQuestion} label="Copy Question" />
+          </div>
+          <p className="text-foreground font-semibold">{targetQuestion}</p>
         </div>
+        {/* Answer — show plain text by default since that's what Quora needs */}
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Your Answer (Markdown)</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Your Answer (ready to paste)</p>
+            <CopyButton text={plainAnswer} label="Copy Answer" />
+          </div>
           <Textarea
             readOnly
-            value={adaptedContent.answerMarkdown as string}
-            className="min-h-[200px] font-mono text-xs bg-card border-border text-foreground/80 resize-y"
+            value={plainAnswer}
+            className="min-h-[220px] text-xs bg-card border-border text-foreground/80 resize-y"
           />
         </div>
         <div className="flex items-center gap-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-300">
           <AlertCircle className="w-3 h-3 flex-shrink-0" />
-          <span>Do NOT add any external links to the answer body. Quora will flag or remove promotional links.</span>
+          <span>Quora uses a plain-text editor — the answer above has Markdown formatting removed so it pastes cleanly. Do NOT add external links.</span>
         </div>
       </div>
     );
@@ -445,18 +513,46 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
                   {config.ctaLabel}
                 </Button>
               </a>
-              {adaptedContent && (
+              {adaptedContent && platform === "medium" && (
                 <Button
                   variant="outline"
                   className="text-sm border-border text-foreground/80 hover:bg-muted"
                   onClick={() => {
-                    const text = JSON.stringify(adaptedContent, null, 2);
-                    navigator.clipboard.writeText(text);
-                    toast.success("Content copied to clipboard");
+                    const body = adaptedContent.bodyMarkdown as string ?? "";
+                    navigator.clipboard.writeText(markdownToPlainText(body));
+                    toast.success("Article body copied as plain text");
                   }}
                 >
                   <Copy className="w-4 h-4 mr-2" />
-                  Copy All Content
+                  Copy Body (Plain Text)
+                </Button>
+              )}
+              {adaptedContent && platform === "quora" && (
+                <Button
+                  variant="outline"
+                  className="text-sm border-border text-foreground/80 hover:bg-muted"
+                  onClick={() => {
+                    const answer = adaptedContent.answerMarkdown as string ?? "";
+                    navigator.clipboard.writeText(markdownToPlainText(answer));
+                    toast.success("Quora answer copied — ready to paste");
+                  }}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Answer
+                </Button>
+              )}
+              {adaptedContent && platform === "reddit" && (
+                <Button
+                  variant="outline"
+                  className="text-sm border-border text-foreground/80 hover:bg-muted"
+                  onClick={() => {
+                    const body = adaptedContent.postBody as string ?? "";
+                    navigator.clipboard.writeText(body);
+                    toast.success("Reddit post body copied");
+                  }}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Post Body
                 </Button>
               )}
               <Button

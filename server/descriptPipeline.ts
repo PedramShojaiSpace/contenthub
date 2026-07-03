@@ -47,7 +47,7 @@ import {
   exportProject,
   addMediaToProject,
 } from "./descriptClient";
-import { gatherStockFootage, buildPexelsQueries } from "./pexelsClient";
+import { gatherStockFootage, buildPexelsQueriesFromScript } from "./pexelsClient";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
 
@@ -542,7 +542,13 @@ export async function processVideoJob(jobId: number): Promise<void> {
 
         // Extract scene directions from brollPrompt if it contains them
         const sceneDirectionMatches = (job.brollPrompt ?? "").match(/At \d+:\d+[^;\n]*/g) ?? [];
-        const pexelsQueries = buildPexelsQueries(scriptTitle, sceneDirectionMatches);
+        // Use LLM-powered query builder for script-aware, topic-specific B-roll queries
+        const pexelsQueries = await buildPexelsQueriesFromScript({
+          scriptTitle,
+          scriptText: scriptExcerpt,
+          sceneDirections: sceneDirectionMatches,
+          topic: scriptTitle,
+        });
         console.log(`${jobLabel} [Avatar] Pexels queries: ${pexelsQueries.join(" | ")}`);
 
         const stockClips = await gatherStockFootage(pexelsQueries, 5);

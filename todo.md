@@ -4095,7 +4095,7 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Create renderBlueTemplate function matching get.theurbanmonk.com/program design
 - [x] Wire designTheme into renderLandingPageHtml dispatcher
 - [x] Add designTheme selector to LandingPageBuilder form
-- [ ] Investigate and fix 404 on published CH pages (React SPA routing vs Express route conflict)
+- [x] Investigate and fix 404 on published CH pages — INVESTIGATED: routing is correct. Express landing page route (line 1055) is registered before serveStatic/setupVite. Both published pages return HTTP 200 on ch.theurbanmonk.com. Draft/nonexistent pages return 404 which Manus CDN intercepts and serves the React SPA (correct SPA hosting behavior — React router shows NotFound). No fix needed.
 
 ## Descript Pipeline Fix — Broken Video Output (2026-07-03)
 - [x] Fix brollPromptGenerator.ts: Replace hardcoded 400-word Underlord prompt with short numbered instructions (5-7 steps max)

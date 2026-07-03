@@ -4081,3 +4081,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Create 3 Shopify collections: Olympus Her Series, Olympus Series, Sexual Wellness
 - [ ] Assign all 8 products to correct collections per handoff prompt
 - [ ] Add Olympus Max image as placeholder for Olympus Max Peak (OLY-HIS-005)
+
+## VA Dashboard — Medium & Quora Syndication Fixes
+- [x] Fix Medium: Replace "Copy All Content" JSON dump with per-field copy buttons (Title + Body separately); body should copy clean Markdown text, not JSON
+- [x] Fix Medium: Add "Copy Body as Plain Text" option that strips Markdown syntax for pasting into Medium's rich editor
+- [x] Fix Quora: Replace "Copy All Content" JSON dump with per-field copy buttons (Target Question + Answer separately)
+- [x] Fix Quora: answerMarkdown should be stripped of Markdown syntax when copied — Quora uses a plain-text editor
+- [x] Fix Quora: Add a "Search Quora for this question" button that opens the search URL directly (already existed via getCtaUrl)

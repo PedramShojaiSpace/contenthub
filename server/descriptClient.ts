@@ -22,23 +22,67 @@ function getDescriptToken(): string {
 
 async function descriptFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  maxAttempts = 3
 ): Promise<T> {
   const token = getDescriptToken();
   const url = `${DESCRIPT_BASE_URL}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(options.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...options,
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          ...(options.headers ?? {}),
+        },
+      });
+    } catch (networkErr) {
+      lastError = networkErr instanceof Error ? networkErr : new Error(String(networkErr));
+      if (attempt < maxAttempts) {
+        const delayMs = Math.pow(2, attempt) * 1000;
+        console.warn(`[descriptFetch] Network error attempt ${attempt}/${maxAttempts} for ${path}: ${lastError.message}. Retrying in ${delayMs}ms...`);
+        await new Promise(r => setTimeout(r, delayMs));
+        continue;
+      }
+      throw lastError;
+    }
+
+    if (res.ok) return res.json() as Promise<T>;
+
+    if (res.status === 429) {
+      const retryAfterMs = parseInt(res.headers.get("Retry-After") ?? "5", 10) * 1000;
+      const body = await res.text();
+      lastError = new Error(`Descript API error 429 (rate limited): ${body}`);
+      if (attempt < maxAttempts) {
+        console.warn(`[descriptFetch] Rate limited attempt ${attempt}/${maxAttempts} for ${path}. Retrying in ${retryAfterMs}ms...`);
+        await new Promise(r => setTimeout(r, retryAfterMs));
+        continue;
+      }
+      throw lastError;
+    }
+
+    if (res.status >= 500) {
+      const body = await res.text();
+      lastError = new Error(`Descript API error ${res.status}: ${body}`);
+      if (attempt < maxAttempts) {
+        const delayMs = Math.pow(2, attempt) * 1000;
+        console.warn(`[descriptFetch] Server error ${res.status} attempt ${attempt}/${maxAttempts} for ${path}. Retrying in ${delayMs}ms...`);
+        await new Promise(r => setTimeout(r, delayMs));
+        continue;
+      }
+      throw lastError;
+    }
+
+    // 4xx (not 429) — throw immediately, no retry
     const body = await res.text();
     throw new Error(`Descript API error ${res.status}: ${body}`);
   }
-  return res.json() as Promise<T>;
+
+  throw lastError ?? new Error(`descriptFetch failed after ${maxAttempts} attempts`);
 }
 
 // ─── Response Types (matching actual API) ────────────────────────────────────

@@ -38,7 +38,7 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Campaign = "lo" | "gut" | "sleep" | "webinar";
+type Campaign = "lo" | "gut" | "sleep" | "webinar" | "upstream";
 type Template = "optin" | "vsl" | "sales";
 type Status = "draft" | "published" | "archived";
 
@@ -84,6 +84,7 @@ const CAMPAIGN_META: Record<Campaign, { label: string; color: string; bg: string
   gut: { label: "Gut Health", color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200", description: "Microbiome, digestion & gut-brain axis" },
   sleep: { label: "Sleep & Recovery", color: "text-blue-600", bg: "bg-blue-50 border-blue-200", description: "Deep sleep, recovery & circadian rhythm" },
   webinar: { label: "Webinar", color: "text-violet-600", bg: "bg-violet-50 border-violet-200", description: "Live & on-demand webinar registration" },
+  upstream: { label: "Upstream Program", color: "text-blue-700", bg: "bg-blue-50 border-blue-300", description: "Root-cause diagnostics & systemic healing" },
 };
 
 const TEMPLATE_META: Record<Template, { label: string; icon: React.ReactNode; description: string }> = {
@@ -809,7 +810,7 @@ export default function LandingPageBuilder() {
               <div>
                 <Label>Campaign</Label>
                 <div className="grid grid-cols-3 gap-2 mt-1">
-                  {(["lo", "gut", "sleep"] as Campaign[]).map(c => (
+                  {(["lo", "gut", "sleep", "upstream"] as Campaign[]).map(c => (
                     <button
                       key={c}
                       type="button"
@@ -1367,7 +1368,7 @@ export default function LandingPageBuilder() {
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {/* Campaign overview cards */}
         <div className="grid grid-cols-3 gap-4">
-          {(["lo", "gut", "sleep"] as Campaign[]).map(c => {
+          {(["lo", "gut", "sleep", "upstream"] as Campaign[]).map(c => {
             const campaignPages = (pages as LandingPage[]).filter(p => p.campaign === c);
             const liveCount = campaignPages.filter(p => p.status === "published").length;
             const totalViews = campaignPages.reduce((sum, p) => sum + (p.viewCount || 0), 0);

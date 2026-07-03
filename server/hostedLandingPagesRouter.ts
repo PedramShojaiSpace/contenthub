@@ -631,7 +631,7 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     .offer-price-amount { font-family: 'Playfair Display', serif; font-size: 42px; color: #ffffff; font-weight: 700; }
     .offer-price-label { font-size: 14px; color: #6b7280; margin-top: 4px; }
 
-    /* Testimonials */
+    /* Testimonials — text cards */
     .testimonials { background: #0d1424; padding: 72px 24px; }
     .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 32px; color: #ffffff; text-align: center; margin-bottom: 48px; }
     .testimonials-grid { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
@@ -639,6 +639,20 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     .t-quote { font-family: 'Playfair Display', serif; font-style: italic; color: #c8d0e0; font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
     .t-name { font-weight: 600; font-size: 14px; color: #ffffff; }
     .t-title { font-size: 13px; color: #6b7280; margin-top: 4px; }
+
+    /* Video testimonials grid */
+    .video-testimonials { background: #080d1a; padding: 72px 24px; }
+    .video-testimonials h2 { font-family: 'Playfair Display', serif; font-size: 32px; color: #ffffff; text-align: center; margin-bottom: 12px; }
+    .video-testimonials .section-sub { text-align: center; color: #6b7280; font-size: 15px; margin-bottom: 48px; }
+    .vt-grid { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    @media (max-width: 700px) { .vt-grid { grid-template-columns: 1fr; } }
+    .vt-slot { border-radius: 10px; overflow: hidden; background: #0d1424; border: 1px solid rgba(255,255,255,0.07); }
+    .vt-video { aspect-ratio: 16/9; background: #0a1020; display: flex; align-items: center; justify-content: center; position: relative; }
+    .vt-play { width: 48px; height: 48px; background: rgba(91,163,245,0.2); border: 2px solid rgba(91,163,245,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .vt-play::after { content: ''; border-style: solid; border-width: 8px 0 8px 16px; border-color: transparent transparent transparent #5ba3f5; margin-left: 3px; }
+    .vt-label { padding: 14px 16px; }
+    .vt-name { font-weight: 600; font-size: 14px; color: #e8eaf0; }
+    .vt-desc { font-size: 12px; color: #6b7280; margin-top: 3px; }
 
     /* CTA section */
     .cta-section { background: linear-gradient(135deg, #0d1a3a 0%, #0a1628 100%); padding: 80px 24px; text-align: center; border-top: 1px solid rgba(91,163,245,0.15); }
@@ -688,7 +702,7 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
   </section>` : ""}
 
   ${testimonials.length > 0 ? `
-  <!-- Testimonials -->
+  <!-- Text Testimonials -->
   <section class="testimonials">
     <div class="section-inner">
       <h2>What People Are Saying</h2>
@@ -703,6 +717,38 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     </div>
   </section>` : ""}
 
+  <!-- VIDEO TESTIMONIALS — 6 slots (replace placeholder src with real Wistia embed codes) -->
+  <section class="video-testimonials">
+    <h2>Real People. Real Results.</h2>
+    <p class="section-sub">Hear directly from people who finally got their answers.</p>
+    <div class="vt-grid">
+      <div class="vt-slot">
+        <div class="vt-video"><div class="vt-play"></div></div>
+        <div class="vt-label"><div class="vt-name">Sarah M.</div><div class="vt-desc">Lost 22 lbs after identifying her top triggers</div></div>
+      </div>
+      <div class="vt-slot">
+        <div class="vt-video"><div class="vt-play"></div></div>
+        <div class="vt-label"><div class="vt-name">James T.</div><div class="vt-desc">Brain fog gone within 6 weeks</div></div>
+      </div>
+      <div class="vt-slot">
+        <div class="vt-video"><div class="vt-play"></div></div>
+        <div class="vt-label"><div class="vt-name">Dr. Lisa K.</div><div class="vt-desc">Finally understood her chronic fatigue</div></div>
+      </div>
+      <div class="vt-slot">
+        <div class="vt-video"><div class="vt-play"></div></div>
+        <div class="vt-label"><div class="vt-name">Marcus R.</div><div class="vt-desc">Joint pain reduced by 80% in 8 weeks</div></div>
+      </div>
+      <div class="vt-slot">
+        <div class="vt-video"><div class="vt-play"></div></div>
+        <div class="vt-label"><div class="vt-name">Priya N.</div><div class="vt-desc">Off 3 medications after addressing root cause</div></div>
+      </div>
+      <div class="vt-slot">
+        <div class="vt-video"><div class="vt-play"></div></div>
+        <div class="vt-label"><div class="vt-name">David C.</div><div class="vt-desc">Energy back after 4 years of exhaustion</div></div>
+      </div>
+    </div>
+  </section>
+
   <!-- BOTTOM CTA — after value is established -->
   ${(page.ctaText || page.ctaUrl) ? `
   <section class="cta-section">
@@ -711,7 +757,6 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
       <p>Get your KBMO FIT22 Gut Barrier Permeability Panel shipped to your door, plus a 1-hour private consultation with a certified clinical health coach to build your personalized protocol.</p>
       <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
       ${page.ctaSubtext ? `<p class="cta-subtext">${page.ctaSubtext}</p>` : ""}
-      <p class="cta-guarantee">&#128274; Secure checkout &nbsp;&middot;&nbsp; Ships within 3 business days &nbsp;&middot;&nbsp; Guaranteed actionable results</p>
     </div>
   </section>` : ""}
 

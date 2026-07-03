@@ -67,6 +67,7 @@ const pageContentSchema = z.object({
 
   accentColor: z.string().optional(),
   logoUrl: z.string().optional(),
+  designTheme: z.string().optional(),  // "default" | "blue"
 
   personaId: z.number().optional(),
   ebookId: z.number().optional(),
@@ -96,6 +97,51 @@ const CAMPAIGN_CONFIG: Record<string, { label: string; accentColor: string; desc
 // ── HTML renderer ─────────────────────────────────────────────────────────────
 
 const DEFAULT_GA4_ID = "G-CXZK2Q275S";
+
+/**
+ * Normalize a video embed value:
+ * - If it's already an <iframe> or Wistia script, return as-is
+ * - If it's a YouTube URL (youtube.com/watch or youtu.be), convert to <iframe>
+ * - If it's a Vimeo URL, convert to <iframe>
+ */
+function normalizeVideoEmbed(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  // Already an HTML tag — return as-is
+  if (trimmed.startsWith("<")) return trimmed;
+  // YouTube watch URL
+  const ytWatch = trimmed.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)+([\w-]{11})/);
+  if (ytWatch) {
+    return `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytWatch[1]}?rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+  }
+  // Vimeo URL
+  const vimeo = trimmed.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) {
+    return `<iframe width="100%" height="100%" src="https://player.vimeo.com/video/${vimeo[1]}?dnt=1" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+  }
+  // Unknown — return as-is
+  return trimmed;
+}
+
+/**
+ * Normalize a Wistia embed value:
+ * - If it already starts with '<', return as-is (already proper embed HTML)
+ * - If it's a Wistia URL (wistia.com/medias/ID), convert to proper inline embed HTML
+ */
+function normalizeWistiaEmbed(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  // Already HTML — return as-is
+  if (trimmed.startsWith("<")) return trimmed;
+  // Wistia URL — extract media ID and build proper embed
+  const wistiaMatch = trimmed.match(/wistia\.com\/medias\/([\w]+)/);
+  if (wistiaMatch) {
+    const mediaId = wistiaMatch[1];
+    return `<script src="https://fast.wistia.com/assets/external/E-v1.js" async></script><div class="wistia_responsive_padding" style="padding:56.25% 0 0 0;position:relative;"><div class="wistia_responsive_wrapper" style="height:100%;left:0;position:absolute;top:0;width:100%;"><div class="wistia_embed wistia_async_${mediaId} seo=true videoFoam=true" style="height:100%;position:relative;width:100%">&nbsp;</div></div></div>`;
+  }
+  // Unknown — return as-is
+  return trimmed;
+}
 
 function renderTrackingScripts(fbPixelId: string, ga4Id?: string | null, customHead?: string | null): string {
   const resolvedGa4Id = ga4Id || DEFAULT_GA4_ID;
@@ -336,9 +382,9 @@ function renderVslTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtm
 
   <div class="video-wrapper${page.wistiaEmbedCode ? '' : ' iframe-video'}" style="max-width:760px;margin:0 auto 48px;">
     ${page.wistiaEmbedCode
-      ? page.wistiaEmbedCode
+      ? normalizeWistiaEmbed(page.wistiaEmbedCode)
       : page.videoEmbedCode
-        ? page.videoEmbedCode
+        ? normalizeVideoEmbed(page.videoEmbedCode)
         : `<div class="video-placeholder" style="min-height:360px;">Video embed code not yet configured</div>`}
   </div>
 
@@ -447,8 +493,10 @@ function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
   ${(page.wistiaEmbedCode || page.videoEmbedCode) ? `
   <div class="video-wrapper${page.wistiaEmbedCode ? '' : ' iframe-video'}" style="max-width:760px;margin:0 auto 48px;">
     ${page.wistiaEmbedCode
-      ? page.wistiaEmbedCode
-      : page.videoEmbedCode || ""}
+      ? normalizeWistiaEmbed(page.wistiaEmbedCode)
+      : page.videoEmbedCode
+        ? normalizeVideoEmbed(page.videoEmbedCode)
+        : ""}
   </div>` : ""}
 
   <div class="sales-body">
@@ -489,8 +537,174 @@ function renderSalesTemplate(page: typeof hostedLandingPages.$inferSelect, bodyH
 </html>`;
 }
 
+// ── Blue Template (matches get.theurbanmonk.com/program design) ──────────────
+
+function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHtml: string): string {
+  const brand = CAMPAIGN_CONFIG[page.campaign] || CAMPAIGN_CONFIG.lo;
+  const testimonials: Array<Record<string, any>> = page.testimonials
+    ? JSON.parse(page.testimonials)
+    : [];
+
+  const videoHtml = page.wistiaEmbedCode
+    ? normalizeWistiaEmbed(page.wistiaEmbedCode)
+    : page.videoEmbedCode
+      ? normalizeVideoEmbed(page.videoEmbedCode)
+      : "";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${page.title}</title>
+  ${renderTrackingScripts(page.facebookPixelId || "1498608757116877", page.ga4MeasurementId, page.customHeadScripts)}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #080d1a; color: #e8eaf0; line-height: 1.7; }
+    a { color: inherit; }
+
+    /* Layout */
+    .section-inner { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #5ba3f5; margin-bottom: 20px; }
+
+    /* Hero */
+    .hero { background: #080d1a; padding: 80px 24px 72px; text-align: center; }
+    .hero-badge { display: inline-block; background: rgba(91,163,245,0.12); border: 1px solid rgba(91,163,245,0.3); color: #5ba3f5; font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; padding: 8px 20px; border-radius: 40px; margin-bottom: 32px; }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(32px, 5vw, 58px); line-height: 1.15; color: #ffffff; margin-bottom: 24px; }
+    .hero h1 em { font-style: normal; color: #5ba3f5; }
+    .hero p { font-size: clamp(16px, 2vw, 19px); color: #9aa3b8; max-width: 620px; margin: 0 auto 40px; }
+
+    /* CTA button */
+    .cta-btn { display: inline-flex; align-items: center; gap: 10px; background: #2563eb; color: #ffffff; text-decoration: none; padding: 18px 44px; border-radius: 50px; font-size: 17px; font-weight: 600; font-family: inherit; border: none; cursor: pointer; transition: background 0.2s, transform 0.1s; box-shadow: 0 8px 32px rgba(37,99,235,0.4); }
+    .cta-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
+    .cta-btn-arrow { font-size: 18px; margin-left: 4px; }
+    .cta-subtext { margin-top: 14px; font-size: 13px; color: #6b7280; }
+
+    /* Video */
+    .video-section { background: #0d1424; padding: 0 24px 72px; }
+    .video-wrapper { max-width: 800px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.5); position: relative; }
+    .video-wrapper.iframe-video { aspect-ratio: 16/9; background: #000; }
+    .video-wrapper.iframe-video iframe, .video-wrapper.iframe-video video { width: 100%; height: 100%; border: none; }
+    .wistia_responsive_padding { padding: 56.25% 0 0 0; position: relative; }
+    .wistia_responsive_wrapper { height: 100%; left: 0; position: absolute; top: 0; width: 100%; }
+    .wistia_embed { height: 100%; width: 100%; }
+
+    /* Trust bar */
+    .trust-bar { background: #0d1424; border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 40px 24px; }
+    .trust-grid { max-width: 800px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+    .trust-item { display: flex; align-items: center; gap: 14px; }
+    .trust-icon { width: 36px; height: 36px; background: rgba(91,163,245,0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #5ba3f5; font-size: 16px; flex-shrink: 0; }
+    .trust-text { font-size: 14px; font-weight: 500; color: #c8d0e0; }
+
+    /* Body sections */
+    .body-section { background: #080d1a; padding: 80px 24px; }
+    .body-section h2 { font-family: 'Playfair Display', serif; font-size: clamp(24px, 3.5vw, 36px); color: #ffffff; margin-bottom: 20px; line-height: 1.25; }
+    .body-section h3 { font-family: 'Playfair Display', serif; font-size: 22px; color: #e8eaf0; margin: 32px 0 12px; }
+    .body-section p { color: #9aa3b8; font-size: 17px; margin-bottom: 18px; }
+    .body-section ul, .body-section ol { padding-left: 24px; margin-bottom: 18px; }
+    .body-section li { color: #9aa3b8; font-size: 17px; margin-bottom: 10px; }
+    .body-section strong { color: #e8eaf0; }
+    .body-section em { color: #5ba3f5; font-style: normal; }
+
+    /* Testimonials */
+    .testimonials { background: #0d1424; padding: 80px 24px; }
+    .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 32px; color: #ffffff; text-align: center; margin-bottom: 48px; }
+    .testimonials-grid { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
+    .t-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 28px; }
+    .t-quote { font-family: 'Playfair Display', serif; font-style: italic; color: #c8d0e0; font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
+    .t-name { font-weight: 600; font-size: 14px; color: #ffffff; }
+    .t-title { font-size: 13px; color: #6b7280; margin-top: 4px; }
+
+    /* CTA section */
+    .cta-section { background: linear-gradient(135deg, #0d1a3a 0%, #0a1628 100%); padding: 80px 24px; text-align: center; border-top: 1px solid rgba(91,163,245,0.15); }
+    .cta-section h2 { font-family: 'Playfair Display', serif; font-size: 36px; color: #ffffff; margin-bottom: 16px; }
+    .cta-section p { color: #9aa3b8; font-size: 17px; max-width: 560px; margin: 0 auto 36px; }
+
+    /* Footer */
+    .footer { background: #040810; color: #4b5563; text-align: center; padding: 28px 24px; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .footer a { color: #6b7280; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="section-inner">
+      <span class="hero-badge">${brand.label}</span>
+      <h1>${page.headline || page.title}</h1>
+      ${page.subheadline ? `<p>${page.subheadline}</p>` : ""}
+      ${(page.ctaText || page.ctaUrl) ? `
+      <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
+      ${page.ctaSubtext ? `<p class="cta-subtext">${page.ctaSubtext}</p>` : ""}` : ""}
+    </div>
+  </section>
+
+  <!-- Trust bar -->
+  <div class="trust-bar">
+    <div class="trust-grid">
+      <div class="trust-item"><div class="trust-icon">&#10003;</div><span class="trust-text">Evidence-Based Protocols</span></div>
+      <div class="trust-item"><div class="trust-icon">&#10003;</div><span class="trust-text">Ancient Wisdom + Modern Science</span></div>
+      <div class="trust-item"><div class="trust-icon">&#10003;</div><span class="trust-text">Dr. Pedram Shojai, OMD</span></div>
+    </div>
+  </div>
+
+  ${videoHtml ? `
+  <!-- Video -->
+  <div class="video-section">
+    <div class="video-wrapper${page.wistiaEmbedCode ? '' : ' iframe-video'}">
+      ${videoHtml}
+    </div>
+  </div>` : ""}
+
+  <!-- Body copy -->
+  ${bodyHtml ? `
+  <section class="body-section">
+    <div class="section-inner">
+      ${bodyHtml}
+    </div>
+  </section>` : ""}
+
+  ${testimonials.length > 0 ? `
+  <!-- Testimonials -->
+  <section class="testimonials">
+    <div class="section-inner">
+      <h2>What People Are Saying</h2>
+      <div class="testimonials-grid">
+        ${testimonials.map((t: any) => `
+        <div class="t-card">
+          <p class="t-quote">&ldquo;${t.quote || t.authorQuote || ""}&rdquo;</p>
+          <p class="t-name">${t.name || t.authorName || ""}</p>
+          ${(t.title || t.authorTitle) ? `<p class="t-title">${t.title || t.authorTitle}</p>` : ""}
+        </div>`).join("")}
+      </div>
+    </div>
+  </section>` : ""}
+
+  <!-- Bottom CTA -->
+  ${(page.ctaText || page.ctaUrl) ? `
+  <section class="cta-section">
+    <div class="section-inner">
+      <h2>Ready to Transform Your ${brand.label}?</h2>
+      ${page.ctaSubtext ? `<p>${page.ctaSubtext}</p>` : ""}
+      <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
+    </div>
+  </section>` : ""}
+
+  <footer class="footer">
+    <p>&copy; ${new Date().getFullYear()} Dr. Pedram Shojai &middot; The Urban Monk &middot; <a href="https://theurbanmonk.com/privacy">Privacy Policy</a></p>
+  </footer>
+</body>
+</html>`;
+}
+
 export function renderLandingPageHtml(page: typeof hostedLandingPages.$inferSelect): string {
   const bodyHtml = page.bodyCopy ? marked.parse(page.bodyCopy) as string : "";
+  // Blue design theme overrides the template renderer
+  if (page.designTheme === "blue") {
+    return renderBlueTemplate(page, bodyHtml);
+  }
   switch (page.template) {
     case "vsl":
       return renderVslTemplate(page, bodyHtml);
@@ -616,6 +830,7 @@ export const hostedLandingPagesRouter = router({
         customHeadScripts: input.customHeadScripts,
         accentColor: input.accentColor,
         logoUrl: input.logoUrl,
+        designTheme: input.designTheme || "default",
         personaId: input.personaId,
         ebookId: input.ebookId,
         webinarSessionId: input.webinarSessionId,

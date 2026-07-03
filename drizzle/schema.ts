@@ -1702,6 +1702,7 @@ export const hostedLandingPages = mysqlTable("hosted_landing_pages", {
   // Design overrides (optional — leave null to use campaign defaults)
   accentColor: varchar("hlp_accent_color", { length: 16 }),  // hex e.g. #2D7D46
   logoUrl: text("hlp_logo_url"),
+  designTheme: varchar("hlp_design_theme", { length: 32 }).default("default"),  // "default" | "blue"
 
   // Stats (lightweight, not a full analytics system)
   viewCount: int("hlp_view_count").default(0).notNull(),

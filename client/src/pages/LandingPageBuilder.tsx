@@ -69,6 +69,7 @@ interface LandingPage {
   ga4MeasurementId?: string | null;
   customHeadScripts?: string | null;
   accentColor?: string | null;
+  designTheme?: string | null;
   viewCount: number;
   optinCount: number;
   publishedAt?: Date | null;
@@ -119,6 +120,7 @@ const EMPTY_FORM = {
   ga4MeasurementId: "",
   customHeadScripts: "",
   accentColor: "",
+  designTheme: "default",
 };
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -207,6 +209,7 @@ export default function LandingPageBuilder() {
       ga4MeasurementId: page.ga4MeasurementId || "",
       customHeadScripts: page.customHeadScripts || "",
       accentColor: page.accentColor || "",
+      designTheme: page.designTheme || "default",
     });
     try {
       setTestimonials(page.testimonials ? JSON.parse(page.testimonials) : []);
@@ -564,6 +567,7 @@ export default function LandingPageBuilder() {
       ga4MeasurementId: page.ga4MeasurementId || "",
       customHeadScripts: page.customHeadScripts || "",
       accentColor: page.accentColor || "",
+      designTheme: page.designTheme || "default",
     });
     try {
       setTestimonials(page.testimonials ? JSON.parse(page.testimonials) : []);
@@ -593,6 +597,7 @@ export default function LandingPageBuilder() {
       ga4MeasurementId: form.ga4MeasurementId || undefined,
       customHeadScripts: form.customHeadScripts || undefined,
       accentColor: form.accentColor || undefined,
+      designTheme: form.designTheme || "default",
     };
     if (editingId) {
       updateMutation.mutate({ id: editingId, ...payload });
@@ -951,6 +956,27 @@ export default function LandingPageBuilder() {
                   placeholder={CAMPAIGN_META[form.campaign].color.replace("text-", "#")}
                   className="font-mono text-sm"
                 />
+              </div>
+            </div>
+            <div>
+              <Label>Design Theme</Label>
+              <p className="text-xs text-muted-foreground mb-2">Choose a visual style for this page. "Blue" uses the dark navy design from get.theurbanmonk.com/program.</p>
+              <div className="flex gap-3 mt-1">
+                {[{value: "default", label: "Default", desc: "White background, campaign accent color"}, {value: "blue", label: "Blue", desc: "Dark navy, electric blue accents"}].map(theme => (
+                  <button
+                    key={theme.value}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, designTheme: theme.value }))}
+                    className={`flex-1 rounded-lg border-2 p-3 text-left transition-all ${
+                      (form.designTheme || "default") === theme.value
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="font-semibold text-sm">{theme.label}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{theme.desc}</div>
+                  </button>
+                ))}
               </div>
             </div>
           </Section>

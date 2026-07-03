@@ -4088,3 +4088,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix Quora: Replace "Copy All Content" JSON dump with per-field copy buttons (Target Question + Answer separately)
 - [x] Fix Quora: answerMarkdown should be stripped of Markdown syntax when copied — Quora uses a plain-text editor
 - [x] Fix Quora: Add a "Search Quora for this question" button that opens the search URL directly (already existed via getCtaUrl)
+
+## CH Landing Page Fixes (2025-07-03)
+- [ ] Fix video embed: auto-convert YouTube/Vimeo URLs to proper iframe tags in VSL template
+- [ ] Add designTheme column to hostedLandingPages DB table (values: "default" | "blue")
+- [ ] Create renderBlueTemplate function matching get.theurbanmonk.com/program design
+- [ ] Wire designTheme into renderLandingPageHtml dispatcher
+- [ ] Add designTheme selector to LandingPageBuilder form
+- [ ] Investigate and fix 404 on published CH pages (React SPA routing vs Express route conflict)

@@ -580,39 +580,39 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
 
     /* Layout */
     .section-inner { max-width: 800px; margin: 0 auto; padding: 0 24px; }
-    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #5ba3f5; margin-bottom: 20px; }
 
-    /* Hero */
-    .hero { background: #080d1a; padding: 80px 24px 72px; text-align: center; }
-    .hero-badge { display: inline-block; background: rgba(91,163,245,0.12); border: 1px solid rgba(91,163,245,0.3); color: #5ba3f5; font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; padding: 8px 20px; border-radius: 40px; margin-bottom: 32px; }
-    .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(32px, 5vw, 58px); line-height: 1.15; color: #ffffff; margin-bottom: 24px; }
-    .hero h1 em { font-style: normal; color: #5ba3f5; }
-    .hero p { font-size: clamp(16px, 2vw, 19px); color: #9aa3b8; max-width: 620px; margin: 0 auto 40px; }
+    /* ── ABOVE-THE-FOLD: pain hook + video ── */
+    .atf { background: #080d1a; padding: 48px 24px 0; text-align: center; }
+    .atf-eyebrow { display: inline-block; background: rgba(91,163,245,0.12); border: 1px solid rgba(91,163,245,0.3); color: #5ba3f5; font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; padding: 7px 18px; border-radius: 40px; margin-bottom: 24px; }
+    .atf h1 { font-family: 'Playfair Display', serif; font-size: clamp(28px, 4.5vw, 52px); line-height: 1.15; color: #ffffff; margin-bottom: 16px; max-width: 720px; margin-left: auto; margin-right: auto; }
+    .atf h1 em { font-style: normal; color: #5ba3f5; }
+    .atf-sub { font-size: clamp(15px, 1.8vw, 18px); color: #9aa3b8; max-width: 580px; margin: 0 auto 32px; }
 
-    /* CTA button */
-    .cta-btn { display: inline-flex; align-items: center; gap: 10px; background: #2563eb; color: #ffffff; text-decoration: none; padding: 18px 44px; border-radius: 50px; font-size: 17px; font-weight: 600; font-family: inherit; border: none; cursor: pointer; transition: background 0.2s, transform 0.1s; box-shadow: 0 8px 32px rgba(37,99,235,0.4); }
-    .cta-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
-    .cta-btn-arrow { font-size: 18px; margin-left: 4px; }
-    .cta-subtext { margin-top: 14px; font-size: 13px; color: #6b7280; }
-
-    /* Video */
-    .video-section { background: #0d1424; padding: 0 24px 72px; }
-    .video-wrapper { max-width: 800px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.5); position: relative; }
+    /* Video wrapper — flush below headline, no extra padding */
+    .video-atf { background: #080d1a; padding: 0 24px 0; }
+    .video-wrapper { max-width: 800px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
     .video-wrapper.iframe-video { aspect-ratio: 16/9; background: #000; }
     .video-wrapper.iframe-video iframe, .video-wrapper.iframe-video video { width: 100%; height: 100%; border: none; }
     .wistia_responsive_padding { padding: 56.25% 0 0 0; position: relative; }
     .wistia_responsive_wrapper { height: 100%; left: 0; position: absolute; top: 0; width: 100%; }
     .wistia_embed { height: 100%; width: 100%; }
 
-    /* Trust bar */
-    .trust-bar { background: #0d1424; border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 40px 24px; }
-    .trust-grid { max-width: 800px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
-    .trust-item { display: flex; align-items: center; gap: 14px; }
-    .trust-icon { width: 36px; height: 36px; background: rgba(91,163,245,0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #5ba3f5; font-size: 16px; flex-shrink: 0; }
-    .trust-text { font-size: 14px; font-weight: 500; color: #c8d0e0; }
+    /* Credibility bar — immediately after video */
+    .cred-bar { background: #0a1020; border-top: 1px solid rgba(255,255,255,0.05); padding: 28px 24px; }
+    .cred-grid { max-width: 800px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 20px 36px; }
+    .cred-item { display: flex; align-items: center; gap: 10px; }
+    .cred-dot { width: 6px; height: 6px; border-radius: 50%; background: #5ba3f5; flex-shrink: 0; }
+    .cred-text { font-size: 13px; font-weight: 500; color: #8a94a8; }
+
+    /* CTA button */
+    .cta-btn { display: inline-flex; align-items: center; gap: 10px; background: #2563eb; color: #ffffff; text-decoration: none; padding: 18px 44px; border-radius: 50px; font-size: 17px; font-weight: 600; font-family: inherit; border: none; cursor: pointer; transition: background 0.2s, transform 0.1s; box-shadow: 0 8px 32px rgba(37,99,235,0.4); }
+    .cta-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
+    .cta-btn-arrow { font-size: 18px; margin-left: 4px; }
+    .cta-subtext { margin-top: 12px; font-size: 13px; color: #6b7280; }
+    .cta-guarantee { margin-top: 10px; font-size: 12px; color: #4b5563; }
 
     /* Body sections */
-    .body-section { background: #080d1a; padding: 80px 24px; }
+    .body-section { background: #080d1a; padding: 72px 24px; }
     .body-section h2 { font-family: 'Playfair Display', serif; font-size: clamp(24px, 3.5vw, 36px); color: #ffffff; margin-bottom: 20px; line-height: 1.25; }
     .body-section h3 { font-family: 'Playfair Display', serif; font-size: 22px; color: #e8eaf0; margin: 32px 0 12px; }
     .body-section p { color: #9aa3b8; font-size: 17px; margin-bottom: 18px; }
@@ -621,8 +621,18 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     .body-section strong { color: #e8eaf0; }
     .body-section em { color: #5ba3f5; font-style: normal; }
 
+    /* What's included box */
+    .offer-box { background: rgba(37,99,235,0.08); border: 1px solid rgba(37,99,235,0.25); border-radius: 12px; padding: 32px; margin: 32px 0; }
+    .offer-box h3 { font-family: 'Playfair Display', serif; font-size: 22px; color: #ffffff; margin-bottom: 20px; }
+    .offer-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .offer-check { color: #5ba3f5; font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+    .offer-text { color: #c8d0e0; font-size: 16px; line-height: 1.5; }
+    .offer-price { text-align: center; margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .offer-price-amount { font-family: 'Playfair Display', serif; font-size: 42px; color: #ffffff; font-weight: 700; }
+    .offer-price-label { font-size: 14px; color: #6b7280; margin-top: 4px; }
+
     /* Testimonials */
-    .testimonials { background: #0d1424; padding: 80px 24px; }
+    .testimonials { background: #0d1424; padding: 72px 24px; }
     .testimonials h2 { font-family: 'Playfair Display', serif; font-size: 32px; color: #ffffff; text-align: center; margin-bottom: 48px; }
     .testimonials-grid { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-items: start; }
     .t-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 28px; }
@@ -632,7 +642,7 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
 
     /* CTA section */
     .cta-section { background: linear-gradient(135deg, #0d1a3a 0%, #0a1628 100%); padding: 80px 24px; text-align: center; border-top: 1px solid rgba(91,163,245,0.15); }
-    .cta-section h2 { font-family: 'Playfair Display', serif; font-size: 36px; color: #ffffff; margin-bottom: 16px; }
+    .cta-section h2 { font-family: 'Playfair Display', serif; font-size: clamp(26px, 3.5vw, 38px); color: #ffffff; margin-bottom: 16px; line-height: 1.2; }
     .cta-section p { color: #9aa3b8; font-size: 17px; max-width: 560px; margin: 0 auto 36px; }
 
     /* Footer */
@@ -642,36 +652,34 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
 </head>
 <body>
 
-  <!-- Hero -->
-  <section class="hero">
+  <!-- ABOVE THE FOLD: Pain hook headline -->
+  <section class="atf">
     <div class="section-inner">
-      <span class="hero-badge">${brand.label}</span>
+      <span class="atf-eyebrow">Dr. Pedram Shojai, OMD &middot; The Urban Monk</span>
       <h1>${page.headline || page.title}</h1>
-      ${page.subheadline ? `<p>${page.subheadline}</p>` : ""}
-      ${(page.ctaText || page.ctaUrl) ? `
-      <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
-      ${page.ctaSubtext ? `<p class="cta-subtext">${page.ctaSubtext}</p>` : ""}` : ""}
+      ${page.subheadline ? `<p class="atf-sub">${page.subheadline}</p>` : ""}
     </div>
   </section>
 
-  <!-- Trust bar -->
-  <div class="trust-bar">
-    <div class="trust-grid">
-      <div class="trust-item"><div class="trust-icon">&#10003;</div><span class="trust-text">Evidence-Based Protocols</span></div>
-      <div class="trust-item"><div class="trust-icon">&#10003;</div><span class="trust-text">Ancient Wisdom + Modern Science</span></div>
-      <div class="trust-item"><div class="trust-icon">&#10003;</div><span class="trust-text">Dr. Pedram Shojai, OMD</span></div>
-    </div>
-  </div>
-
   ${videoHtml ? `
-  <!-- Video -->
-  <div class="video-section">
+  <!-- VIDEO — above the fold, immediately below headline -->
+  <div class="video-atf">
     <div class="video-wrapper${page.wistiaEmbedCode ? '' : ' iframe-video'}">
       ${videoHtml}
     </div>
   </div>` : ""}
 
-  <!-- Body copy -->
+  <!-- CREDIBILITY BAR — right after video -->
+  <div class="cred-bar">
+    <div class="cred-grid">
+      <div class="cred-item"><div class="cred-dot"></div><span class="cred-text">Bestselling Author &middot; 8 Books</span></div>
+      <div class="cred-item"><div class="cred-dot"></div><span class="cred-text">Doctor of Oriental Medicine (OMD)</span></div>
+      <div class="cred-item"><div class="cred-dot"></div><span class="cred-text">20+ Years Clinical Practice</span></div>
+      <div class="cred-item"><div class="cred-dot"></div><span class="cred-text">Featured on PBS, Goop, MindBodyGreen</span></div>
+    </div>
+  </div>
+
+  <!-- BODY COPY: agitation + offer reveal -->
   ${bodyHtml ? `
   <section class="body-section">
     <div class="section-inner">
@@ -695,13 +703,15 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     </div>
   </section>` : ""}
 
-  <!-- Bottom CTA -->
+  <!-- BOTTOM CTA — after value is established -->
   ${(page.ctaText || page.ctaUrl) ? `
   <section class="cta-section">
     <div class="section-inner">
-      <h2>Ready to Transform Your ${brand.label}?</h2>
-      ${page.ctaSubtext ? `<p>${page.ctaSubtext}</p>` : ""}
+      <h2>Stop Managing Symptoms.<br>Start Finding Answers.</h2>
+      <p>Get your KBMO FIT22 Gut Barrier Permeability Panel shipped to your door, plus a 1-hour private consultation with a certified clinical health coach to build your personalized protocol.</p>
       <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
+      ${page.ctaSubtext ? `<p class="cta-subtext">${page.ctaSubtext}</p>` : ""}
+      <p class="cta-guarantee">&#128274; Secure checkout &nbsp;&middot;&nbsp; Ships within 3 business days &nbsp;&middot;&nbsp; Guaranteed actionable results</p>
     </div>
   </section>` : ""}
 

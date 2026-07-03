@@ -38,7 +38,7 @@
 import { eq, or } from "drizzle-orm";
 import { getDb } from "./db";
 import { videoJobs, contentItems } from "../drizzle/schema";
-import { generateBrollPrompt } from "./brollPromptGenerator";
+import { generateBrollPrompt, buildUnderlordPrompt } from "./brollPromptGenerator";
 import {
   createProjectWithVoice,
   importVideoFromUrl,
@@ -606,19 +606,22 @@ export async function processVideoJob(jobId: number): Promise<void> {
           ? `\n\nEND SCREEN CTA (last 5 seconds): Add a title card at the very end of the video with this exact text: "${job.ctaText}" and the URL: "${job.ctaUrl ?? 'theurbanmonk.com'}". White text on dark background, visible for 5 seconds.`
           : "";
 
-        // Build the Underlord prompt — if we added Pexels footage, explicitly instruct
-        // Underlord to use the project media library clips as actual cutaway b-roll
-        const hasPexelsFootage = job.pexelsMediaImportJobId && job.pexelsMediaImportJobId !== "skipped";
-        const stockFootageInstruction = hasPexelsFootage
-          ? `\n\nSTOCK FOOTAGE AVAILABLE: This project's media library contains stock footage clips named broll_01_*, broll_02_*, etc. These are Pexels royalty-free clips covering the video's visual themes. USE THESE CLIPS AS THE FULL-SCREEN BACKGROUND behind the presenter circle. Place them as the background layer so they fill the full frame while the presenter circle stays in the lower-right corner on top. Select each clip based on its name matching the concept being spoken about at that moment. Cycle through all available clips — use each clip for 10-20 seconds then switch to the next one. NEVER reuse the same clip.`
-          : "";
+        // Build the Underlord prompt using the programmatic builder — short numbered steps
+        // that Descript's AI can reliably follow. The old wall-of-text approach was causing
+        // blank screens, voice cutoffs, and random music/B-roll behavior.
+        const hasPexelsFootage = !!(job.pexelsMediaImportJobId && job.pexelsMediaImportJobId !== "skipped");
+        const jobTopic = job.youtubeTitle ?? "wellness and holistic health";
 
-        // VIDEO STYLE: Persistent presenter circle (avatar in lower-right corner) with
-        // continuous full-screen b-roll running behind it. This is the intended look —
-        // the circular presenter overlay Descript adds is CORRECT and should stay.
-        // B-roll should cover nearly the entire video (90%+ of runtime).
-        const brollPrompt = (job.brollPrompt ??
-          "PRESENTER CIRCLE + CONTINUOUS B-ROLL STYLE: Keep the circular presenter avatar in the lower-right corner visible throughout the ENTIRE video — this is the intended look. Behind the presenter circle, run full-screen b-roll footage for 90% or more of the total video duration. B-ROLL COVERAGE RULE (NON-NEGOTIABLE): B-roll should be playing almost constantly. Only show the bare avatar (no b-roll) for the very first 5 seconds and the very last 5 seconds. For everything in between, full-screen b-roll runs behind the presenter circle. CLIP VARIETY: Use a different b-roll clip every 10-20 seconds — never hold the same clip longer than 20 seconds. NEVER reuse the same clip. CLEANUP: Remove filler words (um, uh, like, you know) and long pauses over 0.5 seconds. CAPTIONS: Add auto-captions in white text, lower third position — make sure captions are readable over the b-roll. MUSIC: Add subtle ambient background music at -18dB (nature/meditation/wellness style). B-ROLL CONTENT: Match each clip to the concept being spoken about at that moment — anatomy visuals, healthy food, nature scenes, science imagery, wellness and mindfulness scenes, people meditating, herbs, supplements, gut health imagery.") + stockFootageInstruction + ctaSuffix;
+        // If the job has a stored brollPrompt (from generateBrollPrompt), rebuild it using
+        // buildUnderlordPrompt so it uses the new short-numbered format with correct stock footage flag.
+        // We extract scene directions from the stored brollPrompt if present.
+        const sceneDirectionMatches = (job.brollPrompt ?? "").match(/At \d+:\d+[^;\n]*/g) ?? [];
+        const brollPrompt = buildUnderlordPrompt({
+          topic: jobTopic,
+          sceneDirections: sceneDirectionMatches,
+          hasPexelsFootage,
+          ctaSuffix,
+        });
 
         console.log(`${jobLabel} [Avatar] Running Underlord B-roll agent (${hasPexelsFootage ? "with Pexels stock footage" : "without stock footage"})...`);
         const editResult = await runUnderlordAgent({
@@ -746,8 +749,15 @@ export async function processVideoJob(jobId: number): Promise<void> {
         ? `\n\nEND SCREEN CTA (last 5 seconds): Add a title card at the very end of the video with this exact text: "${job.ctaText}" and the URL: "${job.ctaUrl ?? 'theurbanmonk.com'}". The card should be white text on a dark background and stay visible for 5 seconds.`
         : "";
 
-      const brollPrompt = (job.brollPrompt ??
-        "FREQUENT B-ROLL CUTAWAYS REQUIRED. B-ROLL FREQUENCY RULE (NON-NEGOTIABLE): Place AT LEAST 3 B-roll cutaways per minute of video. Each cutaway must last a MINIMUM of 10 seconds. Calculate the total video duration, divide by 60, and place that many cutaways evenly distributed across the video. Space cutaways every 15-25 seconds. NEVER use B-roll during the very first 10 seconds or the very last 10 seconds. NEVER reuse the same clip. CLEANUP: Remove filler words and long pauses over 0.5s. CAPTIONS: Auto-captions, white text, lower third. MUSIC: Ambient background at -18dB. B-ROLL CONTENT: Specific stock footage matching the concept spoken at each moment.") + ctaSuffix;
+      // Use programmatic short-numbered prompt builder (same as heygen_then_descript path)
+      const dscriptOnlyTopic = job.youtubeTitle ?? "wellness and holistic health";
+      const dscriptOnlySceneMatches = (job.brollPrompt ?? "").match(/At \d+:\d+[^;\n]*/g) ?? [];
+      const brollPrompt = buildUnderlordPrompt({
+        topic: dscriptOnlyTopic,
+        sceneDirections: dscriptOnlySceneMatches,
+        hasPexelsFootage: false,
+        ctaSuffix,
+      });
 
       const editResult = await runUnderlordAgent({
         projectId: job.descriptProjectId!,

@@ -4096,3 +4096,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Wire designTheme into renderLandingPageHtml dispatcher
 - [ ] Add designTheme selector to LandingPageBuilder form
 - [ ] Investigate and fix 404 on published CH pages (React SPA routing vs Express route conflict)
+
+## Descript Pipeline Fix — Broken Video Output (2026-07-03)
+- [x] Fix brollPromptGenerator.ts: Replace hardcoded 400-word Underlord prompt with short numbered instructions (5-7 steps max)
+- [x] Fix brollPromptGenerator.ts: Remove the hardcoded underlordPrompt example from the LLM JSON schema so LLM generates script-specific prompts
+- [x] Fix descriptPipeline.ts: Replace the fallback brollPrompt wall-of-text with the same short numbered format
+- [x] Fix descriptPipeline.ts: Concise stockFootageInstruction (numbered, not a paragraph)

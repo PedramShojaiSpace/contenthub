@@ -1051,10 +1051,10 @@ async function startServer() {
 
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
-  // Campaigns: lo | gut | sleep | webinar
-  app.get("/:campaign(lo|gut|sleep|webinar)/:slug", async (req, res) => {
+  // Campaigns: lo | gut | sleep | webinar | upstream
+  app.get("/:campaign(lo|gut|sleep|webinar|upstream)/:slug", async (req, res) => {
     try {
-      const { campaign, slug } = req.params as { campaign: "lo" | "gut" | "sleep" | "webinar"; slug: string };
+      const { campaign, slug } = req.params as { campaign: "lo" | "gut" | "sleep" | "webinar" | "upstream"; slug: string };
       const { getDb } = await import("../db");
       const { hostedLandingPages } = await import("../../drizzle/schema");
       const { eq, and } = await import("drizzle-orm");

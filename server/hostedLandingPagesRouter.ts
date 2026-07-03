@@ -15,7 +15,7 @@ import { marked } from "marked";
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
-const campaignEnum = z.enum(["lo", "gut", "sleep", "webinar"]);
+const campaignEnum = z.enum(["lo", "gut", "sleep", "webinar", "upstream"]);
 const templateEnum = z.enum(["optin", "vsl", "sales"]);
 
 const testimonialSchema = z.object({
@@ -91,6 +91,16 @@ const CAMPAIGN_CONFIG: Record<string, { label: string; accentColor: string; desc
     label: "Sleep & Recovery",
     accentColor: "#3B5BA5",
     description: "Deep sleep, recovery, and circadian rhythm",
+  },
+  webinar: {
+    label: "Webinar",
+    accentColor: "#2D7D46",
+    description: "Live training with Dr. Pedram Shojai",
+  },
+  upstream: {
+    label: "Upstream Program",
+    accentColor: "#1E4D8C",
+    description: "Root-cause diagnostics, gut health, and systemic healing",
   },
 };
 
@@ -557,6 +567,9 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.title}</title>
+  ${page.videoThumbnailUrl ? `<meta property="og:image" content="${page.videoThumbnailUrl}" /><meta name="twitter:image" content="${page.videoThumbnailUrl}" />` : ""}
+  <meta property="og:title" content="${page.title}" />
+  <meta property="og:type" content="website" />
   ${renderTrackingScripts(page.facebookPixelId || "1498608757116877", page.ga4MeasurementId, page.customHeadScripts)}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -927,7 +940,7 @@ export const hostedLandingPagesRouter = router({
   // AI copy generator — drafts headline, subheadline, body copy, CTA, and opt-in text from a single prompt
   generateCopy: protectedProcedure
     .input(z.object({
-      campaign: z.enum(["lo", "gut", "sleep", "webinar"]),
+      campaign: z.enum(["lo", "gut", "sleep", "webinar", "upstream"]),
       template: z.enum(["optin", "vsl", "sales"]),
       prompt: z.string().min(10).max(500),
     }))
@@ -938,6 +951,8 @@ export const hostedLandingPagesRouter = router({
         lo: "Lights On — Dr. Pedram Shojai's program about reclaiming energy, vitality, and focus. Target audience: burned-out professionals, entrepreneurs, and high-achievers who feel exhausted, foggy, and disconnected. Core promise: restore your energy and mental clarity naturally.",
         gut: "Gut Health — Dr. Pedram Shojai's program about healing the gut, reducing inflammation, and restoring digestive health. Target audience: people suffering from bloating, fatigue, brain fog, and chronic digestive issues. Core promise: heal your gut and transform your health from the inside out.",
         sleep: "Sleep — Dr. Pedram Shojai's program about mastering deep, restorative sleep. Target audience: insomniacs, light sleepers, and chronically tired people. Core promise: fall asleep faster, stay asleep longer, and wake up fully restored.",
+        webinar: "Webinar — Dr. Pedram Shojai's live and on-demand training sessions. Target audience: health-conscious individuals looking for expert guidance. Core promise: actionable insights and strategies from a leading functional medicine expert.",
+        upstream: "Upstream Program — Dr. Pedram Shojai's comprehensive root-cause health restoration system. Entry point: KBMO FIT22 Gut Barrier Permeability diagnostic kit + 1-hour health coach consultation ($399). Target audience: high-performing professionals with chronic inflammation, gut issues, brain fog, and fatigue who are tired of symptom management and want real answers. Core promise: identify your exact food sensitivities and gut barrier status, then build a personalized healing protocol — guaranteed actionable results for everyone.",
       };
 
       const templateContext: Record<string, string> = {

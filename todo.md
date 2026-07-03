@@ -4108,3 +4108,17 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Post 9416 (Biohacking Dangers): removed Wellness+Wisdom third-party embed
 - [x] Post 10075 (Ancient Chinese Medicine Gut Health Secrets): replaced Dr. Christianson embed (CgVs-Lg0fG0) with Urban Monk TCM video (KfsVfAdso7o) — live published post
 - [x] Post 10224 (What is Gut Dysbiosis?): regenerated full article via LLM (17,329 chars) + embedded Urban Monk video PFAaZMdoE34 — still in draft, ready for review
+
+## Upstream Campaign Landing Page (2026-07-03)
+- [x] Add 'upstream' to hostedLpCampaignEnum in drizzle/schema.ts
+- [x] Run DB migration to add 'upstream' to hlp_campaign enum (ALTER TABLE MODIFY COLUMN)
+- [x] Add upstream to Express route pattern in server/_core/index.ts
+- [x] Add upstream to CAMPAIGN_CONFIG in hostedLandingPagesRouter.ts
+- [x] Add upstream to campaignEnum zod schema in hostedLandingPagesRouter.ts
+- [x] Add upstream campaign context to generateCopy procedure
+- [x] Add upstream to Campaign type and CAMPAIGN_META in LandingPageBuilder.tsx
+- [x] Add OG image + Twitter image meta tags to blue template renderer (videoThumbnailUrl)
+- [x] Create upstream/program landing page in DB (id=30001, published, blue theme, Wistia 7ckjh866ds)
+- [x] Generate CRO-optimized Wistia thumbnail (2560x1440px, JPEG 0.64MB — under Kajabi 5MB limit)
+- [x] Fix ctaText dollar sign rendering issue via SQL update
+- [x] Verify page live at ch.theurbanmonk.com/upstream/program (HTTP 200, Wistia embed, CTA $399)

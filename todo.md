@@ -4090,11 +4090,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix Quora: Add a "Search Quora for this question" button that opens the search URL directly (already existed via getCtaUrl)
 
 ## CH Landing Page Fixes (2025-07-03)
-- [ ] Fix video embed: auto-convert YouTube/Vimeo URLs to proper iframe tags in VSL template
-- [ ] Add designTheme column to hostedLandingPages DB table (values: "default" | "blue")
-- [ ] Create renderBlueTemplate function matching get.theurbanmonk.com/program design
-- [ ] Wire designTheme into renderLandingPageHtml dispatcher
-- [ ] Add designTheme selector to LandingPageBuilder form
+- [x] Fix video embed: auto-convert YouTube/Vimeo URLs to proper iframe tags in VSL template (normalizeWistiaEmbed + normalizeVideoEmbed)
+- [x] Add designTheme column to hostedLandingPages DB table (values: "default" | "blue")
+- [x] Create renderBlueTemplate function matching get.theurbanmonk.com/program design
+- [x] Wire designTheme into renderLandingPageHtml dispatcher
+- [x] Add designTheme selector to LandingPageBuilder form
 - [ ] Investigate and fix 404 on published CH pages (React SPA routing vs Express route conflict)
 
 ## Descript Pipeline Fix — Broken Video Output (2026-07-03)
@@ -4102,3 +4102,9 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix brollPromptGenerator.ts: Remove the hardcoded underlordPrompt example from the LLM JSON schema so LLM generates script-specific prompts
 - [x] Fix descriptPipeline.ts: Replace the fallback brollPrompt wall-of-text with the same short numbered format
 - [x] Fix descriptPipeline.ts: Concise stockFootageInstruction (numbered, not a paragraph)
+
+## WordPress Post Repairs (2026-07-03)
+- [x] Post 9932 (Taoist Approach to Gut Health): replaced Organixx third-party embed with Urban Monk video UUq1g58fcc4
+- [x] Post 9416 (Biohacking Dangers): removed Wellness+Wisdom third-party embed
+- [x] Post 10075 (Ancient Chinese Medicine Gut Health Secrets): replaced Dr. Christianson embed (CgVs-Lg0fG0) with Urban Monk TCM video (KfsVfAdso7o) — live published post
+- [x] Post 10224 (What is Gut Dysbiosis?): regenerated full article via LLM (17,329 chars) + embedded Urban Monk video PFAaZMdoE34 — still in draft, ready for review

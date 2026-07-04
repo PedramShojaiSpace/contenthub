@@ -1100,6 +1100,32 @@ async function startServer() {
     }
   });
 
+  // ── Advertorial Bridge Pages ─────────────────────────────────────────────────
+  // Public route: /bridge/{slug} — serves native advertorial HTML pages
+  app.get("/bridge/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params as { slug: string };
+      const { getDb } = await import("../db");
+      const { advertorialPages } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { renderAdvertorialHtml } = await import("../advertorialRouter");
+      const db = await getDb();
+      if (!db) return res.status(503).send("Service unavailable");
+      const [page] = await db.select().from(advertorialPages).where(eq(advertorialPages.slug, slug)).limit(1);
+      if (!page || page.status !== "published") {
+        return res.status(404).send(`<!DOCTYPE html><html><head><title>Page Not Found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px"><h1>404 — Page Not Found</h1><p>This page does not exist or has not been published yet.</p></body></html>`);
+      }
+      const html = renderAdvertorialHtml(page);
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      return res.send(html);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[bridge-page] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // ── Email Optimizer Bookmarklet Endpoint ────────────────────────────────────
   // Public endpoint called from a JavaScript bookmarklet running on app.kajabi.com.
   // Accepts raw HTML, runs the optimization pipeline, returns optimized HTML + stats.

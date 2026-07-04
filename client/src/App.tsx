@@ -69,6 +69,7 @@ const UpstreamHome = lazy(() => import("./pages/UpstreamHome"));
 const UpstreamRegister = lazy(() => import("./pages/UpstreamRegister"));
 const UpstreamOral = lazy(() => import("./pages/UpstreamOral"));
 const UpstreamProgram = lazy(() => import("./pages/UpstreamProgram"));
+const AdvertorialBuilder = lazy(() => import("./pages/AdvertorialBuilder"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -145,6 +146,7 @@ function Router() {
         <Route path={"/upstream/register"} component={UpstreamRegister} />
         <Route path={"/upstream/oral"} component={UpstreamOral} />
         <Route path={"/upstream/program"} component={UpstreamProgram} />
+        <Route path={"/advertorial-builder"} component={AdvertorialBuilder} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

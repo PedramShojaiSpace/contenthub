@@ -2599,3 +2599,34 @@ export const kajabiLiveSessions = mysqlTable("kajabi_live_sessions", {
 });
 export type KajabiLiveSession = typeof kajabiLiveSessions.$inferSelect;
 export type InsertKajabiLiveSession = typeof kajabiLiveSessions.$inferInsert;
+
+// ─── Advertorial Bridge Pages ─────────────────────────────────────────────────
+export const advertorialPages = mysqlTable("advertorial_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 128 }).notNull().unique(),
+  topic: varchar("topic", { length: 128 }).notNull(),
+  campaign: varchar("campaign", { length: 128 }),
+  status: mysqlEnum("adv_status", ["draft", "published", "archived"]).default("draft").notNull(),
+  publicationName: varchar("publication_name", { length: 128 }).default("The Urban Monk Insider").notNull(),
+  authorName: varchar("author_name", { length: 128 }).default("Editorial Staff").notNull(),
+  readTime: varchar("read_time", { length: 32 }).default("3 min read").notNull(),
+  headline: text("headline"),
+  subheadline: text("subheadline"),
+  mechanismAngle: text("mechanism_angle"),
+  bodyHtml: text("body_html"),
+  ctaText: varchar("cta_text", { length: 255 }),
+  ctaSubtext: varchar("cta_subtext", { length: 512 }),
+  ctaUrl: text("cta_url"),
+  heroImageUrl: text("hero_image_url"),
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  metaPixelId: varchar("meta_pixel_id", { length: 64 }).default("1498608757116877"),
+  ga4Id: varchar("ga4_id", { length: 64 }).default("G-CXZK2Q275S"),
+  generationPrompt: text("generation_prompt"),
+  generationModel: varchar("generation_model", { length: 64 }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  publishedAt: bigint("published_at", { mode: "number" }),
+});
+export type AdvertorialPage = typeof advertorialPages.$inferSelect;
+export type InsertAdvertorialPage = typeof advertorialPages.$inferInsert;

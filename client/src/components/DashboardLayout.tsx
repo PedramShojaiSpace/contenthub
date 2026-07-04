@@ -133,6 +133,7 @@ const videoItems = [
   { icon: CheckSquare, label: "VA Task Hub", path: "/va-tasks" },
   { icon: Users, label: "Kajabi Live Hub", path: "/kajabi-live" },
   { icon: Megaphone, label: "Ads Manager", path: "/ads" },
+  { icon: Newspaper, label: "Advertorial Builder", path: "/advertorial-builder" },
 ];
 
 const videoPaths = new Set(videoItems.map((i) => i.path));

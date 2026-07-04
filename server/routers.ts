@@ -129,6 +129,7 @@ import { soroRouter } from "./soroRouter";
 import { intentIdeasRouter } from "./intentIdeasRouter";
 import { vaTasksRouter } from "./vaTasksRouter";
 import { kajabiLiveRouter } from "./kajabiLiveRouter";
+import { advertorialRouter } from "./advertorialRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -493,6 +494,7 @@ export const appRouter = router({
   intentIdeas: intentIdeasRouter,
   vaTasks: vaTasksRouter,
   kajabiLive: kajabiLiveRouter,
+  advertorial: advertorialRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

@@ -608,7 +608,7 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     .cta-btn { display: inline-flex; align-items: center; gap: 10px; background: #2563eb; color: #ffffff; text-decoration: none; padding: 18px 44px; border-radius: 50px; font-size: 17px; font-weight: 600; font-family: inherit; border: none; cursor: pointer; transition: background 0.2s, transform 0.1s; box-shadow: 0 8px 32px rgba(37,99,235,0.4); }
     .cta-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
     .cta-btn-arrow { font-size: 18px; margin-left: 4px; }
-    .cta-subtext { margin-top: 12px; font-size: 13px; color: #6b7280; }
+    .cta-subtext { margin-top: 12px; font-size: 13px; color: #6b7280; white-space: nowrap; }
     .cta-guarantee { margin-top: 10px; font-size: 12px; color: #4b5563; }
 
     /* Body sections */
@@ -630,6 +630,8 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     .offer-price { text-align: center; margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); }
     .offer-price-amount { font-family: 'Playfair Display', serif; font-size: 42px; color: #ffffff; font-weight: 700; }
     .offer-price-label { font-size: 14px; color: #6b7280; margin-top: 4px; }
+    .offer-cta-btn { display: inline-flex; align-items: center; gap: 8px; background: #2563eb; color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 50px; font-size: 16px; font-weight: 600; font-family: inherit; margin-top: 20px; box-shadow: 0 6px 24px rgba(37,99,235,0.4); transition: background 0.2s, transform 0.1s; }
+    .offer-cta-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
 
     /* Testimonials — text cards */
     .testimonials { background: #0d1424; padding: 72px 24px; }

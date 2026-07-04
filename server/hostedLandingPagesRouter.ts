@@ -608,7 +608,7 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     .cta-btn { display: inline-flex; align-items: center; gap: 10px; background: #2563eb; color: #ffffff; text-decoration: none; padding: 18px 44px; border-radius: 50px; font-size: 17px; font-weight: 600; font-family: inherit; border: none; cursor: pointer; transition: background 0.2s, transform 0.1s; box-shadow: 0 8px 32px rgba(37,99,235,0.4); }
     .cta-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
     .cta-btn-arrow { font-size: 18px; margin-left: 4px; }
-    .cta-subtext { margin-top: 6px; font-size: 13px; color: #6b7280; white-space: nowrap; }
+    .cta-subtext { margin-top: 16px; font-size: 13px; color: #6b7280; white-space: nowrap; display: block; }
     .cta-guarantee { margin-top: 10px; font-size: 12px; color: #4b5563; }
 
     /* Body sections */

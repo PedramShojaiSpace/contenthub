@@ -224,13 +224,44 @@ export default function AdvertorialBuilder() {
               {/* Topic */}
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Topic *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {topics?.map((t) => (
-                    <button key={t.key} onClick={() => handleTopicChange(t.key)}
-                      className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all text-left ${topic === t.key ? "bg-[#00d4ff]/20 border-[#00d4ff]/50 text-[#00d4ff]" : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"}`}>
-                      {t.label}
-                    </button>
-                  ))}
+
+                {/* Flagship entry points */}
+                <div className="mb-3">
+                  <p className="text-[10px] font-semibold text-[#00d4ff] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00d4ff] inline-block"></span>
+                    Primary Funnels
+                  </p>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {topics?.filter(t => ["lights_on", "orobiome", "kbmo_fit22"].includes(t.key)).map((t) => (
+                      <button key={t.key} onClick={() => handleTopicChange(t.key)}
+                        className={`px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all text-left flex items-center justify-between ${
+                          topic === t.key
+                            ? "bg-[#00d4ff]/20 border-[#00d4ff]/50 text-[#00d4ff]"
+                            : "bg-[#00d4ff]/5 border-[#00d4ff]/20 text-gray-200 hover:bg-[#00d4ff]/10"
+                        }`}>
+                        <span>{t.label}</span>
+                        <span className="text-[10px] font-normal text-gray-400">
+                          {t.key === "lights_on" ? "$369" : "$399"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Supplement topics */}
+                <div>
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500 inline-block"></span>
+                    Supplement Topics
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {topics?.filter(t => !["lights_on", "orobiome", "kbmo_fit22"].includes(t.key)).map((t) => (
+                      <button key={t.key} onClick={() => handleTopicChange(t.key)}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all text-left ${topic === t.key ? "bg-[#00d4ff]/20 border-[#00d4ff]/50 text-[#00d4ff]" : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"}`}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -331,28 +362,42 @@ export default function AdvertorialBuilder() {
               </div>
             ) : (
               <div className="space-y-2">
-                {pages?.map((page) => (
-                  <div key={page.id} onClick={() => { setSelectedId(page.id); setShowShopifyExport(false); }}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedId === page.id ? "border-[#00d4ff]/50 bg-[#00d4ff]/5" : "border-white/10 bg-[#161b22] hover:border-white/20"}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      {isShopifyPage(page.ctaUrl) ? (
-                        <span className="text-[10px] text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                          <ShoppingCart className="w-2.5 h-2.5" />Shopify
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                          <Globe className="w-2.5 h-2.5" />Bridge
-                        </span>
-                      )}
-                      <span className="text-xs font-mono text-gray-500 truncate">/{page.slug}</span>
+                  {pages?.map((page) => {
+                    const isFlagship = ["lights_on", "orobiome", "kbmo_fit22"].includes(page.topic || "");
+                    const flagshipPrice = page.topic === "lights_on" ? "$369" : page.topic === "orobiome" || page.topic === "kbmo_fit22" ? "$399" : null;
+                    return (
+                    <div key={page.id} onClick={() => { setSelectedId(page.id); setShowShopifyExport(false); }}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                        selectedId === page.id
+                          ? "border-[#00d4ff]/50 bg-[#00d4ff]/5"
+                          : isFlagship
+                          ? "border-[#00d4ff]/20 bg-[#00d4ff]/3 hover:border-[#00d4ff]/40"
+                          : "border-white/10 bg-[#161b22] hover:border-white/20"
+                      }`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        {isFlagship ? (
+                          <span className="text-[10px] text-[#00d4ff] bg-[#00d4ff]/10 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                            ★ {flagshipPrice}
+                          </span>
+                        ) : isShopifyPage(page.ctaUrl) ? (
+                          <span className="text-[10px] text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <ShoppingCart className="w-2.5 h-2.5" />Shopify
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Globe className="w-2.5 h-2.5" />Bridge
+                          </span>
+                        )}
+                        <span className="text-xs font-mono text-gray-500 truncate">/{page.slug}</span>
+                      </div>
+                      <div className="text-sm font-medium text-white mt-1 line-clamp-2">{page.headline || "(No headline yet)"}</div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[page.status || "draft"]}`}>{page.status || "draft"}</span>
+                        <span className="text-xs text-gray-500 capitalize">{page.topic?.replace(/_/g, " ")}</span>
+                      </div>
                     </div>
-                    <div className="text-sm font-medium text-white mt-1 line-clamp-2">{page.headline || "(No headline yet)"}</div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[page.status || "draft"]}`}>{page.status || "draft"}</span>
-                      <span className="text-xs text-gray-500 capitalize">{page.topic?.replace("_", " ")}</span>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
               </div>
             )}
           </div>

@@ -2630,3 +2630,26 @@ export const advertorialPages = mysqlTable("advertorial_pages", {
 });
 export type AdvertorialPage = typeof advertorialPages.$inferSelect;
 export type InsertAdvertorialPage = typeof advertorialPages.$inferInsert;
+
+// ─── Meta Ad Variants ─────────────────────────────────────────────────────────
+export const metaAdVariants = mysqlTable("meta_ad_variants", {
+  id: int("id").autoincrement().primaryKey(),
+  advertorialId: int("advertorial_id").notNull(),
+  variantNumber: int("variant_number").notNull(), // 1–5
+  // Ad copy
+  primaryText: text("primary_text").notNull(),
+  headline: varchar("headline", { length: 255 }).notNull(),
+  description: varchar("description", { length: 255 }),
+  callToAction: varchar("call_to_action", { length: 64 }).default("Learn More").notNull(),
+  // Image
+  imagePrompt: text("image_prompt"),
+  imageUrl: text("image_url"),
+  // Targeting notes
+  audienceNote: text("audience_note"),
+  // Status
+  status: mysqlEnum("ad_variant_status", ["draft", "approved", "running", "paused", "archived"]).default("draft").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type MetaAdVariant = typeof metaAdVariants.$inferSelect;
+export type InsertMetaAdVariant = typeof metaAdVariants.$inferInsert;

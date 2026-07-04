@@ -10,7 +10,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { advertorialPages, AdvertorialPage } from "../drizzle/schema";
+import { advertorialPages, AdvertorialPage, metaAdVariants } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { TRPCError } from "@trpc/server";
@@ -856,5 +856,143 @@ export const advertorialRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db.delete(advertorialPages).where(eq(advertorialPages.id, input.id));
       return { success: true };
+    }),
+
+  // ─── Meta Ad Variants ─────────────────────────────────────────────────────
+  generateMetaAds: protectedProcedure
+    .input(z.object({ advertorialId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [page] = await db.select().from(advertorialPages).where(eq(advertorialPages.id, input.advertorialId));
+      if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Advertorial not found" });
+
+      const topicConfig = TOPIC_CONFIGS[page.topic];
+      const topicLabel = topicConfig?.label || page.topic;
+      const offer = topicConfig?.offer || page.headline || "";
+      const ctaUrl = page.ctaUrl || topicConfig?.defaultCtaUrl || "";
+
+      const systemPrompt = `You are a world-class Meta (Facebook/Instagram) ad copywriter for Dr. Pedram Shojai's Urban Monk brand.
+You write high-converting ad copy for cold traffic that drives clicks to native advertorial bridge pages.
+The brand voice is: authoritative but warm, ancient wisdom meets modern science, never hype-y or salesy.
+Dr. Shojai is a Doctor of Oriental Medicine, bestselling author, and former Taoist monk.
+The ads run as single-image or carousel ads on Facebook and Instagram.`;
+
+      const userPrompt = `Generate 5 distinct Meta ad variants for this advertorial:
+
+TOPIC: ${topicLabel}
+HEADLINE: ${page.headline || ""}
+SUBHEADLINE: ${page.subheadline || ""}
+OFFER: ${offer}
+CTA URL: ${ctaUrl}
+MECHANISM: ${page.mechanismAngle || topicConfig?.mechanism || ""}
+
+For each variant, create a different angle:
+- Variant 1: Pain-point hook (agitate the problem)
+- Variant 2: Curiosity/mechanism hook (the surprising root cause)
+- Variant 3: Social proof / authority hook (Dr. Shojai's credentials + results)
+- Variant 4: Transformation hook (before/after emotional journey)
+- Variant 5: Direct offer hook (clear value proposition, price if applicable)
+
+Return a JSON array of exactly 5 objects. Each object must have:
+- primaryText: string (125 chars ideal, max 200 — the main ad body above the image)
+- headline: string (max 40 chars — bold text below the image)
+- description: string (max 30 chars — optional subtext below headline)
+- callToAction: string (one of: "Learn More", "Shop Now", "Get Offer", "Sign Up", "Book Now")
+- imagePrompt: string (detailed DALL-E / Midjourney prompt for a compelling ad image — no text in image)
+- audienceNote: string (brief note on who this variant targets best, e.g. "Women 40-55 interested in gut health")`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "meta_ad_variants",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                variants: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      primaryText: { type: "string" },
+                      headline: { type: "string" },
+                      description: { type: "string" },
+                      callToAction: { type: "string" },
+                      imagePrompt: { type: "string" },
+                      audienceNote: { type: "string" },
+                    },
+                    required: ["primaryText", "headline", "description", "callToAction", "imagePrompt", "audienceNote"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["variants"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const content = response.choices[0].message.content;
+      const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+      const variants: Array<{
+        primaryText: string;
+        headline: string;
+        description: string;
+        callToAction: string;
+        imagePrompt: string;
+        audienceNote: string;
+      }> = parsed.variants;
+
+      // Delete any existing variants for this advertorial before inserting new ones
+      await db.delete(metaAdVariants).where(eq(metaAdVariants.advertorialId, input.advertorialId));
+
+      const now = Date.now();
+      const rows = variants.map((v, i) => ({
+        advertorialId: input.advertorialId,
+        variantNumber: i + 1,
+        primaryText: v.primaryText,
+        headline: v.headline,
+        description: v.description || null,
+        callToAction: v.callToAction || "Learn More",
+        imagePrompt: v.imagePrompt || null,
+        audienceNote: v.audienceNote || null,
+        status: "draft" as const,
+        createdAt: now,
+        updatedAt: now,
+      }));
+
+      await db.insert(metaAdVariants).values(rows);
+
+      const saved = await db.select().from(metaAdVariants).where(eq(metaAdVariants.advertorialId, input.advertorialId));
+      return saved;
+    }),
+
+  listMetaAds: protectedProcedure
+    .input(z.object({ advertorialId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      return await db.select().from(metaAdVariants).where(eq(metaAdVariants.advertorialId, input.advertorialId));
+    }),
+
+  updateMetaAdStatus: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      status: z.enum(["draft", "approved", "running", "paused", "archived"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(metaAdVariants).set({ status: input.status, updatedAt: Date.now() }).where(eq(metaAdVariants.id, input.id));
+      const [updated] = await db.select().from(metaAdVariants).where(eq(metaAdVariants.id, input.id));
+      return updated;
     }),
 });

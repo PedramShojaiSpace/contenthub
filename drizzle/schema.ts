@@ -1123,6 +1123,7 @@ export const userCredentials = mysqlTable("user_credentials", {
   // YouTube Data API OAuth (for pushing blog URLs to YouTube descriptions)
   youtubeRefreshToken: text("youtubeRefreshToken"),
   youtubeChannelTitle: varchar("youtubeChannelTitle", { length: 256 }),
+  youtubeChannelId: varchar("youtubeChannelId", { length: 64 }),
   updatedAt: timestamp("uc_updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type UserCredentials = typeof userCredentials.$inferSelect;

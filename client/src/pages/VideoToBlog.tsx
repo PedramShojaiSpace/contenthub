@@ -1225,7 +1225,9 @@ export default function VideoToBlog() {
                 />
                 <div className="flex gap-2 flex-wrap">
                   <a
-                    href={`https://studio.youtube.com/video/${videoInfo.videoId}/edit`}
+                    href={ytStatus?.channelId
+                      ? `https://studio.youtube.com/channel/${ytStatus.channelId}/videos`
+                      : `https://studio.youtube.com/`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

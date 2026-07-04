@@ -466,9 +466,10 @@ async function startServer() {
     if (!code) return res.status(400).send("Missing authorization code");
     try {
       const { exchangeYouTubeCode } = await import("../youtubeOAuth");
-      const { refreshToken, channelTitle } = await exchangeYouTubeCode(code);
+      const { refreshToken, channelTitle, channelId } = await exchangeYouTubeCode(code);
       // Store in process.env so the current server process can use it immediately
       process.env.YOUTUBE_REFRESH_TOKEN = refreshToken;
+      if (channelId) process.env.YOUTUBE_CHANNEL_ID = channelId;
       // Persist in DB using the owner's actual userId (resolved via OWNER_OPEN_ID),
       // NOT a hardcoded userId=1 which may not match in all environments.
       const db = await getDb();
@@ -483,10 +484,10 @@ async function startServer() {
         const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, ownerUserId));
         if (existing) {
           await db.update(userCredentials)
-            .set({ youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle } as any)
+            .set({ youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle, youtubeChannelId: channelId } as any)
             .where(eq(userCredentials.userId, ownerUserId));
         } else {
-          await db.insert(userCredentials).values({ userId: ownerUserId, youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle } as any);
+          await db.insert(userCredentials).values({ userId: ownerUserId, youtubeRefreshToken: refreshToken, youtubeChannelTitle: channelTitle, youtubeChannelId: channelId } as any);
         }
       }
       // If opened as a popup, notify the opener and close; otherwise redirect back.
@@ -516,9 +517,26 @@ async function startServer() {
   app.get("/api/youtube/status", async (req, res) => {
     try {
       await sdk.authenticateRequest(req);
-      return res.json({ authorized: !!process.env.YOUTUBE_REFRESH_TOKEN });
+      const authorized = !!process.env.YOUTUBE_REFRESH_TOKEN;
+      // Also return channel info from DB so the frontend can build the correct Studio URL
+      let channelTitle: string | null = null;
+      let channelId: string | null = null;
+      if (authorized) {
+        try {
+          const db = await getDb();
+          if (db) {
+            const { userCredentials } = await import("../../drizzle/schema");
+            const [creds] = await db.select().from(userCredentials).limit(1);
+            if (creds) {
+              channelTitle = (creds as any).youtubeChannelTitle ?? null;
+              channelId = (creds as any).youtubeChannelId ?? null;
+            }
+          }
+        } catch { /* non-fatal */ }
+      }
+      return res.json({ authorized, channelTitle, channelId });
     } catch {
-      return res.json({ authorized: false });
+      return res.json({ authorized: false, channelTitle: null, channelId: null });
     }
   });
 

@@ -1100,6 +1100,65 @@ async function startServer() {
     }
   });
 
+  // POST /api/scheduled/advertorial-cta-sync — fires daily at 03:00 UTC
+  // Validates and fixes CTA URLs in all advertorial_pages rows
+  app.post("/api/scheduled/advertorial-cta-sync", async (req, res) => {
+    if (!req.headers["x-manus-cron-task-uid"]) {
+      return res.status(403).json({ ok: false, error: "Forbidden: cron callers only" });
+    }
+    try {
+      const { getDb: getDbLocal } = await import("../db");
+      const { advertorialPages } = await import("../../drizzle/schema");
+      const { eq: eqLocal } = await import("drizzle-orm");
+      const db = await getDbLocal();
+      if (!db) return res.json({ ok: false, error: "DB unavailable" });
+
+      const TOPIC_CTA_MAP: Record<string, string> = {
+        lights_on:    "https://shop.theurbanmonk.com/cart/47631630631066:1",
+        orobiome:     "https://shop.theurbanmonk.com/cart/46719608946842:1",
+        kbmo:         "https://shop.theurbanmonk.com/cart/48029578756250:1",
+        gut_health:   "https://shop.theurbanmonk.com/cart/44120868470938:1",
+        sleep:        "https://shop.theurbanmonk.com/cart/44120868536474:1",
+        energy:       "https://shop.theurbanmonk.com/cart/44120868569242:1",
+        inflammation: "https://shop.theurbanmonk.com/cart/44120868602010:1",
+        stress:       "https://shop.theurbanmonk.com/cart/44120868634778:1",
+        longevity:    "https://shop.theurbanmonk.com/cart/44120868569242:1",
+      };
+
+      const BAD_PATTERNS = [
+        /ch\.theurbanmonk\.com/,
+        /theacademy\.theurbanmonk\.com/,
+        /theurbanmonk\.com\/(orobiome|kbmo|lights-on)/,
+      ];
+
+      const rows = await db.select({
+        id: advertorialPages.id,
+        topic: advertorialPages.topic,
+        ctaUrl: advertorialPages.ctaUrl,
+        slug: advertorialPages.slug,
+      }).from(advertorialPages);
+
+      let fixed = 0;
+      for (const row of rows) {
+        const isBad = !row.ctaUrl || BAD_PATTERNS.some(p => p.test(row.ctaUrl ?? ""));
+        if (!isBad) continue;
+        const correctUrl = TOPIC_CTA_MAP[row.topic ?? ""];
+        if (!correctUrl) continue;
+        await db.update(advertorialPages)
+          .set({ ctaUrl: correctUrl })
+          .where(eqLocal(advertorialPages.id, row.id));
+        fixed++;
+      }
+
+      console.log(`[advertorial-cta-sync] Fixed ${fixed} of ${rows.length} rows`);
+      return res.json({ ok: true, fixed, total: rows.length });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[advertorial-cta-sync] Error:`, msg);
+      return res.status(500).json({ ok: false, error: msg });
+    }
+  });
+
   // ── Advertorial Bridge Pages ─────────────────────────────────────────────────
   // Public route: /bridge/{slug} — serves native advertorial HTML pages
   app.get("/bridge/:slug", async (req, res) => {

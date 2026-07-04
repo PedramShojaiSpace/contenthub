@@ -134,6 +134,7 @@ const videoItems = [
   { icon: Users, label: "Kajabi Live Hub", path: "/kajabi-live" },
   { icon: Megaphone, label: "Ads Manager", path: "/ads" },
   { icon: Newspaper, label: "Advertorial Builder", path: "/advertorial-builder" },
+  { icon: Sparkles, label: "Meta Ad Variants", path: "/meta-ads" },
 ];
 
 const videoPaths = new Set(videoItems.map((i) => i.path));

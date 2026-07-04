@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 import {
   Loader2,
   Plus,
@@ -18,6 +19,7 @@ import {
   ChevronUp,
   ShoppingCart,
   CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -49,6 +51,7 @@ export default function AdvertorialBuilder() {
   const [selectedProduct, setSelectedProduct] = useState("");
 
   const utils = trpc.useUtils();
+  const [, navigate] = useLocation();
 
   const { data: pages, isLoading: pagesLoading } = trpc.advertorial.list.useQuery();
   const { data: topics } = trpc.advertorial.getTopics.useQuery();
@@ -440,6 +443,10 @@ export default function AdvertorialBuilder() {
                     Regenerate
                   </Button>
                   <div className="ml-auto flex items-center gap-2">
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                      onClick={() => navigate(`/meta-ads/${selectedPage.id}`)}>
+                      <Sparkles className="w-3 h-3 mr-1.5" />Meta Ads
+                    </Button>
                     {selectedPage.status !== "published" ? (
                       <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs"
                         onClick={() => setStatusMutation.mutate({ id: selectedPage.id, status: "published" })} disabled={setStatusMutation.isPending}>

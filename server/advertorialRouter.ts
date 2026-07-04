@@ -137,6 +137,8 @@ export const SHOPIFY_PRODUCTS: Array<{
 ];
 
 // ─── Topic configs ─────────────────────────────────────────────────────────────
+// ─── Flagship funnel entry points (top-level) + supplement topics ─────────────
+// ORDER MATTERS: flagship products appear first in the UI
 const TOPIC_CONFIGS: Record<string, {
   label: string;
   defaultCampaign: string;
@@ -148,6 +150,60 @@ const TOPIC_CONFIGS: Record<string, {
   offer: string;
   defaultShopifyProduct?: string; // handle of the default supplement for this topic
 }> = {
+  // ── FLAGSHIP ENTRY POINTS ──────────────────────────────────────────────────
+  lights_on: {
+    label: "LIGHTS ON Program",
+    defaultCampaign: "lo",
+    defaultCtaUrl: "https://ch.theurbanmonk.com/lights-on",
+    defaultCtaText: "Start the LIGHTS ON Program →",
+    defaultCtaSubtext: "$369 · Lifetime access · 30-day money-back guarantee",
+    painPoints: [
+      "waking up exhausted no matter how many hours you sleep",
+      "brain fog that makes simple tasks feel impossible",
+      "energy that crashes by 2pm every single day",
+      "relying on caffeine just to function",
+      "feeling like your body is working against you",
+    ],
+    mechanism: "Five Element organ clock energy depletion — the ancient Chinese medical system that maps organ function to time of day",
+    offer: "LIGHTS ON — Dr. Pedram Shojai's 8-week energy restoration program ($369)",
+    defaultShopifyProduct: undefined,
+  },
+  orobiome: {
+    label: "Orobiome Test",
+    defaultCampaign: "orobiome",
+    defaultCtaUrl: "https://ch.theurbanmonk.com/orobiome",
+    defaultCtaText: "Get Your Orobiome Test →",
+    defaultCtaSubtext: "$399 · At-home oral microbiome test · Results in 2-3 weeks",
+    painPoints: [
+      "chronic bad breath that won't go away no matter what you do",
+      "gum disease and dental issues that keep coming back",
+      "brain fog and cognitive decline that started gradually",
+      "heart health concerns your dentist and doctor both dismiss",
+      "systemic inflammation with no clear source",
+    ],
+    mechanism: "oral-systemic axis — the mouth is the gateway to the body, and an imbalanced oral microbiome silently drives inflammation, heart disease, and cognitive decline",
+    offer: "Orobiome Test — At-home oral microbiome analysis ($399)",
+    defaultShopifyProduct: undefined,
+  },
+  kbmo_fit22: {
+    label: "KBMO FIT22 Test",
+    defaultCampaign: "kbmo",
+    defaultCtaUrl: "https://ch.theurbanmonk.com/kbmo",
+    defaultCtaText: "Get Your KBMO FIT22 Test →",
+    defaultCtaSubtext: "$399 · At-home food sensitivity test · 22 foods tested",
+    painPoints: [
+      "bloating and digestive distress after eating 'healthy' foods",
+      "unexplained weight gain that won't budge",
+      "skin flare-ups, eczema, or rashes with no clear trigger",
+      "joint pain and inflammation that comes and goes",
+      "fatigue and brain fog after meals",
+    ],
+    mechanism: "delayed IgG food sensitivity — unlike immediate allergies, these reactions happen 2-72 hours after eating, making the trigger nearly impossible to identify without testing",
+    offer: "KBMO FIT22 Food Sensitivity Test — at-home test kit ($399)",
+    defaultShopifyProduct: undefined,
+  },
+
+  // ── SUPPLEMENT TOPICS ────────────────────────────────────────────────────────
   gut_health: {
     label: "Gut Health",
     defaultCampaign: "upstream",

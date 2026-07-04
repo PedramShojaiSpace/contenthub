@@ -154,7 +154,7 @@ const TOPIC_CONFIGS: Record<string, {
   lights_on: {
     label: "LIGHTS ON Program",
     defaultCampaign: "lo",
-    defaultCtaUrl: "https://ch.theurbanmonk.com/lights-on",
+    defaultCtaUrl: "https://theurbanmonkstore.myshopify.com/cart/47631630631066:1",
     defaultCtaText: "Start the LIGHTS ON Program →",
     defaultCtaSubtext: "$369 · Lifetime access · 30-day money-back guarantee",
     painPoints: [
@@ -171,7 +171,7 @@ const TOPIC_CONFIGS: Record<string, {
   orobiome: {
     label: "Orobiome Test",
     defaultCampaign: "orobiome",
-    defaultCtaUrl: "https://ch.theurbanmonk.com/orobiome",
+    defaultCtaUrl: "https://theurbanmonkstore.myshopify.com/cart/46719608946842:1",
     defaultCtaText: "Get Your Orobiome Test →",
     defaultCtaSubtext: "$399 · At-home oral microbiome test · Results in 2-3 weeks",
     painPoints: [
@@ -188,9 +188,9 @@ const TOPIC_CONFIGS: Record<string, {
   kbmo_fit22: {
     label: "KBMO FIT22 Test",
     defaultCampaign: "kbmo",
-    defaultCtaUrl: "https://ch.theurbanmonk.com/kbmo",
+    defaultCtaUrl: "https://theurbanmonkstore.myshopify.com/cart/48029578756250:1",
     defaultCtaText: "Get Your KBMO FIT22 Test →",
-    defaultCtaSubtext: "$399 · At-home food sensitivity test · 22 foods tested",
+    defaultCtaSubtext: "$399 · At-home food sensitivity test kit with consultation",
     painPoints: [
       "bloating and digestive distress after eating 'healthy' foods",
       "unexplained weight gain that won't budge",
@@ -540,34 +540,48 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
   <script async src="https://www.googletagmanager.com/gtag/js?id=${ga4Id}"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${ga4Id}');</script>
 
+  <!-- Google Fonts: matches Urban Monk store typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Georgia, 'Times New Roman', serif; background: #fafaf8; color: #1a1a1a; line-height: 1.7; }
-    .pub-header { background: #1a1a1a; color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; font-family: 'Helvetica Neue', Arial, sans-serif; }
-    .pub-name { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; }
-    .pub-tagline { font-size: 11px; color: #999; letter-spacing: 0.08em; text-transform: uppercase; }
-    .sponsored-label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid #444; padding: 2px 8px; border-radius: 2px; }
-    .article-wrap { max-width: 680px; margin: 0 auto; padding: 40px 24px 80px; }
-    .article-category { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #c0392b; margin-bottom: 16px; }
-    h1.headline { font-size: clamp(26px, 5vw, 38px); font-weight: 700; line-height: 1.25; color: #111; margin-bottom: 16px; }
-    .subheadline { font-size: 18px; color: #444; line-height: 1.5; margin-bottom: 24px; font-style: italic; }
-    .byline { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #666; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0; margin-bottom: 28px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .byline .author { font-weight: 600; color: #333; }
-    .byline .read-time { background: #f0f0f0; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
-    .hero-placeholder { width: 100%; height: 280px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); border-radius: 4px; margin-bottom: 28px; }
-    .body-copy p { margin-bottom: 20px; font-size: 17px; }
-    .body-copy h2 { font-size: 22px; font-weight: 700; margin: 32px 0 12px; color: #111; }
-    .body-copy h3 { font-size: 18px; font-weight: 700; margin: 24px 0 10px; color: #222; }
-    .body-copy ul, .body-copy ol { margin: 16px 0 20px 24px; }
-    .body-copy li { margin-bottom: 8px; font-size: 17px; }
-    .body-copy strong { color: #111; }
-    .cta-section { margin-top: 40px; padding: 32px; background: #1a1a1a; border-radius: 8px; text-align: center; color: #fff; }
-    .cta-section h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #fff; }
-    .cta-section p { font-size: 15px; color: #ccc; margin-bottom: 24px; font-family: 'Helvetica Neue', Arial, sans-serif; }
-    .cta-btn { display: inline-block; background: #00d4ff; color: #000; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 700; font-size: 16px; padding: 14px 32px; border-radius: 4px; text-decoration: none; letter-spacing: 0.02em; }
-    .cta-subtext { font-size: 12px; color: #888; margin-top: 12px; font-family: 'Helvetica Neue', Arial, sans-serif; }
-    .disclaimer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #999; line-height: 1.6; }
-    @media (max-width: 600px) { .article-wrap { padding: 24px 16px 60px; } h1.headline { font-size: 24px; } .cta-section { padding: 24px 16px; } }
+    /* ── Store theme: white background, dark text, coral-red accent ── */
+    body { font-family: 'Cormorant Garamond', Georgia, serif; background: #ffffff; color: #1c1c1c; line-height: 1.75; }
+    /* Header bar — matches store's top announcement bar style */
+    .pub-header { background: #1c1c1c; color: #fff; padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; font-family: 'Montserrat', Arial, sans-serif; }
+    .pub-name { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .pub-tagline { font-size: 10px; color: #aaa; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+    .sponsored-label { font-size: 9px; color: #bbb; text-transform: uppercase; letter-spacing: 0.12em; border: 1px solid #555; padding: 2px 8px; border-radius: 2px; font-family: 'Montserrat', Arial, sans-serif; }
+    /* Article layout */
+    .article-wrap { max-width: 700px; margin: 0 auto; padding: 44px 24px 88px; }
+    .article-category { font-family: 'Montserrat', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #e05c3a; margin-bottom: 18px; }
+    h1.headline { font-family: 'Cormorant Garamond', Georgia, serif; font-size: clamp(28px, 5vw, 42px); font-weight: 700; line-height: 1.2; color: #1c1c1c; margin-bottom: 18px; }
+    .subheadline { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; color: #555; line-height: 1.55; margin-bottom: 26px; font-style: italic; }
+    .byline { font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; color: #777; padding-bottom: 20px; border-bottom: 1px solid #e8e8e8; margin-bottom: 30px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .byline .author { font-weight: 600; color: #444; }
+    .byline .read-time { background: #f5f5f5; padding: 2px 10px; border-radius: 12px; font-size: 10px; letter-spacing: 0.05em; }
+    /* Hero image — light warm placeholder if no image set */
+    .hero-placeholder { width: 100%; height: 300px; background: linear-gradient(135deg, #f9f3ec 0%, #ede4d8 50%, #e0d0be 100%); border-radius: 4px; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; }
+    .hero-placeholder-text { font-family: 'Montserrat', Arial, sans-serif; font-size: 11px; color: #b0a090; letter-spacing: 0.1em; text-transform: uppercase; }
+    /* Body copy */
+    .body-copy p { margin-bottom: 22px; font-size: 18px; line-height: 1.8; }
+    .body-copy h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 700; margin: 36px 0 14px; color: #1c1c1c; }
+    .body-copy h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; font-weight: 600; margin: 26px 0 10px; color: #2c2c2c; }
+    .body-copy ul, .body-copy ol { margin: 16px 0 22px 26px; }
+    .body-copy li { margin-bottom: 10px; font-size: 18px; line-height: 1.75; }
+    .body-copy strong { color: #1c1c1c; font-weight: 600; }
+    /* CTA section — light background with coral-red button matching store */
+    .cta-section { margin-top: 44px; padding: 36px 32px; background: #f9f5f0; border: 1px solid #e8ddd4; border-radius: 6px; text-align: center; }
+    .cta-section h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; font-weight: 700; margin-bottom: 12px; color: #1c1c1c; }
+    .cta-section p { font-size: 15px; color: #666; margin-bottom: 26px; font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; }
+    /* Coral-red button — matches store's primary CTA color */
+    .cta-btn { display: inline-block; background: #e05c3a; color: #fff !important; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700; font-size: 15px; padding: 15px 36px; border-radius: 3px; text-decoration: none !important; letter-spacing: 0.06em; text-transform: uppercase; }
+    .cta-btn:hover { background: #c94e2e; color: #fff !important; }
+    .cta-subtext { font-size: 12px; color: #999; margin-top: 12px; font-family: 'Montserrat', Arial, sans-serif; }
+    .disclaimer { margin-top: 52px; padding-top: 22px; border-top: 1px solid #ebebeb; font-family: 'Montserrat', Arial, sans-serif; font-size: 11px; color: #aaa; line-height: 1.7; }
+    @media (max-width: 600px) { .article-wrap { padding: 28px 18px 64px; } h1.headline { font-size: 26px; } .cta-section { padding: 26px 18px; } }
   </style>
 </head>
 <body>
@@ -589,8 +603,8 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
       <span class="read-time">${page.readTime || "3 min read"}</span>
     </div>
     ${page.heroImageUrl
-      ? `<img src="${page.heroImageUrl}" alt="Article header" style="width:100%;height:280px;object-fit:cover;border-radius:4px;margin-bottom:28px;" />`
-      : `<div class="hero-placeholder"></div>`
+      ? `<img src="${page.heroImageUrl}" alt="${(page.headline || 'Article header').replace(/"/g, '&quot;')}" style="width:100%;height:300px;object-fit:cover;border-radius:4px;margin-bottom:30px;" />`
+      : `<div class="hero-placeholder"><span class="hero-placeholder-text">The Urban Monk Insider</span></div>`
     }
     <div class="body-copy">${page.bodyHtml || ""}</div>
 

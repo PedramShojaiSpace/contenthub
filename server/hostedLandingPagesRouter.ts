@@ -646,12 +646,15 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     .video-testimonials .section-sub { text-align: center; color: #6b7280; font-size: 15px; margin-bottom: 48px; }
     .vt-grid { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
     @media (max-width: 700px) { .vt-grid { grid-template-columns: 1fr; } }
-    .vt-slot { border-radius: 10px; overflow: hidden; background: #0d1424; border: 1px solid rgba(255,255,255,0.07); }
+    .vt-slot { border-radius: 10px; overflow: hidden; background: #0d1424; border: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column; }
     .vt-video { aspect-ratio: 16/9; background: #0a1020; display: flex; align-items: center; justify-content: center; position: relative; }
+    .vt-embed { width: 100%; }
+    .vt-embed wistia-player { width: 100%; display: block; }
     .vt-play { width: 48px; height: 48px; background: rgba(91,163,245,0.2); border: 2px solid rgba(91,163,245,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     .vt-play::after { content: ''; border-style: solid; border-width: 8px 0 8px 16px; border-color: transparent transparent transparent #5ba3f5; margin-left: 3px; }
-    .vt-label { padding: 14px 16px; }
-    .vt-name { font-weight: 600; font-size: 14px; color: #e8eaf0; }
+    .vt-label { padding: 16px 18px 20px; flex: 1; }
+    .vt-name { font-weight: 700; font-size: 15px; color: #e8eaf0; margin-bottom: 8px; }
+    .vt-quote { font-size: 13px; color: #8a96aa; line-height: 1.65; font-style: italic; }
     .vt-desc { font-size: 12px; color: #6b7280; margin-top: 3px; }
 
     /* CTA section */
@@ -717,35 +720,90 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     </div>
   </section>` : ""}
 
-  <!-- VIDEO TESTIMONIALS — 6 slots (replace placeholder src with real Wistia embed codes) -->
+  <!-- VIDEO TESTIMONIALS — 6 real testimonials -->
   <section class="video-testimonials">
     <h2>Real People. Real Results.</h2>
     <p class="section-sub">Hear directly from people who finally got their answers.</p>
     <div class="vt-grid">
+
+      <!-- Brian Felix -->
       <div class="vt-slot">
-        <div class="vt-video"><div class="vt-play"></div></div>
-        <div class="vt-label"><div class="vt-name">Sarah M.</div><div class="vt-desc">Lost 22 lbs after identifying her top triggers</div></div>
+        <div class="vt-embed">
+          <script src="https://fast.wistia.com/player.js" async></script>
+          <script src="https://fast.wistia.com/embed/5iqveam02e.js" async type="module"></script>
+          <wistia-player media-id="5iqveam02e" aspect="16/9"></wistia-player>
+        </div>
+        <div class="vt-label">
+          <div class="vt-name">Brian Felix</div>
+          <div class="vt-quote">&ldquo;After a decade of struggling with chronic health issues, Urban Monk finally gave me the data and path forward I needed. I finally feel stabilized, confident, and free of the symptoms that held me back for years.&rdquo;</div>
+        </div>
       </div>
+
+      <!-- Susanne Scholl -->
       <div class="vt-slot">
-        <div class="vt-video"><div class="vt-play"></div></div>
-        <div class="vt-label"><div class="vt-name">James T.</div><div class="vt-desc">Brain fog gone within 6 weeks</div></div>
+        <div class="vt-embed">
+          <script src="https://fast.wistia.com/player.js" async></script>
+          <script src="https://fast.wistia.com/embed/7kt89o7zr8.js" async type="module"></script>
+          <wistia-player media-id="7kt89o7zr8" aspect="16/9"></wistia-player>
+        </div>
+        <div class="vt-label">
+          <div class="vt-name">Susanne Scholl</div>
+          <div class="vt-quote">&ldquo;Gut health was my biggest challenge. They were able to help me. It was worth the time, the energy, and the money to participate fully in it.&rdquo;</div>
+        </div>
       </div>
+
+      <!-- Maureen Thoma -->
       <div class="vt-slot">
-        <div class="vt-video"><div class="vt-play"></div></div>
-        <div class="vt-label"><div class="vt-name">Dr. Lisa K.</div><div class="vt-desc">Finally understood her chronic fatigue</div></div>
+        <div class="vt-embed">
+          <script src="https://fast.wistia.com/player.js" async></script>
+          <script src="https://fast.wistia.com/embed/2s8ozbozcl.js" async type="module"></script>
+          <wistia-player media-id="2s8ozbozcl" aspect="16/9"></wistia-player>
+        </div>
+        <div class="vt-label">
+          <div class="vt-name">Maureen Thoma</div>
+          <div class="vt-quote">&ldquo;After struggling with gut issues for seven years, this is the best program I&rsquo;ve ever tried. I finally feel like I can handle life&rsquo;s stresses and enjoy my family again.&rdquo;</div>
+        </div>
       </div>
+
+      <!-- Keith Olson -->
       <div class="vt-slot">
-        <div class="vt-video"><div class="vt-play"></div></div>
-        <div class="vt-label"><div class="vt-name">Marcus R.</div><div class="vt-desc">Joint pain reduced by 80% in 8 weeks</div></div>
+        <div class="vt-embed">
+          <script src="https://fast.wistia.com/player.js" async></script>
+          <script src="https://fast.wistia.com/embed/zqapv1u3dj.js" async type="module"></script>
+          <wistia-player media-id="zqapv1u3dj" aspect="16/9"></wistia-player>
+        </div>
+        <div class="vt-label">
+          <div class="vt-name">Keith Olson</div>
+          <div class="vt-quote">&ldquo;By identifying my food sensitivities and working with my coach, I&rsquo;ve reduced my inflammation and feel like I&rsquo;ve gained 20 years of my life back.&rdquo;</div>
+        </div>
       </div>
+
+      <!-- Cindy Woodcock -->
       <div class="vt-slot">
-        <div class="vt-video"><div class="vt-play"></div></div>
-        <div class="vt-label"><div class="vt-name">Priya N.</div><div class="vt-desc">Off 3 medications after addressing root cause</div></div>
+        <div class="vt-embed">
+          <script src="https://fast.wistia.com/player.js" async></script>
+          <script src="https://fast.wistia.com/embed/3qw520nkj0.js" async type="module"></script>
+          <wistia-player media-id="3qw520nkj0" aspect="16/9"></wistia-player>
+        </div>
+        <div class="vt-label">
+          <div class="vt-name">Cindy Woodcock</div>
+          <div class="vt-quote">&ldquo;I feel better at 70 than I have in years&mdash;it&rsquo;s the best investment I&rsquo;ve ever made in my health!&rdquo;</div>
+        </div>
       </div>
+
+      <!-- JoAnn Alexander -->
       <div class="vt-slot">
-        <div class="vt-video"><div class="vt-play"></div></div>
-        <div class="vt-label"><div class="vt-name">David C.</div><div class="vt-desc">Energy back after 4 years of exhaustion</div></div>
+        <div class="vt-embed">
+          <script src="https://fast.wistia.com/player.js" async></script>
+          <script src="https://fast.wistia.com/embed/irzz9resy4.js" async type="module"></script>
+          <wistia-player media-id="irzz9resy4" aspect="16/9"></wistia-player>
+        </div>
+        <div class="vt-label">
+          <div class="vt-name">JoAnn Alexander</div>
+          <div class="vt-quote">&ldquo;After struggling with ulcerative colitis for 40 years, I no longer have brain fog or digestive issues. I feel like the picture of health at 79. This program gave me my life back.&rdquo;</div>
+        </div>
       </div>
+
     </div>
   </section>
 

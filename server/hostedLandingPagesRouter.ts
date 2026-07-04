@@ -817,7 +817,7 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
       <h2>Stop Managing Symptoms.<br>Start Finding Answers.</h2>
       <p>Your KBMO FIT22 Panel + 1-hour health coach consultation, shipped to your door.</p>
       <div class="cta-btn-group">
-        <a href="https://shop.theurbanmonk.com/products/kbmo-fit-22-gut-permeability-test-kit-with-consultation" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
+        <a href="${page.ctaUrl || '#'}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
         ${page.ctaSubtext ? `<p class="cta-subtext" style="margin-top:0">${page.ctaSubtext}</p>` : ""}
       </div>
     </div>

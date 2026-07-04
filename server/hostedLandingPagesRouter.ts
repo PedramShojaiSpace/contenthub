@@ -663,6 +663,7 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     .cta-section { background: linear-gradient(135deg, #0d1a3a 0%, #0a1628 100%); padding: 80px 24px; text-align: center; border-top: 1px solid rgba(91,163,245,0.15); }
     .cta-section h2 { font-family: 'Playfair Display', serif; font-size: clamp(26px, 3.5vw, 38px); color: #ffffff; margin-bottom: 16px; line-height: 1.2; }
     .cta-section p { color: #9aa3b8; font-size: 17px; max-width: 560px; margin: 0 auto 36px; }
+    .cta-btn-group { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 
     /* Footer */
     .footer { background: #040810; color: #4b5563; text-align: center; padding: 28px 24px; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); }
@@ -815,8 +816,10 @@ function renderBlueTemplate(page: typeof hostedLandingPages.$inferSelect, bodyHt
     <div class="section-inner">
       <h2>Stop Managing Symptoms.<br>Start Finding Answers.</h2>
       <p>Your KBMO FIT22 Panel + 1-hour health coach consultation, shipped to your door.</p>
-      <a href="${page.ctaUrl || "#"}" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
-      ${page.ctaSubtext ? `<p class="cta-subtext">${page.ctaSubtext}</p>` : ""}
+      <div class="cta-btn-group">
+        <a href="https://shop.theurbanmonk.com/products/kbmo-fit-22-gut-permeability-test-kit-with-consultation" class="cta-btn" onclick="if(typeof fbq!=='undefined')fbq('track','InitiateCheckout')">${page.ctaText || "Get Started Now"} <span class="cta-btn-arrow">&#8250;</span></a>
+        ${page.ctaSubtext ? `<p class="cta-subtext" style="margin-top:0">${page.ctaSubtext}</p>` : ""}
+      </div>
     </div>
   </section>` : ""}
 

@@ -69,6 +69,7 @@ export async function exchangeYouTubeCode(code: string): Promise<{
   // Get the channel title to confirm which account was authorized
   oauth2Client.setCredentials(tokens);
   let channelTitle = "YouTube Channel";
+  let channelId = "";
   try {
     const youtube = google.youtube({ version: "v3", auth: oauth2Client });
     const channelRes = await youtube.channels.list({
@@ -76,6 +77,7 @@ export async function exchangeYouTubeCode(code: string): Promise<{
       mine: true,
     });
     channelTitle = channelRes.data.items?.[0]?.snippet?.title ?? "YouTube Channel";
+    channelId = channelRes.data.items?.[0]?.id ?? "";
   } catch {
     // Non-fatal — we still have the refresh token
   }
@@ -83,6 +85,7 @@ export async function exchangeYouTubeCode(code: string): Promise<{
   return {
     refreshToken: tokens.refresh_token,
     channelTitle,
+    channelId,
   };
 }
 

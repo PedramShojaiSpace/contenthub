@@ -895,17 +895,16 @@ ${channelFooter}`;
    * Check if YouTube is authorized (refresh token present).
    */
   getYouTubeStatus: protectedProcedure.query(async ({ ctx }) => {
-    // Check env var first (set by /api/youtube/callback in the same process)
-    if (process.env.YOUTUBE_REFRESH_TOKEN) return { authorized: true, channelTitle: undefined as string | undefined };
-    // Fall back to DB
-    // Always check the owner's YouTube token — YouTube is a company account
+    // Always check DB for latest channel info (title + id)
     const ownerCreds = await getOwnerCredentials();
-    const hasToken = !!(ownerCreds as any)?.youtubeRefreshToken;
-    if (hasToken && (ownerCreds as any)?.youtubeRefreshToken) {
+    const hasToken = !!(ownerCreds as any)?.youtubeRefreshToken || !!process.env.YOUTUBE_REFRESH_TOKEN;
+    if ((ownerCreds as any)?.youtubeRefreshToken && !process.env.YOUTUBE_REFRESH_TOKEN) {
       // Seed env var so subsequent calls in this process don't need DB
       process.env.YOUTUBE_REFRESH_TOKEN = (ownerCreds as any).youtubeRefreshToken;
     }
-    return { authorized: hasToken, channelTitle: (ownerCreds as any)?.youtubeChannelTitle as string | undefined };
+    const channelTitle = (ownerCreds as any)?.youtubeChannelTitle as string | undefined;
+    const channelId = (ownerCreds as any)?.youtubeChannelId as string | undefined;
+    return { authorized: hasToken, channelTitle, channelId };
   }),
 
   /**

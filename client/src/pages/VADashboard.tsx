@@ -1106,7 +1106,9 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <a
-                  href={`https://studio.youtube.com/video/${job.youtubeVideoId}/edit`}
+                  href={ytStatus?.channelId
+                    ? `https://studio.youtube.com/channel/${ytStatus.channelId}/videos`
+                    : `https://studio.youtube.com/`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 font-medium"
@@ -1189,7 +1191,9 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
                 <div className="flex items-center gap-2 text-xs text-amber-600">
                   <Youtube className="w-3.5 h-3.5" />
                   <a
-                    href={`https://studio.youtube.com/video/${job.youtubeVideoId}/edit`}
+                    href={ytStatus?.channelId
+                      ? `https://studio.youtube.com/channel/${ytStatus.channelId}/videos`
+                      : `https://studio.youtube.com/`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline hover:text-amber-700"
@@ -1750,6 +1754,9 @@ export default function VADashboard() {
   // Video jobs data
   const { data: videoJobsData, isLoading: videoLoading, error: videoError, refetch: refetchVideo } =
     trpc.videoPipeline.getVideoJobs.useQuery({ limit: 50 }, { refetchInterval: 30_000 });
+
+  // YouTube channel info — used to build correct Studio URL
+  const { data: ytStatus } = trpc.videoToBlog.getYouTubeStatus.useQuery();
 
   const allSyndicationJobs = (syndicationJobs ?? []) as SyndicationJob[];
   const allVideoJobs = (videoJobsData ?? []) as VideoJob[];

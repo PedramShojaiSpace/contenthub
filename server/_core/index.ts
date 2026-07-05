@@ -1271,6 +1271,19 @@ async function startServer() {
     return handleShopifyOrderPaid(req, res);
   });
 
+  // POST /api/scheduled/daily-ads-sync — Daily 8am UTC: Meta Ads Insights sync + AI briefing
+  // Cron task UID: Pq6UqXmJ5pfED4TAiUYM8Y
+  app.post("/api/scheduled/daily-ads-sync", async (req, res) => {
+    try {
+      const { runDailyAdsSync } = await import("../adsMonitorRouter");
+      const result = await runDailyAdsSync("yesterday");
+      res.json({ ok: true, ...result });
+    } catch (err: any) {
+      console.error("[daily-ads-sync] Error:", err);
+      res.status(500).json({ error: err?.message, stack: err?.stack, timestamp: new Date().toISOString() });
+    }
+  });
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

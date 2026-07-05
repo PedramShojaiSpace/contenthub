@@ -84,8 +84,8 @@ export function buildUnderlordPrompt(params: {
 
   const prompt = `Edit this video with the following steps in order:
 
-1. LAYOUT: Keep the circular presenter avatar in the lower-right corner for the entire video. This is intentional — do not remove it.
-2. B-ROLL: ${footageSource} Place the FIRST B-roll clip starting at 0:00 — the very beginning of the video. There must be NO black screen at the opening. The first clip should be a wide, atmospheric shot (nature, landscape, or wellness imagery) that establishes the mood. Place each subsequent clip as the full-screen background layer behind the presenter circle. Switch to a new clip every 10-15 seconds. Never reuse the same clip. B-roll should cover 100% of the video from start to finish — including the opening frame.
+1. PRESENTER OVERLAY: The main video track is the presenter (talking head). Resize it to a small circle (approximately 20% of the frame width) and position it in the lower-right corner of the frame. This creates a picture-in-picture presenter bubble. Keep this presenter bubble visible for the entire duration of the video — do not remove or hide it at any point.
+2. B-ROLL BACKGROUND: ${footageSource} Place the FIRST B-roll clip as a full-screen background layer starting at 0:00 — the very beginning of the video. There must be NO black screen at the opening. The first clip should be a wide, atmospheric shot (nature, landscape, or wellness imagery) that establishes the mood. The presenter bubble from step 1 sits on top of this background layer. Switch to a new background clip every 10-15 seconds. Never reuse the same clip. B-roll must cover 100% of the video from start to finish — the presenter bubble is always visible on top.
 3. CLEANUP: Remove filler words (um, uh, like, you know) and silence gaps longer than 0.5 seconds.
 4. CAPTIONS: Add auto-captions in white text at the lower third. Captions must be readable over the background footage.
 5. MUSIC: Add ambient background music at -18dB volume (nature, meditation, or wellness style).

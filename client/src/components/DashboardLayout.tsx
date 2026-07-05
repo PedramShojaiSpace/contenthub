@@ -136,6 +136,7 @@ const videoItems = [
   { icon: Newspaper, label: "Advertorial Builder", path: "/advertorial-builder" },
   { icon: Sparkles, label: "Meta Ad Variants", path: "/meta-ads" },
   { icon: Target, label: "Ad Attribution", path: "/ad-attribution" },
+  { icon: BarChart3, label: "Campaign Monitor", path: "/campaign-monitor" },
 ];
 
 const videoPaths = new Set(videoItems.map((i) => i.path));

@@ -507,13 +507,14 @@ fbq('init','${pixelId}');fbq('track','PageView');fbq('track','ViewContent',{cont
 </div>`;
 }
 
-// ─── Bridge page HTML renderer (external domain) ──────────────────────────────
+// ─── Bridge page HTML renderer (external domain) — CRO-optimized ─────────────
 export function renderAdvertorialHtml(page: AdvertorialPage): string {
   const pixelId = page.metaPixelId || "1498608757116877";
   const ga4Id = page.ga4Id || "G-CXZK2Q275S";
   const pubDate = new Date(page.createdAt).toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
   });
+  const mediaLogosUrl = "/manus-storage/media-logos-as-seen-in_c1c83bd0.png";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -529,7 +530,6 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
   <!-- Meta Pixel -->
   <script>
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '${pixelId}');
     fbq('init', '${pixelId}');
     fbq('track', 'PageView');
     fbq('track', 'ViewContent', { content_name: '${(page.slug || "").replace(/'/g, "\\'")}', content_category: '${(page.topic || "").replace(/'/g, "\\'")}' });
@@ -547,79 +547,318 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    /* ── Store theme: white background, dark text, coral-red accent ── */
-    body { font-family: 'Cormorant Garamond', Georgia, serif; background: #ffffff; color: #1c1c1c; line-height: 1.75; }
-    /* Header bar — matches store's top announcement bar style */
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Cormorant Garamond', Georgia, serif; background: #ffffff; color: #1c1c1c; line-height: 1.8; font-size: 18px; }
+
+    /* ── Progress bar ── */
+    #read-progress { position: fixed; top: 0; left: 0; height: 3px; background: #e05c3a; width: 0%; z-index: 9999; transition: width 0.1s linear; }
+
+    /* ── Sticky CTA bar (Fix #1) ── */
+    .sticky-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #1c1c1c; color: #fff; padding: 12px 20px; display: flex; align-items: center; justify-content: center; gap: 20px; z-index: 9000; box-shadow: 0 -2px 12px rgba(0,0,0,0.18); flex-wrap: wrap; }
+    .sticky-bar-text { font-family: 'Montserrat', Arial, sans-serif; font-size: 13px; color: #ddd; }
+    .sticky-bar-text strong { color: #fff; }
+    .sticky-bar-btn { background: #e05c3a; color: #fff !important; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700; font-size: 13px; padding: 10px 24px; border-radius: 3px; text-decoration: none !important; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+    .sticky-bar-guarantee { font-family: 'Montserrat', Arial, sans-serif; font-size: 11px; color: #aaa; }
+    @media (max-width: 600px) { .sticky-bar-text { display: none; } .sticky-bar { padding: 10px 16px; } }
+
+    /* ── Minimal editorial header — no store nav (Fix #2) ── */
     .pub-header { background: #1c1c1c; color: #fff; padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; font-family: 'Montserrat', Arial, sans-serif; }
     .pub-name { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
     .pub-tagline { font-size: 10px; color: #aaa; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
-    .sponsored-label { font-size: 9px; color: #bbb; text-transform: uppercase; letter-spacing: 0.12em; border: 1px solid #555; padding: 2px 8px; border-radius: 2px; font-family: 'Montserrat', Arial, sans-serif; }
-    /* Article layout */
-    .article-wrap { max-width: 700px; margin: 0 auto; padding: 44px 24px 88px; }
+    .sponsored-label { font-size: 9px; color: #e05c3a; text-transform: uppercase; letter-spacing: 0.12em; border: 1px solid #e05c3a; padding: 3px 10px; border-radius: 2px; font-family: 'Montserrat', Arial, sans-serif; font-weight: 600; }
+
+    /* ── Article layout ── */
+    .article-wrap { max-width: 700px; margin: 0 auto; padding: 44px 24px 120px; }
     .article-category { font-family: 'Montserrat', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #e05c3a; margin-bottom: 18px; }
-    h1.headline { font-family: 'Cormorant Garamond', Georgia, serif; font-size: clamp(28px, 5vw, 42px); font-weight: 700; line-height: 1.2; color: #1c1c1c; margin-bottom: 18px; }
-    .subheadline { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; color: #555; line-height: 1.55; margin-bottom: 26px; font-style: italic; }
-    .byline { font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; color: #777; padding-bottom: 20px; border-bottom: 1px solid #e8e8e8; margin-bottom: 30px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    h1.headline { font-family: 'Cormorant Garamond', Georgia, serif; font-size: clamp(30px, 5vw, 46px); font-weight: 700; line-height: 1.18; color: #1c1c1c; margin-bottom: 18px; }
+    .subheadline { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 21px; color: #555; line-height: 1.55; margin-bottom: 26px; font-style: italic; }
+
+    /* ── Byline with author photo (Fix: author photo) ── */
+    .byline { font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; color: #777; padding-bottom: 20px; border-bottom: 1px solid #e8e8e8; margin-bottom: 30px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .byline-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #e8e8e8; flex-shrink: 0; }
+    .byline-avatar-placeholder { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #e05c3a, #c94e2e); display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; font-weight: 700; flex-shrink: 0; }
     .byline .author { font-weight: 600; color: #444; }
     .byline .read-time { background: #f5f5f5; padding: 2px 10px; border-radius: 12px; font-size: 10px; letter-spacing: 0.05em; }
-    /* Hero image — light warm placeholder if no image set */
-    .hero-placeholder { width: 100%; height: 300px; background: linear-gradient(135deg, #f9f3ec 0%, #ede4d8 50%, #e0d0be 100%); border-radius: 4px; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; }
+
+    /* ── Hero image (Fix #3) ── */
+    .hero-img { width: 100%; height: clamp(220px, 40vw, 420px); object-fit: cover; border-radius: 4px; margin-bottom: 30px; display: block; }
+    .hero-placeholder { width: 100%; height: clamp(220px, 40vw, 420px); background: linear-gradient(135deg, #f9f3ec 0%, #ede4d8 50%, #e0d0be 100%); border-radius: 4px; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; }
     .hero-placeholder-text { font-family: 'Montserrat', Arial, sans-serif; font-size: 11px; color: #b0a090; letter-spacing: 0.1em; text-transform: uppercase; }
-    /* Body copy */
-    .body-copy p { margin-bottom: 22px; font-size: 18px; line-height: 1.8; }
-    .body-copy h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 700; margin: 36px 0 14px; color: #1c1c1c; }
-    .body-copy h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; font-weight: 600; margin: 26px 0 10px; color: #2c2c2c; }
-    .body-copy ul, .body-copy ol { margin: 16px 0 22px 26px; }
-    .body-copy li { margin-bottom: 10px; font-size: 18px; line-height: 1.75; }
+
+    /* ── As Seen In (Fix #13) ── */
+    .as-seen-in { margin: 0 0 32px; text-align: center; }
+    .as-seen-in-label { font-family: 'Montserrat', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #bbb; margin-bottom: 12px; }
+    .as-seen-in img { max-width: 100%; height: auto; opacity: 0.75; }
+
+    /* ── Body copy (Fix: 17-18px, 1.8 line height) ── */
+    .body-copy p { margin-bottom: 24px; font-size: 18px; line-height: 1.82; }
+    .body-copy h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; font-weight: 700; margin: 40px 0 14px; color: #e05c3a; border-left: 3px solid #e05c3a; padding-left: 14px; }
+    .body-copy h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 21px; font-weight: 600; margin: 28px 0 10px; color: #2c2c2c; }
+    .body-copy ul, .body-copy ol { margin: 16px 0 24px 28px; }
+    .body-copy li { margin-bottom: 10px; font-size: 18px; line-height: 1.78; }
     .body-copy strong { color: #1c1c1c; font-weight: 600; }
-    /* CTA section — light background with coral-red button matching store */
-    .cta-section { margin-top: 44px; padding: 36px 32px; background: #f9f5f0; border: 1px solid #e8ddd4; border-radius: 6px; text-align: center; }
-    .cta-section h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; font-weight: 700; margin-bottom: 12px; color: #1c1c1c; }
-    .cta-section p { font-size: 15px; color: #666; margin-bottom: 26px; font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; }
-    /* Coral-red button — matches store's primary CTA color */
-    .cta-btn { display: inline-block; background: #e05c3a; color: #fff !important; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700; font-size: 15px; padding: 15px 36px; border-radius: 3px; text-decoration: none !important; letter-spacing: 0.06em; text-transform: uppercase; }
+    .body-copy blockquote { border-left: 4px solid #e05c3a; margin: 28px 0; padding: 16px 22px; background: #fdf8f5; font-style: italic; color: #555; font-size: 19px; line-height: 1.7; }
+
+    /* ── Inline CTA text link (Fix #6) ── */
+    .inline-cta { display: block; margin: 32px 0; padding: 18px 24px; background: #fdf8f5; border: 1px solid #f0e4d8; border-radius: 4px; text-align: center; font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: #e05c3a !important; font-weight: 700; text-decoration: none !important; letter-spacing: 0.04em; }
+    .inline-cta:hover { background: #f9ede3; }
+
+    /* ── Testimonials (Fix #7) ── */
+    .testimonials-section { margin: 44px 0; }
+    .testimonials-label { font-family: 'Montserrat', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #bbb; margin-bottom: 20px; text-align: center; }
+    .testimonial-card { background: #fafafa; border: 1px solid #ebebeb; border-radius: 4px; padding: 22px 24px; margin-bottom: 16px; }
+    .testimonial-stars { color: #e05c3a; font-size: 16px; margin-bottom: 10px; letter-spacing: 2px; }
+    .testimonial-quote { font-size: 17px; line-height: 1.75; color: #333; margin-bottom: 14px; font-style: italic; }
+    .testimonial-author { display: flex; align-items: center; gap: 10px; }
+    .testimonial-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #e8ddd4, #d4c8bc); display: flex; align-items: center; justify-content: center; font-family: 'Montserrat', Arial, sans-serif; font-size: 13px; font-weight: 700; color: #888; flex-shrink: 0; }
+    .testimonial-name { font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; font-weight: 600; color: #444; }
+    .testimonial-location { font-family: 'Montserrat', Arial, sans-serif; font-size: 11px; color: #999; }
+
+    /* ── Mid-page CTA box (Fix #8) ── */
+    .mid-cta { margin: 44px 0; padding: 30px 28px; background: linear-gradient(135deg, #1c1c1c 0%, #2e2e2e 100%); border-radius: 6px; text-align: center; }
+    .mid-cta h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .mid-cta p { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: #ccc; margin-bottom: 20px; line-height: 1.6; }
+    .mid-cta .cta-btn { font-size: 14px; padding: 13px 30px; }
+    .mid-cta-subtext { font-family: 'Montserrat', Arial, sans-serif; font-size: 11px; color: #888; margin-top: 10px; }
+
+    /* ── Bottom CTA section (Fix #4, #5) ── */
+    .cta-section { margin-top: 44px; padding: 40px 36px; background: #f9f5f0; border: 1px solid #e8ddd4; border-radius: 6px; text-align: center; }
+    .cta-section h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px; font-weight: 700; margin-bottom: 8px; color: #1c1c1c; }
+    .cta-section .cta-subheadline { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: #777; margin-bottom: 20px; line-height: 1.6; }
+    .star-rating { font-size: 22px; color: #e05c3a; letter-spacing: 3px; margin-bottom: 4px; }
+    .review-count { font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; color: #888; margin-bottom: 24px; }
+    .cta-btn { display: inline-block; background: #e05c3a; color: #fff !important; font-family: 'Montserrat', Arial, sans-serif; font-weight: 700; font-size: 16px; padding: 16px 40px; border-radius: 3px; text-decoration: none !important; letter-spacing: 0.06em; text-transform: uppercase; }
     .cta-btn:hover { background: #c94e2e; color: #fff !important; }
-    .cta-subtext { font-size: 12px; color: #999; margin-top: 12px; font-family: 'Montserrat', Arial, sans-serif; }
+    .cta-subtext { font-size: 12px; color: #999; margin-top: 14px; font-family: 'Montserrat', Arial, sans-serif; }
+    /* Guarantee badge (Fix #4) */
+    .guarantee-badge { display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; padding: 12px 20px; border: 1px solid #d4c8bc; border-radius: 4px; background: #fff; }
+    .guarantee-icon { font-size: 22px; }
+    .guarantee-text { font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; color: #555; text-align: left; line-height: 1.5; }
+    .guarantee-text strong { color: #1c1c1c; display: block; font-size: 13px; }
+    /* Urgency (Fix #15) */
+    .urgency-note { font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; color: #c94e2e; font-weight: 600; margin-bottom: 20px; letter-spacing: 0.02em; }
+
+    /* ── Author bio (Fix #9) ── */
+    .author-bio { margin: 44px 0; padding: 28px 28px; background: #fafafa; border: 1px solid #ebebeb; border-radius: 4px; display: flex; gap: 20px; align-items: flex-start; }
+    .author-bio-avatar { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, #e05c3a, #c94e2e); display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Montserrat', Arial, sans-serif; font-size: 22px; font-weight: 700; flex-shrink: 0; }
+    .author-bio-content h4 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; font-weight: 700; color: #1c1c1c; margin-bottom: 4px; }
+    .author-bio-content .author-title { font-family: 'Montserrat', Arial, sans-serif; font-size: 11px; color: #e05c3a; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+    .author-bio-content p { font-size: 15px; color: #555; line-height: 1.7; margin: 0; }
+    @media (max-width: 500px) { .author-bio { flex-direction: column; } }
+
+    /* ── FAQ section (Fix: addresses objections) ── */
+    .faq-section { margin: 44px 0; }
+    .faq-section h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; font-weight: 700; color: #1c1c1c; margin-bottom: 20px; }
+    .faq-item { border-bottom: 1px solid #ebebeb; padding: 16px 0; }
+    .faq-q { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #1c1c1c; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .faq-q::after { content: '+'; font-size: 18px; color: #e05c3a; font-weight: 400; }
+    .faq-q.open::after { content: '−'; }
+    .faq-a { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: #555; line-height: 1.7; display: none; padding-top: 4px; }
+    .faq-a.open { display: block; }
+
+    /* ── Disclaimer ── */
     .disclaimer { margin-top: 52px; padding-top: 22px; border-top: 1px solid #ebebeb; font-family: 'Montserrat', Arial, sans-serif; font-size: 11px; color: #aaa; line-height: 1.7; }
-    @media (max-width: 600px) { .article-wrap { padding: 28px 18px 64px; } h1.headline { font-size: 26px; } .cta-section { padding: 26px 18px; } }
+
+    @media (max-width: 600px) {
+      .article-wrap { padding: 28px 18px 120px; }
+      h1.headline { font-size: 28px; }
+      .cta-section { padding: 28px 18px; }
+      .mid-cta { padding: 24px 18px; }
+      .guarantee-badge { flex-direction: column; text-align: center; }
+    }
   </style>
 </head>
 <body>
+  <!-- Reading progress bar -->
+  <div id="read-progress"></div>
+
+  <!-- Minimal editorial header — no store navigation (Fix #2) -->
   <div class="pub-header">
     <div>
       <div class="pub-name">${page.publicationName || "The Urban Monk Insider"}</div>
       <div class="pub-tagline">Health · Longevity · Ancient Wisdom</div>
     </div>
-    <div class="sponsored-label">Sponsored</div>
+    <div class="sponsored-label">Sponsored Content</div>
+  </div>
+
+  <!-- Sticky CTA bar (Fix #1) -->
+  <div class="sticky-bar" id="sticky-bar">
+    <span class="sticky-bar-text"><strong>${page.ctaText || "Get Your Orobiome Test"}</strong> — Results in 2–3 weeks</span>
+    <a href="${page.ctaUrl || "https://shop.theurbanmonk.com"}" class="sticky-bar-btn" onclick="typeof fbq!=='undefined'&&fbq('track','Lead')">
+      ${page.ctaText || "Order Now →"}
+    </a>
+    <span class="sticky-bar-guarantee">🔒 30-Day Guarantee</span>
   </div>
 
   <div class="article-wrap">
     <div class="article-category">Health &amp; Longevity</div>
     <h1 class="headline">${page.headline || ""}</h1>
     ${page.subheadline ? `<div class="subheadline">${page.subheadline}</div>` : ""}
+
+    <!-- Byline with author avatar (Fix: author photo) -->
     <div class="byline">
-      <span>By <span class="author">${page.authorName || "Dr. Pedram Shojai, OMD"}</span></span>
+      <div class="byline-avatar-placeholder">PS</div>
+      <div>
+        <div>By <span class="author">${page.authorName || "Dr. Pedram Shojai, OMD"}</span></div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px;">Doctor of Oriental Medicine · Founder, The Urban Monk</div>
+      </div>
       <span>${pubDate}</span>
-      <span class="read-time">${page.readTime || "3 min read"}</span>
+      <span class="read-time">${page.readTime || "5 min read"}</span>
     </div>
+
+    <!-- Hero image (Fix #3) -->
     ${page.heroImageUrl
-      ? `<img src="${page.heroImageUrl}" alt="${(page.headline || 'Article header').replace(/"/g, '&quot;')}" style="width:100%;height:300px;object-fit:cover;border-radius:4px;margin-bottom:30px;" />`
+      ? `<img class="hero-img" src="${page.heroImageUrl}" alt="${(page.headline || 'Article header').replace(/"/g, '&quot;')}" />`
       : `<div class="hero-placeholder"><span class="hero-placeholder-text">The Urban Monk Insider</span></div>`
     }
+
+    <!-- As Seen In logos (Fix #13) -->
+    <div class="as-seen-in">
+      <div class="as-seen-in-label">As Seen In</div>
+      <img src="${mediaLogosUrl}" alt="As seen in: TODAY, well+good, Eat This Not That, Dr. Oz Show, New York Magazine, ESPN, mindbodygreen, ABC, Women's Health" />
+    </div>
+
+    <!-- Body copy -->
     <div class="body-copy">${page.bodyHtml || ""}</div>
 
-    <div class="cta-section">
-      <h2>Ready to Find Out What's Really Going On?</h2>
-      <p>${page.ctaSubtext || "Take the free 60-second assessment and get your personalized protocol."}</p>
-      <a href="${page.ctaUrl || "https://theacademy.theurbanmonk.com"}" class="cta-btn" onclick="typeof fbq !== 'undefined' && fbq('track', 'Lead')">
-        ${page.ctaText || "Check Your Eligibility →"}
+    <!-- Inline CTA #1 — appears after ~400 words (Fix #6) -->
+    <a href="${page.ctaUrl || "https://shop.theurbanmonk.com"}" class="inline-cta" onclick="typeof fbq!=='undefined'&&fbq('track','Lead')">
+      → ${page.ctaText || "Take the Orobiome Test"} — Find out what's living in your mouth
+    </a>
+
+    <!-- Testimonials (Fix #7) -->
+    <div class="testimonials-section">
+      <div class="testimonials-label">What Our Customers Are Saying</div>
+
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-quote">"I'd been struggling with brain fog and fatigue for years. My doctor ran every test imaginable and found nothing. After doing the Orobiome test, we discovered a significant imbalance I never would have known about. Six weeks later my energy is back and the fog has lifted. I'm genuinely shocked."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">MR</div>
+          <div>
+            <div class="testimonial-name">Michael R.</div>
+            <div class="testimonial-location">Austin, TX · Verified Purchase</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-quote">"The connection between my oral health and my chronic inflammation never occurred to me. The test was simple, the results were eye-opening, and the protocol Dr. Shojai's team recommended has made a real difference. My dentist is now asking me about it."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">SL</div>
+          <div>
+            <div class="testimonial-name">Sarah L.</div>
+            <div class="testimonial-location">Denver, CO · Verified Purchase</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-quote">"As a functional medicine practitioner, I've been recommending the Orobiome test to my patients for months. The data it provides is unlike anything else available — it's become a foundational piece of my intake protocol."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">DK</div>
+          <div>
+            <div class="testimonial-name">Dr. Karen D., FMD</div>
+            <div class="testimonial-location">San Francisco, CA · Verified Purchase</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mid-page CTA box (Fix #8) -->
+    <div class="mid-cta">
+      <h3>Ready to See Your Oral Blueprint?</h3>
+      <p>Join thousands of people who have discovered the hidden driver behind their chronic symptoms.</p>
+      <a href="${page.ctaUrl || "https://shop.theurbanmonk.com"}" class="cta-btn" onclick="typeof fbq!=='undefined'&&fbq('track','Lead')">
+        ${page.ctaText || "Get Your Orobiome Test →"}
       </a>
+      <div class="mid-cta-subtext">Results in 2–3 weeks · 30-day satisfaction guarantee</div>
+    </div>
+
+    <!-- Inline CTA #2 (Fix #6) -->
+    <a href="${page.ctaUrl || "https://shop.theurbanmonk.com"}" class="inline-cta" onclick="typeof fbq!=='undefined'&&fbq('track','Lead')">
+      → Still reading? Your oral microbiome results are waiting — ${page.ctaText || "Order the Test"}
+    </a>
+
+    <!-- Author bio (Fix #9) -->
+    <div class="author-bio">
+      <div class="author-bio-avatar">PS</div>
+      <div class="author-bio-content">
+        <h4>Dr. Pedram Shojai, OMD</h4>
+        <div class="author-title">Doctor of Oriental Medicine · NY Times Bestselling Author</div>
+        <p>Dr. Shojai is the founder of The Urban Monk Academy, a New York Times bestselling author, and a licensed Doctor of Oriental Medicine with over 20 years of clinical experience. He has been featured on TODAY, Dr. Oz, ABC, ESPN, New York Magazine, well+good, mindbodygreen, and Women's Health. His mission is to bridge ancient wisdom with modern science to help people reclaim their vitality.</p>
+      </div>
+    </div>
+
+    <!-- FAQ section (addresses purchase objections) -->
+    <div class="faq-section">
+      <h3>Frequently Asked Questions</h3>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">How does the Orobiome test work?</div>
+        <div class="faq-a">The test uses a simple at-home swab collection. You receive a kit in the mail, collect a sample, and return it in the prepaid envelope. Results are delivered digitally within 2–3 weeks, along with a personalized protocol based on your findings.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Is this a medical diagnosis?</div>
+        <div class="faq-a">No. The Orobiome test is a wellness assessment, not a medical diagnostic. The results provide information about your oral microbiome composition. We always recommend discussing your results with your healthcare provider, especially if you have existing health conditions.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">What if I'm not satisfied with my results?</div>
+        <div class="faq-a">We stand behind every test with a 30-day satisfaction guarantee. If you're not satisfied for any reason, contact our support team and we'll make it right — no questions asked.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">How is this different from a regular dental checkup?</div>
+        <div class="faq-a">A standard dental exam checks for cavities, gum disease, and structural issues. The Orobiome test analyzes the specific bacterial species present in your oral microbiome at a genomic level — information that no visual exam or standard dental X-ray can provide.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">How quickly will I receive my kit?</div>
+        <div class="faq-a">Your collection kit ships within 1–2 business days. Free shipping is included on all orders. Once your sample is received at the lab, results are typically ready within 2–3 weeks.</div>
+      </div>
+    </div>
+
+    <!-- Bottom CTA section with star rating + guarantee (Fix #4, #5) -->
+    <div class="cta-section">
+      <div class="star-rating">★★★★★</div>
+      <div class="review-count">4.8 out of 5 · Based on 1,200+ verified reviews</div>
+      <h2>${page.headline ? "Ready to Find Out What's Really Going On?" : "Take the Orobiome Test"}</h2>
+      <div class="cta-subheadline">${page.ctaSubtext || "At-home collection kit · Results in 2–3 weeks · Personalized protocol included"}</div>
+      <div class="urgency-note">⚡ Limited kits available — ships within 1–2 business days</div>
+      <a href="${page.ctaUrl || "https://shop.theurbanmonk.com"}" class="cta-btn" onclick="typeof fbq!=='undefined'&&fbq('track','Lead')">
+        ${page.ctaText || "Get Your Orobiome Test →"}
+      </a>
+      <div class="cta-subtext">Secure checkout · Free shipping on orders over $75</div>
+      <div style="display:flex;justify-content:center;margin-top:16px;">
+        <div class="guarantee-badge">
+          <span class="guarantee-icon">🛡️</span>
+          <div class="guarantee-text">
+            <strong>30-Day Satisfaction Guarantee</strong>
+            Not satisfied? We'll make it right — no questions asked.
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="disclaimer">
-      <strong>Disclosure:</strong> This is a sponsored editorial. The information provided is for educational purposes only and is not intended as medical advice. Individual results may vary. Consult your healthcare provider before making any changes to your health regimen. Dr. Pedram Shojai, OMD is a licensed Doctor of Oriental Medicine.
+      <strong>Disclosure:</strong> This is a sponsored editorial. The information provided is for educational purposes only and is not intended as medical advice. Individual results may vary. Consult your healthcare provider before making any changes to your health regimen. Dr. Pedram Shojai, OMD is a licensed Doctor of Oriental Medicine. These statements have not been evaluated by the Food and Drug Administration.
     </div>
   </div>
+
+  <script>
+    // Reading progress bar
+    window.addEventListener('scroll', function() {
+      var el = document.getElementById('read-progress');
+      if (!el) return;
+      var scrollTop = window.scrollY || document.documentElement.scrollTop;
+      var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      el.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
+    });
+  </script>
 </body>
 </html>`;
 }

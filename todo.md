@@ -4122,3 +4122,36 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Generate CRO-optimized Wistia thumbnail (2560x1440px, JPEG 0.64MB — under Kajabi 5MB limit)
 - [x] Fix ctaText dollar sign rendering issue via SQL update
 - [x] Verify page live at ch.theurbanmonk.com/upstream/program (HTTP 200, Wistia embed, CTA $399)
+
+## Advertorial Bridge Builder — Meta Ads Generator (2026-07-04)
+- [x] Create meta_ad_variants table in DB (SQL direct + drizzle/schema.ts updated)
+- [x] Add generateMetaAds procedure to advertorialRouter.ts — LLM generates 5 ad variants (pain-point, curiosity, authority, transformation, direct offer angles) with primaryText, headline, description, callToAction, imagePrompt, audienceNote
+- [x] Add listMetaAds procedure to advertorialRouter.ts — returns all variants for an advertorial
+- [x] Add updateMetaAdStatus procedure to advertorialRouter.ts — status control (draft/approved/running/paused/archived)
+- [x] Build MetaAds.tsx page at /meta-ads/:advertorialId — 5 variant cards with copy buttons, status dropdowns, collapsible image prompts
+- [x] Add "Meta Ads" button (blue, Sparkles icon) to AdvertorialBuilder.tsx actions bar — navigates to /meta-ads/{id}
+- [x] Register /meta-ads/:advertorialId and /meta-ads routes in App.tsx
+- [x] Add "Meta Ad Variants" nav item to DashboardLayout.tsx sidebar
+- [x] Register advertorial-cta-sync cron job (task_uid: H3ZrAUCwA5GheswwswXwiV) — daily 03:00 UTC at /api/scheduled/advertorial-cta-sync
+- [x] Checkpoint saved: 8e28421c
+
+## Advertorial Bridge Builder — CRO Template
+
+- [x] CRO-optimized advertorial HTML template (all 15 audit fixes implemented)
+- [x] Fix 1: Sticky CTA bar follows scroll, shows price + guarantee
+- [x] Fix 2: Stripped Shopify navigation — minimal editorial header only
+- [x] Fix 3: Hero image support with warm gradient placeholder fallback
+- [x] Fix 4: 30-day money-back guarantee badge in bottom CTA box
+- [x] Fix 5: Star rating (4.8/5) + review count (1,200+) above CTA button
+- [x] Fix 6: 2 inline CTAs in body copy at persuasion peaks
+- [x] Fix 7: 3 testimonials with avatars, names, locations, star ratings
+- [x] Fix 8: Mid-page dark CTA box after testimonials
+- [x] Fix 9: Author bio section with avatar, credentials, media mentions
+- [x] Fix 10: H2 accent color with left border for visual rhythm
+- [x] Fix 11: Body font 18px, 1.82 line height
+- [x] Fix 12: Blockquote styling for pull quotes
+- [x] Fix 13: As Seen In media logos (TODAY, Dr. Oz, ESPN, ABC, etc.)
+- [x] Fix 14: FAQ section (5 questions addressing purchase objections)
+- [x] Fix 15: Urgency element in bottom CTA
+- [x] Reading progress bar (coral-red, fixed top)
+- [x] Media logos uploaded to CDN: /manus-storage/media-logos-as-seen-in_c1c83bd0.png

@@ -2653,3 +2653,55 @@ export const metaAdVariants = mysqlTable("meta_ad_variants", {
 });
 export type MetaAdVariant = typeof metaAdVariants.$inferSelect;
 export type InsertMetaAdVariant = typeof metaAdVariants.$inferInsert;
+
+
+// ── Ad Attribution Tables ─────────────────────────────────────────────────────
+// Captures UTM + fbclid data when a visitor clicks through from an ad to a
+// bridge page, then matches that click to a Shopify order via the order webhook.
+
+export const adClicks = mysqlTable("ad_clicks", {
+  id: int("id").autoincrement().primaryKey(),
+  clickToken: varchar("click_token", { length: 64 }).notNull().unique(),
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmMedium: varchar("utm_medium", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 255 }),
+  utmContent: varchar("utm_content", { length: 255 }),
+  utmTerm: varchar("utm_term", { length: 255 }),
+  fbclid: varchar("fbclid", { length: 512 }),
+  advertorialSlug: varchar("advertorial_slug", { length: 255 }),
+  advertorialId: int("advertorial_id"),
+  userAgent: text("user_agent"),
+  ipHash: varchar("ip_hash", { length: 64 }),
+  clickedAt: bigint("clicked_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
+});
+
+export type AdClick = typeof adClicks.$inferSelect;
+export type InsertAdClick = typeof adClicks.$inferInsert;
+
+export const attributedSales = mysqlTable("attributed_sales", {
+  id: int("id").autoincrement().primaryKey(),
+  shopifyOrderId: varchar("shopify_order_id", { length: 64 }).notNull().unique(),
+  shopifyOrderNumber: varchar("shopify_order_number", { length: 32 }),
+  orderTotal: int("order_total").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
+  customerEmail: varchar("customer_email", { length: 320 }),
+  customerName: varchar("customer_name", { length: 255 }),
+  lineItems: text("line_items"),
+  clickToken: varchar("click_token", { length: 64 }),
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmMedium: varchar("utm_medium", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 255 }),
+  utmContent: varchar("utm_content", { length: 255 }),
+  fbclid: varchar("fbclid", { length: 512 }),
+  advertorialSlug: varchar("advertorial_slug", { length: 255 }),
+  attributionType: mysqlEnum("attribution_type", ["direct", "probabilistic", "unattributed"]).default("unattributed").notNull(),
+  capiEventSent: boolean("capi_event_sent").default(false).notNull(),
+  capiEventId: varchar("capi_event_id", { length: 128 }),
+  capiSentAt: bigint("capi_sent_at", { mode: "number" }),
+  orderCreatedAt: bigint("order_created_at", { mode: "number" }),
+  receivedAt: bigint("received_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type AttributedSale = typeof attributedSales.$inferSelect;
+export type InsertAttributedSale = typeof attributedSales.$inferInsert;

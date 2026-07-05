@@ -858,6 +858,55 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
       var docHeight = document.documentElement.scrollHeight - window.innerHeight;
       el.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
     });
+
+    // First-Party Attribution: capture UTM params + fbclid on page load
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var utmSource = params.get('utm_source');
+      var utmMedium = params.get('utm_medium');
+      var utmCampaign = params.get('utm_campaign');
+      var utmContent = params.get('utm_content');
+      var utmTerm = params.get('utm_term');
+      var fbclid = params.get('fbclid');
+      if (!utmSource && !fbclid && !utmCampaign) return;
+      var existingToken = sessionStorage.getItem('_um_click_token');
+      if (existingToken) {
+        appendTokenToCtaLinks(existingToken);
+        return;
+      }
+      fetch('/api/attribution/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          utmSource: utmSource,
+          utmMedium: utmMedium,
+          utmCampaign: utmCampaign,
+          utmContent: utmContent,
+          utmTerm: utmTerm,
+          fbclid: fbclid,
+          advertorialSlug: '${(page.slug || "").replace(/'/g, "\'")}',
+          advertorialId: ${page.id || 0}
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.clickToken) {
+          sessionStorage.setItem('_um_click_token', data.clickToken);
+          appendTokenToCtaLinks(data.clickToken);
+        }
+      })
+      .catch(function() {});
+      function appendTokenToCtaLinks(token) {
+        var ctaLinks = document.querySelectorAll('a[href*="shop.theurbanmonk.com"], a[href*="theurbanmonkstore.myshopify.com"]');
+        ctaLinks.forEach(function(link) {
+          try {
+            var url = new URL(link.href);
+            url.searchParams.set('_um_ct', token);
+            link.href = url.toString();
+          } catch(e) {}
+        });
+      }
+    })();
   </script>
 </body>
 </html>`;

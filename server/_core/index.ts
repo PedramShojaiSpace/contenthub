@@ -1373,6 +1373,22 @@ async function startServer() {
     // Then every 10 minutes
     setInterval(runUploadWatchdog, 10 * 60 * 1000);
   });
+
+  // ── Ad Attribution Endpoints ─────────────────────────────────────────────────
+  // POST /api/attribution/click — called by bridge page JS to record UTM + fbclid
+  app.post("/api/attribution/click", async (req, res) => {
+    const { handleAttributionClick } = await import("../attributionRouter");
+    return handleAttributionClick(req, res);
+  });
+
+  // POST /api/shopify/order-paid — Shopify webhook: orders/paid
+  // Configure in Shopify Admin → Settings → Notifications → Webhooks
+  // URL: https://content.theurbanmonk.com/api/shopify/order-paid
+  // Secret: use INGEST_SECRET or set SHOPIFY_WEBHOOK_SECRET env var
+  app.post("/api/shopify/order-paid", async (req, res) => {
+    const { handleShopifyOrderPaid } = await import("../attributionRouter");
+    return handleShopifyOrderPaid(req, res);
+  });
 }
 
 startServer().catch(console.error);

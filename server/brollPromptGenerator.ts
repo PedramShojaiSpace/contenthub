@@ -85,7 +85,7 @@ export function buildUnderlordPrompt(params: {
   const prompt = `Edit this video with the following steps in order:
 
 1. LAYOUT: Keep the circular presenter avatar in the lower-right corner for the entire video. This is intentional — do not remove it.
-2. B-ROLL: ${footageSource} Place each clip as the full-screen background layer behind the presenter circle. Switch to a new clip every 10-15 seconds. Never reuse the same clip. B-roll should cover 85-90% of the video — only show bare avatar for the first 5 seconds and last 5 seconds.
+2. B-ROLL: ${footageSource} Place the FIRST B-roll clip starting at 0:00 — the very beginning of the video. There must be NO black screen at the opening. The first clip should be a wide, atmospheric shot (nature, landscape, or wellness imagery) that establishes the mood. Place each subsequent clip as the full-screen background layer behind the presenter circle. Switch to a new clip every 10-15 seconds. Never reuse the same clip. B-roll should cover 100% of the video from start to finish — including the opening frame.
 3. CLEANUP: Remove filler words (um, uh, like, you know) and silence gaps longer than 0.5 seconds.
 4. CAPTIONS: Add auto-captions in white text at the lower third. Captions must be readable over the background footage.
 5. MUSIC: Add ambient background music at -18dB volume (nature, meditation, or wellness style).
@@ -188,7 +188,7 @@ ${footerWithBlogUrl}
 
 Return JSON with this exact structure:
 {
-  "sceneDirections": ["8-12 specific B-roll direction strings with timestamps, e.g. 'At 0:00-0:08: aerial shot of mountains at sunrise to establish calm tone'"],
+  "sceneDirections": ["8-12 specific B-roll direction strings with timestamps. CRITICAL: The FIRST entry MUST start at 0:00 (e.g. 'At 0:00-0:10: wide aerial shot of mountains at sunrise to open the video with calm energy'). Every subsequent entry must have a timestamp. Cover the full video duration with no gaps."],
   "youtubeTitle": "vidIQ-optimized title 55-65 chars, primary keyword front-loaded",
   "youtubeDescription": "Full description: 200-300 words of original SEO content with chapter timestamps, then EXACT channel footer provided above",
   "youtubeTags": ["exactly 10 topic-specific tags — do NOT include channel brand tags like Urban Monk or Pedram Shojai"],

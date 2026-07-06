@@ -3853,29 +3853,68 @@ Return BOTH in this exact format:
         }
 
         // Step 9d: YouTube Embed Auto-Trigger — fire-and-forget (non-blocking)
-        // After the post is live on WordPress, automatically search Pedram's YouTube channel
-        // for a video matching the focus keyword and embed it into the article body.
-        // This closes the article-video triangle: article → YouTube embed → GSC signal.
+        // PRIORITY ORDER:
+        // 1. If this content item has a specific YouTube video from the pipeline (videoJobs.youtubeVideoId
+        //    or contentItems.youtubeVideoId), use that exact video ID — no search needed.
+        // 2. Only fall back to a YouTube keyword search if no specific video ID is known.
+        // This prevents the wrong video from being embedded via fuzzy search.
         let youtubeEmbedResult: { embedded: boolean; videoId?: string; videoTitle?: string; message: string } = { embedded: false, message: "skipped" };
         if (newStatus !== "scheduled" && post.id && publishInput.focusKeyword) {
           try {
-            const searchQuery = publishInput.focusKeyword;
-            // Search Pedram's channel for a matching video using Supadata
-            const { getSupadata } = await import("./youtubeRouter");
-            const supadata = getSupadata();
-            if (supadata) {
-              const searchResults = await supadata.youtube.search({
-                query: `${searchQuery} Urban Monk Pedram Shojai`,
-                limit: 5,
-              });
-              const videos = (searchResults as any)?.results ?? [];
-              // Find the first video from Pedram's channel (UCxxx) or best match
-              const bestVideo = videos.find((v: any) =>
-                v.channelId === "UCFjivNnMnVAMvHBvHJnBqRg" || // Urban Monk channel ID
-                (v.channelTitle ?? "").toLowerCase().includes("urban monk") ||
-                (v.channelTitle ?? "").toLowerCase().includes("pedram")
-              ) ?? videos[0];
+            // Step 9d-1: Check if this content item has a specific pipeline video
+            let pipelineVideoId: string | null = null;
+            let pipelineVideoTitle: string | null = null;
+            if (publishInput.contentItemId) {
+              const db9dPre = await getDb();
+              if (db9dPre) {
+                const { contentItems: ciPre, videoJobs: vjPre } = await import("../drizzle/schema");
+                const { eq: eqPre } = await import("drizzle-orm");
+                // Check content item's own youtubeVideoId first
+                const ciPreRows = await db9dPre.select({ youtubeVideoId: ciPre.youtubeVideoId })
+                  .from(ciPre).where(eqPre(ciPre.id, publishInput.contentItemId)).limit(1);
+                if (ciPreRows[0]?.youtubeVideoId) {
+                  pipelineVideoId = ciPreRows[0].youtubeVideoId;
+                } else {
+                  // Fall back to video job's youtubeVideoId
+                  const vjPreRows = await db9dPre.select({
+                    youtubeVideoId: vjPre.youtubeVideoId,
+                    youtubeTitle: vjPre.youtubeTitle,
+                  }).from(vjPre).where(eqPre(vjPre.contentItemId, publishInput.contentItemId)).limit(1);
+                  if (vjPreRows[0]?.youtubeVideoId) {
+                    pipelineVideoId = vjPreRows[0].youtubeVideoId;
+                    pipelineVideoTitle = vjPreRows[0].youtubeTitle ?? null;
+                  }
+                }
+              }
+            }
 
+            // Build bestVideo from pipeline ID or fall back to YouTube search
+            let bestVideo: { id: string; title: string } | null = null;
+            if (pipelineVideoId) {
+              bestVideo = { id: pipelineVideoId, title: pipelineVideoTitle ?? publishInput.title ?? "Urban Monk Video" };
+              console.log(`[YT Embed] Using pipeline video ${pipelineVideoId} for post ${post.id} (skipping YouTube search)`);
+            } else {
+              // Fall back: search YouTube for a matching video
+              const searchQuery = publishInput.focusKeyword;
+              const { getSupadata } = await import("./youtubeRouter");
+              const supadata = getSupadata();
+              if (supadata) {
+                const searchResults = await supadata.youtube.search({
+                  query: `${searchQuery} Urban Monk Pedram Shojai`,
+                  limit: 5,
+                });
+                const videos = (searchResults as any)?.results ?? [];
+                const found = videos.find((v: any) =>
+                  v.channelId === "UCFjivNnMnVAMvHBvHJnBqRg" ||
+                  (v.channelTitle ?? "").toLowerCase().includes("urban monk") ||
+                  (v.channelTitle ?? "").toLowerCase().includes("pedram")
+                ) ?? videos[0];
+                if (found?.id) bestVideo = { id: found.id, title: found.title ?? "" };
+              }
+            }
+
+            // Wrap in the old if-block shape so the rest of the code is unchanged
+            if (true) {
               if (bestVideo?.id) {
                 const videoId = bestVideo.id;
                 const embedBlock = `\n\n<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper"><iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" title="${(bestVideo.title ?? "").replace(/"/g, "&quot;")}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></figure>\n\n`;

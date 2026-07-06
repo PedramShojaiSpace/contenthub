@@ -928,6 +928,7 @@ export const advertorialRouter = router({
         ctaUrl: advertorialPages.ctaUrl,
         createdAt: advertorialPages.createdAt,
         publishedAt: advertorialPages.publishedAt,
+        generationPrompt: advertorialPages.generationPrompt,
       })
       .from(advertorialPages)
       .orderBy(advertorialPages.createdAt);

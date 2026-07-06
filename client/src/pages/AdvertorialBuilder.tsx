@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ export default function AdvertorialBuilder() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showShopifyExport, setShowShopifyExport] = useState(false);
   const [htmlCopied, setHtmlCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"all" | "variants">("all");
 
   // Form state
   const [topic, setTopic] = useState("gut_health");
@@ -351,6 +352,30 @@ export default function AdvertorialBuilder() {
           </div>
         )}
 
+        {/* Tab switcher */}
+        <div className="flex gap-1 mb-6 border-b border-white/10">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === "all" ? "border-[#00d4ff] text-[#00d4ff]" : "border-transparent text-gray-400 hover:text-white"
+            }`}
+          >
+            All Advertorials ({pages?.length ?? 0})
+          </button>
+          <button
+            onClick={() => setActiveTab("variants")}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-2 ${
+              activeTab === "variants" ? "border-[#00d4ff] text-[#00d4ff]" : "border-transparent text-gray-400 hover:text-white"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Auto-Generated LP Variants ({pages?.filter(p => p.generationPrompt?.startsWith("auto-variant")).length ?? 0})
+          </button>
+        </div>
+
+        {activeTab === "variants" ? (
+          <LpVariantsTab pages={pages ?? []} isLoading={pagesLoading} onSelect={(id) => { setSelectedId(id); setActiveTab("all"); }} />
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Pages list */}
           <div className="lg:col-span-2">
@@ -601,7 +626,145 @@ export default function AdvertorialBuilder() {
             ) : null}
           </div>
         </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+// ── LP Variants Tab ──────────────────────────────────────────────────────────
+type PageListItem = {
+  id: number;
+  slug: string;
+  topic: string | null;
+  campaign: string | null;
+  status: string | null;
+  headline: string | null;
+  ctaUrl: string | null;
+  createdAt: Date;
+  publishedAt: Date | null;
+  generationPrompt: string | null;
+};
+
+function LpVariantsTab({
+  pages,
+  isLoading,
+  onSelect,
+}: {
+  pages: PageListItem[];
+  isLoading: boolean;
+  onSelect: (id: number) => void;
+}) {
+  const variants = useMemo(
+    () => pages.filter((p) => p.generationPrompt?.startsWith("auto-variant")),
+    [pages]
+  );
+
+  // Parse campaign/adset/CTR from generationPrompt
+  // Format: "auto-variant topic:X angle:Y campaign:"Z" adset:"W" ctr:N%"
+  function parsePrompt(prompt: string | null) {
+    if (!prompt) return { campaign: null, adset: null, ctr: null, topic: null };
+    const campaign = prompt.match(/campaign:"([^"]+)"/)?.[ 1] ?? null;
+    const adset = prompt.match(/adset:"([^"]+)"/)?.[ 1] ?? null;
+    const ctr = prompt.match(/ctr:([\d.]+)%/)?.[ 1] ?? null;
+    const topic = prompt.match(/topic:(\S+)/)?.[ 1] ?? null;
+    return { campaign, adset, ctr, topic };
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  if (variants.length === 0) {
+    return (
+      <div className="text-center py-16 border border-dashed border-white/10 rounded-xl">
+        <Sparkles className="w-8 h-8 text-gray-600 mx-auto mb-3" />
+        <p className="text-sm text-gray-400 font-medium">No auto-generated variants yet</p>
+        <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+          When a Meta campaign has CTR ≥ 8% with zero purchases, the system automatically generates a new LP variant matched to that ad's hook. Check back after the next daily ads sync.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="p-4 rounded-xl border border-[#00d4ff]/20 bg-[#00d4ff]/5 mb-2">
+        <p className="text-xs text-[#00d4ff] font-semibold">How this works</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Each variant below was auto-generated when the daily ads sync detected a high-CTR / zero-purchase gap. The ad hook is working — the LP wasn't matching the promise. Review each variant, activate it on Shopify, and update your ad's destination URL.
+        </p>
+      </div>
+
+      {variants.map((v) => {
+        const { campaign, adset, ctr, topic } = parsePrompt(v.generationPrompt);
+        const bridgeUrl = `https://ch.theurbanmonk.com/bridge/${v.slug}`;
+        const shopifyUrl = `https://shop.theurbanmonk.com/pages/${v.slug}`;
+        return (
+          <div key={v.id} className="p-5 rounded-xl border border-white/10 bg-[#161b22] hover:border-white/20 transition-colors">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded font-semibold flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" />Auto-Variant
+                  </span>
+                  {ctr && (
+                    <span className="text-[10px] bg-green-500/20 text-green-300 border border-green-500/30 px-2 py-0.5 rounded font-semibold">
+                      {ctr}% CTR
+                    </span>
+                  )}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
+                    v.status === "published" ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                    v.status === "archived" ? "bg-gray-500/20 text-gray-400 border-gray-500/30" :
+                    "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                  }`}>{v.status ?? "draft"}</span>
+                </div>
+                <h3 className="text-sm font-semibold text-white line-clamp-2 mb-1">{v.headline ?? "(Generating headline...)"}</h3>
+                <p className="text-xs font-mono text-gray-500 mb-2">/{v.slug}</p>
+                {campaign && (
+                  <div className="text-xs text-gray-500">
+                    <span className="text-gray-400">Source campaign:</span> {campaign}
+                    {adset && <span className="ml-2 text-gray-500">· Ad set: {adset}</span>}
+                  </div>
+                )}
+                {topic && (
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    <span className="text-gray-400">Topic:</span> {topic.replace(/_/g, " ")}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                <Button size="sm" onClick={() => onSelect(v.id)}
+                  className="bg-[#00d4ff] hover:bg-[#00b8e0] text-black text-xs font-semibold h-7">
+                  <Eye className="w-3 h-3 mr-1.5" />Review
+                </Button>
+                <a href={bridgeUrl} target="_blank" rel="noopener noreferrer">
+                  <Button size="sm" variant="outline" className="border-white/20 text-gray-300 text-xs h-7 w-full">
+                    <ExternalLink className="w-3 h-3 mr-1.5" />Preview
+                  </Button>
+                </a>
+              </div>
+            </div>
+
+            {/* Activation instructions */}
+            {v.status !== "published" && (
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <p className="text-xs font-semibold text-gray-400 mb-2">To activate this variant:</p>
+                <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+                  <li>Click <span className="text-white">Review</span> → then <span className="text-white">Get Shopify HTML</span> to copy the page code</li>
+                  <li>In Shopify Admin → Pages → New page → paste HTML → set handle to <span className="font-mono text-[#00d4ff]">{v.slug}</span></li>
+                  <li>Update your Meta ad destination URL to <span className="font-mono text-[#00d4ff]">{shopifyUrl}</span></li>
+                  <li>Come back here and set status to <span className="text-green-400">Published</span></li>
+                </ol>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

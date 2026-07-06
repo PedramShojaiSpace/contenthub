@@ -4155,3 +4155,13 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Fix 15: Urgency element in bottom CTA
 - [x] Reading progress bar (coral-red, fixed top)
 - [x] Media logos uploaded to CDN: /manus-storage/media-logos-as-seen-in_c1c83bd0.png
+
+## Auto LP Variant Generation System (v-ads)
+
+- [x] Extend daily ads sync: detect CTR/conversion gap — flag campaigns with CTR >= 8% + 0 purchases + spend > $50
+- [x] Build LP variant generator: given ad campaign name/angle/copy, use LLM to generate a new CRO-optimized advertorial variant that matches the specific ad hook (lpVariantGenerator.ts)
+- [x] Auto-create new advertorial page in DB with status=draft and campaign attribution
+- [x] Send owner notification when a new LP variant is auto-generated: includes slug, headline, source campaign, and review instructions in daily briefing
+- [ ] Add variant tracking: link advertorial pages back to source ad campaign for A/B comparison
+- [ ] Build "LP Variants" tab in Content Hub: shows all auto-generated variants with source campaign, status (draft/live), and performance metrics
+- [ ] Add Shopify Admin API token as secret to enable direct page push (no copy-paste required)

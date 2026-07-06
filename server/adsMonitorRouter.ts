@@ -24,6 +24,8 @@ import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { desc, eq, gte, sql } from "drizzle-orm";
 import { mysqlTable, int, varchar, decimal, date, json, bigint, longtext } from "drizzle-orm/mysql-core";
+import { advertorialPages } from "../drizzle/schema";
+import { generateLpVariantForCampaign } from "./lpVariantGenerator";
 
 // ── Inline schema definitions (tables created via SQL) ─────────────────────
 const campaignSnapshots = mysqlTable("campaign_snapshots", {
@@ -391,16 +393,54 @@ Use plain language. Be specific with numbers. No fluff.`;
       generated_at = VALUES(generated_at)
   `);
 
+  // ── LP Variant Gap Detection ────────────────────────────────────────────
+  // Detect campaigns with high CTR (>= 8%) but zero purchases and spend > $50
+  // These are "click magnets" where the ad works but the LP isn't converting
+  const lpGapCandidates = snapshots.filter(s =>
+    s.status === "ACTIVE" &&
+    parseFloat(s.ctr || "0") >= 8.0 &&
+    s.purchases === 0 &&
+    s.spendCents > 5000 // $50+
+  );
+
+  let lpVariantsGenerated = 0;
+  const lpVariantLinks: string[] = [];
+
+  for (const candidate of lpGapCandidates) {
+    try {
+      console.log(`[AdsMonitor] LP gap detected for "${candidate.adsetName}" — CTR ${parseFloat(candidate.ctr||"0").toFixed(1)}%, $${(candidate.spendCents/100).toFixed(0)} spend, 0 purchases. Generating LP variant...`);
+      const variant = await generateLpVariantForCampaign({
+        campaignName: candidate.campaignName,
+        adsetName: candidate.adsetName,
+        ctr: parseFloat(candidate.ctr || "0"),
+        spendCents: candidate.spendCents,
+      });
+      lpVariantsGenerated++;
+      lpVariantLinks.push(`${variant.slug} (${variant.headline?.substring(0, 60)}...)`);
+      console.log(`[AdsMonitor] LP variant created: slug=${variant.slug}`);
+    } catch (e) {
+      console.error(`[AdsMonitor] LP variant generation failed for "${candidate.adsetName}":`, e);
+    }
+  }
+
   // Notify owner
   const urgentActions = pauseCount + scaleCount;
-  if (urgentActions > 0) {
+  const notifyContent = [
+    `ROAS: ${totalRoas.toFixed(2)}x | Spend: $${(totalSpend/100).toFixed(0)} | Revenue: $${(totalRevenue/100).toFixed(0)}`,
+    pauseCount > 0 ? `⛔ PAUSE: ${pauseList.map(p => p.adsetName).join(", ")}` : "",
+    scaleCount > 0 ? `🚀 SCALE: ${scaleList.map(p => p.adsetName).join(", ")}` : "",
+    lpVariantsGenerated > 0 ? `\n🎯 LP VARIANTS AUTO-GENERATED (${lpVariantsGenerated}):\n${lpVariantLinks.map(l => `  • ${l}`).join("\n")}\nReview in Content Hub → Advertorials → filter by status=draft` : "",
+    "\nOpen the Campaign Monitor in the Content Hub for the full briefing.",
+  ].filter(Boolean).join("\n");
+
+  if (urgentActions > 0 || lpVariantsGenerated > 0) {
     await notifyOwner({
-      title: `📊 Daily Ads Briefing — ${urgentActions} action${urgentActions > 1 ? "s" : ""} needed`,
-      content: `ROAS: ${totalRoas.toFixed(2)}x | Spend: $${(totalSpend/100).toFixed(0)} | Revenue: $${(totalRevenue/100).toFixed(0)}\n\n${pauseCount > 0 ? `⛔ PAUSE: ${pauseList.map(p => p.adsetName).join(", ")}\n` : ""}${scaleCount > 0 ? `🚀 SCALE: ${scaleList.map(p => p.adsetName).join(", ")}\n` : ""}\nOpen the Campaign Monitor in the Content Hub for the full briefing.`,
+      title: `📊 Daily Ads Briefing${lpVariantsGenerated > 0 ? ` + ${lpVariantsGenerated} LP variant${lpVariantsGenerated > 1 ? "s" : ""} generated` : urgentActions > 0 ? ` — ${urgentActions} action${urgentActions > 1 ? "s" : ""} needed` : ""}`,
+      content: notifyContent,
     });
   }
 
-  return { snapshotCount: snapshots.length, pauseCount, scaleCount, briefingText };
+  return { snapshotCount: snapshots.length, pauseCount, scaleCount, briefingText, lpVariantsGenerated };
 }
 
 // ── tRPC Router ────────────────────────────────────────────────────────────

@@ -3917,7 +3917,8 @@ Return BOTH in this exact format:
             if (true) {
               if (bestVideo?.id) {
                 const videoId = bestVideo.id;
-                const embedBlock = `\n\n<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper"><iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" title="${(bestVideo.title ?? "").replace(/"/g, "&quot;")}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></figure>\n\n`;
+                // Use proper Gutenberg wp:embed block format so the block editor renders it correctly
+                const embedBlock = `\n\n<!-- wp:embed {"url":"https://www.youtube.com/watch?v=${videoId}","type":"video","providerNameSlug":"youtube","responsive":true,"className":"wp-embed-aspect-16-9 wp-has-aspect-ratio"} -->\n<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">\nhttps://www.youtube.com/watch?v=${videoId}\n</div></figure>\n<!-- /wp:embed -->\n\n`;
 
                 // Inject after the second </p> tag for maximum dwell time
                 const wpBaseUrl2 = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");

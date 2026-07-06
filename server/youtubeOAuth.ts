@@ -55,6 +55,7 @@ export function getYouTubeAuthUrl(): string {
 export async function exchangeYouTubeCode(code: string): Promise<{
   refreshToken: string;
   channelTitle: string;
+  channelId: string;
 }> {
   const oauth2Client = getYouTubeOAuthClient();
   const { tokens } = await oauth2Client.getToken(code);

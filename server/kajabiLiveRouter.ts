@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
 import { kajabiLiveSessions } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
@@ -290,6 +291,7 @@ The posts should tease the content of the clip and invite people to join the com
 
   delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
     await db.delete(kajabiLiveSessions).where(eq(kajabiLiveSessions.id, input.id));
     return { success: true };
   }),

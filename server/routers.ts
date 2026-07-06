@@ -7259,11 +7259,10 @@ https://www.youtube.com/watch?v=PFAaZMdoE34
           ],
         });
 
-        const articleHtml = response.choices?.[0]?.message?.content ?? "";
+                const articleHtml = (response.choices?.[0]?.message?.content ?? "") as string;
         if (!articleHtml || articleHtml.length < 500) {
           throw new Error("LLM returned empty or too-short content");
         }
-
         await updateWpPostContent(10224, articleHtml);
         return { success: true, contentLength: articleHtml.length };
       }),

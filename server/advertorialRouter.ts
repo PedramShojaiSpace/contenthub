@@ -119,6 +119,8 @@ async function createPausedMetaAd(opts: {
   );
 
   // Step 2: Ad Set
+  // NOTE: targeting, object_story_spec, asset_feed_spec, and creative must be pre-stringified.
+  // metaPostAdv JSON.stringifies nested objects — pre-stringifying prevents double-encoding.
   const adSetRes = await metaPostAdv<{ id: string }>(
     `${actId}/adsets`,
     {
@@ -128,7 +130,7 @@ async function createPausedMetaAd(opts: {
       billing_event: "IMPRESSIONS",
       optimization_goal: "IMPRESSIONS",
       bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-      targeting: {
+      targeting: JSON.stringify({
         age_min: 35,
         age_max: 65,
         geo_locations: { countries: ["US", "CA", "GB", "AU", "NZ"] },
@@ -136,7 +138,7 @@ async function createPausedMetaAd(opts: {
         facebook_positions: ["feed"],
         instagram_positions: ["stream"],
         targeting_automation: { advantage_audience: 0 },
-      },
+      }),
       status: "PAUSED",
     },
     opts.accessToken
@@ -157,8 +159,8 @@ async function createPausedMetaAd(opts: {
     `${actId}/adcreatives`,
     {
       name: `${opts.campaignName} — Creative`,
-      object_story_spec: { page_id: opts.pageId },
-      asset_feed_spec: {
+      object_story_spec: JSON.stringify({ page_id: opts.pageId }),
+      asset_feed_spec: JSON.stringify({
         images: [{ hash: opts.imageHash }],
         bodies: [{ text: opts.primaryText }],
         titles: [{ text: opts.headline }],
@@ -166,7 +168,7 @@ async function createPausedMetaAd(opts: {
         link_urls: [{ website_url: opts.landingUrl }],
         call_to_action_types: [ctaEnum],
         ad_formats: ["SINGLE_IMAGE"],
-      },
+      }),
     },
     opts.accessToken
   );
@@ -177,7 +179,7 @@ async function createPausedMetaAd(opts: {
     {
       name: `${opts.campaignName} — Ad`,
       adset_id: adSetRes.id,
-      creative: { creative_id: creativeRes.id },
+      creative: JSON.stringify({ creative_id: creativeRes.id }),
       status: "PAUSED",
     },
     opts.accessToken

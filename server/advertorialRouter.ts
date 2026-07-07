@@ -50,20 +50,34 @@ async function metaPostAdv<T = any>(
   return json as T;
 }
 
-/** Upload an image URL to Meta's ad image library and return the imageHash */
+/**
+ * Upload an image to Meta's ad image library using the bytes (base64) method.
+ * The url-based method requires special app permissions not available to most Marketing API apps.
+ * The bytes method works with standard ads_management scope.
+ */
 async function uploadImageToMeta(
   imageUrl: string,
   adAccountId: string,
   accessToken: string
 ): Promise<string> {
+  // Step 1: Download the image from S3/CDN into a buffer
+  const imgRes = await fetch(imageUrl);
+  if (!imgRes.ok) throw new Error(`Failed to download image for Meta upload: HTTP ${imgRes.status}`);
+  const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+  const base64Image = imgBuffer.toString("base64");
+
+  // Step 2: Upload to Meta using base64 bytes in a multipart POST
+  const filename = `ad_image_${Date.now()}.jpg`;
   const actId = `act_${adAccountId}`;
+
+  const formData = new FormData();
+  formData.append("bytes", base64Image);
+  formData.append("name", filename);
+  formData.append("access_token", accessToken);
+
   const res = await fetch(`${META_BASE_URL}/${actId}/adimages`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      url: imageUrl,
-      access_token: accessToken,
-    }).toString(),
+    body: formData,
   });
   const json = (await res.json()) as any;
   if (!res.ok || json.error) {
@@ -72,7 +86,7 @@ async function uploadImageToMeta(
   }
   // Response: { images: { "<filename>": { hash: "...", url: "..." } } }
   const firstEntry = Object.values(json.images ?? {})[0] as any;
-  if (!firstEntry?.hash) throw new Error("Meta image upload returned no hash");
+  if (!firstEntry?.hash) throw new Error(`Meta image upload returned no hash. Response: ${JSON.stringify(json)}`);
   return firstEntry.hash as string;
 }
 

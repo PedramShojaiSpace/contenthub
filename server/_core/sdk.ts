@@ -228,6 +228,7 @@ class SDKServer {
       console.warn("[Auth] Missing session cookie");
       return null;
     }
+    console.log("[Auth] Verifying session cookie (first 20 chars):", cookieValue.substring(0, 20));
 
     try {
       const secretKey = this.getSessionSecret();

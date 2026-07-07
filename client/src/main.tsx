@@ -128,6 +128,7 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       fetch: safeTrpcFetch,
+      maxURLLength: 100, // Force POST for all requests to avoid 414 URL Too Large
     }),
   ],
 });

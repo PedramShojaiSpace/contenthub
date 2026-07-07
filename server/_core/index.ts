@@ -1242,6 +1242,7 @@ async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      allowMethodOverride: true,
       onError({ path, error }) {
         // Log every tRPC error with full stack trace to trace JSON.parse crashes
         const cause = error.cause;

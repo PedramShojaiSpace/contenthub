@@ -89,7 +89,10 @@ export default function AdvertorialBuilder() {
   const regenerateMutation = trpc.advertorial.regenerate.useMutation({
     onSuccess: () => {
       toast.success("Copy regenerated with fresh AI.");
-      if (selectedId) utils.advertorial.get.invalidate({ id: selectedId });
+      if (selectedId) {
+        utils.advertorial.get.invalidate({ id: selectedId });
+        utils.advertorial.getShopifyHtml.invalidate({ id: selectedId });
+      }
     },
     onError: (err) => toast.error(err.message),
   });

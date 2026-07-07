@@ -188,8 +188,8 @@ export default function MetaAds() {
   const [, navigate] = useLocation();
   const advertorialId = params?.advertorialId ? parseInt(params.advertorialId) : null;
 
-  // Fetch the advertorial details
-  const { data: advertorial } = trpc.advertorial.get.useQuery(
+  // Fetch lightweight advertorial summary (headline only, no bodyHtml)
+  const { data: advertorial } = trpc.advertorial.getSummary.useQuery(
     { id: advertorialId! },
     { enabled: !!advertorialId }
   );
@@ -231,7 +231,7 @@ export default function MetaAds() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-gray-100">
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#0d1117] text-gray-100">
       {/* Sticky header */}
       <div className="border-b border-white/10 bg-[#0d1117]/90 backdrop-blur sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">

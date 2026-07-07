@@ -982,6 +982,26 @@ export const advertorialRouter = router({
       return page;
     }),
 
+  // Lightweight summary — only returns fields needed for MetaAds page header (no bodyHtml)
+  getSummary: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [page] = await db
+        .select({
+          id: advertorialPages.id,
+          headline: advertorialPages.headline,
+          topic: advertorialPages.topic,
+          status: advertorialPages.status,
+          ctaUrl: advertorialPages.ctaUrl,
+        })
+        .from(advertorialPages)
+        .where(eq(advertorialPages.id, input.id));
+      if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+      return page;
+    }),
+
   getTopics: protectedProcedure.query(async () => {
     return Object.entries(TOPIC_CONFIGS).map(([key, config]) => ({
       key,

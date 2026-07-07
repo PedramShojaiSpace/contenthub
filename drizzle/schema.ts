@@ -2647,7 +2647,7 @@ export const metaAdVariants = mysqlTable("meta_ad_variants", {
   // Targeting notes
   audienceNote: text("audience_note"),
   // Status
-  status: mysqlEnum("ad_variant_status", ["draft", "approved", "running", "paused", "archived"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "approved", "running", "paused", "archived"]).default("draft").notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
 });

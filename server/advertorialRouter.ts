@@ -895,6 +895,53 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
 </html>`;
 }
 
+/**
+ * renderShopifySafeHtml — full CRO advertorial with styles injected via <script>
+ * Shopify's editor strips <style> tags but not <script> tags, so we embed all
+ * CSS inside a JS snippet that dynamically creates a <style> element at runtime.
+ */
+export function renderShopifySafeHtml(page: AdvertorialPage): string {
+  const fullHtml = renderAdvertorialHtml(page);
+  // Extract the <style> block
+  const styleMatch = fullHtml.match(/<style>([\s\S]*?)<\/style>/);
+  const css = styleMatch ? styleMatch[1] : '';
+  // Extract Google Fonts link href
+  const fontMatch = fullHtml.match(/href=["'](https:\/\/fonts\.googleapis\.com\/css2[^"']+)["']/);
+  const fontHref = fontMatch
+    ? fontMatch[1]
+    : 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Montserrat:wght@400;500;600;700&display=swap';
+  // Escape CSS for JS template literal
+  const cssEscaped = css.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+  // Build the style injector script (uses string concat to avoid TS template literal issues)
+  const styleInjector = [
+    '<script>',
+    '(function() {',
+    '  var style = document.createElement(\'style\');',
+    '  style.textContent = `' + cssEscaped + '`;',
+    '  document.head.appendChild(style);',
+    '  var l1 = document.createElement(\'link\');',
+    '  l1.rel = \'preconnect\'; l1.href = \'https://fonts.googleapis.com\';',
+    '  document.head.appendChild(l1);',
+    '  var l2 = document.createElement(\'link\');',
+    '  l2.rel = \'preconnect\'; l2.href = \'https://fonts.gstatic.com\'; l2.crossOrigin = \'anonymous\';',
+    '  document.head.appendChild(l2);',
+    '  var l3 = document.createElement(\'link\');',
+    '  l3.rel = \'stylesheet\';',
+    `  l3.href = '${fontHref}';`,
+    '  document.head.appendChild(l3);',
+    '})();',
+    '<\/script>',
+  ].join('\n');
+  // Strip <html>, <head>, <body> wrappers and the <style> block (Shopify provides those)
+  const body = fullHtml
+    .replace(/<style>[\s\S]*?<\/style>/g, '')
+    .replace(/<link[^>]+fonts\.(googleapis|gstatic)[^>]*>/g, '')
+    .replace(/^[\s\S]*?<body[^>]*>/i, '')
+    .replace(/<\/body>[\s\S]*$/i, '')
+    .trim();
+  return styleInjector + '\n' + body;
+}
+
 // ─── Router ────────────────────────────────────────────────────────────────────
 export const advertorialRouter = router({
   list: protectedProcedure.query(async () => {
@@ -1027,18 +1074,19 @@ export const advertorialRouter = router({
       const [page] = await db.select().from(advertorialPages).where(eq(advertorialPages.id, input.id));
       if (!page) throw new TRPCError({ code: "NOT_FOUND" });
       return {
-        html: renderShopifyPageHtml(page),
-        shopifyAdminUrl: `https://admin.shopify.com/store/theurbanmonkstore/pages/new`,
-        pageUrl: `https://theurbanmonkstore.myshopify.com/pages/${page.slug}`,
+        html: renderShopifySafeHtml(page),
+        shopifyAdminUrl: `https://admin.shopify.com/store/theurbanmonkstore/pages`,
+        pageUrl: `https://shop.theurbanmonk.com/pages/${page.slug}`,
         instructions: [
-          "1. Go to Shopify Admin → Online Store → Pages → Add page",
-          `2. Set the page title to: ${page.headline || page.slug}`,
-          `3. Set the URL handle to: ${page.slug}`,
-          "4. Click the </> (HTML) button in the content editor",
+          "1. Go to Shopify Admin → Online Store → Pages",
+          `2. Find the page with handle: ${page.slug} (or create a new one)`,
+          "3. Click the </> (HTML) button in the content editor",
+          "4. Select all existing content and delete it",
           "5. Paste the HTML below into the editor",
           "6. Click Save",
-          `7. Your page will be live at: https://theurbanmonkstore.myshopify.com/pages/${page.slug}`,
-          "8. Use this URL as your Meta ad destination — the CTA goes directly to Shopify checkout",
+          `7. Your page will be live at: https://shop.theurbanmonk.com/pages/${page.slug}`,
+          "8. Styles are embedded in a <script> tag — Shopify cannot strip them",
+          "9. Use this URL as your Meta ad destination — the CTA goes directly to Shopify checkout",
         ],
       };
     }),

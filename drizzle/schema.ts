@@ -2648,6 +2648,14 @@ export const metaAdVariants = mysqlTable("meta_ad_variants", {
   audienceNote: text("audience_note"),
   // Status
   status: mysqlEnum("status", ["draft", "approved", "running", "paused", "archived"]).default("draft").notNull(),
+  // Meta push tracking
+  imageHash: varchar("image_hash", { length: 64 }),
+  metaCampaignId: varchar("meta_campaign_id", { length: 64 }),
+  metaAdSetId: varchar("meta_ad_set_id", { length: 64 }),
+  metaCreativeId: varchar("meta_creative_id", { length: 64 }),
+  metaAdId: varchar("meta_ad_id", { length: 64 }),
+  metaPushError: text("meta_push_error"),
+  metaPushedAt: bigint("meta_pushed_at", { mode: "number" }),
   createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
 });

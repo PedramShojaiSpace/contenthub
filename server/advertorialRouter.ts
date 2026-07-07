@@ -14,6 +14,168 @@ import { advertorialPages, AdvertorialPage, metaAdVariants } from "../drizzle/sc
 import { eq } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { TRPCError } from "@trpc/server";
+import { generateImage } from "./_core/imageGeneration";
+import { getMetaAdsConfig } from "./metaAdsClient";
+
+// ─── Meta push helpers (local to this router) ─────────────────────────────────
+const META_API_VERSION = "v19.0";
+const META_BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
+const ADVERTORIAL_LANDING_URL = "https://theacademy.theurbanmonk.com/a/2148285846/PpCdamnj";
+
+async function metaPostAdv<T = any>(
+  endpoint: string,
+  params: Record<string, unknown>,
+  accessToken: string
+): Promise<T> {
+  const url = `${META_BASE_URL}/${endpoint}`;
+  const flatParams: Record<string, string> = { access_token: accessToken };
+  for (const [k, v] of Object.entries(params)) {
+    if (Array.isArray(v) || (typeof v === "object" && v !== null)) {
+      flatParams[k] = JSON.stringify(v);
+    } else {
+      flatParams[k] = String(v);
+    }
+  }
+  const body = new URLSearchParams(flatParams);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const json = (await res.json()) as any;
+  if (!res.ok || json.error) {
+    const msg = json.error?.message ?? `HTTP ${res.status}`;
+    throw new Error(`Meta API error on POST /${endpoint}: ${msg}`);
+  }
+  return json as T;
+}
+
+/** Upload an image URL to Meta's ad image library and return the imageHash */
+async function uploadImageToMeta(
+  imageUrl: string,
+  adAccountId: string,
+  accessToken: string
+): Promise<string> {
+  const actId = `act_${adAccountId}`;
+  const res = await fetch(`${META_BASE_URL}/${actId}/adimages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      url: imageUrl,
+      access_token: accessToken,
+    }).toString(),
+  });
+  const json = (await res.json()) as any;
+  if (!res.ok || json.error) {
+    const msg = json.error?.message ?? `HTTP ${res.status}`;
+    throw new Error(`Meta image upload error: ${msg}`);
+  }
+  // Response: { images: { "<filename>": { hash: "...", url: "..." } } }
+  const firstEntry = Object.values(json.images ?? {})[0] as any;
+  if (!firstEntry?.hash) throw new Error("Meta image upload returned no hash");
+  return firstEntry.hash as string;
+}
+
+/** Create a full PAUSED ad (campaign → adSet → creative → ad) in Meta Ads Manager */
+async function createPausedMetaAd(opts: {
+  campaignName: string;
+  imageHash: string;
+  primaryText: string;
+  headline: string;
+  description: string;
+  callToAction: string;
+  landingUrl: string;
+  adAccountId: string;
+  accessToken: string;
+  pageId: string;
+}): Promise<{ campaignId: string; adSetId: string; creativeId: string; adId: string }> {
+  const actId = `act_${opts.adAccountId}`;
+
+  // Step 1: Campaign
+  const campaignRes = await metaPostAdv<{ id: string }>(
+    `${actId}/campaigns`,
+    {
+      name: opts.campaignName,
+      objective: "OUTCOME_TRAFFIC",
+      status: "PAUSED",
+      special_ad_categories: [],
+      is_adset_budget_sharing_enabled: false,
+    },
+    opts.accessToken
+  );
+
+  // Step 2: Ad Set
+  const adSetRes = await metaPostAdv<{ id: string }>(
+    `${actId}/adsets`,
+    {
+      name: `${opts.campaignName} — Ad Set`,
+      campaign_id: campaignRes.id,
+      daily_budget: "500", // $5.00 placeholder — set before activating
+      billing_event: "IMPRESSIONS",
+      optimization_goal: "IMPRESSIONS",
+      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+      targeting: {
+        age_min: 35,
+        age_max: 65,
+        geo_locations: { countries: ["US", "CA", "GB", "AU", "NZ"] },
+        publisher_platforms: ["facebook", "instagram"],
+        facebook_positions: ["feed"],
+        instagram_positions: ["stream"],
+        targeting_automation: { advantage_audience: 0 },
+      },
+      status: "PAUSED",
+    },
+    opts.accessToken
+  );
+
+  // Map CTA text to Meta enum value
+  const ctaMap: Record<string, string> = {
+    "Learn More": "LEARN_MORE",
+    "Shop Now": "SHOP_NOW",
+    "Get Offer": "GET_OFFER",
+    "Sign Up": "SIGN_UP",
+    "Book Now": "BOOK_TRAVEL",
+  };
+  const ctaEnum = ctaMap[opts.callToAction] ?? "LEARN_MORE";
+
+  // Step 3: Creative
+  const creativeRes = await metaPostAdv<{ id: string }>(
+    `${actId}/adcreatives`,
+    {
+      name: `${opts.campaignName} — Creative`,
+      object_story_spec: { page_id: opts.pageId },
+      asset_feed_spec: {
+        images: [{ hash: opts.imageHash }],
+        bodies: [{ text: opts.primaryText }],
+        titles: [{ text: opts.headline }],
+        descriptions: [{ text: opts.description }],
+        link_urls: [{ website_url: opts.landingUrl }],
+        call_to_action_types: [ctaEnum],
+        ad_formats: ["SINGLE_IMAGE"],
+      },
+    },
+    opts.accessToken
+  );
+
+  // Step 4: Ad
+  const adRes = await metaPostAdv<{ id: string }>(
+    `${actId}/ads`,
+    {
+      name: `${opts.campaignName} — Ad`,
+      adset_id: adSetRes.id,
+      creative: { creative_id: creativeRes.id },
+      status: "PAUSED",
+    },
+    opts.accessToken
+  );
+
+  return {
+    campaignId: campaignRes.id,
+    adSetId: adSetRes.id,
+    creativeId: creativeRes.id,
+    adId: adRes.id,
+  };
+}
 
 // ─── Shopify supplement product map ───────────────────────────────────────────
 // variant_id is the numeric Shopify variant ID (from GID gid://shopify/ProductVariant/{id})
@@ -1342,5 +1504,112 @@ Return a JSON array of exactly 5 objects. Each object must have:
       await db.update(metaAdVariants).set({ status: input.status, updatedAt: Date.now() }).where(eq(metaAdVariants.id, input.id));
       const [updated] = await db.select().from(metaAdVariants).where(eq(metaAdVariants.id, input.id));
       return updated;
+    }),
+
+  // ─── Generate image + push full ad to Meta Ads Manager (PAUSED draft) ──────────────────
+  generateImageAndPushToMeta: protectedProcedure
+    .input(z.object({ variantId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // 1. Fetch the variant
+      const [variant] = await db.select().from(metaAdVariants).where(eq(metaAdVariants.id, input.variantId));
+      if (!variant) throw new TRPCError({ code: "NOT_FOUND", message: "Variant not found" });
+      if (!variant.imagePrompt) throw new TRPCError({ code: "BAD_REQUEST", message: "Variant has no imagePrompt" });
+
+      // 2. Get Meta credentials
+      let config: ReturnType<typeof getMetaAdsConfig>;
+      try {
+        config = getMetaAdsConfig();
+      } catch (err: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Meta credentials missing: ${err.message}` });
+      }
+
+      const pageId = process.env.META_PAGE_ID ?? "";
+      if (!pageId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "META_PAGE_ID is not set" });
+
+      // 3. Generate the ad image (focus on anonymous health struggle, not user likeness)
+      const imagePrompt = variant.imagePrompt as string; // null check done above
+      let imageUrl: string;
+      try {
+        const result = await generateImage({ prompt: imagePrompt });
+        if (!result.url) throw new Error("generateImage returned no URL");
+        imageUrl = result.url;
+      } catch (err: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Image generation failed: ${err.message}` });
+      }
+
+      // 4. Upload image to Meta ad image library → get imageHash
+      let imageHash: string;
+      try {
+        imageHash = await uploadImageToMeta(imageUrl, config.adAccountId, config.accessToken);
+      } catch (err: any) {
+        // Store imageUrl even if Meta upload fails, so it’s not lost
+        await db.update(metaAdVariants).set({
+          imageUrl,
+          metaPushError: `Meta image upload failed: ${err.message}`,
+          updatedAt: Date.now(),
+        }).where(eq(metaAdVariants.id, input.variantId));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Meta image upload failed: ${err.message}` });
+      }
+
+      // 5. Persist imageUrl + imageHash before creating the ad (so we don’t lose them on failure)
+      await db.update(metaAdVariants).set({
+        imageUrl,
+        imageHash,
+        updatedAt: Date.now(),
+      }).where(eq(metaAdVariants.id, input.variantId));
+
+      // 6. Fetch the parent advertorial for campaign naming
+      const [page] = await db.select().from(advertorialPages).where(eq(advertorialPages.id, variant.advertorialId));
+      const topicLabel = page?.topic ? (TOPIC_CONFIGS[page.topic]?.label ?? page.topic) : "Urban Monk";
+      const campaignName = `UM — ${topicLabel} — V${variant.variantNumber} — ${variant.headline.slice(0, 40)}`;
+
+      // 7. Create PAUSED ad in Meta Ads Manager
+      let metaIds: { campaignId: string; adSetId: string; creativeId: string; adId: string };
+      try {
+        metaIds = await createPausedMetaAd({
+          campaignName,
+          imageHash,
+          primaryText: variant.primaryText,
+          headline: variant.headline,
+          description: variant.description ?? "",
+          callToAction: variant.callToAction,
+          landingUrl: page?.ctaUrl ?? ADVERTORIAL_LANDING_URL,
+          adAccountId: config.adAccountId,
+          accessToken: config.accessToken,
+          pageId,
+        });
+      } catch (err: any) {
+        await db.update(metaAdVariants).set({
+          metaPushError: err.message,
+          updatedAt: Date.now(),
+        }).where(eq(metaAdVariants.id, input.variantId));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Meta ad creation failed: ${err.message}` });
+      }
+
+      // 8. Update DB with all Meta IDs
+      await db.update(metaAdVariants).set({
+        metaCampaignId: metaIds.campaignId,
+        metaAdSetId: metaIds.adSetId,
+        metaCreativeId: metaIds.creativeId,
+        metaAdId: metaIds.adId,
+        status: "paused",
+        metaPushError: null,
+        metaPushedAt: Date.now(),
+        updatedAt: Date.now(),
+      }).where(eq(metaAdVariants.id, input.variantId));
+
+      const adsManagerUrl = `https://www.facebook.com/adsmanager/manage/campaigns?act=${config.adAccountId}&campaign_ids=${metaIds.campaignId}`;
+
+      return {
+        success: true,
+        imageUrl,
+        imageHash,
+        metaAdId: metaIds.adId,
+        metaCampaignId: metaIds.campaignId,
+        adsManagerUrl,
+      };
     }),
 });

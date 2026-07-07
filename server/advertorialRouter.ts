@@ -690,9 +690,9 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
     </div>
 
     <!-- Hero image (Fix #3) -->
-    ${page.heroImageUrl
-      ? `<img class="hero-img" src="${page.heroImageUrl}" alt="${(page.headline || 'Article header').replace(/"/g, '&quot;')}" />`
-      : `<div class="hero-placeholder"><span class="hero-placeholder-text">The Urban Monk Insider</span></div>`
+    ${(page.heroImageUrl || (page.topic === 'orobiome' ? 'https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/orobiome-hero-ZCUZwYhXHosbVwqbwAuRaX.png' : null))
+      ? `<img class="hero-img" src="${page.heroImageUrl || 'https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/orobiome-hero-ZCUZwYhXHosbVwqbwAuRaX.png'}" alt="${(page.headline || 'Article header').replace(/"/g, '&quot;')}" />`
+      : `<div class="hero-placeholder" style="background:linear-gradient(135deg,#1c1c1c 0%,#2e2e2e 50%,#1c1c1c 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;"><span style="font-family:'Montserrat',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#e05c3a;">The Urban Monk</span><span style="font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(22px,4vw,36px);font-weight:600;color:#f5f0ea;letter-spacing:0.04em;text-align:center;padding:0 24px;">Insider</span><span style="width:40px;height:2px;background:#e05c3a;"></span></div>`
     }
 
     <!-- As Seen In logos (Fix #13) -->

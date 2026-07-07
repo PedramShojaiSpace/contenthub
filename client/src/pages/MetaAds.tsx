@@ -8,7 +8,6 @@ import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Sparkles,
@@ -21,14 +20,15 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronUp,
+  FileText,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-zinc-100 text-zinc-600 border-zinc-200",
-  approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  running: "bg-blue-50 text-blue-700 border-blue-200",
-  paused: "bg-amber-50 text-amber-700 border-amber-200",
-  archived: "bg-red-50 text-red-600 border-red-200",
+  draft: "bg-zinc-700/50 text-zinc-300 border-zinc-600",
+  approved: "bg-emerald-900/40 text-emerald-400 border-emerald-700",
+  running: "bg-blue-900/40 text-blue-400 border-blue-700",
+  paused: "bg-amber-900/40 text-amber-400 border-amber-700",
+  archived: "bg-red-900/40 text-red-400 border-red-700",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -57,10 +57,10 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="p-1.5 rounded hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-colors"
+      className="p-1.5 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors"
       title="Copy to clipboard"
     >
-      {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+      {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
     </button>
   );
 }
@@ -87,14 +87,14 @@ function AdVariantCard({
   const [showImagePrompt, setShowImagePrompt] = useState(false);
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+    <div className="rounded-xl border border-white/10 bg-[#161b22] overflow-hidden">
       {/* Card header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-zinc-50 border-b border-zinc-200">
+      <div className="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+          <span className="text-xs font-bold text-[#00d4ff] uppercase tracking-widest">
             Variant {variant.variantNumber}
           </span>
-          <span className="text-xs text-zinc-500 font-medium">{angle}</span>
+          <span className="text-xs text-gray-400 font-medium">{angle}</span>
         </div>
         <div className="flex items-center gap-2">
           <span
@@ -105,7 +105,7 @@ function AdVariantCard({
           <select
             value={variant.status}
             onChange={(e) => onStatusChange(variant.id, e.target.value)}
-            className="text-xs border border-zinc-200 rounded px-2 py-1 bg-white text-zinc-600 cursor-pointer"
+            className="text-xs border border-white/10 rounded px-2 py-1 bg-[#0d1117] text-gray-300 cursor-pointer"
           >
             {Object.entries(STATUS_LABELS).map(([val, label]) => (
               <option key={val} value={val}>{label}</option>
@@ -115,34 +115,34 @@ function AdVariantCard({
       </div>
 
       {/* Primary text */}
-      <div className="px-4 pt-4 pb-3">
+      <div className="px-5 pt-4 pb-3">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
             <MessageSquare className="w-3.5 h-3.5" />
             Primary Text
           </div>
           <CopyButton text={variant.primaryText} />
         </div>
-        <p className="text-sm text-zinc-800 leading-relaxed">{variant.primaryText}</p>
-        <p className="text-xs text-zinc-400 mt-1">{variant.primaryText.length} chars</p>
+        <p className="text-sm text-gray-200 leading-relaxed">{variant.primaryText}</p>
+        <p className="text-xs text-gray-600 mt-1">{variant.primaryText.length} chars</p>
       </div>
 
       {/* Headline + Description + CTA */}
-      <div className="px-4 pb-3 grid grid-cols-3 gap-3 border-t border-zinc-100 pt-3">
+      <div className="px-5 pb-3 grid grid-cols-3 gap-3 border-t border-white/10 pt-3">
         <div>
-          <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">Headline</div>
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Headline</div>
           <div className="flex items-start gap-1">
-            <p className="text-sm font-semibold text-zinc-800 flex-1">{variant.headline}</p>
+            <p className="text-sm font-semibold text-white flex-1">{variant.headline}</p>
             <CopyButton text={variant.headline} />
           </div>
-          <p className="text-xs text-zinc-400">{variant.headline.length}/40 chars</p>
+          <p className="text-xs text-gray-600">{variant.headline.length}/40 chars</p>
         </div>
         <div>
-          <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">Description</div>
-          <p className="text-sm text-zinc-600">{variant.description || "—"}</p>
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Description</div>
+          <p className="text-sm text-gray-300">{variant.description || "—"}</p>
         </div>
         <div>
-          <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">CTA Button</div>
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">CTA Button</div>
           <span className="inline-block bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded">
             {variant.callToAction}
           </span>
@@ -151,29 +151,29 @@ function AdVariantCard({
 
       {/* Audience note */}
       {variant.audienceNote && (
-        <div className="px-4 pb-3 border-t border-zinc-100 pt-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">
+        <div className="px-5 pb-3 border-t border-white/10 pt-3">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
             <Target className="w-3.5 h-3.5" />
             Target Audience
           </div>
-          <p className="text-xs text-zinc-600">{variant.audienceNote}</p>
+          <p className="text-xs text-gray-400">{variant.audienceNote}</p>
         </div>
       )}
 
       {/* Image prompt (collapsible) */}
       {variant.imagePrompt && (
-        <div className="px-4 pb-4 border-t border-zinc-100 pt-3">
+        <div className="px-5 pb-4 border-t border-white/10 pt-3">
           <button
             onClick={() => setShowImagePrompt(!showImagePrompt)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 uppercase tracking-wide hover:text-zinc-600 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:text-gray-300 transition-colors"
           >
             <Image className="w-3.5 h-3.5" />
             Image Prompt
             {showImagePrompt ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
           {showImagePrompt && (
-            <div className="mt-2 bg-zinc-50 rounded p-3 flex items-start gap-2">
-              <p className="text-xs text-zinc-600 leading-relaxed flex-1 font-mono">{variant.imagePrompt}</p>
+            <div className="mt-2 bg-white/5 rounded-lg p-3 flex items-start gap-2">
+              <p className="text-xs text-gray-400 leading-relaxed flex-1 font-mono">{variant.imagePrompt}</p>
               <CopyButton text={variant.imagePrompt} />
             </div>
           )}
@@ -217,100 +217,107 @@ export default function MetaAds() {
 
   if (!advertorialId) {
     return (
-      <div className="p-8 text-center text-zinc-500">
-        <p>No advertorial selected. Go to the Advertorial Builder and click "Generate Meta Ads".</p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate("/advertorial-builder")}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Advertorial Builder
-        </Button>
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+        <div className="text-center text-gray-400 max-w-sm">
+          <FileText className="w-10 h-10 mx-auto mb-4 text-gray-600" />
+          <p className="text-sm mb-4">No advertorial selected. Go to the Advertorial Builder and click "Meta Ads".</p>
+          <Button variant="outline" className="border-white/20 text-gray-300" onClick={() => navigate("/advertorial-builder")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Advertorial Builder
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100">
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <button
-            onClick={() => navigate("/advertorial-builder")}
-            className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 mb-3 transition-colors"
+      {/* Sticky header */}
+      <div className="border-b border-white/10 bg-[#0d1117]/90 backdrop-blur sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div>
+            <button
+              onClick={() => navigate("/advertorial-builder")}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 mb-1.5 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Advertorial Builder
+            </button>
+            <h1 className="text-xl font-bold text-white">Meta Ad Variants</h1>
+            {advertorial && (
+              <p className="text-xs text-gray-500 mt-0.5 max-w-xl line-clamp-1">
+                For: <span className="font-medium text-gray-400">{advertorial.headline}</span>
+              </p>
+            )}
+          </div>
+          <Button
+            onClick={() => generateMutation.mutate({ advertorialId: advertorialId! })}
+            disabled={generateMutation.isPending}
+            className="bg-[#00d4ff] hover:bg-[#00b8e0] text-black font-semibold"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Advertorial Builder
-          </button>
-          <h1 className="text-2xl font-bold text-zinc-900">Meta Ad Variants</h1>
-          {advertorial && (
-            <p className="text-sm text-zinc-500 mt-1 max-w-xl line-clamp-1">
-              For: <span className="font-medium text-zinc-700">{advertorial.headline}</span>
-            </p>
-          )}
+            {generateMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                {variants && variants.length > 0 ? "Regenerate 5 Variants" : "Generate 5 Variants"}
+              </>
+            )}
+          </Button>
         </div>
-        <Button
-          onClick={() => generateMutation.mutate({ advertorialId: advertorialId! })}
-          disabled={generateMutation.isPending}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {generateMutation.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Generating…
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              {variants && variants.length > 0 ? "Regenerate 5 Variants" : "Generate 5 Variants"}
-            </>
-          )}
-        </Button>
       </div>
 
-      {/* Info banner */}
-      {(!variants || variants.length === 0) && !isLoading && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
-          <strong>No ad variants yet.</strong> Click "Generate 5 Variants" to create Meta ad copy from this advertorial's messaging.
-          The AI will produce 5 distinct angles: pain-point, curiosity, authority, transformation, and direct offer.
-        </div>
-      )}
-
-      {/* Loading state */}
-      {isLoading && (
-        <div className="flex items-center gap-2 text-zinc-500 py-8 justify-center">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          Loading variants…
-        </div>
-      )}
-
-      {/* Variants grid */}
-      {variants && variants.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">
-              {variants.length} variant{variants.length !== 1 ? "s" : ""} · Approve variants to track which are running
-            </p>
-            <div className="flex gap-2 text-xs text-zinc-400">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> Approved
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" /> Running
-              </span>
-            </div>
+      {/* Main content */}
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+        {/* Info banner */}
+        {(!variants || variants.length === 0) && !isLoading && (
+          <div className="rounded-xl border border-[#00d4ff]/20 bg-[#00d4ff]/5 p-5 text-sm text-gray-300">
+            <strong className="text-[#00d4ff]">No ad variants yet.</strong>{" "}
+            Click "Generate 5 Variants" to create Meta ad copy from this advertorial's messaging.
+            The AI will produce 5 distinct angles: pain-point, curiosity, authority, transformation, and direct offer.
           </div>
-          {variants.map((v, i) => (
-            <AdVariantCard
-              key={v.id}
-              variant={v}
-              angle={VARIANT_ANGLES[i] || `Variant ${v.variantNumber}`}
-              onStatusChange={(id, status) =>
-                updateStatusMutation.mutate({ id, status: status as any })
-              }
-            />
-          ))}
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-gray-500 py-12 justify-center">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            Loading variants…
+          </div>
+        )}
+
+        {/* Variants list */}
+        {variants && variants.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                {variants.length} variant{variants.length !== 1 ? "s" : ""} · Approve variants to track which are running
+              </p>
+              <div className="flex gap-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Approved
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Running
+                </span>
+              </div>
+            </div>
+            {variants.map((v, i) => (
+              <AdVariantCard
+                key={v.id}
+                variant={v}
+                angle={VARIANT_ANGLES[i] || `Variant ${v.variantNumber}`}
+                onStatusChange={(id, status) =>
+                  updateStatusMutation.mutate({ id, status: status as any })
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

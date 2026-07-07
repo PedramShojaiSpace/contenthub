@@ -497,8 +497,6 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
   const pubDate = new Date(page.createdAt).toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
   });
-  const mediaLogosUrl = "/manus-storage/media-logos-as-seen-in_c1c83bd0.png";
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -570,8 +568,9 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
 
     /* ── As Seen In (Fix #13) ── */
     .as-seen-in { margin: 0 0 32px; text-align: center; }
-    .as-seen-in-label { font-family: 'Montserrat', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #bbb; margin-bottom: 12px; }
-    .as-seen-in img { max-width: 100%; height: auto; opacity: 0.75; }
+    .as-seen-in-label { font-family: 'Montserrat', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #bbb; margin-bottom: 16px; }
+    .as-seen-in-logos { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 20px 28px; }
+    .as-seen-in-logos span { font-family: 'Montserrat', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #999; opacity: 0.85; white-space: nowrap; }
 
     /* ── Body copy (Fix: 17-18px, 1.8 line height) ── */
     .body-copy p { margin-bottom: 24px; font-size: 18px; line-height: 1.82; }
@@ -698,7 +697,16 @@ export function renderAdvertorialHtml(page: AdvertorialPage): string {
     <!-- As Seen In logos (Fix #13) -->
     <div class="as-seen-in">
       <div class="as-seen-in-label">As Seen In</div>
-      <img src="${mediaLogosUrl}" alt="As seen in: TODAY, well+good, Eat This Not That, Dr. Oz Show, New York Magazine, ESPN, mindbodygreen, ABC, Women's Health" />
+      <div class="as-seen-in-logos">
+        <span>TODAY</span>
+        <span>well+good</span>
+        <span>Dr. Oz Show</span>
+        <span>New York Magazine</span>
+        <span>ESPN</span>
+        <span>mindbodygreen</span>
+        <span>ABC News</span>
+        <span>Women's Health</span>
+      </div>
     </div>
 
     <!-- Body copy -->

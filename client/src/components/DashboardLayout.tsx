@@ -125,6 +125,7 @@ const landingPagesPaths = new Set(landingPagesItems.map((i) => i.path));
 // Video Production sub-items
 const videoItems = [
   { icon: Video, label: "Video Production", path: "/video-production" },
+  { icon: Youtube, label: "YouTube Pipeline", path: "/youtube-pipeline" },
   { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
   { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
   { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },

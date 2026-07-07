@@ -2705,3 +2705,61 @@ export const attributedSales = mysqlTable("attributed_sales", {
 
 export type AttributedSale = typeof attributedSales.$inferSelect;
 export type InsertAttributedSale = typeof attributedSales.$inferInsert;
+
+// ─── YouTube Pipeline (Operations Bible) ─────────────────────────────────────
+export const youtubePipelineVideos = mysqlTable("youtube_pipeline_videos", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 512 }).notNull(),
+  videoId: varchar("video_id", { length: 64 }),
+  pillar: mysqlEnum("yt_pillar", [
+    "gut_health_metabolism",
+    "nervous_system_stress",
+    "consciousness_longevity",
+  ]).notNull(),
+  primaryKeyword: varchar("primary_keyword", { length: 256 }),
+  status: mysqlEnum("yt_status", [
+    "scripting",
+    "qc_scoring",
+    "scheduled",
+    "live",
+    "day7_review",
+    "day30_review",
+    "reviewed",
+  ]).notNull().default("scripting"),
+  publishDate: bigint("publish_date", { mode: "number" }),
+  preTitleScore: int("pre_title_score"),
+  preThumbnailScore: int("pre_thumbnail_score"),
+  day7Ctr: float("day7_ctr"),
+  day7Impressions: int("day7_impressions"),
+  day7AvgViewPct: float("day7_avg_view_pct"),
+  day7Diagnosis: mysqlEnum("day7_diagnosis", [
+    "thumbnail_title_problem",
+    "hook_retention_problem",
+    "discoverability_problem",
+    "marginal_underperformer",
+    "outperforming",
+    "on_track",
+    "pending",
+  ]).default("pending"),
+  day30BreakoutScore: float("day30_breakout_score"),
+  day30Ctr: float("day30_ctr"),
+  day30AvgViewPct: float("day30_avg_view_pct"),
+  day30Impressions: int("day30_impressions"),
+  day30SearchPct: float("day30_search_pct"),
+  day30Diagnosis: mysqlEnum("day30_diagnosis", [
+    "thumbnail_title_problem",
+    "hook_retention_problem",
+    "discoverability_problem",
+    "marginal_underperformer",
+    "outperforming",
+    "on_track",
+    "pending",
+  ]).default("pending"),
+  prescribedAction: text("prescribed_action"),
+  actionApplied: boolean("action_applied").default(false).notNull(),
+  notes: text("notes"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type YoutubePipelineVideo = typeof youtubePipelineVideos.$inferSelect;
+export type InsertYoutubePipelineVideo = typeof youtubePipelineVideos.$inferInsert;

@@ -1,8 +1,7 @@
 /**
  * Meta Ads Manager
  * Shows all Meta ad variants generated from advertorials.
- * Accessible from the Advertorial Builder via "Generate Meta Ads" button,
- * or directly from the sidebar nav.
+ * Full pipeline: Generate copy → Generate image → Upload to Meta → Create PAUSED ad
  */
 import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
@@ -21,6 +20,9 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
+  Rocket,
+  ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -69,6 +71,8 @@ function AdVariantCard({
   variant,
   angle,
   onStatusChange,
+  onPushToMeta,
+  isPushing,
 }: {
   variant: {
     id: number;
@@ -78,13 +82,26 @@ function AdVariantCard({
     description: string | null;
     callToAction: string;
     imagePrompt: string | null;
+    imageUrl: string | null;
+    imageHash: string | null;
     audienceNote: string | null;
     status: string;
+    metaAdId: string | null;
+    metaCampaignId: string | null;
+    metaPushError: string | null;
+    metaPushedAt: number | null;
   };
   angle: string;
   onStatusChange: (id: number, status: string) => void;
+  onPushToMeta: (variantId: number) => void;
+  isPushing: boolean;
 }) {
   const [showImagePrompt, setShowImagePrompt] = useState(false);
+
+  const isLiveInMeta = !!variant.metaAdId;
+  const adsManagerUrl = variant.metaCampaignId
+    ? `https://www.facebook.com/adsmanager/manage/campaigns?act=&campaign_ids=${variant.metaCampaignId}`
+    : null;
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#161b22] overflow-hidden">
@@ -97,6 +114,20 @@ function AdVariantCard({
           <span className="text-xs text-gray-400 font-medium">{angle}</span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Meta live badge */}
+          {isLiveInMeta && (
+            <a
+              href={adsManagerUrl ?? "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded border bg-emerald-900/40 text-emerald-400 border-emerald-700 hover:bg-emerald-900/60 transition-colors"
+              title="View in Meta Ads Manager"
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              In Meta
+              <ExternalLink className="w-3 h-3 ml-0.5" />
+            </a>
+          )}
           <span
             className={`text-xs font-semibold px-2 py-0.5 rounded border ${STATUS_COLORS[variant.status] || STATUS_COLORS.draft}`}
           >
@@ -113,6 +144,24 @@ function AdVariantCard({
           </select>
         </div>
       </div>
+
+      {/* Image preview (if generated) */}
+      {variant.imageUrl && (
+        <div className="px-5 pt-4 pb-0">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <Image className="w-3.5 h-3.5" />
+            Ad Image
+          </div>
+          <img
+            src={variant.imageUrl}
+            alt={`Ad variant ${variant.variantNumber} image`}
+            className="w-full max-h-64 object-contain rounded-lg border border-white/10 bg-black/20"
+          />
+          {variant.imageHash && (
+            <p className="text-xs text-gray-600 mt-1 font-mono">Hash: {variant.imageHash}</p>
+          )}
+        </div>
+      )}
 
       {/* Primary text */}
       <div className="px-5 pt-4 pb-3">
@@ -162,7 +211,7 @@ function AdVariantCard({
 
       {/* Image prompt (collapsible) */}
       {variant.imagePrompt && (
-        <div className="px-5 pb-4 border-t border-white/10 pt-3">
+        <div className="px-5 pb-3 border-t border-white/10 pt-3">
           <button
             onClick={() => setShowImagePrompt(!showImagePrompt)}
             className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:text-gray-300 transition-colors"
@@ -179,6 +228,71 @@ function AdVariantCard({
           )}
         </div>
       )}
+
+      {/* Push error (if any) */}
+      {variant.metaPushError && !isLiveInMeta && (
+        <div className="px-5 pb-3 border-t border-red-900/30 pt-3">
+          <div className="flex items-start gap-2 text-xs text-red-400 bg-red-900/20 rounded-lg p-3">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="font-mono">{variant.metaPushError}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Push to Meta button */}
+      <div className="px-5 pb-4 border-t border-white/10 pt-3 flex items-center justify-between">
+        {isLiveInMeta ? (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+              <CheckCircle2 className="w-4 h-4" />
+              <span className="font-semibold">Published as PAUSED draft in Meta Ads Manager</span>
+            </div>
+            {adsManagerUrl && (
+              <a
+                href={adsManagerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-[#00d4ff] hover:text-[#00b8e0] transition-colors"
+              >
+                View in Ads Manager
+                <ExternalLink className="w-3 h-3 ml-0.5" />
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              onClick={() => onPushToMeta(variant.id)}
+              disabled={isPushing || !variant.imagePrompt}
+              className="bg-[#1877f2] hover:bg-[#1565d8] text-white font-semibold text-xs"
+            >
+              {isPushing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Generating & Pushing…
+                </>
+              ) : (
+                <>
+                  <Rocket className="w-3.5 h-3.5 mr-1.5" />
+                  Generate Image + Push to Meta
+                </>
+              )}
+            </Button>
+            {!variant.imagePrompt && (
+              <span className="text-xs text-gray-500">No image prompt — regenerate variants first</span>
+            )}
+            {variant.imageUrl && !isLiveInMeta && (
+              <span className="text-xs text-gray-500">Image generated · ready to push</span>
+            )}
+          </div>
+        )}
+        {variant.metaPushedAt && (
+          <span className="text-xs text-gray-600">
+            Pushed {new Date(variant.metaPushedAt).toLocaleString()}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -187,6 +301,8 @@ export default function MetaAds() {
   const [, params] = useRoute("/meta-ads/:advertorialId");
   const [, navigate] = useLocation();
   const advertorialId = params?.advertorialId ? parseInt(params.advertorialId) : null;
+  // Track which variant is currently being pushed
+  const [pushingVariantId, setPushingVariantId] = useState<number | null>(null);
 
   // Fetch lightweight advertorial summary (headline only, no bodyHtml)
   const { data: advertorial } = trpc.advertorial.getSummary.useQuery(
@@ -219,6 +335,37 @@ export default function MetaAds() {
     onSuccess: () => refetch(),
     onError: (err) => toast.error(`Update failed: ${err.message}`),
   });
+
+  // Generate image + push to Meta
+  const pushToMetaMutation = trpc.advertorial.generateImageAndPushToMeta.useMutation({
+    onSuccess: (data) => {
+      setPushingVariantId(null);
+      toast.success(
+        <div>
+          <p className="font-semibold">Ad published to Meta Ads Manager (PAUSED)</p>
+          <a
+            href={data.adsManagerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 underline text-xs mt-1 block"
+          >
+            View in Ads Manager →
+          </a>
+        </div>
+      );
+      refetch();
+    },
+    onError: (err) => {
+      setPushingVariantId(null);
+      toast.error(`Push failed: ${err.message}`);
+      refetch(); // Refresh to show metaPushError
+    },
+  });
+
+  const handlePushToMeta = (variantId: number) => {
+    setPushingVariantId(variantId);
+    pushToMetaMutation.mutate({ variantId });
+  };
 
   if (!advertorialId) {
     return (
@@ -255,34 +402,53 @@ export default function MetaAds() {
               </p>
             )}
           </div>
-          <Button
-            onClick={() => generateMutation.mutate({ advertorialId: advertorialId! })}
-            disabled={generateMutation.isPending}
-            className="bg-[#00d4ff] hover:bg-[#00b8e0] text-black font-semibold"
-          >
-            {generateMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating…
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                {variants && variants.length > 0 ? "Regenerate 5 Variants" : "Generate 5 Variants"}
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-gray-500 text-right hidden sm:block">
+              <p>Each variant: Generate image</p>
+              <p>→ Upload to Meta → Create PAUSED ad</p>
+            </div>
+            <Button
+              onClick={() => generateMutation.mutate({ advertorialId: advertorialId! })}
+              disabled={generateMutation.isPending}
+              className="bg-[#00d4ff] hover:bg-[#00b8e0] text-black font-semibold"
+            >
+              {generateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {variants && variants.length > 0 ? "Regenerate 5 Variants" : "Generate 5 Variants"}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Pipeline info banner */}
+      <div className="max-w-5xl mx-auto px-6 pt-6">
+        <div className="rounded-xl border border-[#1877f2]/20 bg-[#1877f2]/5 p-4 text-xs text-gray-400 flex items-start gap-3">
+          <Rocket className="w-4 h-4 text-[#1877f2] shrink-0 mt-0.5" />
+          <div>
+            <span className="text-gray-300 font-semibold">Full pipeline per variant: </span>
+            Generate copy → AI generates ad image (anonymous health struggle, no user likeness) →
+            Upload to Meta image library → Create Campaign → Ad Set → Creative → Ad — all <span className="text-amber-400 font-semibold">PAUSED</span>.
+            Review in Ads Manager before activating.
+          </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-        {/* Info banner */}
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+        {/* Empty state */}
         {(!variants || variants.length === 0) && !isLoading && (
           <div className="rounded-xl border border-[#00d4ff]/20 bg-[#00d4ff]/5 p-5 text-sm text-gray-300">
             <strong className="text-[#00d4ff]">No ad variants yet.</strong>{" "}
             Click "Generate 5 Variants" to create Meta ad copy from this advertorial's messaging.
-            The AI will produce 5 distinct angles: pain-point, curiosity, authority, transformation, and direct offer.
+            Then use the "Generate Image + Push to Meta" button on each variant to publish a PAUSED draft ad.
           </div>
         )}
 
@@ -299,11 +465,15 @@ export default function MetaAds() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
-                {variants.length} variant{variants.length !== 1 ? "s" : ""} · Approve variants to track which are running
+                {variants.length} variant{variants.length !== 1 ? "s" : ""} ·{" "}
+                {variants.filter((v) => v.metaAdId).length} pushed to Meta
               </p>
               <div className="flex gap-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Approved
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> In Meta
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Paused
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Running
@@ -318,6 +488,8 @@ export default function MetaAds() {
                 onStatusChange={(id, status) =>
                   updateStatusMutation.mutate({ id, status: status as any })
                 }
+                onPushToMeta={handlePushToMeta}
+                isPushing={pushingVariantId === v.id}
               />
             ))}
           </div>

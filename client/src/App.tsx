@@ -71,6 +71,7 @@ const UpstreamOral = lazy(() => import("./pages/UpstreamOral"));
 const UpstreamProgram = lazy(() => import("./pages/UpstreamProgram"));
 const AdvertorialBuilder = lazy(() => import("./pages/AdvertorialBuilder"));
 const MetaAds = lazy(() => import("./pages/MetaAds"));
+const YouTubePipeline = lazy(() => import("./pages/YouTubePipeline"));
 const AdAttributionDashboard = lazy(() => import("./pages/AdAttributionDashboard"));
 const CampaignMonitor = lazy(() => import("./pages/CampaignMonitor"));
 
@@ -154,6 +155,7 @@ function Router() {
         <Route path={"/meta-ads"} component={MetaAds} />
         <Route path={"/ad-attribution"} component={AdAttributionDashboard} />
         <Route path={"/campaign-monitor"} component={CampaignMonitor} />
+        <Route path={"/youtube-pipeline"} component={YouTubePipeline} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

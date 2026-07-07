@@ -7294,6 +7294,7 @@ https://www.youtube.com/watch?v=PFAaZMdoE34
         return { success: true, contactId };
       }),
   }),
+  youtubePipeline: (await import("./youtubePipelineRouter")).youtubePipelineRouter,
 });
 export type AppRouter = typeof appRouter;
 

@@ -206,7 +206,12 @@ export default function MetaAds() {
       toast.success("5 Meta ad variants generated!");
       refetch();
     },
-    onError: (err) => toast.error(`Generation failed: ${err.message}`),
+    onError: (err) => {
+      const msg = err.message?.includes('Failed query') || err.message?.includes('insert into')
+        ? 'Generation failed: database error. Please try again.'
+        : `Generation failed: ${err.message}`;
+      toast.error(msg);
+    },
   });
 
   // Update variant status

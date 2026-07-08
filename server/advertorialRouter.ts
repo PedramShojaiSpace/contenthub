@@ -30,7 +30,10 @@ async function metaPostAdv<T = any>(
   const url = `${META_BASE_URL}/${endpoint}`;
   const flatParams: Record<string, string> = { access_token: accessToken };
   for (const [k, v] of Object.entries(params)) {
-    if (Array.isArray(v) || (typeof v === "object" && v !== null)) {
+    if (typeof v === "string") {
+      // Already a string (including pre-stringified JSON) — pass through as-is
+      flatParams[k] = v;
+    } else if (Array.isArray(v) || (typeof v === "object" && v !== null)) {
       flatParams[k] = JSON.stringify(v);
     } else {
       flatParams[k] = String(v);
@@ -44,8 +47,15 @@ async function metaPostAdv<T = any>(
   });
   const json = (await res.json()) as any;
   if (!res.ok || json.error) {
-    const msg = json.error?.message ?? `HTTP ${res.status}`;
-    throw new Error(`Meta API error on POST /${endpoint}: ${msg}`);
+    // Include full error detail (error_user_msg, error_subcode) for easier debugging
+    const err = json.error ?? {};
+    const detail = [
+      err.message,
+      err.error_user_msg ? `User msg: ${err.error_user_msg}` : null,
+      err.error_subcode ? `Subcode: ${err.error_subcode}` : null,
+      err.fbtrace_id ? `Trace: ${err.fbtrace_id}` : null,
+    ].filter(Boolean).join(" | ");
+    throw new Error(`Meta API error on POST /${endpoint}: ${detail || `HTTP ${res.status}`}`);
   }
   return json as T;
 }
@@ -155,19 +165,25 @@ async function createPausedMetaAd(opts: {
   const ctaEnum = ctaMap[opts.callToAction] ?? "LEARN_MORE";
 
   // Step 3: Creative
+  // Use object_story_spec with link_data — the standard single-image traffic ad format.
+  // asset_feed_spec requires Dynamic Creative to be enabled on the ad account.
   const creativeRes = await metaPostAdv<{ id: string }>(
     `${actId}/adcreatives`,
     {
       name: `${opts.campaignName} — Creative`,
-      object_story_spec: JSON.stringify({ page_id: opts.pageId }),
-      asset_feed_spec: JSON.stringify({
-        images: [{ hash: opts.imageHash }],
-        bodies: [{ text: opts.primaryText }],
-        titles: [{ text: opts.headline }],
-        descriptions: [{ text: opts.description }],
-        link_urls: [{ website_url: opts.landingUrl }],
-        call_to_action_types: [ctaEnum],
-        ad_formats: ["SINGLE_IMAGE"],
+      object_story_spec: JSON.stringify({
+        page_id: opts.pageId,
+        link_data: {
+          image_hash: opts.imageHash,
+          link: opts.landingUrl,
+          message: opts.primaryText,
+          name: opts.headline,
+          description: opts.description || undefined,
+          call_to_action: {
+            type: ctaEnum,
+            value: { link: opts.landingUrl },
+          },
+        },
       }),
     },
     opts.accessToken

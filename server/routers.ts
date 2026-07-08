@@ -133,6 +133,7 @@ import { advertorialRouter } from "./advertorialRouter";
 import { attributionRouter } from "./attributionRouter";
 import { adsMonitorRouter } from "./adsMonitorRouter";
 import { historicalPostsRouter } from "./historicalPostsRouter";
+import { youtubePipelineRouter } from "./youtubePipelineRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -7296,7 +7297,7 @@ https://www.youtube.com/watch?v=PFAaZMdoE34
         return { success: true, contactId };
       }),
   }),
-  youtubePipeline: (await import("./youtubePipelineRouter")).youtubePipelineRouter,
+  youtubePipeline: youtubePipelineRouter,
 });
 export type AppRouter = typeof appRouter;
 

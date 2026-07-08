@@ -39,12 +39,14 @@ Do not modify the original composition. Only create the 3 new Marketing Reel com
 export const kajabiLiveRouter = router({
   list: protectedProcedure.query(async () => {
     const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
     const sessions = await db.select().from(kajabiLiveSessions).orderBy(desc(kajabiLiveSessions.sessionDate));
     return sessions.map(s => ({ ...s, carouselSlides: parseCarouselSlides(s.carouselSlides) }));
   }),
 
   get: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
     const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
     const [session] = await db.select().from(kajabiLiveSessions).where(eq(kajabiLiveSessions.id, input.id));
     if (!session) throw new Error("Session not found");
     return { ...session, carouselSlides: parseCarouselSlides(session.carouselSlides) };
@@ -57,6 +59,7 @@ export const kajabiLiveRouter = router({
     notes: z.string().optional(),
   })).mutation(async ({ input }) => {
     const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
     const now = Date.now();
     // Build Descript project URL if project ID provided
     const descriptProjectUrl = input.descriptProjectId
@@ -81,6 +84,7 @@ export const kajabiLiveRouter = router({
     descriptProjectId: z.string().min(1),
   })).mutation(async ({ input }) => {
     const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
     const descriptProjectUrl = `https://web.descript.com/${input.descriptProjectId}`;
     await db.update(kajabiLiveSessions).set({
       descriptProjectId: input.descriptProjectId,
@@ -97,6 +101,7 @@ export const kajabiLiveRouter = router({
    */
   triggerUnderlord: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
     const [session] = await db.select().from(kajabiLiveSessions).where(eq(kajabiLiveSessions.id, input.id));
     if (!session) throw new Error("Session not found");
     if (!session.descriptProjectId) throw new Error("No Descript project linked. Please add the Descript project ID first.");
@@ -121,6 +126,7 @@ export const kajabiLiveRouter = router({
    */
   checkUnderlordStatus: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
     const [session] = await db.select().from(kajabiLiveSessions).where(eq(kajabiLiveSessions.id, input.id));
     if (!session) throw new Error("Session not found");
     if (!session.underlordJobId) throw new Error("No Underlord job found for this session.");
@@ -157,6 +163,7 @@ export const kajabiLiveRouter = router({
     sessionSummary: z.string().optional(), // Optional: VA can add notes about what the best reel was about
   })).mutation(async ({ input }) => {
     const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
     const [session] = await db.select().from(kajabiLiveSessions).where(eq(kajabiLiveSessions.id, input.id));
     if (!session) throw new Error("Session not found");
 
@@ -265,6 +272,7 @@ The posts should tease the content of the clip and invite people to join the com
     status: z.enum(["uploaded", "descript_linked", "underlord_running", "underlord_failed", "reels_ready", "generating_content", "ready_for_review", "approved", "posted"]).optional(),
   })).mutation(async ({ input }) => {
     const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
     const { id, ...fields } = input;
     const updateData: Record<string, unknown> = { updatedAt: Date.now() };
     if (fields.sharePostInstagram !== undefined) updateData.sharePostInstagram = fields.sharePostInstagram;
@@ -279,18 +287,23 @@ The posts should tease the content of the clip and invite people to join the com
 
   approveContent: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
+   if (!db) throw new Error("Database unavailable");
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
     await db.update(kajabiLiveSessions).set({ status: "approved", updatedAt: Date.now() }).where(eq(kajabiLiveSessions.id, input.id));
     return { success: true };
   }),
 
   markPosted: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
+   if (!db) throw new Error("Database unavailable");
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
     await db.update(kajabiLiveSessions).set({ status: "posted", updatedAt: Date.now() }).where(eq(kajabiLiveSessions.id, input.id));
     return { success: true };
   }),
 
   delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
+   if (!db) throw new Error("Database unavailable");
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
     await db.delete(kajabiLiveSessions).where(eq(kajabiLiveSessions.id, input.id));
     return { success: true };

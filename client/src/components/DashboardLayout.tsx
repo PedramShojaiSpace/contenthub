@@ -123,7 +123,7 @@ const landingPagesItems = [
 
 const landingPagesPaths = new Set(landingPagesItems.map((i) => i.path));
 
-// Video Production sub-items
+// Video Production sub-items (video only — VA and Ads moved to their own sections)
 const videoItems = [
   { icon: Video, label: "Video Production", path: "/video-production" },
   { icon: Youtube, label: "YouTube Pipeline", path: "/youtube-pipeline" },
@@ -131,9 +131,21 @@ const videoItems = [
   { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
   { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
   { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
+];
+
+const videoPaths = new Set(videoItems.map((i) => i.path));
+
+// VA Space sub-items
+const vaItems = [
   { icon: Users, label: "VA Dashboard", path: "/va" },
   { icon: CheckSquare, label: "VA Task Hub", path: "/va-tasks" },
   { icon: Users, label: "Kajabi Live Hub", path: "/kajabi-live" },
+];
+
+const vaPaths = new Set(vaItems.map((i) => i.path));
+
+// Ads sub-items
+const adsItems = [
   { icon: Megaphone, label: "Ads Manager", path: "/ads" },
   { icon: Newspaper, label: "Advertorial Builder", path: "/advertorial-builder" },
   { icon: Sparkles, label: "Meta Ad Variants", path: "/meta-ads" },
@@ -141,7 +153,7 @@ const videoItems = [
   { icon: BarChart3, label: "Campaign Monitor", path: "/campaign-monitor" },
 ];
 
-const videoPaths = new Set(videoItems.map((i) => i.path));
+const adsPaths = new Set(adsItems.map((i) => i.path));
 
 // Strategy sub-items (grouped under collapsible parent)
 const strategyItems = [
@@ -301,6 +313,16 @@ function DashboardLayoutContent({
   const [videoOpen, setVideoOpen] = useState(isVideoActive);
   useEffect(() => { if (isVideoActive) setVideoOpen(true); }, [isVideoActive]);
 
+  // VA Space group
+  const isVaActive = vaPaths.has(location);
+  const [vaOpen, setVaOpen] = useState(isVaActive);
+  useEffect(() => { if (isVaActive) setVaOpen(true); }, [isVaActive]);
+
+  // Ads group
+  const isAdsActive = adsPaths.has(location);
+  const [adsOpen, setAdsOpen] = useState(isAdsActive);
+  useEffect(() => { if (isAdsActive) setAdsOpen(true); }, [isAdsActive]);
+
   const activeLabel =
     topNavItems.find((i) => i.path === location)?.label ??
     intelligenceItems.find((i) => i.path === location)?.label ??
@@ -309,6 +331,8 @@ function DashboardLayoutContent({
     seoItems.find((i) => i.path === location)?.label ??
     landingPagesItems.find((i) => i.path === location)?.label ??
     videoItems.find((i) => i.path === location)?.label ??
+    vaItems.find((i) => i.path === location)?.label ??
+    adsItems.find((i) => i.path === location)?.label ??
     "Menu";
 
   useEffect(() => {
@@ -649,6 +673,96 @@ function DashboardLayoutContent({
                 {videoOpen && !isCollapsed && (
                   <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
                     {videoItems.map((sub) => {
+                      const isActive = location === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          onClick={() => setLocation(sub.path)}
+                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                            ${isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            }`}
+                        >
+                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenuItem>
+
+              {/* VA Space Group — collapsible */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isVaActive}
+                  onClick={() => {
+                    if (isCollapsed) {
+                      setLocation(vaItems[0].path);
+                    } else {
+                      setVaOpen((prev) => !prev);
+                    }
+                  }}
+                  tooltip="VA Space"
+                  className={`h-10 transition-all font-normal ${isVaActive ? "text-primary" : ""}`}
+                >
+                  <CheckSquare className={`h-4 w-4 ${isVaActive ? "text-primary" : ""}`} />
+                  <span className="flex-1">VA Space</span>
+                  {!isCollapsed && (
+                    vaOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </SidebarMenuButton>
+                {vaOpen && !isCollapsed && (
+                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+                    {vaItems.map((sub) => {
+                      const isActive = location === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          onClick={() => setLocation(sub.path)}
+                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                            ${isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            }`}
+                        >
+                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SidebarMenuItem>
+
+              {/* Ads Group — collapsible */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isAdsActive}
+                  onClick={() => {
+                    if (isCollapsed) {
+                      setLocation(adsItems[0].path);
+                    } else {
+                      setAdsOpen((prev) => !prev);
+                    }
+                  }}
+                  tooltip="Paid Ads"
+                  className={`h-10 transition-all font-normal ${isAdsActive ? "text-primary" : ""}`}
+                >
+                  <Megaphone className={`h-4 w-4 ${isAdsActive ? "text-primary" : ""}`} />
+                  <span className="flex-1">Paid Ads</span>
+                  {!isCollapsed && (
+                    adsOpen
+                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </SidebarMenuButton>
+                {adsOpen && !isCollapsed && (
+                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+                    {adsItems.map((sub) => {
                       const isActive = location === sub.path;
                       return (
                         <button

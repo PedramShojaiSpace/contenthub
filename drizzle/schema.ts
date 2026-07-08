@@ -2784,3 +2784,93 @@ export const youtubePipelineVideos = mysqlTable("youtube_pipeline_videos", {
 });
 export type YoutubePipelineVideo = typeof youtubePipelineVideos.$inferSelect;
 export type InsertYoutubePipelineVideo = typeof youtubePipelineVideos.$inferInsert;
+
+
+// ─── Reddit Persona Manager ───────────────────────────────────────────────────
+
+export const redditPersonaPhaseEnum = mysqlEnum("redditPersonaPhase", [
+  "warmup",      // Days 1-30: building karma, no link posts
+  "active",      // Day 31+: cleared to share Urban Monk content
+  "paused",      // Temporarily paused
+  "retired",     // Account retired / banned
+]);
+
+export const redditPersonas = mysqlTable("reddit_personas", {
+  id: int("id").autoincrement().primaryKey(),
+  vaName: varchar("va_name", { length: 100 }).notNull(),          // e.g. "Maria", "Jose", "Ana"
+  accountSlot: int("account_slot").notNull().default(1),           // 1 or 2 (each VA has 2 accounts)
+  username: varchar("username", { length: 100 }).notNull(),        // Reddit username
+  backstory: text("backstory"),                                    // AI-generated persona backstory
+  bio: text("bio"),                                                // Profile bio text for Reddit
+  phase: redditPersonaPhaseEnum.notNull().default("warmup"),
+  karma: int("karma").notNull().default(0),
+  postKarma: int("post_karma").notNull().default(0),
+  commentKarma: int("comment_karma").notNull().default(0),
+  accountCreatedAt: bigint("account_created_at", { mode: "number" }), // When the Reddit account was created
+  subreddits: text("subreddits"),                                  // JSON array of subscribed subreddits
+  lastActivityAt: bigint("last_activity_at", { mode: "number" }),
+  activatedAt: bigint("activated_at", { mode: "number" }),         // When phase moved to "active"
+  notes: text("notes"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type RedditPersona = typeof redditPersonas.$inferSelect;
+export type InsertRedditPersona = typeof redditPersonas.$inferInsert;
+
+export const redditWarmupTaskStatusEnum = mysqlEnum("redditWarmupTaskStatus", [
+  "pending",
+  "completed",
+  "skipped",
+]);
+
+export const redditWarmupTaskTypeEnum = mysqlEnum("redditWarmupTaskType", [
+  "upvote_session",    // Upvote 20-30 posts in target subreddits
+  "comment",          // Post a genuine helpful comment
+  "question_post",    // Post a question (no links)
+  "non_um_share",     // Share a non-Urban Monk article
+]);
+
+export const redditWarmupTasks = mysqlTable("reddit_warmup_tasks", {
+  id: int("id").autoincrement().primaryKey(),
+  personaId: int("persona_id").notNull().references(() => redditPersonas.id),
+  taskType: redditWarmupTaskTypeEnum.notNull(),
+  subreddit: varchar("subreddit", { length: 100 }).notNull(),
+  content: text("content"),                                        // AI-generated comment/post text
+  instructions: text("instructions"),                              // Step-by-step instructions for VA
+  scheduledFor: bigint("scheduled_for", { mode: "number" }).notNull(),
+  completedAt: bigint("completed_at", { mode: "number" }),
+  status: redditWarmupTaskStatusEnum.notNull().default("pending"),
+  dayNumber: int("day_number").notNull().default(1),               // Day 1-30 of warmup
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type RedditWarmupTask = typeof redditWarmupTasks.$inferSelect;
+export type InsertRedditWarmupTask = typeof redditWarmupTasks.$inferInsert;
+
+export const redditPostQueueStatusEnum = mysqlEnum("redditPostQueueStatus", [
+  "queued",
+  "ready",       // Cleared to post (karma threshold + cadence check passed)
+  "posted",
+  "failed",
+  "skipped",
+]);
+
+export const redditPostQueue = mysqlTable("reddit_post_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  personaId: int("persona_id").notNull().references(() => redditPersonas.id),
+  contentItemId: int("content_item_id").references(() => contentItems.id),
+  subreddit: varchar("subreddit", { length: 100 }).notNull(),
+  postTitle: varchar("post_title", { length: 300 }).notNull(),
+  postBody: text("post_body").notNull(),                           // Full post with personal framing + disclosure
+  linkUrl: varchar("link_url", { length: 500 }),                  // Urban Monk article URL (if link post)
+  disclosureText: text("disclosure_text"),                         // FTC disclosure appended to post
+  personalFraming: text("personal_framing"),                       // AI-generated personal intro ("I've been following...")
+  scheduledFor: bigint("scheduled_for", { mode: "number" }),
+  postedAt: bigint("posted_at", { mode: "number" }),
+  redditPostUrl: varchar("reddit_post_url", { length: 500 }),
+  status: redditPostQueueStatusEnum.notNull().default("queued"),
+  errorMessage: text("error_message"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type RedditPostQueueItem = typeof redditPostQueue.$inferSelect;
+export type InsertRedditPostQueueItem = typeof redditPostQueue.$inferInsert;

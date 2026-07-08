@@ -74,6 +74,7 @@ const MetaAds = lazy(() => import("./pages/MetaAds"));
 const YouTubePipeline = lazy(() => import("./pages/YouTubePipeline"));
 const AdAttributionDashboard = lazy(() => import("./pages/AdAttributionDashboard"));
 const CampaignMonitor = lazy(() => import("./pages/CampaignMonitor"));
+const HistoricalPosts = lazy(() => import("./pages/HistoricalPosts"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -155,6 +156,7 @@ function Router() {
         <Route path={"/meta-ads"} component={MetaAds} />
         <Route path={"/ad-attribution"} component={AdAttributionDashboard} />
         <Route path={"/campaign-monitor"} component={CampaignMonitor} />
+        <Route path={"/historical-posts"} component={HistoricalPosts} />
         <Route path={"/youtube-pipeline"} component={YouTubePipeline} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />

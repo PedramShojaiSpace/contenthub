@@ -4172,3 +4172,15 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Wire historicalPostsRouter into routers.ts
 - [ ] Build HistoricalPosts.tsx frontend with Import / Audit / Batch Fix tabs
 - [ ] Add /historical-posts route to App.tsx and sidebar nav
+
+## Reddit Persona Manager (2026-07-08)
+- [x] Add redditPersonas table to schema.ts
+- [x] Add redditWarmupTasks table to schema.ts
+- [x] Add redditPostQueue table to schema.ts
+- [x] Run db:push after schema changes (tables created directly via SQL)
+- [x] Build redditPersonaRouter.ts with persona CRUD, warmup task generation, post queue, karma tracking
+- [x] Wire redditPersonaRouter into routers.ts
+- [x] Add /reddit-personas route to App.tsx
+- [x] Add Reddit Personas link to VA Space nav in DashboardLayout
+- [x] Build RedditPersonas.tsx frontend page
+- [x] Write vitest tests for Reddit Persona Manager (17 tests passing)

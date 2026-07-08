@@ -4165,3 +4165,10 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add variant tracking: generationPrompt stores campaign/adset/CTR attribution on each auto-variant
 - [x] Build "LP Variants" tab in Content Hub: shows all auto-generated variants with source campaign, CTR, status, preview link, and step-by-step activation instructions
 - [ ] Add Shopify Admin API token as secret to enable direct page push (no copy-paste required)
+
+## Historical WordPress Post Rehabilitation (2026-07-08)
+- [ ] Add contentItemId column to wpPostIndex schema and run migration
+- [ ] Build historicalPostsRouter.ts: importHistoricalPosts, auditYoast, injectCta, batchFix procedures
+- [ ] Wire historicalPostsRouter into routers.ts
+- [ ] Build HistoricalPosts.tsx frontend with Import / Audit / Batch Fix tabs
+- [ ] Add /historical-posts route to App.tsx and sidebar nav

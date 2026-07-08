@@ -757,6 +757,19 @@ export const wpPostIndex = mysqlTable("wp_post_index", {
   publishedAt: timestamp("publishedAt"),
   topicCluster: varchar("topicCluster", { length: 128 }),  // e.g. "Gut Health & Digestion"
   syncedAt: timestamp("syncedAt").defaultNow().notNull(),
+  // Historical Post Rehabilitation: link to the contentItems row created for this post
+  contentItemId: int("contentItemId"),
+  // Yoast audit: last fetched score and when it was fetched
+  yoastScore: varchar("yoastScore", { length: 16 }),      // "good" | "ok" | "bad" | null
+  yoastAuditedAt: bigint("yoastAuditedAt", { mode: "number" }),
+  // CTA injection: timestamp when a CTA was last injected into this post
+  ctaInjectedAt: bigint("ctaInjectedAt", { mode: "number" }),
+  // AI-generated Yoast suggestions (stored so we can preview before pushing)
+  suggestedFocusKeyword: varchar("suggestedFocusKeyword", { length: 255 }),
+  suggestedSeoTitle: varchar("suggestedSeoTitle", { length: 255 }),
+  suggestedMetaDescription: text("suggestedMetaDescription"),
+  // Rehabilitation status: null = not imported, "imported" = in hub, "yoast_fixed" = Yoast pushed, "cta_injected" = CTA pushed
+  rehabStatus: varchar("rehabStatus", { length: 32 }),
 });
 export type WpPost = typeof wpPostIndex.$inferSelect;
 export type InsertWpPost = typeof wpPostIndex.$inferInsert;

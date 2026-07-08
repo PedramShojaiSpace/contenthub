@@ -132,6 +132,7 @@ import { kajabiLiveRouter } from "./kajabiLiveRouter";
 import { advertorialRouter } from "./advertorialRouter";
 import { attributionRouter } from "./attributionRouter";
 import { adsMonitorRouter } from "./adsMonitorRouter";
+import { historicalPostsRouter } from "./historicalPostsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -499,6 +500,7 @@ export const appRouter = router({
   advertorial: advertorialRouter,
   attribution: attributionRouter,
   adsMonitor: adsMonitorRouter,
+  historicalPosts: historicalPostsRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

@@ -369,7 +369,7 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
     onError: (err) => toast.error(`Error: ${err.message}`),
   });
 
-  const isStuck = job.status === "adapting" || job.status === "failed";
+  const isStuck = job.status === "adapting" || job.status === "failed" || (job.status === "pending" && !job.adaptedContent && new Date(job.scheduledAt) < new Date());
 
   let adaptedContent: Record<string, unknown> | null = null;
   if (job.adaptedContent) {
@@ -479,11 +479,13 @@ function JobCard({ job, onPosted }: { job: SyndicationJob; onPosted: () => void 
             renderAdaptedContent(platform, adaptedContent)
           ) : isPending ? (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-300">
+              <div className={`flex items-center gap-2 p-3 rounded text-sm ${isStuck && job.status === "pending" ? "bg-amber-500/10 border border-amber-500/20 text-amber-300" : "bg-blue-500/10 border border-blue-500/20 text-blue-300"}`}>
                 <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
                 <span>
                   {job.status === "adapting"
                     ? "AI is adapting content for this platform… If this persists over 5 minutes, click Retry."
+                    : isStuck
+                    ? "Content generation is overdue — the scheduled job did not run. Click \"Retry AI Generation\" below to generate the content now."
                     : "Content scheduled — AI will generate it when the scheduled time arrives."}
                 </span>
               </div>

@@ -170,7 +170,7 @@ export const syndicationRouter = router({
         })
         .where(and(
           eq(syndicationJobs.id, input.jobId),
-          inArray(syndicationJobs.status, ["failed", "adapting"]) // also recover stuck adapting jobs
+          inArray(syndicationJobs.status, ["failed", "adapting", "pending"]) // also recover overdue pending jobs with no content
         ));
 
       return { ok: true };

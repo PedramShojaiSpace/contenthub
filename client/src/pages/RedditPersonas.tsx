@@ -374,6 +374,90 @@ function PersonaCard({ personaId }: { personaId: number }) {
                   </Select>
                 </div>
               </div>
+              {/* Credential Infrastructure Section */}
+              <div className="border border-amber-500/30 rounded-lg p-3 bg-amber-500/5 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">🔐 Credential Infrastructure</span>
+                  <span className="text-xs text-amber-400/70">(owner-controlled)</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Persona Email</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="email"
+                        defaultValue={persona.personaEmail ?? ""}
+                        placeholder="maria@mariawellness.com"
+                        className="h-8 text-sm bg-black/30"
+                        id={`email-${persona.id}`}
+                      />
+                      <Button
+                        size="sm" variant="outline" className="h-8 text-xs shrink-0"
+                        onClick={() => {
+                          const val = (document.getElementById(`email-${persona.id}`) as HTMLInputElement)?.value;
+                          updatePersona.mutate({ personaId: persona.id, personaEmail: val });
+                        }}
+                      >Save</Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Persona Domain</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        defaultValue={persona.personaDomain ?? ""}
+                        placeholder="mariawellness.com"
+                        className="h-8 text-sm bg-black/30"
+                        id={`domain-${persona.id}`}
+                      />
+                      <Button
+                        size="sm" variant="outline" className="h-8 text-xs shrink-0"
+                        onClick={() => {
+                          const val = (document.getElementById(`domain-${persona.id}`) as HTMLInputElement)?.value;
+                          updatePersona.mutate({ personaId: persona.id, personaDomain: val });
+                        }}
+                      >Save</Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Proxy IP</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        defaultValue={persona.proxyIp ?? ""}
+                        placeholder="104.28.x.x"
+                        className="h-8 text-sm bg-black/30"
+                        id={`proxy-${persona.id}`}
+                      />
+                      <Button
+                        size="sm" variant="outline" className="h-8 text-xs shrink-0"
+                        onClick={() => {
+                          const val = (document.getElementById(`proxy-${persona.id}`) as HTMLInputElement)?.value;
+                          updatePersona.mutate({ personaId: persona.id, proxyIp: val });
+                        }}
+                      >Save</Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Credentials Held By</Label>
+                    <Select
+                      defaultValue={persona.credentialsHeldBy ?? "owner"}
+                      onValueChange={(v) => updatePersona.mutate({ personaId: persona.id, credentialsHeldBy: v as "owner" | "va" })}
+                    >
+                      <SelectTrigger className="h-8 text-sm bg-black/30">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owner">✅ Owner (Pedram) — secure</SelectItem>
+                        <SelectItem value="va">⚠️ VA — insecure, fix ASAP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-amber-400/60">Email password must be held by owner only. VA gets Reddit login only. One domain per persona — never share a domain across personas.</p>
+              </div>
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">Backstory</Label>
                 <div className="bg-black/30 rounded p-2 text-xs text-white/70 whitespace-pre-wrap">{persona.backstory}</div>

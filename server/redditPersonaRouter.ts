@@ -299,6 +299,10 @@ export const redditPersonaRouter = router({
     .input(z.object({
       personaId: z.number(),
       username: z.string().optional(),
+      personaEmail: z.string().optional(),
+      personaDomain: z.string().optional(),
+      proxyIp: z.string().optional(),
+      credentialsHeldBy: z.enum(["owner", "va"]).optional(),
       karma: z.number().optional(),
       postKarma: z.number().optional(),
       commentKarma: z.number().optional(),
@@ -315,6 +319,10 @@ export const redditPersonaRouter = router({
         updatedAt: Date.now(),
       };
       if (updates.username !== undefined) updateData.username = updates.username;
+      if (updates.personaEmail !== undefined) updateData.personaEmail = updates.personaEmail;
+      if (updates.personaDomain !== undefined) updateData.personaDomain = updates.personaDomain;
+      if (updates.proxyIp !== undefined) updateData.proxyIp = updates.proxyIp;
+      if (updates.credentialsHeldBy !== undefined) updateData.credentialsHeldBy = updates.credentialsHeldBy;
       if (updates.karma !== undefined) updateData.karma = updates.karma;
       if (updates.postKarma !== undefined) updateData.postKarma = updates.postKarma;
       if (updates.commentKarma !== undefined) updateData.commentKarma = updates.commentKarma;

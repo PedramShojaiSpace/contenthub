@@ -2800,6 +2800,10 @@ export const redditPersonas = mysqlTable("reddit_personas", {
   vaName: varchar("va_name", { length: 100 }).notNull(),          // e.g. "Maria", "Jose", "Ana"
   accountSlot: int("account_slot").notNull().default(1),           // 1 or 2 (each VA has 2 accounts)
   username: varchar("username", { length: 100 }).notNull(),        // Reddit username
+  personaEmail: varchar("persona_email", { length: 255 }),           // e.g. maria@mariawellness.com (owned by Pedram)
+  personaDomain: varchar("persona_domain", { length: 255 }),         // e.g. mariawellness.com
+  proxyIp: varchar("proxy_ip", { length: 100 }),                     // Residential proxy IP assigned to this persona
+  credentialsHeldBy: mysqlEnum("credentials_held_by", ["owner", "va"]).notNull().default("owner"), // owner = Pedram holds email pw; va = VA holds it (insecure)
   backstory: text("backstory"),                                    // AI-generated persona backstory
   bio: text("bio"),                                                // Profile bio text for Reddit
   phase: redditPersonaPhaseEnum.notNull().default("warmup"),

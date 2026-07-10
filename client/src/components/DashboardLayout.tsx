@@ -141,6 +141,7 @@ const vaItems = [
   { icon: CheckSquare, label: "VA Task Hub", path: "/va-tasks" },
   { icon: Users, label: "Kajabi Live Hub", path: "/kajabi-live" },
   { icon: Hash, label: "Reddit Personas", path: "/reddit-personas" },
+  { icon: BarChart3, label: "Reddit ROAS", path: "/reddit-roas" },
 ];
 
 const vaPaths = new Set(vaItems.map((i) => i.path));

@@ -135,6 +135,7 @@ import { adsMonitorRouter } from "./adsMonitorRouter";
 import { historicalPostsRouter } from "./historicalPostsRouter";
 import { youtubePipelineRouter } from "./youtubePipelineRouter";
 import { redditPersonaRouter } from "./redditPersonaRouter";
+import { redditRoasRouter } from "./redditRoasRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -7300,6 +7301,7 @@ https://www.youtube.com/watch?v=PFAaZMdoE34
   }),
   youtubePipeline: youtubePipelineRouter,
   redditPersonas: redditPersonaRouter,
+  redditRoas: redditRoasRouter,
 });
 export type AppRouter = typeof appRouter;
 

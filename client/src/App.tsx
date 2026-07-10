@@ -76,6 +76,7 @@ const AdAttributionDashboard = lazy(() => import("./pages/AdAttributionDashboard
 const CampaignMonitor = lazy(() => import("./pages/CampaignMonitor"));
 const HistoricalPosts = lazy(() => import("./pages/HistoricalPosts"));
 const RedditPersonas = lazy(() => import("./pages/RedditPersonas"));
+const RedditRoas = lazy(() => import("./pages/RedditRoas"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -159,6 +160,7 @@ function Router() {
         <Route path={"/campaign-monitor"} component={CampaignMonitor} />
         <Route path={"/historical-posts"} component={HistoricalPosts} />
         <Route path={"/reddit-personas"} component={RedditPersonas} />
+        <Route path={"/reddit-roas"} component={RedditRoas} />
         <Route path={"/youtube-pipeline"} component={YouTubePipeline} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />

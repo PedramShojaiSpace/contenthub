@@ -4184,3 +4184,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Add Reddit Personas link to VA Space nav in DashboardLayout
 - [x] Build RedditPersonas.tsx frontend page
 - [x] Write vitest tests for Reddit Persona Manager (17 tests passing)
+
+## Reddit ROAS Attribution Tracker (2026-07-10)
+- [ ] Add redditCampaigns, redditLinks, redditConversions schema tables and run db:push
+- [ ] Build redditRoasRouter.ts: createCampaign, generateUtmLink, recordConversion (Shopify webhook), getRoasDashboard procedures
+- [ ] Register Shopify order webhook endpoint to capture UTM attribution from Reddit traffic
+- [ ] Build RedditRoas.tsx frontend dashboard: campaign ROAS cards, post-level attribution table, revenue vs spend chart
+- [ ] Wire /reddit-roas route into App.tsx and VA Space nav
+- [ ] Write vitest tests for ROAS calculation and UTM attribution logic

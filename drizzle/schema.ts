@@ -2874,3 +2874,93 @@ export const redditPostQueue = mysqlTable("reddit_post_queue", {
 });
 export type RedditPostQueueItem = typeof redditPostQueue.$inferSelect;
 export type InsertRedditPostQueueItem = typeof redditPostQueue.$inferInsert;
+
+// ─── Reddit ROAS Attribution ──────────────────────────────────────────────────
+// Tracks Reddit campaigns (RedRover or in-house VA), individual posts, and
+// Shopify order conversions attributed to Reddit traffic via UTM parameters.
+
+export const redditCampaignSourceEnum = mysqlEnum("redditCampaignSource", [
+  "redrover",   // Managed by RedRover agency
+  "va",         // In-house VA accounts
+  "pedram",     // Pedram's own u/PedramShojai account
+]);
+
+export const redditCampaigns = mysqlTable("reddit_campaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  source: redditCampaignSourceEnum.notNull().default("va"),
+  // Target SKU / product being promoted
+  skuLabel: varchar("skuLabel", { length: 255 }),
+  shopifyProductId: varchar("shopifyProductId", { length: 128 }),
+  // Monthly spend for this campaign (in cents)
+  monthlySpendCents: int("monthlySpendCents").default(0),
+  // UTM campaign slug — used in all links for this campaign
+  utmCampaign: varchar("utmCampaign", { length: 128 }).notNull(),
+  // Date range
+  startDate: bigint("startDate", { mode: "number" }),
+  endDate: bigint("endDate", { mode: "number" }),
+  active: boolean("active").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type RedditCampaign = typeof redditCampaigns.$inferSelect;
+export type InsertRedditCampaign = typeof redditCampaigns.$inferInsert;
+
+export const redditLinks = mysqlTable("reddit_links", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull(),
+  // The Reddit post URL
+  redditPostUrl: text("redditPostUrl"),
+  // Subreddit (e.g. "r/GutHealth")
+  subreddit: varchar("subreddit", { length: 128 }),
+  // The destination URL with UTM params embedded
+  destinationUrl: text("destinationUrl").notNull(),
+  // UTM breakdown
+  utmSource: varchar("utmSource", { length: 128 }).default("reddit"),
+  utmMedium: varchar("utmMedium", { length: 128 }).default("organic"),
+  utmCampaign: varchar("utmCampaign", { length: 128 }),
+  utmContent: varchar("utmContent", { length: 255 }),  // post ID / slug
+  utmTerm: varchar("utmTerm", { length: 255 }),
+  // Post type: question | comment | direct_post
+  postType: mysqlEnum("postType", ["question", "comment", "direct_post"]).default("direct_post"),
+  // Posted by which account
+  postedBy: varchar("postedBy", { length: 128 }),
+  // Post date
+  postedAt: bigint("postedAt", { mode: "number" }),
+  // Engagement metrics (manually updated or from RedRover report)
+  upvotes: int("upvotes").default(0),
+  comments: int("comments").default(0),
+  // Computed: total revenue attributed to this link
+  revenueAttributedCents: int("revenueAttributedCents").default(0),
+  conversionCount: int("conversionCount").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type RedditLink = typeof redditLinks.$inferSelect;
+export type InsertRedditLink = typeof redditLinks.$inferInsert;
+
+export const redditConversions = mysqlTable("reddit_conversions", {
+  id: int("id").autoincrement().primaryKey(),
+  linkId: int("linkId").notNull(),
+  campaignId: int("campaignId").notNull(),
+  // Shopify order details
+  shopifyOrderId: varchar("shopifyOrderId", { length: 128 }).notNull().unique(),
+  shopifyOrderNumber: varchar("shopifyOrderNumber", { length: 64 }),
+  orderTotalCents: int("orderTotalCents").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD"),
+  customerEmail: varchar("customerEmail", { length: 320 }),
+  lineItems: text("lineItems"),  // JSON
+  // UTM params from the order's landing site
+  utmSource: varchar("utmSource", { length: 128 }),
+  utmMedium: varchar("utmMedium", { length: 128 }),
+  utmCampaign: varchar("utmCampaign", { length: 128 }),
+  utmContent: varchar("utmContent", { length: 255 }),
+  // Attribution confidence
+  attributionType: mysqlEnum("redditAttributionType", ["direct", "probabilistic", "manual"]).default("direct"),
+  orderCreatedAt: bigint("orderCreatedAt", { mode: "number" }),
+  receivedAt: bigint("receivedAt", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RedditConversion = typeof redditConversions.$inferSelect;
+export type InsertRedditConversion = typeof redditConversions.$inferInsert;

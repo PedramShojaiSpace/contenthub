@@ -4265,3 +4265,21 @@ Pricing model (corrected):
 - [x] /quiz route in App.tsx (public-facing, no DashboardLayout wrapper)
 - [x] quiz.test.ts: 18 tests covering scoring, avatar profiles, pricing constants, computeRetreatPrice
 - [x] Total test suite: 740 tests passing, 64 files, 0 failures
+
+## Fable Five Audit — Rec 8: A/B Testing Framework (Jul 11 2026)
+- [ ] Create ab_tests, ab_variants, ab_exposures, ab_conversions tables via SQL
+- [ ] Build abTestRouter: createTest, createVariant, assignVariant (sticky by visitor cookie), recordExposure, recordConversion, getResults (with z-test significance)
+- [ ] Wire abTestRouter into routers.ts
+- [ ] Build ABTests.tsx dashboard: test list, variant cards, live results with significance badges, auto-promote winner button
+- [ ] Add /ab-tests route to App.tsx and Owner workspace nav
+- [ ] Write vitest tests for z-test significance calculation and variant assignment
+
+## Fable Five Audit — Rec 8: A/B Testing Framework COMPLETE (2026-07-11)
+- [x] Schema: ab_tests, ab_variants, ab_exposures, ab_conversions tables (SQL + Drizzle schema)
+- [x] abTestRouter.ts: createTest, createVariant, assignVariant (sticky via visitor cookie), recordConversion, getResults (z-test + significance), listTests, updateTestStatus, promoteWinner
+- [x] Exported: normalCdf, twoProportionZTest, pickVariantByWeight for unit testing
+- [x] Wire abTestRouter into routers.ts
+- [x] AbTests.tsx: /ab-tests page with test list, test detail, variant management, significance badges, auto-promote button, integration code snippet
+- [x] Route /ab-tests added to App.tsx
+- [x] A/B Tests added to Owner workspace nav in DashboardLayout (FlaskConical icon)
+- [x] 15 Vitest tests: normalCdf accuracy, z-test significance/threshold/edge cases, weight-based variant picker — all 755 tests passing

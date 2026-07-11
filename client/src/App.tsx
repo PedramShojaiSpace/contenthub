@@ -82,6 +82,7 @@ const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const FunnelCommand = lazy(() => import("./pages/FunnelCommand"));
 const AscensionPipeline = lazy(() => import("./pages/AscensionPipeline"));
 const DiagnosticQuiz = lazy(() => import("./pages/DiagnosticQuiz"));
+const AbTests = lazy(() => import("./pages/AbTests"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -172,6 +173,7 @@ function Router() {
         <Route path={"/funnels"} component={FunnelCommand} />
         <Route path={"/ascension"} component={AscensionPipeline} />
         <Route path={"/quiz"} component={DiagnosticQuiz} />
+        <Route path={"/ab-tests"} component={AbTests} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

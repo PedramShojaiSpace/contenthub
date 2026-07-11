@@ -3082,3 +3082,75 @@ export const quizResponses = mysqlTable("quiz_responses", {
 });
 export type QuizResponse = typeof quizResponses.$inferSelect;
 export type InsertQuizResponse = typeof quizResponses.$inferInsert;
+
+// ─── A/B Testing (Rec 8 — Fable Five Audit) ──────────────────────────────────
+
+export const abTests = mysqlTable("ab_tests", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  pageUrl: varchar("page_url", { length: 500 }),
+  status: mysqlEnum("ab_test_status", ["draft", "running", "paused", "concluded"])
+    .notNull()
+    .default("draft"),
+  minExposures: int("min_exposures").notNull().default(300),
+  significanceThreshold: decimal("significance_threshold", { precision: 5, scale: 4 })
+    .notNull()
+    .default("0.9500"),
+  winnerVariantId: int("winner_variant_id"),
+  startedAt: bigint("started_at", { mode: "number" }),
+  concludedAt: bigint("concluded_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type AbTest = typeof abTests.$inferSelect;
+export type InsertAbTest = typeof abTests.$inferInsert;
+
+export const abVariants = mysqlTable("ab_variants", {
+  id: int("id").autoincrement().primaryKey(),
+  testId: int("test_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  isControl: boolean("is_control").notNull().default(false),
+  weight: int("weight").notNull().default(50),
+  headline: text("headline"),
+  ctaText: varchar("cta_text", { length: 255 }),
+  pageContent: text("page_content"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type AbVariant = typeof abVariants.$inferSelect;
+export type InsertAbVariant = typeof abVariants.$inferInsert;
+
+export const abExposures = mysqlTable("ab_exposures", {
+  id: int("id").autoincrement().primaryKey(),
+  testId: int("test_id").notNull(),
+  variantId: int("variant_id").notNull(),
+  visitorId: varchar("visitor_id", { length: 128 }).notNull(),
+  sessionId: varchar("session_id", { length: 128 }),
+  utmSource: varchar("utm_source", { length: 255 }),
+  utmCampaign: varchar("utm_campaign", { length: 255 }),
+  exposedAt: bigint("exposed_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type AbExposure = typeof abExposures.$inferSelect;
+export type InsertAbExposure = typeof abExposures.$inferInsert;
+
+export const abConversions = mysqlTable("ab_conversions", {
+  id: int("id").autoincrement().primaryKey(),
+  testId: int("test_id").notNull(),
+  variantId: int("variant_id").notNull(),
+  visitorId: varchar("visitor_id", { length: 128 }).notNull(),
+  conversionType: mysqlEnum("ab_conversion_type", [
+    "purchase",
+    "email_capture",
+    "quiz_start",
+    "checkout_start",
+    "custom",
+  ])
+    .notNull()
+    .default("purchase"),
+  revenueCents: int("revenue_cents"),
+  convertedAt: bigint("converted_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type AbConversion = typeof abConversions.$inferSelect;
+export type InsertAbConversion = typeof abConversions.$inferInsert;

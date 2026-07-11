@@ -42,9 +42,11 @@ function CapiBadge({ sent }: { sent: boolean }) {
 export default function AdAttributionDashboard() {
   const [days, setDays] = useState(30);
   const [filterType, setFilterType] = useState<"all" | "direct" | "probabilistic" | "unattributed">("all");
+  const [upgradeRate, setUpgradeRate] = useState(0.12);
 
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = trpc.attribution.getSummary.useQuery({ days });
   const { data: sales, isLoading: salesLoading, refetch: refetchSales } = trpc.attribution.listSales.useQuery({ days, attributionType: filterType, limit: 100 });
+  const { data: evRoas, isLoading: evLoading } = trpc.attribution.getEvRoas.useQuery({ days, academyUpgradeRate: upgradeRate, academyLtv: 239900 });
 
   const retryCapi = trpc.attribution.retryCapi.useMutation({
     onSuccess: (result) => {
@@ -312,6 +314,76 @@ export default function AdAttributionDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* EV-Aware ROAS Panel */}
+        <Card className="border-purple-800/40 bg-purple-950/10">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-purple-400" /> EV-Aware ROAS
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Expected Value per buyer = immediate revenue + (Academy upgrade probability × $2,399 LTV).
+              This is the true ROAS your ads are funding.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {evLoading ? (
+              <div className="text-sm text-muted-foreground">Loading…</div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Raw Revenue</p>
+                    <p className="text-xl font-bold">{formatCurrency(evRoas?.totalRevenueRaw ?? 0)}</p>
+                  </div>
+                  <div className="bg-purple-900/20 rounded-lg p-3">
+                    <p className="text-xs text-purple-400">EV Revenue</p>
+                    <p className="text-xl font-bold text-purple-300">{formatCurrency(evRoas?.totalEvRevenue ?? 0)}</p>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">EV Uplift</p>
+                    <p className="text-xl font-bold text-emerald-400">+{formatCurrency(evRoas?.evUpliftTotal ?? 0)}</p>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Academy Upgrade Rate</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="range" min="0" max="0.5" step="0.01"
+                        value={upgradeRate}
+                        onChange={(e) => setUpgradeRate(Number(e.target.value))}
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-bold w-10 text-right">{Math.round(upgradeRate * 100)}%</span>
+                    </div>
+                  </div>
+                </div>
+                {evRoas?.byCampaign && evRoas.byCampaign.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">EV Revenue by Campaign</p>
+                    {evRoas.byCampaign.map((row) => {
+                      const maxEv = evRoas.byCampaign[0]?.evRevenue || 1;
+                      const pct = Math.round((row.evRevenue / maxEv) * 100);
+                      return (
+                        <div key={row.campaign}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="font-medium truncate max-w-[50%]">{row.campaign}</span>
+                            <span className="text-muted-foreground text-xs">
+                              {row.sales} orders · raw {formatCurrency(row.revenueRaw)} · EV {formatCurrency(row.evRevenue)}
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-purple-500 rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground/60 italic">{evRoas?.note}</p>
               </div>
             )}
           </CardContent>

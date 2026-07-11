@@ -52,7 +52,7 @@ import { useLocation } from "wouter";
 
 type FunnelStage = "tofu" | "mofu" | "bofu";
 type KeywordType = "pillar" | "cluster" | "conversion";
-type MonetizationTag = "academy" | "lights_on" | "supplements" | "testing" | "free_lead" | "affiliate";
+type MonetizationTag = "academy" | "supplements" | "testing" | "free_lead" | "affiliate";
 type ContentStatus = "not_started" | "briefed" | "in_progress" | "published";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -71,7 +71,6 @@ const TYPE_LABELS: Record<KeywordType, { label: string; color: string }> = {
 
 const MONETIZATION_LABELS: Record<MonetizationTag, { label: string; color: string }> = {
   academy: { label: "Academy", color: "bg-indigo-100 text-indigo-700" },
-  lights_on: { label: "Lights On Course", color: "bg-amber-100 text-amber-700" },
   supplements: { label: "Supplements", color: "bg-green-100 text-green-700" },
   testing: { label: "Testing", color: "bg-orange-100 text-orange-700" },
   free_lead: { label: "Free Lead", color: "bg-muted text-muted-foreground" },
@@ -325,7 +324,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [pillar, setPillar] = useState("");
-  const [goal, setGoal] = useState<"academy" | "lights_on" | "supplements" | "testing" | "free_lead">("academy");
+  const [goal, setGoal] = useState<"academy" | "supplements" | "testing" | "free_lead">("academy");
   const [description, setDescription] = useState("");
 
   const create = trpc.kwStrategy.createCampaign.useMutation({
@@ -382,7 +381,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
               </SelectTrigger>
               <SelectContent className="bg-card border-border text-foreground">
                 <SelectItem value="academy">Urban Monk Academy ($297/yr)</SelectItem>
-                <SelectItem value="lights_on">Lights On Course</SelectItem>
+
                 <SelectItem value="supplements">Supplement Store</SelectItem>
                 <SelectItem value="testing">Functional Testing</SelectItem>
                 <SelectItem value="free_lead">Free Lead Magnet</SelectItem>

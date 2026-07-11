@@ -235,6 +235,85 @@ export const attributionRouter = router({
       }));
     }),
 
+  /**
+   * EV-aware ROAS (Rec 7, Grok 3 Audit v2)
+   *
+   * The audit identified that the existing ROAS calculation uses only the
+   * immediate order total. This procedure adds an Expected Value (EV) layer:
+   *
+   *   EV per buyer = orderTotal + (academyUpgradeRate × academyLTV)
+   *
+   * Where:
+   *   - academyUpgradeRate: % of buyers who go on to purchase the Academy ($297/yr)
+   *   - academyLTV: lifetime value of an Academy member (default: $2,399 per audit)
+   *
+   * This gives a more accurate ROAS that accounts for the downstream Academy
+   * conversion that paid ads are actually funding.
+   *
+   * The academyUpgradeRate and academyLTV are configurable so they can be
+   * updated as real data accumulates.
+   */
+  getEvRoas: protectedProcedure
+    .input(z.object({
+      days: z.number().min(1).max(90).default(30),
+      /** % of supplement/test buyers who upgrade to Academy. Default 0.12 (12%) */
+      academyUpgradeRate: z.number().min(0).max(1).default(0.12),
+      /** Academy member LTV in cents. Default $2,399 = 239900 cents */
+      academyLtv: z.number().min(0).default(239900),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+
+      const since = Date.now() - input.days * 24 * 60 * 60 * 1000;
+
+      // Pull per-campaign ad spend from adSnapshots (if available)
+      // and revenue from attributedSales
+      const salesByCampaign = await db
+        .select({
+          campaign: attributedSales.utmCampaign,
+          sales: sql<number>`COUNT(*)`,
+          revenueRaw: sql<number>`SUM(order_total)`,
+        })
+        .from(attributedSales)
+        .where(and(gte(attributedSales.receivedAt, since), isNotNull(attributedSales.utmCampaign)))
+        .groupBy(attributedSales.utmCampaign)
+        .orderBy(desc(sql`SUM(order_total)`));
+
+      // EV calculation per campaign
+      const evByCampaign = salesByCampaign.map((row) => {
+        const revenueRaw = Number(row.revenueRaw ?? 0); // in cents
+        const sales = Number(row.sales ?? 0);
+        // EV uplift: each buyer has a academyUpgradeRate chance of becoming an Academy member
+        const evUplift = sales * input.academyUpgradeRate * input.academyLtv;
+        const evRevenue = revenueRaw + evUplift;
+        return {
+          campaign: row.campaign || "(none)",
+          sales,
+          revenueRaw: Math.round(revenueRaw),
+          evRevenue: Math.round(evRevenue),
+          evUpliftCents: Math.round(evUplift),
+        };
+      });
+
+      // Totals
+      const totalRevenueRaw = evByCampaign.reduce((s, r) => s + r.revenueRaw, 0);
+      const totalEvRevenue = evByCampaign.reduce((s, r) => s + r.evRevenue, 0);
+      const totalSales = evByCampaign.reduce((s, r) => s + r.sales, 0);
+
+      return {
+        days: input.days,
+        academyUpgradeRate: input.academyUpgradeRate,
+        academyLtv: input.academyLtv,
+        totalSales,
+        totalRevenueRaw,
+        totalEvRevenue,
+        evUpliftTotal: totalEvRevenue - totalRevenueRaw,
+        byCampaign: evByCampaign,
+        note: "EV = immediate revenue + (sales × upgradeRate × academyLTV). Upgrade rate is an assumption until Academy data is available.",
+      };
+    }),
+
   retryCapi: protectedProcedure
     .input(z.object({ saleId: z.number() }))
     .mutation(async ({ input }) => {

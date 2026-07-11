@@ -77,6 +77,8 @@ const CampaignMonitor = lazy(() => import("./pages/CampaignMonitor"));
 const HistoricalPosts = lazy(() => import("./pages/HistoricalPosts"));
 const RedditPersonas = lazy(() => import("./pages/RedditPersonas"));
 const RedditRoas = lazy(() => import("./pages/RedditRoas"));
+const SubstackPublisher = lazy(() => import("./pages/SubstackPublisher"));
+const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -162,6 +164,8 @@ function Router() {
         <Route path={"/reddit-personas"} component={RedditPersonas} />
         <Route path={"/reddit-roas"} component={RedditRoas} />
         <Route path={"/youtube-pipeline"} component={YouTubePipeline} />
+        <Route path={"/substack"} component={SubstackPublisher} />
+        <Route path={"/system-health"} component={SystemHealth} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

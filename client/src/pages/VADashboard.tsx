@@ -682,6 +682,7 @@ function VideoStatusBadge({ status }: { status: string }) {
 
 // ─── Video Job Card ───────────────────────────────────────────────────────────
 function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void }) {
+  const { data: ytStatus } = trpc.videoToBlog.getYouTubeStatus.useQuery();
   const [expanded, setExpanded] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [showEditMeta, setShowEditMeta] = useState(false);

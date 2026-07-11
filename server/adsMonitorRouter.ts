@@ -192,7 +192,7 @@ async function fetchMetaInsights(datePreset: string = "yesterday"): Promise<AdSe
   const data: any[] = json.data || [];
 
   // Also fetch campaign status and budget
-  const campaignIds = [...new Set(data.map((d: any) => d.campaign_id))];
+  const campaignIds = Array.from(new Set(data.map((d: any) => d.campaign_id as string)));
   const campaignMeta: Record<string, { status: string; objective: string; daily_budget?: string }> = {};
 
   if (campaignIds.length > 0) {
@@ -257,6 +257,7 @@ export async function runDailyAdsSync(datePreset: string = "yesterday"): Promise
   pauseCount: number;
   scaleCount: number;
   briefingText: string;
+  lpVariantsGenerated?: number;
 }> {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
@@ -366,13 +367,16 @@ Use plain language. Be specific with numbers. No fluff.`;
 
   let briefingText = "Daily briefing generation failed — check Meta API connection.";
   try {
+    const systemMsg: string = "You are a direct-response media buyer who writes concise, actionable daily ad performance briefings.";
+    const userMsg: string = briefingPrompt;
     const llmResp = await invokeLLM({
       messages: [
-        { role: "system", content: "You are a direct-response media buyer who writes concise, actionable daily ad performance briefings." },
-        { role: "user", content: briefingPrompt },
+        { role: "system", content: systemMsg },
+        { role: "user", content: userMsg },
       ],
     });
-    briefingText = llmResp.choices?.[0]?.message?.content || briefingText;
+    const rawContent = llmResp.choices?.[0]?.message?.content;
+    briefingText = typeof rawContent === "string" ? rawContent : briefingText;
   } catch (e) {
     console.error("[AdsMonitor] LLM briefing failed:", e);
   }

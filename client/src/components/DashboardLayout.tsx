@@ -22,135 +22,81 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
-  Brain,
-  Film,
-  Globe,
-  Image,
-  LayoutDashboard,
-  Link2,
-  LogOut,
-  PanelLeft,
-  PenSquare,
-  FlaskConical,
-  Rss,
-  ClipboardList,
-  Award,
-  Cpu,
-  Library,
-  Users,
-  Video,
-  Zap,
+  Activity,
   BarChart3,
+  BookOpen,
+  Brain,
   ChevronDown,
   ChevronRight,
-  Sparkles,
-  Compass,
-  Settings,
-  Inbox,
-  ShieldCheck,
-  Newspaper,
   Clapperboard,
-  MessageSquare,
-  BookOpen,
+  ClipboardList,
+  Compass,
   FileText,
-  Hash,
+  Film,
   GitFork,
-  Mic,
-  Search,
-  TrendingUp,
-  Target,
-  Trophy,
-  Layout,
-  Youtube,
-  Clock,
-  Megaphone,
-  UserSearch,
-  QrCode,
+  Globe,
+  Hash,
+  Image,
+  LayoutDashboard,
+  Library,
+  Link2,
+  LogOut,
   Mail,
   MailCheck,
-  Microscope,
-  ShoppingBag,
-  CheckSquare,
+  Megaphone,
+  MessageSquare,
+  Mic,
+  Newspaper,
+  PanelLeft,
+  PenSquare,
+  QrCode,
   RefreshCw,
-  Activity,
+  Rss,
+  Search,
+  Settings,
+  ShieldCheck,
+  ShoppingBag,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
+  Video,
+  Youtube,
+  Zap,
+  CheckSquare,
+  Clock,
+  FlaskConical,
+  Award,
+  Cpu,
+  Inbox,
+  UserSearch,
+  Microscope,
+  Layout,
+  BookMarked,
+  ArrowUpCircle,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-// Top-level nav items (always visible)
-const topNavItems = [
-  { icon: LayoutDashboard, label: "Command Center", path: "/" },
+// ─── WORKSPACE DEFINITIONS ────────────────────────────────────────────────────
+// Three workspaces: OWNER (funnel-focused), VA (queue-focused), SYSTEM (everything else)
+
+// OWNER workspace — Pedram's Monday view: funnels, ascension, approvals, ads
+const ownerItems = [
+  { icon: LayoutDashboard, label: "Funnel Command", path: "/funnels" },
+  { icon: ArrowUpCircle, label: "Ascension Pipeline", path: "/ascension" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
-  { icon: Newspaper, label: "LinkedIn Newsfeed", path: "/newsfeed" },
-  { icon: FileText, label: "E-Book Generator", path: "/ebook-generator" },
-  { icon: Library, label: "Media Vault", path: "/media-vault" },
-  { icon: Video, label: "Create Webinar", path: "/webinar" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
-  { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
   { icon: Clock, label: "Review Queue", path: "/review-queue" },
-  { icon: Mail, label: "Email Optimizer", path: "/email-optimizer" },
-  { icon: MailCheck, label: "Plain Text Email", path: "/plain-text-email" },
   { icon: Rss, label: "Substack Publisher", path: "/substack" },
   { icon: Activity, label: "System Health", path: "/system-health" },
 ];
 
-// Libraries sub-items
-const librariesItems = [
-  { icon: Film, label: "Script Library", path: "/scripts" },
-  { icon: BookOpen, label: "Book Library", path: "/book-library" },
-  { icon: Image, label: "Asset Library", path: "/assets" },
-  { icon: MessageSquare, label: "Ask the Urban Monk", path: "/ask-urban-monk" },
-  { icon: Target, label: "Presence Assessment", path: "/presence-assessment" },
-];
-
-const librariesPaths = new Set(librariesItems.map((i) => i.path));
-
-// SEO sub-items
-const seoItems = [
-  { icon: Trophy, label: "Content Scoreboard", path: "/scoreboard" },
-  { icon: Search, label: "SEO Dashboard", path: "/seo" },
-  { icon: Target, label: "Keyword Strategy", path: "/keyword-strategy" },
-  { icon: Link2, label: "Backlink Outreach", path: "/backlink-outreach" },
-];
-
-const seoPaths = new Set(seoItems.map((i) => i.path));
-
-// Landing Pages sub-items
-const landingPagesItems = [
-  { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
-  { icon: Layout, label: "CH Landing Pages", path: "/ch-pages" },
-  { icon: QrCode, label: "QR Generator", path: "/qr-generator" },
-];
-
-const landingPagesPaths = new Set(landingPagesItems.map((i) => i.path));
-
-// Video Production sub-items (video only — VA and Ads moved to their own sections)
-const videoItems = [
-  { icon: Video, label: "Video Production", path: "/video-production" },
-  { icon: Youtube, label: "YouTube Pipeline", path: "/youtube-pipeline" },
-  { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
-  { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
-  { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
-  { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
-];
-
-const videoPaths = new Set(videoItems.map((i) => i.path));
-
-// VA Space sub-items
-const vaItems = [
-  { icon: Users, label: "VA Dashboard", path: "/va" },
-  { icon: CheckSquare, label: "VA Task Hub", path: "/va-tasks" },
-  { icon: Users, label: "Kajabi Live Hub", path: "/kajabi-live" },
-  { icon: Hash, label: "Reddit Personas", path: "/reddit-personas" },
-  { icon: BarChart3, label: "Reddit ROAS", path: "/reddit-roas" },
-];
-
-const vaPaths = new Set(vaItems.map((i) => i.path));
-
-// Ads sub-items
-const adsItems = [
+// OWNER — Paid Ads sub-group
+const ownerAdsItems = [
   { icon: Megaphone, label: "Ads Manager", path: "/ads" },
   { icon: Newspaper, label: "Advertorial Builder", path: "/advertorial-builder" },
   { icon: Sparkles, label: "Meta Ad Variants", path: "/meta-ads" },
@@ -158,47 +104,131 @@ const adsItems = [
   { icon: BarChart3, label: "Campaign Monitor", path: "/campaign-monitor" },
 ];
 
-const adsPaths = new Set(adsItems.map((i) => i.path));
-
-// Strategy sub-items (grouped under collapsible parent)
-const strategyItems = [
-  { icon: Brain, label: "Strategy Brain", path: "/strategy" },
-  { icon: Rss, label: "Channel Watchlist", path: "/channels" },
-  { icon: Link2, label: "UTM Builder", path: "/utm" },
+// OWNER — SEO sub-group
+const ownerSeoItems = [
+  { icon: Trophy, label: "Content Scoreboard", path: "/scoreboard" },
+  { icon: Search, label: "SEO Dashboard", path: "/seo" },
+  { icon: Target, label: "Keyword Strategy", path: "/keyword-strategy" },
+  { icon: Link2, label: "Backlink Outreach", path: "/backlink-outreach" },
 ];
 
-const strategyPaths = new Set(strategyItems.map((i) => i.path));
+// VA workspace — single merged queue + production tools
+const vaQueueItems = [
+  { icon: Users, label: "VA Dashboard", path: "/va" },
+  { icon: CheckSquare, label: "VA Task Hub", path: "/va-tasks" },
+  { icon: Users, label: "Kajabi Live Hub", path: "/kajabi-live" },
+];
 
-// Intelligence sub-items (grouped under collapsible parent)
-const intelligenceItems = [
-  { icon: TrendingUp, label: "Competitive Intel", path: "/competitive-intelligence" },
-  { icon: MessageSquare, label: "ManyChat Wizard", path: "/manychat-wizard" },
+// VA — Content Production sub-group
+const vaProductionItems = [
+  { icon: Film, label: "Script Library", path: "/scripts" },
+  { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
+  { icon: Mail, label: "Email Optimizer", path: "/email-optimizer" },
+  { icon: MailCheck, label: "Plain Text Email", path: "/plain-text-email" },
+  { icon: FileText, label: "E-Book Generator", path: "/ebook-generator" },
+  { icon: Video, label: "Create Webinar", path: "/webinar" },
+];
+
+// VA — Short-Form (merged Viral Studio + Video Variants)
+const vaShortFormItems = [
+  { icon: Zap, label: "Viral Studio", path: "/viral-studio" },
+  { icon: Clapperboard, label: "Video Variants", path: "/video-variants" },
+];
+
+// VA — Video Production sub-group
+const vaVideoItems = [
+  { icon: Video, label: "Video Production", path: "/video-production" },
+  { icon: Youtube, label: "YouTube Pipeline", path: "/youtube-pipeline" },
+  { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
+  { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
+];
+
+// VA — Reddit (disclosed presence + ROAS only — personas moved to System/Archive)
+const vaRedditItems = [
   { icon: Hash, label: "Reddit Intel", path: "/reddit-intelligence" },
+  { icon: BarChart3, label: "Reddit ROAS", path: "/reddit-roas" },
+];
+
+// SYSTEM workspace — library, intelligence, settings, archive
+const systemLibraryItems = [
+  { icon: Library, label: "Media Vault", path: "/media-vault" },
+  { icon: Image, label: "Asset Library", path: "/assets" },
+  { icon: BookOpen, label: "Book Library", path: "/book-library" },
+  { icon: MessageSquare, label: "Ask the Urban Monk", path: "/ask-urban-monk" },
+];
+
+// SYSTEM — Links (merged UTM + QR)
+const systemLinksItems = [
+  { icon: Link2, label: "UTM Builder", path: "/utm" },
+  { icon: QrCode, label: "QR Generator", path: "/qr-generator" },
+];
+
+// SYSTEM — Pages (all landing page tools)
+const systemPagesItems = [
+  { icon: Globe, label: "Landing Pages", path: "/landing-pages" },
+  { icon: Layout, label: "CH Landing Pages", path: "/ch-pages" },
+  { icon: Newspaper, label: "LinkedIn Newsfeed", path: "/newsfeed" },
+];
+
+// SYSTEM — Intelligence
+const systemIntelItems = [
+  { icon: TrendingUp, label: "Competitive Intel", path: "/competitive-intelligence" },
   { icon: FlaskConical, label: "Research", path: "/research" },
   { icon: ClipboardList, label: "Typeform", path: "/typeform" },
-  { icon: Award, label: "Press", path: "/press" },
   { icon: Cpu, label: "Intelligence Hub", path: "/intelligence" },
   { icon: Zap, label: "Webinar Intel", path: "/webinar-intelligence" },
   { icon: Sparkles, label: "Avatar Repository", path: "/avatar-repository" },
   { icon: Users, label: "Avatar", path: "/avatar" },
-  { icon: BarChart3, label: "LLM Projects", path: "/llm-projects" },
-  { icon: Settings, label: "WordPress Setup", path: "/wordpress-setup" },
   { icon: RefreshCw, label: "Historical Posts", path: "/historical-posts" },
+  { icon: Settings, label: "WordPress Setup", path: "/wordpress-setup" },
   { icon: Settings, label: "Default Channels", path: "/default-channels" },
   { icon: Inbox, label: "Ingest Inbox", path: "/ingest" },
   { icon: ShieldCheck, label: "Verified Links", path: "/verified-links" },
   { icon: UserSearch, label: "Lead Scrubber", path: "/lead-scrubber" },
+  { icon: Target, label: "Presence Assessment", path: "/presence-assessment" },
+];
+
+// SYSTEM — Archive (rarely used, kept for reference)
+const systemArchiveItems = [
+  { icon: Hash, label: "Reddit Personas", path: "/reddit-personas" },
+  { icon: Brain, label: "Strategy Brain", path: "/strategy" },
+  { icon: Rss, label: "Channel Watchlist", path: "/channels" },
+  { icon: BarChart3, label: "LLM Projects", path: "/llm-projects" },
+  { icon: MessageSquare, label: "ManyChat Wizard", path: "/manychat-wizard" },
+  { icon: Award, label: "Press", path: "/press" },
   { icon: Microscope, label: "Kids Research", path: "/kids-review" },
   { icon: ShoppingBag, label: "Collective Sourcing", path: "/collective-sourcing" },
   { icon: Rss, label: "Soro Intelligence", path: "/soro-intelligence" },
 ];
 
-const intelligencePaths = new Set(intelligenceItems.map((i) => i.path));
+// All paths for active-state detection
+const allOwnerPaths = new Set([
+  ...ownerItems.map(i => i.path),
+  ...ownerAdsItems.map(i => i.path),
+  ...ownerSeoItems.map(i => i.path),
+]);
+const allVaPaths = new Set([
+  ...vaQueueItems.map(i => i.path),
+  ...vaProductionItems.map(i => i.path),
+  ...vaShortFormItems.map(i => i.path),
+  ...vaVideoItems.map(i => i.path),
+  ...vaRedditItems.map(i => i.path),
+]);
+const allSystemPaths = new Set([
+  ...systemLibraryItems.map(i => i.path),
+  ...systemLinksItems.map(i => i.path),
+  ...systemPagesItems.map(i => i.path),
+  ...systemIntelItems.map(i => i.path),
+  ...systemArchiveItems.map(i => i.path),
+]);
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 260;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
+const WORKSPACE_KEY = "sidebar-workspace";
+
+type Workspace = "owner" | "va" | "system";
 
 export default function DashboardLayout({
   children,
@@ -270,6 +300,78 @@ type DashboardLayoutContentProps = {
   setSidebarWidth: (width: number) => void;
 };
 
+// Helper: collapsible sub-group
+function NavGroup({
+  icon: Icon,
+  label,
+  items,
+  isCollapsed,
+  location,
+  setLocation,
+  defaultOpen = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  items: { icon: React.ElementType; label: string; path: string }[];
+  isCollapsed: boolean;
+  location: string;
+  setLocation: (path: string) => void;
+  defaultOpen?: boolean;
+}) {
+  const isGroupActive = items.some(i => i.path === location);
+  const [open, setOpen] = useState(isGroupActive || defaultOpen);
+
+  useEffect(() => {
+    if (isGroupActive) setOpen(true);
+  }, [isGroupActive]);
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={isGroupActive}
+        onClick={() => {
+          if (isCollapsed) {
+            setLocation(items[0].path);
+          } else {
+            setOpen(prev => !prev);
+          }
+        }}
+        tooltip={label}
+        className={`h-10 transition-all font-normal ${isGroupActive ? "text-primary" : ""}`}
+      >
+        <Icon className={`h-4 w-4 ${isGroupActive ? "text-primary" : ""}`} />
+        <span className="flex-1">{label}</span>
+        {!isCollapsed && (
+          open
+            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        )}
+      </SidebarMenuButton>
+      {open && !isCollapsed && (
+        <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
+          {items.map(sub => {
+            const isActive = location === sub.path;
+            return (
+              <button
+                key={sub.path}
+                onClick={() => setLocation(sub.path)}
+                className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
+                  ${isActive
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  }`}
+              >
+                <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                <span className="truncate">{sub.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </SidebarMenuItem>
+  );
+}
+
 function DashboardLayoutContent({
   children,
   setSidebarWidth,
@@ -282,68 +384,37 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  // Auto-expand Intelligence group when an intelligence route is active
-  const isIntelligenceActive = intelligencePaths.has(location);
-  const [intelligenceOpen, setIntelligenceOpen] = useState(isIntelligenceActive);
+  // Determine active workspace from current route, with localStorage persistence
+  const getWorkspaceForPath = (path: string): Workspace => {
+    if (allOwnerPaths.has(path)) return "owner";
+    if (allVaPaths.has(path)) return "va";
+    if (allSystemPaths.has(path)) return "system";
+    return "owner"; // default
+  };
 
-  useEffect(() => {
-    if (isIntelligenceActive) setIntelligenceOpen(true);
-  }, [isIntelligenceActive]);
-
-  // Auto-expand Strategy group when a strategy route is active
-  const isStrategyActive = strategyPaths.has(location);
-  const [strategyOpen, setStrategyOpen] = useState(isStrategyActive);
-
-  useEffect(() => {
-    if (isStrategyActive) setStrategyOpen(true);
-  }, [isStrategyActive]);
-
-  // Libraries group
-  const isLibrariesActive = librariesPaths.has(location);
-  const [librariesOpen, setLibrariesOpen] = useState(isLibrariesActive);
-  useEffect(() => { if (isLibrariesActive) setLibrariesOpen(true); }, [isLibrariesActive]);
-
-  // SEO group
-  const isSeoActive = seoPaths.has(location);
-  const [seoOpen, setSeoOpen] = useState(isSeoActive);
-  useEffect(() => { if (isSeoActive) setSeoOpen(true); }, [isSeoActive]);
-
-  // Landing Pages group
-  const isLandingPagesActive = landingPagesPaths.has(location);
-  const [landingPagesOpen, setLandingPagesOpen] = useState(isLandingPagesActive);
-  useEffect(() => { if (isLandingPagesActive) setLandingPagesOpen(true); }, [isLandingPagesActive]);
-
-  // Video Production group
-  const isVideoActive = videoPaths.has(location);
-  const [videoOpen, setVideoOpen] = useState(isVideoActive);
-  useEffect(() => { if (isVideoActive) setVideoOpen(true); }, [isVideoActive]);
-
-  // VA Space group
-  const isVaActive = vaPaths.has(location);
-  const [vaOpen, setVaOpen] = useState(isVaActive);
-  useEffect(() => { if (isVaActive) setVaOpen(true); }, [isVaActive]);
-
-  // Ads group
-  const isAdsActive = adsPaths.has(location);
-  const [adsOpen, setAdsOpen] = useState(isAdsActive);
-  useEffect(() => { if (isAdsActive) setAdsOpen(true); }, [isAdsActive]);
-
-  const activeLabel =
-    topNavItems.find((i) => i.path === location)?.label ??
-    intelligenceItems.find((i) => i.path === location)?.label ??
-    strategyItems.find((i) => i.path === location)?.label ??
-    librariesItems.find((i) => i.path === location)?.label ??
-    seoItems.find((i) => i.path === location)?.label ??
-    landingPagesItems.find((i) => i.path === location)?.label ??
-    videoItems.find((i) => i.path === location)?.label ??
-    vaItems.find((i) => i.path === location)?.label ??
-    adsItems.find((i) => i.path === location)?.label ??
-    "Menu";
-
-  useEffect(() => {
-    if (isCollapsed) {
-      setIsResizing(false);
+  const [workspace, setWorkspace] = useState<Workspace>(() => {
+    const saved = localStorage.getItem(WORKSPACE_KEY) as Workspace | null;
+    const fromPath = getWorkspaceForPath(location);
+    // If current path belongs to a workspace, use that; otherwise use saved or default
+    if (allOwnerPaths.has(location) || allVaPaths.has(location) || allSystemPaths.has(location)) {
+      return fromPath;
     }
+    return saved ?? "owner";
+  });
+
+  // Sync workspace when location changes to a known path
+  useEffect(() => {
+    if (allOwnerPaths.has(location)) setWorkspace("owner");
+    else if (allVaPaths.has(location)) setWorkspace("va");
+    else if (allSystemPaths.has(location)) setWorkspace("system");
+  }, [location]);
+
+  useEffect(() => {
+    localStorage.setItem(WORKSPACE_KEY, workspace);
+  }, [workspace]);
+
+  useEffect(() => {
+    if (isCollapsed) setIsResizing(false);
   }, [isCollapsed]);
 
   useEffect(() => {
@@ -355,18 +426,13 @@ function DashboardLayoutContent({
         setSidebarWidth(newWidth);
       }
     };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
+    const handleMouseUp = () => setIsResizing(false);
     if (isResizing) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     }
-
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
@@ -374,6 +440,20 @@ function DashboardLayoutContent({
       document.body.style.userSelect = "";
     };
   }, [isResizing, setSidebarWidth]);
+
+  // Active label for mobile header
+  const allItems = [
+    ...ownerItems, ...ownerAdsItems, ...ownerSeoItems,
+    ...vaQueueItems, ...vaProductionItems, ...vaShortFormItems, ...vaVideoItems, ...vaRedditItems,
+    ...systemLibraryItems, ...systemLinksItems, ...systemPagesItems, ...systemIntelItems, ...systemArchiveItems,
+  ];
+  const activeLabel = allItems.find(i => i.path === location)?.label ?? "Menu";
+
+  const workspaceTabs: { id: Workspace; label: string }[] = [
+    { id: "owner", label: "Owner" },
+    { id: "va", label: "VA" },
+    { id: "system", label: "System" },
+  ];
 
   return (
     <>
@@ -403,390 +483,166 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0 pt-2 bg-[#f7f4ef]">
+          <SidebarContent className="gap-0 pt-0 bg-[#f7f4ef]">
+            {/* Workspace tabs */}
+            {!isCollapsed && (
+              <div className="flex border-b border-border/30 bg-[#f7f4ef]">
+                {workspaceTabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setWorkspace(tab.id)}
+                    className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 ${
+                      workspace === tab.id
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <SidebarMenu className="px-2 py-1">
-              {/* Top-level nav items */}
-              {topNavItems.map((item) => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-10 transition-all font-normal ${isActive ? "text-primary" : ""}`}
-                    >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
 
-              {/* Strategy Group — collapsible */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isStrategyActive}
-                  onClick={() => {
-                    if (isCollapsed) {
-                      setLocation(strategyItems[0].path);
-                    } else {
-                      setStrategyOpen((prev) => !prev);
-                    }
-                  }}
-                  tooltip="Strategy"
-                  className={`h-10 transition-all font-normal ${isStrategyActive ? "text-primary" : ""}`}
-                >
-                  <Compass className={`h-4 w-4 ${isStrategyActive ? "text-primary" : ""}`} />
-                  <span className="flex-1">Strategy</span>
-                  {!isCollapsed && (
-                    strategyOpen
-                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </SidebarMenuButton>
-
-                {strategyOpen && !isCollapsed && (
-                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
-                    {strategyItems.map((sub) => {
-                      const isActive = location === sub.path;
-                      return (
-                        <button
-                          key={sub.path}
-                          onClick={() => setLocation(sub.path)}
-                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
-                            ${isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                            }`}
+              {/* ── OWNER WORKSPACE ── */}
+              {workspace === "owner" && (
+                <>
+                  {ownerItems.map(item => {
+                    const isActive = location === item.path;
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setLocation(item.path)}
+                          tooltip={item.label}
+                          className={`h-10 transition-all font-normal ${isActive ? "text-primary" : ""}`}
                         >
-                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </SidebarMenuItem>
+                          <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                  <NavGroup
+                    icon={Megaphone}
+                    label="Paid Ads"
+                    items={ownerAdsItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                  <NavGroup
+                    icon={Search}
+                    label="SEO"
+                    items={ownerSeoItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                </>
+              )}
 
-              {/* Intelligence Group — collapsible */}
-              <SidebarMenuItem>
-                {/* Group header button */}
-                <SidebarMenuButton
-                  isActive={isIntelligenceActive}
-                  onClick={() => {
-                    if (isCollapsed) {
-                      // When sidebar is icon-only, clicking navigates to first sub-item
-                      setLocation(intelligenceItems[0].path);
-                    } else {
-                      setIntelligenceOpen((prev) => !prev);
-                    }
-                  }}
-                  tooltip="Intelligence"
-                  className={`h-10 transition-all font-normal ${isIntelligenceActive ? "text-primary" : ""}`}
-                >
-                  <Sparkles className={`h-4 w-4 ${isIntelligenceActive ? "text-primary" : ""}`} />
-                  <span className="flex-1">Intelligence</span>
-                  {!isCollapsed && (
-                    intelligenceOpen
-                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </SidebarMenuButton>
-
-                {/* Sub-items — only shown when expanded and sidebar is open */}
-                {intelligenceOpen && !isCollapsed && (
-                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
-                    {intelligenceItems.map((sub) => {
-                      const isActive = location === sub.path;
-                      return (
-                        <button
-                          key={sub.path}
-                          onClick={() => setLocation(sub.path)}
-                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
-                            ${isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                            }`}
+              {/* ── VA WORKSPACE ── */}
+              {workspace === "va" && (
+                <>
+                  {vaQueueItems.map(item => {
+                    const isActive = location === item.path;
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setLocation(item.path)}
+                          tooltip={item.label}
+                          className={`h-10 transition-all font-normal ${isActive ? "text-primary" : ""}`}
                         >
-                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </SidebarMenuItem>
+                          <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                  <NavGroup
+                    icon={PenSquare}
+                    label="Content Production"
+                    items={vaProductionItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                  <NavGroup
+                    icon={Zap}
+                    label="Short-Form"
+                    items={vaShortFormItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                  <NavGroup
+                    icon={Video}
+                    label="Video Production"
+                    items={vaVideoItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                  <NavGroup
+                    icon={Hash}
+                    label="Reddit"
+                    items={vaRedditItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                </>
+              )}
 
-              {/* Libraries Group — collapsible */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isLibrariesActive}
-                  onClick={() => {
-                    if (isCollapsed) {
-                      setLocation(librariesItems[0].path);
-                    } else {
-                      setLibrariesOpen((prev) => !prev);
-                    }
-                  }}
-                  tooltip="Libraries"
-                  className={`h-10 transition-all font-normal ${isLibrariesActive ? "text-primary" : ""}`}
-                >
-                  <BookOpen className={`h-4 w-4 ${isLibrariesActive ? "text-primary" : ""}`} />
-                  <span className="flex-1">Libraries</span>
-                  {!isCollapsed && (
-                    librariesOpen
-                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </SidebarMenuButton>
-                {librariesOpen && !isCollapsed && (
-                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
-                    {librariesItems.map((sub) => {
-                      const isActive = location === sub.path;
-                      return (
-                        <button
-                          key={sub.path}
-                          onClick={() => setLocation(sub.path)}
-                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
-                            ${isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                            }`}
-                        >
-                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </SidebarMenuItem>
-
-              {/* SEO Group — collapsible */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isSeoActive}
-                  onClick={() => {
-                    if (isCollapsed) {
-                      setLocation(seoItems[0].path);
-                    } else {
-                      setSeoOpen((prev) => !prev);
-                    }
-                  }}
-                  tooltip="SEO"
-                  className={`h-10 transition-all font-normal ${isSeoActive ? "text-primary" : ""}`}
-                >
-                  <Search className={`h-4 w-4 ${isSeoActive ? "text-primary" : ""}`} />
-                  <span className="flex-1">SEO</span>
-                  {!isCollapsed && (
-                    seoOpen
-                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </SidebarMenuButton>
-                {seoOpen && !isCollapsed && (
-                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
-                    {seoItems.map((sub) => {
-                      const isActive = location === sub.path;
-                      return (
-                        <button
-                          key={sub.path}
-                          onClick={() => setLocation(sub.path)}
-                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
-                            ${isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                            }`}
-                        >
-                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </SidebarMenuItem>
-
-              {/* Landing Pages Group — collapsible */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isLandingPagesActive}
-                  onClick={() => {
-                    if (isCollapsed) {
-                      setLocation(landingPagesItems[0].path);
-                    } else {
-                      setLandingPagesOpen((prev) => !prev);
-                    }
-                  }}
-                  tooltip="Landing Pages"
-                  className={`h-10 transition-all font-normal ${isLandingPagesActive ? "text-primary" : ""}`}
-                >
-                  <Globe className={`h-4 w-4 ${isLandingPagesActive ? "text-primary" : ""}`} />
-                  <span className="flex-1">Landing Pages</span>
-                  {!isCollapsed && (
-                    landingPagesOpen
-                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </SidebarMenuButton>
-                {landingPagesOpen && !isCollapsed && (
-                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
-                    {landingPagesItems.map((sub) => {
-                      const isActive = location === sub.path;
-                      return (
-                        <button
-                          key={sub.path}
-                          onClick={() => setLocation(sub.path)}
-                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
-                            ${isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                            }`}
-                        >
-                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </SidebarMenuItem>
-
-              {/* Video Production Group — collapsible */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isVideoActive}
-                  onClick={() => {
-                    if (isCollapsed) {
-                      setLocation(videoItems[0].path);
-                    } else {
-                      setVideoOpen((prev) => !prev);
-                    }
-                  }}
-                  tooltip="Video Production"
-                  className={`h-10 transition-all font-normal ${isVideoActive ? "text-primary" : ""}`}
-                >
-                  <Video className={`h-4 w-4 ${isVideoActive ? "text-primary" : ""}`} />
-                  <span className="flex-1">Video Production</span>
-                  {!isCollapsed && (
-                    videoOpen
-                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </SidebarMenuButton>
-                {videoOpen && !isCollapsed && (
-                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
-                    {videoItems.map((sub) => {
-                      const isActive = location === sub.path;
-                      return (
-                        <button
-                          key={sub.path}
-                          onClick={() => setLocation(sub.path)}
-                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
-                            ${isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                            }`}
-                        >
-                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </SidebarMenuItem>
-
-              {/* VA Space Group — collapsible */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isVaActive}
-                  onClick={() => {
-                    if (isCollapsed) {
-                      setLocation(vaItems[0].path);
-                    } else {
-                      setVaOpen((prev) => !prev);
-                    }
-                  }}
-                  tooltip="VA Space"
-                  className={`h-10 transition-all font-normal ${isVaActive ? "text-primary" : ""}`}
-                >
-                  <CheckSquare className={`h-4 w-4 ${isVaActive ? "text-primary" : ""}`} />
-                  <span className="flex-1">VA Space</span>
-                  {!isCollapsed && (
-                    vaOpen
-                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </SidebarMenuButton>
-                {vaOpen && !isCollapsed && (
-                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
-                    {vaItems.map((sub) => {
-                      const isActive = location === sub.path;
-                      return (
-                        <button
-                          key={sub.path}
-                          onClick={() => setLocation(sub.path)}
-                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
-                            ${isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                            }`}
-                        >
-                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </SidebarMenuItem>
-
-              {/* Ads Group — collapsible */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isAdsActive}
-                  onClick={() => {
-                    if (isCollapsed) {
-                      setLocation(adsItems[0].path);
-                    } else {
-                      setAdsOpen((prev) => !prev);
-                    }
-                  }}
-                  tooltip="Paid Ads"
-                  className={`h-10 transition-all font-normal ${isAdsActive ? "text-primary" : ""}`}
-                >
-                  <Megaphone className={`h-4 w-4 ${isAdsActive ? "text-primary" : ""}`} />
-                  <span className="flex-1">Paid Ads</span>
-                  {!isCollapsed && (
-                    adsOpen
-                      ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </SidebarMenuButton>
-                {adsOpen && !isCollapsed && (
-                  <div className="ml-3 mt-0.5 mb-1 border-l border-border/40 pl-3 flex flex-col gap-0.5">
-                    {adsItems.map((sub) => {
-                      const isActive = location === sub.path;
-                      return (
-                        <button
-                          key={sub.path}
-                          onClick={() => setLocation(sub.path)}
-                          className={`flex items-center gap-2.5 h-9 px-2 rounded-md text-sm transition-colors w-full text-left
-                            ${isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                            }`}
-                        >
-                          <sub.icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </SidebarMenuItem>
+              {/* ── SYSTEM WORKSPACE ── */}
+              {workspace === "system" && (
+                <>
+                  <NavGroup
+                    icon={Library}
+                    label="Library"
+                    items={systemLibraryItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                    defaultOpen={true}
+                  />
+                  <NavGroup
+                    icon={Link2}
+                    label="Links"
+                    items={systemLinksItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                  <NavGroup
+                    icon={Globe}
+                    label="Pages"
+                    items={systemPagesItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                  <NavGroup
+                    icon={Sparkles}
+                    label="Intelligence"
+                    items={systemIntelItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                  <NavGroup
+                    icon={BookMarked}
+                    label="Archive"
+                    items={systemArchiveItems}
+                    isCollapsed={isCollapsed}
+                    location={location}
+                    setLocation={setLocation}
+                  />
+                </>
+              )}
 
             </SidebarMenu>
           </SidebarContent>

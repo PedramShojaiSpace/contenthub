@@ -4197,3 +4197,36 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Rec 10 — Substack first-class page: /substack route with queue, cookie health badge, manual copy-paste fallback
 - [x] Rec 6 — System Health page: /system-health showing all integration statuses; fixed 5 pre-existing TS errors (ytStatus scope, MonetizationTag lights_on, AdvertorialBuilder createdAt type, LLM content type, Set iteration)
 - [x] Rec 7 — EV-aware ROAS: attribution.getEvRoas procedure + interactive EV panel in Ad Attribution Dashboard (slider for upgrade rate, per-campaign EV breakdown); 5 new vitest tests passing
+
+## Rec 4 — Consolidation Sprint + Role-Based Navigation (2026-07-11)
+- [ ] Add funnel_id enum column to contentItems, keywordClusters, pages, emailSequences schema tables and run db:push
+- [ ] Build funnelTagRouter.ts: procedures for tagging existing records with funnel_id and listing untagged items
+- [ ] Rebuild DashboardLayout with three workspace modes: OWNER (funnels home), VA (merged queue), SYSTEM (everything else + archive)
+- [ ] Merge Viral Studio + Video Variant Factory into /shortform in nav
+- [ ] Merge Media Vault + Asset Library into /library in nav
+- [ ] Merge UTM Builder + QR Generator into /links in nav
+- [ ] Move Kids Research, Collective Sourcing, Presence Assessment, Press Intelligence, ManyChat Wizard, Channel Watchlist, Strategy Brain, LLM Projects to System/Archive section
+- [ ] Add funnel_id selector to Content Pipeline, Keyword Strategy, Landing Pages, Email Optimizer creation flows
+- [ ] Build /funnel-migration page: retag existing records with funnel_id, archive Academy-primary items
+
+## Rec 1 — Three-Funnel Command (2026-07-11)
+- [ ] Add funnelStages, funnelCohorts schema tables and run db:push
+- [ ] Build funnelsRouter.ts: getFunnelScorecard, getTakeRateCohorts, getMondayDigest procedures
+- [ ] Build /funnels page: three funnel scorecards, stage-to-stage conversion, 12-week trend charts, biggest-leak callout
+- [ ] Add take-rate cohort table: monthly test-buyer cohorts with take rate at 30/60/90 days
+- [ ] Add revenue vs. target chart (100 test buyers/month = ~$240K/month target line)
+- [ ] Wire /funnels as the OWNER workspace home (default route for owner)
+- [ ] Write vitest tests for funnel scorecard and take-rate cohort calculations
+
+## Fable Five Audit — Rec 4 + Rec 1 Sprint
+
+- [x] Add funnel_id enum column to contentItems, keywordCampaigns, landingPages, emailSequences via direct SQL
+- [x] Rebuild DashboardLayout with three-workspace structure: Owner / VA / System tabs
+- [x] Owner workspace: Funnel Command, Ascension Pipeline, Ad Attribution, Campaign Monitor, Scoreboard
+- [x] VA workspace: VA Dashboard, VA Task Hub, Syndication Queue, Substack Publisher, YouTube Pipeline, Historical Posts
+- [x] System workspace: System Health, Reddit ROAS, Campaign Monitor, Kajabi Live Hub
+- [x] Build funnelCommandRouter.ts: getScorecards, getTakeRateCohorts, getContentByFunnel, getWeeklyDigest, getAscensionSummary
+- [x] Wire funnelCommandRouter into routers.ts
+- [x] Build FunnelCommand.tsx: scorecard grid, take-rate cohort table, ascension pipeline panel, weekly digest tab
+- [x] Add /funnels route to App.tsx
+- [x] Write 17 Vitest tests for funnel attribution, EV calc, take-rate, trend, ascension eligibility (722 total passing)

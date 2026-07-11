@@ -16,6 +16,14 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 // Content status workflow: idea -> pending_approval -> drafting -> review -> approved -> scheduled -> published -> pending_review (human gate before WP publish)
+// ─── Funnel ID — shared across content, keywords, pages, sequences ─────────────
+export const funnelIdEnum = mysqlEnum("funnel_id", [
+  "lights_on",
+  "oral_biome",
+  "gut",
+  "none",
+]);
+
 export const contentStatusEnum = mysqlEnum("status", [
   "idea",
   "pending_approval",
@@ -120,6 +128,8 @@ export const contentItems = mysqlTable("content_items", {
   substackPostId: varchar("substackPostId", { length: 128 }),
   // URL of the published Substack post
   substackPostUrl: text("substackPostUrl"),
+  // Funnel tag — which revenue funnel this content serves
+  funnelId: funnelIdEnum.default("none"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -378,6 +388,8 @@ export const landingPages = mysqlTable("landing_pages", {
   // Status
   status: landingPageStatusEnum.notNull().default("draft"),
   errorMessage: text("errorMessage"),
+  // Funnel tag — which revenue funnel this page serves
+  funnelId: funnelIdEnum.default("none"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1507,6 +1519,7 @@ export const keywordCampaigns = mysqlTable("keyword_campaigns", {
   description: text("kc_description"),
   monetizationGoal: varchar("kc_monetization_goal", { length: 64 }).notNull().default("academy"),
   // academy | supplements | testing | free_lead
+  funnelId: funnelIdEnum.default("none"),
   status: varchar("kc_status", { length: 32 }).notNull().default("active"),
   // active | paused | completed
   createdAt: timestamp("kc_created_at").notNull().defaultNow(),
@@ -2373,6 +2386,8 @@ export const emailSequences = mysqlTable("email_sequences", {
   notes: text("es_notes"),
   kajabiPushed: boolean("es_kajabi_pushed").default(false).notNull(),
   kajabiPushError: text("es_kajabi_push_error"),
+  // Funnel tag — which revenue funnel this sequence serves
+  funnelId: funnelIdEnum.default("none"),
   createdAt: bigint("es_created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("es_updated_at", { mode: "number" }).notNull(),
 });

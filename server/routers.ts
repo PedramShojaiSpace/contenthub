@@ -131,6 +131,7 @@ import { vaTasksRouter } from "./vaTasksRouter";
 import { kajabiLiveRouter } from "./kajabiLiveRouter";
 import { advertorialRouter } from "./advertorialRouter";
 import { attributionRouter } from "./attributionRouter";
+import { funnelCommandRouter } from "./funnelCommandRouter";
 import { adsMonitorRouter } from "./adsMonitorRouter";
 import { historicalPostsRouter } from "./historicalPostsRouter";
 import { youtubePipelineRouter } from "./youtubePipelineRouter";
@@ -503,6 +504,7 @@ export const appRouter = router({
   advertorial: advertorialRouter,
   attribution: attributionRouter,
   adsMonitor: adsMonitorRouter,
+  funnelCommand: funnelCommandRouter,
   historicalPosts: historicalPostsRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────

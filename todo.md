@@ -4167,11 +4167,11 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Add Shopify Admin API token as secret to enable direct page push (no copy-paste required)
 
 ## Historical WordPress Post Rehabilitation (2026-07-08)
-- [ ] Add contentItemId column to wpPostIndex schema and run migration
-- [ ] Build historicalPostsRouter.ts: importHistoricalPosts, auditYoast, injectCta, batchFix procedures
-- [ ] Wire historicalPostsRouter into routers.ts
-- [ ] Build HistoricalPosts.tsx frontend with Import / Audit / Batch Fix tabs
-- [ ] Add /historical-posts route to App.tsx and sidebar nav
+- [x] Add contentItemId column to wpPostIndex schema and run migration
+- [x] Build historicalPostsRouter.ts: importHistoricalPosts, auditYoast, injectCta, batchFix procedures
+- [x] Wire historicalPostsRouter into routers.ts
+- [x] Build HistoricalPosts.tsx frontend with Import / Audit / Batch Fix tabs
+- [x] Add /historical-posts route to App.tsx and sidebar nav
 
 ## Reddit Persona Manager (2026-07-08)
 - [x] Add redditPersonas table to schema.ts
@@ -4186,12 +4186,12 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Write vitest tests for Reddit Persona Manager (17 tests passing)
 
 ## Reddit ROAS Attribution Tracker (2026-07-10)
-- [ ] Add redditCampaigns, redditLinks, redditConversions schema tables and run db:push
-- [ ] Build redditRoasRouter.ts: createCampaign, generateUtmLink, recordConversion (Shopify webhook), getRoasDashboard procedures
-- [ ] Register Shopify order webhook endpoint to capture UTM attribution from Reddit traffic
-- [ ] Build RedditRoas.tsx frontend dashboard: campaign ROAS cards, post-level attribution table, revenue vs spend chart
-- [ ] Wire /reddit-roas route into App.tsx and VA Space nav
-- [ ] Write vitest tests for ROAS calculation and UTM attribution logic
+- [x] Add redditCampaigns, redditLinks, redditConversions schema tables and run db:push
+- [x] Build redditRoasRouter.ts: createCampaign, generateUtmLink, recordConversion (Shopify webhook), getRoasDashboard procedures
+- [x] Register Shopify order webhook endpoint to capture UTM attribution from Reddit traffic
+- [x] Build RedditRoas.tsx frontend dashboard: campaign ROAS cards, post-level attribution table, revenue vs spend chart
+- [x] Wire /reddit-roas route into App.tsx and VA Space nav
+- [x] Write vitest tests for ROAS calculation and UTM attribution logic (7 tests passing)
 
 ## Audit v2 — Tier 1 Low-Hanging Fruit (2026-07-11)
 - [x] Rec 10 — Substack first-class page: /substack route with queue, cookie health badge, manual copy-paste fallback

@@ -2983,3 +2983,102 @@ export const redditConversions = mysqlTable("reddit_conversions", {
 });
 export type RedditConversion = typeof redditConversions.$inferSelect;
 export type InsertRedditConversion = typeof redditConversions.$inferInsert;
+
+
+// ─── Ascension Pipeline ───────────────────────────────────────────────────────
+// Tracks Lights On members through the ascension ladder:
+//   lights_on ($369/yr recurring) → retreat_eligible → retreat_registered → lapsed
+//
+// Pricing constants (authoritative source of truth):
+//   LIGHTS_ON_ANNUAL_CENTS = 36900  ($369/yr)
+//   RETREAT_EARLY_BIRD_CENTS = 85000  ($850 early bird)
+//   RETREAT_STANDARD_CENTS = 125000  ($1,250 standard)
+//   RETREATS_PER_YEAR = 2
+//   RETREAT_MIN_CAPACITY = 100
+
+export const ascensionMembers = mysqlTable("ascension_members", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  kajabiContactId: varchar("kajabi_contact_id", { length: 128 }),
+  stage: mysqlEnum("ascension_stage", [
+    "lights_on",
+    "retreat_eligible",
+    "retreat_registered",
+    "lapsed",
+  ]).notNull().default("lights_on"),
+  avatarType: mysqlEnum("avatar_type", [
+    "burned_out_executive",
+    "stressed_parent",
+    "wellness_seeker",
+    "performance_optimizer",
+  ]),
+  lightsOnStartDate: bigint("lights_on_start_date", { mode: "number" }),
+  renewalDueDate: bigint("renewal_due_date", { mode: "number" }),
+  renewalReminderSentAt: bigint("renewal_reminder_sent_at", { mode: "number" }),
+  totalPaidCents: int("total_paid_cents").notNull().default(0),
+  renewalCount: int("renewal_count").notNull().default(0),
+  notes: text("notes"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type AscensionMember = typeof ascensionMembers.$inferSelect;
+export type InsertAscensionMember = typeof ascensionMembers.$inferInsert;
+
+export const retreatEvents = mysqlTable("retreat_events", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 512 }).notNull(),
+  location: varchar("location", { length: 512 }),
+  eventDate: bigint("event_date", { mode: "number" }).notNull(),
+  earlyBirdDeadline: bigint("early_bird_deadline", { mode: "number" }),
+  earlyBirdPriceCents: int("early_bird_price_cents").notNull().default(85000),
+  standardPriceCents: int("standard_price_cents").notNull().default(125000),
+  capacityMax: int("capacity_max").notNull().default(100),
+  registeredCount: int("registered_count").notNull().default(0),
+  status: mysqlEnum("retreat_status", ["upcoming", "open", "early_bird", "closed", "completed"]).notNull().default("upcoming"),
+  description: text("description"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type RetreatEvent = typeof retreatEvents.$inferSelect;
+export type InsertRetreatEvent = typeof retreatEvents.$inferInsert;
+
+export const retreatRegistrations = mysqlTable("retreat_registrations", {
+  id: int("id").autoincrement().primaryKey(),
+  memberId: int("member_id").notNull(),
+  retreatId: int("retreat_id").notNull(),
+  pricePaidCents: int("price_paid_cents").notNull(),
+  priceType: mysqlEnum("price_type", ["early_bird", "standard"]).notNull(),
+  paymentStatus: mysqlEnum("payment_status", ["pending", "paid", "refunded"]).notNull().default("pending"),
+  registeredAt: bigint("registered_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type RetreatRegistration = typeof retreatRegistrations.$inferSelect;
+export type InsertRetreatRegistration = typeof retreatRegistrations.$inferInsert;
+
+// ─── Diagnostic Quiz Funnel ───────────────────────────────────────────────────
+// Five-question quiz that assigns visitors to one of four avatar types,
+// gates results behind email capture, and fires a Kajabi tag.
+
+export const quizResponses = mysqlTable("quiz_responses", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: varchar("session_id", { length: 64 }).notNull().unique(),
+  email: varchar("email", { length: 320 }),
+  name: varchar("name", { length: 255 }),
+  avatarType: mysqlEnum("quiz_avatar_type", [
+    "burned_out_executive",
+    "stressed_parent",
+    "wellness_seeker",
+    "performance_optimizer",
+  ]),
+  answers: text("answers"), // JSON: { q1: 'a', q2: 'b', ... }
+  scores: text("scores"),   // JSON: { burned_out_executive: 3, stressed_parent: 1, ... }
+  completedAt: bigint("completed_at", { mode: "number" }),
+  emailCapturedAt: bigint("email_captured_at", { mode: "number" }),
+  kajabiTagged: boolean("kajabi_tagged").default(false).notNull(),
+  kajabiTaggedAt: bigint("kajabi_tagged_at", { mode: "number" }),
+  downstreamPurchase: boolean("downstream_purchase").default(false).notNull(),
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 255 }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type QuizResponse = typeof quizResponses.$inferSelect;
+export type InsertQuizResponse = typeof quizResponses.$inferInsert;

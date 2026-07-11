@@ -4230,3 +4230,38 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [x] Build FunnelCommand.tsx: scorecard grid, take-rate cohort table, ascension pipeline panel, weekly digest tab
 - [x] Add /funnels route to App.tsx
 - [x] Write 17 Vitest tests for funnel attribution, EV calc, take-rate, trend, ascension eligibility (722 total passing)
+
+## Fable Five Audit — Rec 2: Ascension Pipeline
+
+Pricing model (corrected):
+- Lights On: $369/year recurring (annual renewal)
+- Retreats: $850 early bird / $1,250 standard, 2 per year, optional, min 100 capacity
+
+- [ ] Add ascension_members table: memberId, email, name, kajabiContactId, stage (lights_on / retreat_eligible / retreat_registered / lapsed), lightsOnStartDate, renewalDueDate, avatarType, totalPaid, createdAt
+- [ ] Add retreat_events table: id, title, location, eventDate, earlyBirdDeadline, earlyBirdPriceCents, standardPriceCents, capacityMax, registeredCount, status (upcoming/open/closed/completed)
+- [ ] Add retreat_registrations table: id, memberId, retreatId, pricePaid, registeredAt, paymentStatus
+- [ ] Build ascensionRouter: syncFromKajabi, listMembers, getRenewalQueue, getRetreatEvents, createRetreatEvent, registerForRetreat, triggerRenewalEmail, getPipelineStats
+- [ ] Build /ascension page: pipeline stage funnel, renewal queue (due in 30/60/90 days), retreat calendar with registration counts, LTV calculator
+- [ ] Wire ascensionRouter into routers.ts and add /ascension route + nav item
+
+## Fable Five Audit — Rec 5: Diagnostic Quiz Funnel
+
+- [ ] Add quiz_responses table: id, sessionId, email, avatarType, answers (JSON), completedAt, emailCapturedAt, kajabiTagged, downstreamPurchase
+- [ ] Build quizRouter: startSession, submitAnswers (scores + assigns avatar), captureEmail (gates results, fires Kajabi tag), getQuizStats
+- [ ] Build /quiz public page: 5-question flow, progress bar, email gate before results, avatar results page with personalized offer
+- [ ] Wire quizRouter into routers.ts and add /quiz route (public, no auth)
+- [ ] Write Vitest tests for avatar scoring logic and email capture flow
+
+## Fable Five Audit — Rec 2 + Rec 5 Sprint (Jul 11 2026)
+- [x] ascension_members, retreat_events, retreat_registrations, quiz_responses tables created via SQL
+- [x] ascensionRouter: getPipelineStats, listMembers, getRenewalQueue, upsertMember, promoteStage, createRetreatEvent, listRetreatEvents, registerForRetreat, triggerRenewalEmail
+- [x] Pricing: LIGHTS_ON_ANNUAL_CENTS=36900 ($369/yr), RETREAT_EARLY_BIRD_CENTS=85000 ($850), RETREAT_STANDARD_CENTS=125000 ($1,250), RETREATS_PER_YEAR=2
+- [x] computeRetreatPrice helper exported and tested
+- [x] AscensionPipeline.tsx: pipeline scorecard, renewal queue, retreat calendar, member table, stage promotion
+- [x] /ascension route in App.tsx, nav item in Owner workspace
+- [x] quizRouter: getQuestions, startSession, submitAnswers, captureEmail, getAnalytics (public procedures)
+- [x] scoreAnswers, QUIZ_QUESTIONS, AVATAR_PROFILES exported for tests
+- [x] DiagnosticQuiz.tsx: 5-question flow, email gate, avatar results page (public, no auth required)
+- [x] /quiz route in App.tsx (public-facing, no DashboardLayout wrapper)
+- [x] quiz.test.ts: 18 tests covering scoring, avatar profiles, pricing constants, computeRetreatPrice
+- [x] Total test suite: 740 tests passing, 64 files, 0 failures

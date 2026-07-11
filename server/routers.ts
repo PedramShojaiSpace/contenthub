@@ -137,6 +137,8 @@ import { historicalPostsRouter } from "./historicalPostsRouter";
 import { youtubePipelineRouter } from "./youtubePipelineRouter";
 import { redditPersonaRouter } from "./redditPersonaRouter";
 import { redditRoasRouter } from "./redditRoasRouter";
+import { ascensionRouter } from "./ascensionRouter";
+import { quizRouter } from "./quizRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -505,6 +507,8 @@ export const appRouter = router({
   attribution: attributionRouter,
   adsMonitor: adsMonitorRouter,
   funnelCommand: funnelCommandRouter,
+  ascension: ascensionRouter,
+  quiz: quizRouter,
   historicalPosts: historicalPostsRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────

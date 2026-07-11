@@ -80,6 +80,8 @@ const RedditRoas = lazy(() => import("./pages/RedditRoas"));
 const SubstackPublisher = lazy(() => import("./pages/SubstackPublisher"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const FunnelCommand = lazy(() => import("./pages/FunnelCommand"));
+const AscensionPipeline = lazy(() => import("./pages/AscensionPipeline"));
+const DiagnosticQuiz = lazy(() => import("./pages/DiagnosticQuiz"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -168,6 +170,8 @@ function Router() {
         <Route path={"/substack"} component={SubstackPublisher} />
         <Route path={"/system-health"} component={SystemHealth} />
         <Route path={"/funnels"} component={FunnelCommand} />
+        <Route path={"/ascension"} component={AscensionPipeline} />
+        <Route path={"/quiz"} component={DiagnosticQuiz} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

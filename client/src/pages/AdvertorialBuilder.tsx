@@ -644,8 +644,8 @@ type PageListItem = {
   status: string | null;
   headline: string | null;
   ctaUrl: string | null;
-  createdAt: Date;
-  publishedAt: Date | null;
+  createdAt: number | Date;
+  publishedAt: number | Date | null;
   generationPrompt: string | null;
 };
 

@@ -4192,3 +4192,8 @@ Add view count, watch time, and CTR inputs per variant in the A/B Test Lab. When
 - [ ] Build RedditRoas.tsx frontend dashboard: campaign ROAS cards, post-level attribution table, revenue vs spend chart
 - [ ] Wire /reddit-roas route into App.tsx and VA Space nav
 - [ ] Write vitest tests for ROAS calculation and UTM attribution logic
+
+## Audit v2 — Tier 1 Low-Hanging Fruit (2026-07-11)
+- [x] Rec 10 — Substack first-class page: /substack route with queue, cookie health badge, manual copy-paste fallback
+- [x] Rec 6 — System Health page: /system-health showing all integration statuses; fixed 5 pre-existing TS errors (ytStatus scope, MonetizationTag lights_on, AdvertorialBuilder createdAt type, LLM content type, Set iteration)
+- [x] Rec 7 — EV-aware ROAS: attribution.getEvRoas procedure + interactive EV panel in Ad Attribution Dashboard (slider for upgrade rate, per-campaign EV breakdown); 5 new vitest tests passing

@@ -72,6 +72,7 @@ import {
   ShoppingBag,
   CheckSquare,
   RefreshCw,
+  Activity,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -91,6 +92,8 @@ const topNavItems = [
   { icon: Clock, label: "Review Queue", path: "/review-queue" },
   { icon: Mail, label: "Email Optimizer", path: "/email-optimizer" },
   { icon: MailCheck, label: "Plain Text Email", path: "/plain-text-email" },
+  { icon: Rss, label: "Substack Publisher", path: "/substack" },
+  { icon: Activity, label: "System Health", path: "/system-health" },
 ];
 
 // Libraries sub-items

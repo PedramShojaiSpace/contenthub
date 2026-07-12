@@ -140,6 +140,7 @@ import { redditRoasRouter } from "./redditRoasRouter";
 import { ascensionRouter } from "./ascensionRouter";
 import { quizRouter } from "./quizRouter";
 import { abTestRouter } from "./abTestRouter";
+import { claimsReviewRouter } from "./claimsReviewRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -511,6 +512,7 @@ export const appRouter = router({
   ascension: ascensionRouter,
   quiz: quizRouter,
   abTest: abTestRouter,
+  claimsReview: claimsReviewRouter,
   historicalPosts: historicalPostsRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────

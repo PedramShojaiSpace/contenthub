@@ -1,4 +1,4 @@
-import { bigint, boolean, date, decimal, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, date, decimal, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, tinyint, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -3154,3 +3154,39 @@ export const abConversions = mysqlTable("ab_conversions", {
 });
 export type AbConversion = typeof abConversions.$inferSelect;
 export type InsertAbConversion = typeof abConversions.$inferInsert;
+
+
+// ─── Claims Review Gate ───────────────────────────────────────────────────────
+export const claimsReviews = mysqlTable("claims_reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  contentType: mysqlEnum("cr_content_type", [
+    "wordpress_post",
+    "meta_ad",
+    "advertorial",
+    "email_sequence",
+    "landing_page",
+    "other",
+  ]).notNull(),
+  contentId: varchar("content_id", { length: 255 }),
+  contentTitle: varchar("content_title", { length: 512 }),
+  contentText: text("content_text").notNull(),
+  verdicts: json("verdicts").notNull().$type<Array<{
+    ruleId: string;
+    ruleName: string;
+    passed: boolean;
+    flaggedText: string | null;
+    explanation: string;
+  }>>(),
+  overallFlag: tinyint("overall_flag").notNull().default(0),
+  flagCount: int("flag_count").notNull().default(0),
+  status: mysqlEnum("cr_status", ["pending", "approved", "rejected", "auto_approved"])
+    .notNull()
+    .default("pending"),
+  reviewedBy: varchar("reviewed_by", { length: 255 }),
+  reviewedAt: bigint("reviewed_at", { mode: "number" }),
+  reviewerNote: text("reviewer_note"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type ClaimsReview = typeof claimsReviews.$inferSelect;
+export type InsertClaimsReview = typeof claimsReviews.$inferInsert;

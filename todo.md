@@ -4283,3 +4283,16 @@ Pricing model (corrected):
 - [x] Route /ab-tests added to App.tsx
 - [x] A/B Tests added to Owner workspace nav in DashboardLayout (FlaskConical icon)
 - [x] 15 Vitest tests: normalCdf accuracy, z-test significance/threshold/edge cases, weight-based variant picker — all 755 tests passing
+
+## Fable Five Audit — Rec 9: Claims-Review Gate
+- [ ] Schema: claims_reviews table (contentId, contentType, contentText, verdicts JSON, overallFlag, status, reviewedBy, reviewedAt)
+- [ ] Rubric config: server/claimsRubric.ts with editable rules (disease-treatment claims, guaranteed outcomes, testimonial disclosure, diagnostic disclaimer, required disclaimers)
+- [ ] claimsReviewRouter.ts: reviewContent (AI rubric pass), listPending, approveReview, rejectReview, getHistory procedures
+- [ ] Wire claimsReviewRouter into routers.ts
+- [ ] Intercept WordPress publish path: run rubric before publishing, block if flagged
+- [ ] Intercept Meta Ads copy path: run rubric before pushing to Meta
+- [ ] Intercept advertorial publish path: run rubric before saving as approved
+- [ ] ClaimsReview.tsx: /claims-review page with pending queue, verdict detail, approve/reject controls, rubric editor
+- [ ] Add Claims Review to Owner workspace nav in DashboardLayout
+- [ ] Route /claims-review added to App.tsx
+- [ ] Write vitest tests for rubric scoring logic

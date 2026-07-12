@@ -94,6 +94,7 @@ const ownerItems = [
   { icon: Rss, label: "Substack Publisher", path: "/substack" },
   { icon: Activity, label: "System Health", path: "/system-health" },
   { icon: FlaskConical, label: "A/B Tests", path: "/ab-tests" },
+  { icon: ShieldCheck, label: "Claims Review", path: "/claims-review" },
 ];
 
 // OWNER — Paid Ads sub-group

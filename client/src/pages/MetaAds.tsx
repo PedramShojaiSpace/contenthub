@@ -23,6 +23,9 @@ import {
   Rocket,
   ExternalLink,
   AlertCircle,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldX,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -67,6 +70,88 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+// ─── Meta Compliance Check Result Banner ────────────────────────────────────────────────────
+
+type ComplianceResult = {
+  passed: boolean;
+  riskScore: number;
+  blockingViolations: Array<{ ruleId: string; ruleName: string; passed: boolean; flaggedText: string | null; explanation: string }>;
+  warnings: Array<{ ruleId: string; ruleName: string; passed: boolean; flaggedText: string | null; explanation: string }>;
+  flaggedPhrases: string[];
+  recommendation: string;
+};
+
+function ComplianceBanner({ result }: { result: ComplianceResult }) {
+  const riskColor =
+    result.riskScore >= 50
+      ? "border-red-700 bg-red-900/20"
+      : result.riskScore >= 20
+      ? "border-amber-700 bg-amber-900/20"
+      : "border-emerald-700 bg-emerald-900/20";
+
+  const riskTextColor =
+    result.riskScore >= 50
+      ? "text-red-400"
+      : result.riskScore >= 20
+      ? "text-amber-400"
+      : "text-emerald-400";
+
+  const Icon = result.riskScore >= 50 ? ShieldX : result.riskScore >= 20 ? ShieldAlert : ShieldCheck;
+
+  return (
+    <div className={`rounded-lg border p-4 ${riskColor} mt-3`}>
+      <div className="flex items-start gap-3">
+        <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${riskTextColor}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-1">
+            <span className={`text-sm font-semibold ${riskTextColor}`}>
+              Risk Score: {result.riskScore}/100
+            </span>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded border ${riskColor} ${riskTextColor}`}>
+              {result.passed ? "Likely Approvable" : "Likely Rejected"}
+            </span>
+          </div>
+          <p className="text-xs text-gray-300 mb-2">{result.recommendation}</p>
+
+          {result.blockingViolations.length > 0 && (
+            <div className="mb-2">
+              <p className="text-xs font-semibold text-red-400 mb-1">Blocking Violations ({result.blockingViolations.length}):</p>
+              <ul className="space-y-1">
+                {result.blockingViolations.map((v, i) => (
+                  <li key={i} className="text-xs text-gray-300">
+                    <span className="font-medium text-red-300">{v.ruleName}:</span>{" "}
+                    {v.flaggedText && (
+                      <span className="font-mono bg-red-900/30 px-1 rounded text-red-200">"{v.flaggedText}"</span>
+                    )}
+                    <span className="text-gray-400 ml-1">— {v.explanation}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.warnings.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-amber-400 mb-1">Warnings ({result.warnings.length}):</p>
+              <ul className="space-y-1">
+                {result.warnings.map((v, i) => (
+                  <li key={i} className="text-xs text-gray-300">
+                    <span className="font-medium text-amber-300">{v.ruleName}:</span>{" "}
+                    {v.flaggedText && (
+                      <span className="font-mono bg-amber-900/30 px-1 rounded text-amber-200">"{v.flaggedText}"</span>
+                    )}
+                    <span className="text-gray-400 ml-1">— {v.explanation}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdVariantCard({
   variant,
   angle,
@@ -97,6 +182,28 @@ function AdVariantCard({
   isPushing: boolean;
 }) {
   const [showImagePrompt, setShowImagePrompt] = useState(false);
+  const [complianceResult, setComplianceResult] = useState<ComplianceResult | null>(null);
+  const [showCompliance, setShowCompliance] = useState(false);
+
+  const complianceCheckMutation = trpc.claimsReview.metaComplianceCheck.useMutation({
+    onSuccess: (data) => {
+      setComplianceResult(data as ComplianceResult);
+      setShowCompliance(true);
+    },
+    onError: (err) => {
+      toast.error(`Compliance check failed: ${err.message}`);
+    },
+  });
+
+  const handleComplianceCheck = () => {
+    complianceCheckMutation.mutate({
+      adId: String(variant.id),
+      adName: `Variant ${variant.variantNumber}`,
+      headline: variant.headline,
+      primaryText: variant.primaryText,
+      description: variant.description ?? undefined,
+    });
+  };
 
   const isLiveInMeta = !!variant.metaAdId;
   const adsManagerUrl = variant.metaCampaignId
@@ -238,6 +345,55 @@ function AdVariantCard({
           </div>
         </div>
       )}
+
+      {/* Compliance check section */}
+      <div className="px-5 pb-3 border-t border-white/10 pt-3">
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleComplianceCheck}
+            disabled={complianceCheckMutation.isPending}
+            className="border-[#1877f2]/40 text-[#1877f2] hover:bg-[#1877f2]/10 text-xs font-semibold"
+          >
+            {complianceCheckMutation.isPending ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                Checking…
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
+                Check Meta Compliance
+              </>
+            )}
+          </Button>
+          {complianceResult && (
+            <button
+              onClick={() => setShowCompliance(!showCompliance)}
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              {showCompliance ? "Hide" : "Show"} results
+            </button>
+          )}
+          {complianceResult && (
+            <span
+              className={`text-xs font-semibold px-2 py-0.5 rounded border ${
+                complianceResult.riskScore >= 50
+                  ? "border-red-700 bg-red-900/20 text-red-400"
+                  : complianceResult.riskScore >= 20
+                  ? "border-amber-700 bg-amber-900/20 text-amber-400"
+                  : "border-emerald-700 bg-emerald-900/20 text-emerald-400"
+              }`}
+            >
+              Risk: {complianceResult.riskScore}/100
+            </span>
+          )}
+        </div>
+        {showCompliance && complianceResult && (
+          <ComplianceBanner result={complianceResult} />
+        )}
+      </div>
 
       {/* Push to Meta button */}
       <div className="px-5 pb-4 border-t border-white/10 pt-3 flex items-center justify-between">

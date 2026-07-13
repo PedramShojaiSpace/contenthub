@@ -12,7 +12,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { claimsReviews } from "../drizzle/schema";
 import { invokeLLM } from "./_core/llm";
-import { buildRubricSystemPrompt, RUBRIC_RULES } from "./claimsRubric";
+import { buildRubricSystemPrompt, RUBRIC_RULES, getMetaOnlyRules } from "./claimsRubric";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,6 +97,102 @@ export async function runRubricOnContent(
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
+
+// ─── Meta Ad Pre-flight Compliance Check ────────────────────────────────────
+
+export interface MetaComplianceResult {
+  passed: boolean;
+  riskScore: number; // 0-100, higher = more likely to be rejected
+  blockingViolations: RubricVerdict[];
+  warnings: RubricVerdict[];
+  flaggedPhrases: string[];
+  recommendation: string;
+}
+
+export async function runMetaComplianceCheck(
+  adCopy: string
+): Promise<MetaComplianceResult> {
+  const systemPrompt = buildRubricSystemPrompt(true); // include Meta rules
+
+  const response = await invokeLLM({
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: `Please review the following Meta ad copy for Meta Advertising Policy compliance. Pay special attention to the Meta-specific rules (meta_personal_attributes, meta_disease_treatment_language, meta_physician_endorsement_risk):\n\n---\n${adCopy}\n---`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "meta_compliance_result",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            verdicts: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  ruleId: { type: "string" },
+                  ruleName: { type: "string" },
+                  passed: { type: "boolean" },
+                  flaggedText: { type: ["string", "null"] },
+                  explanation: { type: "string" },
+                },
+                required: ["ruleId", "ruleName", "passed", "flaggedText", "explanation"],
+                additionalProperties: false,
+              },
+            },
+            overallFlag: { type: "boolean" },
+            summary: { type: "string" },
+          },
+          required: ["verdicts", "overallFlag", "summary"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  const raw = response.choices?.[0]?.message?.content;
+  if (!raw) throw new Error("No response from LLM Meta compliance engine");
+
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  const verdicts: RubricVerdict[] = parsed.verdicts ?? [];
+
+  const blockingViolations = verdicts.filter(
+    (v) => !v.passed && RUBRIC_RULES.find((r) => r.ruleId === v.ruleId)?.severity === "block"
+  );
+  const warnings = verdicts.filter(
+    (v) => !v.passed && RUBRIC_RULES.find((r) => r.ruleId === v.ruleId)?.severity === "warn"
+  );
+  const flaggedPhrases = verdicts
+    .filter((v) => !v.passed && v.flaggedText)
+    .map((v) => v.flaggedText as string);
+
+  // Risk score: blocking violations are worth 25 pts each (max 75), warnings 10 pts each (max 25)
+  const riskScore = Math.min(
+    100,
+    blockingViolations.length * 25 + warnings.length * 10
+  );
+
+  const passed = blockingViolations.length === 0;
+  const recommendation = passed
+    ? warnings.length > 0
+      ? `Ad copy is likely approvable but has ${warnings.length} warning(s). Review flagged phrases before pushing.`
+      : "Ad copy appears compliant with Meta's advertising policies."
+    : `Ad copy has ${blockingViolations.length} blocking violation(s) that will likely cause rejection. Rewrite flagged phrases before pushing.`;
+
+  return {
+    passed,
+    riskScore,
+    blockingViolations,
+    warnings,
+    flaggedPhrases,
+    recommendation,
+  };
+}
 
 export const claimsReviewRouter = router({
   /**
@@ -297,10 +393,45 @@ export const claimsReviewRouter = router({
     }),
 
   /**
+   * Run Meta-specific ad policy pre-flight check on ad copy.
+   * Returns risk score, blocking violations, and flagged phrases.
+   * Call this before pushing any ad to Meta to catch likely rejections.
+   */
+  metaComplianceCheck: protectedProcedure
+    .input(
+      z.object({
+        adId: z.string().optional(),
+        adName: z.string().optional(),
+        headline: z.string(),
+        primaryText: z.string(),
+        description: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const adCopy = [
+        `Headline: ${input.headline}`,
+        `Primary Text: ${input.primaryText}`,
+        input.description ? `Description: ${input.description}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      const result = await runMetaComplianceCheck(adCopy);
+      return result;
+    }),
+
+  /**
    * Get the current rubric rules (for the rubric editor UI).
    */
   getRubric: protectedProcedure.query(async () => {
     return RUBRIC_RULES;
+  }),
+
+  /**
+   * Get only the Meta-specific rubric rules.
+   */
+  getMetaRules: protectedProcedure.query(async () => {
+    return getMetaOnlyRules();
   }),
 
   /**

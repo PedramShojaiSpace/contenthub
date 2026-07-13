@@ -40,6 +40,16 @@ interface AdEntry {
 // ─── Ad Copy Catalog ──────────────────────────────────────────────────────────
 // All 15 ads: 5 variants × 3 ads each
 // Images are already uploaded to Meta's ad image library
+//
+// COMPLIANCE NOTE (Meta Ad Policy 2026):
+// All copy has been reviewed against Meta's Personal Attributes Policy,
+// Cosmetic Procedures and Wellness Policy, and Health & Wellness rules.
+// Key changes from original:
+//   - Removed second-person health-status language ("You're exhausted", "The anxiety is still there")
+//   - Replaced treatment/repair framing with structure-function language
+//   - Removed implied diagnosis language ("You're not depressed", "You're not distracted")
+//   - Reframed as educational/third-person where needed
+//   - Kept strong hooks while removing personal attribute assertions
 export const AD_CATALOG: Array<{ variantNum: number; variantSlug: string; variantName: string; ads: AdEntry[] }> = [
   // VARIANT 1: /precision — Chronically fatigued, dismissed by conventional medicine
   {
@@ -49,17 +59,17 @@ export const AD_CATALOG: Array<{ variantNum: number; variantSlug: string; varian
     ads: [
       {
         adId: "precision-a",
-        adName: 'Ad 1-A — "Your Labs Say You\'re Fine"',
+        adName: 'Ad 1-A — "Normal Labs, Still Sick"',
         imageFile: "ad-precision-1.webp",
         imageHash: "17740cd8293e363216359517407b14f8",
-        headline: "Your Blood Work Is Normal. So Why Do You Feel Broken?",
-        primaryText: `Your doctor ran the bloodwork. Everything came back normal.
+        headline: "Blood Work Comes Back Normal. Energy Still Isn't There.",
+        primaryText: `Standard blood panels came back clean. The doctor says everything looks fine.
 
-But you're exhausted in a way that sleep doesn't fix. You're dragging through your days, doing all the right things, and still feeling like a fraction of yourself.
+But persistent fatigue, brain fog, and low energy tell a different story — and conventional panels don't test for gut permeability, one of the most studied factors in how people feel day to day.
 
-Here's what nobody told you: conventional blood panels don't test for gut permeability — the hidden inflammatory process that's been linked to chronic fatigue, brain fog, and systemic inflammation in tens of thousands of patients.
+When the gut barrier is compromised, inflammatory proteins can enter the bloodstream and affect energy, cognition, and overall vitality in ways that don't appear on standard labs.
 
-The KBMO FIT-22 test measures 22 foods and their cellular inflammatory response. Then you sit down with a certified health coach for a full hour to map out exactly what's driving your symptoms — and what to do about it.
+The KBMO FIT-22 test measures 22 foods and their cellular inflammatory response. A 1-hour session with a certified health coach maps out exactly what the data shows — and what to do with it.
 
 Stop guessing. Start knowing.`,
         description: "The KBMO FIT-22 Test + 1-Hour Health Coach Consultation — $399",
@@ -67,21 +77,17 @@ Stop guessing. Start knowing.`,
       },
       {
         adId: "precision-b",
-        adName: 'Ad 1-B — "Told You\'re Healthy. Still Feel Terrible."',
+        adName: 'Ad 1-B — "The Test That Explains the Gap"',
         imageFile: "ad-precision-2.webp",
         imageHash: "cf900bc60abb4c601016afa611bfbec6",
-        headline: 'The Test That Explains Why You Feel Terrible Despite "Normal" Labs',
-        primaryText: `You've been to the doctor. Maybe more than once.
+        headline: "When Labs Look Fine But Energy Doesn't Match",
+        primaryText: `Many people visit their doctor with persistent fatigue, brain fog, and a general sense that something is off — only to be told their results look fine.
 
-The answer is always the same: "Your results look fine. Maybe try reducing stress."
+Conventional medicine often doesn't test for gut permeability. When the gut barrier is compromised, inflammatory proteins enter the bloodstream and may contribute to a range of symptoms that don't appear on standard panels.
 
-But you know something is wrong. The fatigue is real. The brain fog is real. The feeling that your body is fighting something — that's real too.
+The KBMO FIT-22 test identifies which foods are driving cellular inflammation. The 1-hour consultation with a certified health coach turns those results into a clear, personalized action plan.
 
-What conventional medicine isn't testing is gut permeability. When the gut barrier breaks down, inflammatory proteins enter the bloodstream and trigger a cascade of symptoms that look like a dozen different conditions — none of which show up on standard labs.
-
-The KBMO FIT-22 test identifies exactly which foods are driving your cellular inflammation. Your 1-hour consultation with a certified health coach turns those results into a clear, personalized action plan.
-
-This is the test that changes the conversation.`,
+This is the test that gives you data to work with.`,
         description: "KBMO FIT-22 + 1-Hour Certified Health Coach Session — $399",
         cta: "WATCH_MORE",
       },
@@ -90,16 +96,14 @@ This is the test that changes the conversation.`,
         adName: 'Ad 1-C — "Slept 8 Hours. Still Exhausted."',
         imageFile: "ad-precision-3.webp",
         imageHash: "5e3a70b0bc00fdc1482d0b1420eafb23",
-        headline: "Slept 8 Hours. Still Exhausted. Here's Why.",
-        primaryText: `You're not lazy. You're not depressed. You're not "just getting older."
+        headline: "Slept 8 Hours. Still Exhausted. Here's the Biology.",
+        primaryText: `Persistent fatigue despite adequate sleep is one of the most common complaints in functional medicine — and one of the most frequently overlooked.
 
-You're exhausted at a cellular level — and there's a specific, measurable reason for it.
+When the gut barrier is compromised, a bacterial toxin called LPS can enter the bloodstream. The immune system responds with chronic low-grade inflammation. Mitochondrial function — the cellular energy production process — may be affected as a result.
 
-When the gut barrier is compromised, a bacterial toxin called LPS leaks into the bloodstream. Your immune system responds with chronic low-grade inflammation. Your mitochondria — the energy factories inside every cell — start to fail.
+The KBMO FIT-22 test identifies the specific foods associated with this inflammatory response. In a 1-hour session with a certified health coach, the results are translated into a personalized protocol to support gut barrier health.
 
-The KBMO FIT-22 test identifies the specific foods triggering your inflammatory response. In your 1-hour session with a certified health coach, you'll get a personalized protocol to begin repairing the root cause.
-
-This kind of tired has a root cause. It's time to find it.`,
+Persistent fatigue has measurable contributors. This test helps identify them.`,
         description: "KBMO FIT-22 Gut Permeability Test + Expert Health Coach Consultation — $399",
         cta: "LEARN_MORE",
       },
@@ -113,57 +117,55 @@ This kind of tired has a root cause. It's time to find it.`,
     ads: [
       {
         adId: "optimizer-a",
-        adName: 'Ad 2-A — "It\'s 3AM. Your Body Is Wide Awake."',
+        adName: 'Ad 2-A — "The 3AM Wake-Up Has a Mechanism"',
         imageFile: "ad-optimizer-1.webp",
         imageHash: "462889262c7636b3dc43b85d2dd80537",
-        headline: "You've Optimized Everything. Your Gut Barrier Is Still Broken.",
-        primaryText: `You track your sleep. You know your HRV. You've read Attia, Huberman, and Rhonda Patrick. You eat clean, exercise consistently, and have more supplements in your cabinet than most people have in their entire house.
+        headline: "Optimized Sleep Stack. Still Waking Up at 3AM. Here's Why.",
+        primaryText: `Tracking sleep. Monitoring HRV. Clean diet, consistent exercise, a full supplement stack.
 
-And yet you're waking up at 3am completely wired — unable to get back to sleep.
+And still waking up at 3am, unable to get back to sleep.
 
-Here's the mechanism nobody's talking about in the biohacking community: gut barrier failure allows LPS (lipopolysaccharide) to enter the bloodstream. Your liver peaks its detox cycle between 1–3am. When LPS is circulating, that detox process triggers cortisol — and cortisol wakes you up.
+Here's the mechanism the biohacking community rarely discusses: gut barrier compromise allows LPS (lipopolysaccharide) to enter the bloodstream. The liver peaks its detox cycle between 1–3am. When LPS is circulating, that detox process can trigger cortisol — and cortisol disrupts sleep.
 
-The KBMO FIT-22 test identifies the specific foods driving your gut permeability. Your 1-hour session with a certified health coach maps out the exact protocol to repair the barrier — and finally close the loop on your optimization stack.
+The KBMO FIT-22 test identifies the specific foods associated with gut permeability. The 1-hour session with a certified health coach maps out a protocol to support gut barrier health and address the missing variable in the optimization stack.
 
-This is the missing variable.`,
+This is the variable most stacks are missing.`,
         description: "KBMO FIT-22 + 1-Hour Expert Health Coach Session — $399",
         cta: "LEARN_MORE",
       },
       {
         adId: "optimizer-b",
-        adName: 'Ad 2-B — "Your HRV Is Tanking. Your Gut Is the Reason."',
+        adName: 'Ad 2-B — "HRV Declining. Gut Is the Missing Variable."',
         imageFile: "ad-optimizer-2.webp",
         imageHash: "1d1528e99bf35d8c8542fa012cfdb6b5",
-        headline: "Your HRV Is Declining. Your Gut Barrier Is the Missing Variable.",
-        primaryText: `You've been tracking your HRV for months. The trend is clear — and it's not going in the right direction.
+        headline: "HRV Declining Despite Doing Everything Right. The Gut May Be Why.",
+        primaryText: `Months of HRV tracking. The trend is moving in the wrong direction despite sleep hygiene, cold plunges, breathwork, magnesium, and ashwagandha.
 
-You've tried everything: better sleep hygiene, cold plunges, breathwork, magnesium, ashwagandha. Nothing is moving the needle.
+Here's what most biohackers miss: HRV is a direct measure of vagal tone — and vagal tone is suppressed by systemic inflammation. When the gut barrier is compromised, LPS enters the bloodstream and may contribute to a chronic inflammatory state that affects nervous system recovery.
 
-Here's what most biohackers miss: HRV is a direct measure of vagal tone — and vagal tone is directly suppressed by systemic inflammation. If your gut barrier is compromised, LPS enters the bloodstream and triggers a chronic inflammatory state that your nervous system cannot escape.
+The KBMO FIT-22 test identifies the specific foods associated with gut permeability. The 1-hour consultation with a certified health coach provides a targeted protocol to support gut barrier integrity and the anti-inflammatory signaling that HRV depends on.
 
-The KBMO FIT-22 test identifies the specific foods driving your gut permeability. Your 1-hour consultation with a certified health coach gives you a targeted protocol to repair the barrier and restore the anti-inflammatory signaling your HRV depends on.
-
-This is the variable your stack is missing.`,
+This is the variable most optimization stacks are missing.`,
         description: "KBMO FIT-22 Gut Permeability Test + Expert Health Coach Consultation — $399",
         cta: "LEARN_MORE",
       },
       {
         adId: "optimizer-c",
-        adName: 'Ad 2-C — "You\'ve Optimized Everything. Except Your Gut Barrier."',
+        adName: 'Ad 2-C — "The Optimization Ceiling Is a Gut Barrier Problem"',
         imageFile: "ad-optimizer-3.webp",
         imageHash: "71540094e0c4650b7e36c593573ee3a6",
         headline: "The Optimization Ceiling Is a Gut Barrier Problem.",
-        primaryText: `You've done the work. You've built the habits. You've invested in the tools.
+        primaryText: `The habits are built. The tools are in place. The work is being done.
 
-And you've hit a ceiling you can't explain.
+And there's still a ceiling that can't be explained.
 
-Energy that should be there — isn't. Recovery that should be faster — isn't. Mental clarity that should be sharper — isn't.
+Energy that should be there isn't. Recovery that should be faster isn't. Mental clarity that should be sharper isn't.
 
-The biohacking community talks endlessly about inputs: sleep, light, cold, breathwork, supplements. What it rarely addresses is the upstream variable that determines how well your body can use any of those inputs: gut barrier integrity.
+The biohacking community focuses on inputs: sleep, light, cold, breathwork, supplements. What it rarely addresses is the upstream variable that determines how well the body uses any of those inputs: gut barrier integrity.
 
-When the gut barrier fails, the inflammatory cascade it triggers suppresses mitochondrial function, disrupts cortisol rhythms, and blunts the very adaptations you're training for.
+When the gut barrier is compromised, the resulting inflammatory cascade may suppress mitochondrial function, disrupt cortisol rhythms, and blunt the adaptations being trained for.
 
-The KBMO FIT-22 test identifies the specific foods driving your gut permeability. Your 1-hour session with a certified health coach gives you a clear protocol to repair the root cause — and break through the ceiling.`,
+The KBMO FIT-22 test identifies the specific foods associated with gut permeability. The 1-hour session with a certified health coach provides a clear protocol to support gut barrier health and break through the ceiling.`,
         description: "KBMO FIT-22 + 1-Hour Certified Health Coach Session — $399",
         cta: "LEARN_MORE",
       },
@@ -177,19 +179,19 @@ The KBMO FIT-22 test identifies the specific foods driving your gut permeability
     ads: [
       {
         adId: "gutbrain-a",
-        adName: 'Ad 3-A — "The Anxiety Is Real. But It\'s Not In Your Head."',
+        adName: 'Ad 3-A — "The Gut-Brain Connection"',
         imageFile: "ad-gutbrain-1.webp",
         imageHash: "31152c94f0a5f54a4eabf92c6320dcd2",
-        headline: "The Anxiety Is Real. But It's Not In Your Head.",
-        primaryText: `You've been told it's stress. You've been told to meditate. You've been told to breathe.
+        headline: "The Gut-Brain Connection Is One of the Most Researched Areas in Modern Wellness.",
+        primaryText: `90% of serotonin is produced in the gut — not the brain. This is one of the most replicated findings in modern neuroscience.
 
-And you've tried all of it. The anxiety is still there.
+When the gut barrier is compromised, the inflammatory cascade it triggers may disrupt serotonin synthesis, vagal nerve signaling, and the neurochemical balance the nervous system depends on.
 
-Here's what the research shows: 90% of serotonin is produced in the gut — not the brain. When the gut barrier is compromised, the inflammatory cascade it triggers directly disrupts serotonin synthesis, vagal nerve signaling, and the neurochemical balance your nervous system depends on.
+For many people, mood and cognitive symptoms have a biological component that standard approaches don't address.
 
-The KBMO FIT-22 test identifies the specific foods driving your gut permeability and the inflammatory response that's affecting your mental state. Your 1-hour consultation with a certified health coach gives you a clear, targeted protocol to address the root cause.
+The KBMO FIT-22 test identifies the specific foods associated with gut permeability and the inflammatory response that may affect mental clarity and mood. The 1-hour consultation with a certified health coach provides a clear, targeted protocol to support gut barrier health.
 
-This is not a mindset problem. It's a biology problem. And it has a solution.`,
+Gut health and mental wellness are connected. This test helps map that connection.`,
         description: "KBMO FIT-22 Gut Permeability Test + Expert Health Coach Consultation — $399",
         cta: "LEARN_MORE",
       },
@@ -199,33 +201,29 @@ This is not a mindset problem. It's a biology problem. And it has a solution.`,
         imageFile: "ad-gutbrain-2.webp",
         imageHash: "6af7a5f1610f7913cea5cb00f1ee3ee2",
         headline: "Brain Fog Isn't a Mood. It's an Inflammation Signal.",
-        primaryText: `You're not distracted. You're not unmotivated. You're not "just tired."
+        primaryText: `Brain fog — the inability to think clearly, maintain focus, or access working memory — is one of the most consistent symptoms of systemic inflammation in functional medicine research.
 
-The fog is real. The inability to string a clear thought together — that's real. The feeling that you're operating through glass — that's real.
+When the gut barrier breaks down, bacterial toxins can enter the bloodstream and cross the blood-brain barrier. The neuroinflammation that follows may disrupt cognitive function, working memory, and processing speed.
 
-Brain fog is one of the most consistent symptoms of systemic inflammation. When the gut barrier breaks down, bacterial toxins enter the bloodstream and cross the blood-brain barrier. The neuroinflammation that follows disrupts cognitive function, working memory, and processing speed.
+The KBMO FIT-22 test identifies the specific foods associated with gut permeability. The 1-hour session with a certified health coach maps out a targeted protocol to support gut barrier health and the mental clarity that depends on it.
 
-The KBMO FIT-22 test identifies the specific foods driving your gut permeability. Your 1-hour session with a certified health coach maps out a targeted protocol to reduce the inflammatory load and restore the mental clarity you've been missing.
-
-This is a biology problem. And it has a measurable solution.`,
+Brain fog has measurable contributors. This is how to identify them.`,
         description: "KBMO FIT-22 + 1-Hour Certified Health Coach Session — $399",
         cta: "LEARN_MORE",
       },
       {
         adId: "gutbrain-c",
-        adName: 'Ad 3-C — "Therapy Helps. But Is It Treating the Source?"',
+        adName: 'Ad 3-C — "Therapy Helps. But Is There a Biological Layer?"',
         imageFile: "ad-gutbrain-3.webp",
         imageHash: "72d096f16a28a5ba149f71a042a177cf",
-        headline: "Therapy Helps. But Is It Treating the Source?",
-        primaryText: `You've done the work. The therapy. The journaling. The breathwork. The meditation.
+        headline: "Therapy Helps. But Is There a Biological Layer Worth Exploring?",
+        primaryText: `Therapy, journaling, breathwork, and meditation are valuable tools. Many people find they help.
 
-And it helps. But the anxiety keeps coming back. The mood instability keeps returning. The fog never fully lifts.
+But for some, mood challenges keep returning despite consistent effort. A question worth exploring: is there a biological component that isn't being addressed?
 
-Here's a question worth asking: what if part of what you're treating isn't psychological — it's biological?
+The gut-brain axis is one of the most well-researched connections in modern neuroscience. When the gut barrier is compromised, the inflammatory cascade it triggers may directly affect serotonin production, vagal nerve tone, and the neurochemical environment that mood depends on.
 
-The gut-brain axis is one of the most well-researched connections in modern neuroscience. When the gut barrier is compromised, the inflammatory cascade it triggers directly affects serotonin production, vagal nerve tone, and the neurochemical environment your mental health depends on.
-
-The KBMO FIT-22 test identifies the specific foods driving your gut permeability. Your 1-hour consultation with a certified health coach gives you a targeted protocol to address the biological root — so the work you're already doing can actually land.`,
+The KBMO FIT-22 test identifies the specific foods associated with gut permeability. The 1-hour consultation with a certified health coach provides a targeted protocol to support gut barrier health — so the other work being done can have a stronger foundation.`,
         description: "KBMO FIT-22 Gut Permeability Test + Expert Health Coach Consultation — $399",
         cta: "LEARN_MORE",
       },
@@ -239,35 +237,37 @@ The KBMO FIT-22 test identifies the specific foods driving your gut permeability
     ads: [
       {
         adId: "autoimmune-a",
-        adName: 'Ad 4-A — "Your Immune System Isn\'t Broken. It\'s Fighting the Wrong Enemy."',
+        adName: 'Ad 4-A — "Gut Barrier Integrity and Immune Function"',
         imageFile: "ad-autoimmune-1.webp",
         imageHash: "22b859b60aa613e7b282b9b92af8cf54",
-        headline: "Your Immune System Isn't Broken. It's Fighting the Wrong Enemy.",
-        primaryText: `Autoimmune conditions don't come from nowhere.
+        headline: "Gut Barrier Integrity Plays a Central Role in Immune Function.",
+        primaryText: `Research consistently shows that gut barrier health is closely connected to how the immune system behaves.
 
-They come from a gut barrier that has been compromised long enough that your immune system starts attacking your own tissue — because it can no longer tell the difference between a foreign invader and a part of you.
+When the gut barrier is compromised over time, the immune system may begin responding to substances that would otherwise be filtered out — contributing to the kind of chronic, low-grade immune activation that functional medicine practitioners often investigate.
 
-The KBMO FIT-22 test doesn't just look at food sensitivities. It measures the cellular inflammatory response to 22 specific foods — the same foods that may be driving the gut permeability that's fueling your immune system's misdirected attack.
+The KBMO FIT-22 test measures the cellular inflammatory response to 22 specific foods — the same foods that may be associated with gut permeability and immune system activation.
 
-Your 1-hour consultation with a certified health coach gives you a clear, targeted protocol to begin repairing the gut barrier — and reducing the inflammatory load your immune system is responding to.
+The 1-hour consultation with a certified health coach provides a clear, targeted protocol to support gut barrier integrity and reduce the inflammatory load the immune system may be responding to.
 
-This isn't about managing symptoms. It's about addressing the upstream cause.`,
+Gut health and immune function are connected. This test helps identify the specific foods involved.`,
         description: "KBMO FIT-22 Gut Permeability Test + Expert Health Coach Consultation — $399",
         cta: "LEARN_MORE",
       },
       {
         adId: "autoimmune-b",
-        adName: 'Ad 4-B — "The Flares Aren\'t Random. They\'re a Food Response."',
+        adName: 'Ad 4-B — "Flares Aren\'t Random. They Follow a Food Pattern."',
         imageFile: "ad-autoimmune-2.webp",
         imageHash: "dabde5f8a048aa1cbd9bf5cdfb32035a",
-        headline: "The Flares Aren't Random. They're a Food Response.",
-        primaryText: `You've tracked your symptoms. You've noticed patterns. But you can't figure out the trigger.
+        headline: "Flares Aren't Random. They Follow a Food Pattern.",
+        primaryText: `Symptom tracking often reveals patterns — but identifying the specific trigger can be difficult when the foods involved aren't the obvious ones.
 
-Here's what makes autoimmune flares so confusing: the foods driving your immune response aren't always the obvious ones. Gluten and dairy get all the attention. But for many people, it's eggs, almonds, or even "healthy" foods like spinach that are triggering the cellular inflammatory response.
+Gluten and dairy get most of the attention. But research shows that eggs, almonds, and even foods commonly considered "healthy" like spinach can trigger cellular inflammatory responses in people with specific gut permeability patterns.
 
-The KBMO FIT-22 test measures the specific cellular immune response to 22 foods — giving you a precise map of what's driving your inflammation, not a generic elimination protocol.
+The KBMO FIT-22 test measures the specific cellular immune response to 22 foods — providing a precise map of which foods are associated with inflammation, rather than a generic elimination protocol.
 
-Your 1-hour consultation with a certified health coach turns those results into a clear, personalized action plan — so you can finally stop guessing and start healing.`,
+The 1-hour consultation with a certified health coach turns those results into a clear, personalized action plan based on the actual data.
+
+Stop guessing at triggers. Start working from data.`,
         description: "KBMO FIT-22 + 1-Hour Certified Health Coach Session — $399",
         cta: "LEARN_MORE",
       },
@@ -276,16 +276,16 @@ Your 1-hour consultation with a certified health coach turns those results into 
         adName: 'Ad 4-C — "Tried Every Elimination Diet. Still Flaring."',
         imageFile: "ad-autoimmune-3.webp",
         imageHash: "3dffb5abb7b822b74287044cfd64b563",
-        headline: "Tried Every Elimination Diet. Still Flaring. Here's Why.",
-        primaryText: `You've done AIP. You've done Whole30. You've done low-FODMAP. You've removed gluten, dairy, soy, corn, eggs, and nightshades.
+        headline: "Tried AIP. Whole30. Low-FODMAP. Still Flaring. Here's Why.",
+        primaryText: `AIP. Whole30. Low-FODMAP. Removing gluten, dairy, soy, corn, eggs, and nightshades.
 
-And you're still flaring.
+And symptoms persist.
 
-The problem with standard elimination diets is that they're based on population-level data — not your specific immune response. The foods that trigger cellular inflammation are different for every person. And without testing, you're guessing.
+The limitation of standard elimination diets is that they're based on population-level data — not individual immune response. The foods that trigger cellular inflammation vary significantly from person to person. Without testing, the process is essentially guesswork.
 
-The KBMO FIT-22 test measures your specific cellular inflammatory response to 22 foods. It tells you exactly which foods are driving your immune activation — not which foods drive inflammation in the average person.
+The KBMO FIT-22 test measures the specific cellular inflammatory response to 22 foods. It identifies which foods are associated with immune activation for that individual — not which foods drive inflammation on average.
 
-Your 1-hour consultation with a certified health coach gives you a targeted, personalized protocol based on your actual results.
+The 1-hour consultation with a certified health coach provides a targeted, personalized protocol based on the actual test results.
 
 Stop eliminating everything. Start eliminating the right things.`,
         description: "KBMO FIT-22 Gut Permeability Test + Expert Health Coach Consultation — $399",
@@ -301,19 +301,19 @@ Stop eliminating everything. Start eliminating the right things.`,
     ads: [
       {
         adId: "weight-a",
-        adName: 'Ad 5-A — "You\'re Doing Everything Right. So Why Won\'t the Scale Move?"',
+        adName: 'Ad 5-A — "Eating Less. Moving More. Scale Not Moving."',
         imageFile: "ad-weight-1.webp",
         imageHash: "8f5a4bc7001529752e1487d9f2763016",
-        headline: "You're Doing Everything Right. So Why Won't the Scale Move?",
-        primaryText: `You're eating less. You're moving more. You're tracking everything.
+        headline: "Eating Less. Moving More. Scale Not Moving. Here's the Biology.",
+        primaryText: `Calorie deficit. Consistent exercise. Tracking every meal.
 
 And the scale hasn't moved in months.
 
-Here's what most weight loss programs don't tell you: inflammatory foods don't just affect your gut — they affect your metabolism. When the gut barrier is compromised, the LPS that enters the bloodstream triggers a chronic inflammatory state that directly impairs insulin sensitivity, disrupts leptin signaling, and puts your body into fat-storage mode.
+What most weight loss programs don't address: inflammatory foods don't just affect the gut — they affect metabolism. When the gut barrier is compromised, LPS that enters the bloodstream may trigger a chronic inflammatory state that can affect insulin sensitivity, leptin signaling, and the body's tendency toward fat storage.
 
-The KBMO FIT-22 test identifies the specific foods driving your cellular inflammation. Your 1-hour consultation with a certified health coach gives you a clear protocol to reduce the inflammatory load that's blocking your metabolic function.
+The KBMO FIT-22 test identifies the specific foods associated with cellular inflammation. The 1-hour consultation with a certified health coach provides a clear protocol to support gut barrier health and the metabolic function that depends on it.
 
-This isn't a willpower problem. It's a biology problem.`,
+Weight loss resistance often has measurable biological contributors. This test helps identify them.`,
         description: "KBMO FIT-22 Gut Permeability Test + Expert Health Coach Consultation — $399",
         cta: "LEARN_MORE",
       },
@@ -322,16 +322,16 @@ This isn't a willpower problem. It's a biology problem.`,
         adName: 'Ad 5-B — "These Foods Are Healthy. For Most People."',
         imageFile: "ad-weight-2.webp",
         imageHash: "fdefe98c76f49b5e474744c4d5b7f23b",
-        headline: "These Foods Are Healthy. For Most People. Not Necessarily for You.",
+        headline: "These Foods Are Healthy. For Most People. Individual Response Varies.",
         primaryText: `Salmon. Almonds. Spinach. Eggs. Blueberries.
 
-These are foods that every nutrition expert recommends. And for most people, they're genuinely healthy.
+Every nutrition expert recommends them. For most people, they're genuinely healthy.
 
-But for some people — people with specific gut permeability patterns — these foods trigger a cellular inflammatory response that drives weight gain, bloating, fatigue, and metabolic resistance.
+But research shows that for individuals with specific gut permeability patterns, these same foods can trigger a cellular inflammatory response that may contribute to weight gain, bloating, fatigue, and metabolic resistance.
 
-The KBMO FIT-22 test doesn't measure general food quality. It measures your specific cellular immune response to 22 foods. It tells you which "healthy" foods are actually working against your body — and which ones are safe to eat.
+The KBMO FIT-22 test doesn't measure general food quality. It measures the specific cellular immune response to 22 foods — identifying which foods are associated with inflammation for that individual, not the average person.
 
-Your 1-hour consultation with a certified health coach gives you a personalized protocol based on your actual results.
+The 1-hour consultation with a certified health coach provides a personalized protocol based on the actual test results.
 
 Eat for your biology. Not for the algorithm.`,
         description: "KBMO FIT-22 + 1-Hour Certified Health Coach Session — $399",
@@ -342,16 +342,16 @@ Eat for your biology. Not for the algorithm.`,
         adName: 'Ad 5-C — "Tried Keto. Paleo. Fasting. The Scale Didn\'t Move."',
         imageFile: "ad-weight-3.webp",
         imageHash: "665ce0584c93bc1368e09ff9efc316fa",
-        headline: "Tried Keto. Paleo. Fasting. The Scale Didn't Move. Here's Why.",
-        primaryText: `You've tried every diet. You've read every book. You've followed every protocol.
+        headline: "Tried Keto. Paleo. Fasting. The Scale Didn't Move. Here's the Pattern.",
+        primaryText: `Every diet. Every book. Every protocol.
 
 And nothing has worked long-term.
 
-Here's the pattern most people miss: every diet that "works for a while" works because it accidentally removes foods that were triggering your specific cellular inflammatory response. And every diet that "stops working" stops working because it reintroduces those foods — or because the inflammation was never fully addressed.
+Here's a pattern worth understanding: diets that "work for a while" often work because they accidentally remove foods that were triggering a specific cellular inflammatory response. Diets that "stop working" often stop working because those foods get reintroduced — or because the underlying inflammation was never fully addressed.
 
-The KBMO FIT-22 test identifies the specific foods driving your cellular inflammation — not based on general principles, but based on your actual immune response.
+The KBMO FIT-22 test identifies the specific foods associated with cellular inflammation — not based on general principles, but based on the individual's actual immune response.
 
-Your 1-hour consultation with a certified health coach gives you a targeted, personalized protocol that works with your biology — not against it.
+The 1-hour consultation with a certified health coach provides a targeted, personalized protocol that works with individual biology.
 
 Stop cycling through diets. Start eating for your actual metabolism.`,
         description: "KBMO FIT-22 Gut Permeability Test + Expert Health Coach Consultation — $399",

@@ -7,6 +7,9 @@
  *
  * To add a rule: append to RUBRIC_RULES with a unique ruleId.
  * To disable a rule: set enabled: false.
+ *
+ * Meta-specific rules (meta_*) are evaluated by the metaComplianceCheck
+ * procedure in claimsReviewRouter.ts before any ad is pushed to Meta.
  */
 
 export interface RubricRule {
@@ -16,6 +19,7 @@ export interface RubricRule {
   enabled: boolean;
   severity: "block" | "warn"; // block = must be approved; warn = flagged but can auto-approve
   examples: string[]; // examples of violating language for the AI prompt
+  metaOnly?: boolean; // true = only evaluated for Meta ad pre-flight checks
 }
 
 export const RUBRIC_RULES: RubricRule[] = [
@@ -119,12 +123,84 @@ export const RUBRIC_RULES: RubricRule[] = [
       "heals the gut barrier",
     ],
   },
+
+  // ─── Meta-Specific Ad Policy Rules ─────────────────────────────────────────
+  // These rules enforce Meta's Advertising Policies for health/wellness ads.
+  // They are evaluated by the metaComplianceCheck procedure before any ad push.
+  // Meta's Personal Attributes Policy, Cosmetic Procedures and Wellness Policy,
+  // and Health & Wellness categorization rules (2025-2026) apply.
+
+  {
+    ruleId: "meta_personal_attributes",
+    ruleName: "Meta: Personal Attributes Violation",
+    description:
+      "Ad copy uses second-person language that asserts or implies knowledge of the viewer's personal health status, medical condition, or physical attributes. Meta's Personal Attributes Policy prohibits asserting or implying that you know a user's personal characteristics. This includes framing like 'You\'re exhausted', 'Your anxiety', 'You\'re not depressed', or 'You\'re struggling with'. Reframe as third-person educational statements or general population observations.",
+    enabled: true,
+    severity: "block",
+    metaOnly: true,
+    examples: [
+      "You're exhausted in a way that sleep doesn't fix",
+      "The anxiety is still there",
+      "You're not lazy. You're not depressed.",
+      "You're not distracted. You're not unmotivated.",
+      "You're exhausted at a cellular level",
+      "You're waking up at 3am completely wired",
+      "The fog is real",
+      "Your immune system is attacking your own tissue",
+      "Tired of your chronic insomnia?",
+      "Sick of your anxiety attacks?",
+      "If you suffer from chronic fatigue",
+      "Do you have brain fog?",
+    ],
+  },
+  {
+    ruleId: "meta_disease_treatment_language",
+    ruleName: "Meta: Disease/Treatment Framing",
+    description:
+      "Ad copy uses language that implies the product or program will treat, fix, repair, or resolve a medical condition or its root cause. Meta rejects ads that frame health products as solutions to diseases or medical problems. 'Repairing', 'fixing', 'healing', 'addressing the root cause', 'has a solution', and 'changes everything' in a health context are high-risk. Replace with structure-function language: 'supports', 'promotes', 'may help maintain', 'is associated with'.",
+    enabled: true,
+    severity: "block",
+    metaOnly: true,
+    examples: [
+      "repairing the root cause",
+      "begin repairing the gut barrier",
+      "repair the barrier",
+      "This is a biology problem. And it has a solution.",
+      "This is a biology problem. And it has a measurable solution.",
+      "address the root cause",
+      "addressing the biological root",
+      "fix the underlying cause",
+      "heals the gut barrier",
+      "restore the anti-inflammatory signaling",
+      "reduce the inflammatory load",
+      "linked to chronic fatigue, brain fog, and systemic inflammation in tens of thousands of patients",
+      "triggers a cascade of symptoms",
+    ],
+  },
+  {
+    ruleId: "meta_physician_endorsement_risk",
+    ruleName: "Meta: Physician Credential + Outcome Claim Risk",
+    description:
+      "Ad copy combines Dr. Shojai's physician credentials (OMD, doctor, medical training) with specific health outcome claims in a way that implies clinical endorsement. Meta's policies flag expert endorsements that assert specific health results. The risk is especially high when credentials appear in the same sentence or paragraph as outcome language. Keep credential mentions purely in brand context (e.g., 'founded by Dr. Pedram Shojai, OMD') and separate from any health outcome statements.",
+    enabled: true,
+    severity: "warn",
+    metaOnly: true,
+    examples: [
+      "Dr. Shojai recommends this for patients with anxiety",
+      "As an OMD, I've seen this work for hundreds of patients",
+      "Dr. Pedram Shojai, OMD, created this protocol to treat",
+      "my medical background confirms this will fix",
+      "clinically designed by Dr. Shojai to address your condition",
+    ],
+  },
 ];
 
 // ─── Rubric prompt builder ────────────────────────────────────────────────────
 
-export function buildRubricSystemPrompt(): string {
-  const activeRules = RUBRIC_RULES.filter((r) => r.enabled);
+export function buildRubricSystemPrompt(includeMetaRules = false): string {
+  const activeRules = RUBRIC_RULES.filter(
+    (r) => r.enabled && (includeMetaRules || !r.metaOnly)
+  );
 
   const ruleDescriptions = activeRules
     .map(
@@ -133,10 +209,21 @@ export function buildRubricSystemPrompt(): string {
     )
     .join("\n\n");
 
+  const metaContext = includeMetaRules
+    ? `
+META AD POLICY CONTEXT (applies when reviewing ad copy for Meta/Facebook/Instagram):
+- Meta's Personal Attributes Policy forbids asserting or implying knowledge of a user's personal characteristics, including health conditions.
+- Second-person health-status language ("You're exhausted", "Your anxiety") is a primary rejection trigger.
+- Structure-function language is required: "supports", "promotes", "may help maintain" are safe. "Treats", "repairs", "fixes", "has a solution" are not.
+- Expert/physician endorsements combined with specific health outcomes are high-risk.
+- The FDA disclaimer must be clearly visible on the landing page.
+`
+    : "";
+
   return `You are a health-claims compliance reviewer for The Urban Monk brand, operated by Dr. Pedram Shojai, OMD.
 
 Your task is to review marketing content and flag any violations of the following compliance rules. Dr. Shojai's brand operates in the health and wellness space. The FTC, FDA, and medical board standards apply.
-
+${metaContext}
 COMPLIANCE RULES:
 ${ruleDescriptions}
 
@@ -167,10 +254,18 @@ Return a JSON object with this exact structure:
 Review ALL rules, even if the content is clean. Set "passed": true for rules with no violations.`;
 }
 
-export function getActiveRules(): RubricRule[] {
-  return RUBRIC_RULES.filter((r) => r.enabled);
+export function getActiveRules(includeMetaRules = false): RubricRule[] {
+  return RUBRIC_RULES.filter(
+    (r) => r.enabled && (includeMetaRules || !r.metaOnly)
+  );
 }
 
-export function getBlockingRules(): RubricRule[] {
-  return RUBRIC_RULES.filter((r) => r.enabled && r.severity === "block");
+export function getBlockingRules(includeMetaRules = false): RubricRule[] {
+  return RUBRIC_RULES.filter(
+    (r) => r.enabled && r.severity === "block" && (includeMetaRules || !r.metaOnly)
+  );
+}
+
+export function getMetaOnlyRules(): RubricRule[] {
+  return RUBRIC_RULES.filter((r) => r.enabled && r.metaOnly === true);
 }

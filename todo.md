@@ -4296,3 +4296,13 @@ Pricing model (corrected):
 - [ ] Add Claims Review to Owner workspace nav in DashboardLayout
 - [ ] Route /claims-review added to App.tsx
 - [ ] Write vitest tests for rubric scoring logic
+
+## QR Generator Bug Fixes
+
+- [x] Fix: custom QR code generation did not save a design record in the DB — URL was lost after generation
+- [x] Fix: video script / production / assign-video workflow was hard-wired to static presets only — unreachable for new designs
+- [x] Add createDesign tRPC procedure (qrGeneratorRouter) — upserts qr_designs row by slug
+- [x] Rewrite QrGenerator.tsx: custom QR now calls createDesign after generate, adds new design to selectable list
+- [x] All designs (static presets + DB records) now appear in the Merchandise Designs list and are selectable
+- [x] Video script, send-to-production, and assign-video all use selectedDesign (any design, not just presets)
+- [x] Assign Video section shows which design the video will be assigned to (no more manual slug entry)

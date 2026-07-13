@@ -5,15 +5,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import {
   QrCode, Download, ExternalLink, Copy, CheckCircle2, Loader2, Globe,
-  Video, Sparkles, Send, ChevronDown, ChevronUp, Clock, FileText, Link2
+  Video, Sparkles, Send, ChevronDown, ChevronUp, Clock, FileText, Link2, Plus
 } from "lucide-react";
 
-// Known merchandise QR destinations
-const PRESETS = [
+// Static preset designs (always shown)
+const STATIC_PRESETS = [
   {
     label: "Web of Life T-Shirt",
     slug: "weboflife",
@@ -41,14 +41,40 @@ const PRODUCTION_PATHS = [
   },
 ];
 
+// Derive a slug from a label string
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
+
+type DbDesign = {
+  id: number;
+  slug: string;
+  label: string;
+  landingPageUrl: string;
+  videoUrl: string | null;
+  videoJobId: number | null;
+  scriptText: string | null;
+  scriptTitle: string | null;
+  theme: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export default function QrGenerator() {
   const [customUrl, setCustomUrl] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [generating, setGenerating] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
+  // Which design slug is selected for the video script workflow
+  const [selectedSlug, setSelectedSlug] = useState<string>(STATIC_PRESETS[0].slug);
+
   // Video script state
-  const [selectedPresetSlug, setSelectedPresetSlug] = useState<string | null>(null);
   const [videoTheme, setVideoTheme] = useState("");
   const [generatedScript, setGeneratedScript] = useState<{
     scriptText: string;
@@ -65,9 +91,32 @@ export default function QrGenerator() {
   const [sentJobId, setSentJobId] = useState<number | null>(null);
 
   // Assign video URL state
-  const [assignSlug, setAssignSlug] = useState("weboflife");
   const [assignVideoUrl, setAssignVideoUrl] = useState("");
   const [videoAssigned, setVideoAssigned] = useState(false);
+
+  // Load all DB designs so custom ones appear in the list
+  const { data: dbDesigns = [], refetch: refetchDesigns } = trpc.qrGenerator.listDesigns.useQuery();
+
+  // Merge static presets with DB designs (DB wins on slug collision)
+  const allDesigns = useMemo(() => {
+    const dbSlugs = new Set((dbDesigns as DbDesign[]).map((d) => d.slug));
+    const staticOnly = STATIC_PRESETS.filter((p) => !dbSlugs.has(p.slug));
+    const dbMapped = (dbDesigns as DbDesign[]).map((d) => ({
+      label: d.label,
+      slug: d.slug,
+      url: d.landingPageUrl,
+      status: "live" as const,
+      description: d.landingPageUrl,
+      fromDb: true,
+    }));
+    const staticMapped = staticOnly.map((p) => ({ ...p, fromDb: false }));
+    return [...staticMapped, ...dbMapped];
+  }, [dbDesigns]);
+
+  // The currently selected design object
+  const selectedDesign = allDesigns.find((d) => d.slug === selectedSlug) ?? allDesigns[0];
+
+  // ── Mutations ──────────────────────────────────────────────────────────────
 
   const generateQrMutation = trpc.qrGenerator.generate.useMutation({
     onSuccess: (data: { downloadUrl: string; filename: string; url: string; label: string; size: number; generatedAt: string }) => {
@@ -85,6 +134,22 @@ export default function QrGenerator() {
     onError: (err: { message?: string }) => {
       setGenerating(null);
       toast.error(err.message || "Failed to generate QR code");
+    },
+  });
+
+  // FIX: New mutation to register a custom QR as a design record in the DB
+  const createDesignMutation = trpc.qrGenerator.createDesign.useMutation({
+    onSuccess: (data) => {
+      refetchDesigns();
+      setSelectedSlug(data.slug);
+      toast.success(
+        data.created
+          ? `Design "${data.slug}" saved — you can now generate a video script for it below.`
+          : `Design "${data.slug}" updated.`
+      );
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(err.message || "Failed to save design record");
     },
   });
 
@@ -123,9 +188,27 @@ export default function QrGenerator() {
     },
   });
 
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
   const handleGenerate = (url: string, label: string) => {
     setGenerating(url);
     generateQrMutation.mutate({ url, label });
+  };
+
+  const handleGenerateCustom = () => {
+    if (!customUrl) { toast.error("Enter a URL first"); return; }
+    const label = customLabel || "custom";
+    const slug = slugify(label) || "custom-qr";
+
+    // Step 1: Generate the QR PNG
+    handleGenerate(customUrl, label);
+
+    // Step 2 (FIX): Register the design in the DB so the full workflow is available
+    createDesignMutation.mutate({
+      slug,
+      label,
+      landingPageUrl: customUrl,
+    });
   };
 
   const copyUrl = (url: string) => {
@@ -137,26 +220,19 @@ export default function QrGenerator() {
 
   const handleGenerateScript = () => {
     if (!videoTheme.trim()) { toast.error("Enter a theme or message first"); return; }
-    const preset = selectedPresetSlug
-      ? PRESETS.find(p => p.slug === selectedPresetSlug)
-      : PRESETS[0];
-    if (!preset) { toast.error("Select a design first"); return; }
+    if (!selectedDesign) { toast.error("Select a design first"); return; }
     generateScriptMutation.mutate({
       theme: videoTheme,
-      designLabel: preset.label,
-      landingPageUrl: preset.url,
+      designLabel: selectedDesign.label,
+      landingPageUrl: selectedDesign.url,
       durationSeconds: 120,
     });
   };
 
   const handleSendToProduction = () => {
-    if (!generatedScript) return;
-    const preset = selectedPresetSlug
-      ? PRESETS.find(p => p.slug === selectedPresetSlug)
-      : PRESETS[0];
-    if (!preset) return;
+    if (!generatedScript || !selectedDesign) return;
     sendToProductionMutation.mutate({
-      slug: preset.slug,
+      slug: selectedDesign.slug,
       designLabel: generatedScript.designLabel,
       landingPageUrl: generatedScript.landingPageUrl,
       scriptText: editedScript || generatedScript.scriptText,
@@ -168,13 +244,9 @@ export default function QrGenerator() {
 
   const handleAssignVideo = () => {
     if (!assignVideoUrl.trim()) { toast.error("Enter a video URL first"); return; }
-    if (!assignSlug.trim()) { toast.error("Enter a design slug first"); return; }
-    assignVideoMutation.mutate({ slug: assignSlug, videoUrl: assignVideoUrl });
+    if (!selectedDesign) { toast.error("Select a design first"); return; }
+    assignVideoMutation.mutate({ slug: selectedDesign.slug, videoUrl: assignVideoUrl });
   };
-
-  const selectedPreset = selectedPresetSlug
-    ? PRESETS.find(p => p.slug === selectedPresetSlug)
-    : PRESETS[0];
 
   return (
     <DashboardLayout>
@@ -203,44 +275,46 @@ export default function QrGenerator() {
           </ol>
         </div>
 
-        {/* Merchandise Designs */}
+        {/* Merchandise Designs — now includes DB designs */}
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Merchandise Designs</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+            Merchandise Designs
+          </h2>
           <div className="space-y-3">
-            {PRESETS.map((preset) => (
+            {allDesigns.map((design) => (
               <div
-                key={preset.slug}
+                key={design.slug}
                 className={`border rounded-lg p-4 flex items-start justify-between gap-4 cursor-pointer transition-colors ${
-                  selectedPresetSlug === preset.slug || (!selectedPresetSlug && preset.slug === PRESETS[0].slug)
+                  selectedSlug === design.slug
                     ? "border-primary/40 bg-primary/5"
                     : "border-border hover:border-primary/20"
                 }`}
-                onClick={() => setSelectedPresetSlug(preset.slug)}
+                onClick={() => setSelectedSlug(design.slug)}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">{preset.label}</span>
+                    <span className="font-medium text-sm">{design.label}</span>
                     <Badge variant="outline" className="text-xs text-green-600 border-green-200 bg-green-50">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
                       Live
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">{preset.description}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{design.description}</p>
                   <div className="flex items-center gap-2">
                     <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono truncate max-w-xs">
-                      {preset.url}
+                      {design.url}
                     </code>
                     <button
-                      onClick={(e) => { e.stopPropagation(); copyUrl(preset.url); }}
+                      onClick={(e) => { e.stopPropagation(); copyUrl(design.url); }}
                       className="text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {copiedUrl === preset.url
+                      {copiedUrl === design.url
                         ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
                         : <Copy className="w-3.5 h-3.5" />
                       }
                     </button>
                     <a
-                      href={preset.url}
+                      href={design.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -252,11 +326,11 @@ export default function QrGenerator() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={(e) => { e.stopPropagation(); handleGenerate(preset.url, preset.label); }}
-                  disabled={generating === preset.url}
+                  onClick={(e) => { e.stopPropagation(); handleGenerate(design.url, design.label); }}
+                  disabled={generating === design.url}
                   className="shrink-0"
                 >
-                  {generating === preset.url ? (
+                  {generating === design.url ? (
                     <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Generating…</>
                   ) : (
                     <><Download className="w-3.5 h-3.5 mr-1.5" />Download QR</>
@@ -267,7 +341,56 @@ export default function QrGenerator() {
           </div>
         </div>
 
-        {/* Video Script Generator */}
+        {/* Custom QR — now also registers the design in DB */}
+        <div className="border border-border rounded-lg p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Plus className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold">Add New Design</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Enter the landing page URL and a design name. This will download the QR code <strong>and</strong> add the design to the list above so you can generate a video script for it.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="custom-url" className="text-xs mb-1.5 block">Landing Page URL</Label>
+              <Input
+                id="custom-url"
+                placeholder="https://ch.theurbanmonk.com/your-design-slug"
+                value={customUrl}
+                onChange={(e) => setCustomUrl(e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            <div>
+              <Label htmlFor="custom-label" className="text-xs mb-1.5 block">Design Name</Label>
+              <Input
+                id="custom-label"
+                placeholder="e.g. Interconnected Series"
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+                className="text-sm"
+              />
+              {customLabel && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Slug: <code className="font-mono bg-muted px-1 rounded">{slugify(customLabel) || "custom-qr"}</code>
+                </p>
+              )}
+            </div>
+            <Button
+              onClick={handleGenerateCustom}
+              disabled={!customUrl || generating === customUrl || createDesignMutation.isPending}
+              className="w-full"
+            >
+              {generating === customUrl || createDesignMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating…</>
+              ) : (
+                <><QrCode className="w-4 h-4 mr-2" />Generate QR &amp; Add Design</>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Video Script Generator — now uses selectedDesign (any design, not just presets) */}
         <div className="border border-border rounded-lg overflow-hidden">
           <div className="bg-muted/30 px-5 py-4 flex items-center gap-3 border-b border-border">
             <Video className="w-4 h-4 text-primary" />
@@ -281,12 +404,12 @@ export default function QrGenerator() {
 
           <div className="p-5 space-y-5">
             {/* Selected design indicator */}
-            {selectedPreset && (
+            {selectedDesign && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
                 <QrCode className="w-3.5 h-3.5" />
-                <span>Script will be for: <strong className="text-foreground">{selectedPreset.label}</strong></span>
+                <span>Script will be for: <strong className="text-foreground">{selectedDesign.label}</strong></span>
                 <span className="text-muted-foreground/60">→</span>
-                <code className="font-mono">{selectedPreset.url}</code>
+                <code className="font-mono">{selectedDesign.url}</code>
               </div>
             )}
 
@@ -414,7 +537,7 @@ export default function QrGenerator() {
           </div>
         </div>
 
-        {/* Assign Video URL to Landing Page */}
+        {/* Assign Video URL to Landing Page — now uses selectedDesign */}
         <div className="border border-border rounded-lg overflow-hidden">
           <div className="bg-muted/30 px-5 py-4 flex items-center gap-3 border-b border-border">
             <Link2 className="w-4 h-4 text-primary" />
@@ -427,43 +550,40 @@ export default function QrGenerator() {
           </div>
 
           <div className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="assign-slug" className="text-xs mb-1.5 block font-medium">Design Slug</Label>
-                <Input
-                  id="assign-slug"
-                  placeholder="weboflife"
-                  value={assignSlug}
-                  onChange={(e) => { setAssignSlug(e.target.value); setVideoAssigned(false); }}
-                  className="text-sm font-mono"
-                />
-                <p className="text-xs text-muted-foreground mt-1">The slug in the landing page URL</p>
+            {/* Show which design the video will be assigned to */}
+            {selectedDesign && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Assigning to: <strong className="text-foreground">{selectedDesign.label}</strong></span>
+                <span className="text-muted-foreground/60">·</span>
+                <code className="font-mono">{selectedDesign.slug}</code>
               </div>
-              <div>
-                <Label htmlFor="assign-video-url" className="text-xs mb-1.5 block font-medium">Video URL</Label>
-                <Input
-                  id="assign-video-url"
-                  placeholder="https://cdn.heygen.com/video/..."
-                  value={assignVideoUrl}
-                  onChange={(e) => { setAssignVideoUrl(e.target.value); setVideoAssigned(false); }}
-                  className="text-sm"
-                />
-                <p className="text-xs text-muted-foreground mt-1">HeyGen, Descript, YouTube, or any direct video URL</p>
-              </div>
+            )}
+
+            <div>
+              <Label htmlFor="assign-video-url" className="text-xs mb-1.5 block font-medium">Video URL</Label>
+              <Input
+                id="assign-video-url"
+                placeholder="https://cdn.heygen.com/video/..."
+                value={assignVideoUrl}
+                onChange={(e) => { setAssignVideoUrl(e.target.value); setVideoAssigned(false); }}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">HeyGen, Descript, YouTube, or any direct video URL</p>
             </div>
 
             {videoAssigned ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>
-                  Video assigned to <strong>{assignSlug}</strong>. Visit{" "}
+                  Video assigned to <strong>{selectedDesign?.slug}</strong>. Visit{" "}
                   <a
-                    href={`https://ch.theurbanmonk.com/${assignSlug}`}
+                    href={selectedDesign?.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline font-medium"
                   >
-                    ch.theurbanmonk.com/{assignSlug}
+                    {selectedDesign?.url}
                   </a>{" "}
                   to confirm the embed.
                 </span>
@@ -471,7 +591,7 @@ export default function QrGenerator() {
             ) : (
               <Button
                 onClick={handleAssignVideo}
-                disabled={assignVideoMutation.isPending || !assignVideoUrl.trim() || !assignSlug.trim()}
+                disabled={assignVideoMutation.isPending || !assignVideoUrl.trim()}
                 variant="outline"
                 className="w-full"
               >
@@ -482,50 +602,6 @@ export default function QrGenerator() {
                 )}
               </Button>
             )}
-          </div>
-        </div>
-
-        {/* Custom QR */}
-        <div className="border border-border rounded-lg p-5">
-          <h2 className="text-sm font-semibold mb-4">Generate Custom QR</h2>
-          <p className="text-xs text-muted-foreground mb-4">
-            For a new design, first create the landing page in <strong>CH Landing Pages</strong>, then generate its QR here.
-          </p>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="custom-url" className="text-xs mb-1.5 block">Landing Page URL</Label>
-              <Input
-                id="custom-url"
-                placeholder="https://ch.theurbanmonk.com/your-design-slug"
-                value={customUrl}
-                onChange={(e) => setCustomUrl(e.target.value)}
-                className="text-sm"
-              />
-            </div>
-            <div>
-              <Label htmlFor="custom-label" className="text-xs mb-1.5 block">Design Name (for filename)</Label>
-              <Input
-                id="custom-label"
-                placeholder="e.g. Interconnected Series"
-                value={customLabel}
-                onChange={(e) => setCustomLabel(e.target.value)}
-                className="text-sm"
-              />
-            </div>
-            <Button
-              onClick={() => {
-                if (!customUrl) { toast.error("Enter a URL first"); return; }
-                handleGenerate(customUrl, customLabel || "custom");
-              }}
-              disabled={!customUrl || generating === customUrl}
-              className="w-full"
-            >
-              {generating === customUrl ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating…</>
-              ) : (
-                <><QrCode className="w-4 h-4 mr-2" />Generate &amp; Download QR</>
-              )}
-            </Button>
           </div>
         </div>
 

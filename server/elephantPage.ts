@@ -517,7 +517,7 @@ export function renderElephantPage(
     <p>The QR code embedded in this design brought you here. That was intentional — everything on this shirt has a reason.</p>
     <img
       class="qr-img"
-      src="/manus-storage/elephant-qr_265a0c82.webp"
+      src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663158996687/jtoXLKomiMZUXFvy.webp"
       alt="Urban Monk QR code — Traditional Education"
       loading="lazy"
     />

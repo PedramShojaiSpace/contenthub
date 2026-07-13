@@ -4306,3 +4306,14 @@ Pricing model (corrected):
 - [x] All designs (static presets + DB records) now appear in the Merchandise Designs list and are selectable
 - [x] Video script, send-to-production, and assign-video all use selectedDesign (any design, not just presets)
 - [x] Assign Video section shows which design the video will be assigned to (no more manual slug entry)
+
+## Elephant Landing Page (/elephant)
+
+- [x] Decode QR code — confirmed encodes https://ch.theurbanmonk.com/elephant
+- [x] Register "elephant" design in qr_designs DB table (slug: elephant, label: Traditional Education)
+- [x] Create server/elephantPage.ts renderer — conditioned-limitation theme, baby elephant narrative
+- [x] Add /elephant route to server/_core/index.ts (reads videoUrl, productImageUrl, shopifyUrl from DB)
+- [x] Video placeholder shown until animation is assigned via QR Generator
+- [x] Product image placeholder shown until Shopify link is provided
+- [ ] Update elephant design with productImageUrl + shopifyUrl when user provides them
+- [ ] Assign video URL once animation is complete

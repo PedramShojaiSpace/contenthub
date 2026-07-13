@@ -1067,6 +1067,40 @@ async function startServer() {
     }
   });
 
+  // /elephant — Traditional Education merchandise QR destination
+  app.get("/elephant", async (req, res) => {
+    try {
+      const { renderElephantPage } = await import("../elephantPage");
+      let videoUrl: string | null = null;
+      let productImageUrl: string | null = null;
+      let shopifyUrl: string | null = null;
+      try {
+        const { getDb: getDbLocal } = await import("../db");
+        const { qrDesigns } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const dbLocal = await getDbLocal();
+        if (!dbLocal) throw new Error("DB not available");
+        const design = await dbLocal.select().from(qrDesigns).where(eq(qrDesigns.slug, "elephant")).limit(1);
+        videoUrl = design[0]?.videoUrl ?? null;
+        // productImageUrl and shopifyUrl stored in theme JSON field when available
+        if (design[0]?.theme) {
+          try {
+            const meta = JSON.parse(design[0].theme);
+            productImageUrl = meta.productImageUrl ?? null;
+            shopifyUrl = meta.shopifyUrl ?? null;
+          } catch (_) { /* theme is not JSON — skip */ }
+        }
+      } catch (_) { /* DB not available — skip */ }
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      return res.send(renderElephantPage(videoUrl, productImageUrl, shopifyUrl));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[elephant] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
   // Campaigns: lo | gut | sleep | webinar | upstream

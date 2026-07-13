@@ -167,6 +167,40 @@ Write the video script now.`;
     }),
 
   /**
+   * Create (or update) a QR design record so the full workflow
+   * (script → production → assign video) is available for it.
+   * Called immediately after generating a custom QR code.
+   * FIX: Previously, custom QR codes were generated without creating a DB record,
+   * making the video script / production / assign-video workflow unreachable.
+   */
+  createDesign: protectedProcedure
+    .input(
+      z.object({
+        slug: z.string().min(1).max(128),
+        label: z.string().min(1).max(256),
+        landingPageUrl: z.string().url(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const existing = await db.select().from(qrDesigns).where(eq(qrDesigns.slug, input.slug)).limit(1);
+      if (existing.length > 0) {
+        // Update label/url if slug already exists (idempotent)
+        await db.update(qrDesigns)
+          .set({ label: input.label, landingPageUrl: input.landingPageUrl, updatedAt: new Date() })
+          .where(eq(qrDesigns.slug, input.slug));
+        return { slug: input.slug, created: false };
+      }
+      await db.insert(qrDesigns).values({
+        slug: input.slug,
+        label: input.label,
+        landingPageUrl: input.landingPageUrl,
+      });
+      return { slug: input.slug, created: true };
+    }),
+
+  /**
    * Generate a branded Urban Monk QR code PNG and return a download URL.
    * Pure Node.js implementation using qrcode + sharp — works in production.
    */

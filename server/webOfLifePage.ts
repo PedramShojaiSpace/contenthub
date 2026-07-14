@@ -224,6 +224,63 @@ export function renderWebOfLifePage(videoUrl?: string | null): string {
     }
     .shirt-btn:hover { background: #1d4ed8; }
 
+    /* ── Explore Deeper Section ── */
+    .explore-section {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px 72px;
+      text-align: center;
+    }
+    .explore-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent-light);
+      margin-bottom: 16px;
+    }
+    .explore-heading {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(26px, 5.5vw, 38px);
+      font-weight: 300;
+      line-height: 1.25;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+    }
+    .explore-body {
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 480px;
+      margin: 0 auto 32px;
+    }
+    .explore-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 48px;
+      background: transparent;
+      color: var(--accent-light);
+      border: 1.5px solid var(--accent-blue);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      border-radius: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .explore-btn:hover {
+      background: rgba(37,99,235,0.12);
+      border-color: var(--accent-light);
+      color: #ffffff;
+    }
+    .explore-btn svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
     /* ── Narrative ── */
     .narrative {
       max-width: 620px;
@@ -437,6 +494,20 @@ export function renderWebOfLifePage(videoUrl?: string | null): string {
     <p class="shirt-price">$35 &mdash; Unisex V-Neck</p>
     <a href="https://shop.theurbanmonk.com/products/the-web-of-life-v" class="shirt-btn" target="_blank" rel="noopener">
       Get Your Shirt Now &rarr;
+    </a>
+  </section>
+
+  <!-- Explore Deeper -->
+  <section class="explore-section fade-up fade-up-3">
+    <p class="explore-label">There is more</p>
+    <h3 class="explore-heading">The web goes deeper<br>than the image</h3>
+    <p class="explore-body">The fungal kingdom built the soil. Your mitochondria are ancient bacteria. The web communicates — and it may be conscious. Watch the deep dive.</p>
+    <a href="#deep-dive" class="explore-btn" id="explore-deeper-btn">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10 8l6 4-6 4V8z" fill="currentColor"/>
+      </svg>
+      Explore Deeper
     </a>
   </section>
 

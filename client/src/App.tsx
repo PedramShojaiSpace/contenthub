@@ -85,6 +85,7 @@ const DiagnosticQuiz = lazy(() => import("./pages/DiagnosticQuiz"));
 const AbTests = lazy(() => import("./pages/AbTests"));
 const ClaimsReview = lazy(() => import("./pages/ClaimsReview"));
 const YouTubeAnalytics = lazy(() => import("./pages/YouTubeAnalytics"));
+const GA4Analytics = lazy(() => import("./pages/GA4Analytics"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -178,6 +179,7 @@ function Router() {
         <Route path={"/ab-tests"} component={AbTests} />
         <Route path={"/claims-review"} component={ClaimsReview} />
         <Route path={"/yt-analytics"} component={YouTubeAnalytics} />
+        <Route path={"/ga4-analytics"} component={GA4Analytics} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

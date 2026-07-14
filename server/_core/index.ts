@@ -513,6 +513,45 @@ async function startServer() {
       return res.status(500).send(`<html><body style="font-family:sans-serif;padding:40px"><h2 style="color:#dc2626">&#x274c; Authorization failed</h2><p>${msg}</p><p><a href="/video-to-blog">&larr; Return to pipeline</a></p></body></html>`);
     }
   });
+
+  // GET /api/ga4/callback — Google redirects here after GA4 authorization
+  app.get("/api/ga4/callback", async (req, res) => {
+    const code = req.query.code as string;
+    if (!code) return res.status(400).send("Missing authorization code");
+    try {
+      const { exchangeGa4Code } = await import("../ga4Router");
+      const { refreshToken } = await exchangeGa4Code(code);
+      process.env.GA4_REFRESH_TOKEN = refreshToken;
+      const db = await getDb();
+      if (db) {
+        const { userCredentials } = await import("../../drizzle/schema");
+        const [existing] = await db.select().from(userCredentials).where(eq(userCredentials.userId, 1));
+        if (existing) {
+          await db.update(userCredentials).set({ ga4RefreshToken: refreshToken } as any).where(eq(userCredentials.userId, 1));
+        } else {
+          await db.insert(userCredentials).values({ userId: 1, ga4RefreshToken: refreshToken } as any);
+        }
+      }
+      return res.send(`
+        <html><body style="font-family:sans-serif;padding:40px;max-width:600px;text-align:center">
+          <h2 style="color:#16a34a">&#x2705; Google Analytics 4 Connected!</h2>
+          <p>Both properties are now accessible.</p>
+          <p>You can close this window and return to the hub.</p>
+          <script>
+            if (window.opener && !window.opener.closed) {
+              window.opener.postMessage({ type: 'GA4_AUTH_SUCCESS' }, window.location.origin);
+              setTimeout(() => window.close(), 800);
+            } else {
+              setTimeout(() => { window.location.href = '/ga4-analytics'; }, 1500);
+            }
+          </script>
+        </body></html>
+      `);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body style="font-family:sans-serif;padding:40px"><h2 style="color:#dc2626">&#x274c; GA4 Authorization failed</h2><p>${msg}</p></body></html>`);
+    }
+  });
   // GET /api/youtube/status — check if YouTube is authorized
   app.get("/api/youtube/status", async (req, res) => {
     try {

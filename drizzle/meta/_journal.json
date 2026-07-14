@@ -855,6 +855,13 @@
       "when": 1752451200000,
       "tag": "0121_yt_analytics_comments_headlines",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "5",
+      "when": 1752624000000,
+      "tag": "0122_add_ga4_token",
+      "breakpoints": true
     }
   ]
 }

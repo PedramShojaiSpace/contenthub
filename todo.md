@@ -4317,3 +4317,15 @@ Pricing model (corrected):
 - [x] Product image placeholder shown until Shopify link is provided
 - [ ] Update elephant design with productImageUrl + shopifyUrl when user provides them
 - [ ] Assign video URL once animation is complete
+
+## Workstream 1 & 2 — Analytics Dashboard + Content Production
+
+- [ ] YouTube Analytics: DB tables for yt_video_snapshots and yt_comments
+- [ ] YouTube Analytics: backend procedures (fetchVideoAnalytics, listVideoSnapshots, getChannelSummary)
+- [ ] YouTube Analytics: Comments procedures (listComments, postReply, suggestReply)
+- [ ] YouTube Analytics: frontend page (YouTubeAnalytics.tsx) — sortable table + VidIQ score
+- [ ] YouTube Analytics: Comments tab on the analytics page
+- [ ] Headline Generator: backend procedure (generateHeadlines — 5 variants)
+- [ ] Headline Generator: frontend section on YouTubePipeline or new page
+- [ ] Kajabi email attribution panel (subscribers by UTM source)
+- [ ] Shopify revenue attribution panel (orders by UTM campaign)

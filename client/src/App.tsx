@@ -84,6 +84,7 @@ const AscensionPipeline = lazy(() => import("./pages/AscensionPipeline"));
 const DiagnosticQuiz = lazy(() => import("./pages/DiagnosticQuiz"));
 const AbTests = lazy(() => import("./pages/AbTests"));
 const ClaimsReview = lazy(() => import("./pages/ClaimsReview"));
+const YouTubeAnalytics = lazy(() => import("./pages/YouTubeAnalytics"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -176,6 +177,7 @@ function Router() {
         <Route path={"/quiz"} component={DiagnosticQuiz} />
         <Route path={"/ab-tests"} component={AbTests} />
         <Route path={"/claims-review"} component={ClaimsReview} />
+        <Route path={"/yt-analytics"} component={YouTubeAnalytics} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

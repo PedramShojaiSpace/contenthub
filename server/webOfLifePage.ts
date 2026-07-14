@@ -170,6 +170,60 @@ export function renderWebOfLifePage(videoUrl?: string | null): string {
       letter-spacing: 0.06em;
     }
 
+    /* ── Shirt Product Section ── */
+    .shirt-section {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 0 24px 64px;
+      text-align: center;
+    }
+    .shirt-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent-light);
+      margin-bottom: 16px;
+    }
+    .shirt-frame {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.45), 0 0 0 1px var(--border);
+      background: var(--bg-card);
+      margin-bottom: 24px;
+    }
+    .shirt-frame img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .shirt-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(22px, 5vw, 30px);
+      font-weight: 400;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .shirt-price {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    .shirt-btn {
+      display: inline-block;
+      padding: 16px 44px;
+      background: var(--accent-blue);
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      border-radius: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .shirt-btn:hover { background: #1d4ed8; }
+
     /* ── Narrative ── */
     .narrative {
       max-width: 620px;
@@ -368,6 +422,23 @@ export function renderWebOfLifePage(videoUrl?: string | null): string {
     </div>
     <p class="design-caption">Web of Life — Urban Monk × Microbiome Series</p>
   </div>
+
+  <!-- Shirt Product Section -->
+  <section class="shirt-section fade-up fade-up-3">
+    <p class="shirt-label">Wear the web</p>
+    <div class="shirt-frame">
+      <img
+        src="https://cdn.shopify.com/s/files/1/0564/2430/0698/files/unisex-v-neck-tee-white-front-6a4d8aca34fca.jpg?v=1783466717"
+        alt="The Web of Life V-Neck Tee — The Urban Monk"
+        loading="lazy"
+      />
+    </div>
+    <h3 class="shirt-title">The Web of Life Tee</h3>
+    <p class="shirt-price">$35 &mdash; Unisex V-Neck</p>
+    <a href="https://shop.theurbanmonk.com/products/the-web-of-life-v" class="shirt-btn" target="_blank" rel="noopener">
+      Get Your Shirt Now &rarr;
+    </a>
+  </section>
 
   <!-- Narrative -->
   <section class="narrative fade-up fade-up-4">

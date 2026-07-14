@@ -3190,3 +3190,79 @@ export const claimsReviews = mysqlTable("claims_reviews", {
 });
 export type ClaimsReview = typeof claimsReviews.$inferSelect;
 export type InsertClaimsReview = typeof claimsReviews.$inferInsert;
+
+
+// ─── YouTube Analytics Snapshots ─────────────────────────────────────────────
+// Stores daily/on-demand metric snapshots per video from the YouTube Analytics API.
+// Separate from youtubePipelineVideos (which tracks production workflow).
+export const ytVideoSnapshots = mysqlTable("yt_video_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  videoId: varchar("video_id", { length: 64 }).notNull(),
+  title: varchar("title", { length: 512 }).notNull(),
+  publishedAt: bigint("published_at", { mode: "number" }),
+  thumbnailUrl: varchar("thumbnail_url", { length: 1024 }),
+  // YouTube Analytics API metrics
+  views: int("views").default(0),
+  likes: int("likes").default(0),
+  comments: int("comments").default(0),
+  shares: int("shares").default(0),
+  impressions: int("impressions").default(0),
+  thumbnailCtr: float("thumbnail_ctr"),           // impressionClickThroughRate (%)
+  avgViewDurationSec: int("avg_view_duration_sec"), // averageViewDuration (seconds)
+  avgViewPct: float("avg_view_pct"),               // averageViewPercentage (%)
+  estimatedMinutesWatched: int("estimated_minutes_watched"),
+  // VidIQ score (fetched separately)
+  vidiqScore: int("vidiq_score"),
+  vidiqScoreUpdatedAt: bigint("vidiq_score_updated_at", { mode: "number" }),
+  // Snapshot metadata
+  snapshotDate: varchar("snapshot_date", { length: 10 }).notNull(), // YYYY-MM-DD
+  snapshotAt: bigint("snapshot_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type YtVideoSnapshot = typeof ytVideoSnapshots.$inferSelect;
+export type InsertYtVideoSnapshot = typeof ytVideoSnapshots.$inferInsert;
+
+// ─── YouTube Comments ─────────────────────────────────────────────────────────
+// Stores top-level comments pulled from the YouTube Data API for Pedram's videos.
+export const ytComments = mysqlTable("yt_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  commentId: varchar("comment_id", { length: 128 }).notNull().unique(),
+  videoId: varchar("video_id", { length: 64 }).notNull(),
+  videoTitle: varchar("video_title", { length: 512 }),
+  authorName: varchar("author_name", { length: 256 }),
+  authorProfileImageUrl: varchar("author_profile_image_url", { length: 1024 }),
+  text: text("text").notNull(),
+  likeCount: int("like_count").default(0),
+  publishedAt: bigint("published_at", { mode: "number" }),
+  // Reply tracking
+  replyStatus: mysqlEnum("yt_comment_reply_status", ["unread", "read", "replied", "ignored"])
+    .notNull()
+    .default("unread"),
+  replyText: text("reply_text"),
+  repliedAt: bigint("replied_at", { mode: "number" }),
+  // AI-suggested reply (stored for review before posting)
+  aiSuggestedReply: text("ai_suggested_reply"),
+  fetchedAt: bigint("fetched_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type YtComment = typeof ytComments.$inferSelect;
+export type InsertYtComment = typeof ytComments.$inferInsert;
+
+// ─── Headline Generations ─────────────────────────────────────────────────────
+// Stores headline/title variant sets generated for YouTube videos.
+export const ytHeadlineGenerations = mysqlTable("yt_headline_generations", {
+  id: int("id").autoincrement().primaryKey(),
+  topic: varchar("topic", { length: 512 }).notNull(),
+  pillar: varchar("pillar", { length: 128 }),
+  // JSON array of 5 headline objects: { title, hook, rationale }
+  headlines: json("headlines").notNull().$type<Array<{
+    title: string;
+    hook: string;
+    rationale: string;
+    estimatedCtrTier: "high" | "medium" | "low";
+  }>>(),
+  selectedTitle: varchar("selected_title", { length: 512 }),
+  linkedScriptId: int("linked_script_id"),
+  linkedPipelineVideoId: int("linked_pipeline_video_id"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type YtHeadlineGeneration = typeof ytHeadlineGenerations.$inferSelect;
+export type InsertYtHeadlineGeneration = typeof ytHeadlineGenerations.$inferInsert;

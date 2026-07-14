@@ -141,6 +141,7 @@ import { ascensionRouter } from "./ascensionRouter";
 import { quizRouter } from "./quizRouter";
 import { abTestRouter } from "./abTestRouter";
 import { claimsReviewRouter } from "./claimsReviewRouter";
+import { ytAnalyticsRouter } from "./ytAnalyticsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -514,6 +515,7 @@ export const appRouter = router({
   abTest: abTestRouter,
   claimsReview: claimsReviewRouter,
   historicalPosts: historicalPostsRouter,
+  ytAnalytics: ytAnalyticsRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

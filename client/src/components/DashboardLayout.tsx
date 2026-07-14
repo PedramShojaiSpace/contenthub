@@ -23,6 +23,7 @@ import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   Activity,
+  BarChart2,
   BarChart3,
   BookOpen,
   Brain,
@@ -141,6 +142,7 @@ const vaShortFormItems = [
 const vaVideoItems = [
   { icon: Video, label: "Video Production", path: "/video-production" },
   { icon: Youtube, label: "YouTube Pipeline", path: "/youtube-pipeline" },
+  { icon: BarChart2, label: "YouTube Analytics", path: "/yt-analytics" },
   { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
   { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
 ];

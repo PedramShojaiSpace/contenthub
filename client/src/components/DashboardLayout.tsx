@@ -143,6 +143,7 @@ const vaVideoItems = [
   { icon: Video, label: "Video Production", path: "/video-production" },
   { icon: Youtube, label: "YouTube Pipeline", path: "/youtube-pipeline" },
   { icon: BarChart2, label: "YouTube Analytics", path: "/yt-analytics" },
+  { icon: TrendingUp, label: "GA4 Site Analytics", path: "/ga4-analytics" },
   { icon: Youtube, label: "YouTube → Blog", path: "/video-to-blog" },
   { icon: BookOpen, label: "Blog → YouTube", path: "/blog-to-youtube" },
 ];

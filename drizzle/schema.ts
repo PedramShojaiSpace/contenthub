@@ -1149,6 +1149,8 @@ export const userCredentials = mysqlTable("user_credentials", {
   youtubeRefreshToken: text("youtubeRefreshToken"),
   youtubeChannelTitle: varchar("youtubeChannelTitle", { length: 256 }),
   youtubeChannelId: varchar("youtubeChannelId", { length: 64 }),
+  // Google Analytics 4 (GA4 Data API)
+  ga4RefreshToken: text("ga4RefreshToken"),
   updatedAt: timestamp("uc_updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type UserCredentials = typeof userCredentials.$inferSelect;

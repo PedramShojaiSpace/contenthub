@@ -4329,3 +4329,12 @@ Pricing model (corrected):
 - [ ] Headline Generator: frontend section on YouTubePipeline or new page
 - [ ] Kajabi email attribution panel (subscribers by UTM source)
 - [ ] Shopify revenue attribution panel (orders by UTM campaign)
+
+## GA4 Analytics Dashboard
+- [x] Add ga4RefreshToken column to user_credentials schema and run db:push
+- [x] Build server/ga4Router.ts — OAuth URL, token exchange, Data API fetch (sessions, users, top pages, traffic sources)
+- [x] Support two properties: main site (395413090) and Kajabi Academy (462310116)
+- [x] Add /api/ga4/callback OAuth route to index.ts
+- [x] Build client/src/pages/GA4Analytics.tsx — property switcher, metric cards, top pages table, traffic sources chart
+- [x] Add GA4 nav item to DashboardLayout sidebar under Analytics section
+- [x] Save checkpoint

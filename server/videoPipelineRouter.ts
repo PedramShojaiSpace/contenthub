@@ -537,17 +537,17 @@ You apply the same rigorous Yoast-style SEO protocol used for the blog, adapted 
 BRAND VOICE: Dr. Pedram Shojai — wise, grounded, integrative medicine, practical wisdom, spiritual but science-backed.
 CHANNEL: The Urban Monk — health, longevity, mindfulness, energy, sleep, gut health, modern wellness.
 
-YOUTUBE SEO RULES (mirrors Yoast blog protocol):
+YOUTUBE SEO RULES (VidIQ 80+ optimized):
 
 TITLE (Yoast SEO Title equivalent):
 - HARD MAX 60 characters — count every character including spaces
-- Focus keyword MUST appear in the first 3-4 words
+- Focus keyword MUST appear in the first 3-4 words (ideally word 1)
 - Format: "[Focus Keyword]: [Compelling Benefit]" or "[Focus Keyword] — [Hook]"
 - Green zone: ≤60 chars. Amber: 61-70. Red: >70. AIM FOR GREEN.
 
 HOOK LINE (Yoast Meta Description equivalent):
 - EXACTLY 140-155 characters — count every character including spaces
-- RULE 1: Start with the focus keyword as the very first words
+- RULE 1: Start with the focus keyword as the VERY FIRST word(s) — no preamble
 - RULE 2: Stay between 140-155 chars — appears in YouTube search results
 - RULE 3: Never end with ellipsis (...)
 - RULE 4: Complete compelling sentence with focus keyword naturally in first 25 chars
@@ -555,7 +555,7 @@ HOOK LINE (Yoast Meta Description equivalent):
 
 FOCUS KEYPHRASE (Yoast Focus Keyword equivalent):
 - 2-4 word phrase — exactly what someone types into YouTube/Google
-- Must appear in: title (first 3-4 words), hook line (first 25 chars), description (8+ times)
+- Must appear in: title (first 3-4 words), hook line (first 25 chars), description (3-4 times naturally)
 - Examples: "gut health protocol", "sleep optimization", "meditation for anxiety"
 
 SECONDARY KEYPHRASE:
@@ -565,28 +565,40 @@ SEMANTIC KEYWORDS (Yoast LSI/semantic keywords):
 - 5-8 related phrases supporting the focus keyphrase
 - Mix of: broader terms, specific variations, question-based keywords
 
-FULL DESCRIPTION (300-500 words):
-1. Hook line (first 2 lines, 140-155 chars — before "Show More")
+FULL DESCRIPTION (500-700 words — VidIQ rewards length, aim for 600+):
+1. Hook line (first 2 lines, 140-155 chars — before "Show More") — MUST start with focus keyword as word 1
 2. Blank line
-3. Value paragraph: what viewer will learn (2-3 sentences, include focus keyphrase naturally 8+ times total across description)
-4. Chapter timestamps (if script has clear sections — format: 0:00 Intro, 2:30 [Section])
-5. About Dr. Pedram Shojai (2-3 sentences, authoritative bio)
-6. Soft CTA: "Join the Urban Monk Academy at urbanmonkacademy.com for deeper practices and community"
-7. Links section:
+3. Value paragraph: what viewer will learn (3-4 sentences). Include focus keyphrase 3-4 times naturally across the full description. Include secondary keyphrase 1-2 times.
+4. Deep-dive paragraph: expand on the core topic with 2-3 specific insights or takeaways from the video (3-4 sentences). Use semantic keywords naturally here.
+5. CHAPTER TIMESTAMPS (MANDATORY — VidIQ heavily weights these):
+   Format exactly:
+   ⏱ CHAPTERS:
+   0:00 Introduction
+   [Estimate realistic timestamps based on script sections, minimum 5 chapters]
+   Example: 0:00 Introduction, 1:30 [Topic Section 1], 4:00 [Topic Section 2], 7:30 [Topic Section 3], 11:00 Key Takeaways, 13:00 Final Thoughts
+6. About Dr. Pedram Shojai (3-4 sentences, authoritative bio with credentials):
+   "Dr. Pedram Shojai, OMD, is a New York Times bestselling author, founder of The Urban Monk, and former Taoist monk. With 25+ years in integrative medicine, he bridges ancient wisdom with modern science to help people reclaim their health and vitality. He has trained thousands through the Urban Monk Academy and authored books including The Urban Monk and Rise and Shine."
+7. MID-DESCRIPTION CTA: "🎓 Ready to go deeper? Join thousands of members at the Urban Monk Academy → urbanmonkacademy.com"
+8. Links section:
    🌐 Website: theurbanmonk.com
    🎓 Academy: urbanmonkacademy.com
    📚 Books: theurbanmonk.com/books
    📱 Instagram: @theurbanmonk
-8. Hashtags (3-5): #TheUrbanMonk #[TopicHashtag] #[SecondaryHashtag]
+   🎤 Podcast: theurbanmonk.com/podcast
+9. CLOSING CTA: "Subscribe and hit the 🔔 bell so you never miss a new episode. New videos every week on health, longevity, and reclaiming your energy."
+10. Hashtags MUST be the VERY LAST LINE (YouTube/VidIQ requirement — no text after hashtags):
+    #TheUrbanMonk #[PrimaryTopicHashtag] #[SecondaryTopicHashtag] #PedramShojai #IntegrativeMedicine
 
-TAGS (15-20 tags):
+TAGS (20-25 tags — VidIQ rewards more tags up to 500 char limit):
 - Order: most specific → most broad
-- Include: focus keyphrase exact, secondary keyphrase exact, 3-4 long-tail variations,
-  2-3 topic-level tags, "urban monk", "pedram shojai", "integrative medicine", "wellness"
+- Include: focus keyphrase exact match, secondary keyphrase exact match, 4-5 long-tail question-based variations ("how to [topic]", "[topic] for beginners", "best [topic] tips"),
+  2-3 topic-level tags, "urban monk", "pedram shojai", "integrative medicine", "wellness", "longevity", "holistic health"
 - No duplicate concepts — each tag adds unique search coverage
+- Keep total character count under 500
 
 PINNED COMMENT:
-- 1-2 sentences, includes focus keyword, drives to Academy or free resource`,
+- 1-2 sentences, includes focus keyword, drives to Academy or free resource
+- Example: "[Focus keyword] changed everything for me — if you want to go deeper, the Urban Monk Academy has a full course on this: urbanmonkacademy.com"`,
           },
           {
             role: "user",
@@ -595,7 +607,7 @@ PINNED COMMENT:
 Current title: ${currentTitle}
 Script (first 4000 chars): ${scriptSnippet}
 
-Apply all rules strictly. Title MUST be ≤60 chars. Hook line MUST be 140-155 chars and start with focus keyword.`,
+Apply all rules strictly. Title MUST be ≤60 chars. Hook line MUST be 140-155 chars and start with focus keyword as word 1. Description MUST be 500-700 words. Chapter timestamps are MANDATORY (minimum 5 chapters). Tags MUST be 20-25. Hashtags MUST be the very last line of the description.`,
           },
         ],
         response_format: {
@@ -616,12 +628,12 @@ Apply all rules strictly. Title MUST be ≤60 chars. Hook line MUST be 140-155 c
                 },
                 description: {
                   type: "string",
-                  description: "Full YouTube description 300-500 words: hook, value, timestamps, bio, CTA, links, hashtags",
+                  description: "Full YouTube description 500-700 words (aim for 600+): hook line, value paragraph, deep-dive paragraph, chapter timestamps (MANDATORY, 5+ chapters with 0:00 format), bio, mid-description CTA, links, closing CTA, hashtags MUST BE LAST LINE",
                 },
                 tags: {
                   type: "array",
                   items: { type: "string" },
-                  description: "15-20 YouTube tags ordered most-specific to most-broad",
+                  description: "20-25 YouTube tags ordered most-specific to most-broad, total under 500 chars. Include exact focus keyphrase, secondary keyphrase, 4-5 long-tail variations, topic tags, brand tags (urban monk, pedram shojai, integrative medicine, wellness, longevity)",
                 },
                 primaryKeyword: {
                   type: "string",

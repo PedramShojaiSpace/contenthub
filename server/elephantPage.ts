@@ -500,25 +500,34 @@ export function renderElephantPage(
     <div class="divider-line"></div>
   </div>
 
-  <!-- Product Image (placeholder until Shopify link arrives) -->
+  <!-- Shirt Product Section -->
   <section class="product-section fade-up fade-up-4">
+    <p class="eyebrow" style="text-align:center;margin-bottom:16px;">WEAR THE REMINDER</p>
     ${productImg ? `
     <div class="product-frame">
-      <img src="${productImg}" alt="Traditional Education — Urban Monk" loading="lazy" />
+      <img src="${productImg}" alt="Traditional Education Tee — Urban Monk" loading="lazy" />
     </div>
-    ` : `
-    <div class="product-frame">
-      <div class="product-placeholder">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <span>Product image coming soon</span>
-      </div>
+    ` : ``}
+    <div style="text-align:center;margin-top:18px;margin-bottom:8px;">
+      <p style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--text-primary);margin-bottom:6px;">Traditional Education Tee</p>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px;">$35 &mdash; Unisex V-Neck</p>
+      ${SHOPIFY_LINK !== '#' ? `
+      <a href="${SHOPIFY_LINK}" target="_blank" rel="noopener" style="display:inline-block;background:var(--accent-blue);color:#fff;font-size:14px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;padding:13px 32px;border-radius:4px;">Get Your Shirt Now &rarr;</a>
+      ` : ``}
     </div>
-    `}
-    <p class="product-caption">Traditional Education — Urban Monk Series</p>
+  </section>
+
+  <!-- Explore Deeper -->
+  <section style="max-width:500px;margin:0 auto;padding:0 24px 64px;text-align:center;" class="fade-up fade-up-4" id="deep-dive">
+    <div style="border:1px solid var(--border);border-radius:8px;padding:36px 28px;background:var(--bg-card);">
+      <p class="eyebrow" style="margin-bottom:14px;">GO DEEPER</p>
+      <p style="font-family:'Cormorant Garamond',serif;font-size:clamp(20px,4.5vw,28px);font-weight:300;color:var(--text-primary);line-height:1.4;margin-bottom:14px;">The rope is a story.<br>Who wrote it?</p>
+      <p style="font-size:15px;color:var(--text-muted);line-height:1.7;margin-bottom:24px;">Traditional education didn't just limit what you learned — it conditioned what you believe is possible. Watch the deep dive: the neuroscience of learned helplessness, how belief becomes biology, and the practice of breaking the stake.</p>
+      <a href="#deep-dive-video" style="display:inline-flex;align-items:center;gap:10px;border:1px solid var(--accent-blue);color:var(--accent-light);font-size:14px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:13px 28px;border-radius:4px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        Explore Deeper
+      </a>
+    </div>
   </section>
 
   <!-- CTA -->

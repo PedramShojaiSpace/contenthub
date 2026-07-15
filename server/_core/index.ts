@@ -1140,6 +1140,67 @@ async function startServer() {
     }
   });
 
+  // ── Olympus Line Sales Pages ────────────────────────────────────────────────
+  app.get("/olympus", async (_req, res) => {
+    try {
+      const { renderOlympusBasePage } = await import("../olympusPages");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60");
+      return res.send(renderOlympusBasePage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  app.get("/olympus-plus", async (_req, res) => {
+    try {
+      const { renderOlympusPlusPage } = await import("../olympusPages");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60");
+      return res.send(renderOlympusPlusPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  app.get("/olympus-her", async (_req, res) => {
+    try {
+      const { renderOlympusHerPage } = await import("../olympusPages");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60");
+      return res.send(renderOlympusHerPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  app.get("/olympus-her-plus", async (_req, res) => {
+    try {
+      const { renderOlympusHerPlusPage } = await import("../olympusPages");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60");
+      return res.send(renderOlympusHerPlusPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  app.get("/olympus-her-max", async (_req, res) => {
+    try {
+      const { renderOlympusHerMaxPage } = await import("../olympusPages");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60");
+      return res.send(renderOlympusHerMaxPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
   // Campaigns: lo | gut | sleep | webinar | upstream

@@ -19,6 +19,7 @@ interface OlympusProduct {
   priceNote: string;
   shopifyHandle: string;
   shopifyUrl: string;
+  shopifyCartUrl: string;
   accentColor: string;
   accentColorLight: string;
   forGender: "men" | "women";
@@ -338,7 +339,7 @@ function renderOlympusPage(product: OlympusProduct): string {
       <div class="price-sub">${product.priceNote}</div>
     </div>
     <div style="margin-top:8px;">
-      <a href="${product.shopifyUrl}" class="cta-btn fade-up fade-up-3" target="_blank" rel="noopener">
+      <a href="${product.shopifyCartUrl}" class="cta-btn fade-up fade-up-3" target="_blank" rel="noopener">
         Get ${product.title} &rarr;
       </a>
     </div>
@@ -397,7 +398,7 @@ function renderOlympusPage(product: OlympusProduct): string {
       <p class="eyebrow eyebrow-accent">Ready to Begin</p>
       <h2>Start Your ${product.title} Protocol</h2>
       <p style="font-size:16px; color:var(--text-muted); margin-bottom:32px;">Complete your intake form, receive your prescription, and have your formula shipped directly to your door. The entire process takes less than 10 minutes.</p>
-      <a href="${product.shopifyUrl}" class="cta-btn" target="_blank" rel="noopener" style="font-size:17px; padding:20px 56px;">
+      <a href="${product.shopifyCartUrl}" class="cta-btn" target="_blank" rel="noopener" style="font-size:17px; padding:20px 56px;">
         Get ${product.title} — ${product.price} &rarr;
       </a>
       <br/>
@@ -435,7 +436,7 @@ function renderOlympusPage(product: OlympusProduct): string {
     <div class="sticky-cta-text">
       <strong>${product.title}</strong> &nbsp;·&nbsp; ${product.price} / 12 tablets &nbsp;·&nbsp; Prescription included
     </div>
-    <a href="${product.shopifyUrl}" class="cta-btn" target="_blank" rel="noopener">
+    <a href="${product.shopifyCartUrl}" class="cta-btn" target="_blank" rel="noopener">
       Get ${product.title} &rarr;
     </a>
   </div>
@@ -452,8 +453,9 @@ const OLYMPUS: OlympusProduct = {
   tagline: "Desire starts in the brain. Olympus works at the neurological level — activating the pathways that drive genuine arousal, not just blood flow.",
   price: "$120",
   priceNote: "12 tablets · 1 month supply · 3 refills available",
-  shopifyHandle: "olympus",
-  shopifyUrl: "https://shop.theurbanmonk.com/products/olympus",
+  shopifyHandle: "olympus-1",
+  shopifyUrl: "https://shop.theurbanmonk.com/products/olympus-1",
+  shopifyCartUrl: "https://shop.theurbanmonk.com/cart/48596830650522:1",
   accentColor: "#60a5fa",
   accentColorLight: "#93c5fd",
   forGender: "men",
@@ -513,8 +515,9 @@ const OLYMPUS_PLUS: OlympusProduct = {
   tagline: "The complete male sexual health formula. Neurological desire activation plus vascular performance enhancement — in a single sublingual tablet.",
   price: "$130",
   priceNote: "12 tablets · 1 month supply · 3 refills available",
-  shopifyHandle: "olympus-plus",
-  shopifyUrl: "https://shop.theurbanmonk.com/products/olympus",
+  shopifyHandle: "olympus-2",
+  shopifyUrl: "https://shop.theurbanmonk.com/products/olympus-2",
+  shopifyCartUrl: "https://shop.theurbanmonk.com/cart/48596830748826:1",
   accentColor: "#818cf8",
   accentColorLight: "#a5b4fc",
   forGender: "men",
@@ -583,6 +586,7 @@ const OLYMPUS_HER: OlympusProduct = {
   priceNote: "12 tablets · 1 month supply · 3 refills available",
   shopifyHandle: "olympus-her",
   shopifyUrl: "https://shop.theurbanmonk.com/products/olympus-her",
+  shopifyCartUrl: "https://shop.theurbanmonk.com/cart/48596830355610:1",
   accentColor: "#f472b6",
   accentColorLight: "#f9a8d4",
   forGender: "women",
@@ -642,8 +646,9 @@ const OLYMPUS_HER_PLUS: OlympusProduct = {
   tagline: "Neurological desire activation plus enhanced genital blood flow — the complete female sexual health formula.",
   price: "$125",
   priceNote: "12 tablets · 1 month supply · 3 refills available",
-  shopifyHandle: "olympus-her-plus",
-  shopifyUrl: "https://shop.theurbanmonk.com/products/olympus-her",
+  shopifyHandle: "olympus-her-1",
+  shopifyUrl: "https://shop.theurbanmonk.com/products/olympus-her-1",
+  shopifyCartUrl: "https://shop.theurbanmonk.com/cart/48596830421146:1",
   accentColor: "#c084fc",
   accentColorLight: "#d8b4fe",
   forGender: "women",
@@ -711,6 +716,7 @@ const OLYMPUS_HER_MAX: OlympusProduct = {
   priceNote: "12 tablets · 1 month supply · 3 refills available",
   shopifyHandle: "olympus-her-max",
   shopifyUrl: "https://shop.theurbanmonk.com/products/olympus-her-max",
+  shopifyCartUrl: "https://shop.theurbanmonk.com/cart/48596830519450:1",
   accentColor: "#fb923c",
   accentColorLight: "#fdba74",
   forGender: "women",

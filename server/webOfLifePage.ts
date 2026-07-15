@@ -17,6 +17,9 @@ export function renderWebOfLifePage(videoUrl?: string | null): string {
   <meta name="robots" content="noindex, nofollow" />
   <title>The Web of Life — The Urban Monk</title>
   <meta name="description" content="You found something. The meditating figure at the center of the web — that's you. Here's what it means." />
+  <link rel="icon" type="image/x-icon" href="/manus-storage/urban-monk-favicon_27ae5d07.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/manus-storage/urban-monk-favicon-32_ac18d482.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/manus-storage/urban-monk-favicon-180_7cd1c802.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />

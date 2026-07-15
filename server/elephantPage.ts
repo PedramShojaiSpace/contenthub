@@ -539,8 +539,8 @@ export function renderElephantPage(
         The Lights On course is where the unlearning becomes a practice. Dr. Pedram Shojai's year-long program gives you the science, the tools, and the community to dismantle the invisible constraints — and rebuild your energy, clarity, and sense of what's possible from the inside out.
       </p>
       <div class="cta-stack">
-        <a href="https://theurbanmonk.com/lights-on" class="cta-btn" target="_blank" rel="noopener">
-          Start Lights On — $299 →
+        <a href="https://lightson.theurbanmonk.com" class="cta-btn" target="_blank" rel="noopener">
+          Explore the Course →
         </a>
         ${SHOPIFY_LINK !== '#' ? `
         <a href="${SHOPIFY_LINK}" class="cta-btn-secondary" target="_blank" rel="noopener">

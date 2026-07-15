@@ -1143,6 +1143,18 @@ async function startServer() {
   // ── Olympus Line Sales Pages ────────────────────────────────────────────────
   app.get("/olympus", async (_req, res) => {
     try {
+      const { renderOlympusComparisonPage } = await import("../olympusComparisonPage");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60");
+      return res.send(renderOlympusComparisonPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  app.get("/olympus-base", async (_req, res) => {
+    try {
       const { renderOlympusBasePage } = await import("../olympusPages");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=60");

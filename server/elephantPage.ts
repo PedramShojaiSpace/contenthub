@@ -533,24 +533,22 @@ export function renderElephantPage(
   <!-- CTA -->
   <section class="cta-section fade-up fade-up-5">
     <div class="cta-inner">
-      <p class="cta-label">If this resonates</p>
-      <h2 class="cta-heading">The work of unlearning<br>is the real education</h2>
+      <p class="cta-label">Ready to break the stake?</p>
+      <h2 class="cta-heading">Turn the Lights On</h2>
       <p class="cta-body">
-        Dr. Pedram Shojai's work is about exactly this — identifying the invisible constraints that govern your energy, your clarity, and your sense of what's possible, and dismantling them one by one.
+        The Lights On course is where the unlearning becomes a practice. Dr. Pedram Shojai's year-long program gives you the science, the tools, and the community to dismantle the invisible constraints — and rebuild your energy, clarity, and sense of what's possible from the inside out.
       </p>
       <div class="cta-stack">
+        <a href="https://theurbanmonk.com/lights-on" class="cta-btn" target="_blank" rel="noopener">
+          Start Lights On — $299 →
+        </a>
         ${SHOPIFY_LINK !== '#' ? `
-        <a href="${SHOPIFY_LINK}" class="cta-btn" target="_blank" rel="noopener">
-          Get the Shirt →
+        <a href="${SHOPIFY_LINK}" class="cta-btn-secondary" target="_blank" rel="noopener">
+          Get the Shirt
         </a>
-        ` : `
-        <span class="cta-btn-disabled">Shop Coming Soon</span>
-        `}
-        <a href="https://theurbanmonk.com/academy" class="cta-btn-secondary" target="_blank" rel="noopener">
-          Explore the Academy
-        </a>
+        ` : ``}
       </div>
-      <p class="cta-note">Wear the reminder. Question the rope.</p>
+      <p class="cta-note">Wear the reminder. Do the work.</p>
     </div>
   </section>
 

@@ -420,10 +420,13 @@ export function renderElephantPage(
 
     /* ── System Blocks (macro-systemic section) ── */
     .sys-block {
-      max-width: 680px;
+      max-width: 620px;
       margin: 0 auto;
-      padding: 48px 28px;
+      padding: 40px 24px;
       text-align: center;
+    }
+    @media (max-width: 480px) {
+      .sys-block { padding: 32px 20px; }
     }
     .sys-block-icon {
       width: 64px;
@@ -461,13 +464,16 @@ export function renderElephantPage(
     }
     .sys-block-body {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(17px, 3.5vw, 21px);
+      font-size: clamp(16px, 2.8vw, 19px);
       font-weight: 300;
-      line-height: 1.78;
+      line-height: 1.6;
       color: var(--text-primary);
       text-align: left;
-      max-width: 600px;
+      max-width: 560px;
       margin: 0 auto;
+    }
+    @media (max-width: 480px) {
+      .sys-block-body { font-size: 16px; line-height: 1.55; }
     }
     .sys-block-body strong { font-weight: 600; color: var(--accent-light); }
     .sys-block-body em { font-style: italic; color: var(--accent-light); opacity: 0.85; }
@@ -487,27 +493,34 @@ export function renderElephantPage(
     }
     .sys-block-stat-row {
       display: flex;
-      gap: 16px;
+      gap: 12px;
       justify-content: center;
       flex-wrap: wrap;
-      margin-top: 28px;
+      margin-top: 24px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
     }
     .stat-pill {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      padding: 20px 24px;
+      padding: 18px 20px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 8px;
-      min-width: 160px;
+      min-width: 140px;
       flex: 1;
-      max-width: 240px;
+      max-width: 220px;
+    }
+    @media (max-width: 480px) {
+      .sys-block-stat-row { flex-direction: column; align-items: stretch; }
+      .stat-pill { max-width: 100%; }
     }
     .stat-num {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(28px, 6vw, 40px);
+      font-size: clamp(26px, 5vw, 36px);
       font-weight: 600;
       color: var(--accent-light);
       line-height: 1;

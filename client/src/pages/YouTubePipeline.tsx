@@ -22,9 +22,11 @@ type Video = {
 };
 
 const PILLAR_LABELS: Record<string, string> = {
-  gut_health_metabolism: "🦠 Gut & Metabolism",
-  nervous_system_stress: "🧠 Nervous System",
+  gut_health_metabolism:   "🦠 Gut & Metabolism",
+  nervous_system_stress:   "🧠 Nervous System",
   consciousness_longevity: "✨ Consciousness",
+  web_of_life:             "🕸️ Web of Life",
+  the_practice:            "🧘 The Practice",
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -422,15 +424,146 @@ function ColdOpenGenerator() {
   );
 }
 
-type Tab = "recovery" | "pipeline" | "add" | "hook" | "coldopen";
+// ─── 90-Day Measurement Gate ─────────────────────────────────────────────────
+function MeasurementGate() {
+  const { data: videos } = trpc.youtubePipeline.list.useQuery();
+  const liveVideos = (videos ?? []).filter((v) => v.status === "live" || v.day7Ctr != null);
+
+  // Aggregate metrics
+  const withDay7 = liveVideos.filter((v) => v.day7Ctr != null);
+  const withDay30 = liveVideos.filter((v) => v.day30Ctr != null);
+  const avgCtr7 = withDay7.length ? withDay7.reduce((s, v) => s + (v.day7Ctr ?? 0), 0) / withDay7.length : null;
+  const avgCtr30 = withDay30.length ? withDay30.reduce((s, v) => s + (v.day30Ctr ?? 0), 0) / withDay30.length : null;
+  const avgAvd7 = withDay7.length ? withDay7.reduce((s, v) => s + (v.day7AvgViewPct ?? 0), 0) / withDay7.length : null;
+  const avgAvd30 = withDay30.length ? withDay30.reduce((s, v) => s + (v.day30AvgViewPct ?? 0), 0) / withDay30.length : null;
+
+  const TARGETS = [
+    { label: "Click-Through Rate (Day 7)",    value: avgCtr7,  target: 4,   unit: "%",  desc: "Target: ≥ 4% CTR by Day 7. Below 2% = algorithm suppression risk." },
+    { label: "Click-Through Rate (Day 30)",   value: avgCtr30, target: 4,   unit: "%",  desc: "Sustained CTR above 4% signals evergreen potential." },
+    { label: "Avg View Duration (Day 7)",     value: avgAvd7,  target: 40,  unit: "%",  desc: "Target: ≥ 40% AVD. Below 30% = hook or body problem." },
+    { label: "Avg View Duration (Day 30)",    value: avgAvd30, target: 40,  unit: "%",  desc: "Sustained AVD above 40% = content resonance confirmed." },
+  ];
+
+  const getStatus = (value: number | null, target: number) => {
+    if (value == null) return { color: "text-zinc-500", bg: "bg-zinc-900 border-zinc-800", label: "No data" };
+    if (value >= target) return { color: "text-green-400", bg: "bg-green-950/30 border-green-900/50", label: "On target" };
+    if (value >= target * 0.75) return { color: "text-yellow-400", bg: "bg-yellow-950/30 border-yellow-900/50", label: "Approaching" };
+    return { color: "text-red-400", bg: "bg-red-950/30 border-red-900/50", label: "Below target" };
+  };
+
+  // Per-video conversion proxy: videos with day30 data and CTR >= 4%
+  const convertingVideos = withDay30.filter((v) => (v.day30Ctr ?? 0) >= 4).length;
+  const conversionRate = withDay30.length ? (convertingVideos / withDay30.length) * 100 : null;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-lg font-bold text-white mb-1">90-Day Measurement Gate</h2>
+        <p className="text-xs text-zinc-500">These are the three non-negotiable metrics that determine whether a video earns continued promotion. Review at 7 days and 30 days. A video that clears all three gates stays in rotation. One that misses two or more gets prescribed action or is retired.</p>
+      </div>
+
+      {/* Gate metric cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {TARGETS.map((t) => {
+          const status = getStatus(t.value, t.target);
+          return (
+            <div key={t.label} className={`rounded-xl border p-5 ${status.bg}`}>
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="text-xs text-zinc-400 font-medium uppercase tracking-wide">{t.label}</div>
+                  <div className={`text-4xl font-bold mt-1 ${status.color}`}>
+                    {t.value != null ? `${t.value.toFixed(1)}${t.unit}` : "—"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-zinc-500">Target</div>
+                  <div className="text-sm font-semibold text-zinc-300">≥ {t.target}{t.unit}</div>
+                  <div className={`text-xs font-medium mt-1 ${status.color}`}>{status.label}</div>
+                </div>
+              </div>
+              <p className="text-xs text-zinc-500">{t.desc}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Conversion proxy */}
+      <div className="bg-[#161b22] border border-zinc-800 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-xs text-zinc-400 font-medium uppercase tracking-wide">Conversion Proxy (CTR ≥ 4% at Day 30)</div>
+            <div className="text-xs text-zinc-500 mt-1">Target: 1 converting video per 500 views. This is a proxy — actual conversion tracking requires UTM data from ManyChat.</div>
+          </div>
+          <div className="text-right">
+            <div className={`text-3xl font-bold ${(conversionRate ?? 0) >= 50 ? "text-green-400" : "text-yellow-400"}`}>
+              {conversionRate != null ? `${convertingVideos} / ${withDay30.length}` : "—"}
+            </div>
+            <div className="text-xs text-zinc-500">videos clearing gate</div>
+          </div>
+        </div>
+        <div className="w-full bg-zinc-800 rounded-full h-2">
+          <div
+            className={`h-2 rounded-full transition-all ${(conversionRate ?? 0) >= 50 ? "bg-green-500" : "bg-yellow-500"}`}
+            style={{ width: `${Math.min(100, conversionRate ?? 0)}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Per-video gate table */}
+      {withDay7.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-white mb-3">Video-Level Gate Status</h3>
+          <div className="space-y-2">
+            {liveVideos.slice(0, 20).map((v) => {
+              const ctrStatus = getStatus(v.day7Ctr, 4);
+              const avdStatus = getStatus(v.day7AvgViewPct, 40);
+              const gatesPassed = [v.day7Ctr != null && v.day7Ctr >= 4, v.day7AvgViewPct != null && v.day7AvgViewPct >= 40].filter(Boolean).length;
+              return (
+                <div key={v.id} className="flex items-center gap-3 bg-[#161b22] border border-zinc-800 rounded-lg px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-white truncate">{v.title}</div>
+                    <div className="text-xs text-zinc-500">{PILLAR_LABELS[v.pillar] ?? v.pillar}</div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <div className={`text-sm font-mono font-bold ${ctrStatus.color}`}>{v.day7Ctr != null ? `${v.day7Ctr.toFixed(1)}%` : "—"}</div>
+                      <div className="text-xs text-zinc-600">CTR</div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-sm font-mono font-bold ${avdStatus.color}`}>{v.day7AvgViewPct != null ? `${v.day7AvgViewPct.toFixed(0)}%` : "—"}</div>
+                      <div className="text-xs text-zinc-600">AVD</div>
+                    </div>
+                    <div className={`text-xs font-semibold px-2 py-1 rounded-full ${gatesPassed === 2 ? "bg-green-900/50 text-green-300" : gatesPassed === 1 ? "bg-yellow-900/50 text-yellow-300" : "bg-red-900/50 text-red-300"}`}>
+                      {gatesPassed}/2
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {liveVideos.length === 0 && (
+        <div className="text-center py-16 text-zinc-600">
+          <Target size={32} className="mx-auto mb-3 opacity-30"/>
+          <p className="text-sm">No live videos yet. Add videos and log Day 7 metrics to see gate status.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Tab = "recovery" | "pipeline" | "add" | "hook" | "coldopen" | "gate";
 
 export default function YouTubePipeline() {
   const [tab, setTab] = useState<Tab>("recovery");
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "recovery", label: "Recovery Dashboard", icon: <AlertTriangle size={14}/> },
-    { id: "pipeline", label: "Pipeline", icon: <Tv2 size={14}/> },
-    { id: "add", label: "Add Video", icon: <Plus size={14}/> },
-    { id: "hook", label: "Hook Scorer", icon: <Zap size={14}/> },
+    { id: "gate",     label: "90-Day Gate",         icon: <Target size={14}/> },
+    { id: "pipeline", label: "Pipeline",            icon: <Tv2 size={14}/> },
+    { id: "add",      label: "Add Video",           icon: <Plus size={14}/> },
+    { id: "hook",     label: "Hook Scorer",         icon: <Zap size={14}/> },
     { id: "coldopen", label: "Cold Open Generator", icon: <Wand2 size={14}/> },
   ];
   return (
@@ -453,9 +586,10 @@ export default function YouTubePipeline() {
       </div>
       <div className="max-w-5xl mx-auto px-6 py-8">
         {tab === "recovery" && <RecoveryDashboard/>}
+        {tab === "gate"     && <MeasurementGate/>}
         {tab === "pipeline" && <PipelineTable/>}
-        {tab === "add" && <AddVideoForm/>}
-        {tab === "hook" && <HookScorer/>}
+        {tab === "add"      && <AddVideoForm/>}
+        {tab === "hook"     && <HookScorer/>}
         {tab === "coldopen" && <ColdOpenGenerator/>}
       </div>
     </div>

@@ -54,11 +54,13 @@ interface GeneratedScripts {
   cta: string;
 }
 
-const CTA_KEYWORD_MAP: Record<string, { keyword: string; programName: string }> = {
-  UPSTREAM: { keyword: "UPSTREAM", programName: "Upstream" },
-  LIGHTSON: { keyword: "LIGHTSON", programName: "Lights On" },
-  TEST:     { keyword: "TEST",     programName: "the Gateway to Health Test" },
-  SLEEP:    { keyword: "SLEEP",    programName: "the Restorative Sleep Masterclass" },
+const CTA_KEYWORD_MAP: Record<string, { keyword: string; programName: string; funnelDest: string }> = {
+  UPSTREAM:    { keyword: "UPSTREAM",    programName: "Upstream",                          funnelDest: "upstream" },
+  LIGHTSON:    { keyword: "LIGHTSON",    programName: "Lights On",                         funnelDest: "lights_on" },
+  TEST:        { keyword: "TEST",        programName: "the Gateway to Health Test",        funnelDest: "gateway_test" },
+  SLEEP:       { keyword: "SLEEP",       programName: "the Restorative Sleep Masterclass", funnelDest: "lights_on" },
+  WEBOFLIFE:   { keyword: "WEBOFLIFE",   programName: "The Web of Life",                   funnelDest: "web_of_life_lander" },
+  ELEPHANT:    { keyword: "ELEPHANT",    programName: "the Elephant in the Room",          funnelDest: "elephant_lander" },
 };
 
 async function generateScriptsFromIdea(
@@ -236,18 +238,34 @@ export const videoSessionRouter = router({
         sessionName: z.string().min(1).max(255),
         idea: z.string().min(1),
         platform: z.enum(["tiktok", "instagram", "youtube", "linkedin", "x", "meta"]).default("instagram"),
-        ctaKeyword: z.enum(["UPSTREAM", "LIGHTSON", "TEST", "SLEEP"]).optional(),
+        ctaKeyword: z.enum(["UPSTREAM", "LIGHTSON", "TEST", "SLEEP", "WEBOFLIFE", "ELEPHANT"]).optional(),
+        // Content Brief fields
+        contentPillar: z.enum(["gut_health_metabolism", "nervous_system_stress", "consciousness_longevity", "web_of_life", "the_practice"]).optional(),
+        funnelDestination: z.enum(["lights_on", "upstream", "web_of_life_lander", "elephant_lander", "gateway_test"]).optional(),
+        painCluster: z.string().max(128).optional(),
+        villain: z.string().max(255).optional(),
+        briefHookPhrase: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
+      // Auto-derive funnelDestination from ctaKeyword if not explicitly set
+      const derivedFunnelDest = input.funnelDestination ??
+        (input.ctaKeyword && CTA_KEYWORD_MAP[input.ctaKeyword]
+          ? CTA_KEYWORD_MAP[input.ctaKeyword].funnelDest as "lights_on" | "upstream" | "web_of_life_lander" | "elephant_lander" | "gateway_test"
+          : undefined);
       const [result] = await db.insert(videoProductionSessions).values({
         userId: ctx.user.openId,
         sessionName: input.sessionName,
         idea: input.idea,
         platform: input.platform,
         ctaKeyword: input.ctaKeyword ?? null,
+        contentPillar: input.contentPillar ?? null,
+        funnelDestination: derivedFunnelDest ?? null,
+        painCluster: input.painCluster ?? null,
+        villain: input.villain ?? null,
+        briefHookPhrase: input.briefHookPhrase ?? null,
         status: "scripting",
       });
       return { sessionId: (result as { insertId: number }).insertId };

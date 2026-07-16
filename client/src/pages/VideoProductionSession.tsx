@@ -537,7 +537,14 @@ function NewSessionForm({ onCreated, initialKeyword = "" }: { onCreated: (id: nu
   const [name, setName] = useState(initialKeyword ? `${initialKeyword} — Video` : "");
   const [idea, setIdea] = useState(initialKeyword ? `Create a video targeting the keyword: "${initialKeyword}". Cover what this topic means, why it matters for health and wellbeing, and how Dr. Shojai's approach offers a unique perspective.` : "");
   const [platform, setPlatform] = useState<Platform>("instagram");
-  const [ctaKeyword, setCtaKeyword] = useState<"UPSTREAM" | "LIGHTSON" | "TEST" | "SLEEP" | "">("UPSTREAM");
+  const [ctaKeyword, setCtaKeyword] = useState<"UPSTREAM" | "LIGHTSON" | "TEST" | "SLEEP" | "WEBOFLIFE" | "ELEPHANT" | "">("UPSTREAM");
+  // Content Brief fields
+  const [contentPillar, setContentPillar] = useState("");
+  const [funnelDestination, setFunnelDestination] = useState("");
+  const [painCluster, setPainCluster] = useState("");
+  const [villain, setVillain] = useState("");
+  const [briefHookPhrase, setBriefHookPhrase] = useState("");
+  const [showBrief, setShowBrief] = useState(false);
 
   // vidIQ keyword research
   const [vidiqKeyword, setVidiqKeyword] = useState(initialKeyword);
@@ -548,10 +555,49 @@ function NewSessionForm({ onCreated, initialKeyword = "" }: { onCreated: (id: nu
   );
 
   const CTA_KEYWORD_OPTIONS = [
-    { value: "UPSTREAM", label: "UPSTREAM — Upstream Program" },
-    { value: "LIGHTSON", label: "LIGHTSON — Lights On Program" },
-    { value: "TEST",     label: "TEST — Gateway to Health Test" },
-    { value: "SLEEP",    label: "SLEEP — Restorative Sleep Masterclass" },
+    { value: "UPSTREAM",  label: "UPSTREAM — Upstream Program" },
+    { value: "LIGHTSON",  label: "LIGHTSON — Lights On Program" },
+    { value: "TEST",      label: "TEST — Gateway to Health Test" },
+    { value: "SLEEP",     label: "SLEEP — Restorative Sleep Masterclass" },
+    { value: "WEBOFLIFE", label: "WEBOFLIFE — The Web of Life" },
+    { value: "ELEPHANT",  label: "ELEPHANT — Elephant in the Room" },
+  ] as const;
+  const PILLAR_OPTIONS = [
+    { value: "gut_health_metabolism",   label: "🦠 Gut & Metabolism" },
+    { value: "nervous_system_stress",   label: "🧠 Nervous System & Stress" },
+    { value: "consciousness_longevity", label: "✨ Consciousness & Longevity" },
+    { value: "web_of_life",             label: "🕸️ Web of Life (Systems)" },
+    { value: "the_practice",            label: "🧘 The Practice (Qigong/Lifestyle)" },
+  ] as const;
+  const FUNNEL_OPTIONS = [
+    { value: "lights_on",          label: "💡 Lights On" },
+    { value: "upstream",           label: "🌊 Upstream" },
+    { value: "web_of_life_lander",  label: "🕸️ Web of Life Lander" },
+    { value: "elephant_lander",    label: "🐘 Elephant Lander" },
+    { value: "gateway_test",       label: "🧪 Gateway Test" },
+  ] as const;
+  const PAIN_CLUSTER_OPTIONS = [
+    "Waking Up Already Exhausted",
+    "The Word-Finding Problem (Brain Fog)",
+    "Eating Less, Gaining More",
+    "The Gut That Never Settles",
+    "The 'Your Labs Are Normal' Loop",
+    "The Bin Full of Supplements",
+    "The Revolving Door of Practitioners",
+    "I Don't Recognize My Own Body Anymore",
+    "My Health Is Affecting My Relationships",
+    "Everything Is Connected — Nobody Is Looking at the Whole",
+    "Ready to Actually Fix This — Not Just Manage It",
+  ] as const;
+  const VILLAIN_OPTIONS = [
+    "The Medical System (built for disease, not function)",
+    "The Standard Lab Panel (measures disease, not optimization)",
+    "The Supplement Industry (guessing without testing)",
+    "The Food System (ultra-processed, inflammatory by design)",
+    "The Pharmaceutical Loop (symptom suppression, not root cause)",
+    "The Attention Economy (outrage over insight)",
+    "The Tax & Financial System (designed to keep you on the treadmill)",
+    "The Education System (told you what kind of smart to be)",
   ] as const;
 
   const createMutation = trpc.videoSession.createSession.useMutation();
@@ -568,6 +614,11 @@ function NewSessionForm({ onCreated, initialKeyword = "" }: { onCreated: (id: nu
         idea: idea.trim(),
         platform,
         ctaKeyword: ctaKeyword || undefined,
+        contentPillar: contentPillar as any || undefined,
+        funnelDestination: funnelDestination as any || undefined,
+        painCluster: painCluster || undefined,
+        villain: villain || undefined,
+        briefHookPhrase: briefHookPhrase || undefined,
       });
       toast.info("Generating 5 hooks + body + CTA — this takes about 15 seconds…");
       await generateMutation.mutateAsync({ sessionId });
@@ -692,6 +743,92 @@ function NewSessionForm({ onCreated, initialKeyword = "" }: { onCreated: (id: nu
           )}
         </div>
 
+        {/* ── Content Brief Builder ────────────────────────────────────── */}
+        <div className="border border-border rounded-xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowBrief(!showBrief)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">Content Brief</span>
+              <span className="text-xs text-muted-foreground">(optional — improves hook specificity)</span>
+              {(contentPillar || painCluster || villain) && (
+                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">filled</span>
+              )}
+            </div>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showBrief ? "rotate-180" : ""}`} />
+          </button>
+          {showBrief && (
+            <div className="p-4 space-y-4 border-t border-border">
+              <p className="text-xs text-muted-foreground">These fields inject verified avatar intelligence into the generation prompt. The LLM uses your pain cluster and villain to write more specific, resonant hooks.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-foreground/70 text-xs font-medium mb-1.5 block">Content Pillar</label>
+                  <Select value={contentPillar} onValueChange={setContentPillar}>
+                    <SelectTrigger className="bg-background border-border text-foreground text-xs h-9">
+                      <SelectValue placeholder="Select pillar…" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      {PILLAR_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-foreground text-xs">{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-foreground/70 text-xs font-medium mb-1.5 block">Funnel Destination</label>
+                  <Select value={funnelDestination} onValueChange={setFunnelDestination}>
+                    <SelectTrigger className="bg-background border-border text-foreground text-xs h-9">
+                      <SelectValue placeholder="Select funnel…" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      {FUNNEL_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-foreground text-xs">{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <label className="text-foreground/70 text-xs font-medium mb-1.5 block">Avatar Pain Cluster</label>
+                <Select value={painCluster} onValueChange={setPainCluster}>
+                  <SelectTrigger className="bg-background border-border text-foreground text-xs h-9">
+                    <SelectValue placeholder="Which pain point does this video address?" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {PAIN_CLUSTER_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="text-foreground text-xs">{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-foreground/70 text-xs font-medium mb-1.5 block">Named Villain (system, not person)</label>
+                <Select value={villain} onValueChange={setVillain}>
+                  <SelectTrigger className="bg-background border-border text-foreground text-xs h-9">
+                    <SelectValue placeholder="What system is the antagonist?" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {VILLAIN_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="text-foreground text-xs">{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-foreground/70 text-xs font-medium mb-1.5 block">Verified Hook Phrase (Typeform language)</label>
+                <Input
+                  value={briefHookPhrase}
+                  onChange={(e) => setBriefHookPhrase(e.target.value)}
+                  placeholder="e.g. 'I just want to feel like myself again'"
+                  className="bg-background border-border text-foreground text-xs h-9 placeholder:text-muted-foreground"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Paste exact language from the Typeform survey — the LLM will use it verbatim in Hook 4 (Pain Point).</p>
+              </div>
+            </div>
+          )}
+        </div>
         <div>
           <label className="text-foreground/70 text-sm font-medium mb-1.5 block">Platform</label>
           <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>

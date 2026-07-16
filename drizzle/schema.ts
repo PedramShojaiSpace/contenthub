@@ -1075,6 +1075,29 @@ export const videoProductionSessions = mysqlTable("video_production_sessions", {
     .notNull(),
   // ManyChat keyword for CTA (UPSTREAM, LIGHTSON, TEST, SLEEP)
   ctaKeyword: varchar("ctaKeyword", { length: 50 }),
+  // ── Content Brief fields ──────────────────────────────────────────────────────
+  // Content pillar: which of the 5 pillars this video belongs to
+  contentPillar: mysqlEnum("vps_content_pillar", [
+    "gut_health_metabolism",
+    "nervous_system_stress",
+    "consciousness_longevity",
+    "web_of_life",
+    "the_practice",
+  ]),
+  // Funnel destination: where the CTA sends the viewer
+  funnelDestination: mysqlEnum("vps_funnel_destination", [
+    "lights_on",
+    "upstream",
+    "web_of_life_lander",
+    "elephant_lander",
+    "gateway_test",
+  ]),
+  // Avatar pain cluster: which verified pain point cluster to address
+  painCluster: varchar("vps_pain_cluster", { length: 128 }),
+  // Named villain for this video (system, not person)
+  villain: varchar("vps_villain", { length: 255 }),
+  // Verified hook phrase from the Typeform language map
+  briefHookPhrase: text("vps_brief_hook_phrase"),
   // optional link to a video_variant_jobs row created in the splice phase
   variantJobId: int("variantJobId"),
   createdAt: timestamp("vps_createdAt").defaultNow().notNull(),
@@ -2753,6 +2776,8 @@ export const youtubePipelineVideos = mysqlTable("youtube_pipeline_videos", {
     "gut_health_metabolism",
     "nervous_system_stress",
     "consciousness_longevity",
+    "web_of_life",
+    "the_practice",
   ]).notNull(),
   primaryKeyword: varchar("primary_keyword", { length: 256 }),
   status: mysqlEnum("yt_status", [

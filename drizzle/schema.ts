@@ -3035,10 +3035,10 @@ export const ascensionMembers = mysqlTable("ascension_members", {
     "lapsed",
   ]).notNull().default("lights_on"),
   avatarType: mysqlEnum("avatar_type", [
-    "burned_out_executive",
-    "stressed_parent",
-    "wellness_seeker",
-    "performance_optimizer",
+    "dismissed_patient",
+    "high_performer_decline",
+    "awakening_seeker",
+    "supplement_graveyard",
   ]),
   lightsOnStartDate: bigint("lights_on_start_date", { mode: "number" }),
   renewalDueDate: bigint("renewal_due_date", { mode: "number" }),
@@ -3091,13 +3091,13 @@ export const quizResponses = mysqlTable("quiz_responses", {
   email: varchar("email", { length: 320 }),
   name: varchar("name", { length: 255 }),
   avatarType: mysqlEnum("quiz_avatar_type", [
-    "burned_out_executive",
-    "stressed_parent",
-    "wellness_seeker",
-    "performance_optimizer",
+    "dismissed_patient",
+    "high_performer_decline",
+    "awakening_seeker",
+    "supplement_graveyard",
   ]),
   answers: text("answers"), // JSON: { q1: 'a', q2: 'b', ... }
-  scores: text("scores"),   // JSON: { burned_out_executive: 3, stressed_parent: 1, ... }
+  scores: text("scores"),   // JSON: { dismissed_patient: 3, high_performer_decline: 1, ... }
   completedAt: bigint("completed_at", { mode: "number" }),
   emailCapturedAt: bigint("email_captured_at", { mode: "number" }),
   kajabiTagged: boolean("kajabi_tagged").default(false).notNull(),

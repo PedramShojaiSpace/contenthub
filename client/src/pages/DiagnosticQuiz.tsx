@@ -35,28 +35,28 @@ interface AvatarResult {
 
 // ─── Avatar color map ─────────────────────────────────────────────────────────
 const AVATAR_COLORS: Record<string, { bg: string; border: string; text: string; badge: string; icon: React.ReactNode }> = {
-  burned_out_executive: {
+  dismissed_patient: {
     bg: "bg-amber-950/40",
     border: "border-amber-700/50",
     text: "text-amber-300",
     badge: "bg-amber-900/60 text-amber-200",
     icon: <Zap className="w-8 h-8 text-amber-400" />,
   },
-  stressed_parent: {
+  supplement_graveyard: {
     bg: "bg-rose-950/40",
     border: "border-rose-700/50",
     text: "text-rose-300",
     badge: "bg-rose-900/60 text-rose-200",
     icon: <Heart className="w-8 h-8 text-rose-400" />,
   },
-  wellness_seeker: {
+  awakening_seeker: {
     bg: "bg-emerald-950/40",
     border: "border-emerald-700/50",
     text: "text-emerald-300",
     badge: "bg-emerald-900/60 text-emerald-200",
     icon: <Leaf className="w-8 h-8 text-emerald-400" />,
   },
-  performance_optimizer: {
+  high_performer_decline: {
     bg: "bg-violet-950/40",
     border: "border-violet-700/50",
     text: "text-violet-300",
@@ -307,7 +307,7 @@ export default function DiagnosticQuiz() {
 
   // ─── Results ─────────────────────────────────────────────────────────────────
   if (step === "results" && avatarResult) {
-    const colors = AVATAR_COLORS[avatarResult.avatarType] ?? AVATAR_COLORS.burned_out_executive;
+    const colors = AVATAR_COLORS[avatarResult.avatarType] ?? AVATAR_COLORS.dismissed_patient;
 
     return (
       <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col items-center justify-center px-4 py-12">
@@ -339,11 +339,11 @@ export default function DiagnosticQuiz() {
             <a
               href={avatarResult.profile.recommendationUrl}
               className={`inline-flex items-center gap-2 px-6 py-3 rounded-full font-medium text-white transition-all ${
-                avatarResult.avatarType === "wellness_seeker"
+                avatarResult.avatarType === "awakening_seeker"
                   ? "bg-emerald-700 hover:bg-emerald-600"
-                  : avatarResult.avatarType === "stressed_parent"
+                  : avatarResult.avatarType === "supplement_graveyard"
                   ? "bg-rose-700 hover:bg-rose-600"
-                  : avatarResult.avatarType === "performance_optimizer"
+                  : avatarResult.avatarType === "high_performer_decline"
                   ? "bg-violet-700 hover:bg-violet-600"
                   : "bg-amber-700 hover:bg-amber-600"
               }`}

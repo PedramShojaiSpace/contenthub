@@ -39,10 +39,10 @@ const MS_PER_DAY = 86_400_000;
 
 // ─── Avatar labels ────────────────────────────────────────────────────────────
 export const AVATAR_LABELS: Record<string, string> = {
-  burned_out_executive: "Burned-Out Executive",
-  stressed_parent: "Stressed Parent",
-  wellness_seeker: "Wellness Seeker",
-  performance_optimizer: "Performance Optimizer",
+  dismissed_patient: "The Dismissed Patient",
+  high_performer_decline: "The High-Performer in Decline",
+  awakening_seeker: "The Awakening Seeker",
+  supplement_graveyard: "The Supplement Graveyard",
 };
 
 // ─── Kajabi tag names per stage ───────────────────────────────────────────────
@@ -216,7 +216,7 @@ export const ascensionRouter = router({
       email: z.string().email(),
       name: z.string().optional(),
       kajabiContactId: z.string().optional(),
-      avatarType: z.enum(["burned_out_executive", "stressed_parent", "wellness_seeker", "performance_optimizer"]).optional(),
+      avatarType: z.enum(["dismissed_patient", "high_performer_decline", "awakening_seeker", "supplement_graveyard"]).optional(),
       lightsOnStartDate: z.number().optional(),
       renewalDueDate: z.number().optional(),
       totalPaidCents: z.number().optional(),

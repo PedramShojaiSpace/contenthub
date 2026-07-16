@@ -523,9 +523,45 @@ export function renderElephantPage(
       Most of us are walking around with a rope on our ankle that hasn't been real for decades. The question isn't whether you can break it. <em>The question is whether you know it's there.</em>
     </p>
   </section>
+
+  <!-- Macro-Systemic Section -->
+  <section class="narrative-section fade-up fade-up-4" style="max-width:720px;margin:0 auto;padding:0 24px 56px;">
+    <p class="eyebrow" style="margin-bottom:20px;">THE ARCHITECTURE OF THE WORLD</p>
+    <p>
+      But the school system and the medical system are just two rooms in a much larger house. Let me tell you about the architecture of the world you were born into.
+    </p>
+    <p>
+      In 1971, the United States severed the dollar's link to gold. Three years later, the Nixon administration negotiated a deal that priced all global oil sales in U.S. dollars — the <strong>petrodollar system</strong>. Every country that needs oil must first acquire dollars to buy it. This creates permanent, structural global demand for the dollar, and it is the reason the United States can carry a national debt that would be catastrophic for any other nation. This is not conspiracy theory. It is documented history, taught in international economics courses, in the Congressional record.
+    </p>
+    <p>
+      A fiat currency system requires perpetual growth to function. The Federal Reserve creates money by purchasing government debt. That debt accrues interest. To service the interest, you need more economic activity — which requires more debt, which requires more interest. The system cannot stand still. It must grow. And growth means consumption. It means you, specifically, spending money on the things that keep the machine running.
+    </p>
+    <p>
+      Layer in the tax structure. In the United States, the primary tax burden falls on <strong>earned income</strong> — the money you make by trading your time for a paycheck. The wealthiest hold their wealth in assets taxed at lower rates, often deferred, sometimes never taxed at all. The tax code was written by people who had assets, to protect assets — and to ensure that the people who depend on a paycheck remain dependent on one. The average working professional spends between 35 and 50 percent of gross income on taxes before seeing a dollar of real purchasing power. Then spends the rest keeping up with inflation that is structurally built into the system. You work to stay in place. That is not an accident. That is the design.
+    </p>
+    <p>
+      A person who is financially exhausted, time-poor, and perpetually anxious about money is not a person who has the bandwidth to question the system. They are a person who needs to get to work. The financial system doesn't need to be consciously designed to suppress critical thinking. It just needs to keep people busy enough that critical thinking becomes a luxury they can't afford.
+    </p>
+    <p>
+      And then — because exhausted, stressed, time-poor people still need to eat and feel something — the food system steps in. Ultra-processed food, engineered to be hyperpalatable and nutritionally hollow, is the logical output of an agricultural system subsidized and deregulated over seventy years. The result is a food supply that is, by design, inflammatory — driving the exact chronic conditions that then feed the pharmaceutical system, which profits from managing those conditions, which funds the medical schools that train the doctors who tell you your numbers are normal.
+    </p>
+    <p>
+      These are not separate systems. They are one system. Interlocking. Mutually reinforcing. And they all point in the same direction: <em>keep people consuming, keep people compliant, keep people in the lane.</em>
+    </p>
+    <p>
+      The school system told you what kind of smart you were allowed to be. The medical system told you what kind of sick you were allowed to feel. The financial system told you what kind of free you were allowed to be. The food system gave you the inflammation that made it harder to think clearly. The media system gave you the distraction that made it easier not to.
+    </p>
+    <p>
+      That is the full rope. Not a single strand — a cable, woven from a dozen systems, each one reinforcing the others, each one telling the same story: <em>this is just how the world works. Stay in the lane.</em> Most of it is invisible because you were born into it. The water you swim in doesn't feel like water. It just feels like reality.
+    </p>
+    <p>
+      Until someone points at the stake. And says: <em>that's not real. You could move that.</em>
+    </p>
+  </section>
+
   <!-- Pull Quote -->
   <div class="pull-quote fade-up fade-up-4">
-    <p>"The most dangerous prison is the one you can't see — and the most common warden wears a white coat."</p>
+    <p>"The rope is not a single strand. It is a cable — woven from a dozen systems, each one telling the same story: <em>stay in the lane.</em>"</p>
   </div>
 
   <!-- Divider -->

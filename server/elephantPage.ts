@@ -481,16 +481,51 @@ export function renderElephantPage(
       Years later, that same elephant — now capable of uprooting trees — stands calmly beside a stake it could snap with a flick of its ankle. <strong>It doesn't try.</strong> Not because the rope is strong. Because the belief is.
     </p>
     <p>
-      This is what traditional education does. It teaches us the limits of what we are before we've had a chance to discover what we might become. It rewards compliance and punishes curiosity. It measures intelligence with a single ruler and calls everything else a deficiency.
+            This is what traditional education does. It teaches us the limits of what we are before we've had a chance to discover what we might become. It rewards compliance and punishes curiosity. It measures intelligence with a single ruler and calls everything else a deficiency.
+    </p>
+    <p>
+      But the school system is not the only institution that trains you to stay in your lane.
+    </p>
+    <p>
+      The medical system does it too. And for many of us, it does it even more effectively — because it does it when we are already vulnerable.
+    </p>
+    <p>
+      You go to your doctor. You have symptoms — fatigue, brain fog, joint pain, a gut that hasn't worked right in years, a mood that doesn't lift. You describe them. The doctor runs tests. The tests come back "normal." And the doctor says: <em>"Everything looks fine. You might want to manage your stress."</em>
+    </p>
+    <p>
+      And you leave. Not just dismissed — <strong>corrected.</strong> The authority figure with the white coat and the system behind them has just told you that what you're experiencing is not real enough to warrant investigation. That you are, in some fundamental way, the problem.
+    </p>
+    <p>
+      So you go home. You try harder. You sleep more. You exercise. You cut out sugar. You still feel terrible. You go back. The tests are still normal. And eventually — because you are a reasonable person who trusts institutions — you begin to wonder if maybe they're right. Maybe this is just aging. Maybe this is just stress. Maybe you need to lower your expectations.
+    </p>
+    <p>
+      <strong>The rope goes on.</strong>
+    </p>
+    <p>
+      Conventional medicine was built for acute care — infections, injuries, emergencies. It is extraordinary at those things. But chronic, multisystemic dysfunction — fatigue and inflammation and mood dysregulation and gut dysfunction all at once — is not an acute problem. It is a systems problem. And a model designed to match symptoms to diagnoses and diagnoses to drugs cannot see systems.
+    </p>
+    <p>
+      When your problem doesn't fit the template, you don't get a different template. You get told there's nothing wrong.
+    </p>
+    <p>
+      And here's the deeper conditioning: the medical system doesn't just fail to help you. It actively trains you to stop asking questions. <em>"Your numbers are normal"</em> — normal compared to a population that is, by most measures, chronically ill. <em>"There's nothing we can do"</em> — nothing within this system, in this fifteen-minute appointment. <em>"Try managing your stress"</em> — which puts the responsibility back on you without giving you any actual tools.
+    </p>
+    <p>
+      I was pre-med. I became a monk, then got my doctorate in Oriental medicine, and spent decades in clinical practice. The patients who came to me had been so thoroughly conditioned to doubt themselves that they apologized for coming in.
+    </p>
+    <p>
+      <em>"I know my tests are normal. I'm probably just being dramatic."</em>
+    </p>
+    <p>
+      That's the rope. That's the stake. And it was put there by an institution that should have been helping them. The villain is not your doctor as a person — most doctors are trying. The villain is a system built for a different problem, one that has enormous cultural authority to define what is real and what is not, and no billing code for root cause.
     </p>
     <p>
       Most of us are walking around with a rope on our ankle that hasn't been real for decades. The question isn't whether you can break it. <em>The question is whether you know it's there.</em>
     </p>
   </section>
-
   <!-- Pull Quote -->
   <div class="pull-quote fade-up fade-up-4">
-    <p>"The most dangerous prison is the one you can't see."</p>
+    <p>"The most dangerous prison is the one you can't see — and the most common warden wears a white coat."</p>
   </div>
 
   <!-- Divider -->

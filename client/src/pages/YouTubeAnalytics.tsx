@@ -576,10 +576,9 @@ function HeadlineGenerator() {
     }>;
     topic: string;
   } | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-
+    const [copied, setCopied] = useState<string | null>(null);
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const { data: history } = trpc.ytAnalytics.listHeadlineGenerations.useQuery({ limit: 10 });
-
   const generateMutation = trpc.ytAnalytics.generateHeadlines.useMutation({
     onSuccess: (res) => {
       setResult(res);
@@ -587,7 +586,24 @@ function HeadlineGenerator() {
     },
     onError: (e) => toast.error(`Generation failed: ${e.message}`),
   });
-
+  const regenThumbnailMutation = trpc.ytAnalytics.regenerateThumbnail.useMutation({
+    onSuccess: (res, variables) => {
+      // Update only the thumbnail for the specific headline index
+      setResult((prev) => {
+        if (!prev) return prev;
+        const updated = prev.headlines.map((h, idx) =>
+          idx === variables.headlineIndex ? { ...h, thumbnail: res.thumbnail } : h
+        );
+        return { ...prev, headlines: updated };
+      });
+      setRegeneratingIndex(null);
+      toast.success("Fresh thumbnail concept generated");
+    },
+    onError: (e) => {
+      setRegeneratingIndex(null);
+      toast.error(`Regeneration failed: ${e.message}`);
+    },
+  });
   const selectMutation = trpc.ytAnalytics.selectHeadline.useMutation({
     onSuccess: () => toast.success("Headline selected"),
   });
@@ -709,14 +725,35 @@ function HeadlineGenerator() {
                   {/* Thumbnail concept panel */}
                   {h.thumbnail && expandedThumbnail === i && (
                     <div className="mt-3 pt-3 border-t border-border">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <div className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <Eye className="w-3 h-3 text-primary" />
                         </div>
                         <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Thumbnail Concept</span>
-                        <Badge variant="outline" className="text-xs ml-auto">
+                        <Badge variant="outline" className="text-xs">
                           {h.thumbnail.textOverlay}
                         </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs text-muted-foreground ml-auto h-6 px-2"
+                          disabled={regeneratingIndex === i}
+                          onClick={() => {
+                            setRegeneratingIndex(i);
+                            regenThumbnailMutation.mutate({
+                              title: h.title,
+                              topic: result?.topic ?? "",
+                              pillar: pillar as any,
+                              headlineIndex: i,
+                            });
+                          }}
+                        >
+                          {regeneratingIndex === i ? (
+                            <><RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Generating...</>
+                          ) : (
+                            <><RefreshCw className="w-3 h-3 mr-1" /> Regenerate</>
+                          )}
+                        </Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {(Object.keys(THUMBNAIL_FIELD_LABELS) as Array<keyof typeof THUMBNAIL_FIELD_LABELS>).map((field) => (

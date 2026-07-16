@@ -602,6 +602,135 @@ Return JSON in this exact format:
       return { generations };
     }),
 
+  // ── Regenerate thumbnail concept for a single headline ─────────────────────
+  regenerateThumbnail: publicProcedure
+    .input(
+      z.object({
+        title: z.string().min(1).max(512),
+        topic: z.string().min(1).max(300),
+        pillar: z.enum(["gut_health_metabolism", "nervous_system_stress", "consciousness_longevity", "oral_health", "general"]).optional(),
+        generationId: z.number().optional(),
+        headlineIndex: z.number().min(0).max(4).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+
+      const pillarContext: Record<string, string> = {
+        gut_health_metabolism: "gut health, microbiome, metabolism, weight, digestion",
+        nervous_system_stress: "stress, cortisol, nervous system, anxiety, energy, sleep",
+        consciousness_longevity: "longevity, consciousness, Qigong, mindfulness, life energy, Qi",
+        oral_health: "oral health, microbiome, teeth, gums, mouth-gut connection",
+        general: "health and wellness",
+      };
+      const pillarHint = input.pillar ? pillarContext[input.pillar] : "health and wellness";
+
+      const response = await wrapLLM(
+        () =>
+          invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: `You are an expert YouTube thumbnail art director specializing in health and wellness content for Dr. Pedram Shojai (The Urban Monk).
+
+Thumbnail guidelines:
+- Do NOT use AI-generated likenesses of the host; use anonymous human figures, symbolic imagery, or visual metaphors
+- Convey the emotional problem or transformation, not a specific person's face
+- Use a dark, earthy, or deep navy palette consistent with the Urban Monk brand
+- Be production-ready — a graphic designer must be able to execute this in Canva or Photoshop
+
+Return ONLY valid JSON — no markdown, no explanation, no code fences.`,
+              },
+              {
+                role: "user",
+                content: `Generate a FRESH, DIFFERENT thumbnail concept for this YouTube title.
+
+Title: "${input.title}"
+Topic: "${input.topic}"
+Content pillar: ${pillarHint}
+
+Return JSON in this exact format:
+{
+  "thumbnail": {
+    "layout": "Overall composition description",
+    "textOverlay": "Exact 3-5 word text to overlay on the thumbnail",
+    "background": "Background scene or image (no host face — use symbolic imagery or anonymous figures)",
+    "focalElement": "Single most eye-catching visual element that dominates the frame",
+    "colorMood": "Color palette and emotional tone",
+    "productionNotes": "Specific design tips for a Canva/Photoshop designer"
+  }
+}`,
+              },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "thumbnail_output",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    thumbnail: {
+                      type: "object",
+                      properties: {
+                        layout: { type: "string" },
+                        textOverlay: { type: "string" },
+                        background: { type: "string" },
+                        focalElement: { type: "string" },
+                        colorMood: { type: "string" },
+                        productionNotes: { type: "string" },
+                      },
+                      required: ["layout", "textOverlay", "background", "focalElement", "colorMood", "productionNotes"],
+                      additionalProperties: false,
+                    },
+                  },
+                  required: ["thumbnail"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          }),
+        "regenerateThumbnail"
+      );
+
+      const raw = response.choices[0]?.message?.content ?? "{}";
+      let parsed: {
+        thumbnail: {
+          layout: string;
+          textOverlay: string;
+          background: string;
+          focalElement: string;
+          colorMood: string;
+          productionNotes: string;
+        };
+      };
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error("Failed to parse thumbnail regeneration response");
+      }
+
+      // Optionally update the stored thumbnailConcepts array in the DB
+      if (db && input.generationId != null && input.headlineIndex != null) {
+        const existing = await db
+          .select({ thumbnailConcepts: ytHeadlineGenerations.thumbnailConcepts })
+          .from(ytHeadlineGenerations)
+          .where(eq(ytHeadlineGenerations.id, input.generationId))
+          .limit(1);
+
+        if (existing.length > 0) {
+          const concepts = (existing[0].thumbnailConcepts as any[]) ?? [];
+          concepts[input.headlineIndex] = parsed.thumbnail;
+          await db
+            .update(ytHeadlineGenerations)
+            .set({ thumbnailConcepts: concepts })
+            .where(eq(ytHeadlineGenerations.id, input.generationId));
+        }
+      }
+
+      return { thumbnail: parsed.thumbnail };
+    }),
+
   // ── Select a headline for a generation ────────────────────────────────────
   selectHeadline: publicProcedure
     .input(

@@ -446,30 +446,13 @@ export function renderElephantPage(
     <p class="hero-sub">A baby elephant learns it cannot move. By the time it's full grown, it never tries again. The rope hasn't changed. The elephant has.</p>
   </section>
 
-  <!-- Video Embed or Placeholder -->
-  <section class="video-section fade-up fade-up-3">
-    ${videoUrl ? `
+  <!-- Video Embed — Wistia web component -->
+  <section class="video-section fade-up fade-up-3" id="elephant-video">
     <div class="video-wrapper">
-      ${videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')
-        ? `<div class="video-iframe-wrapper"><iframe src="${videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}?autoplay=0&rel=0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
-        : videoUrl.includes('wistia.com')
-          ? `<div class="video-iframe-wrapper"><iframe src="${videoUrl}" allowtransparency="true" frameborder="0" scrolling="no" allowfullscreen></iframe></div>`
-          : `<div class="video-iframe-wrapper"><video src="${videoUrl}" controls playsinline preload="metadata"></video></div>`
-      }
+      <script src="https://fast.wistia.com/player.js" async></script>
+      <wistia-player media-id="e1w0d3l5nk" seo="true" style="width:100%;aspect-ratio:16/9;display:block;"></wistia-player>
     </div>
     <p class="video-caption">Watch before you scroll.</p>
-    ` : `
-    <div class="video-wrapper">
-      <div class="video-placeholder">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M10 8l6 4-6 4V8z" fill="currentColor"/>
-        </svg>
-        <p>Animation coming soon</p>
-      </div>
-    </div>
-    <p class="video-caption">The animation is being prepared — check back soon.</p>
-    `}
   </section>
 
   <!-- Narrative -->
@@ -597,9 +580,9 @@ export function renderElephantPage(
       <p class="eyebrow" style="margin-bottom:14px;">GO DEEPER</p>
       <p style="font-family:'Cormorant Garamond',serif;font-size:clamp(20px,4.5vw,28px);font-weight:300;color:var(--text-primary);line-height:1.4;margin-bottom:14px;">The rope is a story.<br>Who wrote it?</p>
       <p style="font-size:15px;color:var(--text-muted);line-height:1.7;margin-bottom:24px;">Traditional education didn't just limit what you learned — it conditioned what you believe is possible. Watch the deep dive: the neuroscience of learned helplessness, how belief becomes biology, and the practice of breaking the stake.</p>
-      <a href="#deep-dive-video" style="display:inline-flex;align-items:center;gap:10px;border:1px solid var(--accent-blue);color:var(--accent-light);font-size:14px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:13px 28px;border-radius:4px;">
+      <a href="#elephant-video" style="display:inline-flex;align-items:center;gap:10px;border:1px solid var(--accent-blue);color:var(--accent-light);font-size:14px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;padding:13px 28px;border-radius:4px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        Explore Deeper
+        Watch the Deep Dive
       </a>
     </div>
   </section>

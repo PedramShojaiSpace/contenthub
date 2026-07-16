@@ -11,42 +11,42 @@ import {
 
 // ─── Quiz Scoring Tests ───────────────────────────────────────────────────────
 describe("scoreAnswers", () => {
-  it("assigns burned_out_executive when all high-burnout options selected", () => {
-    // All 'a' options are highest for burned_out_executive
+  it("assigns dismissed_patient when all dismissed-patient options selected", () => {
+    // All 'a' options are highest for dismissed_patient
     const answers: Record<string, string> = {};
     for (const q of QUIZ_QUESTIONS) answers[q.id] = "a";
     const { avatarType, scores } = scoreAnswers(answers);
-    expect(avatarType).toBe("burned_out_executive");
-    expect(scores.burned_out_executive).toBeGreaterThan(scores.stressed_parent);
-    expect(scores.burned_out_executive).toBeGreaterThan(scores.wellness_seeker);
-    expect(scores.burned_out_executive).toBeGreaterThan(scores.performance_optimizer);
+    expect(avatarType).toBe("dismissed_patient");
+    expect(scores.dismissed_patient).toBeGreaterThan(scores.high_performer_decline);
+    expect(scores.dismissed_patient).toBeGreaterThan(scores.awakening_seeker);
+    expect(scores.dismissed_patient).toBeGreaterThan(scores.supplement_graveyard);
   });
 
-  it("assigns wellness_seeker when all gut/wellness options selected", () => {
-    // All 'c' options are highest for wellness_seeker
-    const answers: Record<string, string> = {};
-    for (const q of QUIZ_QUESTIONS) answers[q.id] = "c";
-    const { avatarType, scores } = scoreAnswers(answers);
-    expect(avatarType).toBe("wellness_seeker");
-    expect(scores.wellness_seeker).toBeGreaterThan(scores.burned_out_executive);
-  });
-
-  it("assigns performance_optimizer when all performance options selected", () => {
-    // All 'd' options are highest for performance_optimizer
+  it("assigns awakening_seeker when all 'd' options selected", () => {
+    // All 'd' options are highest for awakening_seeker
     const answers: Record<string, string> = {};
     for (const q of QUIZ_QUESTIONS) answers[q.id] = "d";
     const { avatarType, scores } = scoreAnswers(answers);
-    expect(avatarType).toBe("performance_optimizer");
-    expect(scores.performance_optimizer).toBeGreaterThan(scores.burned_out_executive);
+    expect(avatarType).toBe("awakening_seeker");
+    expect(scores.awakening_seeker).toBeGreaterThan(scores.dismissed_patient);
   });
 
-  it("assigns stressed_parent when all stressed-parent options selected", () => {
-    // All 'b' options are highest for stressed_parent
+  it("assigns high_performer_decline when all 'b' options selected", () => {
+    // All 'b' options are highest for high_performer_decline
     const answers: Record<string, string> = {};
     for (const q of QUIZ_QUESTIONS) answers[q.id] = "b";
     const { avatarType, scores } = scoreAnswers(answers);
-    expect(avatarType).toBe("stressed_parent");
-    expect(scores.stressed_parent).toBeGreaterThan(scores.wellness_seeker);
+    expect(avatarType).toBe("high_performer_decline");
+    expect(scores.high_performer_decline).toBeGreaterThan(scores.dismissed_patient);
+  });
+
+  it("assigns supplement_graveyard when all 'c' options selected", () => {
+    // All 'c' options are highest for supplement_graveyard
+    const answers: Record<string, string> = {};
+    for (const q of QUIZ_QUESTIONS) answers[q.id] = "c";
+    const { avatarType, scores } = scoreAnswers(answers);
+    expect(avatarType).toBe("supplement_graveyard");
+    expect(scores.supplement_graveyard).toBeGreaterThan(scores.awakening_seeker);
   });
 
   it("returns all four avatar scores", () => {
@@ -54,17 +54,17 @@ describe("scoreAnswers", () => {
     for (const q of QUIZ_QUESTIONS) answers[q.id] = "a";
     const { scores } = scoreAnswers(answers);
     expect(Object.keys(scores)).toHaveLength(4);
-    expect(scores).toHaveProperty("burned_out_executive");
-    expect(scores).toHaveProperty("stressed_parent");
-    expect(scores).toHaveProperty("wellness_seeker");
-    expect(scores).toHaveProperty("performance_optimizer");
+    expect(scores).toHaveProperty("dismissed_patient");
+    expect(scores).toHaveProperty("high_performer_decline");
+    expect(scores).toHaveProperty("awakening_seeker");
+    expect(scores).toHaveProperty("supplement_graveyard");
   });
 
   it("handles missing answers gracefully (skips missing questions)", () => {
     const answers = { q1: "a" }; // Only one answer
     const { scores, avatarType } = scoreAnswers(answers);
     expect(avatarType).toBeDefined();
-    expect(scores.burned_out_executive).toBeGreaterThanOrEqual(0);
+    expect(scores.dismissed_patient).toBeGreaterThanOrEqual(0);
   });
 
   it("handles unknown option IDs gracefully", () => {
@@ -78,11 +78,11 @@ describe("scoreAnswers", () => {
 
 // ─── Avatar Profiles Tests ────────────────────────────────────────────────────
 describe("AVATAR_PROFILES", () => {
-  it("has all four avatar types", () => {
-    expect(AVATAR_PROFILES).toHaveProperty("burned_out_executive");
-    expect(AVATAR_PROFILES).toHaveProperty("stressed_parent");
-    expect(AVATAR_PROFILES).toHaveProperty("wellness_seeker");
-    expect(AVATAR_PROFILES).toHaveProperty("performance_optimizer");
+  it("has all four Typeform-verified avatar types", () => {
+    expect(AVATAR_PROFILES).toHaveProperty("dismissed_patient");
+    expect(AVATAR_PROFILES).toHaveProperty("high_performer_decline");
+    expect(AVATAR_PROFILES).toHaveProperty("awakening_seeker");
+    expect(AVATAR_PROFILES).toHaveProperty("supplement_graveyard");
   });
 
   it("each profile has required fields", () => {
@@ -95,8 +95,19 @@ describe("AVATAR_PROFILES", () => {
     }
   });
 
-  it("wellness_seeker recommends Oral Biome", () => {
-    expect(AVATAR_PROFILES.wellness_seeker.recommendation).toContain("Oral Biome");
+  it("all profiles recommend Lights On Academy", () => {
+    for (const [, profile] of Object.entries(AVATAR_PROFILES)) {
+      expect(profile.recommendation).toContain("Lights On");
+    }
+  });
+
+  it("dismissed_patient headline references labs/normal", () => {
+    expect(AVATAR_PROFILES.dismissed_patient.headline.toLowerCase()).toMatch(/normal|labs/);
+  });
+
+  it("supplement_graveyard headline references bin or didn't work", () => {
+    const h = AVATAR_PROFILES.supplement_graveyard.headline.toLowerCase();
+    expect(h.match(/bin|graveyard|didn't work|guessing/)).toBeTruthy();
   });
 });
 

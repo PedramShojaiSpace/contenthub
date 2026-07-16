@@ -3303,3 +3303,37 @@ export const ytHeadlineGenerations = mysqlTable("yt_headline_generations", {
 });
 export type YtHeadlineGeneration = typeof ytHeadlineGenerations.$inferSelect;
 export type InsertYtHeadlineGeneration = typeof ytHeadlineGenerations.$inferInsert;
+
+// ─── Three-Funnel Command Dashboard ──────────────────────────────────────────
+// Tracks manual stage-entry events for the three funnels:
+//   lights_on, upstream, web_of_life
+// Each row = one visitor/lead entering a funnel stage.
+export const funnelEvents = mysqlTable("funnel_events", {
+  id: int("id").autoincrement().primaryKey(),
+  funnel: varchar("funnel", { length: 64 }).notNull(), // 'lights_on' | 'upstream' | 'web_of_life'
+  stage: varchar("stage", { length: 64 }).notNull(),   // e.g. 'lead','optin','quiz','offer','purchase'
+  count: int("count").notNull().default(1),
+  revenueUsd: int("revenue_usd").notNull().default(0), // cents
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 128 }),
+  recordedAt: bigint("recorded_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  weekStart: bigint("week_start", { mode: "number" }),
+  notes: text("notes"),
+});
+export type FunnelEvent = typeof funnelEvents.$inferSelect;
+export type InsertFunnelEvent = typeof funnelEvents.$inferInsert;
+
+// Monthly cohort take-rate tracking
+export const funnelCohorts = mysqlTable("funnel_cohorts", {
+  id: int("id").autoincrement().primaryKey(),
+  funnel: varchar("funnel", { length: 64 }).notNull(),
+  cohortMonth: varchar("cohort_month", { length: 7 }).notNull(), // 'YYYY-MM'
+  leadsEntered: int("leads_entered").notNull().default(0),
+  purchasedAt30d: int("purchased_at_30d").notNull().default(0),
+  purchasedAt60d: int("purchased_at_60d").notNull().default(0),
+  purchasedAt90d: int("purchased_at_90d").notNull().default(0),
+  revenueUsd: int("revenue_usd").notNull().default(0), // cents
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type FunnelCohort = typeof funnelCohorts.$inferSelect;
+export type InsertFunnelCohort = typeof funnelCohorts.$inferInsert;

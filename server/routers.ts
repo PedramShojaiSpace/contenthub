@@ -144,6 +144,7 @@ import { abTestRouter } from "./abTestRouter";
 import { claimsReviewRouter } from "./claimsReviewRouter";
 import { ytAnalyticsRouter } from "./ytAnalyticsRouter";
 import { ga4Router } from "./ga4Router";
+import { funnelsRouter } from "./funnelsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -513,6 +514,7 @@ export const appRouter = router({
   attributionPanel: attributionPanelRouter,
   adsMonitor: adsMonitorRouter,
   funnelCommand: funnelCommandRouter,
+  funnels: funnelsRouter,
   ascension: ascensionRouter,
   quiz: quizRouter,
   abTest: abTestRouter,

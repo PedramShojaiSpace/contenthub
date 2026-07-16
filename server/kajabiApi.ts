@@ -229,3 +229,59 @@ export async function kajabiOptIn(params: {
   });
   return { contactId: contact.id };
 }
+
+// ─── Attribution helpers ──────────────────────────────────────────────────────
+
+/**
+ * Fetch contacts from Kajabi filtered by a given tag name.
+ * Returns a lightweight list: id, email, first_name, last_name, created_at.
+ */
+export async function getKajabiContactsByTag(tagName: string): Promise<Array<{
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  createdAt: string;
+}>> {
+  const token = await getAccessToken();
+  let tagId: string;
+  try {
+    tagId = await resolveTagId(tagName);
+  } catch {
+    return [];
+  }
+  const res = await fetch(
+    `${KAJABI_API_BASE}/contacts?filter[tag_id]=${tagId}&page[size]=200`,
+    { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.api+json" } }
+  );
+  if (!res.ok) return [];
+  const data = await safeParseJson<{
+    data: Array<{ id: string; attributes: { email: string; first_name: string; last_name: string; created_at: string } }>;
+  }>(res, "getKajabiContactsByTag");
+  return (data.data ?? []).map((c) => ({
+    id: c.id,
+    email: c.attributes.email,
+    firstName: c.attributes.first_name ?? "",
+    lastName: c.attributes.last_name ?? "",
+    createdAt: c.attributes.created_at ?? "",
+  }));
+}
+
+/**
+ * Fetch all Kajabi tags with contact counts.
+ */
+export async function getKajabiTags(): Promise<Array<{ id: string; name: string; contactCount: number }>> {
+  const token = await getAccessToken();
+  const res = await fetch(`${KAJABI_API_BASE}/contact_tags?page[size]=100`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.api+json" },
+  });
+  if (!res.ok) return [];
+  const data = await safeParseJson<{
+    data: Array<{ id: string; attributes: { name: string; contacts_count?: number } }>;
+  }>(res, "getKajabiTags");
+  return (data.data ?? []).map((t) => ({
+    id: t.id,
+    name: t.attributes.name,
+    contactCount: t.attributes.contacts_count ?? 0,
+  }));
+}

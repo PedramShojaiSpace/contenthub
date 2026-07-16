@@ -418,6 +418,118 @@ export function renderElephantPage(
     }
     .footer a:hover { color: var(--accent-light); }
 
+    /* ── System Blocks (macro-systemic section) ── */
+    .sys-block {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 48px 28px;
+      text-align: center;
+    }
+    .sys-block-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+    .sys-block-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+    .sys-block-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent-light);
+      opacity: 0.7;
+      margin-bottom: 10px;
+    }
+    .sys-block-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(24px, 5vw, 34px);
+      font-weight: 400;
+      color: var(--text-primary);
+      line-height: 1.2;
+      margin-bottom: 22px;
+    }
+    .sys-block-body {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(17px, 3.5vw, 21px);
+      font-weight: 300;
+      line-height: 1.78;
+      color: var(--text-primary);
+      text-align: left;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .sys-block-body strong { font-weight: 600; color: var(--accent-light); }
+    .sys-block-body em { font-style: italic; color: var(--accent-light); opacity: 0.85; }
+    .sys-block-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-top: 28px;
+      padding: 22px 28px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .sys-block-stat-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 28px;
+    }
+    .stat-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 20px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-width: 160px;
+      flex: 1;
+      max-width: 240px;
+    }
+    .stat-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(28px, 6vw, 40px);
+      font-weight: 600;
+      color: var(--accent-light);
+      line-height: 1;
+    }
+    .stat-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-muted);
+      line-height: 1.5;
+      text-align: center;
+    }
+    .sys-divider {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 28px;
+    }
+    .sys-divider-line {
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(96,165,250,0.2), transparent);
+    }
+
     /* ── Fade-in animation ── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(18px); }
@@ -446,11 +558,12 @@ export function renderElephantPage(
     <p class="hero-sub">A baby elephant learns it cannot move. By the time it's full grown, it never tries again. The rope hasn't changed. The elephant has.</p>
   </section>
 
-  <!-- Video Embed — Wistia web component -->
+  <!-- Video Embed — Wistia standard async embed -->
   <section class="video-section fade-up fade-up-3" id="elephant-video">
     <div class="video-wrapper">
-      <script src="https://fast.wistia.com/player.js" async></script>
-      <wistia-player media-id="e1w0d3l5nk" seo="true" style="width:100%;aspect-ratio:16/9;display:block;"></wistia-player>
+      <div class="video-iframe-wrapper">
+        <iframe src="https://fast.wistia.net/embed/iframe/e1w0d3l5nk?seo=true&videoFoam=true" allowtransparency="true" frameborder="0" scrolling="no" class="wistia_embed" name="wistia_embed" allowfullscreen mozallowfullscreen webkitallowfullscreen oallowfullscreen msallowfullscreen></iframe>
+      </div>
     </div>
     <p class="video-caption">Watch before you scroll.</p>
   </section>
@@ -508,37 +621,141 @@ export function renderElephantPage(
   </section>
 
   <!-- Macro-Systemic Section -->
-  <section class="narrative-section fade-up fade-up-4" style="max-width:720px;margin:0 auto;padding:0 24px 56px;">
-    <p class="eyebrow" style="margin-bottom:20px;">THE ARCHITECTURE OF THE WORLD</p>
+  <section class="narrative fade-up fade-up-4">
+    <p class="eyebrow" style="text-align:center;margin-bottom:28px;">THE ARCHITECTURE OF THE WORLD</p>
     <p>
-      But the school system and the medical system are just two rooms in a much larger house. Let me tell you about the architecture of the world you were born into.
+      The school system and the medical system are just two rooms in a much larger house.
+      Let me tell you about the architecture of the world you were born into.
+    </p>
+  </section>
+
+  <!-- System Block 1: Petrodollar -->
+  <div class="sys-block fade-up fade-up-4">
+    <div class="sys-block-icon">
+      <!-- Oil barrel / dollar icon -->
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="24" cy="12" rx="14" ry="5" stroke="#60a5fa" stroke-width="1.5"/>
+        <path d="M10 12v24c0 2.76 6.27 5 14 5s14-2.24 14-5V12" stroke="#60a5fa" stroke-width="1.5"/>
+        <path d="M10 24c0 2.76 6.27 5 14 5s14-2.24 14-5" stroke="#60a5fa" stroke-width="1.5"/>
+        <path d="M24 17v6M21 20h6" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="sys-block-label">1971 &mdash; 1974</div>
+    <h3 class="sys-block-title">The Petrodollar System</h3>
+    <p class="sys-block-body">
+      In 1971, the United States severed the dollar’s link to gold. Three years later, the Nixon administration negotiated a deal with Saudi Arabia: all global oil sales would be priced exclusively in U.S. dollars. The rest of OPEC followed. Every nation on earth that needs oil — which is every nation — must first acquire dollars to buy it. This creates permanent, structural global demand for the dollar. It is the reason the United States can carry a national debt that would be catastrophic for any other country. This is not conspiracy theory. It is documented history, in the Congressional record, taught in international economics courses worldwide.
+    </p>
+    <div class="sys-block-stat">
+      <span class="stat-num">$33T+</span>
+      <span class="stat-label">U.S. national debt sustained by petrodollar demand</span>
+    </div>
+  </div>
+
+  <!-- Thin divider -->
+  <div class="sys-divider fade-up fade-up-4"><div class="sys-divider-line"></div></div>
+
+  <!-- System Block 2: Debt Treadmill -->
+  <div class="sys-block fade-up fade-up-4">
+    <div class="sys-block-icon">
+      <!-- Treadmill / cycle icon -->
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="24" cy="24" r="14" stroke="#60a5fa" stroke-width="1.5"/>
+        <path d="M24 10v4M24 34v4M10 24h4M34 24h4" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M18 18l12 12M30 18L18 30" stroke="#60a5fa" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+        <circle cx="24" cy="24" r="4" stroke="#60a5fa" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <div class="sys-block-label">The Federal Reserve</div>
+    <h3 class="sys-block-title">The Debt Treadmill</h3>
+    <p class="sys-block-body">
+      A fiat currency system requires perpetual growth to function. The Federal Reserve creates money by purchasing government debt. That debt accrues interest. To service the interest, you need more economic activity — which requires more debt, which requires more interest. The system cannot stand still. It must grow, or it begins to collapse. And growth, in this model, means consumption. It means people buying things. It means GDP going up. It means <em>you</em>, specifically, spending money on the things that keep the machine running.
+    </p>
+    <p class="sys-block-body" style="margin-top:16px;">
+      A person who is financially exhausted, time-poor, and perpetually anxious about money is not a person with the bandwidth to question the system. They are a person who needs to get to work. The financial system doesn’t need to be consciously designed to suppress critical thinking. It just needs to keep people busy enough that critical thinking becomes a luxury they can’t afford.
+    </p>
+  </div>
+
+  <!-- Thin divider -->
+  <div class="sys-divider fade-up fade-up-4"><div class="sys-divider-line"></div></div>
+
+  <!-- System Block 3: Tax Structure -->
+  <div class="sys-block fade-up fade-up-4">
+    <div class="sys-block-icon">
+      <!-- Tax / document icon -->
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="6" width="28" height="36" rx="3" stroke="#60a5fa" stroke-width="1.5"/>
+        <path d="M16 16h16M16 22h16M16 28h10" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M30 30l4 4M34 30l-4 4" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="sys-block-label">The Tax Code</div>
+    <h3 class="sys-block-title">You Work Half the Year for Free</h3>
+    <p class="sys-block-body">
+      The primary tax burden in the United States falls on <strong>earned income</strong> — the money you make by trading your time for a paycheck. The wealthiest hold their wealth in assets: stocks, real estate, private equity — taxed at lower rates, often deferred, sometimes never taxed at all through stepped-up basis rules and trust structures. The tax code was written by people who had assets, to protect assets, and to ensure that the people who depend on a paycheck remain dependent on one.
+    </p>
+    <div class="sys-block-stat-row">
+      <div class="stat-pill">
+        <span class="stat-num">35–50%</span>
+        <span class="stat-label">of gross income lost to taxes for the average professional</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-num">~6 mo</span>
+        <span class="stat-label">of every year worked before you see real purchasing power</span>
+      </div>
+    </div>
+    <p class="sys-block-body" style="margin-top:20px;">
+      Then you spend the other half keeping up with inflation that is structurally built into the system — because the money supply expands every year, which means the purchasing power of your savings erodes every year. You work to stay in place. That is not an accident. <strong>That is the design.</strong>
+    </p>
+  </div>
+
+  <!-- Thin divider -->
+  <div class="sys-divider fade-up fade-up-4"><div class="sys-divider-line"></div></div>
+
+  <!-- System Block 4: Food / Pharma / Media -->
+  <div class="sys-block fade-up fade-up-4">
+    <div class="sys-block-icon">
+      <!-- Interlocking circles icon -->
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="20" r="10" stroke="#60a5fa" stroke-width="1.5"/>
+        <circle cx="30" cy="20" r="10" stroke="#60a5fa" stroke-width="1.5"/>
+        <circle cx="24" cy="30" r="10" stroke="#60a5fa" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <div class="sys-block-label">Food &bull; Pharma &bull; Media</div>
+    <h3 class="sys-block-title">The Interlocking Loop</h3>
+    <p class="sys-block-body">
+      Because exhausted, time-poor, financially stressed people still need to eat and feel something, the food system steps in. Ultra-processed food — engineered to be hyperpalatable, cheap to produce, and nutritionally hollow — is not an accident of the market. It is the logical output of an agricultural system subsidized and deregulated over seventy years: the corn subsidies, the soy subsidies, the GRAS designation that let food manufacturers self-certify the safety of their own ingredients.
+    </p>
+    <p class="sys-block-body" style="margin-top:16px;">
+      The result is a food supply that is, by design, inflammatory — driving the exact chronic conditions that feed the pharmaceutical system, which profits from managing those conditions, which funds the medical schools that train the doctors who tell you your numbers are normal. These are not separate systems. They are one system, interlocking and mutually reinforcing.
+    </p>
+    <p class="sys-block-body" style="margin-top:16px;">
+      The media and attention economy completes the picture. The algorithm doesn’t care about your wellbeing. It cares about your attention. Outrage keeps you scrolling. Fear keeps you scrolling. And reactive, distracted people don’t ask slow, systems-level questions.
+    </p>
+  </div>
+
+  <!-- The Full Rope synthesis -->
+  <section class="narrative fade-up fade-up-4" style="padding-top:0;">
+    <p style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:clamp(13px,2.5vw,15px);font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent-light);margin-bottom:28px;">The Full Rope</p>
+    <p>
+      The school system told you what kind of smart you were allowed to be.
+      The medical system told you what kind of sick you were allowed to feel.
+      The financial system told you what kind of free you were allowed to be.
+      The food system gave you the inflammation that made it harder to think clearly.
+      The media system gave you the distraction that made it easier not to.
     </p>
     <p>
-      In 1971, the United States severed the dollar's link to gold. Three years later, the Nixon administration negotiated a deal that priced all global oil sales in U.S. dollars — the <strong>petrodollar system</strong>. Every country that needs oil must first acquire dollars to buy it. This creates permanent, structural global demand for the dollar, and it is the reason the United States can carry a national debt that would be catastrophic for any other nation. This is not conspiracy theory. It is documented history, taught in international economics courses, in the Congressional record.
+      All of it — happening at the same time, to the same nervous system, in the same body, in the same life.
+      That is the full rope. Not a single strand — <strong>a cable</strong>, woven from a dozen systems,
+      each one reinforcing the others, each one telling the same story:
+      <em>this is just how the world works. Stay in the lane.</em>
     </p>
     <p>
-      A fiat currency system requires perpetual growth to function. The Federal Reserve creates money by purchasing government debt. That debt accrues interest. To service the interest, you need more economic activity — which requires more debt, which requires more interest. The system cannot stand still. It must grow. And growth means consumption. It means you, specifically, spending money on the things that keep the machine running.
+      Most of it is invisible because you were born into it. The water you swim in doesn’t feel like water.
+      It just feels like reality.
     </p>
     <p>
-      Layer in the tax structure. In the United States, the primary tax burden falls on <strong>earned income</strong> — the money you make by trading your time for a paycheck. The wealthiest hold their wealth in assets taxed at lower rates, often deferred, sometimes never taxed at all. The tax code was written by people who had assets, to protect assets — and to ensure that the people who depend on a paycheck remain dependent on one. The average working professional spends between 35 and 50 percent of gross income on taxes before seeing a dollar of real purchasing power. Then spends the rest keeping up with inflation that is structurally built into the system. You work to stay in place. That is not an accident. That is the design.
-    </p>
-    <p>
-      A person who is financially exhausted, time-poor, and perpetually anxious about money is not a person who has the bandwidth to question the system. They are a person who needs to get to work. The financial system doesn't need to be consciously designed to suppress critical thinking. It just needs to keep people busy enough that critical thinking becomes a luxury they can't afford.
-    </p>
-    <p>
-      And then — because exhausted, stressed, time-poor people still need to eat and feel something — the food system steps in. Ultra-processed food, engineered to be hyperpalatable and nutritionally hollow, is the logical output of an agricultural system subsidized and deregulated over seventy years. The result is a food supply that is, by design, inflammatory — driving the exact chronic conditions that then feed the pharmaceutical system, which profits from managing those conditions, which funds the medical schools that train the doctors who tell you your numbers are normal.
-    </p>
-    <p>
-      These are not separate systems. They are one system. Interlocking. Mutually reinforcing. And they all point in the same direction: <em>keep people consuming, keep people compliant, keep people in the lane.</em>
-    </p>
-    <p>
-      The school system told you what kind of smart you were allowed to be. The medical system told you what kind of sick you were allowed to feel. The financial system told you what kind of free you were allowed to be. The food system gave you the inflammation that made it harder to think clearly. The media system gave you the distraction that made it easier not to.
-    </p>
-    <p>
-      That is the full rope. Not a single strand — a cable, woven from a dozen systems, each one reinforcing the others, each one telling the same story: <em>this is just how the world works. Stay in the lane.</em> Most of it is invisible because you were born into it. The water you swim in doesn't feel like water. It just feels like reality.
-    </p>
-    <p>
-      Until someone points at the stake. And says: <em>that's not real. You could move that.</em>
+      Until someone points at the stake. And says: <em>that’s not real. You could move that.</em>
     </p>
   </section>
 

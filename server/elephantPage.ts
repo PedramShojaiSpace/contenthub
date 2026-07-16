@@ -464,16 +464,16 @@ export function renderElephantPage(
     }
     .sys-block-body {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(16px, 2.8vw, 19px);
+      font-size: clamp(18px, 4vw, 23px);
       font-weight: 300;
-      line-height: 1.6;
+      line-height: 1.65;
       color: var(--text-primary);
       text-align: left;
       max-width: 560px;
       margin: 0 auto;
     }
     @media (max-width: 480px) {
-      .sys-block-body { font-size: 16px; line-height: 1.55; }
+      .sys-block-body { font-size: 17px; line-height: 1.6; }
     }
     .sys-block-body strong { font-weight: 600; color: var(--accent-light); }
     .sys-block-body em { font-style: italic; color: var(--accent-light); opacity: 0.85; }
@@ -634,9 +634,9 @@ export function renderElephantPage(
   </section>
 
   <!-- Macro-Systemic Section -->
-  <section class="narrative fade-up fade-up-4">
+  <section class="sys-block fade-up fade-up-4" style="padding-bottom:0;">
     <p class="eyebrow" style="text-align:center;margin-bottom:28px;">THE ARCHITECTURE OF THE WORLD</p>
-    <p>
+    <p class="sys-block-body" style="text-align:center;max-width:520px;margin:0 auto;">
       The school system and the medical system are just two rooms in a much larger house.
       Let me tell you about the architecture of the world you were born into.
     </p>

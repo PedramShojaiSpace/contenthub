@@ -25,6 +25,10 @@ import {
   CheckCircle,
   XCircle,
   BookOpen,
+  Tag,
+  ShoppingCart,
+  DollarSign,
+  Users,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -717,6 +721,238 @@ function HeadlineGenerator() {
   );
 }
 
+// ─── Kajabi Attribution Panel ────────────────────────────────────────────────
+
+function KajabiAttributionPanel() {
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  const { data: tags, isLoading: tagsLoading } = trpc.attributionPanel.getKajabiTagSummary.useQuery();
+  const { data: contacts, isLoading: contactsLoading } = trpc.attributionPanel.getKajabiContactsByTag.useQuery(
+    { tagName: selectedTag ?? "" },
+    { enabled: !!selectedTag }
+  );
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Tag list */}
+      <div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Tag className="w-4 h-4 text-blue-500" />
+              Kajabi Tags
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {tagsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading tags...</p>
+            ) : !tags?.length ? (
+              <p className="text-sm text-muted-foreground">No tags found in Kajabi.</p>
+            ) : (
+              <div className="space-y-1 max-h-[500px] overflow-y-auto">
+                {tags.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedTag(t.name)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
+                      selectedTag === t.name
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "hover:bg-muted/50 text-foreground"
+                    }`}
+                  >
+                    <span className="truncate">{t.name}</span>
+                    <Badge variant="outline" className="ml-2 flex-shrink-0 text-xs">
+                      {t.contactCount.toLocaleString()}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Contact list */}
+      <div className="lg:col-span-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-green-500" />
+              {selectedTag ? `Contacts: ${selectedTag}` : "Select a tag to view contacts"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!selectedTag ? (
+              <p className="text-sm text-muted-foreground">Click a tag on the left to see its subscribers.</p>
+            ) : contactsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading contacts...</p>
+            ) : !contacts?.length ? (
+              <p className="text-sm text-muted-foreground">No contacts found for this tag.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">Email</th>
+                      <th className="text-left px-3 py-2 font-medium">Name</th>
+                      <th className="text-left px-3 py-2 font-medium">Added</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contacts.map((c) => (
+                      <tr key={c.id} className="border-t border-border hover:bg-muted/30">
+                        <td className="px-3 py-2 font-mono text-xs">{c.email}</td>
+                        <td className="px-3 py-2">{[c.firstName, c.lastName].filter(Boolean).join(" ") || "—"}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">
+                          {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-xs text-muted-foreground mt-2">{contacts.length} contacts shown (max 200)</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shopify Attribution Panel ────────────────────────────────────────────────
+
+function ShopifyAttributionPanel() {
+  const [daysBack, setDaysBack] = useState(90);
+  const [view, setView] = useState<"source" | "campaign">("campaign");
+
+  const { data: summary, isLoading: summaryLoading } = trpc.attributionPanel.getShopifyRevenueSummary.useQuery({ daysBack });
+  const { data: bySource, isLoading: sourceLoading } = trpc.attributionPanel.getShopifyRevenueBySource.useQuery(
+    { daysBack },
+    { enabled: view === "source" }
+  );
+  const { data: byCampaign, isLoading: campaignLoading } = trpc.attributionPanel.getShopifyRevenueByCampaign.useQuery(
+    { daysBack },
+    { enabled: view === "campaign" }
+  );
+
+  const rows = view === "source" ? (bySource ?? []) : (byCampaign ?? []);
+  const isLoading = view === "source" ? sourceLoading : campaignLoading;
+
+  return (
+    <div className="space-y-6">
+      {/* Controls */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={String(daysBack)} onValueChange={(v) => setDaysBack(Number(v))}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="30">Last 30 days</SelectItem>
+            <SelectItem value="60">Last 60 days</SelectItem>
+            <SelectItem value="90">Last 90 days</SelectItem>
+            <SelectItem value="180">Last 180 days</SelectItem>
+            <SelectItem value="365">Last 365 days</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={view} onValueChange={(v) => setView(v as any)}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="campaign">By Campaign</SelectItem>
+            <SelectItem value="source">By Source</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Summary cards */}
+      {summaryLoading ? (
+        <div className="grid grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="animate-pulse"><CardContent className="pt-4 pb-4"><div className="h-8 bg-muted rounded" /></CardContent></Card>
+          ))}
+        </div>
+      ) : summary ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <DollarSign className="w-4 h-4 text-green-600" /> Total Revenue
+              </div>
+              <div className="text-2xl font-bold">${summary.totalRevenueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Last {summary.daysBack} days</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <ShoppingCart className="w-4 h-4 text-blue-600" /> Total Orders
+              </div>
+              <div className="text-2xl font-bold">{summary.totalOrders.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <TrendingUp className="w-4 h-4 text-amber-600" /> Avg Order Value
+              </div>
+              <div className="text-2xl font-bold">${summary.aovUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {/* Breakdown table */}
+      {isLoading ? (
+        <div className="text-center py-8 text-muted-foreground">Loading revenue data...</div>
+      ) : !rows.length ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <ShoppingCart className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No orders found for this period</p>
+          <p className="text-sm mt-1">Shopify orders with UTM data will appear here once they exist.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-muted-foreground">
+              <tr>
+                <th className="text-left px-3 py-2 font-medium">{view === "campaign" ? "Campaign" : "Source"}</th>
+                {view === "campaign" && <th className="text-left px-3 py-2 font-medium">Source</th>}
+                <th className="text-right px-3 py-2 font-medium">Orders</th>
+                <th className="text-right px-3 py-2 font-medium">Revenue</th>
+                <th className="text-right px-3 py-2 font-medium">% of Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => {
+                const totalRev = rows.reduce((s, x) => s + x.revenueUsd, 0);
+                const pct = totalRev > 0 ? (r.revenueUsd / totalRev) * 100 : 0;
+                return (
+                  <tr key={i} className="border-t border-border hover:bg-muted/30">
+                    <td className="px-3 py-2 font-medium">{view === "campaign" ? (r as any).campaign : (r as any).source}</td>
+                    {view === "campaign" && <td className="px-3 py-2 text-muted-foreground text-xs">{(r as any).source || "—"}</td>}
+                    <td className="px-3 py-2 text-right font-mono">{r.orders}</td>
+                    <td className="px-3 py-2 text-right font-mono font-semibold">${r.revenueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-3 py-2 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="w-16 bg-muted rounded-full h-1.5">
+                          <div className="bg-primary h-1.5 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(1)}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function YouTubeAnalytics() {
@@ -745,6 +981,12 @@ export default function YouTubeAnalytics() {
           <TabsTrigger value="headlines" className="flex items-center gap-1.5">
             <Lightbulb className="w-4 h-4" /> Headline Generator
           </TabsTrigger>
+          <TabsTrigger value="kajabi" className="flex items-center gap-1.5">
+            <Tag className="w-4 h-4" /> Email Attribution
+          </TabsTrigger>
+          <TabsTrigger value="shopify" className="flex items-center gap-1.5">
+            <ShoppingCart className="w-4 h-4" /> Revenue Attribution
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="videos">
@@ -755,6 +997,12 @@ export default function YouTubeAnalytics() {
         </TabsContent>
         <TabsContent value="headlines">
           <HeadlineGenerator />
+        </TabsContent>
+        <TabsContent value="kajabi">
+          <KajabiAttributionPanel />
+        </TabsContent>
+        <TabsContent value="shopify">
+          <ShopifyAttributionPanel />
         </TabsContent>
       </Tabs>
     </div>

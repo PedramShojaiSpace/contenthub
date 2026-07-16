@@ -465,12 +465,18 @@ Return ONLY valid JSON — no markdown, no explanation, no code fences.`,
                 content: `Topic: "${input.topic}"
 Content pillar: ${pillarHint}
 
-Generate exactly 5 YouTube title variants. Each title should use a DIFFERENT proven formula:
+Generate exactly 5 YouTube title variants AND a matching thumbnail concept for each. Each title should use a DIFFERENT proven formula:
 1. CURIOSITY GAP — tease something the viewer desperately wants to know
 2. BOLD CLAIM + NUMBER — specific, credible, makes a strong promise
 3. PATTERN INTERRUPT — counterintuitive statement that stops the scroll
 4. STORY/PERSONAL — first-person experience or transformation
 5. QUESTION — a question the viewer is already asking themselves
+
+For each title, also generate a thumbnail concept. Thumbnails for Dr. Pedram Shojai (The Urban Monk) should:
+- NOT use AI-generated likenesses of the host; instead use anonymous human figures, symbolic imagery, or visual metaphors
+- Convey the emotional problem or transformation, not a specific person's face
+- Use a dark, earthy, or deep navy palette consistent with the Urban Monk brand
+- Be production-ready descriptions a graphic designer can execute in Canva or Photoshop
 
 Return JSON in this exact format:
 {
@@ -479,7 +485,15 @@ Return JSON in this exact format:
       "title": "The actual YouTube title (max 70 chars)",
       "hook": "One sentence explaining why this title will make someone click",
       "rationale": "Which formula this uses and why it works for this topic",
-      "estimatedCtrTier": "high" | "medium" | "low"
+      "estimatedCtrTier": "high" | "medium" | "low",
+      "thumbnail": {
+        "layout": "Overall composition description",
+        "textOverlay": "Exact 3-5 word text to overlay on the thumbnail",
+        "background": "Background scene or image (no host face — use symbolic imagery or anonymous figures)",
+        "focalElement": "Single most eye-catching visual element that dominates the frame",
+        "colorMood": "Color palette and emotional tone",
+        "productionNotes": "Specific design tips for a Canva/Photoshop designer"
+      }
     }
   ]
 }`,
@@ -502,8 +516,21 @@ Return JSON in this exact format:
                           hook: { type: "string" },
                           rationale: { type: "string" },
                           estimatedCtrTier: { type: "string", enum: ["high", "medium", "low"] },
+                          thumbnail: {
+                            type: "object",
+                            properties: {
+                              layout: { type: "string" },
+                              textOverlay: { type: "string" },
+                              background: { type: "string" },
+                              focalElement: { type: "string" },
+                              colorMood: { type: "string" },
+                              productionNotes: { type: "string" },
+                            },
+                            required: ["layout", "textOverlay", "background", "focalElement", "colorMood", "productionNotes"],
+                            additionalProperties: false,
+                          },
                         },
-                        required: ["title", "hook", "rationale", "estimatedCtrTier"],
+                        required: ["title", "hook", "rationale", "estimatedCtrTier", "thumbnail"],
                         additionalProperties: false,
                       },
                     },
@@ -518,12 +545,30 @@ Return JSON in this exact format:
       );
 
       const raw = response.choices[0]?.message?.content ?? "{}";
-      let parsed: { headlines: Array<{ title: string; hook: string; rationale: string; estimatedCtrTier: "high" | "medium" | "low" }> };
+      let parsed: {
+        headlines: Array<{
+          title: string;
+          hook: string;
+          rationale: string;
+          estimatedCtrTier: "high" | "medium" | "low";
+          thumbnail: {
+            layout: string;
+            textOverlay: string;
+            background: string;
+            focalElement: string;
+            colorMood: string;
+            productionNotes: string;
+          };
+        }>;
+      };
       try {
         parsed = JSON.parse(raw);
       } catch {
         throw new Error("Failed to parse headline generation response");
       }
+
+      // Extract thumbnail concepts as a parallel array for DB storage
+      const thumbnailConcepts = parsed.headlines.map((h) => h.thumbnail);
 
       // Store in DB
       if (db) {
@@ -531,6 +576,7 @@ Return JSON in this exact format:
           topic: input.topic,
           pillar: input.pillar ?? "general",
           headlines: parsed.headlines,
+          thumbnailConcepts,
           linkedScriptId: input.linkedScriptId,
           linkedPipelineVideoId: input.linkedPipelineVideoId,
           createdAt: Date.now(),

@@ -3286,6 +3286,16 @@ export const ytHeadlineGenerations = mysqlTable("yt_headline_generations", {
     rationale: string;
     estimatedCtrTier: "high" | "medium" | "low";
   }>>(),
+  // JSON array of 5 thumbnail concept objects (parallel to headlines)
+  thumbnailConcepts: json("thumbnail_concepts").$type<Array<{
+    layout: string;
+    textOverlay: string;
+    background: string;
+    focalElement: string;
+    colorMood: string;
+    productionNotes: string;
+  }>>()
+    ,
   selectedTitle: varchar("selected_title", { length: 512 }),
   linkedScriptId: int("linked_script_id"),
   linkedPipelineVideoId: int("linked_pipeline_video_id"),

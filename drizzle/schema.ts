@@ -3337,3 +3337,42 @@ export const funnelCohorts = mysqlTable("funnel_cohorts", {
 });
 export type FunnelCohort = typeof funnelCohorts.$inferSelect;
 export type InsertFunnelCohort = typeof funnelCohorts.$inferInsert;
+
+// ─── Analog Data Library ──────────────────────────────────────────────────────
+// Keith's "Analyze" section — corpus seed for the Transcript Intelligence Engine.
+// CRITICAL QUALITY GATE: Only CONVERTING content goes in here.
+// Winning ads, converting sales pages, real customer interview transcripts, survey data.
+// NOT aspirational or untested content.
+
+export const analogDataTypeEnum = mysqlEnum("analogDataType", [
+  "sales_page",
+  "facebook_ad",
+  "customer_interview",
+  "text_survey",
+  "vsl_script",
+  "email_sequence",
+  "other",
+]);
+
+export const analogDataEntries = mysqlTable("analog_data_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  // Title — nullable; AI auto-generates if left blank on input
+  title: varchar("title", { length: 255 }),
+  // Type of converting content
+  type: analogDataTypeEnum.notNull().default("other"),
+  // Tags — JSON array of string labels (e.g. ["gut_health", "Q1_2026", "cold_traffic"])
+  tags: text("tags"),
+  // FK → personas.id (nullable — can be unassigned or assigned to multiple)
+  personaId: int("personaId"),
+  // The raw pasted content (sales page copy, ad copy, interview transcript, survey data, etc.)
+  content: mediumtext("content").notNull(),
+  // AI-extracted insights: patterns, hooks, objections, proof structures (JSON)
+  extractedInsights: text("extractedInsights"),
+  // Whether this entry has been added to the corpus for the Script Factory
+  inCorpus: boolean("inCorpus").default(false).notNull(),
+  createdAt: timestamp("ad_createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("ad_updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AnalogDataEntry = typeof analogDataEntries.$inferSelect;
+export type InsertAnalogDataEntry = typeof analogDataEntries.$inferInsert;

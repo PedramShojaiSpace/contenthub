@@ -88,6 +88,7 @@ import { Button } from "./ui/button";
 // OWNER workspace — Pedram's Monday view: funnels, ascension, approvals, ads
 const ownerItems = [
   { icon: LayoutDashboard, label: "Funnel Command", path: "/funnels" },
+  { icon: Brain, label: "Analyze", path: "/analyze" },
   { icon: ArrowUpCircle, label: "Ascension Pipeline", path: "/ascension" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
@@ -209,6 +210,7 @@ const systemArchiveItems = [
 // All paths for active-state detection
 const allOwnerPaths = new Set([
   ...ownerItems.map(i => i.path),
+  "/analyze",
   ...ownerAdsItems.map(i => i.path),
   ...ownerSeoItems.map(i => i.path),
 ]);

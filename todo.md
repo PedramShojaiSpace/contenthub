@@ -4420,3 +4420,11 @@ Pricing model (corrected):
 - [ ] performanceRouter.ts: updatePatternWeights (90-day feedback loop)
 - [ ] Wire performanceRouter into routers.ts
 - [ ] Write vitest tests for weight update logic
+
+## Phase B Build Tracking (active)
+- [x] yt_video_outliers table created via SQL
+- [x] yt_video_outliers added to Drizzle schema
+- [x] outlierRouter.ts: computeBaseline, scoreVideo, scoreAll, listOutliers, getOutlierStats
+- [x] Wire outlierRouter into routers.ts
+- [x] OutlierDetector.tsx tab added to TranscriptEngine page
+- [x] Vitest tests for outlier math (20+ tests)

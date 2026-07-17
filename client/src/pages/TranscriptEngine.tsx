@@ -43,6 +43,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  TrendingUp,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -547,6 +548,132 @@ function ManualPasteTab() {
   );
 }
 
+// ─── Outlier Detector Tab ────────────────────────────────────────────────────
+
+function OutlierDetectorTab() {
+  const { data: stats } = trpc.outliers.getOutlierStats.useQuery();
+  const { data: baseline } = trpc.outliers.getBaseline.useQuery({ windowDays: 90 });
+  const { data: outliers, refetch: refetchOutliers, isLoading } = trpc.outliers.listOutliers.useQuery({
+    onlyOutliers: false,
+    limit: 100,
+    offset: 0,
+    sortBy: "outlier_score",
+  });
+
+  const scoreAll = trpc.outliers.scoreAll.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Scored ${result.scored} videos — ${result.outliers} outliers found`);
+      refetchOutliers();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const fmt = (n: number | null | undefined, decimals = 2) =>
+    n == null ? "—" : (n * 100).toFixed(decimals) + "%";
+  const fmtZ = (n: number | null | undefined) =>
+    n == null ? "—" : (n >= 0 ? "+" : "") + n.toFixed(2) + "σ";
+
+  return (
+    <div className="space-y-6">
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Videos Scored</p>
+          <p className="text-2xl font-bold">{stats?.total ?? "—"}</p>
+        </div>
+        <div className="border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Outliers Found</p>
+          <p className="text-2xl font-bold text-amber-500">{stats?.outliers ?? "—"}</p>
+        </div>
+        <div className="border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Baseline CTR (90d)</p>
+          <p className="text-2xl font-bold">{fmt(baseline?.ctrMean)}</p>
+          <p className="text-xs text-muted-foreground">±{fmt(baseline?.ctrStddev)} σ</p>
+        </div>
+        <div className="border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Baseline Retention (90d)</p>
+          <p className="text-2xl font-bold">{fmt(baseline?.retentionMean)}</p>
+          <p className="text-xs text-muted-foreground">±{fmt(baseline?.retentionStddev)} σ</p>
+        </div>
+      </div>
+
+      {/* Action */}
+      <div className="flex items-center gap-3">
+        <Button
+          onClick={() => scoreAll.mutate({ windowDays: 90 })}
+          disabled={scoreAll.isPending}
+          className="flex items-center gap-2"
+        >
+          {scoreAll.isPending ? (
+            <><Loader2 className="w-4 h-4 animate-spin" />Scoring...</>
+          ) : (
+            <><TrendingUp className="w-4 h-4" />Score All Videos</>  
+          )}
+        </Button>
+        <p className="text-sm text-muted-foreground">
+          Compares each video's CTR and retention against the 90-day channel baseline. Outlier threshold: 1.5σ.
+        </p>
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+        </div>
+      ) : !outliers || outliers.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>No videos scored yet. Click "Score All Videos" to begin.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-muted-foreground">
+                <th className="text-left py-2 pr-4 font-medium">Video</th>
+                <th className="text-right py-2 px-2 font-medium">CTR</th>
+                <th className="text-right py-2 px-2 font-medium">CTR z</th>
+                <th className="text-right py-2 px-2 font-medium">Retention</th>
+                <th className="text-right py-2 px-2 font-medium">Ret. z</th>
+                <th className="text-right py-2 px-2 font-medium">Score</th>
+                <th className="text-center py-2 pl-2 font-medium">Outlier</th>
+              </tr>
+            </thead>
+            <tbody>
+              {outliers.map((row) => (
+                <tr key={row.videoId} className={`border-b hover:bg-muted/30 ${row.isOutlier ? "bg-amber-50 dark:bg-amber-950/20" : ""}`}>
+                  <td className="py-2 pr-4 max-w-[280px]">
+                    <a
+                      href={`https://youtube.com/watch?v=${row.videoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline line-clamp-2 text-xs"
+                    >
+                      {row.videoTitle ?? row.videoId}
+                    </a>
+                  </td>
+                  <td className="text-right py-2 px-2 tabular-nums">{fmt(row.ctrScore)}</td>
+                  <td className={`text-right py-2 px-2 tabular-nums font-mono text-xs ${(row.ctrZScore ?? 0) > 1.5 ? "text-green-600" : (row.ctrZScore ?? 0) < -1.5 ? "text-red-500" : ""}`}>{fmtZ(row.ctrZScore)}</td>
+                  <td className="text-right py-2 px-2 tabular-nums">{fmt(row.retentionScore)}</td>
+                  <td className={`text-right py-2 px-2 tabular-nums font-mono text-xs ${(row.retentionZScore ?? 0) > 1.5 ? "text-green-600" : (row.retentionZScore ?? 0) < -1.5 ? "text-red-500" : ""}`}>{fmtZ(row.retentionZScore)}</td>
+                  <td className="text-right py-2 px-2 tabular-nums font-semibold">{row.outlierScore?.toFixed(2) ?? "—"}</td>
+                  <td className="text-center py-2 pl-2">
+                    {row.isOutlier ? (
+                      <Badge variant="outline" className="text-amber-600 border-amber-400 text-xs">⚡ Outlier</Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TranscriptEngine() {
@@ -578,10 +705,14 @@ export default function TranscriptEngine() {
               <Zap className="w-4 h-4" />
               Backfill Channel
             </TabsTrigger>
-            <TabsTrigger value="manual" className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Manual Paste
-            </TabsTrigger>
+          <TabsTrigger value="manual" className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Manual Paste
+          </TabsTrigger>
+          <TabsTrigger value="outliers" className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Outlier Detector
+          </TabsTrigger>
           </TabsList>
           <TabsContent value="library" className="mt-4">
             <LibraryTab />
@@ -591,6 +722,9 @@ export default function TranscriptEngine() {
           </TabsContent>
           <TabsContent value="manual" className="mt-4">
             <ManualPasteTab />
+          </TabsContent>
+          <TabsContent value="outliers" className="mt-4">
+            <OutlierDetectorTab />
           </TabsContent>
         </Tabs>
       </div>

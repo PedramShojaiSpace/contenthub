@@ -275,7 +275,7 @@ function SeedTab() {
           <h3 className="font-semibold">Seed from Analog Data Library</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          Pulls all entries from your Analog Data Library (winning ads, converting sales pages, customer interviews, surveys) and adds them to the corpus with embeddings.
+          Pulls entries from your Analog Data Library that have the <strong>corpus toggle enabled</strong> (winning ads, converting sales pages, customer interviews, surveys) and adds them to the corpus with embeddings. Toggle entries in the Analyze page first.
         </p>
         <div className="flex gap-2">
           <Button

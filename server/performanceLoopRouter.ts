@@ -121,7 +121,21 @@ export const performanceLoopRouter = router({
         baseline
       );
 
-      // 3. Insert feedback record
+      // 3. Check for duplicate feedback on this script
+      const [existingFeedback] = await db
+        .select({ id: scriptPerformanceFeedback.id })
+        .from(scriptPerformanceFeedback)
+        .where(eq(scriptPerformanceFeedback.scriptId, input.scriptId))
+        .limit(1);
+
+      if (existingFeedback) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Feedback already submitted for this script. Delete the existing record first to resubmit.",
+        });
+      }
+
+      // 4. Insert feedback record
       await db.insert(scriptPerformanceFeedback).values({
         scriptId: input.scriptId,
         videoId: input.videoId,
@@ -232,7 +246,11 @@ export const performanceLoopRouter = router({
     const db = await getDb();
     if (!db) return [];
 
-    // Scripts approved 90+ days ago that don't have feedback yet
+    // Scripts approved 90+ days ago that don't have feedback yet.
+    // The 90-day clock starts from when the script was approved (status changed to 'approved'),
+    // not from when it was created. We use updatedAt as a proxy for approvedAt since
+    // status updates set updatedAt. Scripts with status='approved' AND updatedAt >= 90 days ago
+    // are ready for feedback.
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
@@ -242,22 +260,23 @@ export const performanceLoopRouter = router({
       .from(scriptPerformanceFeedback);
     const withFeedbackIds = new Set(withFeedback.map((r) => r.scriptId));
 
-    // Get approved scripts older than 90 days
+    // Get approved scripts whose updatedAt (approval time) is 90+ days ago
     const scripts = await db
       .select({
         id: scriptFactoryOutputs.id,
         title: scriptFactoryOutputs.title,
         format: scriptFactoryOutputs.format,
         createdAt: scriptFactoryOutputs.createdAt,
+        updatedAt: scriptFactoryOutputs.updatedAt,
       })
       .from(scriptFactoryOutputs)
       .where(
         and(
           eq(scriptFactoryOutputs.status, "approved"),
-          sql`created_at <= ${ninetyDaysAgo.toISOString()}`
+          sql`updated_at <= ${ninetyDaysAgo.toISOString()}`
         )
       )
-      .orderBy(desc(scriptFactoryOutputs.createdAt))
+      .orderBy(desc(scriptFactoryOutputs.updatedAt))
       .limit(20);
 
     return scripts.filter((s) => !withFeedbackIds.has(s.id));

@@ -71,7 +71,7 @@ async function getOwnerChannelId(): Promise<string> {
   return channelId;
 }
 
-async function getChannelVideoIds(maxResults = 50) {
+async function getChannelVideoIds(maxResults = 50, pageToken?: string) {
   const yt = await getYTClient();
   const channelId = await getOwnerChannelId();
 
@@ -83,13 +83,17 @@ async function getChannelVideoIds(maxResults = 50) {
     part: ["contentDetails", "snippet"],
     playlistId: uploadsPlaylistId,
     maxResults,
+    ...(pageToken ? { pageToken } : {}),
   });
 
-  return (plRes.data.items ?? []).map((item) => ({
-    videoId: item.contentDetails?.videoId ?? "",
-    title: item.snippet?.title ?? "",
-    publishedAt: item.contentDetails?.videoPublishedAt ?? null,
-  })).filter((v) => v.videoId);
+  return {
+    videos: (plRes.data.items ?? []).map((item) => ({
+      videoId: item.contentDetails?.videoId ?? "",
+      title: item.snippet?.title ?? "",
+      publishedAt: item.contentDetails?.videoPublishedAt ?? null,
+    })).filter((v) => v.videoId),
+    nextPageToken: plRes.data.nextPageToken ?? null,
+  };
 }
 
 export async function transcriptBackfillHandler(req: Request, res: Response) {
@@ -114,29 +118,40 @@ export async function transcriptBackfillHandler(req: Request, res: Response) {
       });
     }
 
-    // Get video IDs from YouTube Data API
-    let videos: { videoId: string; title: string; publishedAt: string | null }[] = [];
-    try {
-      videos = await getChannelVideoIds(50);
-    } catch (err) {
-      return res.status(500).json({ error: `Failed to fetch channel videos: ${err instanceof Error ? err.message : "Unknown"}` });
-    }
-
-    // Filter out already-done videos
+    // Get video IDs from YouTube Data API — paginate until we have enough unprocessed videos
+    // Load existing IDs first so we can skip already-done videos while paginating
     const existingRows = await db
       .select({ videoId: ytTranscripts.videoId, status: ytTranscripts.status })
       .from(ytTranscripts);
     const existingMap = new Map(existingRows.map((r) => [r.videoId, r.status]));
 
-    const toFetch = videos
-      .filter((v) => {
-        const s = existingMap.get(v.videoId);
-        return !s || s === "pending" || s === "error";
-      })
-      .slice(0, quota.remaining);
+    let toFetch: { videoId: string; title: string; publishedAt: string | null }[] = [];
+    let pageToken: string | undefined = undefined;
+    let totalScanned = 0;
+    const MAX_PAGES = 10; // safety cap — scans up to 500 videos per run
+    let pages = 0;
+
+    try {
+      while (toFetch.length < quota.remaining && pages < MAX_PAGES) {
+        const { videos: pageVideos, nextPageToken } = await getChannelVideoIds(50, pageToken);
+        totalScanned += pageVideos.length;
+        for (const v of pageVideos) {
+          const s = existingMap.get(v.videoId);
+          if (!s || s === "pending" || s === "error") {
+            toFetch.push(v);
+            if (toFetch.length >= quota.remaining) break;
+          }
+        }
+        if (!nextPageToken) break; // no more pages
+        pageToken = nextPageToken;
+        pages++;
+      }
+    } catch (err) {
+      return res.status(500).json({ error: `Failed to fetch channel videos: ${err instanceof Error ? err.message : "Unknown"}` });
+    }
 
     if (toFetch.length === 0) {
-      return res.json({ ok: true, fetched: 0, noTranscript: 0, errors: 0, skipped: videos.length, message: "All videos already processed" });
+      return res.json({ ok: true, fetched: 0, noTranscript: 0, errors: 0, skipped: totalScanned, message: "All scanned videos already processed" });
     }
 
     let channelId = "unknown";

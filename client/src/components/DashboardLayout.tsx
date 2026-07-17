@@ -95,6 +95,7 @@ const ownerItems = [
   { icon: Database, label: "Corpus Builder", path: "/corpus-builder" },
   { icon: Sparkles, label: "Pattern Extractor", path: "/pattern-extractor" },
   { icon: Wand2, label: "Script Factory", path: "/script-factory" },
+  { icon: RefreshCw, label: "Performance Loop", path: "/performance-loop" },
   { icon: ArrowUpCircle, label: "Ascension Pipeline", path: "/ascension" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
@@ -221,6 +222,7 @@ const allOwnerPaths = new Set([
   "/corpus-builder",
   "/pattern-extractor",
   "/script-factory",
+  "/performance-loop",
   ...ownerAdsItems.map(i => i.path),
   ...ownerSeoItems.map(i => i.path),
 ]);

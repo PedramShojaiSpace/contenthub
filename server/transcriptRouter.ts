@@ -15,7 +15,7 @@
  */
 
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { ytQuotaLedger, ytTranscripts } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -311,12 +311,13 @@ export const transcriptRouter = router({
       }
 
       // Filter out already-fetched or no_transcript videos
-      const existingRows = await db
-        .select({ videoId: ytTranscripts.videoId, status: ytTranscripts.status })
-        .from(ytTranscripts)
-        .where(
-          sql`video_id IN (${videos.map((v) => `'${v.videoId}'`).join(",")})`
-        );
+      const videoIds = videos.map((v) => v.videoId);
+      const existingRows = videoIds.length > 0
+        ? await db
+            .select({ videoId: ytTranscripts.videoId, status: ytTranscripts.status })
+            .from(ytTranscripts)
+            .where(inArray(ytTranscripts.videoId, videoIds))
+        : [];
 
       const existingMap = new Map(existingRows.map((r) => [r.videoId, r.status]));
       const toFetch = videos
@@ -407,6 +408,9 @@ export const transcriptRouter = router({
 
       const finalQuota = await getOrCreateQuota(db);
 
+      // Return nextPageToken so the UI can advance through the full playlist
+      const nextPageToken = videos.find((v) => v.nextPageToken)?.nextPageToken ?? null;
+
       return {
         fetched,
         noTranscript,
@@ -414,6 +418,7 @@ export const transcriptRouter = router({
         skipped: videos.length - toFetch.length,
         quotaUsed: finalQuota.unitsUsed,
         quotaRemaining: finalQuota.remaining,
+        nextPageToken,
         message: `Processed ${toFetch.length} videos: ${fetched} fetched, ${noTranscript} no transcript, ${errors} errors`,
       };
     }),

@@ -13,7 +13,7 @@
  */
 
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { contentPatterns, corpusEntries, scriptFactoryOutputs } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -183,15 +183,18 @@ export const scriptFactoryRouter = router({
 
       if (input.useCorpusSearch) {
         try {
-          // Try vector search first
-          const topicWords = input.topic.trim().split(/\s+/).slice(0, 5);
-          const likeConditions = topicWords.map(
-            (w) => sql`(content LIKE ${`%${w}%`} OR title LIKE ${`%${w}%`})`
-          );
+          // Build keyword OR conditions using proper Drizzle sql tagged templates
+          const topicWords = input.topic.trim().split(/\s+/).slice(0, 5).filter(Boolean);
+          const keywordCondition = topicWords.length > 0
+            ? or(...topicWords.map((w) => or(
+                sql`${corpusEntries.content} LIKE ${`%${w}%`}`,
+                sql`${corpusEntries.title} LIKE ${`%${w}%`}`
+              )))
+            : undefined;
           const rows = await db
             .select({ id: corpusEntries.id, title: corpusEntries.title, content: corpusEntries.content, sourceType: corpusEntries.sourceType })
             .from(corpusEntries)
-            .where(and(eq(corpusEntries.inCorpus, 1), sql`(${likeConditions.join(" OR ")})`))
+            .where(and(eq(corpusEntries.inCorpus, 1), keywordCondition))
             .orderBy(desc(corpusEntries.createdAt))
             .limit(5);
           corpusExcerpts = rows;

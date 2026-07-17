@@ -4444,3 +4444,17 @@ Pricing model (corrected):
 - [x] Add Corpus Builder nav item to DashboardLayout (Database icon)
 - [x] Route /corpus-builder added to App.tsx
 - [x] 28 new fixture-based tests (878 total passing)
+
+## Phase D — Pattern Extractor (complete)
+
+- [x] content_patterns table created (pattern_type enum, pattern_text, pattern_context, effectiveness_score, usage_count, source_corpus_id, source_video_id)
+- [x] Drizzle schema updated with contentPatterns table
+- [x] patternExtractorRouter.ts: extractFromEntry, extractAll (batch LLM mining), listPatterns, getStats, getForScriptFactory, deletePattern, incrementUsage
+- [x] Wire patternExtractorRouter into routers.ts as 'patterns'
+- [x] PatternExtractor.tsx: /pattern-extractor page with Overview/Mine/Browse tabs
+- [x] Overview tab: stats bar + type breakdown bar chart with effectiveness averages
+- [x] Mine tab: batch extraction with limit slider, overwrite toggle, cost estimate
+- [x] Browse tab: filterable pattern cards with type badges, effectiveness bar, context expand, delete
+- [x] Add Pattern Extractor nav item to DashboardLayout (Sparkles icon)
+- [x] Route /pattern-extractor added to App.tsx
+- [x] 38 new fixture-based tests (916 total passing)

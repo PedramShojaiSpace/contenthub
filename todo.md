@@ -4338,3 +4338,85 @@ Pricing model (corrected):
 - [x] Build client/src/pages/GA4Analytics.tsx — property switcher, metric cards, top pages table, traffic sources chart
 - [x] Add GA4 nav item to DashboardLayout sidebar under Analytics section
 - [x] Save checkpoint
+
+## Analog Data Library (Keith's "Analyze" Section)
+
+- [x] Schema: analog_data_entries table (id, title, type enum, tags JSON, personaId FK, content MEDIUMTEXT, extractedInsights JSON, createdAt, updatedAt)
+- [x] Schema: analog_data_type enum (sales_page, facebook_ad, customer_interview, text_survey, vsl_script, email_sequence, other)
+- [x] Run db:push after schema changes
+- [x] analogDataRouter.ts: addEntry (paste content → AI title if blank, extract insights, store)
+- [x] analogDataRouter.ts: listEntries (filterable by type, tag, persona, date range)
+- [x] analogDataRouter.ts: getEntry
+- [x] analogDataRouter.ts: deleteEntry
+- [x] analogDataRouter.ts: generateTitle (LLM auto-title from content)
+- [x] Wire analogDataRouter into routers.ts
+- [x] AnalyzeData.tsx: /analyze page with two horizontal tabs
+- [x] Tab 1 — Library: filterable table (type badges, tags, date, content preview, persona)
+- [x] Tab 2 — Add Entry: title field + AI auto-generate toggle, type dropdown, tags input, persona selector, large textarea
+- [x] Quality gate warning on Add Entry form: "Only converting/proven content — winning ads, converting sales pages, real customer interviews, survey data"
+- [x] Add "Analyze" nav item to DashboardLayout (Brain icon, Owner workspace)
+- [x] Route /analyze added to App.tsx
+- [x] Write vitest tests for analogDataRouter
+
+## Transcript Intelligence Engine — Phase A: Transcript Engine
+
+- [ ] Schema: yt_quota_ledger table (date, unitsUsed, limit, createdAt)
+- [ ] Schema: yt_transcripts table (videoId, channelId, fetchedAt, provider, rawText MEDIUMTEXT, wordCount, status)
+- [ ] Run db:push
+- [ ] transcriptRouter.ts: fetchTranscript (Supadata API, quota check before every call)
+- [ ] transcriptRouter.ts: backfillChannel (25/day cap, uploads-playlist-only, ledger update)
+- [ ] transcriptRouter.ts: getQuotaStatus
+- [ ] transcriptRouter.ts: listTranscripts (filterable by channel, date, status)
+- [ ] Wire transcriptRouter into routers.ts
+- [ ] TranscriptEngine.tsx: /transcript-engine page — quota gauge, backfill controls, transcript library table
+- [ ] Add "Transcript Engine" nav item to DashboardLayout
+- [ ] Route /transcript-engine added to App.tsx
+- [ ] Write vitest tests for quota ledger and backfill logic
+
+## Transcript Intelligence Engine — Phase B: Outlier Detector
+
+- [ ] Schema: yt_video_outliers table (videoId, ctrScore, retentionScore, outlierScore, baseline, isOutlier, scoredAt)
+- [ ] outlierRouter.ts: scoreVideo (CTR/retention vs channel baseline)
+- [ ] outlierRouter.ts: computeBaseline (rolling 90-day channel average)
+- [ ] outlierRouter.ts: listOutliers (top N by outlierScore)
+- [ ] Wire outlierRouter into routers.ts
+- [ ] OutlierDetector tab/section in TranscriptEngine page
+- [ ] Write vitest tests for outlier math (fixture-based)
+
+## Transcript Intelligence Engine — Phase C: Corpus Builder
+
+- [ ] Test TiDB vector support (probe query for VEC_COSINE_DISTANCE)
+- [ ] Schema: corpus_entries table (id, sourceType enum, sourceId, content MEDIUMTEXT, embedding vector/text, tags JSON, personaId, createdAt)
+- [ ] corpusRouter.ts: addToCorpus (from transcript or analog data entry)
+- [ ] corpusRouter.ts: searchCorpus (vector similarity if TiDB supports, keyword fallback)
+- [ ] corpusRouter.ts: seedCorpus (day-one seed from analog_data_entries)
+- [ ] Wire corpusRouter into routers.ts
+- [ ] Write vitest tests for corpus search (both vector and keyword paths)
+
+## Transcript Intelligence Engine — Phase D: Pattern Extractor
+
+- [ ] patternRouter.ts: extractPatterns (LLM mining from outlier transcripts — hooks, transitions, proof structures)
+- [ ] Schema: corpus_patterns table (id, patternType, patternText, sourceIds JSON, weight, extractedAt)
+- [ ] patternRouter.ts: listPatterns (filterable by type, weight)
+- [ ] patternRouter.ts: updatePatternWeight
+- [ ] Wire patternRouter into routers.ts
+- [ ] Write vitest tests for pattern extraction
+
+## Transcript Intelligence Engine — Phase E: Script Factory
+
+- [ ] scriptFactoryRouter.ts: generateScript (corpus-grounded, [VERIFIED] tags from corpus data property only)
+- [ ] scriptFactoryRouter.ts: claimsGate (run every generated script through claimsRubric before returning)
+- [ ] No auto-publish: all scripts require human approval before any action
+- [ ] Wire scriptFactoryRouter into routers.ts
+- [ ] ScriptFactory.tsx: /script-factory page — topic input, persona selector, generate button, output with [VERIFIED] provenance panel, approve/reject controls
+- [ ] Add "Script Factory" nav item to DashboardLayout
+- [ ] Route /script-factory added to App.tsx
+- [ ] Write vitest tests for [VERIFIED] tag provenance (must come from corpus data, not LLM)
+
+## Transcript Intelligence Engine — Phase F: Performance Loop
+
+- [ ] Schema: script_performance table (scriptId, videoId, ctr90d, retention90d, updatedAt)
+- [ ] performanceRouter.ts: recordPerformance (link published video back to script)
+- [ ] performanceRouter.ts: updatePatternWeights (90-day feedback loop)
+- [ ] Wire performanceRouter into routers.ts
+- [ ] Write vitest tests for weight update logic

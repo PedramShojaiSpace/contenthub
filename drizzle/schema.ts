@@ -3479,3 +3479,37 @@ export const corpusEntries = mysqlTable("corpus_entries", {
 
 export type CorpusEntry = typeof corpusEntries.$inferSelect;
 export type InsertCorpusEntry = typeof corpusEntries.$inferInsert;
+
+// ─── Transcript Intelligence Engine — Phase D: Pattern Extractor ───────────────
+
+export const patternTypeEnum = mysqlEnum("pattern_type", [
+  "hook", "pain_point", "proof_element", "objection_handler",
+  "cta", "story_structure", "key_phrase", "transformation_arc",
+  "authority_signal", "social_proof", "open_loop", "other",
+]);
+
+/**
+ * Content patterns mined from outlier transcripts and analog data.
+ * Used to ground the Script Factory with proven, converting language.
+ */
+export const contentPatterns = mysqlTable("content_patterns", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceCorpusId: int("source_corpus_id"),
+  sourceVideoId: varchar("source_video_id", { length: 128 }),
+  patternType: mysqlEnum("pattern_type", [
+    "hook", "pain_point", "proof_element", "objection_handler",
+    "cta", "story_structure", "key_phrase", "transformation_arc",
+    "authority_signal", "social_proof", "open_loop", "other",
+  ]).notNull().default("other"),
+  patternText: text("pattern_text").notNull(),
+  patternContext: text("pattern_context"),
+  effectivenessScore: float("effectiveness_score"),
+  usageCount: int("usage_count").notNull().default(0),
+  lastUsedAt: datetime("last_used_at"),
+  tags: json("tags").$type<string[]>(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type ContentPattern = typeof contentPatterns.$inferSelect;
+export type InsertContentPattern = typeof contentPatterns.$inferInsert;

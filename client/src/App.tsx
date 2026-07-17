@@ -89,6 +89,7 @@ const GA4Analytics = lazy(() => import("./pages/GA4Analytics"));
 const AnalyzeData = lazy(() => import("./pages/AnalyzeData"));
 const TranscriptEngine = lazy(() => import("./pages/TranscriptEngine"));
 const CorpusBuilder = lazy(() => import("./pages/CorpusBuilder"));
+const PatternExtractor = lazy(() => import("./pages/PatternExtractor"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -186,6 +187,7 @@ function Router() {
         <Route path={"/analyze"} component={AnalyzeData} />
         <Route path={"/transcript-engine"} component={TranscriptEngine} />
         <Route path={"/corpus-builder"} component={CorpusBuilder} />
+        <Route path={"/pattern-extractor"} component={PatternExtractor} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

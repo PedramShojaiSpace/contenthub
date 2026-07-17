@@ -148,6 +148,7 @@ import { analogDataRouter } from "./analogDataRouter";
 import { transcriptRouter } from "./transcriptRouter";
 import { outlierRouter } from "./outlierRouter";
 import { corpusRouter } from "./corpusRouter";
+import { patternExtractorRouter } from "./patternExtractorRouter";
 import { funnelsRouter } from "./funnelsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
@@ -530,6 +531,7 @@ export const appRouter = router({
   transcripts: transcriptRouter,
   outliers: outlierRouter,
   corpus: corpusRouter,
+  patterns: patternExtractorRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

@@ -4428,3 +4428,19 @@ Pricing model (corrected):
 - [x] Wire outlierRouter into routers.ts
 - [x] OutlierDetector.tsx tab added to TranscriptEngine page
 - [x] Vitest tests for outlier math (20+ tests)
+
+## Phase C — Corpus Builder (complete)
+
+- [x] TiDB vector support confirmed (VEC_COSINE_DISTANCE working)
+- [x] corpus_entries table created (VECTOR(1536) column + cosine vector index)
+- [x] Drizzle schema updated with corpusEntries table
+- [x] corpusRouter.ts: addToCorpus, seedFromAnalogData, seedFromOutlierTranscripts, searchCorpus (vector + keyword fallback), listEntries, getStats, removeEntry, reEmbed
+- [x] Wire corpusRouter into routers.ts
+- [x] CorpusBuilder.tsx: /corpus-builder page with Search, Library, Seed tabs
+- [x] StatsBar: total, embedded %, transcripts, analog data, manual counts
+- [x] Search tab: vector similarity search with keyword fallback indicator
+- [x] Library tab: filterable table with embed status and remove action
+- [x] Seed tab: one-click seed from Analog Data Library and outlier transcripts
+- [x] Add Corpus Builder nav item to DashboardLayout (Database icon)
+- [x] Route /corpus-builder added to App.tsx
+- [x] 28 new fixture-based tests (878 total passing)

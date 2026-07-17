@@ -90,6 +90,7 @@ const AnalyzeData = lazy(() => import("./pages/AnalyzeData"));
 const TranscriptEngine = lazy(() => import("./pages/TranscriptEngine"));
 const CorpusBuilder = lazy(() => import("./pages/CorpusBuilder"));
 const PatternExtractor = lazy(() => import("./pages/PatternExtractor"));
+const ScriptFactory = lazy(() => import("./pages/ScriptFactory"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -188,6 +189,7 @@ function Router() {
         <Route path={"/transcript-engine"} component={TranscriptEngine} />
         <Route path={"/corpus-builder"} component={CorpusBuilder} />
         <Route path={"/pattern-extractor"} component={PatternExtractor} />
+        <Route path={"/script-factory"} component={ScriptFactory} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

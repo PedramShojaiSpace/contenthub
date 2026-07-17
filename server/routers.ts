@@ -149,6 +149,7 @@ import { transcriptRouter } from "./transcriptRouter";
 import { outlierRouter } from "./outlierRouter";
 import { corpusRouter } from "./corpusRouter";
 import { patternExtractorRouter } from "./patternExtractorRouter";
+import { scriptFactoryRouter } from "./scriptFactoryRouter";
 import { funnelsRouter } from "./funnelsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
@@ -532,6 +533,7 @@ export const appRouter = router({
   outliers: outlierRouter,
   corpus: corpusRouter,
   patterns: patternExtractorRouter,
+  scriptFactory: scriptFactoryRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

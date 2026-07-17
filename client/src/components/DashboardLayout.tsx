@@ -77,6 +77,7 @@ import {
   BookMarked,
   ArrowUpCircle,
   Database,
+  Wand2,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -93,6 +94,7 @@ const ownerItems = [
   { icon: FileText, label: "Transcript Engine", path: "/transcript-engine" },
   { icon: Database, label: "Corpus Builder", path: "/corpus-builder" },
   { icon: Sparkles, label: "Pattern Extractor", path: "/pattern-extractor" },
+  { icon: Wand2, label: "Script Factory", path: "/script-factory" },
   { icon: ArrowUpCircle, label: "Ascension Pipeline", path: "/ascension" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
@@ -218,6 +220,7 @@ const allOwnerPaths = new Set([
   "/transcript-engine",
   "/corpus-builder",
   "/pattern-extractor",
+  "/script-factory",
   ...ownerAdsItems.map(i => i.path),
   ...ownerSeoItems.map(i => i.path),
 ]);

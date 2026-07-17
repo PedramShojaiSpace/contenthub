@@ -3513,3 +3513,30 @@ export const contentPatterns = mysqlTable("content_patterns", {
 
 export type ContentPattern = typeof contentPatterns.$inferSelect;
 export type InsertContentPattern = typeof contentPatterns.$inferInsert;
+
+// ─── Transcript Intelligence Engine — Phase E: Script Factory ───────────────
+
+/**
+ * Script Factory outputs — corpus-grounded scripts with [VERIFIED] tags.
+ */
+export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 500 }).notNull(),
+  topic: text("topic").notNull(),
+  format: mysqlEnum("format", [
+    "youtube_script", "short_form", "email", "ad_copy", "sales_page_section", "podcast_outline",
+  ]).notNull().default("youtube_script"),
+  scriptBody: longtext("script_body").notNull(),
+  verifiedPatternIds: json("verified_pattern_ids").$type<number[]>(),
+  corpusEntryIds: json("corpus_entry_ids").$type<number[]>(),
+  verifiedCount: int("verified_count").notNull().default(0),
+  totalElements: int("total_elements").notNull().default(0),
+  verificationPct: float("verification_pct"),
+  status: mysqlEnum("status", ["draft", "approved", "archived"]).notNull().default("draft"),
+  notes: text("notes"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type ScriptFactoryOutput = typeof scriptFactoryOutputs.$inferSelect;
+export type InsertScriptFactoryOutput = typeof scriptFactoryOutputs.$inferInsert;

@@ -4458,3 +4458,22 @@ Pricing model (corrected):
 - [x] Add Pattern Extractor nav item to DashboardLayout (Sparkles icon)
 - [x] Route /pattern-extractor added to App.tsx
 - [x] 38 new fixture-based tests (916 total passing)
+
+## Phase E — Script Factory (complete)
+
+- [x] script_factory_outputs table created (title, topic, format enum, script_body LONGTEXT, verified_pattern_ids JSON, corpus_entry_ids JSON, verified_count, total_elements, verification_pct, status enum, notes)
+- [x] Drizzle schema updated with scriptFactoryOutputs table
+- [x] scriptFactoryRouter.ts: generate (grounded prompt + [VERIFIED] tagging), list, get, update (status/notes/scriptBody), delete, getStats
+- [x] countVerifiedTags utility: counts [VERIFIED] tags and all bracketed elements, computes pct
+- [x] buildGroundedContext: injects top patterns per type + corpus excerpts into LLM prompt
+- [x] buildSystemPrompt: Dr. Pedram voice, [VERIFIED] rules, structure tags [HOOK]/[PAIN]/[PROOF]/[STORY]/[TEACH]/[OBJECTION]/[CTA]/[CLOSE]
+- [x] Pattern usage_count incremented on every generation
+- [x] Wire scriptFactoryRouter into routers.ts as 'scriptFactory'
+- [x] ScriptFactory.tsx: /script-factory page with Generate/Library/Stats tabs
+- [x] Generate tab: topic textarea, format selector, pattern type toggles, min effectiveness slider, top-per-type slider
+- [x] Library tab: filterable list with View dialog, Approve button, Delete
+- [x] Stats tab: total scripts, approved count, avg verification %
+- [x] [VERIFIED] tag rendered with ShieldCheck icon and green badge inline in script body
+- [x] Add Script Factory nav item to DashboardLayout (Wand2 icon)
+- [x] Route /script-factory added to App.tsx
+- [x] 35 new fixture-based tests (951 total passing)

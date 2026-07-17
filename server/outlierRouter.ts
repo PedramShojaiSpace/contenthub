@@ -337,11 +337,18 @@ export const outlierRouter = router({
         ? [eq(ytVideoOutliers.isOutlier, 1)]
         : [];
 
+      const sortColumn = {
+        outlier_score: ytVideoOutliers.outlierScore,
+        ctr_score: ytVideoOutliers.ctrScore,
+        retention_score: ytVideoOutliers.retentionScore,
+        views: ytVideoOutliers.views,
+      }[input.sortBy] ?? ytVideoOutliers.outlierScore;
+
       const rows = await db
         .select()
         .from(ytVideoOutliers)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(ytVideoOutliers.outlierScore))
+        .orderBy(desc(sortColumn))
         .limit(input.limit)
         .offset(input.offset);
 

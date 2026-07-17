@@ -167,11 +167,15 @@ function MineTab() {
   const [limit, setLimit] = useState(10);
   const [overwrite, setOverwrite] = useState(false);
   const [result, setResult] = useState<{ processed: number; totalExtracted: number; errors: string[] } | null>(null);
+  const utils = trpc.useUtils();
 
   const extractAll = trpc.patterns.extractAll.useMutation({
     onSuccess: (data) => {
       setResult(data);
       toast.success(`Extracted ${data.totalExtracted} patterns from ${data.processed} corpus entries.`);
+      // Invalidate both stats and pattern list so Overview and Browse tabs refresh
+      utils.patterns.getStats.invalidate();
+      utils.patterns.listPatterns.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -322,8 +326,14 @@ function BrowseTab() {
     offset: 0,
   });
 
+  const utils = trpc.useUtils();
   const deletePattern = trpc.patterns.deletePattern.useMutation({
-    onSuccess: () => { refetch(); toast.success("Pattern deleted."); },
+    onSuccess: () => {
+      refetch();
+      // Also refresh Overview stats so counts stay accurate after deletion
+      utils.patterns.getStats.invalidate();
+      toast.success("Pattern deleted.");
+    },
     onError: (err) => toast.error(err.message),
   });
 

@@ -17,4 +17,5 @@ export const ENV = {
   heygenApiKey: process.env.HEYGEN_API_KEY ?? "",
   heygenAvatarId: process.env.HEYGEN_AVATAR_ID ?? "",
   heygenVoiceId: process.env.HEYGEN_VOICE_ID ?? "",
+  supadataApiKey: process.env.SUPADATA_API_KEY ?? "",
 };

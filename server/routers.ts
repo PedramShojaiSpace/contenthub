@@ -145,6 +145,7 @@ import { claimsReviewRouter } from "./claimsReviewRouter";
 import { ytAnalyticsRouter } from "./ytAnalyticsRouter";
 import { ga4Router } from "./ga4Router";
 import { analogDataRouter } from "./analogDataRouter";
+import { transcriptRouter } from "./transcriptRouter";
 import { funnelsRouter } from "./funnelsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
@@ -524,6 +525,7 @@ export const appRouter = router({
   ytAnalytics: ytAnalyticsRouter,
   ga4: ga4Router,
   analogData: analogDataRouter,
+  transcripts: transcriptRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────
   substack: router({

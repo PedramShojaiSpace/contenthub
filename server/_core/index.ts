@@ -17,6 +17,7 @@ import { keywordPriorityDigestHandler } from "../keywordPriorityDigestHandler";
 import { rankSnapshotHandler } from "../rankSnapshotHandler";
 import { scoreboardDigestHandler } from "../scoreboardDigestHandler";
 import { gscBackfillHandler } from "../gscBackfillHandler";
+import { transcriptBackfillHandler } from "../transcriptBackfillHandler";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
@@ -103,6 +104,8 @@ async function startServer() {
   app.post("/api/scheduled/scoreboard-digest", scoreboardDigestHandler);
   // Daily GSC indexing backfill — submits up to 200 unindexed URLs per day
   app.post("/api/scheduled/gsc-backfill", gscBackfillHandler);
+  // Daily transcript backfill — fetches up to 25 YouTube transcripts via Supadata
+  app.post("/api/scheduled/transcript-backfill", transcriptBackfillHandler);
 
   // ── WordPress publish webhook — real-time Google indexing ──────────────────
   // WordPress calls this endpoint immediately when a post is published or updated.

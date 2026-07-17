@@ -89,6 +89,7 @@ import { Button } from "./ui/button";
 const ownerItems = [
   { icon: LayoutDashboard, label: "Funnel Command", path: "/funnels" },
   { icon: Brain, label: "Analyze", path: "/analyze" },
+  { icon: FileText, label: "Transcript Engine", path: "/transcript-engine" },
   { icon: ArrowUpCircle, label: "Ascension Pipeline", path: "/ascension" },
   { icon: PenSquare, label: "Creation Studio", path: "/studio" },
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
@@ -211,6 +212,7 @@ const systemArchiveItems = [
 const allOwnerPaths = new Set([
   ...ownerItems.map(i => i.path),
   "/analyze",
+  "/transcript-engine",
   ...ownerAdsItems.map(i => i.path),
   ...ownerSeoItems.map(i => i.path),
 ]);

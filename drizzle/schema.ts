@@ -1,4 +1,5 @@
-import { bigint, boolean, date, decimal, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, tinyint, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, date, datetime, decimal, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, tinyint, varchar } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -3376,3 +3377,44 @@ export const analogDataEntries = mysqlTable("analog_data_entries", {
 
 export type AnalogDataEntry = typeof analogDataEntries.$inferSelect;
 export type InsertAnalogDataEntry = typeof analogDataEntries.$inferInsert;
+
+// ─── Transcript Intelligence Engine — Phase A ────────────────────────────────
+
+/**
+ * Daily quota ledger for Supadata API calls.
+ * Enforces 25 calls/day cap before every fetch.
+ */
+export const ytQuotaLedger = mysqlTable("yt_quota_ledger", {
+  id: int("id").autoincrement().primaryKey(),
+  date: varchar("date", { length: 10 }).notNull().unique(), // YYYY-MM-DD
+  unitsUsed: int("units_used").notNull().default(0),
+  dailyLimit: int("daily_limit").notNull().default(25),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type YtQuotaLedger = typeof ytQuotaLedger.$inferSelect;
+export type InsertYtQuotaLedger = typeof ytQuotaLedger.$inferInsert;
+
+/**
+ * Stores fetched YouTube transcripts (via Supadata or manual paste).
+ */
+export const ytTranscripts = mysqlTable("yt_transcripts", {
+  id: int("id").autoincrement().primaryKey(),
+  videoId: varchar("video_id", { length: 64 }).notNull().unique(),
+  channelId: varchar("channel_id", { length: 64 }).notNull(),
+  videoTitle: varchar("video_title", { length: 512 }),
+  publishedAt: datetime("published_at"),
+  fetchedAt: datetime("fetched_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  provider: varchar("provider", { length: 32 }).notNull().default("supadata"),
+  lang: varchar("lang", { length: 16 }).default("en"),
+  rawText: mediumtext("raw_text"),
+  wordCount: int("word_count").default(0),
+  status: mysqlEnum("transcript_status", ["pending", "fetched", "no_transcript", "error"]).notNull().default("pending"),
+  errorMessage: varchar("error_message", { length: 512 }),
+  createdAt: datetime("tr_created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("tr_updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type YtTranscript = typeof ytTranscripts.$inferSelect;
+export type InsertYtTranscript = typeof ytTranscripts.$inferInsert;

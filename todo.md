@@ -4360,18 +4360,18 @@ Pricing model (corrected):
 
 ## Transcript Intelligence Engine — Phase A: Transcript Engine
 
-- [ ] Schema: yt_quota_ledger table (date, unitsUsed, limit, createdAt)
-- [ ] Schema: yt_transcripts table (videoId, channelId, fetchedAt, provider, rawText MEDIUMTEXT, wordCount, status)
-- [ ] Run db:push
-- [ ] transcriptRouter.ts: fetchTranscript (Supadata API, quota check before every call)
-- [ ] transcriptRouter.ts: backfillChannel (25/day cap, uploads-playlist-only, ledger update)
-- [ ] transcriptRouter.ts: getQuotaStatus
-- [ ] transcriptRouter.ts: listTranscripts (filterable by channel, date, status)
-- [ ] Wire transcriptRouter into routers.ts
-- [ ] TranscriptEngine.tsx: /transcript-engine page — quota gauge, backfill controls, transcript library table
-- [ ] Add "Transcript Engine" nav item to DashboardLayout
-- [ ] Route /transcript-engine added to App.tsx
-- [ ] Write vitest tests for quota ledger and backfill logic
+- [x] Schema: yt_quota_ledger table (date, unitsUsed, limit, createdAt)
+- [x] Schema: yt_transcripts table (videoId, channelId, fetchedAt, provider, rawText MEDIUMTEXT, wordCount, status)
+- [x] Run db:push
+- [x] transcriptRouter.ts: fetchTranscript (Supadata API, quota check before every call)
+- [x] transcriptRouter.ts: backfillChannel (25/day cap, uploads-playlist-only, ledger update)
+- [x] transcriptRouter.ts: getQuotaStatus
+- [x] transcriptRouter.ts: listTranscripts (filterable by channel, date, status)
+- [x] Wire transcriptRouter into routers.ts
+- [x] TranscriptEngine.tsx: /transcript-engine page — quota gauge, backfill controls, transcript library table
+- [x] Add "Transcript Engine" nav item to DashboardLayout
+- [x] Route /transcript-engine added to App.tsx
+- [x] Write vitest tests for quota ledger and backfill logic
 
 ## Transcript Intelligence Engine — Phase B: Outlier Detector
 

@@ -3540,3 +3540,26 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
 
 export type ScriptFactoryOutput = typeof scriptFactoryOutputs.$inferSelect;
 export type InsertScriptFactoryOutput = typeof scriptFactoryOutputs.$inferInsert;
+
+// ─── Transcript Intelligence Engine — Phase F: Performance Loop ─────────────
+
+/**
+ * 90-day performance feedback for scripts — closes the loop.
+ */
+export const scriptPerformanceFeedback = mysqlTable("script_performance_feedback", {
+  id: int("id").autoincrement().primaryKey(),
+  scriptId: int("script_id").notNull(),
+  videoId: varchar("video_id", { length: 50 }),
+  feedbackDate: date("feedback_date").notNull(),
+  ctrPct: float("ctr_pct"),
+  avgViewDurationPct: float("avg_view_duration_pct"),
+  views: int("views"),
+  likes: int("likes"),
+  comments: int("comments"),
+  outlierScore: float("outlier_score"),
+  notes: text("notes"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type ScriptPerformanceFeedback = typeof scriptPerformanceFeedback.$inferSelect;
+export type InsertScriptPerformanceFeedback = typeof scriptPerformanceFeedback.$inferInsert;

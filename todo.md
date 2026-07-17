@@ -4477,3 +4477,21 @@ Pricing model (corrected):
 - [x] Add Script Factory nav item to DashboardLayout (Wand2 icon)
 - [x] Route /script-factory added to App.tsx
 - [x] 35 new fixture-based tests (951 total passing)
+
+## Phase F — Performance Loop (complete)
+
+- [x] script_performance_feedback table created (scriptId, videoId, feedbackDate, ctrPct, avgViewDurationPct, views, likes, comments, outlierScore, notes, createdAt)
+- [x] Drizzle schema updated with scriptPerformanceFeedback table
+- [x] performanceLoopRouter.ts: submitFeedback (compute outlier score vs 90-day baseline, update pattern weights, auto-approve outlier scripts), listFeedback, getStats, getPendingFeedback, deleteFeedback
+- [x] normalizeOutlierScore utility: maps outlier score to [0,1] range (cap at 3.0)
+- [x] updateEffectiveness utility: EMA with 0.7/0.3 split (old/new)
+- [x] computeOutlierScore utility: CTR + retention z-scores averaged
+- [x] Wire performanceLoopRouter into routers.ts as 'performanceLoop'
+- [x] PerformanceLoop.tsx: /performance-loop page with Pending/Submit/History/Stats tabs
+- [x] Pending tab: scripts 90+ days old without feedback
+- [x] Submit tab: CTR, retention, views, likes, comments, notes input; shows outlier result
+- [x] History tab: sortable table of all feedback records with delete
+- [x] Stats tab: total, outliers, avg score, formula display
+- [x] Add Performance Loop nav item to DashboardLayout (RefreshCw icon)
+- [x] Route /performance-loop added to App.tsx
+- [x] 27 new fixture-based tests (978 total passing)

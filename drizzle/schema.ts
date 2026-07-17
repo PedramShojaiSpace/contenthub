@@ -3451,3 +3451,31 @@ export const ytVideoOutliers = mysqlTable("yt_video_outliers", {
 
 export type YtVideoOutlier = typeof ytVideoOutliers.$inferSelect;
 export type InsertYtVideoOutlier = typeof ytVideoOutliers.$inferInsert;
+
+// ─── Transcript Intelligence Engine — Phase C: Corpus Builder ─────────────────
+
+export const corpusSourceTypeEnum = mysqlEnum("source_type", ["transcript", "analog_data", "manual"]);
+
+/**
+ * Corpus entries: verified, converting content used to ground the Script Factory.
+ * Embeddings stored as VECTOR(1536) for TiDB cosine similarity search.
+ */
+export const corpusEntries = mysqlTable("corpus_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceType: mysqlEnum("source_type", ["transcript", "analog_data", "manual"]).notNull().default("manual"),
+  sourceId: varchar("source_id", { length: 128 }),
+  title: varchar("title", { length: 512 }),
+  content: mediumtext("content").notNull(),
+  contentChunk: mediumtext("content_chunk"),
+  // embedding stored as JSON string (TiDB VECTOR type not in Drizzle ORM yet)
+  embedding: text("embedding"),
+  tags: json("tags").$type<string[]>(),
+  personaId: int("persona_id"),
+  wordCount: int("word_count").default(0),
+  inCorpus: tinyint("in_corpus").notNull().default(1),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type CorpusEntry = typeof corpusEntries.$inferSelect;
+export type InsertCorpusEntry = typeof corpusEntries.$inferInsert;

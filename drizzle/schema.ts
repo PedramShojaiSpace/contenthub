@@ -3418,3 +3418,36 @@ export const ytTranscripts = mysqlTable("yt_transcripts", {
 
 export type YtTranscript = typeof ytTranscripts.$inferSelect;
 export type InsertYtTranscript = typeof ytTranscripts.$inferInsert;
+
+// ─── Transcript Intelligence Engine — Phase B: Outlier Detector ──────────────────
+
+/**
+ * Per-video outlier scores vs the channel's rolling 90-day baseline.
+ * Populated by outlierRouter.scoreVideo / scoreAll.
+ */
+export const ytVideoOutliers = mysqlTable("yt_video_outliers", {
+  id: int("id").autoincrement().primaryKey(),
+  videoId: varchar("video_id", { length: 64 }).notNull().unique(),
+  videoTitle: varchar("video_title", { length: 512 }),
+  publishedAt: datetime("published_at"),
+  ctrScore: float("ctr_score"),
+  retentionScore: float("retention_score"),
+  views: int("views").default(0),
+  avgViewDurationSec: int("avg_view_duration_sec").default(0),
+  videoDurationSec: int("video_duration_sec").default(0),
+  impressions: int("impressions").default(0),
+  outlierScore: float("outlier_score"),
+  ctrZScore: float("ctr_z_score"),
+  retentionZScore: float("retention_z_score"),
+  isOutlier: tinyint("is_outlier").notNull().default(0),
+  baselineCtr: float("baseline_ctr"),
+  baselineRetention: float("baseline_retention"),
+  baselineCtrStddev: float("baseline_ctr_stddev"),
+  baselineRetentionStddev: float("baseline_retention_stddev"),
+  scoredAt: datetime("scored_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: datetime("outlier_created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("outlier_updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type YtVideoOutlier = typeof ytVideoOutliers.$inferSelect;
+export type InsertYtVideoOutlier = typeof ytVideoOutliers.$inferInsert;

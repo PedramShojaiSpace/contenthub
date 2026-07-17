@@ -470,7 +470,8 @@ export default function PerformanceLoop() {
             <PendingTab onSelectScript={handleSelectScript} />
           </TabsContent>
           <TabsContent value="submit" className="mt-4">
-            <SubmitTab preSelectedId={selectedScriptId} preSelectedTitle={selectedScriptTitle} />
+            {/* key forces remount when a new script is selected from Pending tab */}
+            <SubmitTab key={selectedScriptId ?? "empty"} preSelectedId={selectedScriptId} preSelectedTitle={selectedScriptTitle} />
           </TabsContent>
           <TabsContent value="history" className="mt-4">
             <HistoryTab />

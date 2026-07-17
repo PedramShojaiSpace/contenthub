@@ -111,9 +111,11 @@ export const corpusRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
+      // Only seed entries the user has explicitly toggled into the corpus (inCorpus = true)
       const analogRows = await db
         .select({ id: analogDataEntries.id, title: analogDataEntries.title, content: analogDataEntries.content, tags: analogDataEntries.tags, personaId: analogDataEntries.personaId })
-        .from(analogDataEntries);
+        .from(analogDataEntries)
+        .where(eq(analogDataEntries.inCorpus, true));
 
       let added = 0, skipped = 0, embedded = 0;
 
@@ -141,6 +143,15 @@ export const corpusRouter = router({
           );
         }
 
+        // Parse tags — stored as JSON string in analog_data_entries
+        let parsedTags: string[] = [];
+        try {
+          if (row.tags) {
+            const t = typeof row.tags === "string" ? JSON.parse(row.tags) : row.tags;
+            parsedTags = Array.isArray(t) ? t : [];
+          }
+        } catch { parsedTags = []; }
+
         await db.insert(corpusEntries).values({
           sourceType: "analog_data",
           sourceId,
@@ -148,7 +159,7 @@ export const corpusRouter = router({
           content: row.content,
           contentChunk,
           embedding: embeddingStr,
-          tags: (row.tags as string[] | null) ?? [],
+          tags: parsedTags,
           personaId: row.personaId ?? null,
           wordCount,
           inCorpus: 1,

@@ -137,12 +137,6 @@ export const corpusRouter = router({
         const embeddingStr = embeddingVec ? serializeEmbedding(embeddingVec) : null;
         if (embeddingVec) embedded++;
 
-        if (input.overwrite) {
-          await db.delete(corpusEntries).where(
-            and(eq(corpusEntries.sourceType, "analog_data"), eq(corpusEntries.sourceId, sourceId))
-          );
-        }
-
         // Parse tags — stored as JSON string in analog_data_entries
         let parsedTags: string[] = [];
         try {
@@ -151,6 +145,29 @@ export const corpusRouter = router({
             parsedTags = Array.isArray(t) ? t : [];
           }
         } catch { parsedTags = []; }
+
+        if (input.overwrite) {
+          // UPDATE in-place to preserve the corpus entry ID (downstream patterns/scripts reference it)
+          const [existingRow] = await db
+            .select({ id: corpusEntries.id })
+            .from(corpusEntries)
+            .where(and(eq(corpusEntries.sourceType, "analog_data"), eq(corpusEntries.sourceId, sourceId)))
+            .limit(1);
+          if (existingRow) {
+            await db.update(corpusEntries).set({
+              title: row.title ?? null,
+              content: row.content,
+              contentChunk,
+              embedding: embeddingStr,
+              tags: parsedTags,
+              personaId: row.personaId ?? null,
+              wordCount,
+              inCorpus: 1,
+            }).where(eq(corpusEntries.id, existingRow.id));
+            added++;
+            continue;
+          }
+        }
 
         await db.insert(corpusEntries).values({
           sourceType: "analog_data",
@@ -209,9 +226,24 @@ export const corpusRouter = router({
         if (embeddingVec) embedded++;
 
         if (input.overwrite) {
-          await db.delete(corpusEntries).where(
-            and(eq(corpusEntries.sourceType, "transcript"), eq(corpusEntries.sourceId, row.video_id))
-          );
+          // UPDATE in-place to preserve the corpus entry ID (downstream patterns/scripts reference it)
+          const [existingRow] = await db
+            .select({ id: corpusEntries.id })
+            .from(corpusEntries)
+            .where(and(eq(corpusEntries.sourceType, "transcript"), eq(corpusEntries.sourceId, row.video_id)))
+            .limit(1);
+          if (existingRow) {
+            await db.update(corpusEntries).set({
+              title: row.video_title ?? null,
+              content: row.raw_text,
+              contentChunk,
+              embedding: embeddingStr,
+              wordCount: row.word_count ?? 0,
+              inCorpus: 1,
+            }).where(eq(corpusEntries.id, existingRow.id));
+            added++;
+            continue;
+          }
         }
 
         await db.insert(corpusEntries).values({

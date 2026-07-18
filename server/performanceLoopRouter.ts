@@ -93,17 +93,17 @@ export const performanceLoopRouter = router({
 
       const [baselineRow] = await db
         .select({
-          ctrMean: sql<number>`AVG(ctr_percentage)`,
-          ctrStd: sql<number>`STDDEV(ctr_percentage)`,
-          retentionMean: sql<number>`AVG(average_view_percentage)`,
-          retentionStd: sql<number>`STDDEV(average_view_percentage)`,
+          ctrMean: sql<number>`AVG(thumbnail_ctr)`,
+          ctrStd: sql<number>`STDDEV(thumbnail_ctr)`,
+          retentionMean: sql<number>`AVG(avg_view_pct)`,
+          retentionStd: sql<number>`STDDEV(avg_view_pct)`,
         })
         .from(ytVideoSnapshots)
         .where(
           and(
             gte(ytVideoSnapshots.snapshotDate, ninetyDaysAgoStr as any),
-            sql`ctr_percentage IS NOT NULL`,
-            sql`average_view_percentage IS NOT NULL`
+            sql`thumbnail_ctr IS NOT NULL`,
+            sql`avg_view_pct IS NOT NULL`
           )
         );
 

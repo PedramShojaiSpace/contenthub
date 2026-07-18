@@ -124,11 +124,34 @@ export const corpusRouter = router({
 
         if (!input.overwrite) {
           const [existing] = await db
-            .select({ id: corpusEntries.id })
+            .select({ id: corpusEntries.id, inCorpus: corpusEntries.inCorpus })
             .from(corpusEntries)
             .where(and(eq(corpusEntries.sourceType, "analog_data"), eq(corpusEntries.sourceId, sourceId)))
             .limit(1);
-          if (existing) { skipped++; continue; }
+          // Only skip if the row is actively in the corpus (inCorpus=1).
+          // Soft-removed rows (inCorpus=0) should be restored by normal seeding.
+          if (existing && existing.inCorpus === 1) { skipped++; continue; }
+          // Restore soft-removed row in-place to preserve its ID (downstream patterns/scripts reference it)
+          if (existing && existing.inCorpus === 0) {
+            const wc = row.content.trim().split(/\s+/).length;
+            const cc = row.content.slice(0, CHUNK_MAX_CHARS);
+            const ev = await generateEmbedding(row.content);
+            const es = ev ? serializeEmbedding(ev) : null;
+            if (ev) embedded++;
+            let pt: string[] = [];
+            try {
+              if (row.tags) {
+                const t = typeof row.tags === "string" ? JSON.parse(row.tags) : row.tags;
+                pt = Array.isArray(t) ? t : [];
+              }
+            } catch { pt = []; }
+            await db.update(corpusEntries).set({
+              title: row.title ?? null, content: row.content, contentChunk: cc,
+              embedding: es, tags: pt, personaId: row.personaId ?? null,
+              wordCount: wc, inCorpus: 1,
+            }).where(eq(corpusEntries.id, existing.id));
+            added++; continue;
+          }
         }
 
         const wordCount = row.content.trim().split(/\s+/).length;
@@ -213,11 +236,25 @@ export const corpusRouter = router({
 
         if (!input.overwrite) {
           const [existing] = await db
-            .select({ id: corpusEntries.id })
+            .select({ id: corpusEntries.id, inCorpus: corpusEntries.inCorpus })
             .from(corpusEntries)
             .where(and(eq(corpusEntries.sourceType, "transcript"), eq(corpusEntries.sourceId, row.video_id)))
             .limit(1);
-          if (existing) { skipped++; continue; }
+          // Only skip if the row is actively in the corpus (inCorpus=1).
+          // Soft-removed rows (inCorpus=0) should be restored by normal seeding.
+          if (existing && existing.inCorpus === 1) { skipped++; continue; }
+          // Restore soft-removed row in-place to preserve its ID (downstream patterns/scripts reference it)
+          if (existing && existing.inCorpus === 0) {
+            const cc2 = row.raw_text.slice(0, CHUNK_MAX_CHARS);
+            const ev2 = await generateEmbedding(row.raw_text);
+            const es2 = ev2 ? serializeEmbedding(ev2) : null;
+            if (ev2) embedded++;
+            await db.update(corpusEntries).set({
+              title: row.video_title ?? null, content: row.raw_text, contentChunk: cc2,
+              embedding: es2, wordCount: row.word_count ?? 0, inCorpus: 1,
+            }).where(eq(corpusEntries.id, existing.id));
+            added++; continue;
+          }
         }
 
         const contentChunk = row.raw_text.slice(0, CHUNK_MAX_CHARS);

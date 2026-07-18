@@ -108,6 +108,9 @@ function LibraryTab() {
       toast.success("Updated");
       utils.analogData.listEntries.invalidate();
       utils.analogData.getStats.invalidate();
+      // Invalidate corpus queries so CorpusBuilder reflects the new membership immediately
+      utils.corpus.listEntries.invalidate();
+      utils.corpus.getStats.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });

@@ -199,27 +199,22 @@ export const patternExtractorRouter = router({
           .orderBy(desc(corpusEntries.createdAt))
           .limit(input.limit);
       } else {
-        // Find entries without patterns
-        const withPatterns = await db
-          .select({ id: contentPatterns.sourceCorpusId })
-          .from(contentPatterns)
-          .groupBy(contentPatterns.sourceCorpusId);
-        const withPatternIds = withPatterns.map((r) => r.id).filter(Boolean) as number[];
-
-        const conditions = [eq(corpusEntries.inCorpus, 1)];
-
+        // Exclude corpus entries that already have patterns via NOT EXISTS so LIMIT
+        // applies only to genuinely unprocessed entries.
         entries = await db
           .select({ id: corpusEntries.id, title: corpusEntries.title, sourceType: corpusEntries.sourceType })
           .from(corpusEntries)
-          .where(and(...conditions))
+          .where(
+            and(
+              eq(corpusEntries.inCorpus, 1),
+              sql`NOT EXISTS (
+                SELECT 1 FROM content_patterns cp
+                WHERE cp.source_corpus_id = ${corpusEntries.id}
+              )`
+            )
+          )
           .orderBy(desc(corpusEntries.createdAt))
-          .limit(input.limit * 3); // fetch more, filter client-side
-
-        if (withPatternIds.length > 0) {
-          entries = entries.filter((e) => !withPatternIds.includes(e.id)).slice(0, input.limit);
-        } else {
-          entries = entries.slice(0, input.limit);
-        }
+          .limit(input.limit);
       }
 
       let totalExtracted = 0;

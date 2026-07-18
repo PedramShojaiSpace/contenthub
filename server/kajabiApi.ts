@@ -161,6 +161,30 @@ export async function kajabiCreateContact(params: {
 
   if (!res.ok) {
     const text = await res.text();
+
+    // ── Duplicate-email handling ─────────────────────────────────────────────
+    // Kajabi returns 422 with "Email has already been taken" when the contact
+    // already exists. Rather than failing, look up the existing contact by
+    // email and return it so the caller can proceed to tag them.
+    if (res.status === 422) {
+      let isDuplicate = false;
+      try {
+        const errBody = JSON.parse(text);
+        const detail: string = errBody?.errors?.[0]?.detail ?? "";
+        if (detail.toLowerCase().includes("already been taken") || detail.toLowerCase().includes("already taken")) {
+          isDuplicate = true;
+        }
+      } catch { /* not JSON — fall through */ }
+
+      if (isDuplicate) {
+        // Find the existing contact by email
+        const existing = await kajabiFindContactByEmail(params.email);
+        if (existing) return existing;
+        // If lookup also fails, surface a clear error
+        throw new Error(`Kajabi contact already exists for ${params.email} but could not be retrieved. Try again.`);
+      }
+    }
+
     // Surface undeliverable address as a clear, actionable error
     try {
       const errBody = JSON.parse(text);
@@ -176,6 +200,32 @@ export async function kajabiCreateContact(params: {
 
   const data = await safeParseJson<{ data: { id: string; attributes: { email: string } } }>(res, "Kajabi createContact");
   return { id: data.data.id, email: data.data.attributes.email };
+}
+
+/**
+ * Look up a Kajabi contact by exact email address.
+ * Returns null if not found or on API error.
+ */
+export async function kajabiFindContactByEmail(
+  email: string
+): Promise<{ id: string; email: string } | null> {
+  const token = await getAccessToken();
+  const res = await fetch(
+    `${KAJABI_API_BASE}/contacts?filter[email_eq]=${encodeURIComponent(email)}&page[size]=1`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.api+json",
+      },
+    }
+  );
+  if (!res.ok) return null;
+  const data = await safeParseJson<{
+    data: Array<{ id: string; attributes: { email: string } }>;
+  }>(res, "Kajabi findContactByEmail");
+  const contact = data.data?.[0];
+  if (!contact) return null;
+  return { id: contact.id, email: contact.attributes.email };
 }
 
 /**

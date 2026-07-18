@@ -335,7 +335,7 @@ const PLATFORM_IMAGE_STYLES: Record<string, string> = {
 
   tiktok: `Vertical 9:16 format. High-energy, vibrant composition. Warm, saturated colors — sunrise oranges, golden yellows, bright sage greens. Bold, dynamic framing. A single striking visual element (symbolic object, dramatic close-up, or abstract concept) that reads instantly at thumbnail size. Energetic, optimistic, scroll-stopping. No text overlay.`,
 
-  blog: `Wide-format editorial hero image (16:9). Warm, authoritative, and contemplative. Soft golden morning light with warm cream and sage tones. A single light source illuminating a symbolic object or anonymous human figure from the side. Think a high-end wellness magazine or an uplifting documentary thumbnail. No text overlay. Evokes wisdom, transformation, hope, and scientific depth. Timeless, warm quality.`,
+  blog: `Wide-format editorial hero image (16:9). Realistic, photographic, editorial quality. Natural light — bright and clean, not mystical. Think Men's Health, TIME Magazine, or a high-end wellness editorial. Subject must match the article topic exactly: if the topic is parenting, show a real parent with a child; if it is nutrition, show real food; if it is stress, show a real person in a relatable situation; if it is sleep, show a bedroom or a person sleeping. Anonymous real-looking people in everyday settings. No monks, no robes, no glowing orbs, no lotus flowers, no mystical symbols, no spiritual iconography, no fantasy lighting. No text overlay. Warm but grounded. Photorealistic, not illustrated.`,
 };
 
 // Blog-specific AI prompt — produces a full SEO+AEO-optimized article implementing GhostLink OS pillar standards
@@ -1850,7 +1850,23 @@ SEO NOTE: The target focus keyword for this article is "${kw}". Use it naturally
               messages: [
                 {
                   role: "system",
-                  content: `You are an expert visual director for The Urban Monk brand. Write a concise, evocative image generation prompt (max 80 words) for a blog hero image. Style: ${blogStyle}. Return ONLY the prompt, no explanation.`,
+                  content: `You are an expert visual director for The Urban Monk brand. Write a concise, evocative image generation prompt (max 80 words) for a blog hero image.
+
+CRITICAL RULES — READ BEFORE WRITING:
+1. The image MUST be directly relevant to the article topic. Read the title and intro carefully and choose a subject that matches the topic literally.
+2. NEVER default to monks, robes, glowing orbs, lotus flowers, mystical symbols, or spiritual iconography unless the article is explicitly about meditation or Taoism.
+3. If the topic is parenting/family: show a real parent with a child in a natural setting.
+4. If the topic is nutrition/food: show real, appetizing food or someone cooking.
+5. If the topic is stress/burnout: show a real person in a relatable stressful or recovery situation.
+6. If the topic is sleep: show a person sleeping peacefully or a calm bedroom.
+7. If the topic is fitness/exercise: show someone working out or moving.
+8. If the topic is gut health/digestion: show healthy food, a kitchen, or a person feeling energized.
+9. If the topic is detox/toxins: show a clean environment, fresh produce, or a person outdoors.
+10. Default to realistic editorial photography — anonymous real-looking people in everyday settings.
+
+Style guide: ${blogStyle}
+
+Return ONLY the image prompt, no explanation.`,
                 },
                 {
                   role: "user",

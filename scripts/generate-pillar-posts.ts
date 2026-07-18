@@ -97,7 +97,7 @@ FORMATTING RULES (YOAST READABILITY):
 
 CONTENT PILLARS: Gut-brain axis and LPS endotoxemia, sleep architecture and liver detox, cortisol and HPA axis dysregulation, energy economics and time compression syndrome, Taoist philosophy applied to modern life, functional medicine and upstream health, oral microbiome and systemic inflammation, ancient practices with scientific backing (Qigong, meditation, fasting, breathwork), mitochondrial health, circadian biology, neuroplasticity and stress resilience.`;
 
-const BLOG_IMAGE_STYLE = `Wide-format editorial hero image (16:9). Warm, authoritative, and contemplative. Soft golden morning light with warm cream and sage tones. A single light source illuminating a symbolic object or anonymous human figure from the side. Think a high-end wellness magazine or an uplifting documentary thumbnail. No text overlay. Evokes wisdom, transformation, hope, and scientific depth. Timeless, warm quality.`;
+const BLOG_IMAGE_STYLE = `Wide-format editorial hero image (16:9). Realistic, photographic, editorial quality. Natural light — bright and clean, not mystical. Think Men's Health, TIME Magazine, or a high-end wellness editorial. Subject must match the article topic exactly. Anonymous real-looking people in everyday settings. No monks, no robes, no glowing orbs, no lotus flowers, no mystical symbols, no spiritual iconography, no fantasy lighting. No text overlay. Warm but grounded. Photorealistic, not illustrated.`;
 
 // ─── Pillar post definitions ───────────────────────────────────────────────────
 const PILLARS = [
@@ -273,7 +273,22 @@ async function generatePillarPost(pillar: typeof PILLARS[0]) {
       messages: [
         {
           role: "system",
-          content: `You are an expert visual director for The Urban Monk brand. Write a concise, evocative image generation prompt (max 80 words) for a blog hero image. Style: ${BLOG_IMAGE_STYLE}. Return ONLY the prompt, no explanation. IMPORTANT: Avoid the cliché warm-sunrise-yoga-pose aesthetic. Choose a unique, unexpected visual metaphor that is specific to the article topic.`,
+          content: `You are an expert visual director for The Urban Monk brand. Write a concise, evocative image generation prompt (max 80 words) for a blog hero image.
+
+CRITICAL RULES — READ BEFORE WRITING:
+1. The image MUST be directly relevant to the article topic. Read the title and intro carefully.
+2. NEVER default to monks, robes, glowing orbs, lotus flowers, mystical symbols, or spiritual iconography unless the article is explicitly about meditation or Taoism.
+3. If the topic is parenting/family: show a real parent with a child in a natural setting.
+4. If the topic is nutrition/food: show real, appetizing food or someone cooking.
+5. If the topic is stress/burnout: show a real person in a relatable stressful or recovery situation.
+6. If the topic is sleep: show a person sleeping peacefully or a calm bedroom.
+7. If the topic is gut health/digestion: show healthy food, a kitchen, or a person feeling energized.
+8. If the topic is detox/toxins: show a clean environment, fresh produce, or a person outdoors.
+9. Default to realistic editorial photography — anonymous real-looking people in everyday settings.
+
+Style guide: ${BLOG_IMAGE_STYLE}
+
+Return ONLY the image prompt, no explanation.`,
         },
         {
           role: "user",

@@ -253,14 +253,11 @@ export const performanceLoopRouter = router({
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    // Get all script IDs that already have feedback
-    const withFeedback = await db
-      .select({ scriptId: scriptPerformanceFeedback.scriptId })
-      .from(scriptPerformanceFeedback);
-    const withFeedbackIds = new Set(withFeedback.map((r) => r.scriptId));
-
-    // Get approved scripts whose approvedAt is 90+ days ago.
-    // Fall back to updatedAt for scripts approved before this column was added.
+    // Get approved scripts whose approvedAt is 90+ days ago that have no feedback yet.
+    // Feedback exclusion is done in SQL (NOT EXISTS subquery) so the LIMIT 20 only
+    // counts genuinely pending scripts — not scripts that already have feedback.
+    // Fall back to updatedAt for scripts approved before the approvedAt column was added.
+    // Order by COALESCE(approved_at, updated_at) so legacy rows sort correctly.
     const scripts = await db
       .select({
         id: scriptFactoryOutputs.id,
@@ -273,13 +270,17 @@ export const performanceLoopRouter = router({
       .where(
         and(
           eq(scriptFactoryOutputs.status, "approved"),
-          sql`COALESCE(approved_at, updated_at) <= ${ninetyDaysAgo.toISOString()}`
+          sql`COALESCE(approved_at, updated_at) <= ${ninetyDaysAgo.toISOString()}`,
+          sql`NOT EXISTS (
+            SELECT 1 FROM script_performance_feedback spf
+            WHERE spf.script_id = ${scriptFactoryOutputs.id}
+          )`
         )
       )
-      .orderBy(desc(scriptFactoryOutputs.approvedAt))
+      .orderBy(sql`COALESCE(approved_at, updated_at) ASC`)
       .limit(20);
 
-    return scripts.filter((s) => !withFeedbackIds.has(s.id));
+    return scripts;
   }),
 
   // ─── Delete feedback record ───────────────────────────────────────────────

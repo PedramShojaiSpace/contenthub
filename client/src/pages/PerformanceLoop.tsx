@@ -71,7 +71,10 @@ function PendingTab({ onSelectScript }: { onSelectScript: (id: number, title: st
                   <Badge variant="outline" className="text-xs">{s.format}</Badge>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    Approved {new Date((s as any).approvedAt ?? s.createdAt).toLocaleDateString()}
+                    {(s as any).approvedAt
+                      ? `Approved ${new Date((s as any).approvedAt).toLocaleDateString()}`
+                      : `Created ${new Date(s.createdAt).toLocaleDateString()} (legacy)`
+                    }
                   </span>
                 </div>
               </div>

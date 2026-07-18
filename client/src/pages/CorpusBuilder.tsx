@@ -82,6 +82,26 @@ function SearchTab() {
 
   return (
     <div className="space-y-5">
+      {/* Source type filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Filter:</span>
+        {(["all", "transcript", "analog_data", "manual"] as const).map((t) => (
+          <Button
+            key={t}
+            variant={sourceType === t ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setSourceType(t);
+              // Re-run search immediately if a query is already submitted
+              if (submitted) setSubmitted(submitted);
+            }}
+            className="text-xs capitalize"
+          >
+            {t.replace("_", " ")}
+          </Button>
+        ))}
+      </div>
+
       <div className="flex gap-2">
         <Input
           placeholder="Search the corpus... e.g. 'gut health transformation story'"

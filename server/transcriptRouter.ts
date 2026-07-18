@@ -327,6 +327,9 @@ export const transcriptRouter = router({
         })
         .slice(0, limit);
 
+      // nextPageToken from the first item (all items share the same token per page)
+      const pageNextToken = videos.find((v) => v.nextPageToken)?.nextPageToken ?? null;
+
       if (toFetch.length === 0) {
         return {
           fetched: 0,
@@ -335,7 +338,10 @@ export const transcriptRouter = router({
           skipped: videos.length,
           quotaUsed: 0,
           quotaRemaining: quota.remaining,
-          message: "All videos already processed",
+          nextPageToken: pageNextToken,
+          message: pageNextToken
+            ? "All videos on this page already processed — click again to advance to the next page"
+            : "All videos already processed",
         };
       }
 
@@ -408,9 +414,6 @@ export const transcriptRouter = router({
 
       const finalQuota = await getOrCreateQuota(db);
 
-      // Return nextPageToken so the UI can advance through the full playlist
-      const nextPageToken = videos.find((v) => v.nextPageToken)?.nextPageToken ?? null;
-
       return {
         fetched,
         noTranscript,
@@ -418,7 +421,7 @@ export const transcriptRouter = router({
         skipped: videos.length - toFetch.length,
         quotaUsed: finalQuota.unitsUsed,
         quotaRemaining: finalQuota.remaining,
-        nextPageToken,
+        nextPageToken: pageNextToken,
         message: `Processed ${toFetch.length} videos: ${fetched} fetched, ${noTranscript} no transcript, ${errors} errors`,
       };
     }),

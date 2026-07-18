@@ -364,12 +364,16 @@ function BackfillTab() {
     skipped: number;
     quotaUsed: number;
     quotaRemaining: number;
+    nextPageToken: string | null;
     message: string;
   } | null>(null);
+  const [pageToken, setPageToken] = useState<string | undefined>(undefined);
 
   const backfill = trpc.transcripts.backfillChannel.useMutation({
     onSuccess: (data) => {
       setLastResult(data);
+      // Advance the page token so the next manual run continues where this one left off
+      setPageToken(data.nextPageToken ?? undefined);
       toast.success(data.message);
       utils.transcripts.listTranscripts.invalidate();
       utils.transcripts.getStats.invalidate();
@@ -388,13 +392,14 @@ function BackfillTab() {
           <li>Respects the 25-call/day quota — stops automatically when exhausted</li>
           <li>Videos with no available transcript are marked and skipped on retry</li>
           <li>Run daily to build up your full transcript corpus over time</li>
+          {pageToken && <li className="text-blue-600 font-medium">▶ Continuing from where last run left off (page 2+)</li>}
         </ul>
       </div>
 
       <QuotaGauge />
 
       <Button
-        onClick={() => backfill.mutate({ maxVideos: 25 })}
+        onClick={() => backfill.mutate({ maxVideos: 25, pageToken })}
         disabled={backfill.isPending}
         className="w-full"
         size="lg"

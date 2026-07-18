@@ -71,7 +71,7 @@ function PendingTab({ onSelectScript }: { onSelectScript: (id: number, title: st
                   <Badge variant="outline" className="text-xs">{s.format}</Badge>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    Approved {new Date(s.createdAt).toLocaleDateString()}
+                    Approved {new Date((s as any).updatedAt ?? s.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </div>
@@ -105,6 +105,8 @@ function SubmitTab({ preSelectedId, preSelectedTitle }: { preSelectedId?: number
     outlierScore: number; isOutlier: boolean; patternsUpdated: number; normalizedScore: number;
   } | null>(null);
 
+  const utils = trpc.useUtils();
+
   const submit = trpc.performanceLoop.submitFeedback.useMutation({
     onSuccess: (data) => {
       setResult(data);
@@ -113,6 +115,10 @@ function SubmitTab({ preSelectedId, preSelectedTitle }: { preSelectedId?: number
           ? `Outlier! Score ${data.outlierScore} — patterns updated and script auto-approved.`
           : `Feedback recorded. Outlier score: ${data.outlierScore}. ${data.patternsUpdated} patterns updated.`
       );
+      // Refresh all related tabs immediately
+      utils.performanceLoop.getPendingFeedback.invalidate();
+      utils.performanceLoop.listFeedback.invalidate();
+      utils.performanceLoop.getStats.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -300,8 +306,15 @@ function HistoryTab() {
     limit: 50, offset: 0,
   });
 
+  const utils = trpc.useUtils();
+
   const deleteFeedback = trpc.performanceLoop.deleteFeedback.useMutation({
-    onSuccess: () => { refetch(); toast.success("Feedback deleted."); },
+    onSuccess: () => {
+      refetch();
+      utils.performanceLoop.getPendingFeedback.invalidate();
+      utils.performanceLoop.getStats.invalidate();
+      toast.success("Feedback deleted.");
+    },
     onError: (err) => toast.error(err.message),
   });
 

@@ -100,6 +100,7 @@ function renderScriptWithTags(scriptBody: string): React.ReactNode {
 // ─── Generate Tab ─────────────────────────────────────────────────────────────
 
 function GenerateTab() {
+  const utils = trpc.useUtils();
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState<string>("youtube_script");
   const [minEff, setMinEff] = useState(0.5);
@@ -117,6 +118,9 @@ function GenerateTab() {
     onSuccess: (data) => {
       setResult(data);
       toast.success(`Script generated! ${data.verificationPct}% verified.`);
+      // Invalidate library and stats so they reflect the new script immediately
+      utils.scriptFactory.list.invalidate();
+      utils.scriptFactory.getStats.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -288,13 +292,10 @@ function GenerateTab() {
 // ─── Library Tab ──────────────────────────────────────────────────────────────
 
 function LibraryTab() {
+  const utils = trpc.useUtils();
   const [filterFormat, setFilterFormat] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [viewScript, setViewScript] = useState<{
-    id: number; title: string; topic: string; format: string;
-    scriptBody: string; verifiedCount: number; totalElements: number;
-    verificationPct: number | null; status: string; notes: string | null;
-  } | null>(null);
+  const [viewScriptId, setViewScriptId] = useState<number | null>(null);
 
   const { data: scripts = [], isLoading, refetch } = trpc.scriptFactory.list.useQuery({
     format: filterFormat,
@@ -303,13 +304,30 @@ function LibraryTab() {
     offset: 0,
   });
 
+  // Fetch full script data (including scriptBody) only when dialog is open
+  const { data: viewScript, isLoading: viewLoading } = trpc.scriptFactory.get.useQuery(
+    { id: viewScriptId! },
+    { enabled: viewScriptId != null }
+  );
+
   const updateScript = trpc.scriptFactory.update.useMutation({
-    onSuccess: () => { refetch(); toast.success("Script updated."); },
+    onSuccess: () => {
+      refetch();
+      utils.scriptFactory.getStats.invalidate();
+      // Refresh the open dialog if it's showing the updated script
+      if (viewScriptId) utils.scriptFactory.get.invalidate({ id: viewScriptId });
+      toast.success("Script updated.");
+    },
     onError: (err) => toast.error(err.message),
   });
 
   const deleteScript = trpc.scriptFactory.delete.useMutation({
-    onSuccess: () => { refetch(); toast.success("Script deleted."); },
+    onSuccess: () => {
+      refetch();
+      utils.scriptFactory.getStats.invalidate();
+      setViewScriptId(null);
+      toast.success("Script deleted.");
+    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -380,7 +398,7 @@ function LibraryTab() {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => setViewScript(s as any)}>
+                <Button variant="outline" size="sm" onClick={() => setViewScriptId(s.id)}>
                   View
                 </Button>
                 {s.status === "draft" && (
@@ -399,45 +417,46 @@ function LibraryTab() {
         </div>
       )}
 
-      {/* View Dialog */}
-      <Dialog open={!!viewScript} onOpenChange={(open) => !open && setViewScript(null)}>
+      {/* View Dialog — uses scriptFactory.get to fetch full scriptBody */}
+      <Dialog open={viewScriptId != null} onOpenChange={(open) => !open && setViewScriptId(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="pr-8">{viewScript?.title}</DialogTitle>
+            <DialogTitle className="pr-8">{viewScript?.title ?? "Loading..."}</DialogTitle>
           </DialogHeader>
-          {viewScript && (
+          {viewLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : viewScript ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge className={`text-xs ${STATUS_COLORS[viewScript.status]}`}>{viewScript.status}</Badge>
                 <Badge variant="outline" className="text-xs">{FORMAT_LABELS[viewScript.format] ?? viewScript.format}</Badge>
                 <Badge className="text-xs bg-green-100 text-green-800">
                   <ShieldCheck className="w-3 h-3 mr-1" />
-                  {viewScript.verificationPct != null ? `${viewScript.verificationPct.toFixed(0)}%` : "—"} verified
+                  {viewScript.verificationPct != null ? `${(viewScript.verificationPct as number).toFixed(0)}%` : "—"} verified
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">{viewScript.topic}</p>
               <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono">
-                {renderScriptWithTags(viewScript.scriptBody)}
+                {renderScriptWithTags(viewScript.scriptBody ?? "")}
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => {
-                  navigator.clipboard.writeText(viewScript.scriptBody);
+                  navigator.clipboard.writeText(viewScript.scriptBody ?? "");
                   toast.success("Copied to clipboard.");
                 }}>
                   <ClipboardCopy className="w-3.5 h-3.5 mr-1" /> Copy Script
                 </Button>
                 {viewScript.status === "draft" && (
                   <Button size="sm" className="bg-green-600 hover:bg-green-700"
-                    onClick={() => {
-                      updateScript.mutate({ id: viewScript.id, status: "approved" });
-                      setViewScript({ ...viewScript, status: "approved" });
-                    }}>
+                    onClick={() => updateScript.mutate({ id: viewScript.id, status: "approved" })}>
                     <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
                   </Button>
                 )}
               </div>
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

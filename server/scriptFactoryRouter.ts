@@ -344,8 +344,7 @@ export const scriptFactoryRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      const updates: Record<string, unknown> = { updatedAt: sql`NOW()` };
-      if (input.status) updates.status = input.status;
+      const updates: Record<string, unknown> = {};
       if (input.notes !== undefined) updates.notes = input.notes;
       if (input.scriptBody) {
         updates.scriptBody = input.scriptBody;
@@ -353,6 +352,13 @@ export const scriptFactoryRouter = router({
         updates.verifiedCount = verified;
         updates.totalElements = total;
         updates.verificationPct = pct;
+      }
+      if (input.status) {
+        updates.status = input.status;
+        // Only update updatedAt on status changes — this timestamp is used as the
+        // approval clock for the 90-day Performance Loop eligibility window.
+        // Notes and body edits must NOT reset this clock.
+        updates.updatedAt = sql`NOW()`;
       }
 
       await db.update(scriptFactoryOutputs).set(updates as any).where(eq(scriptFactoryOutputs.id, input.id));

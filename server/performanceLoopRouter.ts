@@ -247,10 +247,9 @@ export const performanceLoopRouter = router({
     if (!db) return [];
 
     // Scripts approved 90+ days ago that don't have feedback yet.
-    // The 90-day clock starts from when the script was approved (status changed to 'approved'),
-    // not from when it was created. We use updatedAt as a proxy for approvedAt since
-    // status updates set updatedAt. Scripts with status='approved' AND updatedAt >= 90 days ago
-    // are ready for feedback.
+    // The 90-day clock uses approvedAt — the stable timestamp set once when a script
+    // is first approved. This is immune to subsequent status changes (e.g. archive → re-approve)
+    // and to notes/body edits which do NOT touch approvedAt.
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
@@ -260,23 +259,24 @@ export const performanceLoopRouter = router({
       .from(scriptPerformanceFeedback);
     const withFeedbackIds = new Set(withFeedback.map((r) => r.scriptId));
 
-    // Get approved scripts whose updatedAt (approval time) is 90+ days ago
+    // Get approved scripts whose approvedAt is 90+ days ago.
+    // Fall back to updatedAt for scripts approved before this column was added.
     const scripts = await db
       .select({
         id: scriptFactoryOutputs.id,
         title: scriptFactoryOutputs.title,
         format: scriptFactoryOutputs.format,
         createdAt: scriptFactoryOutputs.createdAt,
-        updatedAt: scriptFactoryOutputs.updatedAt,
+        approvedAt: scriptFactoryOutputs.approvedAt,
       })
       .from(scriptFactoryOutputs)
       .where(
         and(
           eq(scriptFactoryOutputs.status, "approved"),
-          sql`updated_at <= ${ninetyDaysAgo.toISOString()}`
+          sql`COALESCE(approved_at, updated_at) <= ${ninetyDaysAgo.toISOString()}`
         )
       )
-      .orderBy(desc(scriptFactoryOutputs.updatedAt))
+      .orderBy(desc(scriptFactoryOutputs.approvedAt))
       .limit(20);
 
     return scripts.filter((s) => !withFeedbackIds.has(s.id));
@@ -288,6 +288,41 @@ export const performanceLoopRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Fetch the feedback row before deleting so we can reverse the pattern weight updates.
+      // This prevents double-applying effectiveness scores if the user deletes and resubmits.
+      const [feedback] = await db
+        .select()
+        .from(scriptPerformanceFeedback)
+        .where(eq(scriptPerformanceFeedback.id, input.id))
+        .limit(1);
+
+      if (feedback) {
+        // Reverse the EMA: oldEff = (newEff - 0.3 * signal) / 0.7, clamped to [0, 1]
+        const signal = normalizeOutlierScore(feedback.outlierScore ?? 0);
+        const [scriptRow] = await db
+          .select({ verifiedPatternIds: scriptFactoryOutputs.verifiedPatternIds })
+          .from(scriptFactoryOutputs)
+          .where(eq(scriptFactoryOutputs.id, feedback.scriptId))
+          .limit(1);
+
+        const patternIds: number[] = (scriptRow?.verifiedPatternIds as number[]) ?? [];
+        for (const patternId of patternIds) {
+          const [pattern] = await db
+            .select({ effectivenessScore: contentPatterns.effectivenessScore })
+            .from(contentPatterns)
+            .where(eq(contentPatterns.id, patternId))
+            .limit(1);
+          if (!pattern) continue;
+          const newEff = Number(pattern.effectivenessScore ?? 0.5);
+          const reversedEff = Math.max(0, Math.min(1, (newEff - 0.3 * signal) / 0.7));
+          await db
+            .update(contentPatterns)
+            .set({ effectivenessScore: reversedEff })
+            .where(eq(contentPatterns.id, patternId));
+        }
+      }
+
       await db.delete(scriptPerformanceFeedback).where(eq(scriptPerformanceFeedback.id, input.id));
       return { ok: true };
     }),

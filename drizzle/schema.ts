@@ -3534,6 +3534,7 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
   verificationPct: float("verification_pct"),
   status: mysqlEnum("status", ["draft", "approved", "archived"]).notNull().default("draft"),
   notes: text("notes"),
+  approvedAt: datetime("approved_at"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

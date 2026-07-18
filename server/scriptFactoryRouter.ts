@@ -355,10 +355,14 @@ export const scriptFactoryRouter = router({
       }
       if (input.status) {
         updates.status = input.status;
-        // Only update updatedAt on status changes — this timestamp is used as the
-        // approval clock for the 90-day Performance Loop eligibility window.
-        // Notes and body edits must NOT reset this clock.
+        // Only update updatedAt on status changes — NOT on notes/body edits.
         updates.updatedAt = sql`NOW()`;
+        // Set approvedAt once when first approved — this is the stable 90-day clock.
+        // Re-approving an archived script does NOT reset approvedAt so the original
+        // approval date is preserved for the Performance Loop eligibility window.
+        if (input.status === "approved") {
+          updates.approvedAt = sql`COALESCE(approved_at, NOW())`;
+        }
       }
 
       await db.update(scriptFactoryOutputs).set(updates as any).where(eq(scriptFactoryOutputs.id, input.id));

@@ -13,7 +13,7 @@
  */
 
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { contentPatterns, corpusEntries, scriptFactoryOutputs } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -268,7 +268,7 @@ export const scriptFactoryRouter = router({
             usageCount: sql`usage_count + 1`,
             lastUsedAt: sql`NOW()`,
           })
-          .where(sql`id IN (${usedPatternIds.join(",")})`);
+          .where(inArray(contentPatterns.id, usedPatternIds));
       }
 
       return {

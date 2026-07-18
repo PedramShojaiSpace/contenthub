@@ -203,7 +203,7 @@ export async function transcriptBackfillHandler(req: Request, res: Response) {
       fetched,
       noTranscript,
       errors,
-      skipped: videos.length - toFetch.length,
+      scanned: totalScanned,
       quotaUsed: finalQuota.unitsUsed,
       quotaRemaining: finalQuota.remaining,
       message: `Processed ${toFetch.length} videos: ${fetched} fetched, ${noTranscript} no transcript, ${errors} errors`,

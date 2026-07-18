@@ -153,13 +153,23 @@ function LibraryTab() {
     offset: 0,
   });
 
+  const utils = trpc.useUtils();
+
   const removeEntry = trpc.corpus.removeEntry.useMutation({
-    onSuccess: () => { toast.success("Entry removed from corpus"); refetch(); },
+    onSuccess: () => {
+      toast.success("Entry removed from corpus");
+      refetch();
+      utils.corpus.getStats.invalidate();
+    },
     onError: (err) => toast.error(err.message),
   });
 
   const reEmbed = trpc.corpus.reEmbed.useMutation({
-    onSuccess: (r) => { toast.success(`Re-embedded (${r.dims} dims)`); refetch(); },
+    onSuccess: (r) => {
+      toast.success(`Re-embedded (${r.dims} dims)`);
+      refetch();
+      utils.corpus.getStats.invalidate();
+    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -255,6 +265,7 @@ function SeedTab() {
     onSuccess: (r) => {
       toast.success(`Seeded ${r.added} entries from Analog Data Library (${r.embedded} embedded, ${r.skipped} skipped)`);
       utils.corpus.getStats.invalidate();
+      utils.corpus.listEntries.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -263,6 +274,7 @@ function SeedTab() {
     onSuccess: (r) => {
       toast.success(`Seeded ${r.added} outlier transcripts (${r.embedded} embedded, ${r.skipped} skipped)`);
       utils.corpus.getStats.invalidate();
+      utils.corpus.listEntries.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });

@@ -107,7 +107,9 @@ function LibraryTab() {
     onSuccess: () => {
       toast.success("Updated");
       utils.analogData.listEntries.invalidate();
+      utils.analogData.getStats.invalidate();
     },
+    onError: (err) => toast.error(err.message),
   });
 
   return (

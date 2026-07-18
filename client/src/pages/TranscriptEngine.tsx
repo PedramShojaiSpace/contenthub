@@ -560,10 +560,14 @@ function OutlierDetectorTab() {
     sortBy: "outlier_score",
   });
 
+  const utils = trpc.useUtils();
+
   const scoreAll = trpc.outliers.scoreAll.useMutation({
     onSuccess: (result) => {
       toast.success(`Scored ${result.scored} videos — ${result.outliers} outliers found`);
       refetchOutliers();
+      utils.outliers.getOutlierStats.invalidate();
+      utils.outliers.getBaseline.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });

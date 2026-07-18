@@ -73,7 +73,9 @@ function PendingTab({ onSelectScript }: { onSelectScript: (id: number, title: st
                     <Clock className="w-3 h-3" />
                     {(s as any).approvedAt
                       ? `Approved ${new Date((s as any).approvedAt).toLocaleDateString()}`
-                      : `Created ${new Date(s.createdAt).toLocaleDateString()} (legacy)`
+                      // Backend eligibility uses COALESCE(approved_at, updated_at) — show updatedAt
+                      // for legacy rows so the displayed date matches the actual 90-day clock.
+                      : `Updated ${new Date((s as any).updatedAt ?? s.createdAt).toLocaleDateString()} (legacy)`
                     }
                   </span>
                 </div>

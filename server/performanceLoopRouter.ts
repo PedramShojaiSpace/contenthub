@@ -264,6 +264,7 @@ export const performanceLoopRouter = router({
         title: scriptFactoryOutputs.title,
         format: scriptFactoryOutputs.format,
         createdAt: scriptFactoryOutputs.createdAt,
+        updatedAt: scriptFactoryOutputs.updatedAt,
         approvedAt: scriptFactoryOutputs.approvedAt,
       })
       .from(scriptFactoryOutputs)

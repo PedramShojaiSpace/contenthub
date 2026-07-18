@@ -180,6 +180,8 @@ function LibraryTab() {
       toast.success("Entry removed from corpus");
       refetch();
       utils.corpus.getStats.invalidate();
+      // Invalidate search cache so removed entries don't linger in Search tab results
+      utils.corpus.searchCorpus.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -189,6 +191,8 @@ function LibraryTab() {
       toast.success(`Re-embedded (${r.dims} dims)`);
       refetch();
       utils.corpus.getStats.invalidate();
+      // Invalidate search cache so re-embedded entries reflect updated embedding state
+      utils.corpus.searchCorpus.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -286,6 +290,8 @@ function SeedTab() {
       toast.success(`Seeded ${r.added} entries from Analog Data Library (${r.embedded} embedded, ${r.skipped} skipped)`);
       utils.corpus.getStats.invalidate();
       utils.corpus.listEntries.invalidate();
+      // Invalidate search cache so newly seeded entries appear in Search tab results
+      utils.corpus.searchCorpus.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -295,6 +301,8 @@ function SeedTab() {
       toast.success(`Seeded ${r.added} outlier transcripts (${r.embedded} embedded, ${r.skipped} skipped)`);
       utils.corpus.getStats.invalidate();
       utils.corpus.listEntries.invalidate();
+      // Invalidate search cache so newly seeded entries appear in Search tab results
+      utils.corpus.searchCorpus.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });

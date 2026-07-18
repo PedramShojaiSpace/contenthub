@@ -15,7 +15,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { contentPatterns, corpusEntries, scriptFactoryOutputs } from "../drizzle/schema";
+import { contentPatterns, corpusEntries, scriptFactoryOutputs, scriptPerformanceFeedback } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
@@ -375,6 +375,10 @@ export const scriptFactoryRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      // Delete associated feedback rows first — no FK cascade exists on script_performance_feedback.script_id.
+      // Orphaned rows inflate the Performance Loop history count and cause the EMA-reversal
+      // path in deleteFeedback to silently fail when it tries to look up the deleted script.
+      await db.delete(scriptPerformanceFeedback).where(eq(scriptPerformanceFeedback.scriptId, input.id));
       await db.delete(scriptFactoryOutputs).where(eq(scriptFactoryOutputs.id, input.id));
       return { ok: true };
     }),

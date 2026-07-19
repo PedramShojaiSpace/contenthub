@@ -91,9 +91,9 @@ export async function generateSyndicationAdaptations(
   post: WordPressPostContext
 ): Promise<SyndicationAdaptations> {
   const plainText = htmlToPlainText(post.bodyHtml);
-  // Truncate to ~4,000 chars for LLM context efficiency
-  const truncatedText = plainText.length > 4000
-    ? plainText.slice(0, 4000) + "\n\n[... article continues ...]"
+  // Truncate to ~8,000 chars for LLM context efficiency
+  const truncatedText = plainText.length > 8000
+    ? plainText.slice(0, 8000) + "\n\n[... article continues ...]"
     : plainText;
 
   const systemPrompt = `You are the content strategist for Dr. Pedram Shojai, the Urban Monk — a New York Times bestselling author, Doctor of Oriental Medicine, Daoist monk, and founder of The Urban Monk wellness platform. 

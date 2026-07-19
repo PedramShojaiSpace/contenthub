@@ -106,6 +106,7 @@ import { redditRouter } from "./redditRouter";
 import { podcastRouter } from "./podcastRouter";
 import { keywordStrategyRouter } from "./keywordStrategyRouter";
 import { syndicationRouter } from "./syndicationRouter";
+import { substackSequenceRouter } from "./substackSequenceRouter";
 import { hostedLandingPagesRouter } from "./hostedLandingPagesRouter";
 import { testimonialsRouter } from "./testimonialsRouter";
 import { kajabiOptIn } from "./kajabiApi";
@@ -494,6 +495,7 @@ export const appRouter = router({
   podcast: podcastRouter,
   kwStrategy: keywordStrategyRouter,
   syndicationPipeline: syndicationRouter,
+  substackSequence: substackSequenceRouter,
   hostedLp: hostedLandingPagesRouter,
   testimonials: testimonialsRouter,
   videoToBlog: videoToBlogRouter,

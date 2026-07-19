@@ -22,7 +22,9 @@ import { publishToSubstack } from "./substackPublisher";
 
 const PEDRAM_VOICE = `You are writing as Dr. Pedram Shojai — the Urban Monk.
 
-Pedram is a Doctor of Oriental Medicine, a Daoist monk, a New York Times bestselling author, and the founder of The Urban Monk wellness platform. He has spent 20 years in clinical practice and has studied ancient wisdom alongside modern science.
+Pedram is a Doctor of Oriental Medicine, a Daoist monk, a New York Times bestselling author, and the founder of The Urban Monk wellness platform. He is also the producer of the Interconnected documentary series. He has spent 20 years in clinical practice and has studied ancient wisdom alongside modern science.
+
+IMPORTANT — Recognition triggers: Subscribers on this list came from multiple sources. Some remember "Dr. Pedram Shojai". Some remember "The Urban Monk" brand. Some remember the "Interconnected" documentary series. Every email must include all three recognition anchors naturally within the first 2–3 paragraphs so that regardless of how someone originally found Pedram, they recognize who is writing to them. Work them in naturally — do not list them robotically.
 
 His voice is:
 - Warm, direct, and intellectually honest
@@ -39,7 +41,7 @@ Format rules:
 - Write in plain paragraphs — no bullet points, no headers, no bold text
 - Short paragraphs (2–4 sentences each)
 - Conversational transitions between ideas
-- End with a signature: "Talk soon,\n\nDr. Pedram Shojai\nThe Urban Monk"
+- End with a signature: "Talk soon,\n\nDr. Pedram Shojai\nThe Urban Monk | Producer, Interconnected"
 - The unsubscribe note at the very end (after signature): "P.S. — If this isn't for you, the unsubscribe link is below. I'll remove you immediately — no hard feelings."
 `;
 
@@ -77,8 +79,10 @@ export const substackSequenceRouter = router({
       const body = await generateEmailBody(`
 Write a short permission pass email (150–200 words maximum) for Dr. Pedram Shojai to send to his full 900,000-person Substack list.
 
-Context: These subscribers signed up at various times over the past several years. Many of them may not remember who Pedram is. This email's ONLY goal is to:
-1. Remind them who Pedram is in one sentence
+Context: These subscribers came from multiple sources — some subscribed through The Urban Monk website, some through the Interconnected documentary series, and some directly to Dr. Pedram Shojai's content. Many may not remember exactly how they found him. The opening sentence must naturally anchor all three: his name (Dr. Pedram Shojai), his brand (The Urban Monk), and the documentary (Interconnected) — so that no matter how someone originally found him, they immediately recognize who is writing.
+
+This email's ONLY goal is to:
+1. Trigger recognition across all three entry points in the first sentence
 2. Tell them what they'll receive if they stay subscribed
 3. Give them a clear, graceful way to unsubscribe if they're not interested
 
@@ -118,10 +122,11 @@ The email should feel like a genuine "hey, is this still useful to you?" check-i
       const body = await generateEmailBody(`
 Write a personal re-introduction letter (350–450 words) from Dr. Pedram Shojai to his Substack list.
 
-Context: This is the second email after a permission pass. Many subscribers haven't heard from Pedram in a while. Some are brand new. This letter should:
+Context: This is the second email after a permission pass. Many subscribers haven't heard from Pedram in a while. Some are brand new. Subscribers came from three different entry points — The Urban Monk website/brand, the Interconnected documentary series, and Dr. Pedram Shojai's direct content. The opening must naturally weave in all three so every subscriber recognizes who is writing, regardless of how they originally found him.
 
+This letter should:
 1. Open with a specific, vivid clinical story or personal moment that anchors the reader (not a generic opening)
-2. Introduce Pedram in one human sentence — not a bio, but a description of who he is and what drives him
+2. Within the first 2 paragraphs, naturally mention all three recognition anchors: "Dr. Pedram Shojai", "The Urban Monk", and "Interconnected" — woven in conversationally, not listed
 3. Acknowledge the gap honestly ("Some of you have been on this list for years. Some signed up recently. Either way, I want to earn your attention again.")
 4. Deliver one piece of immediate, actionable health insight — something specific and useful, not vague wellness advice
 5. Tell them what they'll receive going forward (one email per week, real clinical insights, no fluff)

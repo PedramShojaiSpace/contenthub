@@ -3564,3 +3564,43 @@ export const scriptPerformanceFeedback = mysqlTable("script_performance_feedback
 
 export type ScriptPerformanceFeedback = typeof scriptPerformanceFeedback.$inferSelect;
 export type InsertScriptPerformanceFeedback = typeof scriptPerformanceFeedback.$inferInsert;
+
+// ─── Substack Inbox ───────────────────────────────────────────────────────────
+// Stores comments and replies polled from Substack posts so the VA team can
+// respond without flooding Pedram's personal email inbox.
+export const substackInboxItems = mysqlTable("substack_inbox_items", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Substack internal comment ID — used for dedup */
+  substackCommentId: varchar("substack_comment_id", { length: 128 }).notNull().unique(),
+  /** The Substack post ID this comment belongs to */
+  substackPostId: varchar("substack_post_id", { length: 128 }).notNull(),
+  /** The Substack post URL for linking back */
+  substackPostUrl: text("substack_post_url"),
+  /** The Substack post title for display */
+  postTitle: text("post_title"),
+  /** Commenter's display name */
+  authorName: varchar("author_name", { length: 255 }),
+  /** Commenter's email (if available from API) */
+  authorEmail: varchar("author_email", { length: 320 }),
+  /** Commenter's Substack handle */
+  authorHandle: varchar("author_handle", { length: 128 }),
+  /** The comment body text */
+  body: text("body").notNull(),
+  /** Whether this is a reply to another comment */
+  isReply: boolean("is_reply").default(false),
+  /** Parent comment ID if this is a reply */
+  parentCommentId: varchar("parent_comment_id", { length: 128 }),
+  /** VA workflow status: new → in_progress → responded → archived */
+  status: mysqlEnum("status", ["new", "in_progress", "responded", "archived"]).default("new").notNull(),
+  /** VA notes or draft response */
+  vaNote: text("va_note"),
+  /** When the VA responded (for tracking) */
+  respondedAt: bigint("responded_at", { mode: "number" }),
+  /** When this comment was posted on Substack */
+  postedAt: bigint("posted_at", { mode: "number" }),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type SubstackInboxItem = typeof substackInboxItems.$inferSelect;
+export type InsertSubstackInboxItem = typeof substackInboxItems.$inferInsert;

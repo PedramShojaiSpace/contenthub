@@ -81,7 +81,7 @@ const PRODUCT_CATALOG = [
   },
   {
     name: "Urban Monk Academy",
-    url: "https://theurbanmonk.com/academy?utm_source=meta&utm_medium=paid_social&utm_campaign=organic_signal",
+    url: "https://lightson.theurbanmonk.com?utm_source=meta&utm_medium=paid_social&utm_campaign=organic_signal",
     price: "$297/year",
     topics: ["meditation", "health", "wellness", "longevity", "nutrition", "qi gong", "spiritual", "taoist"],
   },

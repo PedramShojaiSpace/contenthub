@@ -679,7 +679,7 @@ Be specific enough that someone who has never done this before can follow along.
 
       // ── 1. Build internal link block from wpPostIndex ──────────────────────
       const foundationLinks = [
-        `- [The Urban Monk Academy — Holistic Health & Wellness Training](https://theurbanmonk.com/urban-monk-academy/)`,
+        `- [Lights On — The Urban Monk](https://lightson.theurbanmonk.com)`,
         `- [The Urban Monk — Dr. Pedram Shojai's Official Site](https://theurbanmonk.com/)`,
         `- [Well.org — Wellness Community & Resources](https://well.org/)`,
         `- [Urban Monk Nutrition — Supplements & Wellness Products](https://theurbanmonk.com/urban-monk-nutrition/)`,
@@ -719,7 +719,7 @@ Be specific enough that someone who has never done this before can follow along.
         input.customInstructions ? `\nAdditional instructions: ${input.customInstructions}` : "",
         `\n\nSOURCE MATERIAL (video script — use as the factual basis for the article, but rewrite entirely in long-form blog style):\n${input.script.slice(0, 6000)}`,
         internalLinkBlock,
-        `\n\nCTA LINK: Direct readers to the Urban Monk Academy at https://theurbanmonk.com/urban-monk-academy/ in the CTA section.`,
+        `\n\nCTA LINK: Direct readers to the Lights On course at https://lightson.theurbanmonk.com in the CTA section.`,
       ]
         .filter(Boolean)
         .join("");

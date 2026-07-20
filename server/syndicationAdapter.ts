@@ -145,7 +145,7 @@ Adapt this article for Medium with these requirements:
 - Introduce Pedram briefly in paragraph 2 or 3: "Dr. Pedram Shojai, a Doctor of Oriental Medicine and New York Times bestselling author, has spent 20 years..."
 - Body: Keep the core science and insights from the original. You may restructure for Medium's reading style (shorter paragraphs, subheadings).
 - Remove all newsletter-native language ("this week," "subscribe," "our community," etc.)
-- Closing CTA: End with: "Dr. Pedram Shojai publishes a weekly letter on gut health, energy, and reclaiming your biology. You can find him at [The Urban Monk on Substack](${post.wordpressUrl.replace("theurbanmonk.com", "substack.theurbanmonk.com") || "https://theurbanmonk.com"})"
+- Closing CTA: End with: "Dr. Pedram Shojai publishes a weekly letter on gut health, energy, and reclaiming your biology. You can find him at [The Urban Monk on Substack](https://drpedramshojai.substack.com/)"
 - Note: The canonical URL will be set to ${post.wordpressUrl} — you do not need to include this in the text.
 
 Return a JSON object with:

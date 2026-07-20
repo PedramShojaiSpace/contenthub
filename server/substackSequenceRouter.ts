@@ -200,7 +200,7 @@ Introduce the Urban Monk Academy for the first time. Explain:
 - What's inside: structured curriculum, community, live sessions with Pedram
 - The price: $297/year (less than $1/day)
 - The guarantee: 30 days, full refund, no questions asked
-- One clear CTA: a link to join (use https://theurbanmonk.com/academy as the URL)
+- One clear CTA: a link to join (use https://lightson.theurbanmonk.com as the URL)
 
 Write this as a personal recommendation from Pedram, not a sales pitch. He built this because he couldn't reach everyone in a clinical setting. This is his way of scaling his practice.`,
         },
@@ -213,7 +213,7 @@ This is the final email in the Academy launch sequence. Be direct and honest:
 - Describe specifically who the Academy IS for (intelligent, motivated people who are tired of surface-level health advice and want to understand the root causes)
 - Describe honestly who it is NOT for (people looking for a quick fix, people who want someone to do the work for them)
 - Remind them of the price ($297/year) and the 30-day guarantee
-- One final CTA with the link: https://theurbanmonk.com/academy
+- One final CTA with the link: https://lightson.theurbanmonk.com
 
 Create urgency through specificity and honesty, not artificial deadlines. End with a personal note from Pedram about why this work matters to him.`,
         },

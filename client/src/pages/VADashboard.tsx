@@ -1746,7 +1746,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function VADashboard() {
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState<"syndication" | "video">("syndication");
+  const [activeTab, setActiveTab] = useState<"syndication" | "video" | "substack">("syndication");
   const [syndicationFilter, setSyndicationFilter] = useState<"all" | "todo" | "done" | "finished">("todo");
   const [videoFilter, setVideoFilter] = useState<"all" | "review" | "seo" | "published" | "failed" | "finished">("review");
 
@@ -1757,6 +1757,29 @@ export default function VADashboard() {
   // Video jobs data
   const { data: videoJobsData, isLoading: videoLoading, error: videoError, refetch: refetchVideo } =
     trpc.videoPipeline.getVideoJobs.useQuery({ limit: 50 }, { refetchInterval: 30_000 });
+
+  // Substack inbox data
+  const { data: inboxCounts, refetch: refetchInboxCounts } = trpc.substackInbox.getCounts.useQuery(undefined, { refetchInterval: 60_000 });
+  const { data: inboxItems, isLoading: inboxLoading, refetch: refetchInbox } = trpc.substackInbox.listItems.useQuery(
+    { status: substackInboxFilter, limit: 50 },
+    { refetchInterval: 60_000 }
+  );
+  const pollCommentsMutation = trpc.substackInbox.pollComments.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Polled ${data.postsPolled} posts — ${data.newComments} new comments found`);
+      void refetchInbox();
+      void refetchInboxCounts();
+    },
+    onError: (err) => toast.error(`Poll failed: ${err.message}`),
+  });
+  const updateInboxStatus = trpc.substackInbox.updateStatus.useMutation({
+    onSuccess: () => { void refetchInbox(); void refetchInboxCounts(); },
+    onError: (err) => toast.error(`Update failed: ${err.message}`),
+  });
+  const saveInboxNote = trpc.substackInbox.saveNote.useMutation({
+    onSuccess: () => { void refetchInbox(); toast.success("Note saved"); },
+    onError: (err) => toast.error(`Save failed: ${err.message}`),
+  });
 
   // YouTube channel info — used to build correct Studio URL
   const { data: ytStatus } = trpc.videoToBlog.getYouTubeStatus.useQuery();
@@ -1780,10 +1803,15 @@ export default function VADashboard() {
     return !job.archivedAt;
   });
 
+  const [substackInboxFilter, setSubstackInboxFilter] = useState<"new" | "in_progress" | "responded" | "archived" | "all">("new");
+  const [expandedInboxId, setExpandedInboxId] = useState<number | null>(null);
+  const [inboxNotes, setInboxNotes] = useState<Record<number, string>>({});
+
   const syndicationTodoCount = allSyndicationJobs.filter(
     (j) => j.status === "ready" || (j.status === "pending" && j.scheduledAt <= Date.now())
   ).length;
   const videoReviewCount = allVideoJobs.filter((j) => j.status === "ready_for_review" || j.status === "uploaded_unlisted").length;
+  const substackNewCount = inboxCounts?.new ?? 0;
 
   // Group syndication jobs by wordpress post
   const grouped = filteredSyndicationJobs.reduce<Record<string, SyndicationJob[]>>((acc, job) => {
@@ -1821,6 +1849,10 @@ export default function VADashboard() {
                 <p className="text-2xl font-bold text-red-400">{videoReviewCount}</p>
                 <p className="text-xs text-muted-foreground">Videos to Review</p>
               </div>
+              <div className="bg-muted rounded-lg px-4 py-2">
+                <p className="text-2xl font-bold text-purple-400">{substackNewCount}</p>
+                <p className="text-xs text-muted-foreground">Substack Replies</p>
+              </div>
             </div>
           </div>
 
@@ -1839,6 +1871,22 @@ export default function VADashboard() {
               {syndicationTodoCount > 0 && (
                 <span className="bg-amber-500 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                   {syndicationTodoCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("substack")}
+              className={`px-5 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                activeTab === "substack"
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <MessageCircle className="w-4 h-4" />
+              Substack Inbox
+              {substackNewCount > 0 && (
+                <span className="bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {substackNewCount}
                 </span>
               )}
             </button>
@@ -1938,6 +1986,177 @@ export default function VADashboard() {
                           <JobCard key={job.id} job={job} onPosted={() => refetchSyndication()} />
                         ))}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Substack Inbox Tab ─────────────────────────────────────────────── */}
+        {activeTab === "substack" && (
+          <>
+            {/* Instructions banner */}
+            <div className="mb-6 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg">
+              <p className="text-sm font-semibold text-purple-400 mb-2">Substack Inbox Instructions</p>
+              <ol className="space-y-1 text-xs text-muted-foreground">
+                <li>1. Click <strong className="text-foreground">Poll for New Comments</strong> to fetch the latest comments from all Substack posts.</li>
+                <li>2. Read each comment. Write a draft response in the notes field.</li>
+                <li>3. Go to <a href="https://drpedramshojai.substack.com" target="_blank" rel="noreferrer" className="text-purple-400 underline">Substack</a>, find the post, and post your reply manually.</li>
+                <li>4. Click <strong className="text-foreground">Mark Responded</strong> to archive it from the queue.</li>
+              </ol>
+            </div>
+
+            {/* Poll button + filter tabs */}
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div className="flex gap-2 flex-wrap">
+                {(["new", "in_progress", "responded", "archived", "all"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setSubstackInboxFilter(f)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                      substackInboxFilter === f
+                        ? f === "archived" ? "bg-amber-500/20 text-amber-400" : "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {f === "new" ? `New (${inboxCounts?.new ?? 0})` :
+                     f === "in_progress" ? `In Progress (${inboxCounts?.in_progress ?? 0})` :
+                     f === "responded" ? `Responded (${inboxCounts?.responded ?? 0})` :
+                     f === "archived" ? "Archived" : "All"}
+                  </button>
+                ))}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => pollCommentsMutation.mutate()}
+                disabled={pollCommentsMutation.isPending}
+                className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+              >
+                {pollCommentsMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Poll for New Comments
+              </Button>
+            </div>
+
+            {/* Inbox items */}
+            {inboxLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : !inboxItems?.length ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <MessageCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">No comments in this queue.</p>
+                <p className="text-xs mt-1">Click "Poll for New Comments" to fetch the latest from Substack.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(inboxItems as Array<{
+                  id: number;
+                  substackCommentId: string;
+                  substackPostId: string;
+                  substackPostUrl: string | null;
+                  postTitle: string | null;
+                  authorName: string | null;
+                  authorEmail: string | null;
+                  authorHandle: string | null;
+                  body: string;
+                  isReply: boolean;
+                  parentCommentId: string | null;
+                  status: string;
+                  vaNote: string | null;
+                  respondedAt: number | null;
+                  postedAt: number | null;
+                  createdAt: Date;
+                  updatedAt: Date;
+                }>).map((item) => (
+                  <div key={item.id} className={`border rounded-lg p-4 ${
+                    item.status === "new" ? "border-purple-500/30 bg-purple-500/5" :
+                    item.status === "in_progress" ? "border-amber-500/30 bg-amber-500/5" :
+                    item.status === "responded" ? "border-green-500/30 bg-green-500/5" :
+                    "border-border bg-muted/20"
+                  }`}>
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm text-foreground">{item.authorName ?? "Anonymous"}</span>
+                          {item.authorHandle && <span className="text-xs text-muted-foreground">@{item.authorHandle}</span>}
+                          {item.isReply && <Badge className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/20">Reply</Badge>}
+                          <Badge className={`text-xs ${
+                            item.status === "new" ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
+                            item.status === "in_progress" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                            item.status === "responded" ? "bg-green-500/10 text-green-400 border-green-500/20" :
+                            "bg-muted text-muted-foreground"
+                          }`}>{item.status.replace("_", " ")}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          On: <span className="text-foreground/70">{item.postTitle ?? item.substackPostId}</span>
+                          {item.postedAt ? ` · ${new Date(item.postedAt).toLocaleDateString()}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        {item.substackPostUrl && (
+                          <a href={item.substackPostUrl} target="_blank" rel="noreferrer">
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                              <ExternalLink className="w-3 h-3" />
+                            </Button>
+                          </a>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setExpandedInboxId(expandedInboxId === item.id ? null : item.id)}
+                        >
+                          {expandedInboxId === item.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Comment body */}
+                    <p className="text-sm text-foreground/80 leading-relaxed">{item.body}</p>
+
+                    {/* Expanded: notes + actions */}
+                    {expandedInboxId === item.id && (
+                      <div className="mt-3 pt-3 border-t border-border/50 space-y-3">
+                        <Textarea
+                          placeholder="Draft your response here..."
+                          value={inboxNotes[item.id] ?? item.vaNote ?? ""}
+                          onChange={(e) => setInboxNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          className="text-sm min-h-[80px] bg-background/50"
+                        />
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={() => saveInboxNote.mutate({ id: item.id, vaNote: inboxNotes[item.id] ?? item.vaNote ?? "" })}
+                            disabled={saveInboxNote.isPending}
+                          >
+                            Save Note
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="text-xs bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => updateInboxStatus.mutate({ id: item.id, status: "responded", vaNote: inboxNotes[item.id] ?? item.vaNote ?? undefined })}
+                            disabled={updateInboxStatus.isPending}
+                          >
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> Mark Responded
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs text-muted-foreground"
+                            onClick={() => updateInboxStatus.mutate({ id: item.id, status: "archived" })}
+                            disabled={updateInboxStatus.isPending}
+                          >
+                            <Archive className="w-3 h-3 mr-1" /> Archive
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

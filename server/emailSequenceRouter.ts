@@ -474,7 +474,9 @@ Return a JSON object with exactly this structure:
         throw new Error(`Failed to send Email 1: ${sendError}`);
       }
 
-      // Queue Emails 2 & 3 with scheduled send times
+      // Queue Emails 2 & 3 with scheduled send times.
+      // IMPORTANT: also persist overrideEmail as leadEmail so the follow-up
+      // scheduler (which reads leadEmail from the DB) can send Emails 2 & 3.
       await db
         .update(emailSequences)
         .set({
@@ -485,6 +487,8 @@ Return a JSON object with exactly this structure:
           email3_send_at: now + 7 * DAY_MS,
           send_error: null,
           updatedAt: now,
+          // Persist the override email so the cron scheduler can find it
+          ...(input.overrideEmail ? { leadEmail: input.overrideEmail } : {}),
         } as any)
         .where(eq(emailSequences.id, input.sequenceId));
 

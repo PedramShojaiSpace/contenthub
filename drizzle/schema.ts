@@ -3359,8 +3359,16 @@ export const analogDataEntries = mysqlTable("analog_data_entries", {
   id: int("id").autoincrement().primaryKey(),
   // Title — nullable; AI auto-generates if left blank on input
   title: varchar("title", { length: 255 }),
-  // Type of converting content
-  type: analogDataTypeEnum.notNull().default("other"),
+  // Type of converting content — column name MUST be "type" to match DB
+  type: mysqlEnum("type", [
+    "sales_page",
+    "facebook_ad",
+    "customer_interview",
+    "text_survey",
+    "vsl_script",
+    "email_sequence",
+    "other",
+  ]).notNull().default("other"),
   // Tags — JSON array of string labels (e.g. ["gut_health", "Q1_2026", "cold_traffic"])
   tags: text("tags"),
   // FK → personas.id (nullable — can be unassigned or assigned to multiple)

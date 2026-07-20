@@ -101,6 +101,7 @@ const ownerItems = [
   { icon: GitFork, label: "Content Pipeline", path: "/content-pipeline" },
   { icon: Clock, label: "Review Queue", path: "/review-queue" },
   { icon: Rss, label: "Substack Publisher", path: "/substack" },
+  { icon: Rss, label: "Substack Sequence", path: "/substack-sequence" },
   { icon: Activity, label: "System Health", path: "/system-health" },
   { icon: FlaskConical, label: "A/B Tests", path: "/ab-tests" },
   { icon: ShieldCheck, label: "Claims Review", path: "/claims-review" },
@@ -217,6 +218,7 @@ const systemArchiveItems = [
 // All paths for active-state detection
 const allOwnerPaths = new Set([
   ...ownerItems.map(i => i.path),
+  "/substack-sequence",
   "/analyze",
   "/transcript-engine",
   "/corpus-builder",

@@ -459,13 +459,14 @@ export const leadScrubberRouter = router({
             );
 
             for (const audience of matchingAudiences) {
-              // Check if email already in this audience
+              // Check if THIS SPECIFIC EMAIL is already in this audience
+              // (must filter by emailRaw, not just audienceId — otherwise the first
+              // insert blocks all subsequent leads from being added to the audience)
               const existing = await db
                 .select({ id: mal.id })
                 .from(mal)
-                .where(eq(mal.audienceId, audience.id))
+                .where(and(eq(mal.audienceId, audience.id), eq(mal.emailRaw, email)))
                 .limit(1);
-              // Simple dedup by emailRaw
               const alreadyIn = existing.length > 0;
               if (alreadyIn) continue;
 

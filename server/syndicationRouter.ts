@@ -227,11 +227,21 @@ export const syndicationRouter = router({
     .query(async () => {
       const db = await getDb();
       if (!db) return [];
+      // Only return jobs that are:
+      //   - manual platforms (quora, reddit) in any non-archived state, OR
+      //   - medium jobs that were NOT auto-published by the cron (status != 'published')
+      //     since medium is auto-published, VA only needs to see pending/failed/ready ones
+      // Also exclude archived jobs (archivedAt IS NOT NULL)
+      const { isNull } = await import("drizzle-orm");
       const jobs = await db
         .select()
         .from(syndicationJobs)
         .where(
-          inArray(syndicationJobs.platform, ["medium", "quora", "reddit"])
+          and(
+            inArray(syndicationJobs.platform, ["medium", "quora", "reddit"]),
+            isNull(syndicationJobs.archivedAt),
+            inArray(syndicationJobs.status, ["pending", "ready", "failed", "adapting", "published"])
+          )
         )
         .orderBy(syndicationJobs.scheduledAt);
       return jobs;

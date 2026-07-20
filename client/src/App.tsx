@@ -78,6 +78,7 @@ const HistoricalPosts = lazy(() => import("./pages/HistoricalPosts"));
 const RedditPersonas = lazy(() => import("./pages/RedditPersonas"));
 const RedditRoas = lazy(() => import("./pages/RedditRoas"));
 const SubstackPublisher = lazy(() => import("./pages/SubstackPublisher"));
+const SubstackSequence = lazy(() => import("./pages/SubstackSequence"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const FunnelCommand = lazy(() => import("./pages/FunnelCommand"));
 const AscensionPipeline = lazy(() => import("./pages/AscensionPipeline"));
@@ -178,6 +179,7 @@ function Router() {
         <Route path={"/reddit-roas"} component={RedditRoas} />
         <Route path={"/youtube-pipeline"} component={YouTubePipeline} />
         <Route path={"/substack"} component={SubstackPublisher} />
+        <Route path={"/substack-sequence"} component={SubstackSequence} />
         <Route path={"/system-health"} component={SystemHealth} />
         <Route path={"/funnels"} component={FunnelCommand} />
         <Route path={"/ascension"} component={AscensionPipeline} />

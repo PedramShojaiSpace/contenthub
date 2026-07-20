@@ -75,12 +75,12 @@ export const analogDataRouter = router({
           inCorpus: analogDataEntries.inCorpus,
           // Return first 300 chars of content as preview
           contentPreview: sql<string>`LEFT(${analogDataEntries.content}, 300)`,
-          createdAt: analogDataEntries.ad_createdAt,
-          updatedAt: analogDataEntries.ad_updatedAt,
+          createdAt: analogDataEntries.createdAt,
+          updatedAt: analogDataEntries.updatedAt,
         })
         .from(analogDataEntries)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(analogDataEntries.ad_createdAt))
+        .orderBy(desc(analogDataEntries.createdAt))
         .limit(input.limit)
         .offset(input.offset);
 
@@ -171,7 +171,7 @@ export const analogDataRouter = router({
         })
       );
 
-      const content = result.choices?.[0]?.message?.content ?? "{}";
+      const content = String(result.choices?.[0]?.message?.content ?? "{}");
       const parsed = parseLLMJson<{ title: string }>(content);
       return { title: parsed.title };
     }),
@@ -192,10 +192,39 @@ export const analogDataRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      // Step 1: Determine title
-      let title = input.title?.trim() || null;
-      if (!title || input.autoGenerateTitle) {
-        try {
+      // ─── SAVE-FIRST STRATEGY ──────────────────────────────────────────────────
+      // We insert the entry into the DB immediately with a fallback title so the
+      // save NEVER fails due to an LLM timeout. LLM enrichment (title + insights)
+      // runs after the insert and updates the row in-place. This means:
+      //   • The entry always appears in the Library after clicking "Save to Library"
+      //   • inCorpus defaults to TRUE so it is immediately available for seeding
+      //   • If LLM enrichment fails, the raw content is still saved and usable
+
+      // Step 1: Insert with fallback title (no LLM dependency on the critical path)
+      const fallbackTitle = input.title?.trim() ||
+        `${input.type.replace(/_/g, " ")} — ${new Date().toLocaleDateString()}`;
+
+      const insertResult = await db.insert(analogDataEntries).values({
+        title: fallbackTitle,
+        type: input.type,
+        tags: JSON.stringify(input.tags),
+        personaId: input.personaId ?? null,
+        content: input.content,
+        extractedInsights: null,
+        // Default inCorpus=TRUE so entries are immediately available for seeding
+        // without requiring a manual "toggle to corpus" step
+        inCorpus: true,
+      });
+      const newId: number = (insertResult as any)?.insertId ?? (insertResult as any)?.[0]?.insertId ?? 0;
+
+      // Step 2: LLM enrichment — runs after save, updates in-place
+      // Errors here are non-fatal; the entry is already saved.
+      let finalTitle = fallbackTitle;
+      let extractedInsights: Record<string, unknown> | null = null;
+
+      try {
+        // 2a. Auto-generate title if requested
+        if (!input.title?.trim() || input.autoGenerateTitle) {
           const typeLabel: Record<string, string> = {
             sales_page: "sales page",
             facebook_ad: "Facebook ad",
@@ -205,48 +234,32 @@ export const analogDataRouter = router({
             email_sequence: "email sequence",
             other: "marketing asset",
           };
-          const result = await wrapLLM(() =>
+          const titleResult = await wrapLLM(() =>
             invokeLLM({
               messages: [
-                {
-                  role: "system",
-                  content:
-                    "You are a marketing analyst. Generate a concise, descriptive title. Return ONLY a JSON object with a single 'title' field.",
-                },
-                {
-                  role: "user",
-                  content: `Generate a title for this ${typeLabel[input.type]}:\n\n${input.content.slice(0, 2000)}`,
-                },
+                { role: "system", content: "You are a marketing analyst. Generate a concise, descriptive title. Return ONLY a JSON object with a single 'title' field." },
+                { role: "user", content: `Generate a title for this ${typeLabel[input.type]}:\n\n${input.content.slice(0, 2000)}` },
               ],
               response_format: {
                 type: "json_schema",
                 json_schema: {
                   name: "title_result",
                   strict: true,
-                  schema: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                    },
-                    required: ["title"],
-                    additionalProperties: false,
-                  },
+                  schema: { type: "object", properties: { title: { type: "string" } }, required: ["title"], additionalProperties: false },
                 },
               },
             })
           );
-          const content = result.choices?.[0]?.message?.content ?? "{}";
-          const parsed = parseLLMJson<{ title: string }>(content);
-          title = parsed.title;
-        } catch {
-          // Fallback title if LLM fails
-          title = `${input.type.replace(/_/g, " ")} — ${new Date().toLocaleDateString()}`;
+          const titleContent = String(titleResult.choices?.[0]?.message?.content ?? "{}");
+          const parsed = parseLLMJson<{ title: string }>(titleContent);
+          if (parsed.title) finalTitle = parsed.title;
         }
+      } catch {
+        // Keep fallback title — entry is already saved
       }
 
-      // Step 2: Extract insights from content
-      let extractedInsights: Record<string, unknown> | null = null;
       try {
+        // 2b. Extract conversion insights
         const insightResult = await wrapLLM(() =>
           invokeLLM({
             messages: [
@@ -265,10 +278,7 @@ Return ONLY a JSON object with these fields:
 
 Focus on EXACT language from the content, not paraphrases.`,
               },
-              {
-                role: "user",
-                content: input.content.slice(0, 8000),
-              },
+              { role: "user", content: input.content.slice(0, 8000) },
             ],
             response_format: {
               type: "json_schema",
@@ -281,55 +291,42 @@ Focus on EXACT language from the content, not paraphrases.`,
                     hooks: { type: "array", items: { type: "string" } },
                     painPoints: { type: "array", items: { type: "string" } },
                     proofElements: { type: "array", items: { type: "string" } },
-                    objectionHandlers: {
-                      type: "array",
-                      items: { type: "string" },
-                    },
+                    objectionHandlers: { type: "array", items: { type: "string" } },
                     ctas: { type: "array", items: { type: "string" } },
                     keyPhrases: { type: "array", items: { type: "string" } },
-                    conversionMechanisms: {
-                      type: "array",
-                      items: { type: "string" },
-                    },
+                    conversionMechanisms: { type: "array", items: { type: "string" } },
                   },
-                  required: [
-                    "hooks",
-                    "painPoints",
-                    "proofElements",
-                    "objectionHandlers",
-                    "ctas",
-                    "keyPhrases",
-                    "conversionMechanisms",
-                  ],
+                  required: ["hooks", "painPoints", "proofElements", "objectionHandlers", "ctas", "keyPhrases", "conversionMechanisms"],
                   additionalProperties: false,
                 },
               },
             },
           })
         );
-        const insightContent = insightResult.choices?.[0]?.message?.content ?? "{}";
+        const insightContent = String(insightResult.choices?.[0]?.message?.content ?? "{}");
         extractedInsights = parseLLMJson(insightContent);
       } catch {
-        // Insights extraction is non-blocking — entry still saves without it
-        extractedInsights = null;
+        // Keep null insights — entry is already saved
       }
 
-      // Step 3: Insert into DB
-      const result = await db.insert(analogDataEntries).values({
-        title,
-        type: input.type,
-        tags: JSON.stringify(input.tags),
-        personaId: input.personaId ?? null,
-        content: input.content,
-        extractedInsights: extractedInsights
-          ? JSON.stringify(extractedInsights)
-          : null,
-        inCorpus: false,
-      });
+      // Step 3: Update the row with enriched title + insights (best-effort)
+      if (newId) {
+        try {
+          await db
+            .update(analogDataEntries)
+            .set({
+              title: finalTitle,
+              extractedInsights: extractedInsights ? JSON.stringify(extractedInsights) : null,
+            })
+            .where(eq(analogDataEntries.id, newId));
+        } catch {
+          // Non-fatal — entry is already saved with fallback title
+        }
+      }
 
       return {
-        id: (result as any)?.insertId ?? null,
-        title,
+        id: newId,
+        title: finalTitle,
         extractedInsights,
       };
     }),

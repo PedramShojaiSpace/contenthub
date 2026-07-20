@@ -85,13 +85,33 @@ function buildGroundedContext(
   }
 
   if (corpusExcerpts.length > 0) {
-    lines.push("=== CORPUS REFERENCE EXCERPTS ===");
-    lines.push("These are excerpts from proven content. Draw from them for language, structure, and framing.");
-    lines.push("");
-    for (const entry of corpusExcerpts.slice(0, 3)) {
-      lines.push(`[${entry.sourceType.toUpperCase()}] ${entry.title ?? "Untitled"}`);
-      lines.push(entry.content.slice(0, 800));
+    // Sort: analog_data (Northstar) first, transcripts second
+    const analogEntries = corpusExcerpts.filter(e => e.sourceType === "analog_data");
+    const transcriptEntries = corpusExcerpts.filter(e => e.sourceType !== "analog_data");
+
+
+    if (analogEntries.length > 0) {
+      lines.push("=== ANALOG DATA — NORTHSTAR (PROVEN CONVERTING CONTENT) ===");
+      lines.push("PRIORITY: These are sales pages, ads, and interviews that have ALREADY converted customers.");
+      lines.push("Use the exact language, hooks, and framing from these entries. This is your primary source.");
       lines.push("");
+      for (const entry of analogEntries.slice(0, 3)) {
+        lines.push(`[${entry.sourceType.toUpperCase()}] ${entry.title ?? "Untitled"}`);
+        lines.push(entry.content.slice(0, 1000));
+        lines.push("");
+      }
+    }
+
+    if (transcriptEntries.length > 0) {
+      lines.push("=== SECONDARY REFERENCE — YOUTUBE TRANSCRIPTS ===");
+      lines.push("SECONDARY: Use these for context and topic familiarity ONLY.");
+      lines.push("Do NOT let these override the analog data above. They are supporting context, not the Northstar.");
+      lines.push("");
+      for (const entry of transcriptEntries.slice(0, 2)) {
+        lines.push(`[TRANSCRIPT] ${entry.title ?? "Untitled"}`);
+        lines.push(entry.content.slice(0, 500));
+        lines.push("");
+      }
     }
   }
 
@@ -108,6 +128,19 @@ Your job is to write a ${FORMAT_DESCRIPTIONS[format]} that is grounded in proven
 VOICE: Dr. Pedram Shojai's voice — bridges ancient wisdom with modern science, challenges the status quo,
 empathetic but direct, authoritative, personal storytelling, never preachy. Audience: health-conscious
 professionals aged 35-55 who are high-achievers but feel something is missing.
+
+=== NORTHSTAR RULE — READ THIS FIRST ===
+The ANALOG DATA below (sales pages, ads, interviews, surveys) is your PRIMARY source of truth.
+It represents PROVEN, CONVERTING content — language that has already moved real customers to buy.
+You MUST anchor every structural element (hook, pain, proof, CTA) to the analog data first.
+
+Do NOT invent topics, trends, or angles from general knowledge.
+Do NOT follow YouTube rabbit holes or generic health content patterns.
+Do NOT use language that isn't grounded in the provided corpus.
+
+The analog data is the Northstar. Stay close to it. The script should feel like it was written
+by someone who deeply studied what already converts for this specific audience — because it was.
+=== END NORTHSTAR RULE ===
 
 VERIFIED TAGGING RULES (CRITICAL):
 - When you use a pattern or phrase from the VERIFIED PATTERNS section verbatim or near-verbatim, 
@@ -191,24 +224,41 @@ export const scriptFactoryRouter = router({
                 sql`${corpusEntries.title} LIKE ${`%${w}%`}`
               )))
             : undefined;
-          const rows = await db
+
+          // NORTHSTAR PRIORITY: Pull analog_data entries first (proven converting content)
+          // These are sales pages, ads, interviews — the primary source of truth
+          const analogRows = await db
             .select({ id: corpusEntries.id, title: corpusEntries.title, content: corpusEntries.content, sourceType: corpusEntries.sourceType })
             .from(corpusEntries)
-            .where(and(eq(corpusEntries.inCorpus, 1), keywordCondition))
-            .orderBy(desc(corpusEntries.createdAt))
-            .limit(5);
-          corpusExcerpts = rows;
-          usedCorpusIds.push(...rows.map((r) => r.id));
-        } catch {
-          // Fallback: just get recent corpus entries
-          const rows = await db
-            .select({ id: corpusEntries.id, title: corpusEntries.title, content: corpusEntries.content, sourceType: corpusEntries.sourceType })
-            .from(corpusEntries)
-            .where(eq(corpusEntries.inCorpus, 1))
+            .where(and(eq(corpusEntries.inCorpus, 1), eq(corpusEntries.sourceType, "analog_data"), keywordCondition))
             .orderBy(desc(corpusEntries.createdAt))
             .limit(3);
-          corpusExcerpts = rows;
-          usedCorpusIds.push(...rows.map((r) => r.id));
+
+          // SECONDARY: Fill remaining slots with transcripts (context only, not Northstar)
+          const remainingSlots = Math.max(0, 5 - analogRows.length);
+          let transcriptRows: typeof analogRows = [];
+          if (remainingSlots > 0) {
+            transcriptRows = await db
+              .select({ id: corpusEntries.id, title: corpusEntries.title, content: corpusEntries.content, sourceType: corpusEntries.sourceType })
+              .from(corpusEntries)
+              .where(and(eq(corpusEntries.inCorpus, 1), eq(corpusEntries.sourceType, "transcript"), keywordCondition))
+              .orderBy(desc(corpusEntries.createdAt))
+              .limit(remainingSlots);
+          }
+
+          // Analog data always comes first in the array (Northstar ordering)
+          corpusExcerpts = [...analogRows, ...transcriptRows];
+          usedCorpusIds.push(...corpusExcerpts.map((r) => r.id));
+        } catch {
+          // Fallback: get recent corpus entries, analog_data first
+          const analogFallback = await db
+            .select({ id: corpusEntries.id, title: corpusEntries.title, content: corpusEntries.content, sourceType: corpusEntries.sourceType })
+            .from(corpusEntries)
+            .where(and(eq(corpusEntries.inCorpus, 1), eq(corpusEntries.sourceType, "analog_data")))
+            .orderBy(desc(corpusEntries.createdAt))
+            .limit(3);
+          corpusExcerpts = analogFallback;
+          usedCorpusIds.push(...analogFallback.map((r) => r.id));
         }
       }
 
@@ -227,7 +277,7 @@ export const scriptFactoryRouter = router({
         ],
       });
 
-      const scriptBody = response?.choices?.[0]?.message?.content ?? "";
+      const scriptBody = String(response?.choices?.[0]?.message?.content ?? "");
       if (!scriptBody || scriptBody.length < 50) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM returned empty script" });
       }
@@ -242,7 +292,7 @@ export const scriptFactoryRouter = router({
           { role: "user", content: `Topic: ${input.topic}\nFormat: ${input.format}\n\nFirst 200 chars of script:\n${scriptBody.slice(0, 200)}` },
         ],
       });
-      const title = (titleResponse?.choices?.[0]?.message?.content ?? input.topic).slice(0, 500).trim();
+      const title = String(titleResponse?.choices?.[0]?.message?.content ?? input.topic).slice(0, 500).trim();
 
       // 7. Save to DB
       const insertResult = await db.insert(scriptFactoryOutputs).values({

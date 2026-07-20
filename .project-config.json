@@ -8,15 +8,16 @@
   "dev_command": "pnpm run dev",
   "env_vars": {
     "DATABASE_URL": "mysql://2Xox4WBe4KrUPbP.bb54cdcee2e7:6uhKZ0LQV0VgXDC6S23B@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/iUgsiz76NwfDUVHZHV7CyJ?ssl={\"rejectUnauthorized\":true}",
-    "DRIZZLE_DATABASE_URL": "mysql://2Xox4WBe4KrUPbP.bb54cdcee2e7:6uhKZ0LQV0VgXDC6S23B@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/iUgsiz76NwfDUVHZHV7CyJ?ssl={\"rejectUnauthorized\":true}"
+    "DRIZZLE_DATABASE_URL": "mysql://2Xox4WBe4KrUPbP.bb54cdcee2e7:6uhKZ0LQV0VgXDC6S23B@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/iUgsiz76NwfDUVHZHV7CyJ?ssl={\"rejectUnauthorized\":true}",
+    "MANUS_WEBDEV_PROJECT_ID": "iUgsiz76NwfDUVHZHV7CyJ"
   },
   "experiments": null,
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZMN3LHFDB",
-    "secret_access_key": "3vvdJpMcg3qJlJRk9CjtWSLTb73HrE7/qGtZRYIf",
-    "session_token": "IQoJb3JpZ2luX2VjEKz//////////wEaCXVzLWVhc3QtMSJHMEUCIQDbljHzMcp2GBRfbUDVzu9sdxQSy4F9XQHX1Mp4xM0tPAIgMCUMdsXsLTih6Frcuv23fmjVjcigbers3236PB3C8okq9QMIdRAEGgw2NjUzODYwOTg4NjYiDA5LLxBasNMa9xfV0irSA04OG1IjU0DgLxg3GiORk8NpQc9riQChKMNoUdp/9xLN6j3fgOFE9alCm3NF+DhPLAVn4VIzfU4ZFAkt2LSEf3lFJqObO6UXctPEySaclBXewKGfsHazOMzxIfpS55buV8eZgIRMpDNMRHVk+mD1ucvjwwQSYo0i0ZVyNJgMJJsbbDBP8mhfeYT1aUnSJ70a6ohxmQTEx8QUi1PtE/c6j+fDrqB2LBKkUC6dSQTJmxADPIs4pB57k2OyklcM9FMotjfVx24oWxZtc8PF1m/E++6aM5chVX9W9mjXNO9PzDqYmoAaAe2s0E1F9a4GyhN9FPg+2em6HDRXLvy+g4xkIbp/KC00aWpEjxVrr5D1+oPDEJkGnzrjRkHVwTZASntsVQ1cIhKOmh/cYUfktMg+0jP5cdbL8m3cyuDr51jo6nNXWqg4iJPX+e5S59YkvmFbbJKE5tD5eYQ/2uIaifry8xlsCzhAosdCKvcefcnj3m7S8+BqplxD+J8jf3/P+QSWOdpcYi9+bGBfWqMGi88+U+L88nAw4CaFQU9bmDuNiZnhi69FK3FKyQcurAinoDQKRoiczQeo21y8iXRq5NFbEJUg+oScZYOC82TFAbF+45aKdDEw1tXt0gY6nQF8bgVQ/B1Ejts+CFhXDOHU2qHHPFz3X3wvrlxn8s+ZHS/i0wlgIeq2IdVl+puD1TvV0WwoHbeRl1dj4d5HDRgF5rNXdKsGb/k+Ae86leIro1oTwE5FtFsU8WIv7qOyHrBg3R9LwF5rIK23CMR8sLLZ8ohKC2qSlmO3UQCzQkZP8IuUaG07a5Ua7ruSYtpcjNkhU8/WsTSA1JiWfGQD",
-    "expiration": "2026-07-19T00:00:22.000Z",
+    "access_key_id": "ASIAZV3A2ECZASNYUVCL",
+    "secret_access_key": "yeCmNLZ0x8LIjMg6yI08fARKCHqL8d8qxY5gFPo/",
+    "session_token": "IQoJb3JpZ2luX2VjEN3//////////wEaCXVzLWVhc3QtMSJIMEYCIQD28co1nvwmN+WJjUZXzHBE4LD9H1m9paiR21lXbUPFmgIhAMXjLPBwN/L0EJFsLilBymOpXlZc9TwYwzmH44vdJ/cgKv4DCKX//////////wEQBBoMNjY1Mzg2MDk4ODY2Igw2vltZS1QP/ktaObUq0gPF00FocZtvjQfOJr83aPJwmvwSywI6+odhPD4Gs1Y7F7jEREYRu2+kxZmB+7SVGkn31dfo3tpgqwvqiDk6vcFF5sxaUsn37BYh5kG2Yx1SKzKNZ+plrnz7MdZBdEtn2pb4E1NmCz0XJWHPrp2ouvsYVNwd3xfWs7HvQfsd27xEEt0pwvZS7mdntUSq8x9gZpjCNjXsvf30AUriB+S4CxrVgYRJwluDbgAO7WYBe+AYYjW0MpF5M29U6elF9Iq+GMGznYviqpubNwDdrgaB1n8MX0UoxEi5oTVySsO0eDmCuoeT9Dz5+wpNZXc5jrvoVfqhuCUGIJeRicLNDNlKj7PzKMRDFe1Zf4EjqJw6qGDTx+Q8lotDBId1anZUCyVsP9FYN+ovt/xEjPibCzQmOGjc09odTSXo5NJr3lo5Oh8IjZxm4iyoKSefn3irDPTRpqWOT5Lf4E0dGjNvRbow0GVNdb7kuShqA+KzE+/rfwqTvP+2a0fveXv97yBVI3/Igh0wyr2bDoVWH3Xm9E6gnBRaAr2IgtAXM4wZ6odHP5bIrO+FKFQqzkf2CAGzELXAhyhIt2nF9XVZb9xwHOgmwZsql55G+Z8dvgVzSv92Fq5dq9qYMOmi+NIGOpwBedSLUs3vMz69UjmNqXFyXZt5hEByKbZ6H4sIsrRF4gY115Ui3MzXYYiFDCCv/1g/RRJUSCWTrTbKLDhoYLT3oEnImG1MoUerlWMyVB+7dHLPiYtuXfwns5pODm2O/aT1Ml6Oqa1jtkjXaeowOC4HQohsZaGmXgCBnoWHzpO459ND373otXxeARcXCdjEtP3R4iJIuGbRWhFCIdzv",
+    "expiration": "2026-07-21T00:15:37.000Z",
     "backend": "GIT_BACKEND_S3"
   },
   "name": "lights-on-optin",
@@ -54,10 +55,10 @@
     "OWNER_NAME": "Pedram Shojai",
     "OWNER_OPEN_ID": "6Efk5Rs3uA46PG9TgoeUmf",
     "PEXELS_API_KEY": "WC0ZHUE8kH89dkF9HyVbB907v9rsAb3Q6IUHXFiMURuQBxQteKhONkyv",
-    "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN": "bad8169704bba5af0c19c533524bc8f2",
+    "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN": "5e1af2bd17237f9c2c2e572c63587441",
     "SHOPIFY_STORE_DOMAIN": "theurbanmonkstore.myshopify.com",
     "SUBSTACK_PUBLICATION_URL": "https://drpedramshojai.substack.com",
-    "SUBSTACK_SESSION_COOKIE": "s%3APN2ap3Lt-6J6rxueGFBBDQu38lko44aW.h3cFg9pbxtmj4RNRbHg6jX9QHvtqJFjPDQDkUntEEKI",
+    "SUBSTACK_SESSION_COOKIE": "s%3ARlYZ3ctEodu-laiISUqjh196yA_Ss3fM.9Kdc0EIXu8NAG6UIzQ%2BKvA6LMXh0QsBN7u0pW8SvFi4",
     "SUPADATA_API_KEY": "sd_6a7ed1d5513cf44dee12d7edd468578b",
     "TYPEFORM_API_KEY": "tfp_HhhBqn3jf8hWm2fE8UfnRh6NUuMYaCxZxaht5BJpMiv1_3pYNYiC35kAcpA",
     "VIDIQ_API_KEY": "vidiq_EJjuw3rlkyGjpNhBNR_70xljsFpRbSudoQlHtubj",

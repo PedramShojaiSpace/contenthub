@@ -15,6 +15,8 @@ import { getDb } from "./db";
 import { substackInboxItems, contentItems } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { ENV } from "./_core/env";
+// Note: substack-api's addComment is not yet implemented in v4.0.2
+// We use direct HTTP fetch with the session cookie instead (same pattern as substackPublisher.ts)
 
 // ─── Substack API helpers ─────────────────────────────────────────────────────
 
@@ -242,4 +244,94 @@ export const substackInboxRouter = router({
         .where(eq(substackInboxItems.id, input.id));
       return { success: true };
     }),
+
+  /**
+   * Post a reply directly to a Substack comment from the VA Dashboard.
+   * Uses Substack's unofficial internal API with the session cookie.
+   * Posts as Dr. Pedram Shojai (the publication owner).
+   *
+   * Endpoint: POST https://{pub}.substack.com/api/v1/comments/{commentId}/children
+   * Body: { body: string }
+   */
+  postReply: protectedProcedure
+    .input(z.object({
+      id: z.number(),           // substackInboxItems row id
+      replyBody: z.string().min(1).max(5000),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Fetch the inbox item to get the Substack comment ID
+      const [item] = await db
+        .select()
+        .from(substackInboxItems)
+        .where(eq(substackInboxItems.id, input.id))
+        .limit(1);
+
+      if (!item) throw new Error("Inbox item not found");
+      if (!item.substackCommentId) throw new Error("No Substack comment ID on this item");
+
+      const headers = getSubstackHeaders();
+      const baseUrl = getBaseUrl();
+
+      // POST a reply to the comment using Substack's internal API
+      // The endpoint accepts the parent comment ID as a path param
+      const replyRes = await fetch(
+        `${baseUrl}/api/v1/comments/${item.substackCommentId}/children`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ body: input.replyBody }),
+        }
+      );
+
+      if (!replyRes.ok) {
+        const errText = await replyRes.text().catch(() => "");
+        if (replyRes.status === 401 || replyRes.status === 403) {
+          throw new Error("Substack authentication failed — session cookie may have expired. Please refresh SUBSTACK_SESSION_COOKIE in Settings → Secrets.");
+        }
+        throw new Error(`Substack API returned ${replyRes.status}: ${errText.slice(0, 200)}`);
+      }
+
+      // Mark the item as responded and save the reply text as the VA note
+      await db
+        .update(substackInboxItems)
+        .set({
+          status: "responded",
+          vaNote: input.replyBody,
+          respondedAt: Date.now(),
+          updatedAt: new Date(),
+        })
+        .where(eq(substackInboxItems.id, input.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Test Substack API connectivity (validates the session cookie).
+   * Uses the same user info endpoint as substackPublisher.ts.
+   */
+  testConnection: protectedProcedure.query(async () => {
+    const cookie = ENV.substackSessionCookie;
+    if (!cookie) return { connected: false, reason: "SUBSTACK_SESSION_COOKIE not set" };
+
+    try {
+      const headers = getSubstackHeaders();
+      const res = await fetch("https://substack.com/api/v1/user/login", {
+        method: "GET",
+        headers,
+      });
+      if (res.ok) {
+        return { connected: true, reason: "OK" };
+      }
+      if (res.status === 401 || res.status === 403) {
+        return { connected: false, reason: "Session cookie expired — please refresh it" };
+      }
+      return { connected: false, reason: `API returned ${res.status}` };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { connected: false, reason: msg };
+    }
+  }),
 });

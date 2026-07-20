@@ -1758,6 +1758,9 @@ export default function VADashboard() {
   const { data: videoJobsData, isLoading: videoLoading, error: videoError, refetch: refetchVideo } =
     trpc.videoPipeline.getVideoJobs.useQuery({ limit: 50 }, { refetchInterval: 30_000 });
 
+  // Substack inbox filter state — must be declared before the query that uses it
+  const [substackInboxFilter, setSubstackInboxFilter] = useState<"new" | "in_progress" | "responded" | "archived" | "all">("new");
+
   // Substack inbox data
   const { data: inboxCounts, refetch: refetchInboxCounts } = trpc.substackInbox.getCounts.useQuery(undefined, { refetchInterval: 60_000 });
   const { data: inboxItems, isLoading: inboxLoading, refetch: refetchInbox } = trpc.substackInbox.listItems.useQuery(
@@ -1803,9 +1806,26 @@ export default function VADashboard() {
     return !job.archivedAt;
   });
 
-  const [substackInboxFilter, setSubstackInboxFilter] = useState<"new" | "in_progress" | "responded" | "archived" | "all">("new");
   const [expandedInboxId, setExpandedInboxId] = useState<number | null>(null);
   const [inboxNotes, setInboxNotes] = useState<Record<number, string>>({});
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
+  const [showReplyBox, setShowReplyBox] = useState<Record<number, boolean>>({});
+
+  const postReplyMutation = trpc.substackInbox.postReply.useMutation({
+    onSuccess: (_data, variables) => {
+      toast.success("Reply posted to Substack!");
+      setShowReplyBox(prev => ({ ...prev, [variables.id]: false }));
+      setReplyDrafts(prev => ({ ...prev, [variables.id]: "" }));
+      void refetchInbox();
+      void refetchInboxCounts();
+    },
+    onError: (err) => toast.error(`Reply failed: ${err.message}`),
+  });
+
+  const { data: substackConnection } = trpc.substackInbox.testConnection.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   const syndicationTodoCount = allSyndicationJobs.filter(
     (j) => j.status === "ready" || (j.status === "pending" && j.scheduledAt <= Date.now())
@@ -1997,13 +2017,28 @@ export default function VADashboard() {
         {activeTab === "substack" && (
           <>
             {/* Instructions banner */}
-            <div className="mb-6 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg">
-              <p className="text-sm font-semibold text-purple-400 mb-2">Substack Inbox Instructions</p>
+            <div className="mb-4 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <p className="text-sm font-semibold text-purple-400">Substack Inbox Instructions</p>
+                {/* Connection status indicator */}
+                {substackConnection && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 flex-shrink-0 ${
+                    substackConnection.connected
+                      ? "bg-green-500/10 text-green-400 border-green-500/20"
+                      : "bg-red-500/10 text-red-400 border-red-500/20"
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      substackConnection.connected ? "bg-green-400" : "bg-red-400"
+                    }`} />
+                    {substackConnection.connected ? "Substack connected" : `Disconnected: ${substackConnection.reason}`}
+                  </span>
+                )}
+              </div>
               <ol className="space-y-1 text-xs text-muted-foreground">
                 <li>1. Click <strong className="text-foreground">Poll for New Comments</strong> to fetch the latest comments from all Substack posts.</li>
-                <li>2. Read each comment. Write a draft response in the notes field.</li>
-                <li>3. Go to <a href="https://drpedramshojai.substack.com" target="_blank" rel="noreferrer" className="text-purple-400 underline">Substack</a>, find the post, and post your reply manually.</li>
-                <li>4. Click <strong className="text-foreground">Mark Responded</strong> to archive it from the queue.</li>
+                <li>2. Expand a comment, type your reply in the <strong className="text-foreground">Reply</strong> box, and click <strong className="text-foreground">Post Reply</strong> — it posts directly to Substack as Dr. Pedram Shojai.</li>
+                <li>3. The item is automatically marked <strong className="text-foreground">Responded</strong> after a successful reply.</li>
+                <li>4. If the connection indicator shows <em>Disconnected</em>, refresh the session cookie in Settings → Secrets.</li>
               </ol>
             </div>
 
@@ -2127,7 +2162,48 @@ export default function VADashboard() {
                           onChange={(e) => setInboxNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
                           className="text-sm min-h-[80px] bg-background/50"
                         />
+                        {/* Reply box */}
+                        {showReplyBox[item.id] && (
+                          <div className="space-y-2 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg">
+                            <p className="text-xs text-purple-400 font-medium">Reply as Dr. Pedram Shojai</p>
+                            <Textarea
+                              placeholder="Type your reply here..."
+                              value={replyDrafts[item.id] ?? ""}
+                              onChange={(e) => setReplyDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                              className="text-sm min-h-[80px] bg-background/50"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                                onClick={() => postReplyMutation.mutate({ id: item.id, replyBody: replyDrafts[item.id] ?? "" })}
+                                disabled={postReplyMutation.isPending || !replyDrafts[item.id]?.trim()}
+                              >
+                                {postReplyMutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <MessageCircle className="w-3 h-3 mr-1" />}
+                                Post Reply
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs text-muted-foreground"
+                                onClick={() => setShowReplyBox(prev => ({ ...prev, [item.id]: false }))}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex gap-2 flex-wrap">
+                          {!showReplyBox[item.id] && (
+                            <Button
+                              size="sm"
+                              className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                              onClick={() => setShowReplyBox(prev => ({ ...prev, [item.id]: true }))}
+                            >
+                              <MessageCircle className="w-3 h-3 mr-1" /> Reply
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"

@@ -16,7 +16,7 @@ import { Supadata } from "@supadata/js";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { analogDataEntries, contentPatterns, corpusEntries, scriptFactoryOutputs, scriptPerformanceFeedback, videoJobs } from "../drizzle/schema";
+import { analogDataEntries, contentPatterns, corpusEntries, ideaFeedback, scriptFactoryOutputs, scriptPerformanceFeedback, videoJobs } from "../drizzle/schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
@@ -641,6 +641,26 @@ export const scriptFactoryRouter = router({
         ? existingScripts.map((s) => `- ${s.topic ?? s.title ?? "Untitled"}`).join("\n")
         : "No scripts generated yet.";
 
+      // 2c. Pull feedback signals — saved ideas (boost) and disliked ideas (suppress)
+      const feedbackRows = await db
+        .select({
+          topic: ideaFeedback.topic,
+          feedback: ideaFeedback.feedback,
+          analogDataSource: ideaFeedback.analogDataSource,
+        })
+        .from(ideaFeedback)
+        .orderBy(desc(ideaFeedback.createdAt))
+        .limit(50);
+
+      const savedIdeas = feedbackRows.filter((r) => r.feedback === "saved");
+      const dislikedIdeas = feedbackRows.filter((r) => r.feedback === "disliked");
+      const savedContext = savedIdeas.length > 0
+        ? savedIdeas.map((r) => `- ${r.topic}`).join("\n")
+        : "None yet.";
+      const dislikedContext = dislikedIdeas.length > 0
+        ? dislikedIdeas.map((r) => `- ${r.topic}`).join("\n")
+        : "None yet.";
+
       // 4. Ask LLM to generate ideas
       const response = await invokeLLM({
         messages: [
@@ -665,6 +685,12 @@ Each idea must be meaningfully distinct — different angle, different pain poin
 If the library already has a script on "gut health", do not suggest another gut health script unless it
 approaches it from a completely different angle (e.g., gut-brain connection vs. gut microbiome reset).
 
+USER PREFERENCES (training signals from feedback):
+- SAVED IDEAS: The user has bookmarked these idea types as interesting — generate more ideas in a similar
+  vein (same topic cluster, similar pain points, similar format). Use these as positive signals.
+- DISLIKED IDEAS: The user has marked these as "Less Like This" — avoid these topic angles, tones,
+  and approaches entirely. These are negative signals — do not echo them even indirectly.
+
 For each idea, return a JSON object with:
 - topic: string (the video title/topic, 60-80 chars, compelling and specific)
 - rationale: string (1-2 sentences: why this will convert based on analog data)
@@ -678,7 +704,7 @@ Return a JSON array of ${input.count} ideas. No markdown, no explanation, just t
           },
           {
             role: "user",
-            content: `ANALOG DATA (Northstar — proven converting content):\n${analogContext}\n\nPUBLISHED VIDEOS (avoid duplicating these):\n${publishedContext}\n\nSCRIPTS ALREADY IN LIBRARY (do NOT repeat or closely echo these topics):\n${existingScriptsContext}\n\nGenerate ${input.count} DISTINCT video ideas that are not already in the library.`,
+            content: `ANALOG DATA (Northstar — proven converting content):\n${analogContext}\n\nPUBLISHED VIDEOS (avoid duplicating these):\n${publishedContext}\n\nSCRIPTS ALREADY IN LIBRARY (do NOT repeat or closely echo these topics):\n${existingScriptsContext}\n\nSAVED IDEAS (generate more like these):\n${savedContext}\n\nDISLIKED IDEAS (avoid these angles entirely):\n${dislikedContext}\n\nGenerate ${input.count} DISTINCT video ideas that are not already in the library and avoid disliked angles.`,
           },
         ],
         response_format: {
@@ -795,6 +821,53 @@ Return a JSON array of ${input.count} ideas. No markdown, no explanation, just t
       total: Number(stats?.total ?? 0),
       approved: Number(stats?.approved ?? 0),
       avgVerificationPct: Number(stats?.avgVerificationPct ?? 0),
+    };
+  }),
+
+  // ─── Record idea feedback (Save for Later / Less Like This) ────────────────────
+  recordIdeaFeedback: protectedProcedure
+    .input(z.object({
+      topic: z.string().min(1).max(500),
+      rationale: z.string().optional(),
+      audienceAlignment: z.number().min(0).max(100).optional(),
+      recommendedFormat: z.string().optional(),
+      recommendedPatterns: z.array(z.string()).optional(),
+      analogDataSource: z.string().optional(),
+      feedback: z.enum(["saved", "disliked"]),
+      note: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      await db.insert(ideaFeedback).values({
+        topic: input.topic,
+        rationale: input.rationale ?? null,
+        audienceAlignment: input.audienceAlignment ?? null,
+        recommendedFormat: input.recommendedFormat ?? null,
+        recommendedPatterns: input.recommendedPatterns ? JSON.stringify(input.recommendedPatterns) : null,
+        analogDataSource: input.analogDataSource ?? null,
+        feedback: input.feedback,
+        note: input.note ?? null,
+      });
+
+      return { success: true };
+    }),
+
+  // ─── List saved ideas ───────────────────────────────────────────────────
+  listSavedIdeas: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { saved: [], disliked: [] };
+
+    const rows = await db
+      .select()
+      .from(ideaFeedback)
+      .orderBy(desc(ideaFeedback.createdAt))
+      .limit(100);
+
+    return {
+      saved: rows.filter((r) => r.feedback === "saved"),
+      disliked: rows.filter((r) => r.feedback === "disliked"),
     };
   }),
 });

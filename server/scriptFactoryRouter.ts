@@ -637,8 +637,9 @@ export const scriptFactoryRouter = router({
         : "No published videos yet.";
 
       // Build existing scripts context for deduplication
+      // Use title as primary (notNull) and topic as secondary to avoid null fallback
       const existingScriptsContext = existingScripts.length > 0
-        ? existingScripts.map((s) => `- ${s.topic ?? s.title ?? "Untitled"}`).join("\n")
+        ? existingScripts.map((s) => `- ${s.title ?? s.topic ?? "Untitled"}`).join("\n")
         : "No scripts generated yet.";
 
       // 2c. Pull feedback signals — saved ideas (boost) and disliked ideas (suppress)
@@ -684,6 +685,14 @@ Do NOT suggest any topic that is the same as, or substantially similar to, any t
 Each idea must be meaningfully distinct — different angle, different pain point, different audience segment.
 If the library already has a script on "gut health", do not suggest another gut health script unless it
 approaches it from a completely different angle (e.g., gut-brain connection vs. gut microbiome reset).
+
+INTRA-BATCH DIVERSITY (CRITICAL): Within this single batch of ${input.count} ideas, EVERY idea must be
+about a DIFFERENT primary topic cluster. Do NOT generate multiple ideas about the same theme (e.g., do not
+generate 3 ideas all about "energy" or 2 ideas both about "sleep"). Each idea must cover a distinct domain:
+e.g., one about energy, one about gut health, one about stress, one about sleep, one about longevity,
+one about morning routines, one about ancient wisdom, one about modern science — spread across the full
+spectrum of what this audience cares about. If you find yourself writing two ideas with similar keywords,
+stop and replace one with something from a completely different topic cluster.
 
 USER PREFERENCES (training signals from feedback):
 - SAVED IDEAS: The user has bookmarked these idea types as interesting — generate more ideas in a similar

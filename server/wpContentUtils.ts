@@ -165,11 +165,42 @@ const markedOptions = {
  * Markdown that follows it (e.g. the FAQ section). Splitting on HTML blocks ensures every
  * Markdown segment is fully converted regardless of what precedes it.
  */
+/**
+ * Convert bare YouTube URLs on their own line into WordPress Gutenberg embed blocks.
+ * This must run BEFORE marked() processes the markdown, otherwise marked converts
+ * the URL into a plain <p><a href="...">...</a></p> which WordPress won't auto-embed.
+ *
+ * Handles:
+ *   https://www.youtube.com/watch?v=VIDEO_ID
+ *   https://youtu.be/VIDEO_ID
+ *   [embed]https://www.youtube.com/watch?v=VIDEO_ID[/embed]  (WordPress shortcode fallback)
+ */
+function convertYouTubeUrlsToEmbedBlocks(text: string): string {
+  // Match bare YouTube URLs on their own line (possibly with [embed] shortcode wrapper)
+  return text.replace(
+    /^(?:\[embed\])?\s*(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})[^\s]*)\s*(?:\[\/embed\])?$/gm,
+    (_match, _url, videoId) => {
+      return [
+        `<!-- wp:embed {"url":"https://www.youtube.com/watch?v=${videoId}","type":"video","providerNameSlug":"youtube","responsive":true,"className":"wp-embed-aspect-16-9 wp-has-aspect-ratio"} -->`,
+        `<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio">`,
+        `<div class="wp-block-embed__wrapper">`,
+        `https://www.youtube.com/watch?v=${videoId}`,
+        `</div>`,
+        `</figure>`,
+        `<!-- /wp:embed -->`,
+      ].join("\n");
+    }
+  );
+}
+
 export function markdownToWpHtml(markdown: string): string {
   if (!markdown || !markdown.trim()) return "";
 
+  // Step 0: Convert bare YouTube URLs to Gutenberg embed blocks BEFORE marked processes them
+  const withEmbeds = convertYouTubeUrlsToEmbedBlocks(markdown);
+
   // Step 1: Pull out trailing hashtags before markdown parsing (# would be parsed as H1/H2)
-  const { cleanBody, hashtagHtml } = extractAndConvertHashtags(markdown);
+  const { cleanBody, hashtagHtml } = extractAndConvertHashtags(withEmbeds);
 
   // Step 2: Split on raw HTML blocks so they pass through unchanged.
   // Pattern: a line that starts with < (HTML tag) and is followed by a closing tag.

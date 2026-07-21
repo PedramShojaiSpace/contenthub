@@ -209,7 +209,7 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
             </span>
           </CardTitle>
           <div className="flex items-center gap-2">
-            {ideas.length > 0 && !supercharge.isPending && (
+            {ideas.length > 0 && (
               <Button
                 size="sm"
                 variant="outline"
@@ -223,12 +223,6 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
                   <><Zap className="w-3.5 h-3.5 mr-1.5 text-yellow-500" /> Supercharge with VidIQ</>
                 )}
               </Button>
-            )}
-            {supercharge.isPending && (
-              <div className="flex items-center gap-1.5 text-xs text-yellow-700">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Fetching VidIQ data for {ideas.length} ideas…
-              </div>
             )}
             <Button
               size="sm"

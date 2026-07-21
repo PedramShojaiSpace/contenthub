@@ -2,7 +2,7 @@
  * Substack Publisher — First-Class UI (Rec 10, Grok 3 Audit v2)
  *
  * - Substack-only view of the syndication queue
- * - Cookie health banner with live validation
+ * - Cookie health banner with live validation + Quick Refresh modal
  * - Manual fallback: 3-step copy-paste flow with URL recording
  */
 
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Rss,
@@ -28,6 +29,9 @@ import {
   Eye,
   SkipForward,
   BookOpen,
+  Key,
+  ExternalLink as OpenIcon,
+  Terminal,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -56,9 +60,232 @@ interface SubstackContent {
   bodyHtml: string;
 }
 
+// ─── Refresh Substack Session Modal ──────────────────────────────────────────
+
+const JS_SNIPPET = `copy(document.cookie.match(/substack\\.sid=([^;]+)/)?.[1])`;
+
+export function RefreshSubstackSessionModal({
+  open,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+}) {
+  const [step, setStep] = useState(1);
+  const [cookieValue, setCookieValue] = useState("");
+  const [testResult, setTestResult] = useState<{ connected: boolean; reason?: string } | null>(null);
+
+  const utils = trpc.useUtils();
+
+  const updateCookieMutation = trpc.substackInbox.updateSubstackCookie.useMutation({
+    onSuccess: async () => {
+      // Invalidate both connection queries so they re-check with the new cookie
+      await utils.substackInbox.testConnection.invalidate();
+      await utils.substack.validateSession.invalidate();
+    },
+    onError: (err) => toast.error(`Failed to save cookie: ${err.message}`),
+  });
+
+  const testConnectionQuery = trpc.substackInbox.testConnection.useQuery(undefined, {
+    enabled: false, // Only run manually
+    staleTime: 0,
+  });
+
+  const handleSave = async () => {
+    if (!cookieValue.trim()) {
+      toast.error("Please paste the cookie value first");
+      return;
+    }
+    try {
+      await updateCookieMutation.mutateAsync({ cookie: cookieValue.trim() });
+      // Test the new cookie
+      const result = await testConnectionQuery.refetch();
+      setTestResult(result.data ?? null);
+      setStep(4);
+      if (result.data?.connected) {
+        toast.success("Substack session refreshed successfully!");
+        onSuccess?.();
+      } else {
+        toast.error(`Cookie saved but connection test failed: ${result.data?.reason}`);
+      }
+    } catch {
+      // Error already handled by mutation onError
+    }
+  };
+
+  const handleClose = () => {
+    setStep(1);
+    setCookieValue("");
+    setTestResult(null);
+    onClose();
+  };
+
+  const copySnippet = () => {
+    navigator.clipboard.writeText(JS_SNIPPET);
+    toast.success("Snippet copied to clipboard!");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-lg bg-zinc-950 border-zinc-800">
+        <DialogHeader>
+          <DialogTitle className="text-zinc-100 flex items-center gap-2">
+            <Key className="w-4 h-4 text-orange-400" />
+            Quick Refresh — Substack Session
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 mt-2">
+          {/* Step progress */}
+          <div className="flex items-center gap-2">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                    ${step === s && step < 4 ? "bg-orange-500 text-white" : step > s || step === 4 ? "bg-emerald-600 text-white" : "bg-zinc-800 text-zinc-400"}`}
+                >
+                  {(step > s || step === 4) ? <CheckCircle2 className="w-3 h-3" /> : s}
+                </div>
+                {s < 3 && <div className={`h-px w-8 ${step > s || step === 4 ? "bg-emerald-600" : "bg-zinc-700"}`} />}
+              </div>
+            ))}
+            <span className="text-xs text-zinc-500 ml-2">
+              {step === 1 && "Open Substack"}
+              {step === 2 && "Run JS snippet"}
+              {step === 3 && "Paste & save"}
+              {step === 4 && "Done"}
+            </span>
+          </div>
+
+          {/* Step 1: Open Substack */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <p className="text-sm text-zinc-300">
+                First, open Substack in a new tab and make sure you're logged in as Dr. Pedram Shojai.
+              </p>
+              <Button
+                className="w-full bg-orange-600 hover:bg-orange-700 flex items-center gap-2"
+                onClick={() => {
+                  window.open("https://substack.com", "_blank");
+                  setStep(2);
+                }}
+              >
+                <OpenIcon className="w-4 h-4" />
+                Open Substack in New Tab →
+              </Button>
+              <p className="text-xs text-zinc-500 text-center">
+                Already logged in? Click the button above to continue.
+              </p>
+            </div>
+          )}
+
+          {/* Step 2: Run JS snippet */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <p className="text-sm text-zinc-300">
+                In the Substack tab, open DevTools (F12 or Cmd+Option+I), go to the{" "}
+                <strong className="text-zinc-200">Console</strong> tab, paste this snippet, and press Enter.
+                It will copy your session cookie to your clipboard automatically.
+              </p>
+              <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 font-mono text-sm text-emerald-400 flex items-start justify-between gap-3">
+                <code className="break-all">{JS_SNIPPET}</code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-zinc-400 hover:text-zinc-200 shrink-0"
+                  onClick={copySnippet}
+                  title="Copy snippet"
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
+              </div>
+              <div className="flex items-start gap-2 text-xs text-zinc-500 bg-zinc-900/50 rounded-lg p-3">
+                <Terminal className="w-3.5 h-3.5 shrink-0 mt-0.5 text-zinc-400" />
+                <span>
+                  The console will show <code className="text-zinc-300">undefined</code> — that's normal. Your cookie value has been copied to your clipboard.
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="border-zinc-700 text-zinc-300 flex-1" onClick={() => setStep(1)}>← Back</Button>
+                <Button className="flex-1 bg-orange-600 hover:bg-orange-700" onClick={() => setStep(3)}>
+                  Cookie copied — paste it →
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Paste & save */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <p className="text-sm text-zinc-300">
+                Paste the cookie value from your clipboard into the field below, then click Save.
+              </p>
+              <Textarea
+                placeholder="Paste the cookie value here (starts with s%3A or similar)"
+                value={cookieValue}
+                onChange={(e) => setCookieValue(e.target.value)}
+                className="bg-zinc-900 border-zinc-700 text-zinc-200 placeholder-zinc-600 font-mono text-xs min-h-[80px] resize-none"
+              />
+              <div className="flex gap-2">
+                <Button variant="outline" className="border-zinc-700 text-zinc-300 flex-1" onClick={() => setStep(2)}>← Back</Button>
+                <Button
+                  className="flex-1 bg-emerald-700 hover:bg-emerald-600"
+                  disabled={!cookieValue.trim() || updateCookieMutation.isPending || testConnectionQuery.isFetching}
+                  onClick={handleSave}
+                >
+                  {(updateCookieMutation.isPending || testConnectionQuery.isFetching) ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving & testing…</>
+                  ) : (
+                    <><CheckCircle2 className="w-4 h-4 mr-2" /> Save & Test Connection</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Result */}
+          {step === 4 && (
+            <div className="space-y-4">
+              {testResult?.connected ? (
+                <div className="flex items-center gap-3 p-4 bg-emerald-950/40 border border-emerald-800/40 rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-emerald-300">Session refreshed successfully!</p>
+                    <p className="text-xs text-emerald-500 mt-0.5">Substack is connected and ready to publish.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3 p-4 bg-red-950/40 border border-red-800/40 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-red-300">Cookie saved but connection failed</p>
+                    <p className="text-xs text-red-400 mt-0.5">{testResult?.reason ?? "Unknown error"}</p>
+                    <p className="text-xs text-zinc-400 mt-2">Make sure you ran the snippet on substack.com while logged in, then try again.</p>
+                  </div>
+                </div>
+              )}
+              <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200" onClick={handleClose}>
+                Close
+              </Button>
+              {!testResult?.connected && (
+                <Button variant="outline" className="w-full border-zinc-700 text-zinc-300" onClick={() => { setStep(1); setCookieValue(""); setTestResult(null); }}>
+                  Try Again
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Cookie Health Banner ─────────────────────────────────────────────────────
 
 function CookieHealthBanner() {
+  const [refreshOpen, setRefreshOpen] = useState(false);
   const { data: health, isLoading, refetch } = trpc.substack.validateSession.useQuery(undefined, {
     refetchInterval: 60 * 60 * 1000,
     staleTime: 30 * 60 * 1000,
@@ -99,24 +326,40 @@ function CookieHealthBanner() {
   }
 
   return (
-    <Card className="bg-red-950/30 border-red-800/40">
-      <CardContent className="pt-4 pb-3">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-red-300">Substack session expired or invalid</p>
-            <p className="text-xs text-red-400 mt-1">{health.error ?? "The SUBSTACK_SESSION_COOKIE is no longer valid."}</p>
-            <p className="text-xs text-zinc-400 mt-2">
-              Fix: log into Substack → DevTools → Application → Cookies → copy{" "}
-              <code className="text-zinc-300 bg-zinc-800 px-1 rounded">substack.sid</code> → update in Manus Secrets.
-            </p>
+    <>
+      <Card className="bg-red-950/30 border-red-800/40">
+        <CardContent className="pt-4 pb-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-300">Substack session expired or invalid</p>
+              <p className="text-xs text-red-400 mt-1">{health.error ?? "The session cookie is no longer valid."}</p>
+              <p className="text-xs text-zinc-400 mt-2">
+                Use <strong className="text-zinc-300">Quick Refresh</strong> to update the cookie in 3 steps — no Manus Secrets panel required.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                size="sm"
+                className="h-7 bg-orange-600 hover:bg-orange-700 text-white text-xs px-3"
+                onClick={() => setRefreshOpen(true)}
+              >
+                <Key className="w-3 h-3 mr-1" />
+                Quick Refresh
+              </Button>
+              <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-200 h-7 w-7 p-0" onClick={() => refetch()}>
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </div>
           </div>
-          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-200 h-7 shrink-0" onClick={() => refetch()}>
-            <RefreshCw className="w-3 h-3" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      <RefreshSubstackSessionModal
+        open={refreshOpen}
+        onClose={() => setRefreshOpen(false)}
+        onSuccess={() => { setRefreshOpen(false); refetch(); }}
+      />
+    </>
   );
 }
 

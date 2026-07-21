@@ -14,12 +14,13 @@
  */
 
 import { ENV } from "./_core/env";
+import { getSubstackCookieFromDb } from "./substackInboxRouter";
 
-function getSessionCookie(): string {
-  const cookie = ENV.substackSessionCookie;
+async function getSessionCookie(): Promise<string> {
+  const cookie = await getSubstackCookieFromDb();
   if (!cookie) {
     throw new Error(
-      "SUBSTACK_SESSION_COOKIE is not set. Please add it via the secrets manager."
+      "SUBSTACK_SESSION_COOKIE is not set. Please add it via the Quick Refresh button or the secrets manager."
     );
   }
   // Ensure it's in the correct cookie header format
@@ -60,7 +61,7 @@ export async function publishToSubstack(
   const pubHost = pubUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
   const baseUrl = `https://${pubHost}`;
 
-  const cookie = getSessionCookie();
+  const cookie = await getSessionCookie();
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -154,7 +155,7 @@ export async function validateSubstackSession(): Promise<{
   error?: string;
 }> {
   try {
-    const cookie = getSessionCookie();
+    const cookie = await getSessionCookie();
     const res = await fetch("https://substack.com/api/v1/user/login", {
       method: "GET",
       headers: {

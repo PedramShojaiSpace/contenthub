@@ -217,33 +217,64 @@ export function RefreshSubstackSessionModal({
           )}
 
           {/* Step 3: Paste & save */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <p className="text-sm text-zinc-300">
-                Paste the cookie value from your clipboard into the field below, then click Save.
-              </p>
-              <Textarea
-                placeholder="Paste the cookie value here (starts with s%3A or similar)"
-                value={cookieValue}
-                onChange={(e) => setCookieValue(e.target.value)}
-                className="bg-zinc-900 border-zinc-700 text-zinc-200 placeholder-zinc-600 font-mono text-xs min-h-[80px] resize-none"
-              />
-              <div className="flex gap-2">
-                <Button variant="outline" className="border-zinc-700 text-zinc-300 flex-1" onClick={() => setStep(2)}>← Back</Button>
-                <Button
-                  className="flex-1 bg-emerald-700 hover:bg-emerald-600"
-                  disabled={!cookieValue.trim() || updateCookieMutation.isPending || testConnectionQuery.isFetching}
-                  onClick={handleSave}
-                >
-                  {(updateCookieMutation.isPending || testConnectionQuery.isFetching) ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving & testing…</>
-                  ) : (
-                    <><CheckCircle2 className="w-4 h-4 mr-2" /> Save & Test Connection</>
-                  )}
-                </Button>
+          {step === 3 && (() => {
+            const looksLikeSnippet = cookieValue.includes('copy(') || cookieValue.includes('document.cookie') || cookieValue.includes('match(');
+            const looksLikeFullCookie = cookieValue.includes('substack.sid=') && !looksLikeSnippet;
+            // Strip the substack.sid= prefix if user pasted the full cookie string
+            const cleanedValue = looksLikeFullCookie
+              ? cookieValue.replace(/.*substack\.sid=/, '').split(';')[0].trim()
+              : cookieValue.trim();
+            return (
+              <div className="space-y-4">
+                <div className="bg-zinc-900/60 border border-zinc-700 rounded-lg p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-zinc-300">What to paste here:</p>
+                  <p className="text-xs text-zinc-400">The <strong className="text-zinc-200">result</strong> of running the snippet — a long encoded string that starts with <code className="text-emerald-400 bg-zinc-800 px-1 rounded">s%3A</code> or similar. It is <strong className="text-zinc-200">NOT</strong> the snippet code itself.</p>
+                  <p className="text-xs text-zinc-500">Example: <code className="text-zinc-400">s%3AaBcDeFgH...</code> (50–200 characters)</p>
+                </div>
+                <Textarea
+                  placeholder="Paste the cookie value here — it should start with s%3A and be 50+ characters"
+                  value={cookieValue}
+                  onChange={(e) => setCookieValue(e.target.value)}
+                  className={`bg-zinc-900 border text-zinc-200 placeholder-zinc-600 font-mono text-xs min-h-[80px] resize-none ${
+                    looksLikeSnippet ? 'border-red-600' : 'border-zinc-700'
+                  }`}
+                />
+                {looksLikeSnippet && (
+                  <div className="flex items-start gap-2 p-3 bg-red-950/40 border border-red-800/40 rounded-lg">
+                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-red-300">
+                      <p className="font-semibold">That looks like the JavaScript snippet, not the cookie value.</p>
+                      <p className="mt-1 text-red-400">Go back to Step 2, <strong>run</strong> the snippet in your browser DevTools console first, then come back and paste what the console copied to your clipboard.</p>
+                    </div>
+                  </div>
+                )}
+                {looksLikeFullCookie && (
+                  <div className="flex items-start gap-2 p-3 bg-blue-950/40 border border-blue-800/40 rounded-lg">
+                    <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-300">Detected full cookie string — will automatically extract just the <code className="text-blue-200">substack.sid</code> value.</p>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" className="border-zinc-700 text-zinc-300 flex-1" onClick={() => setStep(2)}>← Back</Button>
+                  <Button
+                    className="flex-1 bg-emerald-700 hover:bg-emerald-600"
+                    disabled={!cookieValue.trim() || looksLikeSnippet || updateCookieMutation.isPending || testConnectionQuery.isFetching}
+                    onClick={() => {
+                      // Auto-clean if they pasted the full cookie string
+                      if (looksLikeFullCookie) setCookieValue(cleanedValue);
+                      handleSave();
+                    }}
+                  >
+                    {(updateCookieMutation.isPending || testConnectionQuery.isFetching) ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving & testing…</>
+                    ) : (
+                      <><CheckCircle2 className="w-4 h-4 mr-2" /> Save & Test Connection</>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Step 4: Result */}
           {step === 4 && (

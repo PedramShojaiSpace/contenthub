@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
   BarChart3,
+  Bookmark,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -38,6 +39,7 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  ThumbsDown,
   Trash2,
   TrendingUp,
   Wand2,
@@ -159,6 +161,20 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
       toast.success("Ideas supercharged with VidIQ keyword data!");
     },
     onError: (err) => toast.error(`VidIQ supercharge failed: ${err.message}`),
+  });
+
+  // Feedback tracking — which topics have been saved or disliked in this session
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, "saved" | "disliked">>({}); 
+  const recordFeedback = trpc.scriptFactory.recordIdeaFeedback.useMutation({
+    onSuccess: (_, vars) => {
+      setFeedbackMap((prev) => ({ ...prev, [vars.topic]: vars.feedback }));
+      if (vars.feedback === "saved") {
+        toast.success("Saved! Future ideas will lean into this direction.");
+      } else {
+        toast.success("Got it — we'll avoid this angle going forward.");
+      }
+    },
+    onError: (err) => toast.error(`Feedback error: ${err.message}`),
   });
 
   const displayIdeas: (VideoIdea | SuperchargedIdea)[] = isSupercharged ? superchargedIdeas : ideas;
@@ -294,18 +310,75 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
                         )}
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-shrink-0 text-xs h-7"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectIdea(idea.topic, idea.recommendedFormat, idea.recommendedPatterns);
-                        toast.success("Idea loaded into Script Brief below!");
-                      }}
-                    >
-                      Use This Idea
-                    </Button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {/* Save for Later */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={`h-7 px-2 text-xs ${
+                          feedbackMap[idea.topic] === "saved"
+                            ? "bg-blue-50 border-blue-300 text-blue-700"
+                            : "hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
+                        }`}
+                        title="Save for Later — trains the system to suggest more ideas like this"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (feedbackMap[idea.topic] === "saved") return;
+                          recordFeedback.mutate({
+                            topic: idea.topic,
+                            rationale: idea.rationale,
+                            audienceAlignment: idea.audienceAlignment,
+                            recommendedFormat: idea.recommendedFormat,
+                            recommendedPatterns: idea.recommendedPatterns,
+                            analogDataSource: idea.analogDataSource,
+                            feedback: "saved",
+                          });
+                        }}
+                      >
+                        <Bookmark className={`w-3 h-3 ${
+                          feedbackMap[idea.topic] === "saved" ? "fill-blue-700" : ""
+                        }`} />
+                      </Button>
+                      {/* Less Like This */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={`h-7 px-2 text-xs ${
+                          feedbackMap[idea.topic] === "disliked"
+                            ? "bg-red-50 border-red-300 text-red-600"
+                            : "hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                        }`}
+                        title="Less Like This — trains the system to avoid this angle"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (feedbackMap[idea.topic] === "disliked") return;
+                          recordFeedback.mutate({
+                            topic: idea.topic,
+                            rationale: idea.rationale,
+                            audienceAlignment: idea.audienceAlignment,
+                            recommendedFormat: idea.recommendedFormat,
+                            recommendedPatterns: idea.recommendedPatterns,
+                            analogDataSource: idea.analogDataSource,
+                            feedback: "disliked",
+                          });
+                        }}
+                      >
+                        <ThumbsDown className="w-3 h-3" />
+                      </Button>
+                      {/* Use This Idea */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-shrink-0 text-xs h-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectIdea(idea.topic, idea.recommendedFormat, idea.recommendedPatterns);
+                          toast.success("Idea loaded into Script Brief below!");
+                        }}
+                      >
+                        Use This Idea
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Expanded details */}

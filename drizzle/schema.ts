@@ -3612,3 +3612,32 @@ export const substackInboxItems = mysqlTable("substack_inbox_items", {
 
 export type SubstackInboxItem = typeof substackInboxItems.$inferSelect;
 export type InsertSubstackInboxItem = typeof substackInboxItems.$inferInsert;
+
+// ─── Video Idea Engine Feedback ───────────────────────────────────────────────
+/**
+ * Stores user feedback on Video Idea Engine suggestions.
+ * - "saved": user wants to revisit this idea later (boost similar ideas)
+ * - "disliked": user doesn't want ideas like this (suppress similar angles)
+ */
+export const ideaFeedback = mysqlTable("idea_feedback", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The idea topic text (60-80 chars) */
+  topic: text("topic").notNull(),
+  /** The rationale the LLM provided */
+  rationale: text("rationale"),
+  /** Audience alignment score 0-100 */
+  audienceAlignment: int("audience_alignment"),
+  /** Recommended format */
+  recommendedFormat: varchar("recommended_format", { length: 64 }),
+  /** Recommended pattern types as JSON array string */
+  recommendedPatterns: text("recommended_patterns"),
+  /** Which analog data entry inspired this idea */
+  analogDataSource: text("analog_data_source"),
+  /** User feedback: saved = keep for later, disliked = train away from this */
+  feedback: mysqlEnum("idea_feedback_type", ["saved", "disliked"]).notNull(),
+  /** Optional note from user explaining why they saved or disliked */
+  note: text("note"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+export type IdeaFeedback = typeof ideaFeedback.$inferSelect;
+export type InsertIdeaFeedback = typeof ideaFeedback.$inferInsert;

@@ -410,24 +410,33 @@ export const scriptFactoryRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM returned empty script" });
       }
 
-      // 5. Count [VERIFIED] tags
+      // 5. Count [VERIFIED] tags (before stripping — so percentage is accurate)
       const { verified, total, pct } = countVerifiedTags(scriptBody);
+
+      // Strip internal markup tags from the clean copy:
+      // - [VERIFIED] tags are internal grounding markers — never shown to end users
+      // - Structure tags [HOOK], [PAIN], [PROOF], etc. are kept as readable section labels
+      //   but [VERIFIED] must be removed so copy-paste output is clean
+      const cleanScriptBody = scriptBody
+        .replace(/\[VERIFIED\]/g, "")
+        .replace(/ {2,}/g, " ")
+        .trim();
 
       // 6. Generate title
       const titleResponse = await invokeLLM({
         messages: [
           { role: "system", content: "Generate a concise, compelling title for this script. Return only the title, nothing else. Max 80 characters." },
-          { role: "user", content: `Topic: ${input.topic}\nFormat: ${input.format}\n\nFirst 200 chars of script:\n${scriptBody.slice(0, 200)}` },
+          { role: "user", content: `Topic: ${input.topic}\nFormat: ${input.format}\n\nFirst 200 chars of script:\n${cleanScriptBody.slice(0, 200)}` },
         ],
       });
       const title = String(titleResponse?.choices?.[0]?.message?.content ?? input.topic).slice(0, 500).trim();
 
-      // 7. Save to DB
+      // 7. Save to DB (store clean version without [VERIFIED] tags)
       const insertResult = await db.insert(scriptFactoryOutputs).values({
         title,
         topic: input.topic,
         format: input.format,
-        scriptBody,
+        scriptBody: cleanScriptBody,
         verifiedPatternIds: usedPatternIds,
         corpusEntryIds: usedCorpusIds,
         verifiedCount: verified,
@@ -452,7 +461,7 @@ export const scriptFactoryRouter = router({
       return {
         id: Number(insertId),
         title,
-        scriptBody,
+        scriptBody: cleanScriptBody,
         verifiedCount: verified,
         totalElements: total,
         verificationPct: pct,
@@ -601,6 +610,16 @@ export const scriptFactoryRouter = router({
         .orderBy(desc(videoJobs.createdAt))
         .limit(50);
 
+      // 2b. Pull existing script library topics (deduplication — avoid repeating already-generated ideas)
+      const existingScripts = await db
+        .select({
+          topic: scriptFactoryOutputs.topic,
+          title: scriptFactoryOutputs.title,
+        })
+        .from(scriptFactoryOutputs)
+        .orderBy(desc(scriptFactoryOutputs.createdAt))
+        .limit(100);
+
       // 3. Build context for LLM
       const analogContext = analogRows.length > 0
         ? analogRows.map((r) => {
@@ -616,6 +635,11 @@ export const scriptFactoryRouter = router({
       const publishedContext = publishedVideos.length > 0
         ? publishedVideos.map((v) => `- ${v.title}`).join("\n")
         : "No published videos yet.";
+
+      // Build existing scripts context for deduplication
+      const existingScriptsContext = existingScripts.length > 0
+        ? existingScripts.map((s) => `- ${s.topic ?? s.title ?? "Untitled"}`).join("\n")
+        : "No scripts generated yet.";
 
       // 4. Ask LLM to generate ideas
       const response = await invokeLLM({
@@ -635,6 +659,12 @@ this audience cares about and HOW they respond to messaging.
 GAP ANALYSIS: Avoid topics already well-covered by the published videos listed below.
 Prioritize ideas that fill content gaps or approach existing topics from a fresh angle.
 
+DEDUPLICATION (CRITICAL): You will be given a list of scripts ALREADY GENERATED in the library.
+Do NOT suggest any topic that is the same as, or substantially similar to, any topic already in the library.
+Each idea must be meaningfully distinct — different angle, different pain point, different audience segment.
+If the library already has a script on "gut health", do not suggest another gut health script unless it
+approaches it from a completely different angle (e.g., gut-brain connection vs. gut microbiome reset).
+
 For each idea, return a JSON object with:
 - topic: string (the video title/topic, 60-80 chars, compelling and specific)
 - rationale: string (1-2 sentences: why this will convert based on analog data)
@@ -648,7 +678,7 @@ Return a JSON array of ${input.count} ideas. No markdown, no explanation, just t
           },
           {
             role: "user",
-            content: `ANALOG DATA (Northstar — proven converting content):\n${analogContext}\n\nPUBLISHED VIDEOS (avoid duplicating these):\n${publishedContext}\n\nGenerate ${input.count} video ideas.`,
+            content: `ANALOG DATA (Northstar — proven converting content):\n${analogContext}\n\nPUBLISHED VIDEOS (avoid duplicating these):\n${publishedContext}\n\nSCRIPTS ALREADY IN LIBRARY (do NOT repeat or closely echo these topics):\n${existingScriptsContext}\n\nGenerate ${input.count} DISTINCT video ideas that are not already in the library.`,
           },
         ],
         response_format: {

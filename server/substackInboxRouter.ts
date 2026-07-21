@@ -7,21 +7,53 @@
  *
  * Substack has no official webhook API — we poll using the same unofficial
  * cookie-auth approach already used by substackPublisher.ts.
+ *
+ * Cookie storage: The session cookie is stored in the app_settings table
+ * (key = "substack_session_cookie") so it can be updated at runtime without
+ * requiring a deployment or Manus Secrets panel update. Falls back to
+ * ENV.substackSessionCookie if no DB value is set.
  */
 
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { substackInboxItems, contentItems } from "../drizzle/schema";
+import { substackInboxItems, contentItems, appSettings } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { ENV } from "./_core/env";
 // Note: substack-api's addComment is not yet implemented in v4.0.2
 // We use direct HTTP fetch with the session cookie instead (same pattern as substackPublisher.ts)
 
+// ─── Cookie DB key ────────────────────────────────────────────────────────────
+const COOKIE_SETTING_KEY = "substack_session_cookie";
+
+/**
+ * Get the Substack session cookie, preferring the DB-stored value over ENV.
+ * This allows the cookie to be updated at runtime via the Quick Refresh flow
+ * without requiring a deployment or Manus Secrets panel update.
+ */
+export async function getSubstackCookieFromDb(): Promise<string> {
+  try {
+    const db = await getDb();
+    if (db) {
+      const [row] = await db
+        .select({ value: appSettings.value })
+        .from(appSettings)
+        .where(eq(appSettings.key, COOKIE_SETTING_KEY))
+        .limit(1);
+      if (row?.value) {
+        return row.value;
+      }
+    }
+  } catch {
+    // Fall through to ENV fallback
+  }
+  return ENV.substackSessionCookie ?? "";
+}
+
 // ─── Substack API helpers ─────────────────────────────────────────────────────
 
-function getSubstackHeaders(): Record<string, string> {
-  const cookie = ENV.substackSessionCookie;
+async function getSubstackHeaders(): Promise<Record<string, string>> {
+  const cookie = await getSubstackCookieFromDb();
   if (!cookie) throw new Error("SUBSTACK_SESSION_COOKIE is not set.");
   const cookieHeader = cookie.startsWith("substack.sid=") ? cookie : `substack.sid=${cookie}`;
   const pubUrl = ENV.substackPublicationUrl ?? "https://drpedramshojai.substack.com";
@@ -54,7 +86,7 @@ interface SubstackComment {
 
 async function fetchCommentsForPost(postId: string): Promise<SubstackComment[]> {
   const baseUrl = getBaseUrl();
-  const headers = getSubstackHeaders();
+  const headers = await getSubstackHeaders();
   const res = await fetch(`${baseUrl}/api/v1/post/${postId}/comments?all_comments=true&sort=best_first`, { headers });
   if (!res.ok) {
     if (res.status === 404) return []; // post not found / no comments
@@ -79,6 +111,45 @@ function flattenComments(comments: SubstackComment[], parentId?: number): Array<
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 export const substackInboxRouter = router({
+  /**
+   * Update the Substack session cookie stored in the DB.
+   * This allows the cookie to be refreshed at runtime without a deployment.
+   * The new value is stored in app_settings (key = "substack_session_cookie").
+   */
+  updateSubstackCookie: protectedProcedure
+    .input(z.object({
+      cookie: z.string().min(10, "Cookie value is too short"),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Normalize: strip the "substack.sid=" prefix if present — store just the value
+      const cookieValue = input.cookie.startsWith("substack.sid=")
+        ? input.cookie.slice("substack.sid=".length)
+        : input.cookie;
+
+      // Upsert into app_settings
+      const existing = await db
+        .select({ id: appSettings.id })
+        .from(appSettings)
+        .where(eq(appSettings.key, COOKIE_SETTING_KEY))
+        .limit(1);
+
+      if (existing.length) {
+        await db
+          .update(appSettings)
+          .set({ value: cookieValue })
+          .where(eq(appSettings.key, COOKIE_SETTING_KEY));
+      } else {
+        await db
+          .insert(appSettings)
+          .values({ key: COOKIE_SETTING_KEY, value: cookieValue });
+      }
+
+      return { success: true };
+    }),
+
   /**
    * Poll Substack for new comments across all published posts.
    * Deduplicates by substackCommentId so it's safe to run repeatedly.
@@ -272,7 +343,7 @@ export const substackInboxRouter = router({
       if (!item) throw new Error("Inbox item not found");
       if (!item.substackCommentId) throw new Error("No Substack comment ID on this item");
 
-      const headers = getSubstackHeaders();
+      const headers = await getSubstackHeaders();
       const baseUrl = getBaseUrl();
 
       // POST a reply to the comment using Substack's internal API
@@ -289,7 +360,7 @@ export const substackInboxRouter = router({
       if (!replyRes.ok) {
         const errText = await replyRes.text().catch(() => "");
         if (replyRes.status === 401 || replyRes.status === 403) {
-          throw new Error("Substack authentication failed — session cookie may have expired. Please refresh SUBSTACK_SESSION_COOKIE in Settings → Secrets.");
+          throw new Error("Substack authentication failed — session cookie may have expired. Use the Quick Refresh button to update it.");
         }
         throw new Error(`Substack API returned ${replyRes.status}: ${errText.slice(0, 200)}`);
       }
@@ -311,13 +382,14 @@ export const substackInboxRouter = router({
   /**
    * Test Substack API connectivity (validates the session cookie).
    * Uses the same user info endpoint as substackPublisher.ts.
+   * Reads cookie from DB first, falls back to ENV.
    */
   testConnection: protectedProcedure.query(async () => {
-    const cookie = ENV.substackSessionCookie;
+    const cookie = await getSubstackCookieFromDb();
     if (!cookie) return { connected: false, reason: "SUBSTACK_SESSION_COOKIE not set" };
 
     try {
-      const headers = getSubstackHeaders();
+      const headers = await getSubstackHeaders();
       const res = await fetch("https://substack.com/api/v1/user/login", {
         method: "GET",
         headers,
@@ -326,7 +398,7 @@ export const substackInboxRouter = router({
         return { connected: true, reason: "OK" };
       }
       if (res.status === 401 || res.status === 403) {
-        return { connected: false, reason: "Session cookie expired — please refresh it" };
+        return { connected: false, reason: "Session cookie expired — use Quick Refresh to update it" };
       }
       return { connected: false, reason: `API returned ${res.status}` };
     } catch (err: unknown) {

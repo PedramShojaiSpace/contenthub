@@ -4512,3 +4512,13 @@ Pricing model (corrected):
 - [x] Backend: Inject transcripts into buildGroundedContext as "YOUTUBE RESEARCH" section (below analog Northstar, clearly labeled secondary)
 - [x] Frontend: Show "Fetching relevant transcripts..." loading state during generation
 - [x] Frontend: Show how many external transcripts were used in the result badge area
+
+## Substack Cookie Quick-Refresh Flow
+- [x] Backend: getSubstackCookieFromDb() async helper — reads cookie from app_settings (key=substack_session_cookie), falls back to ENV.substackSessionCookie
+- [x] Backend: updateSubstackCookie protectedProcedure in substackInboxRouter — upserts cookie value into app_settings table
+- [x] Backend: Update substackInboxRouter getSubstackHeaders() and testConnection to use getSubstackCookieFromDb()
+- [x] Backend: Update substackPublisher.ts getSessionCookie() to use getSubstackCookieFromDb()
+- [x] Frontend: Build RefreshSubstackSessionModal component (Step 1: Open Substack, Step 2: paste JS snippet into DevTools console, Step 3: paste cookie value + Save)
+- [x] Frontend: Update CookieHealthBanner in SubstackPublisher.tsx to show Quick Refresh button when expired
+- [x] Frontend: Update VA Dashboard Substack Inbox connection status banner to show Refresh Session button when disconnected
+- [x] After save, auto-run testConnection and show green/red status in the modal

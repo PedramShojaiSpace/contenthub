@@ -5,6 +5,7 @@
  * Tab 2 (Video Review): Descript-rendered videos awaiting VA approval before YouTube publish
  */
 import React, { useState } from "react";
+import { RefreshSubstackSessionModal } from "./SubstackPublisher";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ import {
   Share2,
   Archive,
   RotateCcw,
+  Key,
 } from "lucide-react";
 
 // ─── Syndication Types ────────────────────────────────────────────────────────
@@ -1743,6 +1745,65 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   );
 }
 
+// ─── Substack Inbox Banner ──────────────────────────────────────────────────
+function SubstackInboxBanner({
+  substackConnection,
+}: {
+  substackConnection?: { connected: boolean; reason?: string } | null;
+}) {
+  const [refreshOpen, setRefreshOpen] = useState(false);
+  const utils = trpc.useUtils();
+
+  return (
+    <>
+      <div className="mb-4 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <p className="text-sm font-semibold text-purple-400">Substack Inbox Instructions</p>
+          {/* Connection status indicator */}
+          {substackConnection && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                substackConnection.connected
+                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                  : "bg-red-500/10 text-red-400 border-red-500/20"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  substackConnection.connected ? "bg-green-400" : "bg-red-400"
+                }`} />
+                {substackConnection.connected ? "Substack connected" : `Disconnected`}
+              </span>
+              {!substackConnection.connected && (
+                <Button
+                  size="sm"
+                  className="h-6 text-xs px-2 bg-orange-600 hover:bg-orange-700 text-white"
+                  onClick={() => setRefreshOpen(true)}
+                >
+                  <Key className="w-3 h-3 mr-1" />
+                  Quick Refresh
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+        <ol className="space-y-1 text-xs text-muted-foreground">
+          <li>1. Click <strong className="text-foreground">Poll for New Comments</strong> to fetch the latest comments from all Substack posts.</li>
+          <li>2. Expand a comment, type your reply in the <strong className="text-foreground">Reply</strong> box, and click <strong className="text-foreground">Post Reply</strong> — it posts directly to Substack as Dr. Pedram Shojai.</li>
+          <li>3. The item is automatically marked <strong className="text-foreground">Responded</strong> after a successful reply.</li>
+          <li>4. If the connection indicator shows <em>Disconnected</em>, click <strong className="text-foreground">Quick Refresh</strong> to update the session cookie in 3 steps.</li>
+        </ol>
+      </div>
+      <RefreshSubstackSessionModal
+        open={refreshOpen}
+        onClose={() => setRefreshOpen(false)}
+        onSuccess={() => {
+          setRefreshOpen(false);
+          void utils.substackInbox.testConnection.invalidate();
+        }}
+      />
+    </>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function VADashboard() {
   const [, navigate] = useLocation();
@@ -2017,30 +2078,7 @@ export default function VADashboard() {
         {activeTab === "substack" && (
           <>
             {/* Instructions banner */}
-            <div className="mb-4 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <p className="text-sm font-semibold text-purple-400">Substack Inbox Instructions</p>
-                {/* Connection status indicator */}
-                {substackConnection && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 flex-shrink-0 ${
-                    substackConnection.connected
-                      ? "bg-green-500/10 text-green-400 border-green-500/20"
-                      : "bg-red-500/10 text-red-400 border-red-500/20"
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${
-                      substackConnection.connected ? "bg-green-400" : "bg-red-400"
-                    }`} />
-                    {substackConnection.connected ? "Substack connected" : `Disconnected: ${substackConnection.reason}`}
-                  </span>
-                )}
-              </div>
-              <ol className="space-y-1 text-xs text-muted-foreground">
-                <li>1. Click <strong className="text-foreground">Poll for New Comments</strong> to fetch the latest comments from all Substack posts.</li>
-                <li>2. Expand a comment, type your reply in the <strong className="text-foreground">Reply</strong> box, and click <strong className="text-foreground">Post Reply</strong> — it posts directly to Substack as Dr. Pedram Shojai.</li>
-                <li>3. The item is automatically marked <strong className="text-foreground">Responded</strong> after a successful reply.</li>
-                <li>4. If the connection indicator shows <em>Disconnected</em>, refresh the session cookie in Settings → Secrets.</li>
-              </ol>
-            </div>
+            <SubstackInboxBanner substackConnection={substackConnection} />
 
             {/* Poll button + filter tabs */}
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">

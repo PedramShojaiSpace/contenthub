@@ -4495,3 +4495,20 @@ Pricing model (corrected):
 - [x] Add Performance Loop nav item to DashboardLayout (RefreshCw icon)
 - [x] Route /performance-loop added to App.tsx
 - [x] 27 new fixture-based tests (978 total passing)
+
+## Video Idea Engine (Script Factory — Generate Tab)
+- [x] Backend: scriptFactory.suggestIdeas procedure — reads analog data + published video titles, generates 5-8 topic ideas with audience alignment scores via LLM
+- [x] Backend: scriptFactory.superchargeIdeas procedure — takes generated ideas, runs VidIQ keyword research on each, returns search volume, competition, opportunity score, related keywords
+- [x] Frontend: VideoIdeaEngine component — top box in Generate tab above Script Brief
+- [x] Frontend: "Generate Ideas" button — calls suggestIdeas, shows idea cards with alignment score, recommended format, recommended pattern types
+- [x] Frontend: "⚡ Supercharge with VidIQ" button — calls superchargeIdeas on current ideas, adds search metrics to each card
+- [x] Frontend: "Use This Idea" button on each card — pre-fills topic, format, and pattern types in Script Brief below
+- [x] Frontend: Idea cards show: topic, rationale, audience alignment %, recommended format, recommended patterns, content gap analysis
+- [x] Frontend: Supercharged cards additionally show: search volume, competition score, opportunity score, top related keywords
+
+## Supadata Transcript Injection in Script Generation
+- [x] Backend: When Generate Script is called, search Supadata for top 3 most popular relevant YouTube videos on the topic
+- [x] Backend: Fetch transcripts for those videos via Supadata, truncate to ~800 chars each
+- [x] Backend: Inject transcripts into buildGroundedContext as "YOUTUBE RESEARCH" section (below analog Northstar, clearly labeled secondary)
+- [x] Frontend: Show "Fetching relevant transcripts..." loading state during generation
+- [x] Frontend: Show how many external transcripts were used in the result badge area

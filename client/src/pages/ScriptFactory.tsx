@@ -28,14 +28,20 @@ import { trpc } from "@/lib/trpc";
 import {
   BarChart3,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   ClipboardCopy,
   FileText,
+  Lightbulb,
   Loader2,
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Target,
   Trash2,
+  TrendingUp,
   Wand2,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -76,7 +82,6 @@ const FORMAT_LABELS: Record<string, string> = {
 // ─── Verified tag renderer ────────────────────────────────────────────────────
 
 function renderScriptWithTags(scriptBody: string): React.ReactNode {
-  // Split on [VERIFIED] and [HOOK], [PAIN], etc. structure tags
   const parts = scriptBody.split(/(\[VERIFIED\]|\[[A-Z_]+\])/g);
   return parts.map((part, i) => {
     if (part === "[VERIFIED]") {
@@ -97,6 +102,315 @@ function renderScriptWithTags(scriptBody: string): React.ReactNode {
   });
 }
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface VideoIdea {
+  topic: string;
+  rationale: string;
+  audienceAlignment: number;
+  contentGap: string;
+  recommendedFormat: string;
+  recommendedPatterns: string[];
+  analogDataSource: string;
+}
+
+interface SuperchargedIdea extends VideoIdea {
+  vidiq: {
+    keyword: string;
+    volume: number;
+    competition: number;
+    opportunityScore: number;
+    estimatedMonthlySearch: number;
+    topRelatedKeywords: { keyword: string; overall: number; volume: number }[];
+  } | null;
+}
+
+// ─── Video Idea Engine ────────────────────────────────────────────────────────
+
+interface VideoIdeaEngineProps {
+  onSelectIdea: (topic: string, format: string, patterns: string[]) => void;
+}
+
+function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
+  const [ideas, setIdeas] = useState<VideoIdea[]>([]);
+  const [superchargedIdeas, setSuperchargedIdeas] = useState<SuperchargedIdea[]>([]);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [isSupercharged, setIsSupercharged] = useState(false);
+
+  const suggestIdeas = trpc.scriptFactory.suggestIdeas.useMutation({
+    onSuccess: (data) => {
+      setIdeas(data.ideas);
+      setSuperchargedIdeas([]);
+      setIsSupercharged(false);
+      setExpandedIdx(null);
+      if (data.ideas.length === 0) {
+        toast.info("No ideas generated. Add analog data in Analyze → Library first for best results.");
+      } else {
+        toast.success(`${data.ideas.length} ideas generated from ${data.analogDataCount} analog entries.`);
+      }
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const supercharge = trpc.scriptFactory.superchargeIdeas.useMutation({
+    onSuccess: (data) => {
+      setSuperchargedIdeas(data.ideas);
+      setIsSupercharged(true);
+      toast.success("Ideas supercharged with VidIQ keyword data!");
+    },
+    onError: (err) => toast.error(`VidIQ supercharge failed: ${err.message}`),
+  });
+
+  const displayIdeas: (VideoIdea | SuperchargedIdea)[] = isSupercharged ? superchargedIdeas : ideas;
+
+  const getAlignmentColor = (score: number) => {
+    if (score >= 80) return "text-green-700 bg-green-50 border-green-200";
+    if (score >= 60) return "text-yellow-700 bg-yellow-50 border-yellow-200";
+    return "text-red-700 bg-red-50 border-red-200";
+  };
+
+  const getOpportunityColor = (score: number) => {
+    if (score >= 70) return "text-green-700";
+    if (score >= 40) return "text-yellow-600";
+    return "text-red-600";
+  };
+
+  const formatVolume = (n: number) => {
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+    return String(n);
+  };
+
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lightbulb className="w-4 h-4 text-primary" />
+            Video Idea Engine
+            <span className="text-xs font-normal text-muted-foreground">
+              — Analog data Northstar + gap analysis
+            </span>
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {ideas.length > 0 && !supercharge.isPending && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-yellow-400 text-yellow-700 hover:bg-yellow-50"
+                onClick={() => supercharge.mutate({ ideas })}
+                disabled={supercharge.isPending}
+              >
+                {supercharge.isPending ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Supercharging…</>
+                ) : (
+                  <><Zap className="w-3.5 h-3.5 mr-1.5 text-yellow-500" /> Supercharge with VidIQ</>
+                )}
+              </Button>
+            )}
+            {supercharge.isPending && (
+              <div className="flex items-center gap-1.5 text-xs text-yellow-700">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Fetching VidIQ data for {ideas.length} ideas…
+              </div>
+            )}
+            <Button
+              size="sm"
+              onClick={() => suggestIdeas.mutate({ count: 6 })}
+              disabled={suggestIdeas.isPending}
+            >
+              {suggestIdeas.isPending ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Generating…</>
+              ) : (
+                <><Sparkles className="w-3.5 h-3.5 mr-1.5" /> Generate Ideas</>
+              )}
+            </Button>
+          </div>
+        </div>
+        {isSupercharged && (
+          <div className="flex items-center gap-1.5 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 mt-1">
+            <Zap className="w-3 h-3 text-yellow-500" />
+            Supercharged with VidIQ — search metrics shown below each idea
+          </div>
+        )}
+      </CardHeader>
+
+      <CardContent>
+        {suggestIdeas.isPending && (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <p className="text-sm">Analyzing analog data and published videos…</p>
+          </div>
+        )}
+
+        {!suggestIdeas.isPending && displayIdeas.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-6 text-muted-foreground gap-2 border-2 border-dashed rounded-lg">
+            <Lightbulb className="w-8 h-8 opacity-30" />
+            <p className="text-sm text-center">
+              Click <strong>Generate Ideas</strong> to get topic suggestions grounded in your analog data.<br />
+              <span className="text-xs">Add content in Analyze → Library first for best results.</span>
+            </p>
+          </div>
+        )}
+
+        {!suggestIdeas.isPending && displayIdeas.length > 0 && (
+          <div className="space-y-2">
+            {displayIdeas.map((idea, idx) => {
+              const isExpanded = expandedIdx === idx;
+              const sc = isSupercharged ? (idea as SuperchargedIdea).vidiq : null;
+
+              return (
+                <div
+                  key={idx}
+                  className="border rounded-lg bg-background overflow-hidden"
+                >
+                  {/* Collapsed header */}
+                  <div
+                    className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => setExpandedIdx(isExpanded ? null : idx)}
+                  >
+                    <div className="flex-shrink-0">
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{idea.topic}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${getAlignmentColor(idea.audienceAlignment)}`}>
+                          <Target className="w-2.5 h-2.5 inline mr-0.5" />
+                          {idea.audienceAlignment}% aligned
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {FORMAT_LABELS[idea.recommendedFormat] ?? idea.recommendedFormat}
+                        </span>
+                        {sc && sc.opportunityScore > 0 && (
+                          <span className={`text-xs font-medium ${getOpportunityColor(sc.opportunityScore)}`}>
+                            <TrendingUp className="w-2.5 h-2.5 inline mr-0.5" />
+                            {sc.opportunityScore} opp
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-shrink-0 text-xs h-7"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectIdea(idea.topic, idea.recommendedFormat, idea.recommendedPatterns);
+                        toast.success("Idea loaded into Script Brief below!");
+                      }}
+                    >
+                      Use This Idea
+                    </Button>
+                  </div>
+
+                  {/* Expanded details */}
+                  {isExpanded && (
+                    <div className="border-t bg-muted/20 p-3 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Why This Will Convert</p>
+                          <p className="text-xs">{idea.rationale}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Content Gap Filled</p>
+                          <p className="text-xs">{idea.contentGap}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">Recommended Pattern Types</p>
+                        <div className="flex flex-wrap gap-1">
+                          {idea.recommendedPatterns.map((p) => (
+                            <span key={p} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                              {p.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-medium">Analog source:</span> {idea.analogDataSource}
+                      </div>
+
+                      {/* VidIQ metrics (supercharged only) */}
+                      {sc && (
+                        <div className="border-t pt-3">
+                          <p className="text-xs font-semibold text-yellow-700 mb-2 flex items-center gap-1">
+                            <Zap className="w-3 h-3" /> VidIQ Keyword Data: "{sc.keyword}"
+                          </p>
+                          <div className="grid grid-cols-3 gap-2 mb-2">
+                            <div className="text-center bg-background rounded border p-2">
+                              <p className="text-lg font-bold text-primary">{formatVolume(sc.volume)}</p>
+                              <p className="text-xs text-muted-foreground">Search Volume</p>
+                            </div>
+                            <div className="text-center bg-background rounded border p-2">
+                              <p className={`text-lg font-bold ${getOpportunityColor(sc.opportunityScore)}`}>{sc.opportunityScore}</p>
+                              <p className="text-xs text-muted-foreground">Opportunity</p>
+                            </div>
+                            <div className="text-center bg-background rounded border p-2">
+                              <p className="text-lg font-bold text-foreground">{sc.competition}</p>
+                              <p className="text-xs text-muted-foreground">Competition</p>
+                            </div>
+                          </div>
+                          {sc.estimatedMonthlySearch > 0 && (
+                            <p className="text-xs text-muted-foreground mb-2">
+                              ~{formatVolume(sc.estimatedMonthlySearch)} estimated monthly searches
+                            </p>
+                          )}
+                          {sc.topRelatedKeywords.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Top Related Keywords</p>
+                              <div className="flex flex-wrap gap-1">
+                                {sc.topRelatedKeywords.slice(0, 5).map((k) => (
+                                  <span
+                                    key={k.keyword}
+                                    className="text-xs px-2 py-0.5 rounded bg-yellow-50 border border-yellow-200 text-yellow-800 cursor-pointer hover:bg-yellow-100"
+                                    title={`Opportunity: ${k.overall} | Volume: ${formatVolume(k.volume)}`}
+                                    onClick={() => onSelectIdea(k.keyword, idea.recommendedFormat, idea.recommendedPatterns)}
+                                  >
+                                    {k.keyword}
+                                    <span className="ml-1 opacity-60">{k.overall}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {isSupercharged && !sc && (
+                        <div className="border-t pt-2">
+                          <p className="text-xs text-muted-foreground italic">VidIQ data unavailable for this keyword.</p>
+                        </div>
+                      )}
+
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          onSelectIdea(idea.topic, idea.recommendedFormat, idea.recommendedPatterns);
+                          toast.success("Idea loaded into Script Brief below!");
+                        }}
+                      >
+                        <Wand2 className="w-3.5 h-3.5 mr-1.5" /> Use This Idea → Generate Script
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Generate Tab ─────────────────────────────────────────────────────────────
 
 function GenerateTab() {
@@ -111,14 +425,16 @@ function GenerateTab() {
   const [result, setResult] = useState<{
     id: number; title: string; scriptBody: string;
     verifiedCount: number; totalElements: number; verificationPct: number;
-    patternsUsed: number; corpusEntriesUsed: number;
+    patternsUsed: number; corpusEntriesUsed: number; externalTranscriptsUsed?: number;
   } | null>(null);
 
   const generate = trpc.scriptFactory.generate.useMutation({
     onSuccess: (data) => {
       setResult(data);
-      toast.success(`Script generated! ${data.verificationPct}% verified.`);
-      // Invalidate library and stats so they reflect the new script immediately
+      const transcriptNote = (data.externalTranscriptsUsed ?? 0) > 0
+        ? ` · ${data.externalTranscriptsUsed} YouTube transcripts fetched`
+        : "";
+      toast.success(`Script generated! ${data.verificationPct}% verified${transcriptNote}.`);
       utils.scriptFactory.list.invalidate();
       utils.scriptFactory.getStats.invalidate();
     },
@@ -137,153 +453,188 @@ function GenerateTab() {
     toast.success("Script copied to clipboard.");
   };
 
+  // Called when user clicks "Use This Idea" in VideoIdeaEngine
+  const handleSelectIdea = (ideaTopic: string, ideaFormat: string, ideaPatterns: string[]) => {
+    setTopic(ideaTopic);
+    setFormat(ideaFormat);
+    setSelectedTypes(ideaPatterns.length > 0 ? ideaPatterns : selectedTypes);
+    // Scroll to the Script Brief card
+    setTimeout(() => {
+      document.getElementById("script-brief-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left: Config */}
-      <div className="space-y-5">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Wand2 className="w-4 h-4 text-primary" /> Script Brief
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Topic / Brief</label>
-              <Textarea
-                placeholder="e.g. 'Why most people can't sleep despite being exhausted — and the ancient practice that fixes it in 7 days'"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                rows={4}
-                className="resize-none"
-              />
-              <p className="text-xs text-muted-foreground">Be specific. The more context, the better the corpus match.</p>
-            </div>
+    <div className="space-y-5">
+      {/* Video Idea Engine — top box */}
+      <VideoIdeaEngine onSelectIdea={handleSelectIdea} />
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Format</label>
-              <Select value={format} onValueChange={setFormat}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FORMATS.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">
-                Pattern Types to Include
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {PATTERN_TYPES.map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => toggleType(type)}
-                    className={`text-xs px-2 py-1 rounded border transition-colors ${
-                      selectedTypes.includes(type)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted text-muted-foreground border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {type.replace(/_/g, " ")}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">
-                Min Pattern Effectiveness: <span className="text-primary font-bold">{(minEff * 100).toFixed(0)}%</span>
-              </label>
-              <Slider min={0} max={1} step={0.05} value={[minEff]} onValueChange={([v]) => setMinEff(v)} />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">
-                Top Patterns Per Type: <span className="text-primary font-bold">{topPerType}</span>
-              </label>
-              <Slider min={1} max={5} step={1} value={[topPerType]} onValueChange={([v]) => setTopPerType(v)} />
-            </div>
-
-            <Button
-              className="w-full"
-              disabled={generate.isPending || topic.trim().length < 10 || selectedTypes.length === 0}
-              onClick={() => generate.mutate({
-                topic,
-                format: format as any,
-                patternTypes: selectedTypes,
-                minPatternEffectiveness: minEff,
-                topPatternsPerType: topPerType,
-                useCorpusSearch: true,
-              })}
-            >
-              {generate.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating…</>
-              ) : (
-                <><Sparkles className="w-4 h-4 mr-2" /> Generate Script</>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-          <strong>How [VERIFIED] works:</strong> The LLM draws from your proven patterns and corpus excerpts.
-          Every element it borrows is tagged <code className="bg-amber-100 px-1 rounded">[VERIFIED]</code>.
-          Aim for &gt;40% verification coverage on key structural elements.
-        </div>
-      </div>
-
-      {/* Right: Result */}
-      <div className="space-y-4">
-        {generate.isPending && (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-sm">Pulling patterns from corpus and generating script…</p>
-          </div>
-        )}
-
-        {result && !generate.isPending && (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <CardTitle className="text-base">{result.title}</CardTitle>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <Badge className="bg-green-100 text-green-800 text-xs">
-                      <ShieldCheck className="w-3 h-3 mr-1" />
-                      {result.verificationPct}% verified
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {result.verifiedCount} verified / {result.totalElements} elements
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {result.patternsUsed} patterns · {result.corpusEntriesUsed} corpus entries
-                    </span>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={copyToClipboard}>
-                  <ClipboardCopy className="w-3.5 h-3.5 mr-1" /> Copy
-                </Button>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Config */}
+        <div className="space-y-5">
+          <Card id="script-brief-card">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wand2 className="w-4 h-4 text-primary" /> Script Brief
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
-                {renderScriptWithTags(result.scriptBody)}
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Topic / Brief</label>
+                <Textarea
+                  placeholder="e.g. 'Why most people can't sleep despite being exhausted — and the ancient practice that fixes it in 7 days'"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Be specific. Or use <strong>Generate Ideas</strong> above to auto-fill from analog data.
+                </p>
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Format</label>
+                <Select value={format} onValueChange={setFormat}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMATS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  Pattern Types to Include
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PATTERN_TYPES.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => toggleType(type)}
+                      className={`text-xs px-2 py-1 rounded border transition-colors ${
+                        selectedTypes.includes(type)
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                      }`}
+                    >
+                      {type.replace(/_/g, " ")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  Min Pattern Effectiveness: <span className="text-primary font-bold">{(minEff * 100).toFixed(0)}%</span>
+                </label>
+                <Slider min={0} max={1} step={0.05} value={[minEff]} onValueChange={([v]) => setMinEff(v)} />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  Top Patterns Per Type: <span className="text-primary font-bold">{topPerType}</span>
+                </label>
+                <Slider min={1} max={5} step={1} value={[topPerType]} onValueChange={([v]) => setTopPerType(v)} />
+              </div>
+
+              <Button
+                className="w-full"
+                disabled={generate.isPending || topic.trim().length < 10 || selectedTypes.length === 0}
+                onClick={() => generate.mutate({
+                  topic,
+                  format: format as any,
+                  patternTypes: selectedTypes,
+                  minPatternEffectiveness: minEff,
+                  topPatternsPerType: topPerType,
+                  useCorpusSearch: true,
+                })}
+              >
+                {generate.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating + fetching transcripts…</>
+                ) : (
+                  <><Sparkles className="w-4 h-4 mr-2" /> Generate Script</>
+                )}
+              </Button>
+
+              {generate.isPending && (
+                <p className="text-xs text-center text-muted-foreground">
+                  Fetching top YouTube transcripts via Supadata + building corpus context…
+                </p>
+              )}
             </CardContent>
           </Card>
-        )}
 
-        {!result && !generate.isPending && (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3 border-2 border-dashed rounded-lg">
-            <FileText className="w-10 h-10 opacity-30" />
-            <p className="text-sm">Fill in the brief and click Generate Script.</p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+            <strong>How [VERIFIED] works:</strong> The LLM draws from your proven patterns and corpus excerpts.
+            Every element it borrows is tagged <code className="bg-amber-100 px-1 rounded">[VERIFIED]</code>.
+            Aim for &gt;40% verification coverage on key structural elements.
+            <br />
+            <span className="text-xs mt-1 block">
+              <strong>Supadata:</strong> Top relevant YouTube transcripts are automatically fetched and injected as tertiary research context (below your analog data Northstar).
+            </span>
           </div>
-        )}
+        </div>
+
+        {/* Right: Result */}
+        <div className="space-y-4">
+          {generate.isPending && (
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm">Pulling patterns from corpus and generating script…</p>
+              <p className="text-xs text-muted-foreground">Also fetching top YouTube transcripts via Supadata</p>
+            </div>
+          )}
+
+          {result && !generate.isPending && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">{result.title}</CardTitle>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <Badge className="bg-green-100 text-green-800 text-xs">
+                        <ShieldCheck className="w-3 h-3 mr-1" />
+                        {result.verificationPct}% verified
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {result.verifiedCount} verified / {result.totalElements} elements
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {result.patternsUsed} patterns · {result.corpusEntriesUsed} corpus entries
+                      </span>
+                      {(result.externalTranscriptsUsed ?? 0) > 0 && (
+                        <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs">
+                          {result.externalTranscriptsUsed} YouTube transcripts
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                    <ClipboardCopy className="w-3.5 h-3.5 mr-1" /> Copy
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
+                  {renderScriptWithTags(result.scriptBody)}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!result && !generate.isPending && (
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3 border-2 border-dashed rounded-lg">
+              <FileText className="w-10 h-10 opacity-30" />
+              <p className="text-sm">Fill in the brief and click Generate Script.</p>
+              <p className="text-xs text-center">Or use Generate Ideas above to pick a topic first.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -293,29 +644,28 @@ function GenerateTab() {
 
 function LibraryTab() {
   const utils = trpc.useUtils();
-  const [filterFormat, setFilterFormat] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [viewScriptId, setViewScriptId] = useState<number | null>(null);
+  const [selectedScript, setSelectedScript] = useState<{
+    id: number; title: string; scriptBody: string; topic: string; format: string;
+    verifiedCount: number; totalElements: number; verificationPct: number;
+    status: string; notes: string | null; createdAt: Date;
+  } | null>(null);
 
-  const { data: scripts = [], isLoading, refetch } = trpc.scriptFactory.list.useQuery({
-    format: filterFormat,
-    status: filterStatus,
+  const { data: scripts, isLoading } = trpc.scriptFactory.list.useQuery({
+    format: "all",
+    status: "all",
     limit: 50,
     offset: 0,
   });
 
-  // Fetch full script data (including scriptBody) only when dialog is open
-  const { data: viewScript, isLoading: viewLoading } = trpc.scriptFactory.get.useQuery(
-    { id: viewScriptId! },
-    { enabled: viewScriptId != null }
+  const { data: scriptDetail } = trpc.scriptFactory.get.useQuery(
+    { id: selectedScript?.id ?? 0 },
+    { enabled: !!selectedScript }
   );
 
   const updateScript = trpc.scriptFactory.update.useMutation({
     onSuccess: () => {
-      refetch();
-      utils.scriptFactory.getStats.invalidate();
-      // Refresh the open dialog if it's showing the updated script
-      if (viewScriptId) utils.scriptFactory.get.invalidate({ id: viewScriptId });
+      utils.scriptFactory.list.invalidate();
+      utils.scriptFactory.get.invalidate({ id: selectedScript?.id ?? 0 });
       toast.success("Script updated.");
     },
     onError: (err) => toast.error(err.message),
@@ -323,140 +673,125 @@ function LibraryTab() {
 
   const deleteScript = trpc.scriptFactory.delete.useMutation({
     onSuccess: () => {
-      refetch();
+      utils.scriptFactory.list.invalidate();
       utils.scriptFactory.getStats.invalidate();
-      setViewScriptId(null);
+      setSelectedScript(null);
       toast.success("Script deleted.");
     },
     onError: (err) => toast.error(err.message),
   });
 
-  return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <Select value={filterFormat} onValueChange={setFilterFormat}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="All formats" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Formats</SelectItem>
-            {FORMATS.map((f) => (
-              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
-        </Button>
-
-        <span className="text-sm text-muted-foreground ml-auto">{scripts.length} scripts</span>
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32 text-muted-foreground gap-2">
+        <Loader2 className="w-5 h-5 animate-spin" />
+        <span className="text-sm">Loading scripts…</span>
       </div>
+    );
+  }
 
-      {/* Table */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        </div>
-      ) : scripts.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
-          <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No scripts yet. Use the Generate tab to create your first script.</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {scripts.map((s) => (
-            <div key={s.id} className="border rounded-lg p-4 bg-card flex items-start gap-4">
+  if (!scripts || scripts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-3 border-2 border-dashed rounded-lg">
+        <FileText className="w-10 h-10 opacity-30" />
+        <p className="text-sm">No scripts yet. Generate one in the Generate tab.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {scripts.map((script) => (
+        <Card
+          key={script.id}
+          className="cursor-pointer hover:border-primary/40 transition-colors"
+          onClick={() => setSelectedScript(script as any)}
+        >
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-sm truncate">{s.title}</span>
-                  <Badge className={`text-xs ${STATUS_COLORS[s.status]}`}>{s.status}</Badge>
-                  <Badge variant="outline" className="text-xs">{FORMAT_LABELS[s.format] ?? s.format}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 truncate">{s.topic}</p>
-                <div className="flex items-center gap-3 mt-1.5">
-                  <span className="text-xs text-green-700 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" />
-                    {s.verificationPct != null ? `${s.verificationPct.toFixed(0)}%` : "—"} verified
-                  </span>
+                <p className="font-medium text-sm truncate">{script.title}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <Badge className={`text-xs ${STATUS_COLORS[script.status ?? "draft"]}`}>
+                    {script.status ?? "draft"}
+                  </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(s.createdAt).toLocaleDateString()}
+                    {FORMAT_LABELS[script.format] ?? script.format}
+                  </span>
+                  <Badge className="bg-green-50 text-green-700 border border-green-200 text-xs">
+                    <ShieldCheck className="w-2.5 h-2.5 mr-0.5" />
+                    {script.verificationPct ?? 0}%
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(script.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => setViewScriptId(s.id)}>
-                  View
-                </Button>
-                {s.status === "draft" && (
-                  <Button variant="ghost" size="sm" className="text-green-700"
-                    onClick={() => updateScript.mutate({ id: s.id, status: "approved" })}>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteScript.mutate({ id: s.id })}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
             </div>
-          ))}
-        </div>
-      )}
+          </CardContent>
+        </Card>
+      ))}
 
-      {/* View Dialog — uses scriptFactory.get to fetch full scriptBody */}
-      <Dialog open={viewScriptId != null} onOpenChange={(open) => !open && setViewScriptId(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      {/* Script detail dialog */}
+      <Dialog open={!!selectedScript} onOpenChange={(open) => !open && setSelectedScript(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="pr-8">{viewScript?.title ?? "Loading..."}</DialogTitle>
+            <DialogTitle>{selectedScript?.title}</DialogTitle>
           </DialogHeader>
-          {viewLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : viewScript ? (
+          {scriptDetail && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge className={`text-xs ${STATUS_COLORS[viewScript.status]}`}>{viewScript.status}</Badge>
-                <Badge variant="outline" className="text-xs">{FORMAT_LABELS[viewScript.format] ?? viewScript.format}</Badge>
-                <Badge className="text-xs bg-green-100 text-green-800">
-                  <ShieldCheck className="w-3 h-3 mr-1" />
-                  {viewScript.verificationPct != null ? `${(viewScript.verificationPct as number).toFixed(0)}%` : "—"} verified
+                <Badge className={`text-xs ${STATUS_COLORS[scriptDetail.status ?? "draft"]}`}>
+                  {scriptDetail.status}
                 </Badge>
+                <Badge className="bg-green-50 text-green-700 border border-green-200 text-xs">
+                  <ShieldCheck className="w-2.5 h-2.5 mr-0.5" />
+                  {scriptDetail.verificationPct ?? 0}% verified
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {FORMAT_LABELS[scriptDetail.format] ?? scriptDetail.format}
+                </span>
               </div>
-              <p className="text-sm text-muted-foreground">{viewScript.topic}</p>
-              <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono">
-                {renderScriptWithTags(viewScript.scriptBody ?? "")}
-              </div>
+
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => {
-                  navigator.clipboard.writeText(viewScript.scriptBody ?? "");
-                  toast.success("Copied to clipboard.");
-                }}>
-                  <ClipboardCopy className="w-3.5 h-3.5 mr-1" /> Copy Script
-                </Button>
-                {viewScript.status === "draft" && (
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700"
-                    onClick={() => updateScript.mutate({ id: viewScript.id, status: "approved" })}>
+                {scriptDetail.status !== "approved" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-green-400 text-green-700"
+                    onClick={() => updateScript.mutate({ id: scriptDetail.id, status: "approved" })}
+                  >
                     <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
                   </Button>
                 )}
+                {scriptDetail.status !== "archived" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => updateScript.mutate({ id: scriptDetail.id, status: "archived" })}
+                  >
+                    Archive
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-red-300 text-red-600"
+                  onClick={() => {
+                    if (confirm("Delete this script?")) {
+                      deleteScript.mutate({ id: scriptDetail.id });
+                    }
+                  }}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                </Button>
+              </div>
+
+              <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono max-h-[400px] overflow-y-auto">
+                {renderScriptWithTags(scriptDetail.scriptBody ?? "")}
               </div>
             </div>
-          ) : null}
+          )}
         </DialogContent>
       </Dialog>
     </div>
@@ -466,36 +801,46 @@ function LibraryTab() {
 // ─── Stats Tab ────────────────────────────────────────────────────────────────
 
 function StatsTab() {
-  const { data: stats, isLoading } = trpc.scriptFactory.getStats.useQuery();
+  const { data: stats, isLoading, refetch } = trpc.scriptFactory.getStats.useQuery();
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center py-16">
-      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-    </div>
-  );
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32 text-muted-foreground gap-2">
+        <Loader2 className="w-5 h-5 animate-spin" />
+        <span className="text-sm">Loading stats…</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-3xl font-bold text-primary">{stats?.total ?? 0}</div>
-          <div className="text-sm text-muted-foreground mt-1">Total Scripts</div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-3xl font-bold text-green-600">{stats?.approved ?? 0}</div>
-          <div className="text-sm text-muted-foreground mt-1">Approved Scripts</div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-3xl font-bold text-primary">
-            {stats?.avgVerificationPct != null ? `${stats.avgVerificationPct.toFixed(0)}%` : "—"}
-          </div>
-          <div className="text-sm text-muted-foreground mt-1">Avg Verification %</div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-primary">{stats?.total ?? 0}</div>
+            <div className="text-sm text-muted-foreground mt-1">Total Scripts</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-green-600">{stats?.approved ?? 0}</div>
+            <div className="text-sm text-muted-foreground mt-1">Approved</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-primary">
+              {stats?.avgVerificationPct != null ? `${stats.avgVerificationPct.toFixed(0)}%` : "—"}
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">Avg Verification %</div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

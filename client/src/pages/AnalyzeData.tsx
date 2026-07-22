@@ -55,7 +55,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 
 const DATA_TYPES = [
   { value: "sales_page", label: "Sales Page", icon: FileText, color: "bg-blue-100 text-blue-800" },
-  { value: "facebook_ad", label: "Facebook Ad", icon: Sparkles, color: "bg-purple-100 text-purple-800" },
+  { value: "facebook_ad", label: "Profitable Ad Copy", icon: Sparkles, color: "bg-purple-100 text-purple-800" },
   { value: "customer_interview", label: "Customer Interview", icon: MessageSquare, color: "bg-green-100 text-green-800" },
   { value: "text_survey", label: "Text Survey", icon: BookOpen, color: "bg-yellow-100 text-yellow-800" },
   { value: "vsl_script", label: "VSL Script", icon: Brain, color: "bg-red-100 text-red-800" },

@@ -1927,7 +1927,7 @@ Return ONLY the image prompt, no explanation.`,
           }
           // Inject the CTA banner as a clickable HTML block at the end of the article body,
           // just before the FAQ section (or at the very end if no FAQ).
-          const ctaBannerBlock = `\n\n<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;">\n  <a href="${blogCtaUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">\n    <img src="${ctaBannerUrl}" alt="${blogCtaLabel}" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" />\n    <div style="margin-top:0.75rem;font-size:1rem;font-weight:600;color:#7c5c2e;letter-spacing:0.02em;">${blogCtaText.slice(0, 120)}${blogCtaText.length > 120 ? '\u2026' : ''}</div>\n  </a>\n</div>`;
+          const ctaBannerBlock = `\n\n<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;">\n  <a href="${blogCtaUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">\n    <img src="${ctaBannerUrl}" alt="${blogCtaLabel}" loading="eager" class="skip-lazy" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" />\n    <div style="margin-top:0.75rem;font-size:1rem;font-weight:600;color:#7c5c2e;letter-spacing:0.02em;">${blogCtaText.slice(0, 120)}${blogCtaText.length > 120 ? '\u2026' : ''}</div>\n  </a>\n</div>`;
           // Insert before FAQ section if present, otherwise append
           const faqMatch = articleWithCtaBanner.match(/\n##\s*(Frequently Asked Questions|FAQ)/i);
           if (faqMatch && faqMatch.index !== undefined) {
@@ -2000,7 +2000,7 @@ Return ONLY the image prompt, no explanation.`,
         // regex special characters (parentheses, dots, asterisks) that corrupt the match.
         // Instead, extract the CTA block directly from ctaBannerUrl/ctaBannerBlock.
         const ctaBannerHtmlBlock: string | undefined = ctaBannerUrl
-          ? `<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;"><a href="${blogCtaUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><img src="${ctaBannerUrl}" alt="${blogCtaLabel}" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" /><div style="margin-top:0.75rem;font-size:1rem;font-weight:600;color:#7c5c2e;letter-spacing:0.02em;">${blogCtaText.slice(0, 120)}${blogCtaText.length > 120 ? '\u2026' : ''}</div></a></div>`
+          ? `<div class="um-cta-banner" style="margin:2.5rem 0;text-align:center;"><a href="${blogCtaUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;"><img src="${ctaBannerUrl}" alt="${blogCtaLabel}" loading="eager" class="skip-lazy" style="width:100%;max-width:800px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15);" /><div style="margin-top:0.75rem;font-size:1rem;font-weight:600;color:#7c5c2e;letter-spacing:0.02em;">${blogCtaText.slice(0, 120)}${blogCtaText.length > 120 ? '\u2026' : ''}</div></a></div>`
           : undefined;
 
         return {

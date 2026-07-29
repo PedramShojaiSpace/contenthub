@@ -408,7 +408,7 @@ export default function DeepDivePage() {
 
   const handleGenerate = () => {
     generateMutation.mutate({
-      theme: selectedTheme || undefined,
+      theme: (selectedTheme && selectedTheme !== "__auto__") ? selectedTheme : undefined,
     });
   };
 
@@ -469,7 +469,7 @@ export default function DeepDivePage() {
                   <SelectValue placeholder="Auto-select next theme" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Auto-select next theme</SelectItem>
+                  <SelectItem value="__auto__">Auto-select next theme</SelectItem>
                   {themes.map((t) => (
                     <SelectItem key={t} value={t}>
                       {t}

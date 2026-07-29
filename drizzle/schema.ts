@@ -3643,7 +3643,7 @@ export type IdeaFeedback = typeof ideaFeedback.$inferSelect;
 export type InsertIdeaFeedback = typeof ideaFeedback.$inferInsert;
 
 // ─── Paid Tier Weekly Deep Dive System ─────────────────────────────────────────
-export const deepDiveStatusEnum = mysqlEnum("deep_dive_status", [
+export const deepDiveStatusEnum = mysqlEnum("status", [
   "draft",
   "ready",
   "published",

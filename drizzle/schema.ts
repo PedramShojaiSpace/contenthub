@@ -3641,3 +3641,52 @@ export const ideaFeedback = mysqlTable("idea_feedback", {
 });
 export type IdeaFeedback = typeof ideaFeedback.$inferSelect;
 export type InsertIdeaFeedback = typeof ideaFeedback.$inferInsert;
+
+// ─── Paid Tier Weekly Deep Dive System ─────────────────────────────────────────
+export const deepDiveStatusEnum = mysqlEnum("deep_dive_status", [
+  "draft",
+  "ready",
+  "published",
+  "archived",
+]);
+
+export const weeklyDeepDives = mysqlTable("weekly_deep_dives", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The overarching theme / topic of this deep dive */
+  theme: varchar("theme", { length: 255 }).notNull(),
+  /** Which book(s) this content was mined from (comma-separated titles) */
+  bookSources: text("book_sources"),
+  /** The source book IDs used (JSON array of uploaded_books.id) */
+  sourceBookIds: text("source_book_ids"),
+  /** The generated title for the deep dive post */
+  title: varchar("title", { length: 512 }).notNull(),
+  /** Teaser / subtitle shown in preview */
+  teaser: text("teaser"),
+  /** The core practice section (markdown) */
+  practiceBody: longtext("practice_body"),
+  /** The insight / science section (markdown) */
+  insightBody: longtext("insight_body"),
+  /** The protocol / action steps section (markdown) */
+  protocolBody: longtext("protocol_body"),
+  /** Full assembled HTML/markdown ready to post */
+  fullContent: longtext("full_content"),
+  /** Status in the workflow */
+  status: deepDiveStatusEnum.notNull().default("draft"),
+  /** When this is scheduled to go out (UTC ms) */
+  scheduledAt: bigint("scheduled_at", { mode: "number" }),
+  /** When it was actually published (UTC ms) */
+  publishedAt: bigint("published_at", { mode: "number" }),
+  /** Substack post ID after publishing */
+  substackPostId: varchar("substack_post_id", { length: 128 }),
+  /** Substack post URL */
+  substackPostUrl: text("substack_post_url"),
+  /** Whether this was sent to paid subscribers only */
+  paidOnly: boolean("paid_only").notNull().default(true),
+  /** Optional editor notes */
+  notes: text("notes"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type WeeklyDeepDive = typeof weeklyDeepDives.$inferSelect;
+export type InsertWeeklyDeepDive = typeof weeklyDeepDives.$inferInsert;

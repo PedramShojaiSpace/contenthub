@@ -38,6 +38,8 @@ export interface SubstackPostInput {
   subtitle?: string;
   /** Whether to send as email to subscribers (default: true) */
   sendEmail?: boolean;
+  /** Audience: 'everyone' (free + paid) or 'paid_subscribers' (paid only). Default: 'everyone' */
+  audience?: 'everyone' | 'paid_subscribers';
 }
 
 export interface SubstackPostResult {
@@ -84,7 +86,7 @@ export async function publishToSubstack(
     draft_bylines: [],
     type: "newsletter",
     draft_section_id: null,
-    audience: "everyone",
+    audience: input.audience ?? "everyone",
   };
 
   const draftRes = await fetch(`${baseUrl}/api/v1/drafts`, {

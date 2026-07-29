@@ -4522,3 +4522,20 @@ Pricing model (corrected):
 - [x] Frontend: Update CookieHealthBanner in SubstackPublisher.tsx to show Quick Refresh button when expired
 - [x] Frontend: Update VA Dashboard Substack Inbox connection status banner to show Refresh Session button when disconnected
 - [x] After save, auto-run testConnection and show green/red status in the modal
+
+## Paid Tier Weekly Deep Dive System
+- [ ] DB: Add weekly_deep_dives table (id, title, theme, bookSource, practiceTitle, practiceBody, insightBody, protocolBody, status, scheduledAt, publishedAt, substackPostId)
+- [ ] DB: Add book_corpus_chunks table (id, bookTitle, chapterTitle, chunkText, chunkIndex, embedding_tags)
+- [ ] DB: Run db:push after schema changes
+- [ ] Backend: Seed book corpus chunks from existing corpus data in the DB
+- [ ] Backend: generateDeepDive tRPC procedure — picks a book theme, mines corpus, produces weekly premium piece via LLM
+- [ ] Backend: listDeepDives, getDeepDive, updateDeepDive, deleteDeepDive procedures
+- [ ] Backend: publishDeepDiveToSubstack — posts to Substack as paid-only post
+- [ ] Frontend: "Paid Tier Deep Dive" page — generate, preview, edit, publish to Substack paid tier
+- [ ] Frontend: Deep dive generator form (theme selector, book source picker, generate button)
+- [ ] Frontend: Preview panel with title, practice, insight, protocol sections
+- [ ] Frontend: Edit mode for each section before publishing
+- [ ] Frontend: Publish button → sends to Substack as paid-only post
+- [ ] Frontend: History table of all generated deep dives with status
+- [ ] Heartbeat: Weekly Monday 8am job to auto-generate a deep dive and notify owner for review
+- [ ] Wire Substack paid-only flag (audience: "paid_subscribers") on post creation

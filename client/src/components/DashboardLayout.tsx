@@ -102,6 +102,7 @@ const ownerItems = [
   { icon: Clock, label: "Review Queue", path: "/review-queue" },
   { icon: Rss, label: "Substack Publisher", path: "/substack" },
   { icon: Rss, label: "Substack Sequence", path: "/substack-sequence" },
+  { icon: BookOpen, label: "Paid Deep Dives", path: "/deep-dive" },
   { icon: Activity, label: "System Health", path: "/system-health" },
   { icon: FlaskConical, label: "A/B Tests", path: "/ab-tests" },
   { icon: ShieldCheck, label: "Claims Review", path: "/claims-review" },

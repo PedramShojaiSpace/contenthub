@@ -1434,6 +1434,109 @@ async function startServer() {
     }
   });
 
+  // POST /api/scheduled/weekly-deep-dive — Every Monday 2pm UTC: auto-generate paid deep dive
+  // Heartbeat task UID: 48eEdUgHD5ippYzSsqkonz
+  app.post("/api/scheduled/weekly-deep-dive", async (req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const { weeklyDeepDives, uploadedBooks } = await import("../../drizzle/schema");
+      const { notifyOwner } = await import("./notification");
+      const { eq, sql } = await import("drizzle-orm");
+
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "Database unavailable" });
+
+      // Themes list (must match deepDiveRouter.ts)
+      const THEMES = [
+        "Morning Rituals & Energy Architecture",
+        "Breath as Medicine",
+        "Sleep Optimization & Recovery",
+        "Gut-Brain Axis & Microbiome Health",
+        "Stress Alchemy — Turning Pressure into Power",
+        "Fasting & Metabolic Flexibility",
+        "Cold & Heat Therapy Protocols",
+        "Emotional Regulation & Nervous System Mastery",
+        "Movement as Medicine",
+        "Digital Detox & Attention Restoration",
+        "Circadian Biology & Light Hygiene",
+        "Longevity Practices from Ancient Traditions",
+        "The Urban Monk's Approach to Nutrition",
+        "Mindfulness in the Modern World",
+        "Hormonal Balance & Vitality",
+        "Community, Purpose & Meaning",
+      ];
+
+      // Pick next theme
+      const [countRow] = await db.select({ count: sql<number>`COUNT(*)` }).from(weeklyDeepDives);
+      const count = Number(countRow?.count ?? 0);
+      const theme = THEMES[count % THEMES.length];
+
+      // Get ready books
+      const books = await db
+        .select({ id: uploadedBooks.id, title: uploadedBooks.title, extractedText: uploadedBooks.extractedText })
+        .from(uploadedBooks)
+        .where(eq(uploadedBooks.status, "ready"));
+
+      // Sample relevant passages
+      const keywords = theme.toLowerCase().split(/\s+|&|-|,/).filter((w: string) => w.length > 3);
+      const scored = books.map((b: any) => {
+        const text = (b.extractedText ?? "").toLowerCase();
+        const score = keywords.reduce((acc: number, kw: string) => acc + (text.match(new RegExp(kw, "g")) ?? []).length, 0);
+        return { ...b, score };
+      }).sort((a: any, b: any) => b.score - a.score).slice(0, 2);
+
+      const excerpts = scored.map((b: any) => {
+        const text = b.extractedText ?? "";
+        let bestStart = 0, bestScore = 0;
+        for (let i = 0; i < text.length - 2000; i += 500) {
+          const w = text.slice(i, i + 2000).toLowerCase();
+          const s = keywords.reduce((acc: number, kw: string) => acc + (w.includes(kw) ? 1 : 0), 0);
+          if (s > bestScore) { bestScore = s; bestStart = i; }
+        }
+        return `[From "${b.title}"]\n${text.slice(bestStart, bestStart + 2000)}`;
+      }).join("\n\n---\n\n");
+
+      // Generate content
+      const { invokeLLM } = await import("./llm");
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are Dr. Pedram Shojai, OMD — the Urban Monk. Write weekly premium deep dives for paid subscribers. Voice: warm, direct, grounded in ancient wisdom + modern science. Three sections: ## The Practice, ## The Insight, ## The Protocol." },
+          { role: "user", content: `Theme: ${theme}\n\nBook excerpts:\n${excerpts || "Draw from Urban Monk principles."}\n\nReturn JSON: {\"title\":\"...\",\"teaser\":\"...\",\"practiceBody\":\"...\",\"insightBody\":\"...\",\"protocolBody\":\"...\",\"fullContent\":\"...\"}` },
+        ],
+        response_format: { type: "json_schema", json_schema: { name: "dd", strict: true, schema: { type: "object", properties: { title: { type: "string" }, teaser: { type: "string" }, practiceBody: { type: "string" }, insightBody: { type: "string" }, protocolBody: { type: "string" }, fullContent: { type: "string" } }, required: ["title","teaser","practiceBody","insightBody","protocolBody","fullContent"], additionalProperties: false } } },
+      });
+
+      const raw = response.choices?.[0]?.message?.content ?? "{}";
+      const content = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+      // Save as draft
+      await db.insert(weeklyDeepDives).values({
+        theme,
+        bookSources: scored.map((b: any) => b.title ?? "Unknown").join(", "),
+        sourceBookIds: JSON.stringify(scored.map((b: any) => b.id)),
+        title: content.title,
+        teaser: content.teaser,
+        practiceBody: content.practiceBody,
+        insightBody: content.insightBody,
+        protocolBody: content.protocolBody,
+        fullContent: content.fullContent,
+        status: "draft",
+        paidOnly: true,
+      });
+
+      await notifyOwner({
+        title: "📝 New Paid Deep Dive Ready for Review",
+        content: `"${content.title}" (theme: ${theme}) has been auto-generated and saved as a draft. Review and publish at content.theurbanmonk.com/deep-dive`,
+      });
+
+      console.log(`[weekly-deep-dive] Generated draft: "${content.title}"`);
+      res.json({ ok: true, title: content.title, theme });
+    } catch (err: any) {
+      console.error("[weekly-deep-dive] Error:", err);
+      res.status(500).json({ error: err?.message, stack: err?.stack, timestamp: new Date().toISOString() });
+    }
+  });
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

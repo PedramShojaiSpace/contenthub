@@ -369,7 +369,7 @@ ${markdownToHtml(dive.protocolBody ?? "")}
         subtitle: dive.teaser ?? undefined,
         bodyHtml,
         sendEmail: input.sendEmail,
-        audience: dive.paidOnly ? "founding_member" : "everyone",
+        audience: dive.paidOnly ? "only_paid" : "everyone",
       });
 
       const db2 = await getDb();

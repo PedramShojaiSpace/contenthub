@@ -38,9 +38,9 @@ export interface SubstackPostInput {
   subtitle?: string;
   /** Whether to send as email to subscribers (default: true) */
   sendEmail?: boolean;
-  /** Audience: 'everyone' (free + paid) or 'founding_member' (paid subscribers only). Default: 'everyone'.
-   * NOTE: Substack API rejects 'paid_subscribers' — use 'founding_member' for paid-only posts. */
-  audience?: 'everyone' | 'founding_member';
+  /** Audience: 'everyone' (free + paid) or 'only_paid' (paid subscribers only). Default: 'everyone'.
+   * NOTE: Confirmed valid values via live API probe (Jul 2026): 'everyone' and 'only_paid'. */
+  audience?: 'everyone' | 'only_paid';
 }
 
 export interface SubstackPostResult {

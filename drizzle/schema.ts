@@ -3696,14 +3696,11 @@ export type InsertWeeklyDeepDive = typeof weeklyDeepDives.$inferInsert;
 // Gender routing: male → Tantra Him ($185), female → Tantra Her ($185), both → Bundle ($369)
 // Downstream flags: gut_flag, sleep_flag, oral_flag → conditional test kit upsells
 
-export const tantraQuizGenderEnum = mysqlEnum("tantra_quiz_gender", ["male", "female", "couple", "unknown"]);
-export const tantraQuizResultEnum = mysqlEnum("tantra_quiz_result", ["tantra_him", "tantra_her", "tantra_bundle", "pending"]);
-
 export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
   id: int("id").autoincrement().primaryKey(),
   sessionId: varchar("session_id", { length: 64 }).notNull().unique(),
-  gender: tantraQuizGenderEnum.notNull().default("unknown"),
-  result: tantraQuizResultEnum.notNull().default("pending"),
+  gender: mysqlEnum("gender", ["male", "female", "couple", "unknown"]).notNull().default("unknown"),
+  result: mysqlEnum("result", ["tantra_him", "tantra_her", "tantra_bundle", "pending"]).notNull().default("pending"),
   answers: text("answers"),
   gutFlag: boolean("gut_flag").notNull().default(false),
   sleepFlag: boolean("sleep_flag").notNull().default(false),

@@ -3690,3 +3690,35 @@ export const weeklyDeepDives = mysqlTable("weekly_deep_dives", {
 
 export type WeeklyDeepDive = typeof weeklyDeepDives.$inferSelect;
 export type InsertWeeklyDeepDive = typeof weeklyDeepDives.$inferInsert;
+
+// ─── Tantra Quiz Funnel ────────────────────────────────────────────────────────
+// Captures leads from the /quiz/tantra funnel.
+// Gender routing: male → Tantra Him ($185), female → Tantra Her ($185), both → Bundle ($369)
+// Downstream flags: gut_flag, sleep_flag, oral_flag → conditional test kit upsells
+
+export const tantraQuizGenderEnum = mysqlEnum("tantra_quiz_gender", ["male", "female", "couple", "unknown"]);
+export const tantraQuizResultEnum = mysqlEnum("tantra_quiz_result", ["tantra_him", "tantra_her", "tantra_bundle", "pending"]);
+
+export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: varchar("session_id", { length: 64 }).notNull().unique(),
+  gender: tantraQuizGenderEnum.notNull().default("unknown"),
+  result: tantraQuizResultEnum.notNull().default("pending"),
+  answers: text("answers"),
+  gutFlag: boolean("gut_flag").notNull().default(false),
+  sleepFlag: boolean("sleep_flag").notNull().default(false),
+  oralFlag: boolean("oral_flag").notNull().default(false),
+  email: varchar("email", { length: 255 }),
+  name: varchar("name", { length: 255 }),
+  emailCapturedAt: bigint("email_captured_at", { mode: "number" }),
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 128 }),
+  utmMedium: varchar("utm_medium", { length: 128 }),
+  kajabiTagged: boolean("kajabi_tagged").notNull().default(false),
+  kajabiTaggedAt: bigint("kajabi_tagged_at", { mode: "number" }),
+  completedAt: bigint("completed_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type TantraQuizLead = typeof tantraQuizLeads.$inferSelect;
+export type InsertTantraQuizLead = typeof tantraQuizLeads.$inferInsert;

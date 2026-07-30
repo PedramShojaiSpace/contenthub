@@ -109,6 +109,7 @@ import { syndicationRouter } from "./syndicationRouter";
 import { substackSequenceRouter } from "./substackSequenceRouter";
 import { substackInboxRouter } from "./substackInboxRouter";
 import { deepDiveRouter } from "./deepDiveRouter";
+import { tantraQuizRouter } from "./tantraQuizRouter";
 import { hostedLandingPagesRouter } from "./hostedLandingPagesRouter";
 import { testimonialsRouter } from "./testimonialsRouter";
 import { kajabiOptIn } from "./kajabiApi";
@@ -500,6 +501,7 @@ export const appRouter = router({
   substackSequence: substackSequenceRouter,
   substackInbox: substackInboxRouter,
   deepDive: deepDiveRouter,
+  tantraQuiz: tantraQuizRouter,
   hostedLp: hostedLandingPagesRouter,
   testimonials: testimonialsRouter,
   videoToBlog: videoToBlogRouter,

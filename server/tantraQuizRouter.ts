@@ -31,6 +31,7 @@ import { getDb } from "./db";
 import { tantraQuizLeads } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
+import { sendGmailOutreach, isGmailAuthorized } from "./gmail";
 import crypto from "crypto";
 
 // ─── Quiz Questions ───────────────────────────────────────────────────────────
@@ -393,6 +394,75 @@ export const tantraQuizRouter = router({
       if (session.gutFlag) upsells.push(TANTRA_UPSELLS.gut);
       if (session.sleepFlag) upsells.push(TANTRA_UPSELLS.sleep);
       if (session.oralFlag) upsells.push(TANTRA_UPSELLS.oral);
+
+      // Send results email (non-fatal)
+      if (product && isGmailAuthorized()) {
+        try {
+          const isFemale = session.result === "tantra_her";
+          const firstName = input.name ? input.name.split(" ")[0] : "there";
+          const ingredientNote = isFemale
+            ? "Tadalafil 5mg (circulation enhancer)"
+            : "Tadalafil 20mg (circulation enhancer)";
+
+          const upsellLines = upsells.map(u =>
+            `• ${u.name} ($${u.price}) — ${u.description}\n  Order: ${u.shopifyUrl ?? "shop.theurbanmonk.com"}`
+          ).join("\n\n");
+
+          const emailBody = [
+            `Hi ${firstName},`,
+            ``,
+            `Your Tantra Vitality Quiz results are ready.`,
+            ``,
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+            `YOUR RECOMMENDATION: ${product.name}`,
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+            ``,
+            `${product.description}`,
+            ``,
+            `ACTIVE INGREDIENTS:`,
+            `• Oxytocin 40IU — the bonding molecule. Restores emotional connection and trust.`,
+            `• Bremelanotide 2mg — the arousal activator. Reawakens desire at the neurological level.`,
+            `• ${ingredientNote} — supports physical response and sensitivity.`,
+            ``,
+            `Price: ${product.price} per month`,
+            `Order here: ${product.shopifyUrl}`,
+            ``,
+            `📦 Shipping note: Your order ships under the Olympus brand name from Strive Pharmacy — same formula, same quality.`,
+            ``,
+            upsells.length > 0 ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nBASED ON YOUR SYMPTOMS, WE ALSO RECOMMEND:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n${upsellLines}\n` : ``,
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+            `THE TANTRA COURSE — $199 value`,
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+            ``,
+            `The ancient practices that amplify everything the formula does. Breathwork, meditation, and the Taoist principles of sexual vitality — taught by Dr. Shojai from 20 years of study.`,
+            `Learn more: ${TANTRA_COURSE.shopifyUrl}`,
+            ``,
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+            `LIGHTS ON — $369/year`,
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+            ``,
+            `Everything works better when your energy system is optimized. Lights On is Dr. Shojai's complete program for rebuilding your life force from the ground up.`,
+            `Learn more: ${LIGHTS_ON_COURSE.shopifyUrl}`,
+            ``,
+            `─────────────────────────────────────`,
+            `Dr. Pedram Shojai, OMD`,
+            `Physician · Former Taoist Monk · Author of The Urban Monk`,
+            `Trained in Tantric Traditions`,
+            ``,
+            `This email was sent because you completed the Tantra Vitality Quiz at theurbanmonk.com.`,
+            `To unsubscribe, reply with "unsubscribe" in the subject line.`,
+          ].join("\n");
+
+          await sendGmailOutreach({
+            to: input.email,
+            toName: input.name,
+            subject: `Your Tantra Vitality Results — ${product.name} Recommended`,
+            body: emailBody,
+          });
+        } catch (e) {
+          console.warn("[tantraQuiz] Results email failed (non-fatal):", e);
+        }
+      }
 
       return {
         success: true,

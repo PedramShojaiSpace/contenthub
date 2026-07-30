@@ -308,7 +308,7 @@ export default function TantraQuiz() {
           <span className="text-white/80 text-sm tracking-wide">Dr. Pedram Shojai · The Urban Monk</span>
         </div>
         {state.screen !== "welcome" && state.screen !== "results" && (
-          <span className="text-white/40 text-xs">{state.progress}% complete</span>
+          <span className="text-white/65 text-xs">{state.progress}% complete</span>
         )}
       </header>
 
@@ -559,11 +559,11 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
           <span className="text-amber-400">Running on Empty?</span>
         </h1>
 
-        <p className="text-white/70 text-lg md:text-xl leading-relaxed mb-4 max-w-xl mx-auto">
+        <p className="text-white/90 text-lg md:text-xl leading-relaxed mb-4 max-w-xl mx-auto">
           Take this 2-minute quiz to discover what's depleting your sexual vitality — and the East-West prescription formula designed to restore it.
         </p>
 
-        <p className="text-white/40 text-sm mb-10 italic">
+        <p className="text-white/65 text-sm mb-10 italic">
           Created by Dr. Pedram Shojai, OMD — physician, former Taoist monk, and author of <em>The Urban Monk</em>
         </p>
 
@@ -575,12 +575,12 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
           {isLoading ? "Starting..." : "Take the Free Quiz →"}
         </Button>
 
-        <p className="text-white/30 text-xs mt-6">
+        <p className="text-white/85 text-xs mt-6">
           Takes 2 minutes · No credit card required · Personalized results
         </p>
 
         {/* Trust signals */}
-        <div className="flex items-center justify-center gap-6 mt-12 text-white/40 text-xs">
+        <div className="flex items-center justify-center gap-6 mt-12 text-white/65 text-xs">
           <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> HIPAA Compliant</span>
           <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Physician-Formulated</span>
           <span className="flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> Compounded by Strive Pharmacy</span>
@@ -610,7 +610,7 @@ function SingleChoiceScreen({
           {question}
         </h2>
         {subtext && (
-          <p className="text-white/50 text-sm text-center mb-8 italic">{subtext}</p>
+          <p className="text-white/75 text-sm text-center mb-8 italic">{subtext}</p>
         )}
         {!subtext && <div className="mb-8" />}
         <div className="space-y-3">
@@ -666,7 +666,7 @@ function MultiChoiceScreen({
           {question}
         </h2>
         {subtext && (
-          <p className="text-white/50 text-sm text-center mb-8 italic">{subtext}</p>
+          <p className="text-white/75 text-sm text-center mb-8 italic">{subtext}</p>
         )}
         {!subtext && <div className="mb-8" />}
         <div className="space-y-3 mb-8">
@@ -725,7 +725,7 @@ function EducationScreen({
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-8 leading-snug">{headline}</h2>
         <div className="space-y-4 text-left mb-10">
           {body.map((paragraph, i) => (
-            <p key={i} className="text-white/70 text-base leading-relaxed">{paragraph}</p>
+            <p key={i} className="text-white/90 text-base leading-relaxed">{paragraph}</p>
           ))}
           {attribution && (
             <p className="text-amber-400/70 text-sm italic mt-6">{attribution}</p>
@@ -771,7 +771,7 @@ function SocialProofScreen({ onNext }: { onNext: () => void }) {
             ))}
           </div>
           <h2 className="text-2xl font-bold text-white">You're almost there.</h2>
-          <p className="text-white/50 text-sm mt-2">Here's what others discovered when they took this step.</p>
+          <p className="text-white/75 text-sm mt-2">Here's what others discovered when they took this step.</p>
         </div>
         <div className="space-y-4 mb-8">
           {testimonials.map((t, i) => (
@@ -779,7 +779,7 @@ function SocialProofScreen({ onNext }: { onNext: () => void }) {
               <p className="text-white/80 text-sm italic leading-relaxed mb-3">"{t.quote}"</p>
               <div>
                 <p className="text-amber-400 text-sm font-semibold">{t.name}</p>
-                <p className="text-white/40 text-xs">{t.detail}</p>
+                <p className="text-white/65 text-xs">{t.detail}</p>
               </div>
             </div>
           ))}
@@ -822,12 +822,12 @@ function EmailCaptureScreen({
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
           Your results are ready.
         </h2>
-        <p className="text-white/60 text-base mb-2">
+        <p className="text-white/85 text-base mb-2">
           {product
             ? `Based on your answers, we've identified the right formula for you.`
             : `Based on your answers, we've personalized your recommendations.`}
         </p>
-        <p className="text-white/40 text-sm mb-8 italic">
+        <p className="text-white/65 text-sm mb-8 italic">
           Enter your email to see your personalized results — and to receive Dr. Shojai's free guide on restoring your life force.
         </p>
 
@@ -837,7 +837,7 @@ function EmailCaptureScreen({
             placeholder="First name (optional)"
             value={name}
             onChange={e => onNameChange(e.target.value)}
-            className="bg-white/5 border-white/20 text-white placeholder:text-white/30 py-5 text-base rounded-xl"
+            className="bg-white/5 border-white/20 text-white placeholder:text-white/85 py-5 text-base rounded-xl"
           />
           <Input
             type="email"
@@ -845,7 +845,7 @@ function EmailCaptureScreen({
             value={email}
             onChange={e => onEmailChange(e.target.value)}
             required
-            className="bg-white/5 border-white/20 text-white placeholder:text-white/30 py-5 text-base rounded-xl"
+            className="bg-white/5 border-white/20 text-white placeholder:text-white/85 py-5 text-base rounded-xl"
           />
           <Button
             type="submit"
@@ -856,7 +856,7 @@ function EmailCaptureScreen({
           </Button>
         </form>
 
-        <p className="text-white/25 text-xs mt-4">
+        <p className="text-white/55 text-xs mt-4">
           We respect your privacy. Unsubscribe at any time. Your information is never sold.
         </p>
       </div>
@@ -891,14 +891,14 @@ function ResultsScreen({
           style={{ background: accentColor }}
         />
         <div className="relative z-10 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-white/70 text-sm mb-6">
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-white/90 text-sm mb-6">
             <CheckCircle2 className="w-4 h-4 text-green-400" />
             Your personalized results are ready
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
             {product.headline}
           </h1>
-          <p className="text-white/70 text-lg mb-8 max-w-xl mx-auto">
+          <p className="text-white/90 text-lg mb-8 max-w-xl mx-auto">
             {product.subheadline}
           </p>
 
@@ -907,14 +907,14 @@ function ResultsScreen({
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-xl font-bold text-white">{product.name}</h2>
-                <p className="text-white/50 text-sm">{product.tagline}</p>
+                <p className="text-white/75 text-sm">{product.tagline}</p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold" style={{ color: accentColor }}>{product.price}</p>
-                <p className="text-white/40 text-xs">per month</p>
+                <p className="text-white/65 text-xs">per month</p>
               </div>
             </div>
-            <p className="text-white/70 text-sm leading-relaxed mb-5">{product.description}</p>
+            <p className="text-white/90 text-sm leading-relaxed mb-5">{product.description}</p>
 
             {/* Key ingredients */}
             <div className="space-y-2 mb-5">
@@ -927,7 +927,7 @@ function ResultsScreen({
                   <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: accentColor }} />
                   <div>
                     <span className="text-white text-sm font-semibold">{ingredient.name}</span>
-                    <span className="text-white/50 text-sm"> — {ingredient.role}</span>
+                    <span className="text-white/75 text-sm"> — {ingredient.role}</span>
                   </div>
                 </div>
               ))}
@@ -935,8 +935,8 @@ function ResultsScreen({
 
             {/* Shipping note */}
             <div className="bg-white/5 rounded-lg p-3 mb-5">
-              <p className="text-white/50 text-xs">
-                📦 <strong className="text-white/70">Shipping note:</strong> Your order ships under the <strong className="text-white/70">Olympus</strong> brand name from Strive Pharmacy — same formula, same quality.
+              <p className="text-white/75 text-xs">
+                📦 <strong className="text-white/90">Shipping note:</strong> Your order ships under the <strong className="text-white/90">Olympus</strong> brand name from Strive Pharmacy — same formula, same quality.
               </p>
             </div>
 
@@ -952,7 +952,7 @@ function ResultsScreen({
           </div>
 
           {/* Doctor credibility */}
-          <div className="text-center text-white/40 text-sm">
+          <div className="text-center text-white/65 text-sm">
             <p>Formulated by Dr. Pedram Shojai, OMD</p>
             <p className="text-xs mt-1">Physician · Former Taoist Monk · Author of The Urban Monk · Trained in Tantric Traditions</p>
           </div>
@@ -971,10 +971,10 @@ function ResultsScreen({
                 <h3 className="text-white font-bold text-lg">The Tantra Course</h3>
                 <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full border border-amber-500/30">Included Free</span>
               </div>
-              <p className="text-white/60 text-sm mb-3">
+              <p className="text-white/85 text-sm mb-3">
                 The ancient practices that amplify everything the formula does. Breathwork, meditation, and the Taoist principles of sexual vitality — taught by Dr. Shojai from 20 years of study.
               </p>
-              <p className="text-white/40 text-xs mb-3">$199 value · Included with your first order</p>
+              <p className="text-white/65 text-xs mb-3">$199 value · Included with your first order</p>
               <a
                 href={(tantraCourse?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/the-tantra-course"}
                 target="_blank"
@@ -991,14 +991,14 @@ function ResultsScreen({
         {upsells.length > 0 && (
           <div className="mb-8">
             <h3 className="text-white font-bold text-lg mb-2">Based on your symptoms, we also recommend:</h3>
-            <p className="text-white/50 text-sm mb-5">Your quiz answers flagged some root-cause issues that the Tantra formula alone won't address. These tests identify exactly what's driving your symptoms.</p>
+            <p className="text-white/75 text-sm mb-5">Your quiz answers flagged some root-cause issues that the Tantra formula alone won't address. These tests identify exactly what's driving your symptoms.</p>
             <div className="space-y-4">
               {upsells.map((upsell, i) => (
                 <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-5">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h4 className="text-white font-semibold mb-1">{upsell.name}</h4>
-                      <p className="text-white/60 text-sm mb-3">{upsell.description}</p>
+                      <p className="text-white/85 text-sm mb-3">{upsell.description}</p>
                       {upsell.shopifyUrl && (
                         <a
                           href={upsell.shopifyUrl}
@@ -1028,11 +1028,11 @@ function ResultsScreen({
             </div>
             <div>
               <h3 className="text-white font-bold text-lg mb-1">{lightsOn?.name ?? "Lights On"}</h3>
-              <p className="text-white/50 text-xs mb-1 uppercase tracking-wide">{lightsOn?.tagline ?? "The Complete Vitality System"}</p>
-              <p className="text-white/60 text-sm mb-3">
+              <p className="text-white/75 text-xs mb-1 uppercase tracking-wide">{lightsOn?.tagline ?? "The Complete Vitality System"}</p>
+              <p className="text-white/85 text-sm mb-3">
                 {lightsOn?.description ?? "Everything works better when your energy system is optimized. Lights On is Dr. Shojai's complete program for rebuilding your life force from the ground up — sleep, gut, hormones, mindset, and sexual vitality all in one place."}
               </p>
-              <p className="text-white/40 text-xs mb-3">{lightsOn?.price ?? "$369/year"} · 30-day money-back guarantee</p>
+              <p className="text-white/65 text-xs mb-3">{lightsOn?.price ?? "$369/year"} · 30-day money-back guarantee</p>
               <a
                 href={(lightsOn?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/lights-on"}
                 target="_blank"
@@ -1056,7 +1056,7 @@ function ResultsScreen({
           >
             Start with {product.name} <ArrowRight className="w-5 h-5" />
           </a>
-          <p className="text-white/30 text-xs mt-4">
+          <p className="text-white/85 text-xs mt-4">
             Prescription required · Compounded by Strive Pharmacy · Ships discreetly
           </p>
         </div>

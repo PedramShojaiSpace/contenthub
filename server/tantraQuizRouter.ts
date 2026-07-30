@@ -195,20 +195,41 @@ export const TANTRA_UPSELLS = {
     name: "Sleep Test Kit",
     description: "Jing restoration happens during deep sleep. This kit identifies exactly what's disrupting your recovery.",
     price: "$399",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/sleep-test-kit",
     flag: "sleep_flag" as const,
   },
   gut: {
     name: "Gut Health Test Kit",
     description: "Your gut microbiome directly regulates hormonal production. This kit reveals what's blocking your vitality at the root.",
     price: "$399",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/gut-health-test-kit",
     flag: "gut_flag" as const,
   },
   oral: {
     name: "Oral Health Test Kit",
     description: "Oral inflammation is the hidden driver of systemic hormone disruption. This kit finds it.",
     price: "$399",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/oral-health-test-kit",
     flag: "oral_flag" as const,
   },
+};
+
+// ─── Always-on Upsells (shown to everyone) ────────────────────────────────────
+
+export const TANTRA_COURSE = {
+  name: "The Tantra Course",
+  tagline: "The Ancient Practice Behind the Formula",
+  description: "Dr. Pedram Shojai spent 10 years as a Taoist monk studying the traditions that treat sexual energy as the root of all vitality. This course is the complete East-West practice system — the philosophy, the breathwork, the rituals, and the science.",
+  price: "$199",
+  shopifyUrl: "https://shop.theurbanmonk.com/products/the-tantra-course",
+};
+
+export const LIGHTS_ON_COURSE = {
+  name: "Lights On",
+  tagline: "The Complete Vitality System",
+  description: "Everything works better when your energy system is optimized. Lights On is Dr. Shojai's complete program for rebuilding your life force from the ground up — sleep, gut, hormones, mindset, and sexual vitality all in one place.",
+  price: "$369/year",
+  shopifyUrl: "https://shop.theurbanmonk.com/products/lights-on",
 };
 
 // ─── Routing Logic ────────────────────────────────────────────────────────────
@@ -231,7 +252,7 @@ export function routeToProduct(
   let result: keyof typeof TANTRA_PRODUCTS;
   if (gender === "male") result = "tantra_him";
   else if (gender === "female") result = "tantra_her";
-  else result = "tantra_bundle"; // couple or unknown → bundle
+  else result = "tantra_him"; // couple/unknown → default to tantra_him (EHR requires individual SKUs)
 
   // Symptom flags from q_symptoms (multi-select)
   const symptoms = (answers["q_symptoms"] as string[] | string) ?? [];
@@ -379,6 +400,8 @@ export const tantraQuizRouter = router({
         result: session.result,
         product,
         upsells,
+        tantraCourse: TANTRA_COURSE,
+        lightsOn: LIGHTS_ON_COURSE,
       };
     }),
 

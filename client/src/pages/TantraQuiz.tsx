@@ -53,6 +53,8 @@ interface QuizState {
   result: "tantra_him" | "tantra_her" | "tantra_bundle" | "pending" | null;
   product: ProductInfo | null;
   upsells: UpsellInfo[];
+  tantraCourse: CourseInfo | null;
+  lightsOn: CourseInfo | null;
   email: string;
   name: string;
   emailSubmitted: boolean;
@@ -74,7 +76,16 @@ interface UpsellInfo {
   name: string;
   description: string;
   price: string;
+  shopifyUrl?: string;
   flag: string;
+}
+
+interface CourseInfo {
+  name: string;
+  tagline: string;
+  description: string;
+  price: string;
+  shopifyUrl: string;
 }
 
 // ─── Progress mapping ─────────────────────────────────────────────────────────
@@ -123,6 +134,8 @@ export default function TantraQuiz() {
     result: null,
     product: null,
     upsells: [],
+    tantraCourse: null,
+    lightsOn: null,
     email: "",
     name: "",
     emailSubmitted: false,
@@ -210,44 +223,29 @@ export default function TantraQuiz() {
     } catch (err: unknown) {
       // If submitAnswers fails, still allow progression with client-side routing
       // Use the answers we have to determine product client-side
+      // NOTE: Bundle is not offered — couple/unknown defaults to Tantra Him
       const who = (state.answers["q_who"] as string) ?? "";
-      const result = who === "woman" ? "tantra_her" : who === "couple" ? "tantra_bundle" : "tantra_him";
+      const result = who === "me_female" ? "tantra_her" : "tantra_him";
       const PRODUCTS: Record<string, ProductInfo> = {
         tantra_him: {
           name: "Tantra Him",
-          tagline: "For Men Ready to Reclaim Their Vitality",
-          headline: "Restore your life force with the East-West formula designed for men.",
-          subheadline: "Precision-compounded sublingual formula. Physician-formulated. Monk-tested.",
-          description: "Tantra Him is a precision-compounded sublingual formula containing Oxytocin 40IU, Bremelanotide 2mg, and Tadalafil 20mg — dispensed by Strive Pharmacy.",
+          tagline: "Maximum Strength Formula for Men",
+          headline: "Your life force is ready to come back online.",
+          subheadline: "The East-West formula designed for men who are ready to feel fully alive again.",
+          description: "Tantra Him combines Oxytocin (the bonding molecule), Bremelanotide (the arousal activator), and Tadalafil (the circulation enhancer) in a precision-compounded sublingual tablet — backed by 5,000 years of Taoist medicine and modern clinical science.",
           price: "$185",
           shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-him",
-          kajabi_tag: "tantra-quiz-him",
-          primaryColor: "#8B6914",
-          accentColor: "#1a1a1a",
+          primaryColor: "#B8860B",
         },
         tantra_her: {
           name: "Tantra Her",
-          tagline: "For Women Ready to Reclaim Their Vitality",
-          headline: "Restore your life force with the East-West formula designed for women.",
-          subheadline: "Precision-compounded sublingual formula. Physician-formulated. Monk-tested.",
-          description: "Tantra Her is a precision-compounded sublingual formula containing Oxytocin 40IU, Bremelanotide 2mg, and Tadalafil 5mg — dispensed by Strive Pharmacy.",
+          tagline: "Maximum Strength Formula for Women",
+          headline: "Your life force is ready to come back online.",
+          subheadline: "The East-West formula designed for women who are ready to feel fully alive again.",
+          description: "Tantra Her combines Oxytocin (the bonding molecule), Bremelanotide (the arousal activator), and Tadalafil 5mg (the circulation enhancer) in a precision-compounded sublingual tablet — backed by 5,000 years of Taoist medicine and modern clinical science.",
           price: "$185",
           shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-her",
-          kajabi_tag: "tantra-quiz-her",
-          primaryColor: "#8B6914",
-          accentColor: "#1a1a1a",
-        },
-        tantra_bundle: {
-          name: "Tantra Bundle — Him & Her",
-          tagline: "For Couples Ready to Restore Everything",
-          headline: "The complete East-West life force restoration system for couples.",
-          subheadline: "Both formulas. The Tantra Course included free. Everything you need — together.",
-          description: "The Tantra Bundle includes Tantra Him + Tantra Her — both precision-compounded sublingual formulas — plus the complete Tantra Course ($199 value) included free.",
-          price: "$369",
-          shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-bundle-him-her",
-          kajabi_tag: "tantra-quiz-bundle",
-          primaryColor: "#8B6914",
-          accentColor: "#1a1a1a",
+          primaryColor: "#9B59B6",
         },
       };
       setState(s => ({
@@ -266,12 +264,17 @@ export default function TantraQuiz() {
     e.preventDefault();
     if (!state.email || !state.sessionId) return;
     try {
-      await captureEmail.mutateAsync({
+      const res = await captureEmail.mutateAsync({
         sessionId: state.sessionId,
         email: state.email,
         name: state.name || undefined,
       });
-      setState(s => ({ ...s, emailSubmitted: true }));
+      setState(s => ({
+        ...s,
+        emailSubmitted: true,
+        tantraCourse: (res as any).tantraCourse ?? null,
+        lightsOn: (res as any).lightsOn ?? null,
+      }));
       goToScreen("results");
     } catch {
       toast.error("Could not save your email. Please try again.");
@@ -527,6 +530,8 @@ export default function TantraQuiz() {
           product={state.product}
           upsells={state.upsells}
           result={state.result}
+          tantraCourse={state.tantraCourse}
+          lightsOn={state.lightsOn}
         />
       )}
     </div>
@@ -863,12 +868,15 @@ function ResultsScreen({
   product,
   upsells,
   result,
+  tantraCourse,
+  lightsOn,
 }: {
   product: ProductInfo;
   upsells: UpsellInfo[];
   result: string | null;
+  tantraCourse: CourseInfo | null;
+  lightsOn: CourseInfo | null;
 }) {
-  const isBundle = result === "tantra_bundle";
   const accentColor = result === "tantra_her" ? "#9B59B6" : "#B8860B";
 
   return (
@@ -966,7 +974,15 @@ function ResultsScreen({
               <p className="text-white/60 text-sm mb-3">
                 The ancient practices that amplify everything the formula does. Breathwork, meditation, and the Taoist principles of sexual vitality — taught by Dr. Shojai from 20 years of study.
               </p>
-              <p className="text-white/40 text-xs">$199 value · Included with your first order</p>
+              <p className="text-white/40 text-xs mb-3">$199 value · Included with your first order</p>
+              <a
+                href={(tantraCourse?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/the-tantra-course"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
+              >
+                Learn more about The Tantra Course <ChevronRight className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </div>
@@ -982,9 +998,19 @@ function ResultsScreen({
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h4 className="text-white font-semibold mb-1">{upsell.name}</h4>
-                      <p className="text-white/60 text-sm">{upsell.description}</p>
+                      <p className="text-white/60 text-sm mb-3">{upsell.description}</p>
+                      {upsell.shopifyUrl && (
+                        <a
+                          href={upsell.shopifyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
+                        >
+                          Order {upsell.name} <ChevronRight className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
-                    <div className="text-right ml-4">
+                    <div className="text-right ml-4 flex-shrink-0">
                       <p className="text-white font-bold">{upsell.price}</p>
                     </div>
                   </div>
@@ -994,25 +1020,26 @@ function ResultsScreen({
           </div>
         )}
 
-        {/* Academy upsell */}
+        {/* Lights On upsell */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-              <Moon className="w-6 h-6 text-white/70" />
+              <Zap className="w-6 h-6 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-white font-bold text-lg mb-1">Urban Monk Academy</h3>
+              <h3 className="text-white font-bold text-lg mb-1">{lightsOn?.name ?? "Lights On"}</h3>
+              <p className="text-white/50 text-xs mb-1 uppercase tracking-wide">{lightsOn?.tagline ?? "The Complete Vitality System"}</p>
               <p className="text-white/60 text-sm mb-3">
-                The complete system — every practice, every protocol, every tool Dr. Shojai has developed over 20 years. The Tantra formula is the spark. The Academy is the fire.
+                {lightsOn?.description ?? "Everything works better when your energy system is optimized. Lights On is Dr. Shojai's complete program for rebuilding your life force from the ground up — sleep, gut, hormones, mindset, and sexual vitality all in one place."}
               </p>
-              <p className="text-white/40 text-xs mb-3">$297/year · 30-day money-back guarantee</p>
+              <p className="text-white/40 text-xs mb-3">{lightsOn?.price ?? "$369/year"} · 30-day money-back guarantee</p>
               <a
-                href="https://www.theurbanmonk.com/academy"
+                href={(lightsOn?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/lights-on"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
               >
-                Learn more about the Academy <ChevronRight className="w-4 h-4" />
+                Learn more about Lights On <ChevronRight className="w-4 h-4" />
               </a>
             </div>
           </div>

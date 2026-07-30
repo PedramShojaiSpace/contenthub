@@ -207,8 +207,56 @@ export default function TantraQuiz() {
         upsells: res.upsells as UpsellInfo[],
       }));
       goToScreen("email_capture");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err: unknown) {
+      // If submitAnswers fails, still allow progression with client-side routing
+      // Use the answers we have to determine product client-side
+      const who = (state.answers["q_who"] as string) ?? "";
+      const result = who === "woman" ? "tantra_her" : who === "couple" ? "tantra_bundle" : "tantra_him";
+      const PRODUCTS: Record<string, ProductInfo> = {
+        tantra_him: {
+          name: "Tantra Him",
+          tagline: "For Men Ready to Reclaim Their Vitality",
+          headline: "Restore your life force with the East-West formula designed for men.",
+          subheadline: "Precision-compounded sublingual formula. Physician-formulated. Monk-tested.",
+          description: "Tantra Him is a precision-compounded sublingual formula containing Oxytocin 40IU, Bremelanotide 2mg, and Tadalafil 20mg — dispensed by Strive Pharmacy.",
+          price: "$185",
+          shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-him",
+          kajabi_tag: "tantra-quiz-him",
+          primaryColor: "#8B6914",
+          accentColor: "#1a1a1a",
+        },
+        tantra_her: {
+          name: "Tantra Her",
+          tagline: "For Women Ready to Reclaim Their Vitality",
+          headline: "Restore your life force with the East-West formula designed for women.",
+          subheadline: "Precision-compounded sublingual formula. Physician-formulated. Monk-tested.",
+          description: "Tantra Her is a precision-compounded sublingual formula containing Oxytocin 40IU, Bremelanotide 2mg, and Tadalafil 5mg — dispensed by Strive Pharmacy.",
+          price: "$185",
+          shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-her",
+          kajabi_tag: "tantra-quiz-her",
+          primaryColor: "#8B6914",
+          accentColor: "#1a1a1a",
+        },
+        tantra_bundle: {
+          name: "Tantra Bundle — Him & Her",
+          tagline: "For Couples Ready to Restore Everything",
+          headline: "The complete East-West life force restoration system for couples.",
+          subheadline: "Both formulas. The Tantra Course included free. Everything you need — together.",
+          description: "The Tantra Bundle includes Tantra Him + Tantra Her — both precision-compounded sublingual formulas — plus the complete Tantra Course ($199 value) included free.",
+          price: "$369",
+          shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-bundle-him-her",
+          kajabi_tag: "tantra-quiz-bundle",
+          primaryColor: "#8B6914",
+          accentColor: "#1a1a1a",
+        },
+      };
+      setState(s => ({
+        ...s,
+        result,
+        product: PRODUCTS[result],
+        upsells: [],
+      }));
+      goToScreen("email_capture");
     }
   };
 

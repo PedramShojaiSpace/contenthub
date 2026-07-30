@@ -325,9 +325,19 @@ export const tantraQuizRouter = router({
       if (!db) throw new Error("DB unavailable");
       const now = Date.now();
 
-      const [session] = await db.select().from(tantraQuizLeads)
+      // Look up session — if not found (e.g. local- fallback IDs), create a minimal one
+      let [session] = await db.select().from(tantraQuizLeads)
         .where(eq(tantraQuizLeads.sessionId, input.sessionId)).limit(1);
-      if (!session) throw new Error("Session not found");
+      if (!session) {
+        // Create a minimal session so the email is still captured
+        await db.insert(tantraQuizLeads).values({
+          sessionId: input.sessionId,
+          createdAt: now,
+        });
+        [session] = await db.select().from(tantraQuizLeads)
+          .where(eq(tantraQuizLeads.sessionId, input.sessionId)).limit(1);
+        if (!session) throw new Error("Could not create session");
+      }
 
       await db.update(tantraQuizLeads)
         .set({ email: input.email, name: input.name, emailCapturedAt: now })

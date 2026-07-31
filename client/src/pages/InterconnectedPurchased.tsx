@@ -86,7 +86,7 @@ export default function InterconnectedPurchased() {
 
           <div className="mt-10 text-center">
             <a
-              href="https://theacademy.theurbanmonk.com/products/interconnected-series-the-power-to-heal-from-within-test-kit"
+              href="https://theacademy.theurbanmonk.com/products/interconnected-series-full"
               className="inline-block py-4 px-10 bg-teal-600 hover:bg-teal-500 text-white font-black text-lg rounded-xl uppercase tracking-wide transition-colors"
             >
               Go to My Member Area

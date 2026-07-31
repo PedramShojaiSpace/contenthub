@@ -7,6 +7,7 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
 import { notifyOwner } from "./_core/notification";
+import { pushInterconnectedOptIn } from "./klaviyo";
 
 const KAJABI_TAG = "Interconnected Opt In";
 
@@ -21,7 +22,7 @@ export const interconnectedRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const { name, email } = input;
+      const { name, email, phone, smsConsent } = input;
 
       // 1. Kajabi — create contact and apply tag (Kajabi handles all email sequences)
       let kajabiTagged = false;
@@ -33,16 +34,35 @@ export const interconnectedRouter = router({
         console.error("[interconnectedRouter] Kajabi error:", err);
       }
 
-      // 2. Notify owner
+      // 2. Klaviyo — push profile + subscribe to SMS list if consent given
+      let smsSubscribed = false;
       try {
+        const result = await pushInterconnectedOptIn({
+          email,
+          firstName: name.split(" ")[0],
+          phone: phone ?? undefined,
+          smsConsent: smsConsent ?? false,
+        });
+        smsSubscribed = result.smsSubscribed;
+        if (smsSubscribed) {
+          console.log(`[interconnectedRouter] Klaviyo SMS subscribed: ${email} (${phone})`);
+        }
+      } catch (err) {
+        // Non-fatal — log but don't fail the registration
+        console.error("[interconnectedRouter] Klaviyo error:", err);
+      }
+
+      // 3. Notify owner
+      try {
+        const smsNote = smsConsent && phone ? ` | SMS: ${phone} ✓` : "";
         await notifyOwner({
           title: "New Interconnected Opt-In",
-          content: `${name} (${email}) just registered for the Interconnected series.`,
+          content: `${name} (${email}) just registered for the Interconnected series.${smsNote}`,
         });
       } catch (_) {
         // Non-critical
       }
 
-      return { success: true, kajabiTagged };
+      return { success: true, kajabiTagged, smsSubscribed };
     }),
 });

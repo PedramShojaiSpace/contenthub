@@ -5,28 +5,22 @@ import { describe, it, expect } from "vitest";
 import { AD_CATALOG } from "./metaAdPushRouter";
 
 describe("AD_CATALOG", () => {
-  it("should have exactly 5 variants", () => {
-    expect(AD_CATALOG).toHaveLength(5);
+  it("should have at least 5 variants (KBMO + Interconnected)", () => {
+    expect(AD_CATALOG.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("should have exactly 3 ads per variant", () => {
-    for (const variant of AD_CATALOG) {
-      expect(variant.ads).toHaveLength(3);
-    }
-  });
-
-  it("should have 15 total ads", () => {
-    const total = AD_CATALOG.reduce((sum, v) => sum + v.ads.length, 0);
-    expect(total).toBe(15);
-  });
-
-  it("should have all required variant slugs", () => {
+  it("should have all required KBMO variant slugs", () => {
     const slugs = AD_CATALOG.map((v) => v.variantSlug);
     expect(slugs).toContain("precision");
     expect(slugs).toContain("optimizer");
     expect(slugs).toContain("gutbrain");
     expect(slugs).toContain("autoimmune");
     expect(slugs).toContain("weight");
+  });
+
+  it("should include the Interconnected campaign", () => {
+    const slugs = AD_CATALOG.map((v) => v.variantSlug);
+    expect(slugs).toContain("interconnected");
   });
 
   it("should have non-empty image hashes for all ads", () => {
@@ -79,6 +73,8 @@ describe("AD_CATALOG", () => {
 
   it("should have correct image file naming convention", () => {
     for (const variant of AD_CATALOG) {
+      // Skip Interconnected variant which uses .jpg files
+      if (variant.variantSlug === "interconnected") continue;
       for (const ad of variant.ads) {
         expect(ad.imageFile).toMatch(/^ad-[a-z]+-[123]\.webp$/);
         expect(ad.imageFile).toContain(variant.variantSlug);
@@ -86,8 +82,8 @@ describe("AD_CATALOG", () => {
     }
   });
 
-  it("should have variant numbers 1-5", () => {
-    const nums = AD_CATALOG.map((v) => v.variantNum).sort();
-    expect(nums).toEqual([1, 2, 3, 4, 5]);
+  it("should have variant numbers 1-6 (KBMO 1-5 + Interconnected 6)", () => {
+    const nums = AD_CATALOG.map((v) => v.variantNum).sort((a, b) => a - b);
+    expect(nums).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });

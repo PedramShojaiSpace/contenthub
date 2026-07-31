@@ -348,7 +348,7 @@ export default function InterconnectedThankYou() {
                 style={{ height: "100%", left: 0, position: "absolute", top: 0, width: "100%" }}
               >
                 <iframe
-                  src="https://fast.wistia.net/embed/iframe/2tt1q5l0np?seo=true&videoFoam=true"
+                  src="https://fast.wistia.net/embed/iframe/hobj7srg3q?seo=true&videoFoam=true"
                   title="Interconnected Thank You Video"
                   allow="autoplay; fullscreen"
                   allowTransparency

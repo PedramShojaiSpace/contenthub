@@ -976,7 +976,7 @@ function ResultsScreen({
               </p>
               <p className="text-white/65 text-xs mb-3">$199 value · Included with your first order</p>
               <a
-                href={(tantraCourse?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/the-tantra-course"}
+                href={(tantraCourse?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/1710780"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"

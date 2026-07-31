@@ -196,21 +196,21 @@ export const TANTRA_UPSELLS = {
     name: "Sleep Test Kit",
     description: "Jing restoration happens during deep sleep. This kit identifies exactly what's disrupting your recovery.",
     price: "$399",
-    shopifyUrl: "https://shop.theurbanmonk.com/products/sleep-test-kit",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/dss-testing-tier-dss-entry",
     flag: "sleep_flag" as const,
   },
   gut: {
     name: "Gut Health Test Kit",
     description: "Your gut microbiome directly regulates hormonal production. This kit reveals what's blocking your vitality at the root.",
     price: "$399",
-    shopifyUrl: "https://shop.theurbanmonk.com/products/gut-health-test-kit",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/full-gut-testing-upgrade",
     flag: "gut_flag" as const,
   },
   oral: {
     name: "Oral Health Test Kit",
     description: "Oral inflammation is the hidden driver of systemic hormone disruption. This kit finds it.",
     price: "$399",
-    shopifyUrl: "https://shop.theurbanmonk.com/products/oral-health-test-kit",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/orobiome-testing-package",
     flag: "oral_flag" as const,
   },
 };
@@ -222,7 +222,7 @@ export const TANTRA_COURSE = {
   tagline: "The Ancient Practice Behind the Formula",
   description: "Dr. Pedram Shojai spent 10 years as a Taoist monk studying the traditions that treat sexual energy as the root of all vitality. This course is the complete East-West practice system — the philosophy, the breathwork, the rituals, and the science.",
   price: "$199",
-  shopifyUrl: "https://shop.theurbanmonk.com/products/the-tantra-course",
+  shopifyUrl: "https://shop.theurbanmonk.com/products/1710780",
 };
 
 export const LIGHTS_ON_COURSE = {
@@ -405,7 +405,7 @@ export const tantraQuizRouter = router({
             : "Tadalafil 20mg (circulation enhancer)";
 
           const upsellLines = upsells.map(u =>
-            `• ${u.name} ($${u.price}) — ${u.description}\n  Order: ${u.shopifyUrl ?? "shop.theurbanmonk.com"}`
+            `• ${u.name} (${u.price}) — ${u.description}\n  Order: ${u.shopifyUrl ?? "shop.theurbanmonk.com"}`
           ).join("\n\n");
 
           const emailBody = [
@@ -456,7 +456,7 @@ export const tantraQuizRouter = router({
           await sendGmailOutreach({
             to: input.email,
             toName: input.name,
-            subject: `Your Tantra Vitality Results — ${product.name} Recommended`,
+            subject: `Your Tantra Vitality Results - ${product.name} Recommended`,
             body: emailBody,
           });
         } catch (e) {

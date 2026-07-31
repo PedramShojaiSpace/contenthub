@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 
-const LOGO = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/66115c4-003e-6c04-6630-3f5a15f47141_250aa8b0-new-logo-tagline-white.png";
+const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png";
 const DOCTOR_PHOTO = "/manus-storage/pedram-white-coat_7321e611.webp";
-const POSTER = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/48c813-cc7f-353c-4803-cd75834823bd_138f9c51-poster-jmsopt_100000000000000000001o.jpg";
-const INTERCONNECTED_LOGO = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/e4e2eae-88f-484b-8fbd-eda8f812fd_interconnected.png";
+const POSTER = "/manus-storage/interconnected-poster_e31ef3aa.jpg";
+const INTERCONNECTED_LOGO = "/manus-storage/interconnected-logo_2c92e029.png";
 
-// Kajabi CDN base for expert headshots
-const K = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/";
+// CDN base for expert headshots
+const K = "/manus-storage/";
 
 // ─── Countdown Timer ─────────────────────────────────────────────────────────
 function useCountdown(hours: number) {
@@ -122,63 +122,63 @@ const FEATURED_EXPERTS = [
   {
     name: "Mark Hyman, MD",
     cred: "Cleveland Clinic Center for Functional Medicine",
-    img: K + "1334cb0-bea0-4a-d35d-f8f887343a7_3dd26ddb-expert-hyman-mark-200x200_100000000000000000001o.jpg",
+    img: K + "Mark Hyman, MD_ac8a0034.jpg",
     quote: "The microbiome is the next frontier in medicine.",
   },
   {
     name: "Dave Asprey",
     cred: "Founder of Bulletproof · Biohacker",
-    img: K + "c3bef4-0b2-8a3-9f6-5b4c4d3b7a2_expert-asprey-dave-200x200_100000000000000000001o.jpg",
+    img: K + "Dave Aspey_db3703a7.jpg",
   },
   {
     name: "Zach Bush, MD",
     cred: "Triple Board-Certified Physician",
-    img: K + "4a0b3c-7f2-9e1-b5d8-2c6a4e8f1d3_expert-bush-zach-200x200_100000000000000000001o.jpg",
+    img: K + "Zach Bush, MD_a26821b8.jpg",
   },
   {
     name: "Alessio Fassano, MD",
     cred: "Harvard Medical School · Leaky Gut Pioneer",
-    img: K + "7f8ab7f-638-686-bc3b-d80ac856173c_89833e75-expert-fassano-alessio-200x200_100000000000000000001o.jpg",
+    img: K + "Alessio Fassano, MD_9ee5b4d8.jpg",
   },
   {
     name: "Datis Kharrazian, PhD",
     cred: "Harvard Medical School Researcher",
-    img: K + "7be7fca-f0ba-17c-7e5b-0da7e2846b45_e75b8126-expert-kharrazian-datis-200x200_100000000000000000001o.jpg",
+    img: K + "Datis Kharrazian, PhD, DHSC_391c03fc.jpg",
   },
   {
     name: "Max Lugavere",
     cred: "NYT Bestselling Author · Health Journalist",
-    img: K + "e1bafc7-ea4c-76a4-6ce4-c8a83f2f452_b7438dd6-expert-lugavere-max-200x200_100000000000000000001o.jpg",
+    img: K + "Max Lugavere_bf5b6537.jpg",
   },
   {
     name: "JJ Virgin",
     cred: "Celebrity Nutrition Expert · NYT Bestselling Author",
-    img: K + "03e3b7-2ba-b11d-dcd4-137fbe8de4e_61b7b790-expert-jj-virgin-200x200_100000000000000000001o.jpg",
+    img: K + "JJ Virgin_3b348e2f.jpg",
   },
   {
     name: "Emeran Mayer, MD",
     cred: "UCLA · Author of The Mind-Gut Connection",
-    img: K + "a3c2e1-9b4d-7f8e-2b1c-6d5a3e7f9b2_expert-mayer-emeran-200x200_100000000000000000001o.jpg",
+    img: K + "Emaren Mayer, MD_3c1401d9.jpg",
   },
   {
     name: "Izabella Wentz, PharmD",
     cred: "NYT Bestselling Author · Thyroid Pharmacist",
-    img: K + "1bf781-b704-fe5c-1884-1d6adbd864_d2724fdd-expert-wentz-izabella-200x200_100000000000000000001o.jpg",
+    img: K + "Izabella Wentz, Pharm D_b77f8e06.jpg",
   },
   {
     name: "Tom O'Bryan, DC",
     cred: "World-Renowned Gluten & Autoimmunity Expert",
-    img: K + "b3e2c1-9a4d-7f8e-2b1c-6d5a3e7f9b2_expert-obryan-tom-200x200_100000000000000000001o.jpg",
+    img: K + "Tom-OBryan-DC-DACBN_bcfc7b09.jpg",
   },
   {
     name: "Rangan Chatterjee, MD",
     cred: "BBC Doctor · Author of Feel Better in 5",
-    img: K + "f2a4b8-3c6e-1d9f-7a2b-5e8c4d1f6a3_expert-chatterjee-rangan-200x200_100000000000000000001o.jpg",
+    img: K + "Rangan Chatterjee, MD_a9d80d31.jpg",
   },
   {
     name: "Martin Blaser, MD",
     cred: "NYU · Author of Missing Microbes",
-    img: K + "d4e3f2-8c5b-6a9d-1e2f-7b4c8d2a5e1_expert-blaser-martin-200x200_100000000000000000001o.jpg",
+    img: K + "Martin Blaser, MD_53c94e34.jpg",
   },
 ];
 
@@ -476,7 +476,7 @@ export default function Interconnected() {
                 style={{ width: "180px", height: "180px", border: "4px solid rgba(46,145,252,0.5)" }}
               >
                 <img
-                  src={K + "1334cb0-bea0-4a-d35d-f8f887343a7_3dd26ddb-expert-hyman-mark-200x200_100000000000000000001o.jpg"}
+                  src={K + "Mark Hyman, MD_ac8a0034.jpg"}
                   alt="Mark Hyman, MD"
                   className="w-full h-full object-cover"
                 />

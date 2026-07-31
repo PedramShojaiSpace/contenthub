@@ -7,8 +7,7 @@
 
 import { useState, useEffect, useRef } from "react";
 
-const LOGO =
-  "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/66115c4-003e-6c04-6630-3f5a15f47141_250aa8b0-new-logo-tagline-white.png";
+const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png";
 
 const OTO_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
 const EP1_URL = "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-1-SP26";

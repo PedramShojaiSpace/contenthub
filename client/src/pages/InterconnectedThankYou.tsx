@@ -99,7 +99,7 @@ export default function InterconnectedThankYou() {
         <h1 className="text-3xl md:text-4xl font-black mb-3 leading-tight">
           Check Your Inbox — Your Access is Confirmed
         </h1>
-        <p className="text-gray-300 text-lg max-w-xl mx-auto">
+        <p className="text-gray-100 text-xl max-w-xl mx-auto">
           A welcome email is on its way with your link to{" "}
           <strong className="text-teal-400">Interconnected: The Power to Heal From Within</strong>.
         </p>
@@ -123,7 +123,7 @@ export default function InterconnectedThankYou() {
             {/* Countdown */}
             {!expired ? (
               <div className="flex items-center justify-center gap-3 mb-8">
-                <span className="text-gray-400 text-sm font-semibold">This offer expires in:</span>
+                <span className="text-gray-200 text-base font-semibold">This offer expires in:</span>
                 <span className="bg-red-950/70 border border-red-700/50 text-red-300 font-mono font-black text-2xl px-4 py-1.5 rounded-lg tracking-widest">
                   {pad(timeLeft.m)}:{pad(timeLeft.s)}
                 </span>
@@ -145,7 +145,7 @@ export default function InterconnectedThankYou() {
                 <h2 className="text-2xl md:text-3xl font-black text-white leading-tight">
                   Interconnected: The Complete Healing Protocol
                 </h2>
-                <p className="text-gray-300 text-sm mt-1">
+                <p className="text-gray-100 text-base mt-1">
                   Everything you need to go from watching to actually healing.
                 </p>
               </div>
@@ -154,7 +154,7 @@ export default function InterconnectedThankYou() {
               <div className="p-6 md:p-8">
 
                 {/* What's included */}
-                <p className="text-gray-400 text-xs uppercase tracking-widest font-bold mb-4">
+                <p className="text-gray-200 text-sm uppercase tracking-widest font-bold mb-4">
                   Everything Included:
                 </p>
                 <div className="grid md:grid-cols-2 gap-3 mb-8">
@@ -163,7 +163,7 @@ export default function InterconnectedThankYou() {
                       <span className="text-xl shrink-0 mt-0.5">{item.icon}</span>
                       <div>
                         <p className="text-white font-bold text-sm leading-snug mb-0.5">{item.title}</p>
-                        <p className="text-gray-400 text-xs leading-relaxed">{item.desc}</p>
+                        <p className="text-gray-100 text-sm leading-relaxed">{item.desc}</p>
                       </div>
                     </div>
                   ))}
@@ -171,7 +171,7 @@ export default function InterconnectedThankYou() {
 
                 {/* Dr. Shojai quote */}
                 <div className="bg-teal-900/20 border-l-4 border-teal-500 rounded-r-xl p-4 mb-8">
-                  <p className="text-gray-300 text-sm leading-relaxed italic mb-2">
+                  <p className="text-gray-100 text-base leading-relaxed italic mb-2">
                     "The series will change how you think about your health. But knowledge without a protocol is just
                     information. This bundle gives you the roadmap to actually use what you learn — and a community
                     to walk the path with you."
@@ -181,7 +181,7 @@ export default function InterconnectedThankYou() {
 
                 {/* Pricing + CTA */}
                 <div className="text-center">
-                  <p className="text-gray-500 text-base line-through mb-1">Regular price: $197</p>
+                  <p className="text-gray-300 text-base line-through mb-1">Regular price: $197</p>
                   <p className="text-6xl font-black text-white mb-1">$67</p>
                   <p className="text-teal-400 text-sm font-bold mb-6">
                     One-time payment — you save $130 today only
@@ -203,14 +203,14 @@ export default function InterconnectedThankYou() {
                     </a>
                   )}
 
-                  <div className="flex items-center justify-center gap-2 mt-4 text-gray-500 text-xs">
+                  <div className="flex items-center justify-center gap-2 mt-4 text-gray-200 text-sm">
                     <span>&#128737;</span>
                     <span>30-Day Money-Back Guarantee — No questions asked</span>
                   </div>
 
                   <button
                     onClick={handleDecline}
-                    className="mt-5 text-gray-600 text-xs hover:text-gray-400 underline block mx-auto"
+                    className="mt-5 text-gray-300 text-sm hover:text-white underline block mx-auto"
                   >
                     No thanks — I'll just watch the free series
                   </button>
@@ -225,10 +225,10 @@ export default function InterconnectedThankYou() {
       {declined && (
         <section className="py-16 px-4 text-center">
           <div className="max-w-xl mx-auto">
-            <p className="text-gray-400 mb-2">No problem — your free access to all 9 episodes is confirmed.</p>
-            <p className="text-gray-500 text-sm mb-8">Check your inbox for your welcome email with the link.</p>
+            <p className="text-gray-100 text-lg mb-2">No problem — your free access to all 9 episodes is confirmed.</p>
+            <p className="text-gray-200 text-base mb-8">Check your inbox for your welcome email with the link.</p>
             <a
-              href="https://theacademy.theurbanmonk.com/ic-interconnected-free-screening-meta-leads-1"
+              href="https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-1-SP26"
               className="inline-block py-4 px-10 bg-teal-700 hover:bg-teal-600 text-white font-black text-lg rounded-xl uppercase tracking-wide transition-colors"
             >
               Watch Episode 1 Now
@@ -240,10 +240,10 @@ export default function InterconnectedThankYou() {
       {/* SKIP LINK (always visible below OTO) */}
       {!declined && (
         <section className="pb-10 px-4 text-center border-t border-gray-800 pt-8">
-          <p className="text-gray-500 text-sm mb-2">Your free access is already confirmed. Ready to start watching?</p>
+          <p className="text-gray-100 text-base mb-2">Your free access is already confirmed. Ready to start watching?</p>
           <a
-            href="https://theacademy.theurbanmonk.com/ic-interconnected-free-screening-meta-leads-1"
-            className="text-teal-500 hover:text-teal-400 underline text-sm"
+            href="https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-1-SP26"
+            className="text-teal-300 hover:text-teal-200 underline text-base font-semibold"
           >
             Take me to Episode 1 without the upgrade
           </a>

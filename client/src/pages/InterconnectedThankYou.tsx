@@ -10,7 +10,6 @@ import { useState, useEffect, useRef } from "react";
 const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png";
 
 const OTO_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
-const EP1_URL = "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-1-SP26";
 
 // CDN base for expert headshots (uploaded from Google Drive)
 const CDN = "/manus-storage/";
@@ -209,7 +208,6 @@ const FAQS = [
 
 export default function InterconnectedThankYou() {
   const { timeLeft, expired } = useCountdown(6480); // 1h 48m
-  const [declined, setDeclined] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   useEffect(() => {
@@ -664,26 +662,6 @@ export default function InterconnectedThankYou() {
           </p>
         </div>
       </section>
-
-      {/* ── DECLINE ─────────────────────────────────────────────────────────────── */}
-      {!declined && (
-        <div className="text-center pb-12 px-4">
-          <button
-            onClick={() => {
-              setDeclined(true);
-              window.location.href = EP1_URL;
-            }}
-            className="text-gray-600 text-xs underline hover:text-gray-400 transition-colors"
-          >
-            No thanks — I'll just watch the free series and risk missing episodes
-          </button>
-          {declined && (
-            <p className="text-yellow-500 text-sm mt-4 font-semibold">
-              ⚠ Remember: each episode is only available for 24 hours. Don't miss a day.
-            </p>
-          )}
-        </div>
-      )}
 
       {/* ── FOOTER ──────────────────────────────────────────────────────────────── */}
       <footer className="py-8 px-4 text-center" style={{ background: BG_MID, borderTop: `1px solid rgba(46,145,252,0.1)` }}>

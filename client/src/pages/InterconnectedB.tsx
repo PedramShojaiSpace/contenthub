@@ -41,7 +41,7 @@ const FEATURED = [
   { name: "Alessio Fassano, MD", img: K + "7f8ab7f-638-686-bc3b-d80ac856173c_89833e75-expert-fassano-alessio-200x200_100000000000000000001o.jpg" },
   { name: "Max Lugavere", img: K + "e1bafc7-ea4c-76a4-6ce4-c8a83f2f452_b7438dd6-expert-lugavere-max-200x200_100000000000000000001o.jpg" },
   { name: "JJ Virgin", img: K + "03e3b7-2ba-b11d-dcd4-137fbe8de4e_61b7b790-expert-jj-virgin-200x200_100000000000000000001o.jpg" },
-  { name: "Naveen Jain", img: K + "335e0-17a5-f7f8-bc37-47fd68b8784_3b443e9b-expert-jain-naveen-200x200_100000000000000000001o.jpg" },
+  { name: "Emeran Mayer, MD", img: K + "a3c2e1-9b4d-7f8e-2b1c-6d5a3e7f9b2_expert-mayer-emeran-200x200_100000000000000000001o.jpg" },
   { name: "Izabella Wentz, PharmD", img: K + "1bf781-b704-fe5c-1884-1d6adbd864_d2724fdd-expert-wentz-izabella-200x200_100000000000000000001o.jpg" },
 ];
 

@@ -156,9 +156,9 @@ const FEATURED_EXPERTS = [
     img: K + "03e3b7-2ba-b11d-dcd4-137fbe8de4e_61b7b790-expert-jj-virgin-200x200_100000000000000000001o.jpg",
   },
   {
-    name: "Naveen Jain",
-    cred: "Entrepreneur · Founder of Viome",
-    img: K + "335e0-17a5-f7f8-bc37-47fd68b8784_3b443e9b-expert-jain-naveen-200x200_100000000000000000001o.jpg",
+    name: "Emeran Mayer, MD",
+    cred: "UCLA · Author of The Mind-Gut Connection",
+    img: K + "a3c2e1-9b4d-7f8e-2b1c-6d5a3e7f9b2_expert-mayer-emeran-200x200_100000000000000000001o.jpg",
   },
   {
     name: "Izabella Wentz, PharmD",
@@ -176,9 +176,9 @@ const FEATURED_EXPERTS = [
     img: K + "f2a4b8-3c6e-1d9f-7a2b-5e8c4d1f6a3_expert-chatterjee-rangan-200x200_100000000000000000001o.jpg",
   },
   {
-    name: "Ocean Robbins",
-    cred: "Food Revolution Network · Author",
-    img: K + "b245844-a1f2-35a-718a-bcbc38e7b268_8e81ec91-expert-robbins-ocean-200x200_100000000000000000001o.jpg",
+    name: "Martin Blaser, MD",
+    cred: "NYU · Author of Missing Microbes",
+    img: K + "d4e3f2-8c5b-6a9d-1e2f-7b4c8d2a5e1_expert-blaser-martin-200x200_100000000000000000001o.jpg",
   },
 ];
 
@@ -191,13 +191,13 @@ const ALL_EXPERTS = [
   "Afrouz Demehri, NMD", "Peter Diamandis, MD", "Carolyn Edelstein", "Joel Evans, MD",
   "Tom Fabian, PhD", "Alessio Fassano, MD", "Kara Fitzgerald, ND", "Emily Fletcher",
   "Rob Franklin, DVM", "Claire Fraser, PhD", "Bob Harding, DO", "Jennifer Harmon-Meyer",
-  "Tara Hunkin", "Mark Hyman, MD", "Naveen Jain", "Pejman Katiraei, DO",
+  "Tara Hunkin", "Mark Hyman, MD", "Pejman Katiraei, DO",
   "Raphael Kellman, MD", "Datis Kharrazian, PhD", "Max Lugavere", "Finian Makepeace",
   "Tom Malterre, MS", "Laura Markle Downton", "James Maskell", "Emeran Mayer, MD",
   "Sarkis Mazmanian, PhD", "Mark Menolascino, MD", "Helen Messier, MD", "Gerard Mullin, MD",
   "Karen Nelson, PhD", "Tom O'Bryan, DC", "Barbara Olendzki, RD", "Ally Perlina",
   "Warren Phillips, MS", "Joe Pizzorno, ND", "Daniel Pompa, PSc.D", "David Relman, MD",
-  "Ocean Robbins", "Robert Rountree, MD", "Michael Ruscio, DC", "Shivan Sarna",
+  "Robert Rountree, MD", "Michael Ruscio, DC", "Shivan Sarna",
   "Trudy Scott, CN", "Ann Shippy, MD", "Marvin Singh, MD", "Mariza Snyder, DC",
   "Joel Sprechman", "Sarah Anne Stewart", "Marisol Teijeiro, ND", "JJ Virgin",
   "Momo Vuyisich", "Izabella Wentz, PharmD", "Genevieve White", "Todd White",

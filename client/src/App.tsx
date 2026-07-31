@@ -84,6 +84,7 @@ const TantraQuiz = lazy(() => import("./pages/TantraQuiz"));
 const Interconnected = lazy(() => import("./pages/Interconnected"));
 const InterconnectedThankYou = lazy(() => import("./pages/InterconnectedThankYou"));
 const InterconnectedPurchased = lazy(() => import("./pages/InterconnectedPurchased"));
+const InterconnectedB = lazy(() => import("./pages/InterconnectedB"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const FunnelCommand = lazy(() => import("./pages/FunnelCommand"));
 const AscensionPipeline = lazy(() => import("./pages/AscensionPipeline"));
@@ -190,6 +191,7 @@ function Router() {
         <Route path={"/interconnected"} component={Interconnected} />
         <Route path={"/interconnected/thank-you"} component={InterconnectedThankYou} />
         <Route path={"/interconnected/purchased"} component={InterconnectedPurchased} />
+        <Route path={"/interconnected-b"} component={InterconnectedB} />
         <Route path={"/system-health"} component={SystemHealth} />
         <Route path={"/funnels"} component={FunnelCommand} />
         <Route path={"/ascension"} component={AscensionPipeline} />

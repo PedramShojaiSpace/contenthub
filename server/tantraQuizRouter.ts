@@ -203,7 +203,7 @@ export const TANTRA_UPSELLS = {
     name: "Gut Health Test Kit",
     description: "Your gut microbiome directly regulates hormonal production. This kit reveals what's blocking your vitality at the root.",
     price: "$399",
-    shopifyUrl: "https://shop.theurbanmonk.com/products/full-gut-testing-upgrade",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/kbmo-fit-22-gut-permeability-test-kit-with-consultation",
     flag: "gut_flag" as const,
   },
   oral: {

@@ -541,49 +541,83 @@ export default function TantraQuiz() {
 
 function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading: boolean }) {
   return (
-    <div className="min-h-[calc(100vh-73px)] flex flex-col items-center justify-center px-6 py-16 text-center relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute inset-0 bg-gradient-radial from-amber-900/20 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-900/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-[calc(100vh-73px)] flex flex-col md:flex-row relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-900/15 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="relative z-10 max-w-2xl mx-auto">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-amber-900/30 border border-amber-700/40 rounded-full px-4 py-1.5 text-amber-400 text-sm mb-8">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-          Free 2-Minute Vitality Assessment
+      {/* LEFT: Doctor photo column */}
+      <div className="relative md:w-[42%] flex-shrink-0 flex flex-col">
+        {/* Photo fills the column */}
+        <div className="relative h-[380px] md:h-full overflow-hidden">
+          <img
+            src="/manus-storage/pedram-shojai-doctor_657618c7.webp"
+            alt="Dr. Pedram Shojai, OMD"
+            className="w-full h-full object-cover object-top"
+          />
+          {/* Dark gradient overlay at bottom for text legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/30 to-transparent" />
+
+          {/* Credential badge pinned to bottom of photo */}
+          <div className="absolute bottom-0 left-0 right-0 p-5">
+            <div className="bg-[#0d0d0d]/85 backdrop-blur-sm border border-amber-700/40 rounded-xl px-4 py-3">
+              <p className="text-white font-bold text-base leading-tight">Dr. Pedram Shojai, OMD</p>
+              <p className="text-amber-400 text-xs font-semibold tracking-wide mt-0.5">Doctor of Oriental Medicine</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                <span className="text-white/60 text-xs">Former Taoist Monk</span>
+                <span className="text-white/30 text-xs">·</span>
+                <span className="text-white/60 text-xs">NYT Bestselling Author</span>
+                <span className="text-white/30 text-xs">·</span>
+                <span className="text-white/60 text-xs">20+ Years Clinical Practice</span>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
+      {/* RIGHT: Copy + CTA column */}
+      <div className="relative z-10 flex-1 flex flex-col justify-center px-8 md:px-12 py-12 md:py-16">
+        {/* "From the desk of" label */}
+        <p className="text-amber-500/80 text-xs font-semibold tracking-[0.15em] uppercase mb-5">
+          A Message From Dr. Shojai
+        </p>
+
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-5">
           Is Your Life Force<br />
           <span className="text-amber-400">Running on Empty?</span>
         </h1>
 
-        <p className="text-white/90 text-lg md:text-xl leading-relaxed mb-4 max-w-xl mx-auto">
-          Take this 2-minute quiz to discover what's depleting your sexual vitality — and the East-West prescription formula designed to restore it.
+        <p className="text-white/85 text-base md:text-lg leading-relaxed mb-4 max-w-lg">
+          I spent 10 years as a Taoist monk studying the traditions that treat sexual energy as the root of all vitality. What I found changed everything I knew about medicine.
         </p>
 
-        <p className="text-white/65 text-sm mb-10 italic">
-          Created by Dr. Pedram Shojai, OMD — physician, former Taoist monk, and author of <em>The Urban Monk</em>
+        <p className="text-white/75 text-sm md:text-base leading-relaxed mb-8 max-w-lg">
+          This 2-minute quiz will identify exactly what's depleting your life force — and show you the East-West prescription formula I developed to restore it.
         </p>
+
+        {/* Credential pills */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          <span className="inline-flex items-center gap-1.5 bg-amber-900/25 border border-amber-700/35 rounded-full px-3 py-1 text-amber-300/90 text-xs font-medium">
+            <CheckCircle2 className="w-3 h-3" /> Physician-Formulated
+          </span>
+          <span className="inline-flex items-center gap-1.5 bg-amber-900/25 border border-amber-700/35 rounded-full px-3 py-1 text-amber-300/90 text-xs font-medium">
+            <Shield className="w-3 h-3" /> HIPAA Compliant
+          </span>
+          <span className="inline-flex items-center gap-1.5 bg-amber-900/25 border border-amber-700/35 rounded-full px-3 py-1 text-amber-300/90 text-xs font-medium">
+            <Star className="w-3 h-3" /> Compounded by Strive Pharmacy
+          </span>
+        </div>
 
         <Button
           onClick={onStart}
           disabled={isLoading}
-          className="bg-amber-500 hover:bg-amber-400 text-black font-bold text-lg px-10 py-6 rounded-full shadow-lg shadow-amber-900/40 transition-all duration-200"
+          className="bg-amber-500 hover:bg-amber-400 text-black font-bold text-lg px-10 py-6 rounded-full shadow-lg shadow-amber-900/40 transition-all duration-200 self-start"
         >
           {isLoading ? "Starting..." : "Take the Free Quiz →"}
         </Button>
 
-        <p className="text-white/85 text-xs mt-6">
+        <p className="text-white/50 text-xs mt-4">
           Takes 2 minutes · No credit card required · Personalized results
         </p>
-
-        {/* Trust signals */}
-        <div className="flex items-center justify-center gap-6 mt-12 text-white/65 text-xs">
-          <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> HIPAA Compliant</span>
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Physician-Formulated</span>
-          <span className="flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> Compounded by Strive Pharmacy</span>
-        </div>
       </div>
     </div>
   );

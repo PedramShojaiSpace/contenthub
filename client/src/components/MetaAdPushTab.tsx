@@ -65,6 +65,7 @@ const VARIANT_COLORS: Record<string, string> = {
   gutbrain: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
   autoimmune: "bg-orange-500/10 border-orange-500/30 text-orange-400",
   weight: "bg-rose-500/10 border-rose-500/30 text-rose-400",
+  interconnected: "bg-cyan-500/10 border-cyan-500/30 text-cyan-400",
 };
 
 const VARIANT_BADGE: Record<string, string> = {
@@ -73,6 +74,7 @@ const VARIANT_BADGE: Record<string, string> = {
   gutbrain: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
   autoimmune: "bg-orange-500/20 text-orange-300 border-orange-500/30",
   weight: "bg-rose-500/20 text-rose-300 border-rose-500/30",
+  interconnected: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
 };
 
 // ─── Setup Guide ──────────────────────────────────────────────────────────────

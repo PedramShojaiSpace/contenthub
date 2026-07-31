@@ -359,6 +359,96 @@ Stop cycling through diets. Start eating for your actual metabolism.`,
       },
     ],
   },
+  // INTERCONNECTED CAMPAIGN: Documentary series opt-in ads
+  {
+    variantNum: 6,
+    variantSlug: "interconnected",
+    variantName: "Interconnected — Free Documentary Series",
+    ads: [
+      {
+        adId: "interconnected-a",
+        adName: 'Ad IC-A — "70 World-Class Doctors. One Surprising Answer."',
+        imageFile: "ad2_expert_collage_1x1.jpg",
+        imageHash: "fa7f0fcffc462c262992b19173671cb0",
+        headline: "70 World-Class Doctors. One Surprising Answer.",
+        primaryText: `Mark Hyman. Zach Bush. Alessio Fassano. Datis Kharrazian. Emeran Mayer. Izabella Wentz. Martin Blaser. Max Lugavere.
+
+70 of the world's leading doctors, researchers, and scientists just revealed the hidden root of obesity, autoimmunity, brain fog, fatigue, and chronic disease.
+
+And the answer is not what most people expect.
+
+INTERCONNECTED: The Power to Heal From Within is a free 9-part documentary series that uncovers the breakthrough science behind why so many people are sick — and what actually works to heal.
+
+Episode 1 airs tomorrow. Each episode is only available for 24 hours.
+
+Register free now — before the window closes.`,
+        description: "Free 9-Part Documentary Series — Register Now",
+        cta: "SIGN_UP",
+        landingUrl: "https://content.theurbanmonk.com/interconnected",
+      },
+      {
+        adId: "interconnected-b",
+        adName: 'Ad IC-B — "Episode #1 Airs Tomorrow"',
+        imageFile: "ad3_urgency_1x1.jpg",
+        imageHash: "0f78debcaba593fabe733977f2c04e2a",
+        headline: "Episode #1 Airs Tomorrow — Each Episode Available 24 Hours Only",
+        primaryText: `9 episodes. 70 world-class doctors. The hidden root of chronic disease — revealed.
+
+INTERCONNECTED: The Power to Heal From Within is a free documentary series featuring Mark Hyman, Zach Bush, Alessio Fassano, and 67 more of the world's leading researchers.
+
+Each episode is only available for 24 hours. Miss a day — miss that episode forever.
+
+Episode 1 airs tomorrow. Register free now before the viewing window closes.`,
+        description: "Free 9-Part Documentary — 24-Hour Episodes",
+        cta: "SIGN_UP",
+        landingUrl: "https://content.theurbanmonk.com/interconnected",
+      },
+      {
+        adId: "interconnected-c",
+        adName: 'Ad IC-C — "Your Doctor Probably Hasn\'t Told You This"',
+        imageFile: "ad4_pattern_interrupt_1x1.jpg",
+        imageHash: "f10b6a698ab9f3845029e14685267feb",
+        headline: "Your Doctor Probably Hasn't Told You This.",
+        primaryText: `4mm.
+
+That's the thickness of the barrier inside your gut that controls your immune system, brain, hormones, and metabolism.
+
+Dr. Alessio Fassano discovered it. Dr. Mark Hyman built a practice around fixing it. Dr. Zach Bush found the environmental cause.
+
+They're all in INTERCONNECTED — a free 9-part documentary series that reveals the hidden root of 90% of chronic disease.
+
+Episode 1 airs tomorrow. Each episode is only available for 24 hours.
+
+Watch free — register now.`,
+        description: "Free 9-Part Documentary Series — Watch Now",
+        cta: "LEARN_MORE",
+        landingUrl: "https://content.theurbanmonk.com/interconnected",
+      },
+      {
+        adId: "interconnected-d",
+        adName: 'Ad IC-D — Retargeting OTO — "Don\'t Risk Missing a Single Episode"',
+        imageFile: "ad5_retargeting_oto_1x1.jpg",
+        imageHash: "08621b60de10f5acb4a8ed9b8837efad",
+        headline: "Don't Risk Missing a Single Episode.",
+        primaryText: `You're registered for INTERCONNECTED. Episode 1 arrives tomorrow.
+
+But here's what you should know: each episode is only available for 24 hours. Miss a day — miss that episode forever.
+
+If life gets in the way — travel, work, family — you could lose access to the exact science you registered to see.
+
+Get permanent access to all 9 episodes right now for just $67:
+✓ All 9 Episodes — On Demand Forever
+✓ Companion Guide + 30-Day Protocol
+✓ 5 Root Causes Masterclass (Bonus)
+✓ Private Community Access
+
+30-day money-back guarantee. No questions asked.`,
+        description: "All 9 Episodes — Permanent Access — $67",
+        cta: "SHOP_NOW",
+        landingUrl: "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout",
+      },
+    ],
+  },
 ];
 
 // ─── Meta API Helper ──────────────────────────────────────────────────────────

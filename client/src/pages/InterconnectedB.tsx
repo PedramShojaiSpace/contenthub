@@ -35,14 +35,14 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 // ─── Featured Experts (subset for compact layout) ─────────────────────────────
 const FEATURED = [
-  { name: "Mark Hyman, MD", img: K + "Mark Hyman, MD_ac8a0034.jpg" },
-  { name: "Dave Asprey", img: K + "Dave Aspey_db3703a7.jpg" },
-  { name: "Zach Bush, MD", img: K + "Zach Bush, MD_a26821b8.jpg" },
-  { name: "Alessio Fassano, MD", img: K + "Alessio Fassano, MD_9ee5b4d8.jpg" },
-  { name: "Max Lugavere", img: K + "Max Lugavere_bf5b6537.jpg" },
-  { name: "JJ Virgin", img: K + "JJ Virgin_3b348e2f.jpg" },
-  { name: "Emeran Mayer, MD", img: K + "Emaren Mayer, MD_3c1401d9.jpg" },
-  { name: "Izabella Wentz, PharmD", img: K + "Izabella Wentz, Pharm D_b77f8e06.jpg" },
+  { name: "Mark Hyman, MD", img: K + "mark-hyman-md_59f25bf6.jpg" },
+  { name: "Dave Asprey", img: K + "dave-aspey_cb9def9f.jpg" },
+  { name: "Zach Bush, MD", img: K + "zach-bush-md_50a4b43c.jpg" },
+  { name: "Alessio Fassano, MD", img: K + "alessio-fassano-md_6d7caa9a.jpg" },
+  { name: "Max Lugavere", img: K + "max-lugavere_78f23e75.jpg" },
+  { name: "JJ Virgin", img: K + "jj-virgin_4bc75cbd.jpg" },
+  { name: "Emeran Mayer, MD", img: K + "emaren-mayer-md_edf069aa.jpg" },
+  { name: "Izabella Wentz, PharmD", img: K + "izabella-wentz-pharm-d_88697c7e.jpg" },
 ];
 
 // ─── Opt-In Form ──────────────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ export default function InterconnectedB() {
               style={{ width: "100px", height: "100px", border: "3px solid rgba(46,145,252,0.5)" }}
             >
               <img
-                src={K + "1334cb0-bea0-4a-d35d-f8f887343a7_3dd26ddb-expert-hyman-mark-200x200_100000000000000000001o.jpg"}
+                src={K + "mark-hyman-md_59f25bf6.jpg"}
                 alt="Mark Hyman, MD"
                 className="w-full h-full object-cover"
               />

@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 
-const DOCTOR_PHOTO = "/manus-storage/pedram-white-coat_7321e611.webp";
 const LOGO = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/66115c4-003e-6c04-6630-3f5a15f47141_250aa8b0-new-logo-tagline-white.png";
+const DOCTOR_PHOTO = "/manus-storage/pedram-white-coat_7321e611.webp";
 const POSTER = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/48c813-cc7f-353c-4803-cd75834823bd_138f9c51-poster-jmsopt_100000000000000000001o.jpg";
 
 // ─── Countdown Timer ─────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ const EPISODES = [
     num: 1,
     title: "The Invisible Organ: The Missing Piece in Health and Longevity",
     bullets: [
-      "Why obesity, diabetes, autoimmune disease, and even cancer all START in the gut",
+      "Why obesity, diabetes, autoimmune disease, and even cancer all start in the gut",
       "What indigenous tribes have that industrialized populations have lost",
       "The new diagnostic tools making gut medicine the foundation of modern healthcare",
     ],
@@ -43,8 +43,8 @@ const EPISODES = [
     num: 2,
     title: "The Human Microbiome: The Raging Battle From Within",
     bullets: [
-      "The unholy trinity of autoimmune diseases - and how to protect yourself",
-      "What ancient medicine from Hippocrates to Ayurveda knew about the gut that we forgot",
+      "The unholy trinity of autoimmune diseases — and how to protect yourself",
+      "What ancient medicine knew about the gut that modern science is only now confirming",
       "Leaky gut: how to know if you have it and how to repair it",
     ],
   },
@@ -52,7 +52,7 @@ const EPISODES = [
     num: 3,
     title: "The Truth About Probiotics",
     bullets: [
-      "Why no single diet works for everyone - and what your unique microbiome demands",
+      "Why no single diet works for everyone — and what your unique microbiome demands",
       "What dysbiosis looks like and how it drives chronic disease",
       "Why adding probiotics to a toxic gut can make things worse, not better",
     ],
@@ -62,13 +62,13 @@ const EPISODES = [
     title: "The Trouble With Toxins: Staying Alive in a Toxic World",
     bullets: [
       "The environmental toxins in your home killing your microbiome day by day",
-      "The real cause of IBS - and how feeding good bacteria can stop emergency bathroom trips",
+      "The real cause of IBS — and how feeding good bacteria can stop it",
       "Why your body may be blocked from naturally eliminating disease-spreading toxins",
     ],
   },
   {
     num: 5,
-    title: "The Kids Aren't Alright: Leaky Gut - Leaky Brain - Leaky Kids",
+    title: "The Kids Aren't Alright: Leaky Gut — Leaky Brain — Leaky Kids",
     bullets: [
       "How gut microbiota are hardwired into your neurobiology, immunity, and longevity",
       "How nourishing the gut sends stress-relieving signals to the brain",
@@ -81,15 +81,15 @@ const EPISODES = [
     bullets: [
       "3 tell-tale signs of an underactive thyroid you're probably ignoring",
       "How microbiome care can help reverse Hashimoto's disease",
-      "Why your microbiome may be triggering your weight gain - and how to fix it",
+      "Why your microbiome may be triggering your weight gain — and how to fix it",
     ],
   },
   {
     num: 7,
     title: "The Microbiome Solution: Cancer, Immunity, and Heart Disease",
     bullets: [
-      "Can we PREDICT cancer by analyzing gut microbes? Scientists say yes.",
-      "How balancing your microbiome resolves skin problems - acne, eczema, and more",
+      "Can we predict cancer by analyzing gut microbes? Scientists say yes.",
+      "How balancing your microbiome resolves skin problems — acne, eczema, and more",
       "The gut-heart connection: what your microbiome has to do with cardiovascular disease",
     ],
   },
@@ -124,7 +124,7 @@ const EXPERTS = [
 ];
 
 // ─── Opt-In Form ──────────────────────────────────────────────────────────────
-function OptInForm() {
+function OptInForm({ compact = false }: { compact?: boolean }) {
   const [, navigate] = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -147,44 +147,49 @@ function OptInForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-3">
-        <input
-          type="text"
-          placeholder="First Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-teal-400"
-        />
-        <input
-          type="email"
-          placeholder="Best Email Address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-teal-400"
-        />
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {!compact && (
+        <p className="text-center text-sm font-bold text-gray-200 uppercase tracking-wide mb-1">
+          Register NOW for FREE unlimited access
+        </p>
+      )}
+      <input
+        type="text"
+        placeholder="First Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+        className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
+      />
+      {!compact && (
         <input
           type="tel"
-          placeholder="Mobile Phone (optional - for episode reminders)"
+          placeholder="Mobile Phone (optional — episode reminders)"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-teal-400"
+          className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
         />
-        {error && <p className="text-red-300 text-sm">{error}</p>}
-        <button
-          type="submit"
-          disabled={submit.isPending}
-          className="w-full py-4 px-6 bg-teal-500 hover:bg-teal-400 text-white font-black text-lg rounded uppercase tracking-wide transition-colors disabled:opacity-60"
-          style={{ letterSpacing: "0.05em" }}
-        >
-          {submit.isPending ? "Registering..." : "WATCH FREE - REGISTER NOW"}
-        </button>
-        <p className="text-xs text-gray-400 text-center">
-          100% free. No credit card required. Unsubscribe anytime.
-        </p>
-      </div>
+      )}
+      {error && <p className="text-red-300 text-sm">{error}</p>}
+      <button
+        type="submit"
+        disabled={submit.isPending}
+        className="w-full py-4 px-6 font-black text-base rounded uppercase tracking-wide transition-colors disabled:opacity-60"
+        style={{ background: "#1a9fc0", color: "#fff", letterSpacing: "0.06em" }}
+      >
+        {submit.isPending ? "Registering..." : "REGISTER NOW!"}
+      </button>
+      <p className="text-xs text-gray-400 text-center">
+        100% free. No credit card required.
+      </p>
     </form>
   );
 }
@@ -199,171 +204,190 @@ export default function Interconnected() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white font-sans">
+    <div className="min-h-screen text-white font-sans" style={{ background: "#0a1520" }}>
 
       {/* STICKY URGENCY BAR */}
-      <div className="sticky top-0 z-50 bg-teal-800 text-white text-center py-2 px-4 text-sm font-semibold">
+      <div
+        className="sticky top-0 z-50 text-white text-center py-2 px-4 text-sm font-semibold"
+        style={{ background: "#1a4a5a" }}
+      >
         Free viewing period closes in:&nbsp;
         <span className="font-mono font-black">
           {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
         </span>
         &nbsp;&mdash;&nbsp;
-        <button onClick={scrollToForm} className="underline font-bold hover:text-teal-200">
-          Claim your free access
+        <button onClick={scrollToForm} className="underline font-bold hover:opacity-80">
+          Claim your free access now
         </button>
       </div>
 
-      {/* HERO */}
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
         className="relative min-h-screen flex items-center"
-        style={{ background: "linear-gradient(135deg, #050505 0%, #0a1f1f 60%, #050505 100%)" }}
+        style={{
+          background: "linear-gradient(135deg, #020d18 0%, #051e2e 50%, #020d18 100%)",
+        }}
       >
+        {/* Microbiome background texture */}
         <div
-          className="absolute inset-0 opacity-8"
+          className="absolute inset-0"
           style={{
             backgroundImage: `url(${POSTER})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            opacity: 0.08,
+            opacity: 0.18,
           }}
         />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 60%, #030303 100%)" }} />
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to right, rgba(2,13,24,0.85) 0%, rgba(2,13,24,0.4) 50%, rgba(2,13,24,0.75) 100%)" }}
+        />
 
         <div className="relative z-10 w-full px-4 py-16 md:py-20">
-          <div className="grid md:grid-cols-2 gap-10 items-center max-w-6xl mx-auto">
+          <div className="max-w-6xl mx-auto">
+            <img src={LOGO} alt="The Urban Monk" className="w-36 mb-8 mx-auto md:mx-0" />
 
-            {/* LEFT - Doctor photo + credentials */}
-            <div className="flex flex-col items-center md:items-start">
-              <img src={LOGO} alt="The Urban Monk" className="w-44 mb-6 mx-auto md:mx-0" />
+            <div className="grid md:grid-cols-2 gap-12 items-center">
 
-              <div className="relative w-full max-w-xs mx-auto md:mx-0 rounded-2xl overflow-hidden shadow-2xl border border-teal-900/50">
-                <img
-                  src={DOCTOR_PHOTO}
-                  alt="Dr. Pedram Shojai, OMD"
-                  className="w-full object-cover object-top"
-                  style={{ maxHeight: "440px" }}
-                />
-                {/* Credential overlay at bottom of photo */}
-                <div className="absolute bottom-0 left-0 right-0 p-4" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%)" }}>
-                  <p className="text-teal-400 font-black text-lg leading-tight">Dr. Pedram Shojai, OMD</p>
-                  <p className="text-gray-300 text-sm mb-2">Doctor of Oriental Medicine</p>
-                  <div className="flex flex-wrap gap-1">
-                    {["Former Taoist Monk", "NYT Bestselling Author", "20+ Yrs Clinical Practice"].map((c) => (
-                      <span key={c} className="text-xs bg-teal-900/70 text-teal-300 px-2 py-0.5 rounded-full border border-teal-700/50">
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              {/* LEFT — Documentary title and big claim */}
+              <div>
+                <h1
+                  className="font-black leading-none mb-3 uppercase"
+                  style={{ fontSize: "clamp(2.8rem, 6vw, 4.5rem)", letterSpacing: "-0.02em" }}
+                >
+                  INTERCONNECTED
+                </h1>
+                <p className="text-xl md:text-2xl font-light italic mb-6" style={{ color: "#7ecfdf" }}>
+                  The Power to Heal From Within
+                </p>
 
-              <div className="mt-5 flex flex-wrap gap-3 justify-center md:justify-start">
-                {["70+ World-Renowned Experts", "9-Part Documentary Series", "100% Free Access"].map((b) => (
-                  <div key={b} className="flex items-center gap-1.5 text-sm text-gray-300">
-                    <span className="text-teal-400 font-bold">&#10003;</span> {b}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* RIGHT - Headline + form */}
-            <div ref={formRef}>
-              <span className="text-teal-400 text-xs font-black uppercase tracking-widest">
-                Free 9-Part Documentary Series
-              </span>
-              <h1 className="text-4xl md:text-5xl font-black leading-none mt-2 mb-1 uppercase tracking-tight">
-                INTERCONNECTED
-              </h1>
-              <p className="text-teal-400 text-xl md:text-2xl font-bold italic mb-4">
-                The Power to Heal From Within
-              </p>
-              <p className="text-2xl md:text-3xl font-black text-yellow-400 mb-4 leading-tight">
-                The Source of 90% of All Chronic Disease - Discovered
-              </p>
-              <p className="text-gray-300 text-base md:text-lg mb-6 leading-relaxed">
-                70 of the world's leading doctors, researchers, and scientists reveal the hidden root of obesity,
-                autoimmunity, brain fog, fatigue, and chronic disease - and the breakthrough science that can heal it.
-              </p>
-
-              {/* Countdown box */}
-              <div className="flex items-center gap-3 bg-teal-950/60 border border-teal-800/50 rounded-lg p-3 mb-6">
-                <div className="text-yellow-400 text-2xl">&#9888;</div>
-                <div>
-                  <p className="text-teal-300 font-bold text-xs uppercase tracking-wide">Free viewing period closes in:</p>
-                  <p className="text-white font-mono font-black text-2xl leading-none">
-                    {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
+                <div
+                  className="rounded-lg p-5 mb-6"
+                  style={{ background: "rgba(26,159,192,0.12)", border: "1px solid rgba(126,207,223,0.25)" }}
+                >
+                  <p
+                    className="font-black text-2xl md:text-3xl leading-tight uppercase"
+                    style={{ color: "#f0f4f8" }}
+                  >
+                    THE SOURCE OF 90% OF ALL CHRONIC DISEASE:
+                    <span style={{ color: "#1a9fc0" }}> DISCOVERED</span>
                   </p>
                 </div>
+
+                <p className="text-gray-300 text-lg leading-relaxed mb-6">
+                  70 of the world's leading doctors, researchers, and scientists reveal the hidden root
+                  of obesity, autoimmunity, brain fog, fatigue, and chronic disease — and the
+                  breakthrough science that can heal it.
+                </p>
+
+                <div className="flex flex-wrap gap-4 mb-6">
+                  {[
+                    { icon: "&#127897;", text: "9-Part Documentary Series" },
+                    { icon: "&#128104;&#8205;&#9877;", text: "70+ World-Class Experts" },
+                    { icon: "&#127381;", text: "100% Free Access" },
+                  ].map((b) => (
+                    <div key={b.text} className="flex items-center gap-2 text-sm" style={{ color: "#a0d8e8" }}>
+                      <span dangerouslySetInnerHTML={{ __html: b.icon }} />
+                      <span className="font-semibold">{b.text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Countdown box */}
+                <div
+                  className="flex items-center gap-3 rounded-lg p-3"
+                  style={{ background: "rgba(10,20,30,0.7)", border: "1px solid rgba(26,159,192,0.3)" }}
+                >
+                  <span className="text-yellow-400 text-xl">&#9888;</span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#7ecfdf" }}>
+                      Free viewing period closes in:
+                    </p>
+                    <p className="font-mono font-black text-2xl text-white leading-none">
+                      {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* Form box */}
-              <div className="bg-gray-900/90 border border-gray-700/60 rounded-xl p-5 backdrop-blur-sm">
-                <p className="text-center text-gray-300 font-bold mb-4 text-sm uppercase tracking-wide">
-                  Register now for FREE unlimited access to all 9 episodes
-                </p>
-                <OptInForm />
+              {/* RIGHT — Opt-in form */}
+              <div ref={formRef}>
+                <div
+                  className="rounded-xl p-6"
+                  style={{ background: "rgba(5,20,35,0.92)", border: "1px solid rgba(26,159,192,0.35)" }}
+                >
+                  <p
+                    className="text-center font-black text-sm uppercase tracking-widest mb-4"
+                    style={{ color: "#1a9fc0" }}
+                  >
+                    Register NOW for a limited-time FREE viewing of this groundbreaking 9-part documentary series.
+                  </p>
+                  <OptInForm />
+                </div>
               </div>
-              <p className="text-xs text-gray-500 text-center mt-3">
-                As featured on CNN, Fox News, PBS, The Dr. Oz Show, and 200+ media outlets
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TAKE ADVANTAGE ──────────────────────────────────────────────── */}
+      <section className="py-14 px-4" style={{ background: "#051220" }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-10 items-center">
+            <div>
+              <img src={POSTER} alt="Interconnected Documentary" className="rounded-xl w-full object-cover shadow-2xl" style={{ maxHeight: "340px" }} />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black uppercase mb-4" style={{ color: "#f0f4f8" }}>
+                Take Advantage of the Next Frontier of Medicine:
+              </h2>
+              <p className="text-gray-300 text-lg leading-relaxed mb-4">
+                Naturally heal chronic disease, sharpen your thinking, and boost your immune system when you
+                discover how to feed, nurture, and control your gut's microbiome — the vast community of
+                bacteria, viruses, and microorganisms that science has now proven we cannot function without.
+              </p>
+              <p className="text-gray-300 text-lg leading-relaxed">
+                This is the hottest area of medical research today — and it changes everything you thought
+                you knew about health, disease, and the human body.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* QUOTE */}
-      <section className="bg-gray-900 py-12 px-4">
+      {/* ── QUOTE ────────────────────────────────────────────────────────── */}
+      <section className="py-12 px-4" style={{ background: "#071828" }}>
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-4xl text-teal-600 mb-3 leading-none">&ldquo;</p>
+          <p className="text-5xl mb-3 leading-none" style={{ color: "#1a9fc0" }}>&ldquo;</p>
           <blockquote className="text-xl md:text-2xl text-gray-200 italic leading-relaxed mb-4">
-            The microbiome is the next frontier in medicine. Understanding it and optimizing it is going to be
-            critical to solving so many of our healthcare issues.
+            The microbiome is the next frontier in medicine. Understanding it and optimizing it is going to
+            be critical to solving so many of our healthcare issues.
           </blockquote>
-          <p className="text-teal-400 font-bold">Mark Hyman, MD</p>
+          <p className="font-bold" style={{ color: "#7ecfdf" }}>Mark Hyman, MD</p>
           <p className="text-gray-400 text-sm">Cleveland Clinic Center for Functional Medicine</p>
         </div>
       </section>
 
-      {/* WHAT IS THE MICROBIOME */}
-      <section className="py-14 px-4 bg-gray-950">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-black uppercase mb-4">
-            The Hottest Area of Medical Research Today
-          </h2>
-          <p className="text-gray-300 text-lg leading-relaxed mb-8 max-w-2xl mx-auto">
-            Naturally heal chronic disease, sharpen your thinking, and boost your immune system when you discover
-            how to feed, nurture, and control your gut's microbiome - the vast community of bacteria, viruses,
-            and microorganisms that science has now proven we cannot function without.
-          </p>
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              { icon: "&#129504;", title: "Brain Health", desc: "Gut-brain axis: how your microbiome controls mood, cognition, and mental clarity" },
-              { icon: "&#128737;", title: "Immune Defense", desc: "70% of your immune system lives in your gut - learn to activate it" },
-              { icon: "&#128200;", title: "Chronic Disease", desc: "The root cause of most modern disease - and how to reverse it" },
-            ].map((item) => (
-              <div key={item.title} className="bg-gray-900 rounded-xl p-5 border border-gray-800">
-                <div className="text-3xl mb-3" dangerouslySetInnerHTML={{ __html: item.icon }} />
-                <h3 className="text-white font-bold mb-2">{item.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* EPISODES */}
-      <section className="py-14 px-4 bg-gray-900">
+      {/* ── EPISODES ─────────────────────────────────────────────────────── */}
+      <section className="py-14 px-4" style={{ background: "#051220" }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-black text-center uppercase mb-2">
             Here's a Peek at What You'll Discover Inside
           </h2>
           <p className="text-center text-gray-400 mb-10">
-            Interconnected: The Power to Heal From Within - 9 Episodes
+            Interconnected: The Power to Heal From Within — 9 Episodes
           </p>
-          <div className="space-y-6">
+          <div className="space-y-5">
             {EPISODES.map((ep) => (
-              <div key={ep.num} className="flex gap-5 items-start border-b border-gray-800 pb-6">
-                <div className="shrink-0 w-10 h-10 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-teal-400 font-black text-sm">
+              <div
+                key={ep.num}
+                className="flex gap-5 items-start pb-5"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+              >
+                <div
+                  className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-black text-sm"
+                  style={{ background: "rgba(26,159,192,0.15)", border: "1px solid rgba(26,159,192,0.4)", color: "#7ecfdf" }}
+                >
                   {ep.num}
                 </div>
                 <div>
@@ -371,7 +395,7 @@ export default function Interconnected() {
                   <ul className="space-y-1">
                     {ep.bullets.map((b, i) => (
                       <li key={i} className="flex items-start gap-2 text-gray-400 text-sm">
-                        <span className="text-teal-500 mt-0.5 shrink-0">&#10003;</span>
+                        <span className="mt-0.5 shrink-0 font-bold" style={{ color: "#1a9fc0" }}>&#10003;</span>
                         {b}
                       </li>
                     ))}
@@ -383,23 +407,26 @@ export default function Interconnected() {
         </div>
       </section>
 
-      {/* MID-PAGE CTA */}
-      <section className="py-14 px-4" style={{ background: "linear-gradient(135deg, #0a1f1f 0%, #050505 100%)" }}>
-        <div className="max-w-2xl mx-auto text-center">
+      {/* ── MID-PAGE CTA ─────────────────────────────────────────────────── */}
+      <section className="py-14 px-4" style={{ background: "#071828" }}>
+        <div className="max-w-xl mx-auto text-center">
           <h2 className="text-3xl font-black uppercase mb-3">
             Discover the Secret to Reversing Chronic Disease
           </h2>
           <p className="text-gray-300 mb-6">
             Register now before the free viewing period ends.
           </p>
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-700/50">
-            <OptInForm />
+          <div
+            className="rounded-xl p-6"
+            style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(26,159,192,0.3)" }}
+          >
+            <OptInForm compact />
           </div>
         </div>
       </section>
 
-      {/* EXPERTS */}
-      <section className="py-14 px-4 bg-gray-950">
+      {/* ── EXPERTS ──────────────────────────────────────────────────────── */}
+      <section className="py-14 px-4" style={{ background: "#051220" }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-black text-center uppercase mb-2">
             70 World-Renowned Doctors and Health Experts
@@ -409,68 +436,90 @@ export default function Interconnected() {
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {EXPERTS.map((name) => (
-              <span key={name} className="bg-gray-800 text-gray-300 text-sm px-3 py-1.5 rounded-full border border-gray-700/50">
+              <span
+                key={name}
+                className="text-gray-300 text-sm px-3 py-1.5 rounded-full"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              >
                 {name}
               </span>
             ))}
-            <span className="bg-teal-900/40 text-teal-400 text-sm px-3 py-1.5 rounded-full border border-teal-700/40 font-semibold">
+            <span
+              className="text-sm px-3 py-1.5 rounded-full font-semibold"
+              style={{ background: "rgba(26,159,192,0.15)", border: "1px solid rgba(26,159,192,0.4)", color: "#7ecfdf" }}
+            >
               + 44 more experts
             </span>
           </div>
         </div>
       </section>
 
-      {/* HOST BIO */}
-      <section className="py-14 px-4 bg-gray-900">
+      {/* ── HOST BIO (supporting role — bottom of page) ───────────────────── */}
+      <section className="py-14 px-4" style={{ background: "#071828" }}>
         <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-10 items-center">
-            <div>
-              <p className="text-teal-400 text-xs font-black uppercase tracking-widest mb-2">Meet Your Host</p>
-              <h2 className="text-3xl font-black mb-4">Dr. Pedram Shojai, OMD</h2>
-              <p className="text-gray-300 leading-relaxed mb-4">
+          <p className="text-center text-xs font-black uppercase tracking-widest mb-6" style={{ color: "#7ecfdf" }}>
+            Host &amp; Executive Producer
+          </p>
+          <div className="grid md:grid-cols-3 gap-8 items-center">
+            <div className="flex justify-center">
+              <div
+                className="rounded-xl overflow-hidden shadow-xl max-w-xs w-full"
+                style={{ border: "1px solid rgba(26,159,192,0.25)" }}
+              >
+                <img
+                  src={DOCTOR_PHOTO}
+                  alt="Dr. Pedram Shojai, OMD"
+                  className="w-full object-cover object-top"
+                  style={{ maxHeight: "280px" }}
+                />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <h3 className="text-2xl font-black mb-1">Dr. Pedram Shojai, OMD</h3>
+              <p className="text-sm mb-4" style={{ color: "#7ecfdf" }}>
+                Doctor of Oriental Medicine &nbsp;|&nbsp; Former Taoist Monk &nbsp;|&nbsp; NYT Bestselling Author
+              </p>
+              <p className="text-gray-300 leading-relaxed mb-3">
                 Dr. Pedram Shojai is a Doctor of Oriental Medicine, former Taoist monk, and New York Times
-                bestselling author. He is the producer of the documentary films <em>Vitality</em>, <em>Origins</em>,
-                and <em>Prosperity</em>, and the host and executive producer of <em>Interconnected</em>.
+                bestselling author of <em>The Urban Monk</em> and <em>The Art of Stopping Time</em>. He is the
+                producer of the documentary films <em>Vitality</em>, <em>Origins</em>, and <em>Prosperity</em>,
+                and the host and executive producer of <em>Interconnected</em>.
               </p>
               <p className="text-gray-300 leading-relaxed">
                 With over 20 years of clinical practice and a deep grounding in both Eastern and Western medicine,
-                Dr. Shojai brings a uniquely integrated perspective to the science of the microbiome - one that
+                Dr. Shojai brings a uniquely integrated perspective to the science of the microbiome — one that
                 bridges ancient wisdom with cutting-edge research.
               </p>
-            </div>
-            <div className="flex justify-center">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-700/40 max-w-xs w-full">
-                <img
-                  src={DOCTOR_PHOTO}
-                  alt="Dr. Pedram Shojai"
-                  className="w-full object-cover object-top"
-                  style={{ maxHeight: "360px" }}
-                />
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* BOTTOM CTA */}
-      <section className="py-16 px-4 bg-gray-950">
-        <div className="max-w-2xl mx-auto text-center">
+      {/* ── BOTTOM CTA ───────────────────────────────────────────────────── */}
+      <section className="py-16 px-4" style={{ background: "#051220" }}>
+        <div className="max-w-xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-black uppercase mb-3">
             Don't Miss the Free Viewing Period
           </h2>
           <p className="text-gray-300 mb-2">Access closes in:</p>
-          <p className="text-white font-mono font-black text-5xl mb-6">
+          <p className="font-mono font-black text-5xl mb-6 text-white">
             {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
           </p>
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-700/50">
+          <div
+            className="rounded-xl p-6"
+            style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(26,159,192,0.3)" }}
+          >
             <OptInForm />
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="bg-gray-950 border-t border-gray-800 py-8 px-4 text-center">
-        <img src={LOGO} alt="The Urban Monk" className="w-28 mx-auto mb-4 opacity-60" />
+      {/* ── FOOTER ───────────────────────────────────────────────────────── */}
+      <footer
+        className="py-8 px-4 text-center"
+        style={{ background: "#020d18", borderTop: "1px solid rgba(255,255,255,0.07)" }}
+      >
+        <img src={LOGO} alt="The Urban Monk" className="w-28 mx-auto mb-4 opacity-50" />
         <p className="text-gray-600 text-xs max-w-2xl mx-auto mb-2 leading-relaxed">
           THE INFORMATION ON THIS SITE IS FOR EDUCATIONAL PURPOSES ONLY AND SHOULD NOT BE CONSTRUED AS MEDICAL ADVICE.
           READERS ARE ADVISED TO CONSULT A QUALIFIED PROFESSIONAL ABOUT ANY ISSUE REGARDING THEIR HEALTH AND WELL-BEING.

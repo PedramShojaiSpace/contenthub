@@ -129,6 +129,7 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [error, setError] = useState("");
 
   const submit = trpc.interconnected.register.useMutation({
@@ -143,7 +144,7 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
       setError("Please enter your name and email.");
       return;
     }
-    submit.mutate({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined });
+    submit.mutate({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, smsConsent });
   };
 
   return (
@@ -170,13 +171,42 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
         className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
       />
       {!compact && (
-        <input
-          type="tel"
-          placeholder="Mobile Phone (optional — episode reminders)"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
-        />
+        <>
+          <input
+            type="tel"
+            placeholder="Mobile Phone (optional — episode reminders)"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full px-4 py-3 text-gray-900 bg-white border-0 rounded text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          />
+          {/* TCPA-compliant SMS consent checkbox */}
+          <label className="flex items-start gap-3 bg-white/10 border border-white/20 rounded p-3 cursor-pointer">
+            <div className="relative mt-0.5 shrink-0">
+              <input
+                type="checkbox"
+                checked={smsConsent}
+                onChange={(e) => setSmsConsent(e.target.checked)}
+                className="sr-only"
+              />
+              <div
+                className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${
+                  smsConsent ? "bg-green-700 border-green-700" : "bg-white border-gray-400"
+                }`}
+              >
+                {smsConsent && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12">
+                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <span className="text-xs text-gray-200 leading-relaxed">
+              By checking this box you agree to receive recurring, automated marketing text messages from The Urban Monk and select third-party partners, at the phone number you provide, even if it is on a Do Not Call list. Consent is not required to purchase. Msg frequency varies. Msg&amp;Data rates may apply. Reply HELP for support or STOP to cancel.{" "}
+              <a href="https://theurbanmonk.com/sms-terms" target="_blank" rel="noopener noreferrer" className="underline text-cyan-300">SMS Terms</a>{" "}|{" "}
+              <a href="https://theurbanmonk.com/privacy" target="_blank" rel="noopener noreferrer" className="underline text-cyan-300">Privacy Policy</a>
+            </span>
+          </label>
+        </>
       )}
       {error && <p className="text-red-300 text-sm">{error}</p>}
       <button

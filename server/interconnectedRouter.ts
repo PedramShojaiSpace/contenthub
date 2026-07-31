@@ -9,7 +9,7 @@ import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
 import { sendGmailOutreach } from "./gmail";
 import { notifyOwner } from "./_core/notification";
 
-const KAJABI_TAG = "interconnected-optin";
+const KAJABI_TAG = "Interconnected Opt In";
 
 function buildWelcomeEmail(name: string): string {
   const firstName = name.split(" ")[0] || name;

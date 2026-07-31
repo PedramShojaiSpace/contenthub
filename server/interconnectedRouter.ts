@@ -83,20 +83,7 @@ export const interconnectedRouter = router({
         console.error("[interconnectedRouter] Kajabi error:", err);
       }
 
-      // 2. Send welcome email
-      let emailSent = false;
-      try {
-        const result = await sendGmailOutreach({
-          to: email,
-          subject: "You're registered - Interconnected: The Power to Heal From Within",
-          body: buildWelcomeEmail(name),
-        });
-        emailSent = result.success;
-      } catch (err) {
-        console.error("[interconnectedRouter] Email error:", err);
-      }
-
-      // 3. Notify owner
+      // 2. Notify owner
       try {
         await notifyOwner({
           title: "New Interconnected Opt-In",

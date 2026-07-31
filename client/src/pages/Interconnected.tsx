@@ -354,17 +354,17 @@ export default function Interconnected() {
           style={{ background: "linear-gradient(to right, rgba(2,13,24,0.9) 0%, rgba(2,13,24,0.5) 50%, rgba(2,13,24,0.8) 100%)" }}
         />
 
-        <div className="relative z-10 w-full px-4 py-16 md:py-20">
-          <div className="max-w-6xl mx-auto">
+        <div className="relative z-10 w-full px-4 py-16 md:py-20" style={{ overflowX: "hidden" }}>
+          <div className="max-w-6xl mx-auto" style={{ overflowX: "hidden" }}>
             <img src={LOGO} alt="The Urban Monk" className="w-36 mb-8 mx-auto md:mx-0" />
 
-            <div className="grid lg:grid-cols-2 gap-10 items-start">
+            <div className="grid lg:grid-cols-2 gap-10 items-start" style={{ overflow: "hidden" }}>
 
               {/* LEFT — Documentary title and big claim */}
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <h1
                   className="font-black leading-none mb-3 uppercase"
-                  style={{ fontSize: "clamp(2.8rem, 6vw, 4.5rem)", letterSpacing: "-0.02em" }}
+                  style={{ fontSize: "clamp(2.2rem, 4vw, 3.5rem)", letterSpacing: "-0.02em" }}
                 >
                   INTERCONNECTED
                 </h1>

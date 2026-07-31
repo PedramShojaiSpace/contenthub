@@ -16,6 +16,7 @@
  */
 
 import { google } from "googleapis";
+import { buildMimeMessage } from "./emailBoost";
 
 const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
@@ -99,6 +100,8 @@ export interface SendEmailParams {
   toName?: string;
   subject: string;
   body: string;
+  /** Optional first name for personalisation in the HTML template */
+  firstName?: string;
   /** If replying to an existing thread, provide the thread ID */
   threadId?: string;
   /** If replying, provide the message ID to set In-Reply-To header */
@@ -111,39 +114,29 @@ export interface SendEmailResult {
 }
 
 /**
- * Send an outreach email from alyzza@theurbanmonk.com as "The Urban Monk".
- * The From header shows "The Urban Monk <alyzza@theurbanmonk.com>" so it reads
- * as the brand and replies come back to Alyzza's inbox.
+ * Send an outreach email from alyzza@theurbanmonk.com as "Dr. Pedram Shojai".
+ * Sends a multipart/alternative MIME message (plain text + HTML).
+ * The HTML part includes the boostData deliverability block to improve inbox placement.
  */
 export async function sendGmailOutreach(params: SendEmailParams): Promise<SendEmailResult> {
   const gmail = getGmailClient();
 
-  const fromName = "The Urban Monk";
+  const fromName = "Dr. Pedram Shojai";
   const fromEmail = "alyzza@theurbanmonk.com";
 
-  // Build RFC 2822 email
   const toHeader = params.toName
     ? `"${params.toName}" <${params.to}>`
     : params.to;
 
-  const headers: Record<string, string> = {
-    "From": `"${fromName}" <${fromEmail}>`,
-    "To": toHeader,
-    "Subject": params.subject,
-    "Content-Type": "text/plain; charset=utf-8",
-    "MIME-Version": "1.0",
-  };
-
-  if (params.inReplyToMessageId) {
-    headers["In-Reply-To"] = params.inReplyToMessageId;
-    headers["References"] = params.inReplyToMessageId;
-  }
-
-  const headerString = Object.entries(headers)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join("\r\n");
-
-  const rawEmail = `${headerString}\r\n\r\n${params.body}`;
+  // Build multipart MIME message with HTML boostData block
+  const rawEmail = buildMimeMessage({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: toHeader,
+    subject: params.subject,
+    textBody: params.body,
+    firstName: params.firstName ?? params.toName?.split(" ")[0],
+    inReplyToMessageId: params.inReplyToMessageId,
+  });
 
   // Base64url encode
   const encodedEmail = Buffer.from(rawEmail)

@@ -337,26 +337,30 @@ export default function InterconnectedThankYou() {
             Wait, one more thing!
           </h1>
 
-          {/* VIDEO PLACEHOLDER */}
+          {/* WISTIA VIDEO EMBED */}
           <div
-            className="relative w-full rounded-2xl overflow-hidden mb-8 flex items-center justify-center cursor-pointer"
-            style={{ background: BG_CARD, border: `2px solid ${BLUE}`, aspectRatio: "16/9", boxShadow: `0 0 40px ${BLUE_GLOW}` }}
+            className="relative w-full rounded-2xl overflow-hidden mb-8"
+            style={{ boxShadow: `0 0 40px ${BLUE_GLOW}`, border: `2px solid ${BLUE}` }}
           >
-            <div className="flex flex-col items-center gap-4 px-8">
+            <div className="wistia_responsive_padding" style={{ padding: "56.25% 0 0 0", position: "relative" }}>
               <div
-                className="w-20 h-20 rounded-full flex items-center justify-center"
-                style={{ background: BLUE_GLOW, border: `2px solid ${BLUE}` }}
+                className="wistia_responsive_wrapper"
+                style={{ height: "100%", left: 0, position: "absolute", top: 0, width: "100%" }}
               >
-                <svg className="w-9 h-9 ml-1" fill={BLUE} viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
+                <iframe
+                  src="https://fast.wistia.net/embed/iframe/2tt1q5l0np?seo=true&videoFoam=true"
+                  title="Interconnected Thank You Video"
+                  allow="autoplay; fullscreen"
+                  allowTransparency
+                  frameBorder={0}
+                  scrolling="no"
+                  className="wistia_embed"
+                  name="wistia_embed"
+                  width="100%"
+                  height="100%"
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+                />
               </div>
-              <p className="text-white text-lg font-semibold" style={{ fontFamily: "Georgia, serif" }}>
-                [Record your video message here — Dr. Shojai speaking directly to the viewer]
-              </p>
-              <p className="text-gray-400 text-sm max-w-md">
-                Suggested: 2–3 min. Thank them for registering, explain the 24-hour window, then pivot to the all-access offer. Paste your Vimeo or Wistia embed URL to replace this placeholder.
-              </p>
             </div>
           </div>
 

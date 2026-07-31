@@ -46,7 +46,6 @@ export const TANTRA_QUIZ_QUESTIONS = [
     options: [
       { id: "me_male",   text: "For myself — I'm a man",           gender: "male" },
       { id: "me_female", text: "For myself — I'm a woman",         gender: "female" },
-      { id: "partner",   text: "My partner asked me to take it",   gender: "unknown" },
       { id: "couple",    text: "We're doing this together",        gender: "couple" },
     ],
   },
@@ -244,10 +243,6 @@ export function routeToProduct(
   if (whoAnswer === "me_male") gender = "male";
   else if (whoAnswer === "me_female") gender = "female";
   else if (whoAnswer === "couple") gender = "couple";
-  else if (whoAnswer === "partner") {
-    // If partner sent them, default to bundle — they're likely a couple
-    gender = "couple";
-  }
 
   // Product routing
   let result: keyof typeof TANTRA_PRODUCTS;

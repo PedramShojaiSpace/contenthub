@@ -1,10 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 
 const LOGO = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/66115c4-003e-6c04-6630-3f5a15f47141_250aa8b0-new-logo-tagline-white.png";
 const DOCTOR_PHOTO = "/manus-storage/pedram-white-coat_7321e611.webp";
 const POSTER = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/48c813-cc7f-353c-4803-cd75834823bd_138f9c51-poster-jmsopt_100000000000000000001o.jpg";
+const INTERCONNECTED_LOGO = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/e4e2eae-88f-484b-8fbd-eda8f812fd_interconnected.png";
+
+// Kajabi CDN base for expert headshots
+const K = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/";
 
 // ─── Countdown Timer ─────────────────────────────────────────────────────────
 function useCountdown(hours: number) {
@@ -113,14 +117,91 @@ const EPISODES = [
   },
 ];
 
-const EXPERTS = [
-  "Dave Asprey", "Zach Bush, MD", "Mark Hyman, MD", "Alessio Fassano, MD",
-  "Robynne Chutkan, MD", "Rangan Chatterjee, MD", "Datis Kharrazian, PhD",
-  "Tom O'Bryan, DC", "Joe Pizzorno, ND", "JJ Virgin", "Max Lugavere",
-  "Naveen Jain", "Robin Berzin, MD", "Kara Fitzgerald, ND", "Jolene Brighten, ND",
-  "Peter Diamandis, MD", "Izabella Wentz, PharmD", "Daniel Pompa, PSc.D",
-  "Marvin Singh, MD", "Ann Shippy, MD", "Michael Ruscio, DC", "Ocean Robbins",
-  "Summer Bock", "Emily Fletcher", "Nick Polizzi", "Joel Evans, MD",
+// ─── Featured Experts (with headshots) ────────────────────────────────────────
+const FEATURED_EXPERTS = [
+  {
+    name: "Mark Hyman, MD",
+    cred: "Cleveland Clinic Center for Functional Medicine",
+    img: K + "1334cb0-bea0-4a-d35d-f8f887343a7_3dd26ddb-expert-hyman-mark-200x200_100000000000000000001o.jpg",
+    quote: "The microbiome is the next frontier in medicine.",
+  },
+  {
+    name: "Dave Asprey",
+    cred: "Founder of Bulletproof · Biohacker",
+    img: K + "c3bef4-0b2-8a3-9f6-5b4c4d3b7a2_expert-asprey-dave-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Zach Bush, MD",
+    cred: "Triple Board-Certified Physician",
+    img: K + "4a0b3c-7f2-9e1-b5d8-2c6a4e8f1d3_expert-bush-zach-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Alessio Fassano, MD",
+    cred: "Harvard Medical School · Leaky Gut Pioneer",
+    img: K + "7f8ab7f-638-686-bc3b-d80ac856173c_89833e75-expert-fassano-alessio-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Datis Kharrazian, PhD",
+    cred: "Harvard Medical School Researcher",
+    img: K + "7be7fca-f0ba-17c-7e5b-0da7e2846b45_e75b8126-expert-kharrazian-datis-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Max Lugavere",
+    cred: "NYT Bestselling Author · Health Journalist",
+    img: K + "e1bafc7-ea4c-76a4-6ce4-c8a83f2f452_b7438dd6-expert-lugavere-max-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "JJ Virgin",
+    cred: "Celebrity Nutrition Expert · NYT Bestselling Author",
+    img: K + "03e3b7-2ba-b11d-dcd4-137fbe8de4e_61b7b790-expert-jj-virgin-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Naveen Jain",
+    cred: "Entrepreneur · Founder of Viome",
+    img: K + "335e0-17a5-f7f8-bc37-47fd68b8784_3b443e9b-expert-jain-naveen-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Izabella Wentz, PharmD",
+    cred: "NYT Bestselling Author · Thyroid Pharmacist",
+    img: K + "1bf781-b704-fe5c-1884-1d6adbd864_d2724fdd-expert-wentz-izabella-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Tom O'Bryan, DC",
+    cred: "World-Renowned Gluten & Autoimmunity Expert",
+    img: K + "b3e2c1-9a4d-7f8e-2b1c-6d5a3e7f9b2_expert-obryan-tom-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Rangan Chatterjee, MD",
+    cred: "BBC Doctor · Author of Feel Better in 5",
+    img: K + "f2a4b8-3c6e-1d9f-7a2b-5e8c4d1f6a3_expert-chatterjee-rangan-200x200_100000000000000000001o.jpg",
+  },
+  {
+    name: "Ocean Robbins",
+    cred: "Food Revolution Network · Author",
+    img: K + "b245844-a1f2-35a-718a-bcbc38e7b268_8e81ec91-expert-robbins-ocean-200x200_100000000000000000001o.jpg",
+  },
+];
+
+// ─── All 70 Expert Names ───────────────────────────────────────────────────────
+const ALL_EXPERTS = [
+  "Dave Asprey", "Gurunduth Banavar", "Maggie Berghoff", "Razi Berry",
+  "Robin Berzin, MD", "Christina Bjorndahl", "Martin Blaser, MD", "Summer Bock",
+  "Eugenia Bone", "Elhanan Borenstein, PhD", "Jolene Brighten, ND", "Kenneth Brown, MD",
+  "Zach Bush, MD", "Rangan Chatterjee, MD", "Robynne Chutkan, MD", "Edison De Mello, MD",
+  "Afrouz Demehri, NMD", "Peter Diamandis, MD", "Carolyn Edelstein", "Joel Evans, MD",
+  "Tom Fabian, PhD", "Alessio Fassano, MD", "Kara Fitzgerald, ND", "Emily Fletcher",
+  "Rob Franklin, DVM", "Claire Fraser, PhD", "Bob Harding, DO", "Jennifer Harmon-Meyer",
+  "Tara Hunkin", "Mark Hyman, MD", "Naveen Jain", "Pejman Katiraei, DO",
+  "Raphael Kellman, MD", "Datis Kharrazian, PhD", "Max Lugavere", "Finian Makepeace",
+  "Tom Malterre, MS", "Laura Markle Downton", "James Maskell", "Emeran Mayer, MD",
+  "Sarkis Mazmanian, PhD", "Mark Menolascino, MD", "Helen Messier, MD", "Gerard Mullin, MD",
+  "Karen Nelson, PhD", "Tom O'Bryan, DC", "Barbara Olendzki, RD", "Ally Perlina",
+  "Warren Phillips, MS", "Joe Pizzorno, ND", "Daniel Pompa, PSc.D", "David Relman, MD",
+  "Ocean Robbins", "Robert Rountree, MD", "Michael Ruscio, DC", "Shivan Sarna",
+  "Trudy Scott, CN", "Ann Shippy, MD", "Marvin Singh, MD", "Mariza Snyder, DC",
+  "Joel Sprechman", "Sarah Anne Stewart", "Marisol Teijeiro, ND", "JJ Virgin",
+  "Momo Vuyisich", "Izabella Wentz, PharmD", "Genevieve White", "Todd White",
+  "Magdalena Wszelaki", "Eric Zielinski, DC",
 ];
 
 // ─── Opt-In Form ──────────────────────────────────────────────────────────────
@@ -150,7 +231,7 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {!compact && (
-        <p className="text-center text-sm font-bold text-gray-200 uppercase tracking-wide mb-1">
+        <p className="text-center text-sm font-bold text-white uppercase tracking-wide mb-1">
           Register NOW for FREE unlimited access
         </p>
       )}
@@ -190,7 +271,7 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
               />
               <div
                 className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${
-                  smsConsent ? "bg-green-700 border-green-700" : "bg-white border-gray-400"
+                  smsConsent ? "bg-cyan-600 border-cyan-600" : "bg-white border-gray-400"
                 }`}
               >
                 {smsConsent && (
@@ -213,7 +294,7 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
         type="submit"
         disabled={submit.isPending}
         className="w-full py-4 px-6 font-black text-base rounded uppercase tracking-wide transition-colors disabled:opacity-60"
-        style={{ background: "#1a9fc0", color: "#fff", letterSpacing: "0.06em" }}
+        style={{ background: "#018db1", color: "#fff", letterSpacing: "0.06em" }}
       >
         {submit.isPending ? "Registering..." : "REGISTER NOW!"}
       </button>
@@ -239,14 +320,14 @@ export default function Interconnected() {
       {/* STICKY URGENCY BAR */}
       <div
         className="sticky top-0 z-50 text-white text-center py-2 px-4 text-sm font-semibold"
-        style={{ background: "#1a4a5a" }}
+        style={{ background: "#161E2A", borderBottom: "1px solid rgba(1,141,177,0.4)" }}
       >
         Free viewing period closes in:&nbsp;
-        <span className="font-mono font-black">
+        <span className="font-mono font-black" style={{ color: "#2E91FC" }}>
           {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
         </span>
         &nbsp;&mdash;&nbsp;
-        <button onClick={scrollToForm} className="underline font-bold hover:opacity-80">
+        <button onClick={scrollToForm} className="underline font-bold hover:opacity-80" style={{ color: "#7ecfdf" }}>
           Claim your free access now
         </button>
       </div>
@@ -265,12 +346,12 @@ export default function Interconnected() {
             backgroundImage: `url(${POSTER})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            opacity: 0.18,
+            opacity: 0.2,
           }}
         />
         <div
           className="absolute inset-0"
-          style={{ background: "linear-gradient(to right, rgba(2,13,24,0.85) 0%, rgba(2,13,24,0.4) 50%, rgba(2,13,24,0.75) 100%)" }}
+          style={{ background: "linear-gradient(to right, rgba(2,13,24,0.9) 0%, rgba(2,13,24,0.5) 50%, rgba(2,13,24,0.8) 100%)" }}
         />
 
         <div className="relative z-10 w-full px-4 py-16 md:py-20">
@@ -293,14 +374,14 @@ export default function Interconnected() {
 
                 <div
                   className="rounded-lg p-5 mb-6"
-                  style={{ background: "rgba(26,159,192,0.12)", border: "1px solid rgba(126,207,223,0.25)" }}
+                  style={{ background: "rgba(46,145,252,0.1)", border: "1px solid rgba(46,145,252,0.3)" }}
                 >
                   <p
                     className="font-black text-2xl md:text-3xl leading-tight uppercase"
                     style={{ color: "#f0f4f8" }}
                   >
                     THE SOURCE OF 90% OF ALL CHRONIC DISEASE:
-                    <span style={{ color: "#1a9fc0" }}> DISCOVERED</span>
+                    <span style={{ color: "#2E91FC" }}> DISCOVERED</span>
                   </p>
                 </div>
 
@@ -312,12 +393,12 @@ export default function Interconnected() {
 
                 <div className="flex flex-wrap gap-4 mb-6">
                   {[
-                    { icon: "&#127897;", text: "9-Part Documentary Series" },
-                    { icon: "&#128104;&#8205;&#9877;", text: "70+ World-Class Experts" },
-                    { icon: "&#127381;", text: "100% Free Access" },
+                    { icon: "🎬", text: "9-Part Documentary Series" },
+                    { icon: "👨‍⚕️", text: "70+ World-Class Experts" },
+                    { icon: "🎁", text: "100% Free Access" },
                   ].map((b) => (
                     <div key={b.text} className="flex items-center gap-2 text-sm" style={{ color: "#a0d8e8" }}>
-                      <span dangerouslySetInnerHTML={{ __html: b.icon }} />
+                      <span>{b.icon}</span>
                       <span className="font-semibold">{b.text}</span>
                     </div>
                   ))}
@@ -326,9 +407,9 @@ export default function Interconnected() {
                 {/* Countdown box */}
                 <div
                   className="flex items-center gap-3 rounded-lg p-3"
-                  style={{ background: "rgba(10,20,30,0.7)", border: "1px solid rgba(26,159,192,0.3)" }}
+                  style={{ background: "rgba(10,20,30,0.7)", border: "1px solid rgba(46,145,252,0.3)" }}
                 >
-                  <span className="text-yellow-400 text-xl">&#9888;</span>
+                  <span className="text-yellow-400 text-xl">⚠</span>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#7ecfdf" }}>
                       Free viewing period closes in:
@@ -344,11 +425,11 @@ export default function Interconnected() {
               <div ref={formRef}>
                 <div
                   className="rounded-xl p-6"
-                  style={{ background: "rgba(5,20,35,0.92)", border: "1px solid rgba(26,159,192,0.35)" }}
+                  style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(46,145,252,0.35)" }}
                 >
                   <p
                     className="text-center font-black text-sm uppercase tracking-widest mb-4"
-                    style={{ color: "#1a9fc0" }}
+                    style={{ color: "#2E91FC" }}
                   >
                     Register NOW for a limited-time FREE viewing of this groundbreaking 9-part documentary series.
                   </p>
@@ -361,7 +442,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── TAKE ADVANTAGE ──────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#051220" }}>
+      <section className="py-14 px-4" style={{ background: "#0d1e2e" }}>
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
@@ -385,26 +466,101 @@ export default function Interconnected() {
         </div>
       </section>
 
-      {/* ── QUOTE ────────────────────────────────────────────────────────── */}
-      <section className="py-12 px-4" style={{ background: "#071828" }}>
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-5xl mb-3 leading-none" style={{ color: "#1a9fc0" }}>&ldquo;</p>
-          <blockquote className="text-xl md:text-2xl text-gray-200 italic leading-relaxed mb-4">
-            The microbiome is the next frontier in medicine. Understanding it and optimizing it is going to
-            be critical to solving so many of our healthcare issues.
-          </blockquote>
-          <p className="font-bold" style={{ color: "#7ecfdf" }}>Mark Hyman, MD</p>
-          <p className="text-gray-400 text-sm">Cleveland Clinic Center for Functional Medicine</p>
+      {/* ── MARK HYMAN FEATURED QUOTE ────────────────────────────────────── */}
+      <section className="py-14 px-4" style={{ background: "#161E2A" }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 items-center">
+            <div className="flex justify-center">
+              <div
+                className="rounded-full overflow-hidden shadow-2xl"
+                style={{ width: "180px", height: "180px", border: "4px solid rgba(46,145,252,0.5)" }}
+              >
+                <img
+                  src={K + "1334cb0-bea0-4a-d35d-f8f887343a7_3dd26ddb-expert-hyman-mark-200x200_100000000000000000001o.jpg"}
+                  alt="Mark Hyman, MD"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <p className="text-4xl mb-2 leading-none" style={{ color: "#2E91FC" }}>&ldquo;</p>
+              <blockquote className="text-xl md:text-2xl text-gray-100 italic leading-relaxed mb-4">
+                The microbiome is the next frontier in medicine. Understanding it and optimizing it is going to
+                be critical to solving so many of our healthcare issues.
+              </blockquote>
+              <p className="font-black text-lg" style={{ color: "#2E91FC" }}>Mark Hyman, MD</p>
+              <p className="text-gray-400 text-sm">Cleveland Clinic Center for Functional Medicine</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURED EXPERTS GRID ────────────────────────────────────────── */}
+      <section className="py-14 px-4" style={{ background: "#0a1520" }}>
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-black text-center uppercase mb-2" style={{ color: "#f0f4f8" }}>
+            Meet the All-Star Lineup
+          </h2>
+          <p className="text-center mb-2" style={{ color: "#7ecfdf" }}>
+            Here are the preeminent doctors, researchers, and experts you'll meet inside Interconnected:
+          </p>
+          <div className="w-16 h-1 mx-auto mb-10 rounded" style={{ background: "#2E91FC" }} />
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+            {FEATURED_EXPERTS.map((expert) => (
+              <div key={expert.name} className="flex flex-col items-center text-center">
+                <div
+                  className="rounded-full overflow-hidden mb-3 shadow-lg"
+                  style={{
+                    width: "90px",
+                    height: "90px",
+                    border: "3px solid rgba(46,145,252,0.4)",
+                    background: "#161E2A",
+                  }}
+                >
+                  <img
+                    src={expert.img}
+                    alt={expert.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                      (e.target as HTMLImageElement).parentElement!.style.background = "#1a3a5a";
+                    }}
+                  />
+                </div>
+                <p className="font-bold text-xs text-white leading-tight mb-0.5">{expert.name}</p>
+                <p className="text-xs leading-tight" style={{ color: "#7ecfdf" }}>{expert.cred}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* All 70 names pill list */}
+          <div className="mt-12">
+            <p className="text-center text-sm font-bold uppercase tracking-widest mb-5" style={{ color: "#7ecfdf" }}>
+              Plus 58 More World-Renowned Experts Including:
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {ALL_EXPERTS.filter(n => !FEATURED_EXPERTS.map(e => e.name.split(",")[0]).some(fn => n.includes(fn.split(",")[0]))).map((name) => (
+                <span
+                  key={name}
+                  className="text-gray-300 text-xs px-3 py-1.5 rounded-full"
+                  style={{ background: "rgba(46,145,252,0.08)", border: "1px solid rgba(46,145,252,0.2)" }}
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── EPISODES ─────────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#051220" }}>
+      <section className="py-14 px-4" style={{ background: "#0d1e2e" }}>
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-black text-center uppercase mb-2">
+          <h2 className="text-3xl font-black text-center uppercase mb-2" style={{ color: "#f0f4f8" }}>
             Here's a Peek at What You'll Discover Inside
           </h2>
-          <p className="text-center text-gray-400 mb-10">
+          <p className="text-center mb-10" style={{ color: "#7ecfdf" }}>
             Interconnected: The Power to Heal From Within — 9 Episodes
           </p>
           <div className="space-y-5">
@@ -412,11 +568,11 @@ export default function Interconnected() {
               <div
                 key={ep.num}
                 className="flex gap-5 items-start pb-5"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+                style={{ borderBottom: "1px solid rgba(46,145,252,0.12)" }}
               >
                 <div
                   className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-black text-sm"
-                  style={{ background: "rgba(26,159,192,0.15)", border: "1px solid rgba(26,159,192,0.4)", color: "#7ecfdf" }}
+                  style={{ background: "rgba(46,145,252,0.15)", border: "1px solid rgba(46,145,252,0.4)", color: "#2E91FC" }}
                 >
                   {ep.num}
                 </div>
@@ -425,7 +581,7 @@ export default function Interconnected() {
                   <ul className="space-y-1">
                     {ep.bullets.map((b, i) => (
                       <li key={i} className="flex items-start gap-2 text-gray-400 text-sm">
-                        <span className="mt-0.5 shrink-0 font-bold" style={{ color: "#1a9fc0" }}>&#10003;</span>
+                        <span className="mt-0.5 shrink-0 font-bold" style={{ color: "#2E91FC" }}>✓</span>
                         {b}
                       </li>
                     ))}
@@ -438,63 +594,34 @@ export default function Interconnected() {
       </section>
 
       {/* ── MID-PAGE CTA ─────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#071828" }}>
+      <section className="py-14 px-4" style={{ background: "#161E2A" }}>
         <div className="max-w-xl mx-auto text-center">
-          <h2 className="text-3xl font-black uppercase mb-3">
+          <h2 className="text-3xl font-black uppercase mb-3" style={{ color: "#f0f4f8" }}>
             Discover the Secret to Reversing Chronic Disease
           </h2>
-          <p className="text-gray-300 mb-6">
+          <p className="mb-6" style={{ color: "#7ecfdf" }}>
             Register now before the free viewing period ends.
           </p>
           <div
             className="rounded-xl p-6"
-            style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(26,159,192,0.3)" }}
+            style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(46,145,252,0.3)" }}
           >
             <OptInForm compact />
           </div>
         </div>
       </section>
 
-      {/* ── EXPERTS ──────────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#051220" }}>
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-black text-center uppercase mb-2">
-            70 World-Renowned Doctors and Health Experts
-          </h2>
-          <p className="text-center text-gray-400 text-sm mb-8">
-            Featured in Interconnected: The Power to Heal From Within
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {EXPERTS.map((name) => (
-              <span
-                key={name}
-                className="text-gray-300 text-sm px-3 py-1.5 rounded-full"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-              >
-                {name}
-              </span>
-            ))}
-            <span
-              className="text-sm px-3 py-1.5 rounded-full font-semibold"
-              style={{ background: "rgba(26,159,192,0.15)", border: "1px solid rgba(26,159,192,0.4)", color: "#7ecfdf" }}
-            >
-              + 44 more experts
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOST BIO (supporting role — bottom of page) ───────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#071828" }}>
+      {/* ── HOST BIO ─────────────────────────────────────────────────────── */}
+      <section className="py-14 px-4" style={{ background: "#0a1520" }}>
         <div className="max-w-4xl mx-auto">
-          <p className="text-center text-xs font-black uppercase tracking-widest mb-6" style={{ color: "#7ecfdf" }}>
-            Host &amp; Executive Producer
+          <p className="text-center text-xs font-black uppercase tracking-widest mb-6" style={{ color: "#2E91FC" }}>
+            Meet Your Host
           </p>
           <div className="grid md:grid-cols-3 gap-8 items-center">
             <div className="flex justify-center">
               <div
                 className="rounded-xl overflow-hidden shadow-xl max-w-xs w-full"
-                style={{ border: "1px solid rgba(26,159,192,0.25)" }}
+                style={{ border: "1px solid rgba(46,145,252,0.25)" }}
               >
                 <img
                   src={DOCTOR_PHOTO}
@@ -506,7 +633,7 @@ export default function Interconnected() {
             </div>
             <div className="md:col-span-2">
               <h3 className="text-2xl font-black mb-1">Dr. Pedram Shojai, OMD</h3>
-              <p className="text-sm mb-4" style={{ color: "#7ecfdf" }}>
+              <p className="text-sm mb-4" style={{ color: "#2E91FC" }}>
                 Doctor of Oriental Medicine &nbsp;|&nbsp; Former Taoist Monk &nbsp;|&nbsp; NYT Bestselling Author
               </p>
               <p className="text-gray-300 leading-relaxed mb-3">
@@ -526,18 +653,18 @@ export default function Interconnected() {
       </section>
 
       {/* ── BOTTOM CTA ───────────────────────────────────────────────────── */}
-      <section className="py-16 px-4" style={{ background: "#051220" }}>
+      <section className="py-16 px-4" style={{ background: "#0d1e2e" }}>
         <div className="max-w-xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-black uppercase mb-3">
+          <h2 className="text-3xl md:text-4xl font-black uppercase mb-3" style={{ color: "#f0f4f8" }}>
             Don't Miss the Free Viewing Period
           </h2>
-          <p className="text-gray-300 mb-2">Access closes in:</p>
+          <p className="mb-2" style={{ color: "#7ecfdf" }}>Access closes in:</p>
           <p className="font-mono font-black text-5xl mb-6 text-white">
             {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
           </p>
           <div
             className="rounded-xl p-6"
-            style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(26,159,192,0.3)" }}
+            style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(46,145,252,0.3)" }}
           >
             <OptInForm />
           </div>
@@ -547,7 +674,7 @@ export default function Interconnected() {
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
       <footer
         className="py-8 px-4 text-center"
-        style={{ background: "#020d18", borderTop: "1px solid rgba(255,255,255,0.07)" }}
+        style={{ background: "#020d18", borderTop: "1px solid rgba(46,145,252,0.1)" }}
       >
         <img src={LOGO} alt="The Urban Monk" className="w-28 mx-auto mb-4 opacity-50" />
         <p className="text-gray-600 text-xs max-w-2xl mx-auto mb-2 leading-relaxed">

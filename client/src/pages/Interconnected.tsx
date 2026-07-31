@@ -122,63 +122,63 @@ const FEATURED_EXPERTS = [
   {
     name: "Mark Hyman, MD",
     cred: "Cleveland Clinic Center for Functional Medicine",
-    img: K + "Mark Hyman, MD_ac8a0034.jpg",
+    img: K + "mark-hyman-md_59f25bf6.jpg",
     quote: "The microbiome is the next frontier in medicine.",
   },
   {
     name: "Dave Asprey",
     cred: "Founder of Bulletproof · Biohacker",
-    img: K + "Dave Aspey_db3703a7.jpg",
+    img: K + "dave-aspey_cb9def9f.jpg",
   },
   {
     name: "Zach Bush, MD",
     cred: "Triple Board-Certified Physician",
-    img: K + "Zach Bush, MD_a26821b8.jpg",
+    img: K + "zach-bush-md_50a4b43c.jpg",
   },
   {
     name: "Alessio Fassano, MD",
     cred: "Harvard Medical School · Leaky Gut Pioneer",
-    img: K + "Alessio Fassano, MD_9ee5b4d8.jpg",
+    img: K + "alessio-fassano-md_6d7caa9a.jpg",
   },
   {
     name: "Datis Kharrazian, PhD",
     cred: "Harvard Medical School Researcher",
-    img: K + "Datis Kharrazian, PhD, DHSC_391c03fc.jpg",
+    img: K + "datis-kharrazian-phd-dhsc_eec6ace2.jpg",
   },
   {
     name: "Max Lugavere",
     cred: "NYT Bestselling Author · Health Journalist",
-    img: K + "Max Lugavere_bf5b6537.jpg",
+    img: K + "max-lugavere_78f23e75.jpg",
   },
   {
     name: "JJ Virgin",
     cred: "Celebrity Nutrition Expert · NYT Bestselling Author",
-    img: K + "JJ Virgin_3b348e2f.jpg",
+    img: K + "jj-virgin_4bc75cbd.jpg",
   },
   {
     name: "Emeran Mayer, MD",
     cred: "UCLA · Author of The Mind-Gut Connection",
-    img: K + "Emaren Mayer, MD_3c1401d9.jpg",
+    img: K + "emaren-mayer-md_edf069aa.jpg",
   },
   {
     name: "Izabella Wentz, PharmD",
     cred: "NYT Bestselling Author · Thyroid Pharmacist",
-    img: K + "Izabella Wentz, Pharm D_b77f8e06.jpg",
+    img: K + "izabella-wentz-pharm-d_88697c7e.jpg",
   },
   {
     name: "Tom O'Bryan, DC",
     cred: "World-Renowned Gluten & Autoimmunity Expert",
-    img: K + "Tom-OBryan-DC-DACBN_bcfc7b09.jpg",
+    img: K + "tom-o-bryan-dc-dacbn_4db66297.jpg",
   },
   {
     name: "Rangan Chatterjee, MD",
     cred: "BBC Doctor · Author of Feel Better in 5",
-    img: K + "Rangan Chatterjee, MD_a9d80d31.jpg",
+    img: K + "rangan-chatterjee-md_ef5a443c.jpg",
   },
   {
     name: "Martin Blaser, MD",
     cred: "NYU · Author of Missing Microbes",
-    img: K + "Martin Blaser, MD_53c94e34.jpg",
+    img: K + "martin-blaser-md_76654a0c.jpg",
   },
 ];
 
@@ -476,7 +476,7 @@ export default function Interconnected() {
                 style={{ width: "180px", height: "180px", border: "4px solid rgba(46,145,252,0.5)" }}
               >
                 <img
-                  src={K + "Mark Hyman, MD_ac8a0034.jpg"}
+                  src={K + "mark-hyman-md_59f25bf6.jpg"}
                   alt="Mark Hyman, MD"
                   className="w-full h-full object-cover"
                 />

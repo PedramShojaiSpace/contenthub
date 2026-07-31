@@ -89,7 +89,7 @@ export const interconnectedRouter = router({
         const result = await sendGmailOutreach({
           to: email,
           subject: "You're registered - Interconnected: The Power to Heal From Within",
-          htmlBody: buildWelcomeEmail(name),
+          body: buildWelcomeEmail(name),
         });
         emailSent = result.success;
       } catch (err) {

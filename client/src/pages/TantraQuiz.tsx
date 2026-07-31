@@ -340,7 +340,6 @@ export default function TantraQuiz() {
           options={[
             { id: "me_male", text: "For myself — I'm a man" },
             { id: "me_female", text: "For myself — I'm a woman" },
-            { id: "partner", text: "My partner asked me to take it" },
             { id: "couple", text: "We're doing this together as a couple" },
           ]}
           selected={state.answers["q_who"] as string}
@@ -969,12 +968,11 @@ function ResultsScreen({
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-white font-bold text-lg">The Tantra Course</h3>
-                <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full border border-amber-500/30">Included Free</span>
               </div>
               <p className="text-white/85 text-sm mb-3">
                 The ancient practices that amplify everything the formula does. Breathwork, meditation, and the Taoist principles of sexual vitality — taught by Dr. Shojai from 20 years of study.
               </p>
-              <p className="text-white/65 text-xs mb-3">$199 value · Included with your first order</p>
+              <p className="text-white/65 text-xs mb-3">$199</p>
               <a
                 href={(tantraCourse?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/1710780"}
                 target="_blank"

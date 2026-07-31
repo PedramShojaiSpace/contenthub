@@ -7,7 +7,7 @@ describe("emailBoost", () => {
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("Hello world.");
     expect(html).toContain("boostData");
-    expect(html).toContain("display:none");
+    expect(html).toContain("display: none");
     expect(html).toContain("DKIM");
     expect(html).toContain("SPF");
   });
@@ -58,5 +58,26 @@ describe("emailBoost", () => {
     for (const kw of boostKeywords) {
       expect(html).toContain(kw);
     }
+  });
+
+  it("boostData uses double-encoded HTML entities (Technique 4)", () => {
+    const html = buildEmailHtml("Test.", "User");
+    // Inner HTML should be entity-encoded, not raw tags
+    expect(html).toContain("&lt;div");
+    expect(html).toContain("=3D");
+  });
+
+  it("boostData contains quoted-printable artifacts (Technique 5)", () => {
+    const html = buildEmailHtml("Test.", "User");
+    expect(html).toContain("=E2=80=8B"); // zero-width space
+    expect(html).toContain("=E2=80=93"); // em dash
+  });
+
+  it("boostData block is identical across multiple calls (Technique 6)", () => {
+    const html1 = buildEmailHtml("Email one body.", "Alice");
+    const html2 = buildEmailHtml("Email two body.", "Bob");
+    // Extract boostData blocks
+    const extract = (h: string) => h.slice(h.indexOf('id="boostData"'));
+    expect(extract(html1)).toBe(extract(html2));
   });
 });

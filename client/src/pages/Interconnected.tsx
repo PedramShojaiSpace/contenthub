@@ -358,7 +358,7 @@ export default function Interconnected() {
           <div className="max-w-6xl mx-auto">
             <img src={LOGO} alt="The Urban Monk" className="w-36 mb-8 mx-auto md:mx-0" />
 
-            <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="grid lg:grid-cols-2 gap-10 items-start">
 
               {/* LEFT — Documentary title and big claim */}
               <div>
@@ -422,10 +422,10 @@ export default function Interconnected() {
               </div>
 
               {/* RIGHT — Opt-in form */}
-              <div ref={formRef}>
+              <div ref={formRef} className="w-full min-w-0">
                 <div
                   className="rounded-xl p-6"
-                  style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(46,145,252,0.35)" }}
+                  style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(46,145,252,0.35)", overflowX: "hidden" }}
                 >
                   <p
                     className="text-center font-black text-sm uppercase tracking-widest mb-4"
@@ -606,7 +606,7 @@ export default function Interconnected() {
             className="rounded-xl p-6"
             style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(46,145,252,0.3)" }}
           >
-            <OptInForm compact />
+            <OptInForm />
           </div>
         </div>
       </section>

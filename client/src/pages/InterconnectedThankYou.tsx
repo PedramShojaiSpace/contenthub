@@ -13,8 +13,8 @@ const LOGO =
 const OTO_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
 const EP1_URL = "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-1-SP26";
 
-// Kajabi CDN base for expert headshots
-const K = "https://kajabi-storefronts-production.kajabi-cdn.com/kajabi-storefronts-production/file-uploads/themes/2158994062/settings_images/";
+// CDN base for expert headshots (uploaded from Google Drive)
+const CDN = "/manus-storage/";
 
 function firePixel(eventName: string, params?: Record<string, unknown>) {
   try {
@@ -112,56 +112,56 @@ const EXPERTS = [
     name: "Mark Hyman, MD",
     title: "Director of the Cleveland Clinic Center for Functional Medicine · 14× NYT Bestselling Author",
     bio: "One of the most influential physicians in America, Dr. Hyman has treated over 10,000 patients using functional medicine principles. His work on the gut-brain connection and food as medicine has been featured in the New York Times, CNN, and Time Magazine.",
-    img: K + "7f8ab7f-638-686-bc3b-d80ac856173c_89833e75-expert-hyman-mark-200x200_100000000000000000001o.jpg",
+    img: CDN + "Mark Hyman, MD_ac8a0034.jpg",
     quote: "The gut is the gateway to health. When the gut is broken, everything breaks down — the brain, the immune system, the hormones. Fix the gut and you fix the patient.",
   },
   {
     name: "Zach Bush, MD",
     title: "Triple Board-Certified Physician · Founder of Seraphic Group",
     bio: "One of the few triple board-certified physicians in the US (internal medicine, endocrinology, and hospice care), Dr. Bush's research on the microbiome, glyphosate, and the gut-brain axis has been cited in over 300 peer-reviewed publications.",
-    img: K + "4a0b3c-7f2-9e1-b5d8-2c6a4e8f1d3_expert-bush-zach-200x200_100000000000000000001o.jpg",
+    img: CDN + "Zach Bush, MD_a26821b8.jpg",
     quote: "We are not separate from the ecosystem. The microbiome is the bridge between the soil and the human body. Destroy one and you destroy the other.",
   },
   {
     name: "Alessio Fassano, MD",
     title: "Harvard Medical School · Discoverer of Zonulin · World Authority on Gut Permeability",
     bio: "The researcher who discovered zonulin — the molecule that controls intestinal permeability — Dr. Fassano's work has fundamentally changed how medicine understands autoimmune disease. His lab at Harvard has published over 300 peer-reviewed papers on the gut barrier.",
-    img: K + "7f8ab7f-638-686-bc3b-d80ac856173c_89833e75-expert-fassano-alessio-200x200_100000000000000000001o.jpg",
+    img: CDN + "Alessio Fassano, MD_9ee5b4d8.jpg",
     quote: "Leaky gut is not a fringe concept. It is the mechanism behind virtually every autoimmune condition we see in clinical practice.",
   },
   {
     name: "Datis Kharrazian, PhD",
     title: "Harvard Medical School Research Faculty · Author of Why Isn't My Brain Working?",
     bio: "Dr. Kharrazian's clinical research on brain health, autoimmunity, and the gut-brain axis has helped thousands of patients recover from conditions conventional medicine deemed untreatable. He trains physicians worldwide in functional neurology.",
-    img: K + "e1bafc7-ea4c-76a4-6ce4-c8a83f2f452_b7438dd6-expert-kharrazian-datis-200x200_100000000000000000001o.jpg",
+    img: CDN + "Datis Kharrazian, PhD, DHSC_391c03fc.jpg",
     quote: "Most brain disorders begin in the gut. The gut-brain axis is not a metaphor — it is a literal two-way highway of inflammation, neurotransmitters, and immune signals.",
   },
   {
     name: "Emeran Mayer, MD",
     title: "UCLA David Geffen School of Medicine · Author of The Mind-Gut Connection",
     bio: "A pioneer in the neuroscience of the gut-brain axis, Dr. Mayer has spent 40 years studying how the gut communicates with the brain. His bestselling book The Mind-Gut Connection has changed how millions of people understand their own bodies.",
-    img: K + "a3c2e1-9b4d-7f8e-2b1c-6d5a3e7f9b2_expert-mayer-emeran-200x200_100000000000000000001o.jpg",
+    img: CDN + "Emaren Mayer, MD_3c1401d9.jpg",
     quote: "The gut sends 90% of its signals upward to the brain. Your gut feelings are not metaphors — they are real neurological communications that shape your thoughts, emotions, and decisions.",
   },
   {
     name: "Izabella Wentz, PharmD",
     title: "NYT Bestselling Author · The Thyroid Pharmacist",
     bio: "After being diagnosed with Hashimoto's thyroiditis at 27, Dr. Wentz spent years researching the gut-thyroid connection and put her own condition into remission. She has since helped over 100,000 patients do the same through her clinical protocols.",
-    img: K + "1bf781-b704-fe5c-1884-1d6adbd864_d2724fdd-expert-wentz-izabella-200x200_100000000000000000001o.jpg",
+    img: CDN + "Izabella Wentz, Pharm D_b77f8e06.jpg",
     quote: "I reversed my own Hashimoto's by healing my gut. The thyroid cannot heal in a body with a broken gut barrier — it's that simple.",
   },
   {
     name: "Martin Blaser, MD",
     title: "NYU Langone Medical Center · Author of Missing Microbes · Former CDC Advisory Board",
     bio: "Dr. Blaser's groundbreaking research on H. pylori and the consequences of antibiotic overuse has been published in Science, Nature, and the New England Journal of Medicine. His book Missing Microbes is required reading in medical schools worldwide.",
-    img: K + "d4e3f2-8c5b-6a9d-1e2f-7b4c8d2a5e1_expert-blaser-martin-200x200_100000000000000000001o.jpg",
+    img: CDN + "Martin Blaser, MD_53c94e34.jpg",
     quote: "Every course of antibiotics is a mass extinction event in the gut. We are losing ancestral microbial species that took millions of years to evolve — and we may never get them back.",
   },
   {
     name: "Max Lugavere",
     title: "Filmmaker · NYT Bestselling Author of Genius Foods · Health Science Journalist",
     bio: "After watching his mother develop Lewy body dementia, Max Lugavere spent years investigating the dietary and lifestyle factors behind neurodegeneration. His film Bread Head and his books have reached millions of people worldwide.",
-    img: K + "e1bafc7-ea4c-76a4-6ce4-c8a83f2f452_b7438dd6-expert-lugavere-max-200x200_100000000000000000001o.jpg",
+    img: CDN + "Max Lugavere_bf5b6537.jpg",
     quote: "The foods that damage the gut are the same foods that damage the brain. There is no separation. What you eat today is literally building or destroying your brain tomorrow.",
   },
 ];

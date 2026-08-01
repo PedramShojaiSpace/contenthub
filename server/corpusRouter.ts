@@ -61,6 +61,153 @@ function serializeEmbedding(vec: number[]): string {
   return "[" + vec.join(",") + "]";
 }
 
+// Re-exported so other modules (Script Factory v2) can reuse the exact same
+// embedding pipeline instead of duplicating it. There must be ONE implementation.
+export { generateEmbedding, serializeEmbedding, EMBEDDING_MODEL, EMBEDDING_DIMS };
+
+// ─── Shared corpus retrieval ──────────────────────────────────────────────────
+
+/** One retrieved corpus row. `content` is the FULL entry, never truncated. */
+export interface CorpusSearchHit {
+  id: number;
+  sourceType: string;
+  sourceId: string | null;
+  title: string | null;
+  /** Full content — callers decide how much to use. */
+  content: string;
+  wordCount: number | null;
+  personaId: number | null;
+  distance: number | null;
+  similarity: number | null;
+}
+
+export interface CorpusSearchResult {
+  results: CorpusSearchHit[];
+  /** Which retrieval path actually produced these rows. */
+  method: "vector" | "keyword" | "none";
+}
+
+/**
+ * Semantic corpus search, shared by the `searchCorpus` procedure and the Script
+ * Factory generator.
+ *
+ * Strategy (unchanged from the original inline implementation):
+ *   1. Embed the query and rank by TiDB `VEC_COSINE_DISTANCE` (primary).
+ *   2. Fall back to keyword LIKE matching when embedding generation fails, the
+ *      vector query errors (e.g. no vector support in the target engine), or the
+ *      vector query returns nothing.
+ *
+ * Unlike the old inline version this returns FULL `content` rather than a
+ * 500-char excerpt, because the Script Factory needs whole entries for its
+ * North Star block. Callers that want an excerpt should slice.
+ *
+ * NOTE: `VEC_COSINE_DISTANCE` is a TiDB function. On a plain MySQL/MariaDB
+ * instance the vector branch throws and this helper degrades to keyword search —
+ * correct behavior, but semantic ranking is only truly active on TiDB.
+ */
+export async function searchCorpusEntries(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  opts: {
+    query: string;
+    topK?: number;
+    sourceType?: "transcript" | "analog_data" | "manual" | "all";
+  }
+): Promise<CorpusSearchResult> {
+  const topK = opts.topK ?? 5;
+  const sourceType = opts.sourceType ?? "all";
+
+  // ── 1. Vector path ──────────────────────────────────────────────────────────
+  const queryEmbedding = await generateEmbedding(opts.query);
+
+  if (queryEmbedding) {
+    try {
+      const vecStr = serializeEmbedding(queryEmbedding);
+      const conditions = sourceType !== "all" ? `AND source_type = '${sourceType}'` : "";
+
+      const vectorResults = await db.execute(
+        sql.raw(`
+          SELECT id, source_type, source_id, title, content,
+                 word_count, persona_id,
+                 VEC_COSINE_DISTANCE(embedding, '${vecStr}') AS distance
+          FROM corpus_entries
+          WHERE in_corpus = 1
+            AND embedding IS NOT NULL
+            ${conditions}
+          ORDER BY distance ASC
+          LIMIT ${topK}
+        `)
+      ) as unknown as { rows: any[] };
+
+      const rows = (vectorResults as any).rows ?? (vectorResults as any) ?? [];
+
+      if (rows.length > 0) {
+        return {
+          method: "vector",
+          results: rows.map((r: any) => ({
+            id: Number(r.id),
+            sourceType: String(r.source_type),
+            sourceId: r.source_id ?? null,
+            title: r.title ?? null,
+            content: String(r.content ?? ""),
+            wordCount: r.word_count != null ? Number(r.word_count) : null,
+            personaId: r.persona_id != null ? Number(r.persona_id) : null,
+            distance: Number(r.distance),
+            similarity: 1 - Number(r.distance),
+          })),
+        };
+      }
+    } catch {
+      // Vector search unavailable or failed — documented fallback below.
+    }
+  }
+
+  // ── 2. Keyword fallback ─────────────────────────────────────────────────────
+  const keywords = opts.query.trim().split(/\s+/).slice(0, 5).filter(Boolean);
+  const likeConditions = keywords.map((kw) =>
+    or(like(corpusEntries.content, `%${kw}%`), like(corpusEntries.title, `%${kw}%`))
+  );
+
+  const sourceFilter = sourceType !== "all"
+    ? [eq(corpusEntries.sourceType, sourceType as "transcript" | "analog_data" | "manual")]
+    : [];
+
+  const keywordRows = await db
+    .select({
+      id: corpusEntries.id,
+      sourceType: corpusEntries.sourceType,
+      sourceId: corpusEntries.sourceId,
+      title: corpusEntries.title,
+      content: corpusEntries.content,
+      wordCount: corpusEntries.wordCount,
+      personaId: corpusEntries.personaId,
+    })
+    .from(corpusEntries)
+    .where(
+      and(
+        eq(corpusEntries.inCorpus, 1),
+        ...sourceFilter,
+        ...(likeConditions.length > 0 ? [or(...likeConditions.filter(Boolean))] : [])
+      )
+    )
+    .orderBy(desc(corpusEntries.createdAt))
+    .limit(topK);
+
+  return {
+    method: keywordRows.length > 0 ? "keyword" : "none",
+    results: keywordRows.map((r) => ({
+      id: r.id,
+      sourceType: r.sourceType,
+      sourceId: r.sourceId,
+      title: r.title,
+      content: r.content,
+      wordCount: r.wordCount,
+      personaId: r.personaId,
+      distance: null,
+      similarity: null,
+    })),
+  };
+}
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 export const corpusRouter = router({
@@ -313,107 +460,28 @@ export const corpusRouter = router({
       const db = await getDb();
       if (!db) return { results: [], method: "none" as const };
 
-      // Try vector search first
-      const queryEmbedding = await generateEmbedding(input.query);
-
-      if (queryEmbedding) {
-        try {
-          const vecStr = serializeEmbedding(queryEmbedding);
-          const conditions = input.sourceType !== "all"
-            ? `AND source_type = '${input.sourceType}'`
-            : "";
-
-          const vectorResults = await db.execute(
-            sql.raw(`
-              SELECT id, source_type, source_id, title,
-                     LEFT(content, 500) AS excerpt,
-                     word_count, tags, persona_id, created_at,
-                     VEC_COSINE_DISTANCE(embedding, '${vecStr}') AS distance
-              FROM corpus_entries
-              WHERE in_corpus = 1
-                AND embedding IS NOT NULL
-                ${conditions}
-              ORDER BY distance ASC
-              LIMIT ${input.topK}
-            `)
-          ) as unknown as { rows: any[] };
-
-          const rows = (vectorResults as any).rows ?? (vectorResults as any) ?? [];
-
-          if (rows.length > 0) {
-            return {
-              results: rows.map((r: any) => ({
-                id: r.id,
-                sourceType: r.source_type,
-                sourceId: r.source_id,
-                title: r.title,
-                excerpt: r.excerpt,
-                wordCount: r.word_count,
-                tags: r.tags,
-                personaId: r.persona_id,
-                createdAt: r.created_at,
-                distance: Number(r.distance),
-                similarity: 1 - Number(r.distance),
-              })),
-              method: "vector" as const,
-            };
-          }
-        } catch {
-          // Fall through to keyword search
-        }
-      }
-
-      // Keyword fallback
-      const keywords = input.query.trim().split(/\s+/).slice(0, 5);
-      const likeConditions = keywords.map((kw) =>
-        or(
-          like(corpusEntries.content, `%${kw}%`),
-          like(corpusEntries.title, `%${kw}%`)
-        )
-      );
-
-      const sourceFilter = input.sourceType !== "all"
-        ? [eq(corpusEntries.sourceType, input.sourceType as "transcript" | "analog_data" | "manual")]
-        : [];
-
-      const keywordRows = await db
-        .select({
-          id: corpusEntries.id,
-          sourceType: corpusEntries.sourceType,
-          sourceId: corpusEntries.sourceId,
-          title: corpusEntries.title,
-          content: corpusEntries.content,
-          wordCount: corpusEntries.wordCount,
-          tags: corpusEntries.tags,
-          personaId: corpusEntries.personaId,
-          createdAt: corpusEntries.createdAt,
-        })
-        .from(corpusEntries)
-        .where(
-          and(
-            eq(corpusEntries.inCorpus, 1),
-            ...sourceFilter,
-            ...(likeConditions.length > 0 ? [or(...likeConditions.filter(Boolean))] : [])
-          )
-        )
-        .orderBy(desc(corpusEntries.createdAt))
-        .limit(input.topK);
+      // Delegates to the shared helper above so vector + fallback logic lives in
+      // exactly one place. This procedure keeps its original response contract:
+      // a 500-char `excerpt` rather than full content.
+      const { results, method } = await searchCorpusEntries(db, {
+        query: input.query,
+        topK: input.topK,
+        sourceType: input.sourceType,
+      });
 
       return {
-        results: keywordRows.map((r) => ({
+        results: results.map((r) => ({
           id: r.id,
           sourceType: r.sourceType,
           sourceId: r.sourceId,
           title: r.title,
           excerpt: r.content.slice(0, 500),
           wordCount: r.wordCount,
-          tags: r.tags,
           personaId: r.personaId,
-          createdAt: r.createdAt,
-          distance: null,
-          similarity: null,
+          distance: r.distance,
+          similarity: r.similarity,
         })),
-        method: "keyword" as const,
+        method,
       };
     }),
 

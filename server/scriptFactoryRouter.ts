@@ -58,6 +58,16 @@ import {
   formatViolations,
   countWordsWithStorySlots,
 } from "./storyIntegrity";
+// Part 3B — offer binding. A 15-minute script argued carefully for functional
+// testing and then closed on a generic brand CTA, because the system had no
+// concept of "the offer" and therefore could not name it.
+import {
+  type OfferProfile,
+  buildOfferBlock,
+  buildCtaOverrideBlock,
+  parseStoredOfferLadder,
+  selectOfferTier,
+} from "./offerProfile";
 
 // ─── Supadata helper ─────────────────────────────────────────────────────────
 
@@ -570,9 +580,30 @@ function buildSystemPrompt(
     lengthInstruction?: string;
     /** Part 3A. Defaults to the safest mode so an omitted arg cannot fabricate. */
     storyMode?: StoryMode;
+    /**
+     * Part 3B. A validated profile, or null. Null omits the offer block entirely
+     * rather than binding the CTA to a guessed offer.
+     */
+    offerProfile?: OfferProfile | null;
+    /** Part 3B. The operator's own close. REPLACES offer binding, never coexists. */
+    ctaOverride?: string | null;
   } = {}
 ): string {
-  const { persona, lengthInstruction, storyMode = "brief" } = opts;
+  const {
+    persona,
+    lengthInstruction,
+    storyMode = "brief",
+    offerProfile = null,
+    ctaOverride = null,
+  } = opts;
+  // Part 3B — mutually exclusive by construction. Two competing closes make the
+  // script argue with itself for fifteen minutes, so an override wins outright
+  // and the offer block is not emitted alongside it.
+  const offerSection = ctaOverride && ctaOverride.trim()
+    ? "\n" + buildCtaOverrideBlock(ctaOverride) + "\n"
+    : offerProfile
+      ? "\n" + buildOfferBlock(offerProfile) + "\n"
+      : "";
 
   // Default demographic line, replaced wholesale when a persona is selected.
   const audienceLine = persona?.audienceLine
@@ -614,6 +645,7 @@ VERIFIED TAGGING RULES (CRITICAL):
 - Format: "Your hook text here [VERIFIED]" — the tag goes AFTER the element, inline
 
 ${buildStoryIntegrityBlock(storyMode)}
+${offerSection}
 
 SCRIPT STRUCTURE TAGS (use these to label each section):
 [HOOK] — opening hook (first 15 seconds / first line)
@@ -675,6 +707,18 @@ export const scriptFactoryRouter = router({
        * Defaults to `brief`: the safe mode must be the one you get by default.
        */
       storyMode: z.enum(STORY_MODES).default("brief"),
+      /**
+       * Part 3B — the operator's own close, in their words. When present this
+       * REPLACES offer binding entirely rather than sitting alongside it.
+       */
+      ctaOverride: z.string().trim().min(3).max(500).optional(),
+      /**
+       * Part 3B multi-tier — which tier of a laddered offer this script closes
+       * on, by exact `offerName`. Omitted with several tiers available means
+       * "not chosen yet": generation proceeds UNBOUND and returns the choices,
+       * rather than picking a price point on the operator's behalf.
+       */
+      offerTier: z.string().trim().min(1).max(200).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -710,6 +754,11 @@ export const scriptFactoryRouter = router({
       // When present these REPLACE the keyword-matched analog lookup entirely:
       // a deliberate choice must not be diluted by fuzzy retrieval.
       const northStarIds = input.analogDataEntryIds ?? [];
+      // Part 3B — resolved below from the selected North Star entries.
+      let boundOffer: OfferProfile | null = null;
+      let boundOfferEntryId: number | null = null;
+      let offerBindReason: string | null = null;
+      let unresolvedOfferTiers: { offerName: string; pricePoint: string | null }[] = [];
       let explicitNorthStar: { title: string | null; content: string; type: string | null }[] = [];
       if (northStarIds.length > 0) {
         const rows = await db
@@ -718,6 +767,7 @@ export const scriptFactoryRouter = router({
             title: analogDataEntries.title,
             content: analogDataEntries.content,
             type: analogDataEntries.type,
+            offerProfile: analogDataEntries.offerProfile,
           })
           .from(analogDataEntries)
           .where(inArray(analogDataEntries.id, northStarIds));
@@ -726,6 +776,41 @@ export const scriptFactoryRouter = router({
           .map((id) => rows.find((r) => r.id === id))
           .filter((r): r is typeof rows[number] => Boolean(r))
           .map((r) => ({ title: r.title, content: r.content, type: r.type }));
+        /**
+         * Part 3B — bind the CTA to the FIRST selected entry that has a validated
+         * offer. First-pick-wins mirrors the existing rule that the
+         * operator's first selection is the primary model; binding to several
+         * offers at once would produce a script selling two things.
+         *
+         * An entry with no offer, or one that fails validation, simply
+         * does not bind. Generation proceeds unbound rather than guessing.
+         *
+         * MULTI-TIER: a page that ladders several purchasable tiers does NOT
+         * auto-bind. Silently choosing a tier would make the script sell a price
+         * point the operator never picked, so an unchosen ladder generates
+         * unbound and reports the available tiers back to the caller.
+         */
+        for (const id of northStarIds) {
+          const row = rows.find((r) => r.id === id);
+          if (!row) continue;
+          const ladder = parseStoredOfferLadder(row.offerProfile);
+          if (ladder.tiers.length === 0) continue;
+          const picked = selectOfferTier(ladder, input.offerTier);
+          if (picked.profile) {
+            boundOffer = picked.profile;
+            boundOfferEntryId = id;
+            offerBindReason = picked.reason;
+            break;
+          }
+          // Tiers exist but none resolved: surface them so the UI can ask.
+          offerBindReason = picked.reason;
+          unresolvedOfferTiers = ladder.tiers.map((t) => ({
+            offerName: t.offerName,
+            pricePoint: t.pricePoint,
+          }));
+          boundOfferEntryId = id;
+          break;
+        }
       }
 
       // 2. Corpus retrieval. Vector search is primary (Phase 2.3.2); the keyword
@@ -844,6 +929,8 @@ export const scriptFactoryRouter = router({
         persona: personaContext,
         lengthInstruction,
         storyMode: input.storyMode,
+        offerProfile: boundOffer,
+        ctaOverride: input.ctaOverride ?? null,
       });
 
       // 4. Generate script via LLM
@@ -1105,6 +1192,17 @@ export const scriptFactoryRouter = router({
         storyMode: input.storyMode,
         storyCorrectionPassUsed,
         storySlotCount: countWordsWithStorySlots(scriptBody).slotCount,
+        // Part 3B — the operator must be able to see WHY a CTA closed the way it
+        // did: bound to an offer, overridden, or unbound.
+        offerBinding: input.ctaOverride
+          ? { mode: "override" as const, offerName: null, entryId: null }
+          : boundOffer
+            ? { mode: "offer" as const, offerName: boundOffer.offerName, entryId: boundOfferEntryId }
+            : { mode: "unbound" as const, offerName: null, entryId: null },
+        // Multi-tier: when a ladder was found but no tier chosen, the caller gets
+        // the reason and the options so the UI can ask instead of guessing.
+        offerBindReason,
+        unresolvedOfferTiers,
         retrievalMethod,
         personaName: personaContext?.name ?? null,
         northStarCount: explicitNorthStar.length,

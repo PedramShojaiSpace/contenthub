@@ -786,6 +786,11 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
    * the one you get without choosing.
    */
   const [storyMode, setStoryMode] = useState<"brief" | "composite" | "none">("brief");
+  // Part 3B — the operator's own close. Non-empty REPLACES offer binding.
+  const [ctaOverride, setCtaOverride] = useState("");
+  // Part 3B multi-tier — which laddered tier this script closes on. Never
+  // defaulted: a script must not sell a price point the operator did not pick.
+  const [offerTier, setOfferTier] = useState<string>("");
   const [seedKeyword, setSeedKeyword] = useState<string>("");
   const [researchJobId, setResearchJobId] = useState<number | null>(null);
 
@@ -1030,6 +1035,15 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                           {e.sourceType && (
                             <span className="text-muted-foreground ml-1">· {e.sourceType}</span>
                           )}
+                          {/* Part 3B — show which entries can actually bind a CTA. */}
+                          {e.hasOffer && (
+                            <span
+                              className="ml-1 text-emerald-700"
+                              title={`CTA will close on: ${e.offerName}`}
+                            >
+                              · offer: {e.offerName}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -1076,6 +1090,92 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                   {storyMode === "composite" && "The narrative must open with an audible composite label. An unlabelled composite is rejected."}
                   {storyMode === "none" && "Story sections are omitted and the word budget moves into the teaching sections."}
                 </p>
+              </div>
+
+              {/* ── Part 3B: Offer binding ──────────────────────── */}
+              <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-emerald-600" />
+                  What the script sells
+                </label>
+                {(() => {
+                  const withOffer = (analogEntries ?? []).find(
+                    (e: any) => northStarIds.includes(e.id) && e.hasOffer
+                  );
+                  const tiers: any[] = (withOffer as any)?.offerTiers ?? [];
+                  if (ctaOverride.trim()) {
+                    return (
+                      <p className="text-xs text-emerald-900">
+                        The CTA will drive your own close below. Offer binding is{" "}
+                        <span className="font-medium">disabled</span> while an override is set —
+                        two closes would make the script argue with itself.
+                      </p>
+                    );
+                  }
+                  if (tiers.length > 1) {
+                    return (
+                      <div className="space-y-1.5">
+                        <p className="text-xs text-emerald-900">
+                          <span className="font-medium">{withOffer.title}</span> ladders{" "}
+                          {tiers.length} purchasable tiers. Pick which one this script closes
+                          on — nothing is chosen for you, because the tier sets the price the
+                          script asks for.
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {tiers.map((t: any) => (
+                            <button
+                              key={t.offerName}
+                              onClick={() =>
+                                setOfferTier((prev) => (prev === t.offerName ? "" : t.offerName))
+                              }
+                              className={`text-xs px-2 py-1 rounded border transition-colors ${
+                                offerTier === t.offerName
+                                  ? "bg-emerald-600 text-white border-emerald-600"
+                                  : "bg-background text-muted-foreground border-border hover:border-emerald-400"
+                              }`}
+                            >
+                              {t.offerName}
+                              {t.pricePoint ? ` · ${t.pricePoint}` : ""}
+                            </button>
+                          ))}
+                        </div>
+                        {!offerTier && (
+                          <p className="text-[11px] text-amber-700">
+                            No tier selected — the CTA will stay generic rather than guess.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  if (tiers.length === 1) {
+                    return (
+                      <p className="text-xs text-emerald-900">
+                        The CTA will close on{" "}
+                        <span className="font-medium">{tiers[0].offerName}</span>, naming its
+                        deliverables and stating only the guarantee that offer actually makes.
+                      </p>
+                    );
+                  }
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      No selected North Star entry has an extracted offer, so the CTA stays
+                      generic rather than inventing a program, price, or guarantee. Run
+                      <span className="font-medium"> Extract offer</span> on a sales page in
+                      Analyze → Library, or write your own close below.
+                    </p>
+                  );
+                })()}
+                <div className="pt-0.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Or write the close yourself (optional)
+                  </label>
+                  <Input
+                    value={ctaOverride}
+                    onChange={(e) => setCtaOverride(e.target.value)}
+                    placeholder="e.g. Download the free 3-day gut reset checklist at theurbanmonk.com/checklist"
+                    className="h-8 text-xs mt-1"
+                  />
+                </div>
               </div>
               {/* ── Phase 3: Deep Research ───────────────────────────────── */}
               <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50/50 p-3">
@@ -1216,6 +1316,8 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                   useDeepResearch,
                   researchJobId: researchJobId ?? undefined,
                   storyMode,
+                  ctaOverride: ctaOverride.trim() ? ctaOverride.trim() : undefined,
+                  offerTier: offerTier || undefined,
                 })}
               >
                 {generate.isPending ? (

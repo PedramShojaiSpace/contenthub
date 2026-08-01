@@ -1,0 +1,132 @@
+
+========================================================================
+SEED — inserting two analog entries into the scratch DB
+========================================================================
+inserted with_guarantee → id=30003
+inserted no_guarantee → id=30004
+
+========================================================================
+1. EXTRACTION — real copy, real offer
+========================================================================
+HTTP 200 · cached=false · reason=null
+PROFILE (verbatim):
+{
+  "offerName": "The 90-Day Gut Reset",
+  "offerType": "program",
+  "deliverables": [
+    "12 weekly live coaching calls with our clinical team",
+    "The full GI-MAP stool panel and a written interpretation",
+    "A 90-day meal and supplement protocol",
+    "Access to the private member community"
+  ],
+  "guarantee": "complete the first module, do the work, and if you don't see measurable change in your energy within 30 days, we refund you in full.",
+  "timeline": "90-Day",
+  "pricePoint": "$1,997, or three payments of $699.",
+  "primaryCtaUrl": "theurbanmonk.com/gut-reset",
+  "targetAction": "Enroll in the 90-Day Gut Reset"
+}
+
+========================================================================
+1b. IDEMPOTENCE — second call must not re-extract
+========================================================================
+HTTP 200 · cached=true
+same offerName: true
+
+========================================================================
+1c. NO-GUARANTEE COPY — guarantee must be null, not invented
+========================================================================
+HTTP 200
+{
+  "offerName": "Vagus Nerve Reset Intensive",
+  "offerType": "program",
+  "deliverables": [
+    "6 recorded training modules on vagal tone",
+    "A daily 12-minute breathwork practice library",
+    "One live group Q&A"
+  ],
+  "guarantee": null,
+  "timeline": "two-week",
+  "pricePoint": "$297",
+  "primaryCtaUrl": "theurbanmonk.com/vagus",
+  "targetAction": "Join the Vagus Nerve Reset Intensive"
+}
+
+guarantee is null: true
+
+========================================================================
+2. BOUND — generate with the offer entry selected as North Star
+========================================================================
+HTTP 200 · binding={"mode":"offer","offerName":"The 90-Day Gut Reset","entryId":30003}
+
+--- CTA VERBATIM ---
+[CTA]
+(9:45-10:45)
+If you're tired of battling that afternoon energy crash, if you're ready to stop treating symptoms and start addressing the root cause, then I invite you to explore The 90-Day Gut Reset. Most people chasing energy are treating the wrong organ. The 90-Day Gut Reset is a structured program that rebuilds the gut lining first, then rebuilds energy on top of it. This isn't just about quick fixes; it's about a fundamental shift in your health. When you enroll, you'll receive 12 weekly live coaching calls with our clinical team , the full GI-MAP stool panel and a written interpretation , a 90-day meal and supplement protocol, and access to our private member community. The investment is $1,997, or three payments of $699. We're so confident in this program that we offer a powerful guarantee: complete the first module, do the work, and if you don't see measurable change in your energy within 30 days, we refund you in full. Stop letting your gut hold your energy hostage. Visit theurbanmonk.com/gut-reset today and enroll in The 90-Day Gut Reset. 
+
+[CLOSE]
+(10:45-11:00)
+Your e
+--- END ---
+
+names the offer:            true
+deliverables cited:         4 (12 weekly live coaching calls with our clinical team | The full GI-MAP stool panel and a written interpretation | A 90-day meal and supplement protocol | Access to the private member community)
+mentions the guarantee:     true
+
+========================================================================
+3. UNBOUND — same topic, no offer entry selected
+========================================================================
+HTTP 200 · binding={"mode":"unbound","offerName":null,"entryId":null}
+
+--- CTA VERBATIM ---
+[CTA]
+(12:45) If you're tired of playing Whac-A-Mole with your symptoms , if you're ready to stop feeling dismissed by "normal labs" , and if you're truly ready to take back agency over your health , then it’s time to look upstream. Your afternoon energy crash isn't a life sentence; it's a signal. A signal from your gut, telling you it needs attention. I’ve put together a comprehensive resource that dives even deeper into the hidden causes of chronic sickness and fatigue, exploring endotoxemia, leaky gut, and how you can bridge that 17-year medical knowledge gap. Click the link below to access the full Upstream Replay and discover how to reclaim your energy and vitality. Don't let another afternoon crash steal your potential.
+
+[CLOSE]
+(13:45) Remember, your body is an incredible, interconnected system. When one part is struggling, it affects the whole. By understanding the profound connection between your gut lining and your energy levels, you hold the key to unlocking a more vibrant, energetic, and focused you. Start listening to what your gut is telling you. I’ll see you upstream.
+--- END ---
+
+does NOT name the seeded offer: true
+invents no refund promise:      true
+
+========================================================================
+4. OVERRIDE — operator's own close replaces binding
+========================================================================
+HTTP 200 · binding={"mode":"override","offerName":null,"entryId":null}
+
+--- CTA VERBATIM ---
+[CTA]
+(12:40) If you're tired of that afternoon energy crash, if you're ready to stop feeling like you're running on empty by 3 PM, and if you understand now that the root of this problem often lies in your gut, then I have something for you. We’ve covered some immediate steps you can take, but truly rebuilding your gut health requires a more structured approach. To help you get started on this journey, I've created a free 3-day gut reset checklist. It's designed to give you a clear, actionable plan to begin supporting your gut lining and reclaiming your energy. Download the free 3-day gut reset checklist at theurbanmonk.com/checklist . This checklist will guide you through simple yet powerful changes you can implement right away to start feeling better.
+
+[CLOSE]
+(13:30) Remember, your body is always sending you signals. That afternoon slump isn't a sign of weakness; it's your gut asking for help. By understanding the critical role of your gut lining and taking proactive steps to protect and heal it, you can unlock sustained energy, mental clarity, and a renewed sense of vitality thr
+--- END ---
+
+drives the override:        true
+does NOT sell the program: true
+
+========================================================================
+5. NO-GUARANTEE OFFER — the invented-refund guard end to end
+========================================================================
+HTTP 200 · binding={"mode":"offer","offerName":"Vagus Nerve Reset Intensive","entryId":30004}
+
+--- CTA VERBATIM ---
+[CTA]
+(9:30-10:00)
+If you’re tired of hitting that afternoon wall, if you’re ready to move beyond quick fixes and truly address the root cause of your energy drain, then I invite you to take the next step. While these tips are a great start, truly resetting your gut and optimizing your vagal tone requires a deeper, more structured approach. That's why I created the Vagus Nerve Reset Intensive. This two-week program is designed for people whose nervous system never switches off. It includes 6 recorded training modules on vagal tone , a daily 12-minute breathwork practice library , and one live group Q&A . For just $297, you can join the Vagus Nerve Reset Intensive and reclaim your energy and focus. Visit theurbanmonk.com/vagus to learn more and enroll today. It's time to stop just surviving and start thriving.
+
+[CLOSE]
+(10:00-10:15)
+Thank you for watching. Remember, your body is designed for vitality, and by understanding the profound connection between your gut and your brain, you hold the key to unlocking sustained energy and a sharper mind. I'll see you in the intensive.
+--- END ---
+
+names the offer:              true
+invents NO refund/guarantee:  true
+
+========================================================================
+CLEANUP
+========================================================================
+deleted probe scripts: 30010, 30011, 30012, 30013
+deleted probe analog entries: 30003, 30004
+analog_data_entries now: 1 row(s)
+
+DONE

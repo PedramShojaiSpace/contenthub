@@ -305,9 +305,57 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// ─── Isolated Countdown Components (prevent full-page rerenders) ─────────────────
+function StickyBar({ scrollToForm }: { scrollToForm: () => void }) {
+  const countdown = useCountdown(47);
+  return (
+    <div
+      className="sticky top-0 z-50 text-white text-center py-2 px-4 text-sm font-semibold"
+      style={{ background: "#161E2A", borderBottom: "1px solid rgba(1,141,177,0.4)" }}
+    >
+      Free viewing period closes in:&nbsp;
+      <span className="font-mono font-black" style={{ color: "#2E91FC" }}>
+        {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
+      </span>
+      &nbsp;&mdash;&nbsp;
+      <button onClick={scrollToForm} className="underline font-bold hover:opacity-80" style={{ color: "#7ecfdf" }}>
+        Claim your free access now
+      </button>
+    </div>
+  );
+}
+
+function HeroCountdownBox() {
+  const countdown = useCountdown(47);
+  return (
+    <div
+      className="flex items-center gap-3 rounded-lg p-3"
+      style={{ background: "rgba(10,20,30,0.7)", border: "1px solid rgba(46,145,252,0.3)" }}
+    >
+      <span className="text-yellow-400 text-xl">⚠</span>
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#7ecfdf" }}>
+          Free viewing period closes in:
+        </p>
+        <p className="font-mono font-black text-2xl text-white leading-none">
+          {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BottomCountdown() {
+  const countdown = useCountdown(47);
+  return (
+    <p className="font-mono font-black text-5xl mb-6 text-white">
+      {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
+    </p>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Interconnected() {
-  const countdown = useCountdown(47);
   const formRef = useRef<HTMLDivElement>(null);
 
   const scrollToForm = () => {
@@ -317,20 +365,8 @@ export default function Interconnected() {
   return (
     <div className="min-h-screen text-white font-sans" style={{ background: "#0a1520" }}>
 
-      {/* STICKY URGENCY BAR */}
-      <div
-        className="sticky top-0 z-50 text-white text-center py-2 px-4 text-sm font-semibold"
-        style={{ background: "#161E2A", borderBottom: "1px solid rgba(1,141,177,0.4)" }}
-      >
-        Free viewing period closes in:&nbsp;
-        <span className="font-mono font-black" style={{ color: "#2E91FC" }}>
-          {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
-        </span>
-        &nbsp;&mdash;&nbsp;
-        <button onClick={scrollToForm} className="underline font-bold hover:opacity-80" style={{ color: "#7ecfdf" }}>
-          Claim your free access now
-        </button>
-      </div>
+      {/* STICKY URGENCY BAR — isolated, only this re-renders on tick */}
+      <StickyBar scrollToForm={scrollToForm} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
@@ -404,21 +440,8 @@ export default function Interconnected() {
                   ))}
                 </div>
 
-                {/* Countdown box */}
-                <div
-                  className="flex items-center gap-3 rounded-lg p-3"
-                  style={{ background: "rgba(10,20,30,0.7)", border: "1px solid rgba(46,145,252,0.3)" }}
-                >
-                  <span className="text-yellow-400 text-xl">⚠</span>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#7ecfdf" }}>
-                      Free viewing period closes in:
-                    </p>
-                    <p className="font-mono font-black text-2xl text-white leading-none">
-                      {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
-                    </p>
-                  </div>
-                </div>
+                {/* Countdown box — isolated component */}
+                <HeroCountdownBox />
               </div>
 
               {/* RIGHT — Opt-in form */}
@@ -446,7 +469,7 @@ export default function Interconnected() {
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
-              <img src={POSTER} alt="Interconnected Documentary" className="rounded-xl w-full object-cover shadow-2xl" style={{ maxHeight: "340px" }} />
+              <img src={POSTER} alt="Interconnected Documentary" className="rounded-xl w-full object-cover shadow-2xl" style={{ maxHeight: "340px" }} loading="lazy" decoding="async" />
             </div>
             <div>
               <h2 className="text-3xl font-black uppercase mb-4" style={{ color: "#f0f4f8" }}>
@@ -479,6 +502,8 @@ export default function Interconnected() {
                   src={K + "mark-hyman-md_59f25bf6.jpg"}
                   alt="Mark Hyman, MD"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             </div>
@@ -522,6 +547,8 @@ export default function Interconnected() {
                     src={expert.img}
                     alt={expert.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                       (e.target as HTMLImageElement).parentElement!.style.background = "#1a3a5a";
@@ -628,6 +655,8 @@ export default function Interconnected() {
                   alt="Dr. Pedram Shojai, OMD"
                   className="w-full object-cover object-top"
                   style={{ maxHeight: "280px" }}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             </div>
@@ -659,9 +688,7 @@ export default function Interconnected() {
             Don't Miss the Free Viewing Period
           </h2>
           <p className="mb-2" style={{ color: "#7ecfdf" }}>Access closes in:</p>
-          <p className="font-mono font-black text-5xl mb-6 text-white">
-            {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
-          </p>
+          <BottomCountdown />
           <div
             className="rounded-xl p-6"
             style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(46,145,252,0.3)" }}
@@ -676,7 +703,7 @@ export default function Interconnected() {
         className="py-8 px-4 text-center"
         style={{ background: "#020d18", borderTop: "1px solid rgba(46,145,252,0.1)" }}
       >
-        <img src={LOGO} alt="The Urban Monk" className="w-28 mx-auto mb-4 opacity-50" />
+        <img src={LOGO} alt="The Urban Monk" className="w-28 mx-auto mb-4 opacity-50" loading="lazy" decoding="async" />
         <p className="text-gray-600 text-xs max-w-2xl mx-auto mb-2 leading-relaxed">
           THE INFORMATION ON THIS SITE IS FOR EDUCATIONAL PURPOSES ONLY AND SHOULD NOT BE CONSTRUED AS MEDICAL ADVICE.
           READERS ARE ADVISED TO CONSULT A QUALIFIED PROFESSIONAL ABOUT ANY ISSUE REGARDING THEIR HEALTH AND WELL-BEING.

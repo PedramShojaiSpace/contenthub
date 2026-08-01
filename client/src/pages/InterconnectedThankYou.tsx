@@ -206,36 +206,66 @@ const FAQS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function InterconnectedThankYou() {
-  const { timeLeft, expired } = useCountdown(6480); // 1h 48m
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+// ─── Shared style tokens (module-level to avoid recreation on render) ─────────────────
+const BG_DARK = "#020d18";
+const BG_MID = "#0a1520";
+const BG_CARD = "#0d1e2e";
+const BG_SECTION = "#051e2e";
+const BLUE = "#2E91FC";
+const BLUE_DARK = "#018db1";
+const BLUE_GLOW = "rgba(46,145,252,0.15)";
+const GOLD = "#f5c842";
 
-  useEffect(() => {
-    firePixel("Lead");
-  }, []);
+const sectionStyle = (bg: string) => ({
+  background: bg,
+  borderTop: `1px solid rgba(46,145,252,0.12)`,
+  borderBottom: `1px solid rgba(46,145,252,0.12)`,
+});
 
-  const handleBuyClick = () => {
-    firePixel("InitiateCheckout", { value: 67, currency: "USD", content_name: "Interconnected All-Access Bundle" });
-    window.location.href = OTO_CHECKOUT_URL;
-  };
+// ─── Isolated countdown components (prevent full-page rerenders) ─────────────────
+function TyStickyBar({ onBuyClick }: { onBuyClick: () => void }) {
+  const { timeLeft, expired } = useCountdown(6480);
+  if (expired) return null;
+  return (
+    <div
+      className="sticky top-0 z-50 w-full py-2 px-4 flex items-center justify-between gap-4"
+      style={{ background: BG_MID, borderBottom: `1px solid ${BLUE_DARK}` }}
+    >
+      <p className="text-sm font-semibold text-gray-300 hidden sm:block">
+        Act Fast — Your Discount Expires In:
+      </p>
+      <div className="flex items-center gap-1 font-mono font-black text-lg">
+        {[
+          { val: timeLeft.h, label: "HRS" },
+          { val: timeLeft.m, label: "MIN" },
+          { val: timeLeft.s, label: "SEC" },
+        ].map((seg, i) => (
+          <span key={i} className="flex flex-col items-center">
+            <span
+              className="px-3 py-1 rounded text-white text-xl font-black"
+              style={{ background: BG_CARD, minWidth: "2.5rem", textAlign: "center", border: `1px solid ${BLUE}` }}
+            >
+              {pad(seg.val)}
+            </span>
+            <span className="text-gray-500 text-xs mt-0.5">{seg.label}</span>
+          </span>
+        ))}
+      </div>
+      <a
+        href="#offer"
+        onClick={onBuyClick}
+        className="shrink-0 px-4 py-2 rounded font-black text-sm uppercase tracking-wide transition-colors"
+        style={{ background: GOLD, color: "#0a0a0a" }}
+      >
+        Get Full Access
+      </a>
+    </div>
+  );
+}
 
-  // ── Styles ──────────────────────────────────────────────────────────────────
-  const BG_DARK = "#020d18";
-  const BG_MID = "#0a1520";
-  const BG_CARD = "#0d1e2e";
-  const BG_SECTION = "#051e2e";
-  const BLUE = "#2E91FC";
-  const BLUE_DARK = "#018db1";
-  const BLUE_GLOW = "rgba(46,145,252,0.15)";
-  const GOLD = "#f5c842";
-
-  const sectionStyle = (bg: string) => ({
-    background: bg,
-    borderTop: `1px solid rgba(46,145,252,0.12)`,
-    borderBottom: `1px solid rgba(46,145,252,0.12)`,
-  });
-
-  const CountdownBlock = () => (
+function TyCountdownBlock() {
+  const { timeLeft } = useCountdown(6480);
+  return (
     <div className="flex items-end justify-center gap-2 my-8">
       {[
         { val: timeLeft.h, label: "HOURS" },
@@ -257,6 +287,30 @@ export default function InterconnectedThankYou() {
       ))}
     </div>
   );
+}
+
+const StarRating = ({ count = 5 }: { count?: number }) => (
+  <div className="flex gap-0.5">
+    {Array.from({ length: count }).map((_, i) => (
+      <svg key={i} className="w-4 h-4" fill={GOLD} viewBox="0 0 20 20">
+        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+      </svg>
+    ))}
+  </div>
+);
+
+export default function InterconnectedThankYou() {
+  const { expired } = useCountdown(6480); // only used for expired state
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    firePixel("Lead");
+  }, []);
+
+  const handleBuyClick = () => {
+    firePixel("InitiateCheckout", { value: 67, currency: "USD", content_name: "Interconnected All-Access Bundle" });
+    window.location.href = OTO_CHECKOUT_URL;
+  };
 
   const BuyButton = ({ label = "Yes — Give Me Instant Access to All 9 Episodes" }: { label?: string }) => (
     <div className="text-center">
@@ -273,58 +327,15 @@ export default function InterconnectedThankYou() {
     </div>
   );
 
-  const StarRating = ({ count = 5 }: { count?: number }) => (
-    <div className="flex gap-0.5">
-      {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} className="w-4 h-4" fill={GOLD} viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-    </div>
-  );
-
   return (
     <div className="min-h-screen text-white font-sans" style={{ background: BG_DARK }}>
 
-      {/* ── STICKY TOP BAR ─────────────────────────────────────────────────────── */}
-      {!expired && (
-        <div
-          className="sticky top-0 z-50 w-full py-2 px-4 flex items-center justify-between gap-4"
-          style={{ background: BG_MID, borderBottom: `1px solid ${BLUE_DARK}` }}
-        >
-          <p className="text-sm font-semibold text-gray-300 hidden sm:block">
-            Act Fast — Your Discount Expires In:
-          </p>
-          <div className="flex items-center gap-1 font-mono font-black text-lg">
-            {[
-              { val: timeLeft.h, label: "HRS" },
-              { val: timeLeft.m, label: "MIN" },
-              { val: timeLeft.s, label: "SEC" },
-            ].map((seg, i) => (
-              <span key={i} className="flex flex-col items-center">
-                <span
-                  className="px-3 py-1 rounded text-white text-xl font-black"
-                  style={{ background: BG_CARD, minWidth: "2.5rem", textAlign: "center", border: `1px solid ${BLUE}` }}
-                >
-                  {pad(seg.val)}
-                </span>
-                <span className="text-gray-500 text-xs mt-0.5">{seg.label}</span>
-              </span>
-            ))}
-          </div>
-          <a
-            href="#offer"
-            className="shrink-0 px-4 py-2 rounded font-black text-sm uppercase tracking-wide transition-colors"
-            style={{ background: GOLD, color: "#0a0a0a" }}
-          >
-            Get Full Access
-          </a>
-        </div>
-      )}
+            {/* ── STICKY TOP BAR — isolated component */}
+      <TyStickyBar onBuyClick={handleBuyClick} />
 
       {/* ── HEADER ─────────────────────────────────────────────────────────────── */}
       <header className="pt-8 pb-4 px-4 text-center" style={{ background: BG_DARK }}>
-        <img src={LOGO} alt="The Urban Monk" className="w-36 mx-auto" />
+        <img src={LOGO} alt="The Urban Monk" className="w-36 mx-auto" fetchpriority="high" decoding="async" />
       </header>
 
       {/* ── HERO / VIDEO SECTION ────────────────────────────────────────────────── */}
@@ -354,6 +365,7 @@ export default function InterconnectedThankYou() {
                   allowTransparency
                   frameBorder={0}
                   scrolling="no"
+                  loading="lazy"
                   className="wistia_embed"
                   name="wistia_embed"
                   width="100%"
@@ -392,7 +404,7 @@ export default function InterconnectedThankYou() {
             the moment you purchase. That way you'll have real solutions at your fingertips when you need them most.
           </p>
 
-          {!expired ? <CountdownBlock /> : (
+          {!expired ? <TyCountdownBlock /> : (
             <div className="text-center my-8">
               <p className="text-red-400 font-bold text-lg">This special offer has expired.</p>
             </div>
@@ -510,6 +522,8 @@ export default function InterconnectedThankYou() {
                       src={expert.img}
                       alt={expert.name}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         const el = e.currentTarget;
                         el.style.display = "none";
@@ -594,7 +608,7 @@ export default function InterconnectedThankYou() {
           <p className="text-center font-bold text-sm uppercase tracking-widest mb-4" style={{ color: BLUE }}>
             Act Fast — This Special Offer Expires In…
           </p>
-          {!expired && <CountdownBlock />}
+          {!expired && <TyCountdownBlock />}
           <div
             className="rounded-2xl overflow-hidden mt-8"
             style={{ border: `2px solid ${BLUE}`, boxShadow: `0 0 60px ${BLUE_GLOW}` }}
@@ -669,7 +683,7 @@ export default function InterconnectedThankYou() {
 
       {/* ── FOOTER ──────────────────────────────────────────────────────────────── */}
       <footer className="py-8 px-4 text-center" style={{ background: BG_MID, borderTop: `1px solid rgba(46,145,252,0.1)` }}>
-        <img src={LOGO} alt="The Urban Monk" className="w-24 mx-auto mb-4 opacity-60" />
+        <img src={LOGO} alt="The Urban Monk" className="w-24 mx-auto mb-4 opacity-60" loading="lazy" decoding="async" />
         <p className="text-gray-600 text-xs max-w-2xl mx-auto">
           This documentary series is for educational and informational purposes only. Nothing in Interconnected is intended to diagnose, treat, cure, or prevent any disease. Always consult your licensed healthcare provider before making changes to your diet, supplements, medications, or health protocols.
         </p>

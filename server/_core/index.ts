@@ -1600,7 +1600,24 @@ async function startServer() {
     })();
 
     // Start the weekly Monday digest cron
-    startWeeklyDigestCron();
+    // ── v2.2 sandbox safety gate ────────────────────────────────────────────
+    // SANDBOX_MODE=1 suppresses every background job that can reach the outside
+    // world. This exists because the v2.2 sandbox necessarily runs with the REAL
+    // production credentials — there is no separate test key set — so without
+    // the gate the upload watchdog would resume a genuine YouTube upload to the
+    // live channel, and the digest cron would email real recipients, while the
+    // operator is only meant to be clicking around a test build.
+    //
+    // With SANDBOX_MODE unset, behaviour is exactly what it was before.
+    const SANDBOX_MODE = process.env.SANDBOX_MODE === "1";
+    if (SANDBOX_MODE) {
+      console.log(
+        "[Sandbox] SANDBOX_MODE=1 — weekly digest cron and upload watchdog DISABLED. " +
+          "No email will be sent, no YouTube upload will be resumed."
+      );
+    }
+
+    if (!SANDBOX_MODE) startWeeklyDigestCron();
 
     // ── Upload Watchdog: runs every 10 minutes ────────────────────────────────
     // Auto-recovers video jobs stuck in 'uploading' after a server restart.
@@ -1660,9 +1677,15 @@ async function startServer() {
       }
     };
     // Run immediately on startup (catches jobs stuck from before this deploy)
-    runUploadWatchdog();
-    // Then every 10 minutes
-    setInterval(runUploadWatchdog, 10 * 60 * 1000);
+    // Gated by SANDBOX_MODE: this path can resume a real upload to the live
+    // channel, which must never happen from a throwaway test environment.
+    if (!SANDBOX_MODE) {
+      runUploadWatchdog();
+      // Then every 10 minutes
+      setInterval(runUploadWatchdog, 10 * 60 * 1000);
+    } else {
+      console.log("[Sandbox] Upload watchdog skipped (SANDBOX_MODE=1).");
+    }
   });
 
 }

@@ -1,0 +1,39 @@
+Part 2 sandbox isolation proof — 2026-08-01T18:31:39.886Z
+app under test: http://localhost:3000
+scratch db: contenthub_v22_sandbox · staging db: contenthub_staging
+
+==============================================================================
+1. What database has the RUNNING app process actually opened?
+==============================================================================
+  pid: 32820
+  DATABASE_URL database component: contenthub_v22_sandbox
+  → targets scratch, not staging: true
+  SANDBOX_MODE=1
+
+==============================================================================
+2. Decisive test: write via the app's API, then count rows in BOTH databases
+==============================================================================
+  BEFORE  script_factory_outputs:  scratch=8  staging=8
+  minted dev session: app_session_id=eyJhbGciO...
+  POST scriptFactory.update → HTTP 200
+  response: {"result":{"data":{"json":{"ok":true}}}}
+  scratch  id=30003 notes contains the marker: true
+  staging  id=30003 notes contains the marker: false
+  AFTER   script_factory_outputs:  scratch=8  staging=8
+  staging row count unchanged: true
+
+==============================================================================
+3. Background jobs that can reach the outside world are disabled
+==============================================================================
+  log contains "SANDBOX_MODE=1 — weekly digest cron and upload...": true
+  log contains "Upload watchdog skipped (SANDBOX_MODE=1)...": true
+  log mentions "[Upload Watchdog]" activity: false (expect false)
+
+==============================================================================
+4. The app is genuinely usable — authenticated reads succeed
+==============================================================================
+  GET scriptFactory.getStats     HTTP 200 · ok: true
+    {"result":{"data":{"json":{"total":8,"approved":1,"avgVerificationPct":76.625}}}}
+  GET scriptFactory.list         HTTP 200 · ok: true
+
+DONE.

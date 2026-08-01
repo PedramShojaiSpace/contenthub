@@ -1,5 +1,15 @@
 import { bigint, boolean, date, datetime, decimal, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, tinyint, varchar } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
+/*
+ * FINDING #10 (v2.2): all 15 columns below that hold JSON are physically
+ * LONGTEXT, not MySQL json. Declaring them `json()` made the driver hand back
+ * raw STRINGS while the types claimed arrays, so `as T[]` casts silently
+ * produced strings at runtime and broke `inArray`. Proof:
+ * docs/build-reports/v22r/probe_json_column_drift.mjs (MISMATCHED 15/15) and
+ * probe_inarray_app.ts. `longtextJson()` parses on read / stringifies on write.
+ * DO NOT revert these to `json()` without first migrating the physical columns.
+ */
+import { longtextJson } from "./longtextJson";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -3201,13 +3211,13 @@ export const claimsReviews = mysqlTable("claims_reviews", {
   contentId: varchar("content_id", { length: 255 }),
   contentTitle: varchar("content_title", { length: 512 }),
   contentText: text("content_text").notNull(),
-  verdicts: json("verdicts").notNull().$type<Array<{
+  verdicts: longtextJson<Array<{
     ruleId: string;
     ruleName: string;
     passed: boolean;
     flaggedText: string | null;
     explanation: string;
-  }>>(),
+  }>>("verdicts").notNull(),
   overallFlag: tinyint("overall_flag").notNull().default(0),
   flagCount: int("flag_count").notNull().default(0),
   // Live column is `status`. Unlike content_type this IS a real enum in the
@@ -3286,21 +3296,21 @@ export const ytHeadlineGenerations = mysqlTable("yt_headline_generations", {
   topic: varchar("topic", { length: 512 }).notNull(),
   pillar: varchar("pillar", { length: 128 }),
   // JSON array of 5 headline objects: { title, hook, rationale }
-  headlines: json("headlines").notNull().$type<Array<{
+  headlines: longtextJson<Array<{
     title: string;
     hook: string;
     rationale: string;
     estimatedCtrTier: "high" | "medium" | "low";
-  }>>(),
+  }>>("headlines").notNull(),
   // JSON array of 5 thumbnail concept objects (parallel to headlines)
-  thumbnailConcepts: json("thumbnail_concepts").$type<Array<{
+  thumbnailConcepts: longtextJson<Array<{
     layout: string;
     textOverlay: string;
     background: string;
     focalElement: string;
     colorMood: string;
     productionNotes: string;
-  }>>()
+  }>>("thumbnail_concepts")
     ,
   selectedTitle: varchar("selected_title", { length: 512 }),
   linkedScriptId: int("linked_script_id"),
@@ -3496,7 +3506,7 @@ export const corpusEntries = mysqlTable("corpus_entries", {
   contentChunk: mediumtext("content_chunk"),
   // embedding stored as JSON string (TiDB VECTOR type not in Drizzle ORM yet)
   embedding: text("embedding"),
-  tags: json("tags").$type<string[]>(),
+  tags: longtextJson<string[]>("tags"),
   personaId: int("persona_id"),
   wordCount: int("word_count").default(0),
   inCorpus: tinyint("in_corpus").notNull().default(1),
@@ -3533,7 +3543,7 @@ export const contentPatterns = mysqlTable("content_patterns", {
   effectivenessScore: float("effectiveness_score"),
   usageCount: int("usage_count").notNull().default(0),
   lastUsedAt: datetime("last_used_at"),
-  tags: json("tags").$type<string[]>(),
+  tags: longtextJson<string[]>("tags"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -3554,8 +3564,8 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
     "youtube_script", "short_form", "email", "ad_copy", "sales_page_section", "podcast_outline",
   ]).notNull().default("youtube_script"),
   scriptBody: longtext("script_body").notNull(),
-  verifiedPatternIds: json("verified_pattern_ids").$type<number[]>(),
-  corpusEntryIds: json("corpus_entry_ids").$type<number[]>(),
+  verifiedPatternIds: longtextJson<number[]>("verified_pattern_ids"),
+  corpusEntryIds: longtextJson<number[]>("corpus_entry_ids"),
   verifiedCount: int("verified_count").notNull().default(0),
   totalElements: int("total_elements").notNull().default(0),
   verificationPct: float("verification_pct"),
@@ -3566,7 +3576,7 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
   /** Which persona this script targets (personas.id) */
   personaId: int("persona_id"),
   /** Explicit North Star selection — analog_data_entries.id[] */
-  analogDataEntryIds: json("analog_data_entry_ids").$type<number[]>(),
+  analogDataEntryIds: longtextJson<number[]>("analog_data_entry_ids"),
   /** Target video length in minutes (youtube_script only): 10 | 15 | 20 */
   targetLengthMinutes: int("target_length_minutes"),
   /** suggested_ideas.id this script was generated from */
@@ -3782,20 +3792,20 @@ export const suggestedIdeas = mysqlTable("suggested_ideas", {
   contentGap: text("content_gap"),
   recommendedFormat: varchar("recommended_format", { length: 64 }),
   /** JSON array of pattern type strings */
-  recommendedPatterns: json("recommended_patterns").$type<string[]>(),
+  recommendedPatterns: longtextJson<string[]>("recommended_patterns"),
   analogDataSource: text("analog_data_source"),
   /** Reference to analog_data_entries.id when the source could be resolved */
   analogDataEntryId: int("analog_data_entry_id"),
   personaId: int("persona_id"),
   /** VidIQ research payload when this idea was research-derived */
-  vidiqData: json("vidiq_data").$type<{
+  vidiqData: longtextJson<{
     keyword: string;
     volume: number;
     competition: number;
     opportunityScore: number;
     estimatedMonthlySearch: number;
     topRelatedKeywords: { keyword: string; overall: number; volume: number }[];
-  }>(),
+  }>("vidiq_data"),
   /** The VidIQ seed keyword that produced this idea (if research-sourced) */
   seedKeyword: varchar("seed_keyword", { length: 255 }),
   status: mysqlEnum("idea_status", ["suggested", "shortlisted", "dismissed", "generated"]).notNull().default("suggested"),
@@ -3839,14 +3849,14 @@ export const topicNodes = mysqlTable("topic_nodes", {
   analogDataEntryId: int("analog_data_entry_id"),
   personaId: int("persona_id"),
   /** Same payload shape as suggested_ideas.vidiqData, for the node's own keyword */
-  vidiqData: json("vidiq_data").$type<{
+  vidiqData: longtextJson<{
     keyword: string;
     volume: number;
     competition: number;
     opportunityScore: number;
     estimatedMonthlySearch: number;
     topRelatedKeywords: { keyword: string; overall: number; volume: number }[];
-  }>(),
+  }>("vidiq_data"),
   status: mysqlEnum("topic_status", ["active", "archived"]).notNull().default("active"),
   /** Drives weekly cron rotation: least-recently-mined leaves are picked first */
   lastMinedAt: datetime("last_mined_at"),
@@ -3883,7 +3893,7 @@ export const researchJobs = mysqlTable("research_jobs", {
    * NOTE: vidIQ's outliers response does not include channelId or
    * subscriberCount, so those stay null when VidIQ is the source.
    */
-  outlierVideos: json("outlier_videos").$type<{
+  outlierVideos: longtextJson<{
     videoId: string;
     title: string;
     channelId: string | null;
@@ -3892,11 +3902,11 @@ export const researchJobs = mysqlTable("research_jobs", {
     subscriberCount: number | null;
     outlierScore: number;
     publishedAt: string | null;
-  }[]>(),
+  }[]>("outlier_videos"),
   /** videoIds whose transcripts were secured (fetched or already cached) */
-  transcriptVideoIds: json("transcript_video_ids").$type<string[]>(),
+  transcriptVideoIds: longtextJson<string[]>("transcript_video_ids"),
   /** content_patterns rows mined from this research */
-  patternIds: json("pattern_ids").$type<number[]>(),
+  patternIds: longtextJson<number[]>("pattern_ids"),
   transcriptsFetched: int("transcripts_fetched").notNull().default(0),
   transcriptsCached: int("transcripts_cached").notNull().default(0),
   transcriptsFailed: int("transcripts_failed").notNull().default(0),
@@ -3904,6 +3914,22 @@ export const researchJobs = mysqlTable("research_jobs", {
   quotaBlocked: boolean("quota_blocked").notNull().default(false),
   /** Free-form notes, e.g. which discovery source was used */
   notes: text("notes"),
+  /**
+   * v2.2 Part 3C — aggregate structural analysis of the top transcripts.
+   *
+   * DECLARED because an undeclared column silently does not persist: the
+   * setStatus call typechecked via `as any` while writing nothing, which is the
+   * exact failure class Part 1 fixes 6-8 corrected (drizzle names that did not
+   * match live columns). Column added by migrate_3c_structure_summary.mjs.
+   */
+  structureSummary: longtextJson<{
+    commonOpeningMoves: string[];
+    sectionFlow: string[];
+    proofStyle: string;
+    ctaStyle: string;
+    avgWordCount: number;
+    sourceVideoIds: string[];
+  }>("structure_summary"),
   errorMessage: varchar("error_message", { length: 512 }),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),

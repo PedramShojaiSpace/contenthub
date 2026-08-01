@@ -14,24 +14,24 @@
     <!-- Preconnect to critical third-party origins -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://www.googletagmanager.com" />
-    <link rel="preconnect" href="https://connect.facebook.net" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link rel="dns-prefetch" href="https://connect.facebook.net" />
     <link rel="dns-prefetch" href="https://fast.wistia.net" />
     <link rel="dns-prefetch" href="https://embed-ssl.wistia.com" />
-    <!-- Preload critical assets for Interconnected page LCP -->
-    <link rel="preload" href="/manus-storage/interconnected-poster_e31ef3aa.jpg" as="image" />
-    <link rel="preload" href="/manus-storage/urban-monk-logo-white_bea7991f.png" as="image" />
-    <!-- Google Fonts — subset to only weights used on Interconnected pages -->
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <!-- Google Analytics 4 — deferred to not block first paint -->
-    <script defer src="https://www.googletagmanager.com/gtag/js?id=G-CXZK2Q275S"></script>
+    <!-- Google Fonts — font-display=optional prevents layout shift (no FOUT) -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800;900&family=Nunito:wght@400;600;700;800&display=optional" rel="stylesheet" />
+    <!-- Google Analytics 4 — fully deferred, fires after page is interactive -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-CXZK2Q275S', { 'send_page_view': false });
-      // Fire pageview after load to avoid blocking LCP
-      window.addEventListener('load', function() { gtag('event', 'page_view'); });
+      window.addEventListener('load', function() {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-CXZK2Q275S';
+        document.head.appendChild(s);
+        gtag('js', new Date());
+        gtag('config', 'G-CXZK2Q275S', { 'send_page_view': true });
+      });
     </script>
     <!-- Meta Pixel — deferred bootstrap, fires after interactive -->
     <script>
@@ -51,12 +51,16 @@
       });
     </script>
     <!-- End Meta Pixel -->
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-MTRVLTFX');</script>
+    <!-- Google Tag Manager — deferred to after load -->
+    <script>
+      window.addEventListener('load', function() {
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MTRVLTFX');
+      });
+    </script>
     <!-- End Google Tag Manager -->
   </head>
 

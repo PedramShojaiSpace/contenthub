@@ -1216,6 +1216,33 @@ async function startServer() {
     }
   });
 
+  // ── Interconnected Static HTML Pages (bypasses React SPA bundle for speed) ──
+  app.get("/interconnected", async (_req, res) => {
+    try {
+      const { renderInterconnectedPage } = await import("../interconnectedStaticPage");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      return res.send(renderInterconnectedPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[interconnected] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  app.get("/interconnected/thank-you", async (_req, res) => {
+    try {
+      const { renderInterconnectedThankYouPage } = await import("../interconnectedThankYouStaticPage");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      return res.send(renderInterconnectedThankYouPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[interconnected-ty] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
   // Campaigns: lo | gut | sleep | webinar | upstream

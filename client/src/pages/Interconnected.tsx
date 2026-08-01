@@ -375,15 +375,15 @@ export default function Interconnected() {
           background: "linear-gradient(135deg, #020d18 0%, #051e2e 50%, #020d18 100%)",
         }}
       >
-        {/* Microbiome background texture */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url(${POSTER})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: 0.2,
-          }}
+        {/* Microbiome background texture — img tag for LCP preloadability */}
+        <img
+          src={POSTER}
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          decoding="sync"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ opacity: 0.2, pointerEvents: "none" }}
         />
         <div
           className="absolute inset-0"

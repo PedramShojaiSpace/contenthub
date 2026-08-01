@@ -123,14 +123,14 @@ export function renderInterconnectedThankYouPage(): string {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=optional" rel="stylesheet" />
-  <link rel="preconnect" href="https://fast.wistia.net" />
-  <link rel="dns-prefetch" href="https://fast.wistia.com" />
-  <!-- Meta Pixel — deferred -->
+  <!-- Meta Pixel — delayed 3s after load so it never blocks LCP -->
   <script>
     window.addEventListener('load', function() {
-      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init','1697953957040196');
-      fbq('track','Lead');
+      setTimeout(function() {
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init','1697953957040196');
+        fbq('track','Lead');
+      }, 3000);
     });
   </script>
   <!-- GA4 — deferred -->
@@ -273,19 +273,26 @@ export function renderInterconnectedThankYouPage(): string {
   <div class="container-sm">
     <p style="text-align:center;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;margin-bottom:8px">WAIT! Don't Close or Navigate Away From This Page!</p>
     <h1 class="section-title" style="margin-bottom:24px">Wait, one more thing!</h1>
-    <div class="video-wrap">
-      <div class="video-ratio">
-        <iframe
-          src="https://fast.wistia.net/embed/iframe/hobj7srg3q?seo=true&videoFoam=true"
-          title="Interconnected Thank You Video"
-          allow="autoplay; fullscreen"
-          allowtransparency="true"
-          frameborder="0"
-          scrolling="no"
-          loading="lazy"
-          width="100%"
-          height="100%"
-        ></iframe>
+    <!-- Wistia click-to-play facade: zero network cost until user taps play -->
+    <div class="video-wrap" id="wistia-facade" onclick="loadWistia()" style="cursor:pointer;position:relative">
+      <div class="video-ratio" style="background:#020d18">
+        <!-- Thumbnail from Wistia CDN — single lightweight image, no JS -->
+        <img
+          id="wistia-thumb"
+          src="https://embed-ssl.wistia.com/deliveries/hobj7srg3q.jpg?image_crop_resized=960x540"
+          alt="Watch Dr. Pedram Shojai's message"
+          fetchpriority="high"
+          decoding="async"
+          width="960"
+          height="540"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover"
+        />
+        <!-- Play button overlay -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:72px;height:72px;background:rgba(46,145,252,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 32px rgba(46,145,252,0.5);pointer-events:none">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <!-- Actual iframe — injected on click only -->
+        <div id="wistia-player" style="position:absolute;top:0;left:0;width:100%;height:100%;display:none"></div>
       </div>
     </div>
     <p style="color:#d1d5db;font-size:1.1rem;line-height:1.7;margin-bottom:20px;text-align:center">
@@ -464,6 +471,28 @@ function toggleFaq(i) {
   a.style.display = open ? 'none' : 'block';
   if (icon) icon.textContent = open ? '+' : '−';
   if (btn) btn.setAttribute('aria-expanded', String(!open));
+}
+
+// ── Wistia click-to-play facade ─────────────────────────────────────────────
+var wistiaLoaded = false;
+function loadWistia() {
+  if (wistiaLoaded) return;
+  wistiaLoaded = true;
+  var thumb = document.getElementById('wistia-thumb');
+  var player = document.getElementById('wistia-player');
+  var facade = document.getElementById('wistia-facade');
+  if (thumb) thumb.style.display = 'none';
+  if (player) player.style.display = 'block';
+  if (facade) facade.onclick = null;
+  var iframe = document.createElement('iframe');
+  iframe.src = 'https://fast.wistia.net/embed/iframe/hobj7srg3q?seo=true&videoFoam=true&autoPlay=true';
+  iframe.title = 'Interconnected Thank You Video';
+  iframe.allow = 'autoplay; fullscreen';
+  iframe.setAttribute('allowtransparency', 'true');
+  iframe.setAttribute('frameborder', '0');
+  iframe.setAttribute('scrolling', 'no');
+  iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%';
+  if (player) player.appendChild(iframe);
 }
 
 // ── Pixel fire on buy click ──────────────────────────────────────────────────

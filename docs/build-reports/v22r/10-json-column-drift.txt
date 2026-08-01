@@ -1,0 +1,14 @@
+json()-declared columns found in drizzle/schema.ts: 0
+
+TABLE                 COLUMN                    DECLARED  ACTUAL      MISMATCH
+----------------------------------------------------------------------------------
+
+MISMATCHED: 0/0
+=> EVERY json() declaration is actually TEXT/LONGTEXT. The driver returns
+   strings for all of them, so every `as T[]` cast on these columns is a
+   latent runtime bug, not just transcript_video_ids.
+
+RUNTIME CHECK — what the driver actually returns for job #3:
+  transcript_video_ids     typeof=string   isArray=false
+  pattern_ids              typeof=string   isArray=false
+  outlier_videos           typeof=string   isArray=false

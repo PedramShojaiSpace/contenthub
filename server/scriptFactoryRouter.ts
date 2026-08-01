@@ -17,6 +17,14 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { analogDataEntries, contentPatterns, corpusEntries, ideaFeedback, personas, researchJobs, scriptFactoryOutputs, scriptPerformanceFeedback, scripts, suggestedIdeas, videoJobs, ytTranscripts } from "../drizzle/schema";
+/*
+ * FINDING #10: research_jobs JSON columns are physically LONGTEXT, so the
+ * driver returns STRINGS. `asArray()` guarantees a real array at runtime;
+ * `as T[]` did not and produced the inArray SQL syntax error that silently
+ * disabled research grounding. `hasItems()` guards inArray against empty/
+ * non-array input.
+ */
+import { asArray, hasItems } from "../drizzle/longtextJson";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
@@ -34,6 +42,19 @@ import { getAvatarContextBlockForPersona } from "./avatarRouter";
 import { searchCorpusEntries } from "./corpusRouter";
 import { fetchTranscriptWithQuota } from "./transcriptRouter";
 import { extractPatternsFromContent } from "./patternExtractorRouter";
+import {
+  extractOpening,
+  classifyHookStructure,
+  partitionByRelevance,
+  scoreTopicalRelevance,
+  validateStructureSummary,
+  buildHookReferenceBlock,
+  buildStructureSummaryBlock,
+  STRUCTURE_SUMMARY_PROMPT,
+  MAX_HOOK_REFERENCES,
+  type HookReference,
+  type StructureSummary,
+} from "./researchGrounding";
 import {
   TITLE_PACKAGING_RULES,
   buildLengthInstruction,
@@ -399,6 +420,23 @@ interface ResolvedResearch {
   patternIds: number[];
   outlierCount: number;
   transcriptCount: number;
+  /**
+   * v2.2 Part 3C — grounding blocks built from this job.
+   *
+   * Kept separate from `context` so generate can report which specific kinds of
+   * grounding a script actually received, instead of a single opaque boolean.
+   */
+  hookBlock: string;
+  structureBlock: string;
+  hookReferenceCount: number;
+  hasStructureSummary: boolean;
+  /**
+   * Set when RESOLUTION itself threw (finding #10 class: a completed research
+   * job whose grounding could not be read back). Distinct from "no research
+   * requested" and from "research failed" -- those leave this null. Generation
+   * still proceeds ungrounded, but the operator must be told why.
+   */
+  resolutionError?: string | null;
 }
 
 const EMPTY_RESEARCH: ResolvedResearch = {
@@ -407,6 +445,11 @@ const EMPTY_RESEARCH: ResolvedResearch = {
   patternIds: [],
   outlierCount: 0,
   transcriptCount: 0,
+  hookBlock: "",
+  structureBlock: "",
+  hookReferenceCount: 0,
+  hasStructureSummary: false,
+  resolutionError: null,
 };
 
 /**
@@ -445,13 +488,13 @@ async function resolveResearchContext(
 
     if (!job) return EMPTY_RESEARCH;
 
-    const outliers = (job.outlierVideos ?? []) as StoredOutlier[];
-    const videoIds = (job.transcriptVideoIds ?? []) as string[];
+    const outliers = asArray<StoredOutlier>(job.outlierVideos);
+    const videoIds = asArray<string>(job.transcriptVideoIds);
 
     // Transcripts are read back from the cache the job populated, so no
     // additional Supadata units are ever spent at generation time.
     let transcripts: { title: string; text: string }[] = [];
-    if (videoIds.length > 0) {
+    if (hasItems<string>(videoIds)) {
       const rows = await db
         .select({
           videoId: ytTranscripts.videoId,
@@ -471,16 +514,81 @@ async function resolveResearchContext(
         }));
     }
 
+    // v2.2 Part 3C — HOOK REFERENCES.
+    //
+    // Read back the `hook_reference`-tagged rows this job wrote. These are whole
+    // openings to analyse for STRUCTURE, explicitly not phrases to reuse, which
+    // is why they are fetched separately from mined patterns rather than being
+    // mixed into the same list.
+    let hookRefs: HookReference[] = [];
+    try {
+      const jobPatternIds = asArray<number>(job.patternIds);
+      if (hasItems<number>(jobPatternIds)) {
+        const rows = await db
+          .select({
+            patternText: contentPatterns.patternText,
+            patternContext: contentPatterns.patternContext,
+            sourceVideoId: contentPatterns.sourceVideoId,
+            effectivenessScore: contentPatterns.effectivenessScore,
+          })
+          .from(contentPatterns)
+          .where(inArray(contentPatterns.id, jobPatternIds));
+
+        hookRefs = rows
+          .filter((r) => (r.patternContext ?? "").startsWith("HOOK REFERENCE"))
+          .map((r) => {
+            const ctx = r.patternContext ?? "";
+            const label = /structure=([a-z_]+)/.exec(ctx)?.[1] ?? "unlabeled";
+            const title = /video="([^"]*)"/.exec(ctx)?.[1] ?? r.sourceVideoId ?? "";
+            const views = outliers.find((o) => o.videoId === r.sourceVideoId)?.views ?? 0;
+            return {
+              videoId: r.sourceVideoId ?? "",
+              title,
+              openingText: r.patternText,
+              structureLabel: label as HookReference["structureLabel"],
+              views,
+            };
+          })
+          .sort((a, b) => b.views - a.views)
+          .slice(0, MAX_HOOK_REFERENCES);
+      }
+    } catch (err) {
+      // Grounding is an enhancement; never fail generation over it.
+      console.error("[ScriptFactory] hook reference load failed:", err);
+    }
+
+    /*
+     * `structureSummary` now arrives already parsed via longtextJson(), so this
+     * is a plain null-check rather than the `as` cast that hid finding #10.
+     */
+    const summary = (job.structureSummary ?? null) as StructureSummary | null;
+
     return {
       jobId: job.id,
       context: buildResearchContext(outliers, transcripts),
-      patternIds: (job.patternIds ?? []) as number[],
+      patternIds: asArray<number>(job.patternIds),
       outlierCount: outliers.length,
       transcriptCount: transcripts.length,
+      hookBlock: hookRefs.length > 0 ? buildHookReferenceBlock(hookRefs) : "",
+      structureBlock: summary ? buildStructureSummaryBlock(summary) : "",
+      hookReferenceCount: hookRefs.length,
+      hasStructureSummary: summary !== null,
     };
   } catch (err) {
+    /*
+     * DISCLOSURE GAP FIX (finding #10 second half).
+     *
+     * This catch previously returned EMPTY_RESEARCH silently. Because the
+     * failure happened during RESOLUTION rather than during RESEARCH, the
+     * generate response reported `researchFailureReason: null` and the operator
+     * saw an ordinary ungrounded script — while vidIQ credits and Supadata units
+     * had already been spent. Failing open is fine; failing open INVISIBLY is
+     * the dishonest-metric class this build exists to remove. The reason is now
+     * carried out so the caller can surface it.
+     */
+    const reason = err instanceof Error ? err.message : String(err);
     console.error("[ScriptFactory] resolveResearchContext failed:", err);
-    return EMPTY_RESEARCH;
+    return { ...EMPTY_RESEARCH, resolutionError: reason };
   }
 }
 
@@ -587,6 +695,14 @@ function buildSystemPrompt(
     offerProfile?: OfferProfile | null;
     /** Part 3B. The operator's own close. REPLACES offer binding, never coexists. */
     ctaOverride?: string | null;
+    /**
+     * Part 3C. Openings of real videos that already won on this topic, presented
+     * for STRUCTURAL analysis. Empty string when no research grounding exists —
+     * an ungrounded run must not receive scaffolding that implies it had research.
+     */
+    hookBlock?: string;
+    /** Part 3C. Aggregate structural analysis across the researched transcripts. */
+    structureBlock?: string;
   } = {}
 ): string {
   const {
@@ -595,6 +711,8 @@ function buildSystemPrompt(
     storyMode = "brief",
     offerProfile = null,
     ctaOverride = null,
+    hookBlock = "",
+    structureBlock = "",
   } = opts;
   // Part 3B — mutually exclusive by construction. Two competing closes make the
   // script argue with itself for fifteen minutes, so an override wins outright
@@ -611,6 +729,11 @@ function buildSystemPrompt(
 
   const personaSection = persona?.block ? `\n${persona.block}\n` : "";
   const lengthSection = lengthInstruction ? `\n${lengthInstruction}\n` : "";
+
+  // Part 3C — structural grounding sections. Emitted only when research
+  // actually produced them, so their presence in the prompt is itself evidence.
+  const hookSection = hookBlock ? `\n${hookBlock}\n` : "";
+  const structureSection = structureBlock ? `\n${structureBlock}\n` : "";
 
   // The CTA rule only hardens when we actually have proven copy to anchor on.
   const ctaRule = persona?.ctaCopy
@@ -645,7 +768,7 @@ VERIFIED TAGGING RULES (CRITICAL):
 - Format: "Your hook text here [VERIFIED]" — the tag goes AFTER the element, inline
 
 ${buildStoryIntegrityBlock(storyMode)}
-${offerSection}
+${offerSection}${hookSection}${structureSection}
 
 SCRIPT STRUCTURE TAGS (use these to label each section):
 [HOOK] — opening hook (first 15 seconds / first line)
@@ -668,6 +791,369 @@ ${groundedContext}`;
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
+
+/**
+ * PART 3C — SHARED DEEP RESEARCH PIPELINE.
+ *
+ * Extracted verbatim from the `runDeepResearch` mutation body so that the tRPC
+ * procedure and `generate`'s auto-research path run the SAME code. Two copies of
+ * a pipeline that writes research_jobs, yt_transcripts and content_patterns
+ * would drift, and the drift would be invisible until the two produced
+ * different grounding for the same seed.
+ *
+ * Returns a result object rather than throwing for expected failure modes; only
+ * genuinely unexpected errors propagate. `generate` needs to continue on
+ * research failure (fail-open), so a thrown error there would be a regression.
+ */
+export interface DeepResearchOpts {
+  topic: string;
+  seedKeyword?: string;
+  maxTranscripts?: number;
+}
+
+export interface DeepResearchResult {
+  jobId: number;
+  status: "complete" | "failed";
+  outlierCount: number;
+  transcriptsFetched: number;
+  transcriptsCached: number;
+  transcriptsFailed: number;
+  quotaBlocked: boolean;
+  patternCount: number;
+  error: string | null;
+  /** Hook reference pattern ids (3C) */
+  hookPatternIds?: number[];
+  /** How many discovery results were dropped as off-topic (3C) */
+  offTopicDropped?: number;
+  discoverySource?: string;
+  structureSummarySaved?: boolean;
+}
+
+export async function executeDeepResearch(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  opts: DeepResearchOpts
+): Promise<DeepResearchResult> {
+  const seedKeyword = (opts.seedKeyword && normalizeKeyword(opts.seedKeyword))
+    || normalizeKeyword(opts.topic);
+
+  const jobInsert = await db.insert(researchJobs).values({
+    topic: opts.topic.slice(0, 500),
+    seedKeyword: seedKeyword.slice(0, 255),
+    status: "pending",
+  });
+  const jobId = Number(
+    (jobInsert as any)[0]?.insertId ?? (jobInsert as any).insertId ?? 0
+  );
+  if (!jobId) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create research job" });
+  }
+
+  /** Stage marker so a poll always reflects real progress. */
+  const setStatus = async (
+    status: typeof researchJobs.$inferSelect["status"],
+    extra: Partial<typeof researchJobs.$inferInsert> = {}
+  ) => {
+    await db
+      .update(researchJobs)
+      .set({ status, updatedAt: sql`NOW()`, ...extra })
+      .where(eq(researchJobs.id, jobId));
+  };
+
+  try {
+    // ── 1. Discover overperforming videos ──────────────────────────────
+    await setStatus("researching_outliers");
+
+    let rawOutliers: VidIQOutlierVideo[] = [];
+    let discoverySource = "vidiq_outliers";
+    try {
+      rawOutliers = await vidiqOutliers(seedKeyword, 10);
+    } catch (err) {
+      console.error("[DeepResearch] vidiqOutliers failed:", err);
+      rawOutliers = [];
+    }
+
+    // Fallback: the outlier tool is topic-sensitive and can come back empty
+    // for narrow keywords, where trending still gives usable competitors.
+    if (rawOutliers.length === 0) {
+      try {
+        const trending = await vidiqTrendingVideos(seedKeyword, 10);
+        rawOutliers = trending as unknown as VidIQOutlierVideo[];
+        discoverySource = "vidiq_trending_fallback";
+      } catch (err) {
+        console.error("[DeepResearch] vidiqTrendingVideos fallback failed:", err);
+      }
+    }
+
+    // Rank by outlier score first, then raw views.
+    //
+    // v2.2 Part 1 fix 9: vidiqOutliers/vidiqTrendingVideos now normalise the
+    // wire shape themselves, so `title`, `channelId`, `subscriberCount` and
+    // `publishedAt` are real values here. The previous comment claimed
+    // channelId and subscriberCount were "absent from VidIQ's payload" and
+    // hardcoded both to null — they are in fact present. They were reading
+    // as undefined only because the whole object was being mis-mapped.
+    const outlierVideos: StoredOutlier[] = rawOutliers
+      .filter((v) => v && v.videoId)
+      .map((v) => ({
+        videoId: v.videoId,
+        title: v.title,
+        channelId: v.channelId,
+        channelTitle: v.channelTitle,
+        views: v.viewCount,
+        subscriberCount: v.subscriberCount,
+        outlierScore: v.outlierScore,
+        publishedAt: v.publishedAt,
+      }))
+      .sort((a, b) => (b.outlierScore - a.outlierScore) || (b.views - a.views));
+
+    // v2.2 Part 3C — TOPICAL RELEVANCE GATE.
+    //
+    // Measured problem (docs/build-reports/v22r/proof_discovery_sources.txt):
+    // `vidiq_outliers` returned on-topic results for only 8/15 health keywords.
+    // A live run on "leaky gut fatigue" mined patterns from a Sprunki gaming
+    // video and a Corpus Christi water-supply report, storing lines like
+    // "Mhm, good tasty." at effectiveness 0.9 — the ceiling. Those rows then
+    // become the grounding corpus every later composition draws from, so
+    // off-topic research is worse than no research: it launders noise into the
+    // system with high confidence.
+    //
+    // Relevant results are preferred; off-topic ones are kept as a TAIL rather
+    // than deleted, so a seed where nothing matches still has something to work
+    // with instead of hard-failing. The counts are reported either way.
+    const { relevant: onTopic, offTopic } = partitionByRelevance(seedKeyword, outlierVideos);
+    const rankedVideos: StoredOutlier[] = [...onTopic, ...offTopic];
+    const offTopicDropped = offTopic.length;
+    if (offTopicDropped > 0) {
+      console.log(
+        `[DeepResearch] ${onTopic.length}/${outlierVideos.length} discovery results are on-topic for "${seedKeyword}"; ` +
+        `${offTopicDropped} deprioritised: ${offTopic.slice(0, 3).map((v) => JSON.stringify(v.title)).join(", ")}`
+      );
+    }
+
+    if (outlierVideos.length === 0) {
+      // Nothing to research is a failure, but a clean, explained one.
+      await setStatus("failed", {
+        outlierVideos: [],
+        errorMessage: "No outlier or trending videos found for this keyword",
+        notes: `discovery=${discoverySource}; seed="${seedKeyword}"`,
+      });
+      return {
+        jobId,
+        status: "failed" as const,
+        outlierCount: 0,
+        transcriptsFetched: 0,
+        transcriptsCached: 0,
+        transcriptsFailed: 0,
+        quotaBlocked: false,
+        patternCount: 0,
+        error: "No outlier or trending videos found for this keyword",
+      };
+    }
+
+    await setStatus("fetching_transcripts", { outlierVideos });
+
+    // ── 2. Secure transcripts through the shared quota ledger ──────────
+    const secured: { videoId: string; title: string; text: string }[] = [];
+    let transcriptsFetched = 0;
+    let transcriptsCached = 0;
+    let transcriptsFailed = 0;
+    let quotaBlocked = false;
+
+    for (const video of rankedVideos.slice(0, (opts.maxTranscripts ?? 3))) {
+      const result = await fetchTranscriptWithQuota(db, {
+        videoId: video.videoId,
+        videoTitle: video.title,
+        publishedAt: video.publishedAt ?? undefined,
+      });
+
+      if (result.outcome === "quota_blocked") {
+        // Respect the cap: stop trying rather than burning failed calls.
+        quotaBlocked = true;
+        break;
+      }
+      if (result.outcome === "cached") {
+        transcriptsCached++;
+        if (result.text) secured.push({ videoId: video.videoId, title: video.title, text: result.text });
+      } else if (result.outcome === "fetched") {
+        transcriptsFetched++;
+        if (result.text) secured.push({ videoId: video.videoId, title: video.title, text: result.text });
+      } else {
+        transcriptsFailed++;
+      }
+    }
+
+    const transcriptVideoIds = secured.map((s) => s.videoId);
+
+    // ── 3. Mine patterns from the secured transcripts ──────────────────
+    await setStatus("extracting_patterns", {
+      transcriptVideoIds,
+      transcriptsFetched,
+      transcriptsCached,
+      transcriptsFailed,
+      quotaBlocked,
+    });
+
+    const patternIds: number[] = [];
+    for (const item of secured) {
+      try {
+        const extracted = await extractPatternsFromContent(item.text, item.title);
+        // Top 5 per video keeps the pattern table signal-dense.
+        for (const p of extracted.slice(0, 5)) {
+          const outlier = outlierVideos.find((o) => o.videoId === item.videoId);
+          // Normalize the outlier score into the 0-1 effectiveness band this
+          // table uses; competitor-sourced patterns cap at 0.9 so the
+          // operator's own proven analog data can still outrank them.
+          const effectiveness = outlier?.outlierScore
+            ? Math.min(0.9, Math.max(0.5, outlier.outlierScore / 10))
+            : 0.6;
+
+          const patternInsert = await db.insert(contentPatterns).values({
+            sourceVideoId: item.videoId,
+            patternType: p.type as any,
+            patternText: p.text,
+            patternContext: p.context ?? null,
+            effectivenessScore: effectiveness,
+            tags: [`research_job_${jobId}`, "competitor_research"],
+          });
+          const pid = Number(
+            (patternInsert as any)[0]?.insertId ?? (patternInsert as any).insertId ?? 0
+          );
+          if (pid) patternIds.push(pid);
+        }
+      } catch (err) {
+        // One unmineable transcript must not sink the whole job.
+        console.error(`[DeepResearch] pattern extraction failed for ${item.videoId}:`, err);
+      }
+    }
+
+    // ── 4. HOOK REFERENCES (v2.2 Part 3C) ──────────────────────────────
+    //
+    // Each secured transcript's opening ~200 words is stored as its own
+    // content_patterns row of type "hook". These are what let generation
+    // imitate the STRUCTURE of openings that already won on this topic while
+    // writing entirely original words.
+    //
+    // Stored separately from mined patterns because they serve a different
+    // purpose: a mined "hook" pattern is a phrase to reuse, a hook REFERENCE is
+    // a whole opening to analyse and deliberately not reuse. Tagged
+    // `hook_reference` so composition can tell them apart.
+    const hookPatternIds: number[] = [];
+    for (const item of secured) {
+      try {
+        const opening = extractOpening(item.text);
+        if (!opening || opening.split(" ").length < 20) continue;
+
+        const structureLabel = classifyHookStructure(opening);
+        const rank = rankedVideos.findIndex((v) => v.videoId === item.videoId);
+        const relevance = scoreTopicalRelevance(seedKeyword, item.title);
+
+        // Effectiveness reflects DISCOVERY RANK and TOPICAL RELEVANCE, not the
+        // saturated outlierScore/10 mapping used for mined patterns. Measured:
+        // 13 of 15 real patterns pinned to the 0.9 ceiling because any score
+        // >= 9 clamps, so that mapping carries no signal. Rank-based scoring
+        // keeps genuine ordering.
+        const rankFactor = rank >= 0 ? Math.max(0.4, 0.85 - rank * 0.05) : 0.5;
+        const effectiveness = Math.min(0.9, Math.max(0.3, rankFactor * (0.5 + relevance / 2)));
+
+        const ins = await db.insert(contentPatterns).values({
+          sourceVideoId: item.videoId,
+          patternType: "hook" as any,
+          patternText: opening,
+          patternContext: `HOOK REFERENCE · structure=${structureLabel} · video="${item.title.slice(0, 200)}" · relevance=${relevance.toFixed(2)}`,
+          effectivenessScore: effectiveness,
+          tags: [`research_job_${jobId}`, "hook_reference", `structure_${structureLabel}`],
+        });
+        const hid = Number((ins as any)[0]?.insertId ?? (ins as any).insertId ?? 0);
+        if (hid) hookPatternIds.push(hid);
+      } catch (err) {
+        console.error(`[DeepResearch] hook reference failed for ${item.videoId}:`, err);
+      }
+    }
+
+    // ── 5. STRUCTURE SUMMARY (v2.2 Part 3C) ────────────────────────────
+    //
+    // One aggregate LLM pass over the top 3 transcripts. Best-effort: a failure
+    // here must not fail a job that already secured transcripts and patterns.
+    let structureSummary: StructureSummary | null = null;
+    try {
+      const top3 = secured.slice(0, 3);
+      if (top3.length > 0) {
+        const transcriptBlock = top3
+          .map((t, i) => `--- VIDEO ${i + 1}: ${t.title} ---\n${t.text.slice(0, 6000)}`)
+          .join("\n\n");
+        const resp = await invokeLLM({
+          messages: [
+            { role: "system", content: STRUCTURE_SUMMARY_PROMPT },
+            { role: "user", content: transcriptBlock },
+          ],
+        });
+        const raw = String(resp?.choices?.[0]?.message?.content ?? "").trim();
+        // Models often fence JSON; strip the fence before parsing.
+        const unfenced = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+        structureSummary = validateStructureSummary(unfenced, top3.map((t) => t.videoId));
+      }
+    } catch (err) {
+      console.error("[DeepResearch] structure summary failed:", err);
+    }
+
+    const notes = [
+      `discovery=${discoverySource}`,
+      `seed="${seedKeyword}"`,
+      `outliers=${outlierVideos.length}`,
+      `transcripts=${secured.length}`,
+      `patterns=${patternIds.length}`,
+      `hook_refs=${hookPatternIds.length}`,
+      `on_topic=${onTopic.length}/${outlierVideos.length}`,
+      structureSummary ? "structure_summary=yes" : "structure_summary=no",
+      quotaBlocked ? "quota_blocked=true" : null,
+    ].filter(Boolean).join("; ");
+
+    await setStatus("complete", {
+      outlierVideos,
+      transcriptVideoIds,
+      patternIds: [...patternIds, ...hookPatternIds],
+      structureSummary: structureSummary as any,
+      transcriptsFetched,
+      transcriptsCached,
+      transcriptsFailed,
+      quotaBlocked,
+      notes,
+      errorMessage: null,
+    });
+
+    return {
+      jobId,
+      status: "complete" as const,
+      outlierCount: outlierVideos.length,
+      hookPatternIds,
+      offTopicDropped,
+      discoverySource,
+      structureSummarySaved: structureSummary !== null,
+      transcriptsFetched,
+      transcriptsCached,
+      transcriptsFailed,
+      quotaBlocked,
+      patternCount: patternIds.length,
+      error: null,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[DeepResearch] Job failed:", msg);
+    await setStatus("failed", { errorMessage: msg.slice(0, 512) });
+    // Return rather than throw: generate()'s fail-open path needs a value.
+    return {
+      jobId,
+      status: "failed" as const,
+      outlierCount: 0,
+      transcriptsFetched: 0,
+      transcriptsCached: 0,
+      transcriptsFailed: 0,
+      quotaBlocked: false,
+      patternCount: 0,
+      error: msg.slice(0, 512),
+    };
+  }
+}
 
 export const scriptFactoryRouter = router({
 
@@ -698,6 +1184,28 @@ export const scriptFactoryRouter = router({
       useDeepResearch: z.boolean().default(false),
       /** Use one specific research job. */
       researchJobId: z.number().int().positive().optional(),
+
+      // ── Part 3C — RESEARCH-FIRST ────────────────────────────────────────
+      /**
+       * Opt OUT of automatic research, rather than opting in.
+       *
+       * v2.2 inverts the v2.1 default. Previously `useDeepResearch` defaulted to
+       * false, so the ordinary path produced ungrounded scripts and grounding was
+       * something you had to remember to ask for. Now a long-form script runs
+       * research unless this is explicitly set, which is what "research-first"
+       * has to mean to be true.
+       *
+       * Kept as a separate flag from `useDeepResearch` so existing callers that
+       * pass `useDeepResearch: true` keep working unchanged.
+       */
+      skipResearch: z.boolean().default(false),
+      /**
+       * The keyword to research, when it differs from the topic. Idea cards
+       * already carry one; passing it through means auto-research reuses by the
+       * same key the research pipeline stores, rather than by prose topic text
+       * that never matches twice.
+       */
+      seedKeyword: z.string().trim().max(255).optional(),
 
       // ── Part 3A ─────────────────────────────────────────────────────────
       /**
@@ -890,15 +1398,97 @@ export const scriptFactoryRouter = router({
 
       // 3. Deep research context (Phase 3.5). Resolved before generation so the
       //    competitive block can be injected into the same prompt.
+      //
+      // v2.2 Part 3C — RESEARCH-FIRST GENERATION.
+      //
+      // A long-form script now RUNS research when none exists, instead of
+      // silently generating ungrounded because nobody ticked a box. Three
+      // behaviours matter here and each is deliberate:
+      //
+      //   REUSE — a complete job for the same seed within the reuse window is
+      //   reused at zero cost. Without this, every generation on a topic would
+      //   spend fresh vidIQ credits and Supadata units on research that already
+      //   exists, which would make research-first prohibitively expensive.
+      //
+      //   FAIL-OPEN — research failure must never fail generation. vidIQ can be
+       //  down, out of credits, or return nothing for an obscure seed; in every
+      //   such case the operator still gets their script, just ungrounded and
+      //   labelled as such. A hard failure here would make v2.2 strictly worse
+      //   than v2.1 for the user.
+      //
+      //   HONEST REPORTING — `researchAttempted` / `researchReused` /
+      //   `researchFailureReason` are returned so the UI can state what actually
+      //   happened rather than implying grounding that is not there.
+      const RESEARCH_REUSE_DAYS = 14;
+      const wantsAutoResearch =
+        !input.skipResearch &&
+        !input.researchJobId &&
+        !input.useDeepResearch &&
+        input.format === "youtube_script";
+
+      let autoResearchJobId: number | undefined;
+      let researchAttempted = false;
+      let researchReused = false;
+      let researchFailureReason: string | null = null;
+
+      if (wantsAutoResearch) {
+        researchAttempted = true;
+        const seed = (input.seedKeyword ?? input.topic).slice(0, 255);
+        try {
+          // Reuse first: cheapest possible outcome.
+          const cutoff = new Date(Date.now() - RESEARCH_REUSE_DAYS * 86400_000);
+          const existing = await db
+            .select({ id: researchJobs.id, createdAt: researchJobs.createdAt })
+            .from(researchJobs)
+            .where(and(
+              eq(researchJobs.seedKeyword, seed),
+              eq(researchJobs.status, "complete"),
+              gte(researchJobs.createdAt, cutoff),
+            ))
+            .orderBy(desc(researchJobs.createdAt))
+            .limit(1);
+
+          if (existing[0]) {
+            autoResearchJobId = existing[0].id;
+            researchReused = true;
+            console.log(`[ScriptFactory] reusing research job #${autoResearchJobId} for seed "${seed}"`);
+          } else {
+            const rr = await executeDeepResearch(db, {
+              topic: input.topic,
+              seedKeyword: seed,
+              maxTranscripts: 3,
+            });
+            if (rr.status === "complete") {
+              autoResearchJobId = rr.jobId;
+            } else {
+              researchFailureReason = rr.error ?? "Research produced no usable grounding";
+            }
+          }
+        } catch (err) {
+          // FAIL-OPEN. Recorded, reported, and then generation continues.
+          researchFailureReason = err instanceof Error ? err.message.slice(0, 300) : "Research failed";
+          console.error("[ScriptFactory] auto-research failed (continuing ungrounded):", err);
+        }
+      }
+
       const research = await resolveResearchContext(db, {
-        useDeepResearch: input.useDeepResearch,
-        researchJobId: input.researchJobId,
+        useDeepResearch: input.useDeepResearch || Boolean(autoResearchJobId),
+        researchJobId: input.researchJobId ?? autoResearchJobId,
         topic: input.topic,
       });
 
+      /*
+       * FINDING #10 DISCLOSURE. If resolution threw, the job may be `complete`
+       * with real transcripts on disk yet none of it reached the prompt. Report
+       * that explicitly rather than letting it look like a clean ungrounded run.
+       */
+      if (research.resolutionError && !researchFailureReason) {
+        researchFailureReason = `Research completed but its grounding could not be loaded: ${research.resolutionError.slice(0, 240)}`;
+      }
+
       // Patterns mined from the research job join the pool for this script.
       let researchPatterns: typeof contentPatterns.$inferSelect[] = [];
-      if (research.patternIds.length > 0) {
+      if (hasItems<number>(research.patternIds)) {
         researchPatterns = await db
           .select()
           .from(contentPatterns)
@@ -931,6 +1521,10 @@ export const scriptFactoryRouter = router({
         storyMode: input.storyMode,
         offerProfile: boundOffer,
         ctaOverride: input.ctaOverride ?? null,
+        // v2.2 Part 3C — structural grounding. Empty strings when no research
+        // exists, so an ungrounded run gets no misleading scaffolding.
+        hookBlock: research.hookBlock,
+        structureBlock: research.structureBlock,
       });
 
       // 4. Generate script via LLM
@@ -1211,6 +1805,23 @@ export const scriptFactoryRouter = router({
         researchOutliersUsed: research.outlierCount,
         researchTranscriptsUsed: research.transcriptCount,
         researchPatternsUsed: researchPatterns.length,
+        // ── Part 3C: honest grounding disclosure ───────────────────────────
+        // Each of these answers a distinct question, because one boolean cannot.
+        // "Was research attempted" is not "did it succeed", and "did it succeed"
+        // is not "was it fresh". A UI that shows a single "researched" badge
+        // would imply grounding on a run that failed open and produced none.
+        researchAttempted,
+        researchReused,
+        researchFailureReason,
+        /*
+         * HONEST METRIC: grounded means grounding text actually reached the
+         * prompt. `jobId !== null` was the old test and it reported TRUE for the
+         * finding #10 runs where resolution threw and context was empty.
+         */
+        researchGrounded:
+          research.jobId !== null && (research.context.length > 0 || research.hookBlock.length > 0),
+        hookReferencesUsed: research.hookReferenceCount,
+        structureSummaryUsed: research.hasStructureSummary,
         sourceIdeaId: input.sourceIdeaId ?? null,
       };
     }),
@@ -1458,215 +2069,16 @@ export const scriptFactoryRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      // The keyword actually sent to VidIQ: an explicit seed when the idea
-      // engine supplied one, else a normalized form of the topic.
-      const seedKeyword = (input.seedKeyword && normalizeKeyword(input.seedKeyword))
-        || normalizeKeyword(input.topic);
-
-      const jobInsert = await db.insert(researchJobs).values({
-        topic: input.topic.slice(0, 500),
-        seedKeyword: seedKeyword.slice(0, 255),
-        status: "pending",
-      });
-      const jobId = Number(
-        (jobInsert as any)[0]?.insertId ?? (jobInsert as any).insertId ?? 0
-      );
-      if (!jobId) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create research job" });
+      // v2.2 Part 3C: delegates to the shared pipeline. The procedure keeps its
+      // throw-on-failure contract (the UI surfaces the error), while generate()
+      // reads the returned result and proceeds unbound.
+      const result = await executeDeepResearch(db, input);
+      if (result.status === "failed" && result.outlierCount === 0 && result.error) {
+        // A clean explained failure is still returned, not thrown, when it is
+        // the "nothing to research" case the UI renders as a reason.
+        return result;
       }
-
-      /** Stage marker so a poll always reflects real progress. */
-      const setStatus = async (
-        status: typeof researchJobs.$inferSelect["status"],
-        extra: Partial<typeof researchJobs.$inferInsert> = {}
-      ) => {
-        await db
-          .update(researchJobs)
-          .set({ status, updatedAt: sql`NOW()`, ...extra })
-          .where(eq(researchJobs.id, jobId));
-      };
-
-      try {
-        // ── 1. Discover overperforming videos ──────────────────────────────
-        await setStatus("researching_outliers");
-
-        let rawOutliers: VidIQOutlierVideo[] = [];
-        let discoverySource = "vidiq_outliers";
-        try {
-          rawOutliers = await vidiqOutliers(seedKeyword, 10);
-        } catch (err) {
-          console.error("[DeepResearch] vidiqOutliers failed:", err);
-          rawOutliers = [];
-        }
-
-        // Fallback: the outlier tool is topic-sensitive and can come back empty
-        // for narrow keywords, where trending still gives usable competitors.
-        if (rawOutliers.length === 0) {
-          try {
-            const trending = await vidiqTrendingVideos(seedKeyword, 10);
-            rawOutliers = trending as unknown as VidIQOutlierVideo[];
-            discoverySource = "vidiq_trending_fallback";
-          } catch (err) {
-            console.error("[DeepResearch] vidiqTrendingVideos fallback failed:", err);
-          }
-        }
-
-        // Rank by outlier score first, then raw views.
-        //
-        // v2.2 Part 1 fix 9: vidiqOutliers/vidiqTrendingVideos now normalise the
-        // wire shape themselves, so `title`, `channelId`, `subscriberCount` and
-        // `publishedAt` are real values here. The previous comment claimed
-        // channelId and subscriberCount were "absent from VidIQ's payload" and
-        // hardcoded both to null — they are in fact present. They were reading
-        // as undefined only because the whole object was being mis-mapped.
-        const outlierVideos: StoredOutlier[] = rawOutliers
-          .filter((v) => v && v.videoId)
-          .map((v) => ({
-            videoId: v.videoId,
-            title: v.title,
-            channelId: v.channelId,
-            channelTitle: v.channelTitle,
-            views: v.viewCount,
-            subscriberCount: v.subscriberCount,
-            outlierScore: v.outlierScore,
-            publishedAt: v.publishedAt,
-          }))
-          .sort((a, b) => (b.outlierScore - a.outlierScore) || (b.views - a.views));
-
-        if (outlierVideos.length === 0) {
-          // Nothing to research is a failure, but a clean, explained one.
-          await setStatus("failed", {
-            outlierVideos: [],
-            errorMessage: "No outlier or trending videos found for this keyword",
-            notes: `discovery=${discoverySource}; seed="${seedKeyword}"`,
-          });
-          return {
-            jobId,
-            status: "failed" as const,
-            outlierCount: 0,
-            transcriptsFetched: 0,
-            transcriptsCached: 0,
-            transcriptsFailed: 0,
-            quotaBlocked: false,
-            patternCount: 0,
-            error: "No outlier or trending videos found for this keyword",
-          };
-        }
-
-        await setStatus("fetching_transcripts", { outlierVideos });
-
-        // ── 2. Secure transcripts through the shared quota ledger ──────────
-        const secured: { videoId: string; title: string; text: string }[] = [];
-        let transcriptsFetched = 0;
-        let transcriptsCached = 0;
-        let transcriptsFailed = 0;
-        let quotaBlocked = false;
-
-        for (const video of outlierVideos.slice(0, input.maxTranscripts)) {
-          const result = await fetchTranscriptWithQuota(db, {
-            videoId: video.videoId,
-            videoTitle: video.title,
-            publishedAt: video.publishedAt ?? undefined,
-          });
-
-          if (result.outcome === "quota_blocked") {
-            // Respect the cap: stop trying rather than burning failed calls.
-            quotaBlocked = true;
-            break;
-          }
-          if (result.outcome === "cached") {
-            transcriptsCached++;
-            if (result.text) secured.push({ videoId: video.videoId, title: video.title, text: result.text });
-          } else if (result.outcome === "fetched") {
-            transcriptsFetched++;
-            if (result.text) secured.push({ videoId: video.videoId, title: video.title, text: result.text });
-          } else {
-            transcriptsFailed++;
-          }
-        }
-
-        const transcriptVideoIds = secured.map((s) => s.videoId);
-
-        // ── 3. Mine patterns from the secured transcripts ──────────────────
-        await setStatus("extracting_patterns", {
-          transcriptVideoIds,
-          transcriptsFetched,
-          transcriptsCached,
-          transcriptsFailed,
-          quotaBlocked,
-        });
-
-        const patternIds: number[] = [];
-        for (const item of secured) {
-          try {
-            const extracted = await extractPatternsFromContent(item.text, item.title);
-            // Top 5 per video keeps the pattern table signal-dense.
-            for (const p of extracted.slice(0, 5)) {
-              const outlier = outlierVideos.find((o) => o.videoId === item.videoId);
-              // Normalize the outlier score into the 0-1 effectiveness band this
-              // table uses; competitor-sourced patterns cap at 0.9 so the
-              // operator's own proven analog data can still outrank them.
-              const effectiveness = outlier?.outlierScore
-                ? Math.min(0.9, Math.max(0.5, outlier.outlierScore / 10))
-                : 0.6;
-
-              const patternInsert = await db.insert(contentPatterns).values({
-                sourceVideoId: item.videoId,
-                patternType: p.type as any,
-                patternText: p.text,
-                patternContext: p.context ?? null,
-                effectivenessScore: effectiveness,
-                tags: [`research_job_${jobId}`, "competitor_research"],
-              });
-              const pid = Number(
-                (patternInsert as any)[0]?.insertId ?? (patternInsert as any).insertId ?? 0
-              );
-              if (pid) patternIds.push(pid);
-            }
-          } catch (err) {
-            // One unmineable transcript must not sink the whole job.
-            console.error(`[DeepResearch] pattern extraction failed for ${item.videoId}:`, err);
-          }
-        }
-
-        const notes = [
-          `discovery=${discoverySource}`,
-          `seed="${seedKeyword}"`,
-          `outliers=${outlierVideos.length}`,
-          `transcripts=${secured.length}`,
-          `patterns=${patternIds.length}`,
-          quotaBlocked ? "quota_blocked=true" : null,
-        ].filter(Boolean).join("; ");
-
-        await setStatus("complete", {
-          outlierVideos,
-          transcriptVideoIds,
-          patternIds,
-          transcriptsFetched,
-          transcriptsCached,
-          transcriptsFailed,
-          quotaBlocked,
-          notes,
-          errorMessage: null,
-        });
-
-        return {
-          jobId,
-          status: "complete" as const,
-          outlierCount: outlierVideos.length,
-          transcriptsFetched,
-          transcriptsCached,
-          transcriptsFailed,
-          quotaBlocked,
-          patternCount: patternIds.length,
-          error: null,
-        };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[DeepResearch] Job failed:", msg);
-        await setStatus("failed", { errorMessage: msg.slice(0, 512) });
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Research failed: ${msg}` });
-      }
+      return result;
     }),
 
   // ─── Poll a research job ──────────────────────────────────────────────────
@@ -1700,7 +2112,7 @@ export const scriptFactoryRouter = router({
       const job = rows[0];
       if (!job) return null;
 
-      const outliers = (job.outlierVideos ?? []) as StoredOutlier[];
+      const outliers = asArray<StoredOutlier>(job.outlierVideos);
       return {
         id: job.id,
         topic: job.topic,
@@ -1708,9 +2120,9 @@ export const scriptFactoryRouter = router({
         status: job.status,
         outlierVideos: outliers,
         outlierCount: outliers.length,
-        transcriptVideoIds: (job.transcriptVideoIds ?? []) as string[],
-        patternIds: (job.patternIds ?? []) as number[],
-        patternCount: ((job.patternIds ?? []) as number[]).length,
+        transcriptVideoIds: asArray<string>(job.transcriptVideoIds),
+        patternIds: asArray<number>(job.patternIds),
+        patternCount: (asArray<number>(job.patternIds)).length,
         transcriptsFetched: job.transcriptsFetched,
         transcriptsCached: job.transcriptsCached,
         transcriptsFailed: job.transcriptsFailed,

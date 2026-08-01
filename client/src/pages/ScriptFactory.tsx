@@ -781,6 +781,13 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
   // ── Phase 3: deep research ────────────────────────────────────────────────
   const [useDeepResearch, setUseDeepResearch] = useState(false);
   /**
+   * Part 3C — opt OUT of research, not in.
+   *
+   * Named for what it does to the request rather than for the UI label, so the
+   * client flag and the server field cannot drift apart.
+   */
+  const [skipResearch, setSkipResearch] = useState(false);
+  /**
    * Part 3A — story mode. Defaults to "brief": the system hands the operator a
    * slot for a real case instead of inventing a patient. The safe option must be
    * the one you get without choosing.
@@ -1116,7 +1123,7 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                     return (
                       <div className="space-y-1.5">
                         <p className="text-xs text-emerald-900">
-                          <span className="font-medium">{withOffer.title}</span> ladders{" "}
+                          <span className="font-medium">{withOffer?.title ?? "This source"}</span> ladders{" "}
                           {tiers.length} purchasable tiers. Pick which one this script closes
                           on — nothing is chosen for you, because the tier sets the price the
                           script asks for.
@@ -1177,32 +1184,48 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                   />
                 </div>
               </div>
-              {/* ── Phase 3: Deep Research ───────────────────────────────── */}
+              {/* ── Part 3C: RESEARCH-FIRST ──────────────────────────────────
+                  The default is now RESEARCH, not speed. Long-form scripts run
+                  research automatically; "Quick generate" is the explicit
+                  opt-out. Previously grounding was something you had to
+                  remember to switch on, which meant the ordinary path produced
+                  ungrounded scripts.                                        */}
               <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50/50 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <label className="text-sm font-medium flex items-center gap-1.5">
                       <TrendingUp className="w-3.5 h-3.5 text-purple-500" />
-                      Deep Research Mode
+                      Research-first
+                      {!skipResearch && format === "youtube_script" && (
+                        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-purple-600 text-white">
+                          default
+                        </span>
+                      )}
                     </label>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Find the videos already winning this topic, pull their transcripts, and mine
-                      what makes them work — so this script beats them.
+                      {format === "youtube_script"
+                        ? skipResearch
+                          ? "Quick generate: no research. Faster and free, but the script is grounded only in your own corpus."
+                          : "Finds the videos already winning this topic, pulls their transcripts, and studies how their openings are built. Reuses research from the last 14 days at no cost."
+                        : "Automatic research applies to long-form YouTube scripts. Shorter formats generate from your corpus."}
                     </p>
                   </div>
-                  <button
-                    onClick={() => setUseDeepResearch((v) => !v)}
-                    className={`shrink-0 text-xs px-2.5 py-1 rounded border transition-colors ${
-                      useDeepResearch
-                        ? "bg-purple-600 text-white border-purple-600"
-                        : "bg-background text-muted-foreground border-border hover:border-purple-400"
-                    }`}
-                  >
-                    {useDeepResearch ? "On" : "Off"}
-                  </button>
+                  {format === "youtube_script" && (
+                    <button
+                      onClick={() => setSkipResearch((v) => !v)}
+                      className={`shrink-0 text-xs px-2.5 py-1 rounded border transition-colors ${
+                        skipResearch
+                          ? "bg-background text-muted-foreground border-border hover:border-purple-400"
+                          : "bg-purple-600 text-white border-purple-600"
+                      }`}
+                      title={skipResearch ? "Turn research back on" : "Skip research for a faster, ungrounded draft"}
+                    >
+                      {skipResearch ? "Quick generate" : "On"}
+                    </button>
+                  )}
                 </div>
 
-                {useDeepResearch && (
+                {!skipResearch && (
                   <div className="space-y-2 pt-1">
                     <Input
                       placeholder="Seed keyword (optional — derived from the topic if blank)"
@@ -1210,6 +1233,10 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                       onChange={(e) => setSeedKeyword(e.target.value)}
                       className="h-8 text-xs"
                     />
+                    <p className="text-[11px] text-muted-foreground">
+                      Research runs automatically when you generate. Use this button only to run it
+                      ahead of time and inspect what it found.
+                    </p>
                     <Button
                       size="sm"
                       variant="outline"
@@ -1223,7 +1250,7 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                     >
                       {runResearch.isPending
                         ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Researching…</>
-                        : <><Search className="w-3.5 h-3.5 mr-1.5" /> Run Research</>}
+                        : <><Search className="w-3.5 h-3.5 mr-1.5" /> Preview research now</>}
                     </Button>
 
                     {researchJob && (
@@ -1314,6 +1341,8 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                     : undefined,
                   sourceIdeaId: sourceIdeaId ?? undefined,
                   useDeepResearch,
+                  skipResearch,
+                  seedKeyword: seedKeyword.trim() || undefined,
                   researchJobId: researchJobId ?? undefined,
                   storyMode,
                   ctaOverride: ctaOverride.trim() ? ctaOverride.trim() : undefined,

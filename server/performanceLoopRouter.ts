@@ -22,6 +22,8 @@ import {
   scriptPerformanceFeedback,
   ytVideoSnapshots,
 } from "../drizzle/schema";
+// FINDING #10: verified_pattern_ids is LONGTEXT; the driver returns a string.
+import { asArray } from "../drizzle/longtextJson";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 
@@ -156,7 +158,7 @@ export const performanceLoopRouter = router({
         .where(eq(scriptFactoryOutputs.id, input.scriptId))
         .limit(1);
 
-      const patternIds: number[] = (scriptRow?.verifiedPatternIds as number[]) ?? [];
+      const patternIds: number[] = asArray<number>(scriptRow?.verifiedPatternIds);
       const normalizedScore = normalizeOutlierScore(outlierScore);
       let patternsUpdated = 0;
 
@@ -308,7 +310,7 @@ export const performanceLoopRouter = router({
           .where(eq(scriptFactoryOutputs.id, feedback.scriptId))
           .limit(1);
 
-        const patternIds: number[] = (scriptRow?.verifiedPatternIds as number[]) ?? [];
+        const patternIds: number[] = asArray<number>(scriptRow?.verifiedPatternIds);
         for (const patternId of patternIds) {
           const [pattern] = await db
             .select({ effectivenessScore: contentPatterns.effectivenessScore })

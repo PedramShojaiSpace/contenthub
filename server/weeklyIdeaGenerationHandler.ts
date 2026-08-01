@@ -22,8 +22,8 @@
  */
 
 import type { Request, Response } from "express";
-import { and, eq } from "drizzle-orm";
-import { suggestedIdeas } from "../drizzle/schema";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { suggestedIdeas, topicNodes } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import type { TrpcContext } from "./_core/context";
@@ -32,6 +32,51 @@ import { isoWeekLabel } from "./scriptFactoryHelpers";
 
 /** Ideas generated per automatic weekly run (spec §1.4). */
 const WEEKLY_IDEA_COUNT = 8;
+
+/**
+ * Ideas generated for the rotated topic-tree leaf (spec §5.5).
+ *
+ * Deliberately smaller than WEEKLY_IDEA_COUNT: node-scoped ideas are narrow by
+ * construction, and asking for 8 from one leaf pushes the model into repeating
+ * itself. 4 keeps them distinct.
+ */
+const NODE_ROTATION_IDEA_COUNT = 4;
+
+/**
+ * Pick the leaf node that has gone longest without being mined (spec §5.5).
+ *
+ * "Leaf" is defined as a node with no children rather than by depth, because the
+ * operator can expand any branch to an arbitrary depth — a depth test would keep
+ * re-mining interior nodes on deep branches and skip shallow ones entirely.
+ *
+ * Never-mined nodes (`lastMinedAt IS NULL`) sort first so a freshly built map is
+ * covered before anything is revisited. Returns `null` when no tree exists yet,
+ * which is the normal state until the operator builds one.
+ */
+async function pickLeastRecentlyMinedLeaf(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>
+): Promise<{ id: number; label: string; path: string } | null> {
+  const candidates = await db
+    .select({
+      id: topicNodes.id,
+      label: topicNodes.label,
+      path: topicNodes.path,
+      lastMinedAt: topicNodes.lastMinedAt,
+    })
+    .from(topicNodes)
+    .where(
+      and(
+        eq(topicNodes.status, "active"),
+        // Leaf test: no other active node claims this one as its parent.
+        sql`NOT EXISTS (SELECT 1 FROM ${topicNodes} AS child WHERE child.parent_id = ${topicNodes.id})`
+      )
+    )
+    .orderBy(asc(topicNodes.lastMinedAt), asc(topicNodes.id))
+    .limit(1);
+
+  const node = candidates[0];
+  return node ? { id: node.id, label: node.label, path: node.path } : null;
+}
 
 /**
  * Build a tRPC context representing the cron itself.
@@ -115,6 +160,54 @@ export async function weeklyIdeaGenerationHandler(req: Request, res: Response) {
         `${result.researchSkipped ? `, research skipped: ${result.reason}` : ""})`
     );
 
+    // ── Topic-tree rotation (spec §5.5) ─────────────────────────────────────
+    // Mine the leaf that has waited longest, so the tree is worked through
+    // systematically instead of the operator having to remember which branches
+    // they have already explored.
+    //
+    // This runs AFTER the general batch is persisted and is wrapped in its own
+    // try/catch: a tree that does not exist yet, or one bad node, must never
+    // cost the operator their weekly ideas. Rotation is an enhancement, not a
+    // precondition.
+    let rotation: {
+      nodeId: number;
+      label: string;
+      path: string;
+      inserted: number;
+    } | null = null;
+    let rotationError: string | null = null;
+
+    try {
+      const leaf = await pickLeastRecentlyMinedLeaf(db);
+      if (leaf) {
+        const nodeResult = await caller.topicTree.generateIdeasForNode({
+          nodeId: leaf.id,
+          count: NODE_ROTATION_IDEA_COUNT,
+          source: "weekly_auto",
+        });
+        rotation = {
+          nodeId: leaf.id,
+          label: leaf.label,
+          path: leaf.path,
+          inserted: nodeResult.inserted,
+        };
+        console.log(
+          `[Weekly Idea Generation] Rotation: mined leaf #${leaf.id} "${leaf.label}" ` +
+            `(${leaf.path}) — ${nodeResult.inserted} ideas`
+        );
+      } else {
+        console.log(
+          "[Weekly Idea Generation] Rotation skipped — no active topic-tree leaves exist yet"
+        );
+      }
+    } catch (rotErr) {
+      rotationError = rotErr instanceof Error ? rotErr.message : String(rotErr);
+      console.error(
+        "[Weekly Idea Generation] Rotation failed (weekly batch was still saved):",
+        rotationError
+      );
+    }
+
     // Tell the owner the week's ideas are ready. Notification failure must not
     // fail the run — the ideas are already persisted by this point.
     try {
@@ -129,6 +222,10 @@ export async function weeklyIdeaGenerationHandler(req: Request, res: Response) {
           `# Weekly Ideas — ${weekLabel}\n\n` +
           `${result.savedIdeas.length} ideas generated from ${result.analogDataCount} analog entries ` +
           `and ${result.researchSeedCount} research seeds.\n\n${topicLines}\n\n` +
+          (rotation
+            ? `**Topic rotation:** mined “${rotation.label}” (${rotation.path}) — ` +
+              `${rotation.inserted} additional branch ideas.\n\n`
+            : "") +
           (result.researchSkipped ? `_Research skipped: ${result.reason}_\n` : ""),
       });
     } catch (notifyErr) {
@@ -148,6 +245,8 @@ export async function weeklyIdeaGenerationHandler(req: Request, res: Response) {
       researchSeedCount: result.researchSeedCount,
       researchSkipped: result.researchSkipped,
       reason: result.reason,
+      rotation,
+      rotationError,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

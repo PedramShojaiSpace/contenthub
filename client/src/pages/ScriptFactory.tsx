@@ -47,8 +47,10 @@ import {
   TrendingUp,
   Wand2,
   Zap,
+  Network,
+  AlertTriangle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import DashboardLayout from "../components/DashboardLayout";
 
@@ -181,12 +183,16 @@ interface SuperchargedIdea extends VideoIdea {
 interface VideoIdeaEngineProps {
   /** Hands the full idea context to the generation panel (Phase 1.5 / 2.4). */
   onSelectIdea: (handoff: IdeaHandoff) => void;
+  /** Opens a generated script in the Library tab (v2.1 Bug A item 4). */
+  onOpenScript: (scriptId: number) => void;
 }
 
-function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
+function VideoIdeaEngine({ onSelectIdea, onOpenScript }: VideoIdeaEngineProps) {
   const utils = trpc.useUtils();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showDismissed, setShowDismissed] = useState(false);
+  // v2.1 Bug B — finished work collapses so the actionable list stays on top.
+  const [showGenerated, setShowGenerated] = useState(false);
 
   // ── Ideas render from the DATABASE, not from mutation state ────────────────
   // This is what makes them survive navigation: leaving the page and coming
@@ -201,6 +207,8 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
   const shortlist = (ideaData?.shortlist ?? []) as unknown as PersistedIdea[];
   const dismissed = (ideaData?.dismissed ?? []) as unknown as PersistedIdea[];
   const generated = (ideaData?.generated ?? []) as unknown as PersistedIdea[];
+  // v2.1 Bug C item 5 — only ideas without VidIQ data are worth spending on.
+  const unenrichedThisWeek = thisWeek.filter((i) => !i.vidiqData);
   const weekLabel = ideaData?.weekLabel ?? "";
 
   const refreshIdeas = () => {
@@ -243,7 +251,26 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
   });
 
   const supercharge = trpc.scriptFactory.superchargeIdeas.useMutation({
-    onSuccess: () => toast.success("Ideas supercharged with VidIQ keyword data!"),
+    onSuccess: (data) => {
+      // v2.1 Bug C — enrichment now lives in the DB, so refetch to render it.
+      // The old version held results in component state and lost them on unmount.
+      utils.scriptFactory.listSuggestedIdeas.invalidate();
+
+      const parts: string[] = [];
+      if (data.enrichedIds.length > 0) parts.push(`${data.enrichedIds.length} enriched`);
+      if (data.alreadyEnriched.length > 0) parts.push(`${data.alreadyEnriched.length} already had data`);
+      if (data.failedIds.length > 0) parts.push(`${data.failedIds.length} failed`);
+      if (data.skippedForTime.length > 0) parts.push(`${data.skippedForTime.length} skipped (time budget)`);
+
+      const summary = parts.join(" · ") || "nothing to do";
+      const secs = (data.elapsedMs / 1000).toFixed(1);
+
+      if (data.enrichedIds.length === 0 && data.failedIds.length > 0) {
+        toast.error(`VidIQ supercharge: ${summary} (${secs}s)`);
+      } else {
+        toast.success(`VidIQ supercharge: ${summary} · ${data.creditsSpent} credits · ${secs}s`);
+      }
+    },
     onError: (err) => toast.error(`VidIQ supercharge failed: ${err.message}`),
   });
 
@@ -483,9 +510,44 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
               </div>
             )}
 
+            {/* v2.1 Bug A item 4 — this used to be dead text, and only visible
+                when the card was expanded, so a generated script had no route
+                back to it at all. Now it opens the Library row. */}
             {isGenerated && idea.generatedScriptId && (
-              <div className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-1">
-                Script #{idea.generatedScriptId} was generated from this idea.
+              <button
+                className="w-full text-left text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-1.5 hover:bg-purple-100 hover:border-purple-300 transition-colors flex items-center gap-1.5"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenScript(idea.generatedScriptId!);
+                }}
+                title={`Open script #${idea.generatedScriptId} in the Library`}
+              >
+                <FileText className="w-3 h-3 flex-shrink-0" />
+                <span className="underline decoration-dotted">
+                  Open script #{idea.generatedScriptId} in the Library
+                </span>
+              </button>
+            )}
+
+            {/* A `generated` idea with no script id is an orphan — usually the
+                script was deleted. Offer the way out instead of a dead end. */}
+            {isGenerated && !idea.generatedScriptId && (
+              <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 space-y-1.5">
+                <p className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                  Marked generated, but the script is missing (likely deleted).
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateStatus.mutate({ id: idea.id, status: "shortlisted" });
+                  }}
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" /> Return to shortlist
+                </Button>
               </div>
             )}
 
@@ -527,30 +589,24 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
             </span>
           </CardTitle>
           <div className="flex items-center gap-2">
-            {thisWeek.length > 0 && (
+            {/* v2.1 Bug C — send ids and only for ideas that still lack data, so
+                a second click cannot re-spend credits on identical numbers. */}
+            {unenrichedThisWeek.length > 0 && (
               <Button
                 size="sm"
                 variant="outline"
                 className="border-yellow-400 text-yellow-700 hover:bg-yellow-50"
-                onClick={() =>
-                  supercharge.mutate({
-                    ideas: thisWeek.map((i) => ({
-                      topic: i.topic,
-                      rationale: i.rationale ?? "",
-                      audienceAlignment: i.audienceAlignment ?? 0,
-                      contentGap: i.contentGap ?? "",
-                      recommendedFormat: i.recommendedFormat ?? "youtube_script",
-                      recommendedPatterns: i.recommendedPatterns ?? [],
-                      analogDataSource: i.analogDataSource ?? "",
-                    })),
-                  })
-                }
+                onClick={() => supercharge.mutate({ ideaIds: unenrichedThisWeek.map((i) => i.id) })}
                 disabled={supercharge.isPending}
+                title={`Runs VidIQ keyword research on ${unenrichedThisWeek.length} idea(s) · ~${unenrichedThisWeek.length * 5} credits`}
               >
                 {supercharge.isPending ? (
                   <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Supercharging…</>
                 ) : (
-                  <><Zap className="w-3.5 h-3.5 mr-1.5 text-yellow-500" /> Supercharge with VidIQ</>
+                  <>
+                    <Zap className="w-3.5 h-3.5 mr-1.5 text-yellow-500" />
+                    Supercharge {unenrichedThisWeek.length} with VidIQ
+                  </>
                 )}
               </Button>
             )}
@@ -628,14 +684,52 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
         )}
 
         {/* ── Generated ───────────────────────────────────────────────────── */}
+        {/* v2.1 Bug B — these used to render as five full-height cards, which is
+            what buried the actionable "Suggested this week" list under finished
+            work. They are now one-line rows linking straight to the Library, and
+            the whole section stays collapsed until asked for. */}
         {!suggestIdeas.isPending && generated.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" />
-              Already generated
-              <span className="text-xs font-normal text-muted-foreground">({generated.length})</span>
-            </p>
-            <div className="space-y-2">{generated.slice(0, 5).map((idea) => renderIdeaCard(idea, { dimmed: true }))}</div>
+          <div className="border-t pt-3">
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+              onClick={() => setShowGenerated((s) => !s)}
+            >
+              {showGenerated ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              <CheckCircle2 className="w-3 h-3 text-purple-600" />
+              Already generated ({generated.length})
+            </button>
+            {showGenerated && (
+              <div className="mt-2 space-y-1">
+                {generated.map((idea) => (
+                  <div
+                    key={idea.id}
+                    className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-muted/20"
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-purple-600 flex-shrink-0" />
+                    <span className="flex-1 min-w-0 truncate text-muted-foreground" title={idea.topic}>
+                      {idea.topic}
+                    </span>
+                    {idea.generatedScriptId ? (
+                      <button
+                        className="flex-shrink-0 text-purple-700 hover:text-purple-900 underline decoration-dotted"
+                        onClick={() => onOpenScript(idea.generatedScriptId!)}
+                        title={`Open script #${idea.generatedScriptId} in the Library`}
+                      >
+                        Script #{idea.generatedScriptId}
+                      </button>
+                    ) : (
+                      <button
+                        className="flex-shrink-0 text-amber-700 hover:text-amber-900 flex items-center gap-1"
+                        onClick={() => updateStatus.mutate({ id: idea.id, status: "shortlisted" })}
+                        title="Script missing — return this idea to the shortlist"
+                      >
+                        <AlertTriangle className="w-3 h-3" /> missing — restore
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -662,7 +756,12 @@ function VideoIdeaEngine({ onSelectIdea }: VideoIdeaEngineProps) {
 
 // ─── Generate Tab ─────────────────────────────────────────────────────────────
 
-function GenerateTab() {
+interface GenerateTabProps {
+  /** Opens a saved script in the Library tab (v2.1 Bug A items 3 & 4). */
+  onOpenScript: (scriptId: number) => void;
+}
+
+function GenerateTab({ onOpenScript }: GenerateTabProps) {
   const utils = trpc.useUtils();
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState<string>("youtube_script");
@@ -701,11 +800,22 @@ function GenerateTab() {
     onSuccess: (data) => {
       setResult(data);
       const wordNote = data.wordCount ? ` · ${data.wordCount} words` : "";
-      toast.success(`Script generated! ${data.verificationPct}% verified${wordNote}.`);
       utils.scriptFactory.list.invalidate();
       utils.scriptFactory.getStats.invalidate();
       // An idea that produced a script changes bucket — refresh the engine.
       utils.scriptFactory.listSuggestedIdeas.invalidate();
+      // v2.1 Bug A item 3 — the script is saved and addressable, so give the
+      // operator a one-click route to it. The inline result panel below is
+      // ephemeral `useState`: it disappears on any navigation, which is exactly
+      // how a correctly-saved script came to look "lost". The toast action is a
+      // durable handle on the real Library row.
+      toast.success(`Script #${data.id} generated — ${data.verificationPct}% verified${wordNote}.`, {
+        duration: 12000,
+        action: {
+          label: "Open in Library",
+          onClick: () => onOpenScript(data.id),
+        },
+      });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -791,7 +901,7 @@ function GenerateTab() {
   return (
     <div className="space-y-5">
       {/* Video Idea Engine — top box */}
-      <VideoIdeaEngine onSelectIdea={handleSelectIdea} />
+      <VideoIdeaEngine onSelectIdea={handleSelectIdea} onOpenScript={onOpenScript} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Config */}
@@ -1125,10 +1235,26 @@ function GenerateTab() {
                       )}
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={copyToClipboard}>
-                    <ClipboardCopy className="w-3.5 h-3.5 mr-1" /> Copy
-                  </Button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* v2.1 Bug A item 3 — a durable route to the saved row. This
+                        panel is ephemeral state; the Library row is the truth. */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onOpenScript(result.id)}
+                      title={`Open script #${result.id} in the Library`}
+                    >
+                      <FileText className="w-3.5 h-3.5 mr-1" /> Open in Library
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                      <ClipboardCopy className="w-3.5 h-3.5 mr-1" /> Copy
+                    </Button>
+                  </div>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Saved as script <span className="font-mono font-medium">#{result.id}</span> — it stays in the
+                  Library even after you leave this tab.
+                </p>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
@@ -1152,21 +1278,58 @@ function GenerateTab() {
 }
 
 // ─── Library Tab ──────────────────────────────────────────────────────────────
+interface LibraryTabProps {
+  /** Script id the page wants opened (set after generation or an idea link). */
+  scriptToOpen?: number | null;
+  /** Cleared once we have honoured the request, so it does not re-fire. */
+  onScriptOpened?: () => void;
+}
 
-function LibraryTab() {
+function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
   const utils = trpc.useUtils();
   const [selectedScript, setSelectedScript] = useState<{
     id: number; title: string; scriptBody: string; topic: string; format: string;
     verifiedCount: number; totalElements: number; verificationPct: number;
     status: string; notes: string | null; createdAt: Date;
   } | null>(null);
-
   const { data: scripts, isLoading } = trpc.scriptFactory.list.useQuery({
     format: "all",
     status: "all",
     limit: 50,
     offset: 0,
   });
+
+  // v2.1 Bug A item 3 — honour an externally requested script.
+  //
+  // The detail dialog is driven by `selectedScript`, which only ever came from a
+  // click inside this tab. When the page asks us to open a specific id we look
+  // it up in the freshly-invalidated list and select it. Waiting for the list
+  // means we open with real row data rather than a placeholder; if the id is not
+  // in the list (deleted or beyond the 50-row window) we clear the request
+  // instead of retrying forever.
+  useEffect(() => {
+    if (!scriptToOpen) return;
+    if (!scripts) return; // list still loading — try again when it arrives
+    const match = scripts.find((s) => s.id === scriptToOpen);
+    if (match) {
+      setSelectedScript({
+        id: match.id,
+        title: match.title,
+        scriptBody: "",
+        topic: match.topic,
+        format: match.format,
+        verifiedCount: match.verifiedCount,
+        totalElements: match.totalElements,
+        verificationPct: match.verificationPct ?? 0,
+        status: match.status,
+        notes: null,
+        createdAt: match.createdAt,
+      });
+    } else {
+      toast.error(`Script #${scriptToOpen} is no longer in the library.`);
+    }
+    onScriptOpened?.();
+  }, [scriptToOpen, scripts, onScriptOpened]);
 
   const { data: scriptDetail } = trpc.scriptFactory.get.useQuery(
     { id: selectedScript?.id ?? 0 },
@@ -1425,6 +1588,23 @@ function StatsTab() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ScriptFactory() {
+  // v2.1 Bug A items 3 & 4 — cross-tab navigation.
+  //
+  // The tabs used to be uncontrolled (`defaultValue="generate"`), which meant
+  // nothing could ever move the operator to the Library or open a specific
+  // script. Generated scripts were therefore invisible in practice even though
+  // they were saved correctly and sat at the top of the Library list. Lifting
+  // both the active tab and the script to open into page state is what makes
+  // "generate → land on the script" and "click Script #N → open it" possible.
+  const [activeTab, setActiveTab] = useState("generate");
+  const [scriptToOpen, setScriptToOpen] = useState<number | null>(null);
+
+  /** Single entry point used by both the generate flow and idea-card links. */
+  const openScriptInLibrary = (scriptId: number) => {
+    setScriptToOpen(scriptId);
+    setActiveTab("library");
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -1438,10 +1618,13 @@ export default function ScriptFactory() {
           </p>
         </div>
 
-        <Tabs defaultValue="generate">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="generate">
               <Wand2 className="w-4 h-4 mr-1.5" /> Generate
+            </TabsTrigger>
+            <TabsTrigger value="topics">
+              <Network className="w-4 h-4 mr-1.5" /> Topics
             </TabsTrigger>
             <TabsTrigger value="library">
               <FileText className="w-4 h-4 mr-1.5" /> Library
@@ -1452,10 +1635,16 @@ export default function ScriptFactory() {
           </TabsList>
 
           <TabsContent value="generate" className="mt-4">
-            <GenerateTab />
+            <GenerateTab onOpenScript={openScriptInLibrary} />
+          </TabsContent>
+          <TabsContent value="topics" className="mt-4">
+            <TopicsTab onOpenScript={openScriptInLibrary} />
           </TabsContent>
           <TabsContent value="library" className="mt-4">
-            <LibraryTab />
+            <LibraryTab
+              scriptToOpen={scriptToOpen}
+              onScriptOpened={() => setScriptToOpen(null)}
+            />
           </TabsContent>
           <TabsContent value="stats" className="mt-4">
             <StatsTab />
@@ -1463,5 +1652,586 @@ export default function ScriptFactory() {
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+}
+// ─── Topics Tab (v2.1 §5.6) ───────────────────────────────────────────────────
+
+/** One row of the tree, flattened for indented rendering. */
+type TopicTreeNode = {
+  id: number;
+  parentId: number | null;
+  path: string;
+  depth: number;
+  label: string;
+  description: string | null;
+  status: string;
+  personaId: number | null;
+  analogDataEntryId: number | null;
+  seedKeyword: string | null;
+  lastMinedAt: string | Date | null;
+  vidiqData: {
+    keyword?: string;
+    volume?: number;
+    competition?: number;
+    opportunityScore?: number;
+    estimatedMonthlySearch?: number;
+  } | null;
+  directIdeaCount: number;
+  subtreeIdeaCount: number;
+  childCount: number;
+};
+
+/**
+ * The Topic Tree: a persistent map of the territory rather than a flat idea list.
+ *
+ * Rendering choice: the server returns a flat array ordered by depth, and we
+ * rebuild parent→child order in the client with a single pass rather than a
+ * recursive component. A flat list keeps collapse state trivially addressable by
+ * id and avoids re-mounting whole subtrees when one node changes — with a depth
+ * cap of 4 the ordering pass is cheap.
+ */
+function TopicsTab({ onOpenScript }: { onOpenScript: (scriptId: number) => void }) {
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [newNodeLabel, setNewNodeLabel] = useState("");
+  const [newNodeParent, setNewNodeParent] = useState<string>("root");
+  const [manualIdeaTopic, setManualIdeaTopic] = useState("");
+  const [buildPersonaId, setBuildPersonaId] = useState<string>("none");
+
+  const utils = trpc.useUtils();
+  const treeQuery = trpc.topicTree.listTopicTree.useQuery({ includeArchived: showArchived });
+  const personasQuery = trpc.personas.list.useQuery();
+
+  const nodeIdeasQuery = trpc.topicTree.listNodeIdeas.useQuery(
+    { nodeId: selectedNodeId ?? 0, limit: 50 },
+    { enabled: selectedNodeId !== null }
+  );
+
+  const invalidateTree = () => {
+    void utils.topicTree.listTopicTree.invalidate();
+    void utils.scriptFactory.listSuggestedIdeas.invalidate();
+    if (selectedNodeId !== null) void utils.topicTree.listNodeIdeas.invalidate();
+  };
+
+  const buildMap = trpc.topicTree.buildTopicMap.useMutation({
+    onSuccess: (res) => {
+      toast.success(
+        `Topic map built — ${res.inserted} pillars from ${res.analogEntriesUsed} analog entries` +
+          (res.skippedDuplicates > 0 ? ` (${res.skippedDuplicates} already existed)` : "")
+      );
+      invalidateTree();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const expandNode = trpc.topicTree.expandTopicNode.useMutation({
+    onSuccess: (res) => {
+      toast.success(
+        `${res.inserted} new subtopics` +
+          (res.skippedDuplicates > 0 ? ` (${res.skippedDuplicates} duplicates skipped)` : "") +
+          (res.researchUsed ? " · keyword research applied" : "")
+      );
+      // A newly expanded node must be open, or the operator sees nothing happen.
+      setCollapsed((prev) => {
+        const next = new Set(prev);
+        next.delete(res.nodeId);
+        return next;
+      });
+      invalidateTree();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const generateForNode = trpc.topicTree.generateIdeasForNode.useMutation({
+    onSuccess: (res) => {
+      toast.success(`${res.inserted} ideas generated for this branch`);
+      setSelectedNodeId(res.nodeId);
+      invalidateTree();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const createNode = trpc.topicTree.createManualNode.useMutation({
+    onSuccess: () => {
+      toast.success(`Added “${newNodeLabel.trim()}”`);
+      setNewNodeLabel("");
+      invalidateTree();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const createIdea = trpc.topicTree.createManualIdea.useMutation({
+    onSuccess: () => {
+      toast.success("Idea added to this branch");
+      setManualIdeaTopic("");
+      invalidateTree();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const updateNode = trpc.topicTree.updateNode.useMutation({
+    onSuccess: () => {
+      toast.success("Topic updated");
+      invalidateTree();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const nodes = (treeQuery.data?.nodes ?? []) as unknown as TopicTreeNode[];
+
+  // Rebuild depth-first order from the flat, depth-sorted array.
+  const childrenOf = new Map<number | null, TopicTreeNode[]>();
+  for (const n of nodes) {
+    const key = n.parentId ?? null;
+    if (!childrenOf.has(key)) childrenOf.set(key, []);
+    childrenOf.get(key)!.push(n);
+  }
+  const ordered: TopicTreeNode[] = [];
+  const walk = (parentId: number | null, hiddenByAncestor: boolean) => {
+    for (const node of childrenOf.get(parentId) ?? []) {
+      if (!hiddenByAncestor) ordered.push(node);
+      walk(node.id, hiddenByAncestor || collapsed.has(node.id));
+    }
+  };
+  walk(null, false);
+
+  const toggle = (id: number) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
+  const isEmpty = !treeQuery.isLoading && nodes.length === 0;
+  const busyNodeId =
+    expandNode.isPending || generateForNode.isPending
+      ? (expandNode.variables?.nodeId ?? generateForNode.variables?.nodeId ?? null)
+      : null;
+
+  return (
+    <div className="space-y-6">
+      {/* ── Header / build controls ─────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Network className="h-5 w-5 text-indigo-500" />
+            Topic Tree
+            {nodes.length > 0 && (
+              <Badge variant="secondary">
+                {treeQuery.data?.rootCount ?? 0} pillars · {nodes.length} nodes
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            A persistent map of your territory. Pillars come from your analog library, then you
+            expand any branch and mine it for ideas. The weekly cron automatically works through
+            whichever leaf has waited longest, so coverage widens without you tracking it.
+          </p>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                Persona for the map (optional)
+              </label>
+              <Select value={buildPersonaId} onValueChange={setBuildPersonaId}>
+                <SelectTrigger className="w-[240px]">
+                  <SelectValue placeholder="No persona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No persona</SelectItem>
+                  {(personasQuery.data ?? []).map((p: { id: number; name: string }) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              onClick={() =>
+                buildMap.mutate({
+                  personaId: buildPersonaId === "none" ? undefined : Number(buildPersonaId),
+                })
+              }
+              disabled={buildMap.isPending}
+            >
+              {buildMap.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Building map…
+                </>
+              ) : (
+                <>
+                  <Network className="mr-2 h-4 w-4" />
+                  {nodes.length > 0 ? "Rebuild / extend map" : "Build topic map"}
+                </>
+              )}
+            </Button>
+
+            <Button variant="outline" onClick={() => setShowArchived((v) => !v)}>
+              {showArchived ? "Hide archived" : "Show archived"}
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={() => void treeQuery.refetch()}
+              disabled={treeQuery.isFetching}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${treeQuery.isFetching ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+
+          {/* Manual node entry — the operator always outranks the model. */}
+          <div className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed p-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Add a topic</label>
+              <Input
+                value={newNodeLabel}
+                onChange={(e) => setNewNodeLabel(e.target.value)}
+                placeholder="e.g. Circadian light exposure"
+                className="w-[280px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Under</label>
+              <Select value={newNodeParent} onValueChange={setNewNodeParent}>
+                <SelectTrigger className="w-[260px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="root">Top level (new pillar)</SelectItem>
+                  {nodes
+                    .filter((n) => n.status === "active" && n.depth < 3)
+                    .map((n) => (
+                      <SelectItem key={n.id} value={String(n.id)}>
+                        {"— ".repeat(n.depth)}
+                        {n.label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              variant="secondary"
+              disabled={newNodeLabel.trim().length < 2 || createNode.isPending}
+              onClick={() =>
+                createNode.mutate({
+                  label: newNodeLabel.trim(),
+                  parentId: newNodeParent === "root" ? undefined : Number(newNodeParent),
+                })
+              }
+            >
+              {createNode.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>Add topic</>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Empty state ─────────────────────────────────────────────────────── */}
+      {isEmpty && (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <Network className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+            <p className="font-medium">No topic map yet</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Build one from your analog library to get pillars and subtopics, or add a topic by
+              hand above. Nothing is generated until you ask for it.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {treeQuery.isLoading && (
+        <div className="flex items-center justify-center py-10 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Loading topic tree…
+        </div>
+      )}
+
+      {/* ── Tree + drill panel ──────────────────────────────────────────────── */}
+      {nodes.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          {/* Tree */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Map</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {ordered.map((node) => {
+                const hasChildren = node.childCount > 0;
+                const isCollapsed = collapsed.has(node.id);
+                const isSelected = node.id === selectedNodeId;
+                const isBusy = busyNodeId === node.id;
+                const atDepthCap = node.depth >= 3;
+                return (
+                  <div
+                    key={node.id}
+                    className={`group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                      isSelected ? "bg-indigo-50 dark:bg-indigo-950/40" : "hover:bg-muted/50"
+                    } ${node.status === "archived" ? "opacity-50" : ""}`}
+                    style={{ paddingLeft: `${node.depth * 20 + 8}px` }}
+                  >
+                    {hasChildren ? (
+                      <button
+                        onClick={() => toggle(node.id)}
+                        className="shrink-0 text-muted-foreground hover:text-foreground"
+                        aria-label={isCollapsed ? "Expand" : "Collapse"}
+                      >
+                        {isCollapsed ? (
+                          <ChevronRight className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </button>
+                    ) : (
+                      <span className="w-4 shrink-0" />
+                    )}
+
+                    <button
+                      onClick={() => setSelectedNodeId(node.id)}
+                      className="min-w-0 flex-1 truncate text-left font-medium"
+                      title={node.label}
+                    >
+                      {node.label}
+                    </button>
+
+                    {node.directIdeaCount > 0 && (
+                      <Badge variant="secondary" className="shrink-0 text-xs">
+                        {node.directIdeaCount}
+                      </Badge>
+                    )}
+                    {node.subtreeIdeaCount > node.directIdeaCount && (
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        Σ{node.subtreeIdeaCount}
+                      </Badge>
+                    )}
+                    {node.vidiqData?.opportunityScore != null && (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 border-emerald-300 text-xs text-emerald-700 dark:text-emerald-400"
+                        title={`Search volume ${node.vidiqData.volume ?? "—"} · competition ${node.vidiqData.competition ?? "—"}`}
+                      >
+                        <TrendingUp className="mr-1 h-3 w-3" />
+                        {node.vidiqData.opportunityScore}
+                      </Badge>
+                    )}
+                    {!node.lastMinedAt && node.status === "active" && (
+                      <Badge variant="outline" className="shrink-0 text-xs text-muted-foreground">
+                        unmined
+                      </Badge>
+                    )}
+
+                    <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      {isBusy ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            disabled={atDepthCap || node.status === "archived"}
+                            title={
+                              atDepthCap
+                                ? "Depth limit reached — mine this branch for ideas instead"
+                                : "Break this into subtopics"
+                            }
+                            onClick={() => expandNode.mutate({ nodeId: node.id, count: 6 })}
+                          >
+                            <Network className="mr-1 h-3 w-3" />
+                            Expand
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            disabled={node.status === "archived"}
+                            title="Generate video ideas scoped to this branch"
+                            onClick={() => generateForNode.mutate({ nodeId: node.id, count: 6 })}
+                          >
+                            <Lightbulb className="mr-1 h-3 w-3" />
+                            Ideas
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          {/* Drill panel */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {selectedNode ? selectedNode.label : "Select a topic"}
+              </CardTitle>
+              {nodeIdeasQuery.data?.breadcrumb && (
+                <p className="text-xs text-muted-foreground">
+                  {nodeIdeasQuery.data.breadcrumb}
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!selectedNode && (
+                <p className="text-sm text-muted-foreground">
+                  Click any topic to see its ideas, keyword data, and add your own.
+                </p>
+              )}
+
+              {selectedNode && (
+                <>
+                  {selectedNode.description && (
+                    <p className="text-sm text-muted-foreground">{selectedNode.description}</p>
+                  )}
+
+                  {selectedNode.vidiqData?.keyword && (
+                    <div className="rounded-lg border bg-muted/30 p-3 text-xs">
+                      <p className="mb-1 font-medium">
+                        Keyword: {selectedNode.vidiqData.keyword}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 text-muted-foreground">
+                        <span>Volume: {selectedNode.vidiqData.volume ?? "—"}</span>
+                        <span>Comp: {selectedNode.vidiqData.competition ?? "—"}</span>
+                        <span>Score: {selectedNode.vidiqData.opportunityScore ?? "—"}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => generateForNode.mutate({ nodeId: selectedNode.id, count: 6 })}
+                      disabled={generateForNode.isPending}
+                    >
+                      {generateForNode.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Lightbulb className="mr-2 h-4 w-4" />
+                      )}
+                      Generate ideas
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        updateNode.mutate({
+                          nodeId: selectedNode.id,
+                          status: selectedNode.status === "archived" ? "active" : "archived",
+                        })
+                      }
+                      disabled={updateNode.isPending}
+                    >
+                      {selectedNode.status === "archived" ? "Restore" : "Archive"}
+                    </Button>
+                  </div>
+
+                  {/* Manual idea entry scoped to this branch */}
+                  <div className="space-y-2 rounded-lg border border-dashed p-3">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Add your own idea to this branch
+                    </label>
+                    <Textarea
+                      value={manualIdeaTopic}
+                      onChange={(e) => setManualIdeaTopic(e.target.value)}
+                      placeholder="Type the video idea in your own words…"
+                      rows={2}
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={manualIdeaTopic.trim().length < 3 || createIdea.isPending}
+                      onClick={() =>
+                        createIdea.mutate({
+                          topic: manualIdeaTopic.trim(),
+                          topicNodeId: selectedNode.id,
+                        })
+                      }
+                    >
+                      {createIdea.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Add idea"
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Ideas on this node */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Ideas on this topic ({nodeIdeasQuery.data?.ideas.length ?? 0})
+                    </p>
+                    {nodeIdeasQuery.isLoading && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading…
+                      </div>
+                    )}
+                    {nodeIdeasQuery.data?.ideas.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        No ideas yet. Generate some, or add your own above.
+                      </p>
+                    )}
+                    {(nodeIdeasQuery.data?.ideas ?? []).map(
+                      (idea: {
+                        id: number;
+                        topic: string;
+                        status: string;
+                        source: string;
+                        audienceAlignment: number | null;
+                        generatedScriptId: number | null;
+                      }) => (
+                        <div
+                          key={idea.id}
+                          className="rounded-md border p-2 text-sm transition-colors hover:bg-muted/40"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="min-w-0 flex-1">{idea.topic}</span>
+                            <Badge variant="outline" className="shrink-0 text-xs">
+                              {idea.status}
+                            </Badge>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            {idea.audienceAlignment != null && (
+                              <span>Fit {idea.audienceAlignment}/10</span>
+                            )}
+                            <span>·</span>
+                            <span>{idea.source === "manual" ? "yours" : idea.source}</span>
+                            {idea.generatedScriptId && (
+                              <>
+                                <span>·</span>
+                                <button
+                                  onClick={() => onOpenScript(idea.generatedScriptId!)}
+                                  className="inline-flex items-center gap-1 font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                                >
+                                  <FileText className="h-3 w-3" />
+                                  Script #{idea.generatedScriptId}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 }

@@ -62,29 +62,59 @@ export interface VidIQTrendingVideo {
 
 let _sessionId = 0;
 
+/**
+ * Per-call ceiling for a single vidIQ MCP request (v2.1 Bug C item 1).
+ *
+ * `fetch` has no default timeout, so a stalled MCP connection previously hung
+ * for as long as the caller was willing to wait — observed in production as a
+ * "Supercharge with VidIQ" click that spun for 7–8 minutes and never resolved.
+ * 20s is generous for this API (typical response is well under 2s) while still
+ * failing fast enough that a batch of six ideas cannot outlive a user's patience.
+ */
+export const VIDIQ_CALL_TIMEOUT_MS = 20_000;
+
 async function callVidIQTool<T = unknown>(
   toolName: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  timeoutMs: number = VIDIQ_CALL_TIMEOUT_MS
 ): Promise<T> {
   const apiKey = ENV.vidiqApiKey;
   if (!apiKey) throw new Error("VIDIQ_API_KEY is not configured");
 
   const id = ++_sessionId;
 
-  const resp = await fetch(VIDIQ_MCP_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json, text/event-stream",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id,
-      method: "tools/call",
-      params: { name: toolName, arguments: args },
-    }),
-  });
+  // AbortController is what actually severs a stalled socket; clearing the timer
+  // in `finally` keeps a fast response from leaving a dangling handle behind.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let resp: Response;
+  try {
+    resp = await fetch(VIDIQ_MCP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id,
+        method: "tools/call",
+        params: { name: toolName, arguments: args },
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    // Surface the timeout as a named, actionable error rather than a bare
+    // "AbortError" that tells the operator nothing.
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`vidIQ MCP timeout after ${timeoutMs}ms (tool: ${toolName})`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!resp.ok) {
     throw new Error(`vidIQ MCP HTTP ${resp.status}`);

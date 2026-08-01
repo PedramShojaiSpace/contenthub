@@ -35,7 +35,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { parseLLMJson } from "./llmUtils";
-import { vidiqBalance, vidiqKeywordResearch } from "./vidiq";
+import { vidiqBalance, vidiqKeywordResearch, spendableCredits } from "./vidiq";
 import {
   TITLE_PACKAGING_RULES,
   isoWeekLabel,
@@ -150,7 +150,9 @@ async function loadPersonaContext(
 async function tryNodeResearch(label: string): Promise<VidiqNodePayload | null> {
   try {
     const balance = await vidiqBalance();
-    const credits = typeof balance?.credits === "number" ? balance.credits : null;
+    // v2.2 Part 1 fix 5: `balance.credits` does not exist in the live payload,
+    // so this always evaluated to null and the guard never fired.
+    const credits = spendableCredits(balance);
     if (credits !== null && credits < MIN_VIDIQ_CREDITS_FOR_NODE) return null;
   } catch {
     // Balance endpoint down is not a reason to skip; the call itself may still work.

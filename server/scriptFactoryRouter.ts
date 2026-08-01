@@ -21,7 +21,15 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { parseLLMJson } from "./llmUtils";
-import { vidiqBalance, vidiqKeywordResearch, vidiqOutliers, vidiqTrendingVideos, type VidIQOutlierVideo } from "./vidiq";
+import {
+  vidiqBalance,
+  vidiqKeywordResearch,
+  vidiqOutliers,
+  vidiqTrendingVideos,
+  spendableCredits,
+  isVidIQToolError,
+  type VidIQOutlierVideo,
+} from "./vidiq";
 import { getAvatarContextBlockForPersona } from "./avatarRouter";
 import { searchCorpusEntries } from "./corpusRouter";
 import { fetchTranscriptWithQuota } from "./transcriptRouter";
@@ -1296,20 +1304,25 @@ export const scriptFactoryRouter = router({
           }
         }
 
-        // Rank by outlier score first, then raw views. `channelId` and
-        // `subscriberCount` are absent from VidIQ's payload (see schema note),
-        // so they are stored null rather than fabricated.
+        // Rank by outlier score first, then raw views.
+        //
+        // v2.2 Part 1 fix 9: vidiqOutliers/vidiqTrendingVideos now normalise the
+        // wire shape themselves, so `title`, `channelId`, `subscriberCount` and
+        // `publishedAt` are real values here. The previous comment claimed
+        // channelId and subscriberCount were "absent from VidIQ's payload" and
+        // hardcoded both to null — they are in fact present. They were reading
+        // as undefined only because the whole object was being mis-mapped.
         const outlierVideos: StoredOutlier[] = rawOutliers
           .filter((v) => v && v.videoId)
           .map((v) => ({
-            videoId: String(v.videoId),
-            title: String(v.title ?? "Untitled"),
-            channelId: null,
-            channelTitle: String(v.channelTitle ?? "Unknown channel"),
-            views: Number(v.viewCount ?? 0),
-            subscriberCount: null,
-            outlierScore: Number(v.outlierScore ?? 0),
-            publishedAt: v.publishedAt ? String(v.publishedAt) : null,
+            videoId: v.videoId,
+            title: v.title,
+            channelId: v.channelId,
+            channelTitle: v.channelTitle,
+            views: v.viewCount,
+            subscriberCount: v.subscriberCount,
+            outlierScore: v.outlierScore,
+            publishedAt: v.publishedAt,
           }))
           .sort((a, b) => (b.outlierScore - a.outlierScore) || (b.views - a.views));
 
@@ -1678,7 +1691,10 @@ export const scriptFactoryRouter = router({
           let credits: number | null = null;
           try {
             const balance = await vidiqBalance();
-            credits = Number(balance?.credits ?? 0);
+            // v2.2 Part 1 fix 5: the live payload has no `credits` key, so this
+            // previously coerced undefined to 0 and reported "0 credits" even
+            // with thousands available — a false low-balance skip.
+            credits = spendableCredits(balance);
           } catch (err) {
             researchSkipped = `VidIQ balance check failed: ${err instanceof Error ? err.message : "unknown error"}`;
           }
@@ -2026,7 +2042,9 @@ Return a JSON array of ${input.count} ideas. No markdown, no explanation, just t
       if (pending.length > 0) {
         try {
           const bal = await vidiqBalance();
-          balanceBefore = bal.credits ?? null;
+          // v2.2 Part 1 fix 5: `bal.credits` was always undefined, so
+          // balanceBefore stayed null and this guard could never stop a batch.
+          balanceBefore = spendableCredits(bal);
           const needed = pending.length * CREDITS_PER_IDEA;
           if (balanceBefore !== null && balanceBefore < needed) {
             throw new TRPCError({

@@ -780,6 +780,12 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
 
   // ── Phase 3: deep research ────────────────────────────────────────────────
   const [useDeepResearch, setUseDeepResearch] = useState(false);
+  /**
+   * Part 3A — story mode. Defaults to "brief": the system hands the operator a
+   * slot for a real case instead of inventing a patient. The safe option must be
+   * the one you get without choosing.
+   */
+  const [storyMode, setStoryMode] = useState<"brief" | "composite" | "none">("brief");
   const [seedKeyword, setSeedKeyword] = useState<string>("");
   const [researchJobId, setResearchJobId] = useState<number | null>(null);
 
@@ -1035,6 +1041,42 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                 </div>
               </div>
 
+              {/* ── Part 3A: Story Integrity ─────────────────────────────── */}
+              <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  Patient Stories
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  The system will never invent a named patient, quoted dialogue, or
+                  individual lab results. Choose how stories are handled.
+                </p>
+                <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                  {([
+                    { v: "brief", label: "Story slot", hint: "Leaves you a slot with a suggested shape — you insert a real case." },
+                    { v: "composite", label: "Composite", hint: "Writes a labelled, de-identified composite the listener hears announced." },
+                    { v: "none", label: "No story", hint: "Skips stories entirely; that time goes to teaching." },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.v}
+                      title={opt.hint}
+                      onClick={() => setStoryMode(opt.v)}
+                      className={`text-xs px-2 py-1.5 rounded border transition-colors ${
+                        storyMode === opt.v
+                          ? "bg-amber-600 text-white border-amber-600"
+                          : "bg-background text-muted-foreground border-border hover:border-amber-400"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 leading-snug">
+                  {storyMode === "brief" && "A delimited [STORY SLOT] is emitted with a ~90-second shape built from this script's own pain points."}
+                  {storyMode === "composite" && "The narrative must open with an audible composite label. An unlabelled composite is rejected."}
+                  {storyMode === "none" && "Story sections are omitted and the word budget moves into the teaching sections."}
+                </p>
+              </div>
               {/* ── Phase 3: Deep Research ───────────────────────────────── */}
               <div className="space-y-2 rounded-lg border border-purple-200 bg-purple-50/50 p-3">
                 <div className="flex items-start justify-between gap-2">
@@ -1173,6 +1215,7 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                   sourceIdeaId: sourceIdeaId ?? undefined,
                   useDeepResearch,
                   researchJobId: researchJobId ?? undefined,
+                  storyMode,
                 })}
               >
                 {generate.isPending ? (

@@ -1,0 +1,90 @@
+PART 3A — STORY INTEGRITY: PROOF
+Generated: Sat Aug  1 18:51:09 UTC 2026 UTC
+
+### Unit + integration tests
+
+ RUN  v2.1.9 /home/ubuntu/contenthub
+
+ ✓ server/storyIntegrity.test.ts (28 tests) 33ms
+ ✓ server/scriptFactory.storyIntegrity.test.ts (8 tests) 22ms
+
+ Test Files  2 passed (2)
+      Tests  36 passed (36)
+   Start at  18:51:10
+   Duration  509ms (transform 192ms, setup 0ms, collect 263ms, tests 55ms, environment 1ms, prepare 201ms)
+
+
+### Suite vs baseline
+baseline: 14 failed | 63 passed (77 files) · 34 failed | 1020 passed (1054)
+after 3A: 14 failed | 66 passed (80 files) · 34 failed | 1074 passed (1108)
+-> +3 files, +54 tests, all new tests pass. Same 14 env-key failures. Zero regressions.
+tsc: 22 errors = baseline (unchanged)
+
+### Live proof (sandbox app, scratch DB)
+
+========================================================================
+PART 3A LIVE PROOF — story modes through the real generate endpoint
+========================================================================
+base: http://localhost:3000
+topic: why afternoon energy crashes start in the gut lining
+
+========================================================================
+MODE: brief
+========================================================================
+HTTP 200 · 22462ms
+scriptId=30004 words=1359 storyMode=brief slots=1 correctionUsed=false continuation=false
+
+--- STORY SECTION VERBATIM ---
+[STORY SLOT — INSERT YOUR REAL CASE HERE]
+(9:30) Symptoms — the specific presentation this script has been describing: persistent afternoon energy crashes, brain fog, and difficulty sleeping through the night.
+Conventional dead end — they were often told it was stress or simply aging, and offered temporary solutions like caffeine or sleep aids that didn't address the root cause.
+What testing revealed — advanced gut microbiome analysis and inflammatory markers consistently showed signs of increased intestinal permeability and elevated endotoxins.
+Intervention direction — a comprehensive approach focusing on gut lining repair, reducing inflammatory load, and supporting the gut-brain axis.
+Outcome arc — a significant improvement in sustained energy levels throughout the day, enhanced mental clarity, and more restorative sleep, leading to a renewed sense of vitality and focus.
+[END STORY SLOT]
+--- END EXCERPT ---
+
+========================================================================
+MODE: composite
+========================================================================
+HTTP 200 · 20709ms
+scriptId=30005 words=1354 storyMode=composite slots=0 correctionUsed=false continuation=false
+
+--- STORY SECTION VERBATIM ---
+[STORY]
+(2:00) Let me give you a composite of patients I see all the time. This person is incredibly successful in their career, juggling demanding projects and family life. They're meticulous about their diet, or at least they try to be, and they even manage to squeeze in workouts. Yet, every single afternoon, usually around 2 or 3 PM, a profound tiredness washes over them. It's not just a little dip; it's a full-blown energy drain that makes it hard to concentrate, to be present, or even to string together coherent thoughts. They feel foggy, irritable, and completely unmotivated. They've been to doctors, had their blood work done, and every time, the results come back: "Your labs are normal." But they still feel horrible. They're told they're stressed, or they need to "just get more sleep." But they know something is fundamentally off. They're stuck on a merry-go-round of fatigue and f
+--- END EXCERPT ---
+
+========================================================================
+MODE: none
+========================================================================
+HTTP 200 · 19999ms
+scriptId=30006 words=1348 storyMode=none slots=0 correctionUsed=false continuation=false
+
+--- STORY SECTION VERBATIM ---
+(no story section found)
+--- END EXCERPT ---
+
+========================================================================
+ASSERTIONS
+========================================================================
+brief emits a delimited slot: true
+brief slot is closed:         true
+brief slotCount >= 1:         true
+brief contains NO named patient: true
+composite carries audible label: true
+none emits no slot:            true
+
+========================================================================
+DB CHECK — scratch only, and nothing saved on refusal
+========================================================================
+┌─────────┬───────┬──────┬────────────┐
+│ (index) │ id    │ len  │ word_count │
+├─────────┼───────┼──────┼────────────┤
+│ 0       │ 30004 │ 8720 │ 1359       │
+│ 1       │ 30005 │ 8404 │ 1354       │
+│ 2       │ 30006 │ 8584 │ 1348       │
+└─────────┴───────┴──────┴────────────┘
+cleaned up probe rows: 30004, 30005, 30006
+
+DONE

@@ -47,6 +47,17 @@ import {
   safeJsonParse,
   wordBudget,
 } from "./scriptFactoryHelpers";
+// Part 3A — story integrity. The system previously invented a named patient with
+// quoted dialogue inside content that sells a health offer; these helpers make
+// that unrepresentable rather than merely discouraged.
+import {
+  STORY_MODES,
+  type StoryMode,
+  buildStoryIntegrityBlock,
+  lintStoryIntegrity,
+  formatViolations,
+  countWordsWithStorySlots,
+} from "./storyIntegrity";
 
 // ─── Supadata helper ─────────────────────────────────────────────────────────
 
@@ -557,9 +568,11 @@ function buildSystemPrompt(
   opts: {
     persona?: PersonaContext | null;
     lengthInstruction?: string;
+    /** Part 3A. Defaults to the safest mode so an omitted arg cannot fabricate. */
+    storyMode?: StoryMode;
   } = {}
 ): string {
-  const { persona, lengthInstruction } = opts;
+  const { persona, lengthInstruction, storyMode = "brief" } = opts;
 
   // Default demographic line, replaced wholesale when a persona is selected.
   const audienceLine = persona?.audienceLine
@@ -600,11 +613,13 @@ VERIFIED TAGGING RULES (CRITICAL):
 - Aim for at least 40% [VERIFIED] coverage of key structural elements
 - Format: "Your hook text here [VERIFIED]" — the tag goes AFTER the element, inline
 
+${buildStoryIntegrityBlock(storyMode)}
+
 SCRIPT STRUCTURE TAGS (use these to label each section):
 [HOOK] — opening hook (first 15 seconds / first line)
 [PAIN] — pain point identification
 [PROOF] — proof element or authority signal
-[STORY] — story or transformation arc
+[STORY] — story or transformation arc (obey STORY INTEGRITY above)
 [TEACH] — teaching point or key insight
 [OBJECTION] — objection handler
 [CTA] — call to action
@@ -651,6 +666,15 @@ export const scriptFactoryRouter = router({
       useDeepResearch: z.boolean().default(false),
       /** Use one specific research job. */
       researchJobId: z.number().int().positive().optional(),
+
+      // ── Part 3A ─────────────────────────────────────────────────────────
+      /**
+       * How stories may be handled. `brief` emits a delimited slot for the
+       * operator's real case; `composite` allows a labelled de-identified
+       * narrative; `none` omits stories and moves the budget to teaching.
+       * Defaults to `brief`: the safe mode must be the one you get by default.
+       */
+      storyMode: z.enum(STORY_MODES).default("brief"),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -819,6 +843,7 @@ export const scriptFactoryRouter = router({
       const systemPrompt = buildSystemPrompt(input.format, groundedContext, {
         persona: personaContext,
         lengthInstruction,
+        storyMode: input.storyMode,
       });
 
       // 4. Generate script via LLM
@@ -847,7 +872,14 @@ export const scriptFactoryRouter = router({
       //     continuation pass that expands the thinnest sections in place.
       let continuationPassUsed = false;
       if (budget) {
-        const firstPassWords = countWords(scriptBody);
+        // Part 3A: story slots are credited at ~200 words each and their
+        // instructional text is excluded. Without this, a COMPLIANT script that
+        // emitted two slots would read ~400 words short, trip this gate, and the
+        // continuation prompt below would explicitly ask the model to "deepen
+        // the thinnest [STORY] sections" — i.e. length enforcement would demand
+        // the very fabricated story the integrity rules forbid.
+        const counted = countWordsWithStorySlots(scriptBody);
+        const firstPassWords = counted.words;
         if (firstPassWords < budget.target * 0.8) {
           try {
             const continuation = await invokeLLM({
@@ -882,6 +914,78 @@ export const scriptFactoryRouter = router({
           } catch {
             // A failed expansion leaves the (short but valid) first pass intact.
           }
+        }
+      }
+
+      // 4c. STORY INTEGRITY ENFORCEMENT (Part 3A).
+      //
+      // Runs AFTER the continuation pass, because that pass rewrites the whole
+      // script and could reintroduce a fabricated patient that an earlier check
+      // had cleared. One automatic correction attempt; if it still violates we
+      // throw, and because nothing has been inserted yet, nothing is saved.
+      // A violating script must never reach the library.
+      let storyLint = lintStoryIntegrity(scriptBody, input.storyMode);
+      let storyCorrectionPassUsed = false;
+      if (storyLint.violations.length > 0 || storyLint.missingCompositeLabel) {
+        const digest = formatViolations(storyLint.violations, storyLint.missingCompositeLabel);
+        console.warn(`[ScriptFactory] story integrity violations (mode=${input.storyMode}):\n${digest}`);
+        try {
+          const corrected = await invokeLLM({
+            messages: [
+              { role: "system", content: systemPrompt },
+              {
+                role: "user",
+                content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about: ${input.topic}`,
+              },
+              { role: "assistant", content: scriptBody },
+              {
+                role: "user",
+                content:
+                  "STOP. This draft violates the STORY INTEGRITY rules. These are " +
+                  "non-negotiable: the script is for a licensed practitioner with real " +
+                  "patients, and an invented patient is indistinguishable from a real " +
+                  "one to a listener.\n\nVIOLATIONS FOUND:\n" + digest +
+                  "\n\nRewrite the COMPLETE script, fixing every violation:\n" +
+                  "- Remove every invented named individual and every quoted patient line.\n" +
+                  "- Remove every individual-attributed lab value, diagnosis and recovery timeline.\n" +
+                  (input.storyMode === "brief"
+                    ? "- Replace any narrative with the delimited STORY SLOT block exactly as specified.\n"
+                    : input.storyMode === "composite"
+                      ? "- Keep the narrative but open it with the audible composite label and remove all proper names.\n"
+                      : "- Remove story sections entirely and expand the teaching sections instead.\n") +
+                  "- Population-level evidence stays; individual fabrication goes.\n" +
+                  "- Preserve every [VERIFIED] tag and the existing structure and length.",
+              },
+            ],
+          });
+          const fixed = String(corrected?.choices?.[0]?.message?.content ?? "");
+          if (fixed.length > 50) {
+            const recheck = lintStoryIntegrity(fixed, input.storyMode);
+            // Accept only a genuine improvement; a rewrite that trades one
+            // violation for another is not progress.
+            if (recheck.violations.length === 0 && !recheck.missingCompositeLabel) {
+              scriptBody = fixed;
+              storyLint = recheck;
+              storyCorrectionPassUsed = true;
+            } else if (recheck.violations.length < storyLint.violations.length) {
+              scriptBody = fixed;
+              storyLint = recheck;
+              storyCorrectionPassUsed = true;
+            }
+          }
+        } catch (err) {
+          // A failed correction call must not mask the violation below.
+          console.error("[ScriptFactory] story correction pass failed:", err);
+        }
+
+        if (storyLint.violations.length > 0 || storyLint.missingCompositeLabel) {
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message:
+              "Generation refused: the model fabricated patient material and did not " +
+              "correct it. Nothing was saved.\n\n" +
+              formatViolations(storyLint.violations, storyLint.missingCompositeLabel),
+          });
         }
       }
 
@@ -996,6 +1100,11 @@ export const scriptFactoryRouter = router({
         targetWordCount: budget?.target ?? null,
         targetLengthMinutes: targetLengthMinutes ?? null,
         continuationPassUsed,
+        // Part 3A: surfaced so the operator can see when the model had to be
+        // corrected, rather than the correction happening silently.
+        storyMode: input.storyMode,
+        storyCorrectionPassUsed,
+        storySlotCount: countWordsWithStorySlots(scriptBody).slotCount,
         retrievalMethod,
         personaName: personaContext?.name ?? null,
         northStarCount: explicitNorthStar.length,

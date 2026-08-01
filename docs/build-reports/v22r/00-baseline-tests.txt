@@ -1,0 +1,39 @@
+=== PRE-EXISTING FAILURE BASELINE at 525780b (branch point) ===
+captured: 2026-08-01 17:34:47 UTC
+
+--- pnpm tsc --noEmit ---
+error count: 22
+files:
+  client/src/pages/YouTubeAnalytics.ts
+  server/ga4Router.ts
+  server/patternExtractorRouter.ts
+  server/transcriptRouter.ts
+  server/ytAnalyticsRouter.ts
+
+All 22 are pre-existing and untouched by v2.2 (unrelated routers:
+ga4, patternExtractor, transcript pagination, ytAnalytics, YouTubeAnalytics page).
+
+--- pnpm test (vitest) ---
+Test Files  14 failed | 63 passed (77)
+     Tests  34 failed | 1020 passed (1054)
+
+Failing files, all env-dependent (missing third-party API keys in sandbox):
+  server/claudeLLM.test.ts
+  server/dataForSeo.test.ts
+  server/gmail.credentials.test.ts
+  server/googleDrive.test.ts
+  server/heygen.test.ts
+  server/kajabi.test.ts
+  server/klaviyo.test.ts
+  server/landingPages.test.ts
+  server/metaAds.test.ts
+  server/pexels.test.ts
+  server/substack.session.test.ts
+  server/typeform.test.ts
+  server/wordpress.publish.test.ts
+  server/youtube.test.ts
+
+These 14 assert live credentials for Claude, DataForSEO, Gmail, Google Drive,
+HeyGen, Kajabi, Klaviyo, landing pages, Meta Ads, Pexels, Substack, Typeform,
+WordPress, and Supadata. None are in v2.2 scope. Part 4 re-runs this and shows
+the identical set.

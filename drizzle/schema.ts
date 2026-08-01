@@ -3187,14 +3187,17 @@ export type InsertAbConversion = typeof abConversions.$inferInsert;
 // ─── Claims Review Gate ───────────────────────────────────────────────────────
 export const claimsReviews = mysqlTable("claims_reviews", {
   id: int("id").autoincrement().primaryKey(),
-  contentType: mysqlEnum("cr_content_type", [
-    "wordpress_post",
-    "meta_ad",
-    "advertorial",
-    "email_sequence",
-    "landing_page",
-    "other",
-  ]).notNull(),
+  // v2.2 Part 1 fix 7 — declaration-only correction, ZERO DDL.
+  //
+  // Two defects were stacked here. The NAME was wrong (`cr_content_type` does
+  // not exist; the live column is `content_type`), AND the TYPE was wrong: the
+  // live column is `varchar(64)`, not an enum. SHOW COLUMNS on staging returns
+  // `content_type varchar(64) NO` with no enum constraint.
+  //
+  // Declaring varchar rather than mysqlEnum is what lets Part 3E route Script
+  // Factory output into Claims Review by writing 'youtube_script' directly,
+  // with no ALTER TABLE.
+  contentType: varchar("content_type", { length: 64 }).notNull(),
   contentId: varchar("content_id", { length: 255 }),
   contentTitle: varchar("content_title", { length: 512 }),
   contentText: text("content_text").notNull(),
@@ -3207,7 +3210,9 @@ export const claimsReviews = mysqlTable("claims_reviews", {
   }>>(),
   overallFlag: tinyint("overall_flag").notNull().default(0),
   flagCount: int("flag_count").notNull().default(0),
-  status: mysqlEnum("cr_status", ["pending", "approved", "rejected", "auto_approved"])
+  // Live column is `status`. Unlike content_type this IS a real enum in the
+  // database with exactly these four values — only the name was wrong.
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "auto_approved"])
     .notNull()
     .default("pending"),
   reviewedBy: varchar("reviewed_by", { length: 255 }),
@@ -3418,10 +3423,17 @@ export const ytTranscripts = mysqlTable("yt_transcripts", {
   lang: varchar("lang", { length: 16 }).default("en"),
   rawText: mediumtext("raw_text"),
   wordCount: int("word_count").default(0),
-  status: mysqlEnum("transcript_status", ["pending", "fetched", "no_transcript", "error"]).notNull().default("pending"),
+  // v2.2 Part 1 fix 6 — declaration-only correction, ZERO DDL.
+  // Live column is `status`; this declared `transcript_status`, which does not
+  // exist. Every read and write against yt_transcripts therefore failed with
+  // ER_BAD_FIELD_ERROR — the reason the table holds 0 rows. Verified by
+  // SHOW COLUMNS against staging on 2026-08-01.
+  status: mysqlEnum("status", ["pending", "fetched", "no_transcript", "error"]).notNull().default("pending"),
   errorMessage: varchar("error_message", { length: 512 }),
-  createdAt: datetime("tr_created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("tr_updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  // Same defect class: live columns are `created_at` / `updated_at`. The `tr_`
+  // prefix was never in the database.
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export type YtTranscript = typeof ytTranscripts.$inferSelect;
@@ -3453,8 +3465,11 @@ export const ytVideoOutliers = mysqlTable("yt_video_outliers", {
   baselineCtrStddev: float("baseline_ctr_stddev"),
   baselineRetentionStddev: float("baseline_retention_stddev"),
   scoredAt: datetime("scored_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  createdAt: datetime("outlier_created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("outlier_updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  // v2.2 Part 1 fix 8 — declaration-only correction, ZERO DDL.
+  // Live columns are `created_at` / `updated_at`; the `outlier_` prefix was
+  // never in the database. Same defect class as fixes 6 and 7.
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export type YtVideoOutlier = typeof ytVideoOutliers.$inferSelect;

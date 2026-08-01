@@ -465,7 +465,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── TAKE ADVANTAGE ──────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#0d1e2e" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0d1e2e" }}>
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
@@ -490,7 +490,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── MARK HYMAN FEATURED QUOTE ────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#161E2A" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#161E2A" }}>
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8 items-center">
             <div className="flex justify-center">
@@ -521,7 +521,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── FEATURED EXPERTS GRID ────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#0a1520" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0a1520" }}>
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-black text-center uppercase mb-2" style={{ color: "#f0f4f8" }}>
             Meet the All-Star Lineup
@@ -582,7 +582,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── EPISODES ─────────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#0d1e2e" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0d1e2e" }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-black text-center uppercase mb-2" style={{ color: "#f0f4f8" }}>
             Here's a Peek at What You'll Discover Inside
@@ -621,7 +621,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── MID-PAGE CTA ─────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#161E2A" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#161E2A" }}>
         <div className="max-w-xl mx-auto text-center">
           <h2 className="text-3xl font-black uppercase mb-3" style={{ color: "#f0f4f8" }}>
             Discover the Secret to Reversing Chronic Disease
@@ -639,7 +639,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── HOST BIO ─────────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#0a1520" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0a1520" }}>
         <div className="max-w-4xl mx-auto">
           <p className="text-center text-xs font-black uppercase tracking-widest mb-6" style={{ color: "#2E91FC" }}>
             Meet Your Host
@@ -682,7 +682,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── BOTTOM CTA ───────────────────────────────────────────────────── */}
-      <section className="py-16 px-4" style={{ background: "#0d1e2e" }}>
+      <section className="py-16 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0d1e2e" }}>
         <div className="max-w-xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-black uppercase mb-3" style={{ color: "#f0f4f8" }}>
             Don't Miss the Free Viewing Period

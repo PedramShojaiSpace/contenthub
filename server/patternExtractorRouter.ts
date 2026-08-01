@@ -37,6 +37,11 @@ interface ExtractedPattern {
   context: string;
 }
 
+// Exported so the Script Factory's deep-research pipeline can mine patterns from
+// competitor transcripts using the exact same extraction prompt and validation.
+// (PATTERN_TYPES itself is already exported at the bottom of this file.)
+export type { PatternType, ExtractedPattern };
+
 // ─── LLM extraction ───────────────────────────────────────────────────────────
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a direct-response copywriting analyst specializing in health and wellness content.
@@ -52,7 +57,14 @@ For each pattern found, return:
 Return a JSON object with a single key "patterns" containing an array of pattern objects.
 Extract between 5 and 20 patterns per piece of content. Focus on the most impactful ones.`;
 
-async function extractPatternsFromContent(
+/**
+ * Run LLM pattern extraction over one piece of content.
+ *
+ * Exported (rather than module-private) so the Script Factory deep-research
+ * pipeline reuses this identical prompt + validation path instead of duplicating
+ * it. Returns `[]` rather than throwing when the model returns nothing usable.
+ */
+export async function extractPatternsFromContent(
   content: string,
   title: string | null
 ): Promise<ExtractedPattern[]> {

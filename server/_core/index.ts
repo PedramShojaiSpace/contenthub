@@ -5,6 +5,7 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerDevLoginRoute } from "./devLogin";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -18,6 +19,7 @@ import { rankSnapshotHandler } from "../rankSnapshotHandler";
 import { scoreboardDigestHandler } from "../scoreboardDigestHandler";
 import { gscBackfillHandler } from "../gscBackfillHandler";
 import { transcriptBackfillHandler } from "../transcriptBackfillHandler";
+import { weeklyIdeaGenerationHandler } from "../weeklyIdeaGenerationHandler";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
@@ -91,6 +93,8 @@ async function startServer() {
   registerStorageProxy(app);
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // Dev-only local session minting (no-op unless NODE_ENV=development && ALLOW_DEV_LOGIN=true)
+  registerDevLoginRoute(app);
   // Ingest endpoint — accepts research reports from external apps
   // POST /api/ingest/research-report (authenticated via INGEST_SECRET header)
   app.post("/api/ingest/research-report", handleIngestResearchReport);
@@ -106,6 +110,11 @@ async function startServer() {
   app.post("/api/scheduled/gsc-backfill", gscBackfillHandler);
   // Daily transcript backfill — fetches up to 25 YouTube transcripts via Supadata
   app.post("/api/scheduled/transcript-backfill", transcriptBackfillHandler);
+
+  // POST /api/scheduled/weekly-idea-generation — fires weekly (Monday 08:00 UTC)
+  // Script Factory v2: runs the research-blended suggestIdeas pipeline with
+  // count=8 / source='weekly_auto'. Idempotent per ISO week.
+  app.post("/api/scheduled/weekly-idea-generation", weeklyIdeaGenerationHandler);
 
   // ── WordPress publish webhook — real-time Google indexing ──────────────────
   // WordPress calls this endpoint immediately when a post is published or updated.

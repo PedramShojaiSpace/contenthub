@@ -3543,6 +3543,21 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
   status: mysqlEnum("status", ["draft", "approved", "archived"]).notNull().default("draft"),
   notes: text("notes"),
   approvedAt: datetime("approved_at"),
+  // ─── Script Factory v2 additions (append-only, all nullable) ───────────────
+  /** Which persona this script targets (personas.id) */
+  personaId: int("persona_id"),
+  /** Explicit North Star selection — analog_data_entries.id[] */
+  analogDataEntryIds: json("analog_data_entry_ids").$type<number[]>(),
+  /** Target video length in minutes (youtube_script only): 10 | 15 | 20 */
+  targetLengthMinutes: int("target_length_minutes"),
+  /** suggested_ideas.id this script was generated from */
+  sourceIdeaId: int("source_idea_id"),
+  /** research_jobs.id whose competitive research grounded this script */
+  researchJobId: int("research_job_id"),
+  /** Actual word count of the final script body */
+  wordCount: int("word_count"),
+  /** scripts.id once sent to production — also the idempotency key */
+  productionScriptId: int("production_script_id"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -3719,3 +3734,129 @@ export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
 
 export type TantraQuizLead = typeof tantraQuizLeads.$inferSelect;
 export type InsertTantraQuizLead = typeof tantraQuizLeads.$inferInsert;
+
+
+// ─── Script Factory v2 — Phase 1: Persistent Idea Engine ─────────────────────
+/**
+ * Persisted video ideas ("Suggested this week").
+ *
+ * Replaces the old ephemeral behavior where `suggestIdeas` returned ideas that
+ * lived only in React state. Every generated idea is now stored so that:
+ *   - ideas survive navigation and page refresh
+ *   - the dedup context can include EVERY idea ever shown (not just acted-on ones)
+ *   - a weekly cron can pre-fill the list on a cadence
+ *
+ * Status lifecycle: suggested → shortlisted → generated
+ *                   suggested → dismissed (recoverable)
+ */
+export const suggestedIdeas = mysqlTable("suggested_ideas", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Groups ideas generated together in one batch */
+  batchId: varchar("batch_id", { length: 32 }).notNull(),
+  /** ISO week label, e.g. "2026-W31" */
+  weekLabel: varchar("week_label", { length: 16 }).notNull(),
+  /** Whether this came from the Monday cron or an operator clicking Generate */
+  source: mysqlEnum("idea_source", ["weekly_auto", "manual_generate"]).notNull().default("manual_generate"),
+  topic: varchar("topic", { length: 500 }).notNull(),
+  rationale: text("rationale"),
+  audienceAlignment: int("audience_alignment"),
+  contentGap: text("content_gap"),
+  recommendedFormat: varchar("recommended_format", { length: 64 }),
+  /** JSON array of pattern type strings */
+  recommendedPatterns: json("recommended_patterns").$type<string[]>(),
+  analogDataSource: text("analog_data_source"),
+  /** Reference to analog_data_entries.id when the source could be resolved */
+  analogDataEntryId: int("analog_data_entry_id"),
+  personaId: int("persona_id"),
+  /** VidIQ research payload when this idea was research-derived */
+  vidiqData: json("vidiq_data").$type<{
+    keyword: string;
+    volume: number;
+    competition: number;
+    opportunityScore: number;
+    estimatedMonthlySearch: number;
+    topRelatedKeywords: { keyword: string; overall: number; volume: number }[];
+  }>(),
+  /** The VidIQ seed keyword that produced this idea (if research-sourced) */
+  seedKeyword: varchar("seed_keyword", { length: 255 }),
+  status: mysqlEnum("idea_status", ["suggested", "shortlisted", "dismissed", "generated"]).notNull().default("suggested"),
+  /** script_factory_outputs.id once a script has been generated from this idea */
+  generatedScriptId: int("generated_script_id"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type SuggestedIdea = typeof suggestedIdeas.$inferSelect;
+export type InsertSuggestedIdea = typeof suggestedIdeas.$inferInsert;
+
+// ─── Script Factory v2 — Phase 3: Deep Research Mode ─────────────────────────
+/**
+ * A deep-research run for one topic: find currently-winning YouTube videos,
+ * secure their transcripts (through the Supadata quota ledger), and mine them
+ * for patterns that shape the script.
+ *
+ * Staged status writes let the UI poll for progress. A partially-researched job
+ * is a valid job — quota exhaustion sets `quotaBlocked` rather than failing.
+ */
+export const researchJobs = mysqlTable("research_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  topic: varchar("topic", { length: 500 }).notNull(),
+  seedKeyword: varchar("seed_keyword", { length: 255 }),
+  status: mysqlEnum("research_status", [
+    "pending",
+    "researching_outliers",
+    "fetching_transcripts",
+    "extracting_patterns",
+    "complete",
+    "failed",
+  ]).notNull().default("pending"),
+  /**
+   * Ranked outlier videos discovered for this topic.
+   * NOTE: vidIQ's outliers response does not include channelId or
+   * subscriberCount, so those stay null when VidIQ is the source.
+   */
+  outlierVideos: json("outlier_videos").$type<{
+    videoId: string;
+    title: string;
+    channelId: string | null;
+    channelTitle: string;
+    views: number;
+    subscriberCount: number | null;
+    outlierScore: number;
+    publishedAt: string | null;
+  }[]>(),
+  /** videoIds whose transcripts were secured (fetched or already cached) */
+  transcriptVideoIds: json("transcript_video_ids").$type<string[]>(),
+  /** content_patterns rows mined from this research */
+  patternIds: json("pattern_ids").$type<number[]>(),
+  transcriptsFetched: int("transcripts_fetched").notNull().default(0),
+  transcriptsCached: int("transcripts_cached").notNull().default(0),
+  transcriptsFailed: int("transcripts_failed").notNull().default(0),
+  /** True when the Supadata daily cap stopped the fetch early */
+  quotaBlocked: boolean("quota_blocked").notNull().default(false),
+  /** Free-form notes, e.g. which discovery source was used */
+  notes: text("notes"),
+  errorMessage: varchar("error_message", { length: 512 }),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type ResearchJob = typeof researchJobs.$inferSelect;
+export type InsertResearchJob = typeof researchJobs.$inferInsert;
+
+// ─── Script Factory v2 — Phase 2/4: script_factory_outputs additions ─────────
+/**
+ * Append-only additions to `script_factory_outputs`.
+ *
+ * Drizzle requires all columns on the original table object, so these live on
+ * `scriptFactoryOutputs` above. This block documents the v2 additions:
+ *   personaId           — which persona the script targets
+ *   analogDataEntryIds  — explicit North Star selection
+ *   targetLengthMinutes — 10 / 15 / 20 (youtube_script only)
+ *   sourceIdeaId        — suggested_ideas.id this script came from
+ *   researchJobId       — research_jobs.id used to ground the script
+ *   wordCount           — actual words in the final body
+ *   productionScriptId  — scripts.id once sent to production (idempotency key)
+ *
+ * See migration 0124_script_factory_v2.sql.
+ */

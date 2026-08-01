@@ -1,0 +1,39 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides", "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+[OAuth] Initialized with baseURL: https://api.manus.im
+[DevLogin] Dev login route enabled at /api/dev/login (development only).
+(node:32864) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Server running on http://localhost:3000/
+[Sandbox] SANDBOX_MODE=1 — weekly digest cron and upload watchdog DISABLED. No email will be sent, no YouTube upload will be resumed.
+[Sandbox] Upload watchdog skipped (SANDBOX_MODE=1).
+[Startup] Restored YOUTUBE_REFRESH_TOKEN from DB (channel: YouTube Channel)
+[Startup] Restored GMAIL_REFRESH_TOKEN from DB
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[Auth] Session verification failed JWSSignatureVerificationFailed: signature verification failed
+[DevLogin] Minted local session for openId=VetDwusbryhcJ9a5sUWLCs
+[DevLogin] Minted local session for openId=VetDwusbryhcJ9a5sUWLCs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[tRPC ERROR] path=scriptFactory.listIdeas code=NOT_FOUND
+[tRPC ERROR] message: No procedure found on path "scriptFactory.listIdeas"
+[tRPC ERROR] error.stack:
+TRPCError: No procedure found on path "scriptFactory.listIdeas"
+    at <anonymous> (/home/ubuntu/contenthub/node_modules/.pnpm/@trpc+server@11.16.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:342:17)
+    at Array.map (<anonymous>)
+    at resolveResponse (/home/ubuntu/contenthub/node_modules/.pnpm/@trpc+server@11.16.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:333:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (/home/ubuntu/contenthub/node_modules/.pnpm/@trpc+server@11.16.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:100:26)
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[DevLogin] Minted local session for openId=VetDwusbryhcJ9a5sUWLCs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[DevLogin] Minted local session for openId=VetDwusbryhcJ9a5sUWLCs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[DevLogin] Minted local session for openId=VetDwusbryhcJ9a5sUWLCs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs
+[Auth] Verifying session cookie (first 20 chars): eyJhbGciOiJIUzI1NiIs

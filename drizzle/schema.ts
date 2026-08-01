@@ -3756,7 +3756,7 @@ export const suggestedIdeas = mysqlTable("suggested_ideas", {
   /** ISO week label, e.g. "2026-W31" */
   weekLabel: varchar("week_label", { length: 16 }).notNull(),
   /** Whether this came from the Monday cron or an operator clicking Generate */
-  source: mysqlEnum("idea_source", ["weekly_auto", "manual_generate"]).notNull().default("manual_generate"),
+  source: mysqlEnum("idea_source", ["weekly_auto", "manual_generate", "manual"]).notNull().default("manual_generate"),
   topic: varchar("topic", { length: 500 }).notNull(),
   rationale: text("rationale"),
   audienceAlignment: int("audience_alignment"),
@@ -3782,12 +3782,61 @@ export const suggestedIdeas = mysqlTable("suggested_ideas", {
   status: mysqlEnum("idea_status", ["suggested", "shortlisted", "dismissed", "generated"]).notNull().default("suggested"),
   /** script_factory_outputs.id once a script has been generated from this idea */
   generatedScriptId: int("generated_script_id"),
+  /** v2.1 Topic Tree — the branch this idea was mined from (null = unscoped) */
+  topicNodeId: int("topic_node_id"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export type SuggestedIdea = typeof suggestedIdeas.$inferSelect;
 export type InsertSuggestedIdea = typeof suggestedIdeas.$inferInsert;
+
+// ─── Script Factory v2.1 — The Topic Tree ──────────────────────────────
+/**
+ * A hierarchy of topics mined from analog sources.
+ *
+ * Solves idea convergence: flat generation against a single sales page keeps
+ * re-orbiting the same 4–5 themes with reworded titles. A tree lets the operator
+ * — and the weekly cron — walk *different branches* instead of re-mining the
+ * trunk.
+ *
+ * Uses a materialized `path` of ancestor ids ("12/47/103", self excluded) so a
+ * full lineage or subtree is a single indexed LIKE query rather than N recursive
+ * round-trips.
+ */
+export const topicNodes = mysqlTable("topic_nodes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** null = root cluster */
+  parentId: int("parent_id"),
+  /** Materialized ancestor path, e.g. "12/47"; roots are "" */
+  path: varchar("path", { length: 255 }).notNull().default(""),
+  /** root = 0; hard cap of 5 enforced in the router */
+  depth: int("depth").notNull().default(0),
+  label: varchar("label", { length: 255 }).notNull(),
+  description: text("description"),
+  sourceType: mysqlEnum("topic_source_type", ["analog_extraction", "llm_expansion", "manual"])
+    .notNull()
+    .default("manual"),
+  analogDataEntryId: int("analog_data_entry_id"),
+  personaId: int("persona_id"),
+  /** Same payload shape as suggested_ideas.vidiqData, for the node's own keyword */
+  vidiqData: json("vidiq_data").$type<{
+    keyword: string;
+    volume: number;
+    competition: number;
+    opportunityScore: number;
+    estimatedMonthlySearch: number;
+    topRelatedKeywords: { keyword: string; overall: number; volume: number }[];
+  }>(),
+  status: mysqlEnum("topic_status", ["active", "archived"]).notNull().default("active"),
+  /** Drives weekly cron rotation: least-recently-mined leaves are picked first */
+  lastMinedAt: datetime("last_mined_at"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type TopicNode = typeof topicNodes.$inferSelect;
+export type InsertTopicNode = typeof topicNodes.$inferInsert;
 
 // ─── Script Factory v2 — Phase 3: Deep Research Mode ─────────────────────────
 /**

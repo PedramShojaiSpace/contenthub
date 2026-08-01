@@ -27,7 +27,9 @@ import { searchCorpusEntries } from "./corpusRouter";
 import { fetchTranscriptWithQuota } from "./transcriptRouter";
 import { extractPatternsFromContent } from "./patternExtractorRouter";
 import {
+  TITLE_PACKAGING_RULES,
   buildLengthInstruction,
+  buildPackagingReferences,
   countWords,
   deriveSeedKeywords,
   isoWeekLabel,
@@ -923,10 +925,29 @@ export const scriptFactoryRouter = router({
         (insertResult as any)[0]?.insertId ?? (insertResult as any).insertId ?? 0
       );
 
-      // 7b. Close the loop on the originating idea (Phase 2.3.5). Best-effort:
-      //     the script is already saved, so a bookkeeping failure must not
-      //     surface as a generation failure.
-      if (input.sourceIdeaId && insertId > 0) {
+      // v2.1 Bug A item 1 — ordering hardening.
+      //
+      // The insert above already runs BEFORE the idea is stamped, so a failed
+      // insert can never produce a `generated` idea (the throw exits here). The
+      // one remaining hole was a *silent* one: if the driver returned no usable
+      // insertId we used to fall through with `insertId = 0`, handing the client
+      // an unopenable id 0 and leaving the script unreachable. Failing loudly is
+      // correct — the row exists, but we cannot address it, and the operator
+      // needs to know that rather than discover it later in the Library.
+      if (!Number.isFinite(insertId) || insertId <= 0) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            "Script was saved but the database did not return its id, so it cannot be opened. " +
+            "Check the Library for the newest draft before regenerating.",
+        });
+      }
+
+      // 7b. Close the loop on the originating idea (Phase 2.3.5).
+      //     Reached only once the script row is committed AND addressable, so
+      //     the idea can never be stamped `generated` without a real script.
+      //     Still best-effort: bookkeeping must not fail a successful generation.
+      if (input.sourceIdeaId) {
         try {
           await db
             .update(suggestedIdeas)
@@ -1734,7 +1755,15 @@ export const scriptFactoryRouter = router({
             }),
             "=== END KEYWORD & OUTLIER RESEARCH ===",
           ].join("\n")
-        : `No live research available. ${researchSkipped ?? ""}`.trim();
+                : `No live research available. ${researchSkipped ?? ""}`.trim();
+
+      // Title rule 5: feed real winning titles in as packaging references. These
+      // come from the same outlier lookups already performed above, so this adds
+      // no extra API cost — it just stops the real signal being wasted on a
+      // context block the model reads as trivia rather than as a style target.
+      const packagingReferences = buildPackagingReferences(
+        researchResults.flatMap((r) => r.outlierTitles.map((o) => o.title))
+      );
 
       // 4. Ask LLM to generate ideas
       const response = await invokeLLM({
@@ -1793,8 +1822,12 @@ USER PREFERENCES (training signals from feedback):
 - DISLIKED IDEAS: The user has marked these as "Less Like This" — avoid these topic angles, tones,
   and approaches entirely. These are negative signals — do not echo them even indirectly.
 
+${TITLE_PACKAGING_RULES}
+
+${packagingReferences}
+
 For each idea, return a JSON object with:
-- topic: string (the video title/topic, 60-80 chars, compelling and specific)
+- topic: string (the video title, obeying the TITLE PACKAGING RULES above)
 - rationale: string (1-2 sentences: why this will convert based on analog data)
 - audienceAlignment: number (0-100, how well this matches the audience persona)
 - contentGap: string (what gap this fills vs published videos)
@@ -1962,48 +1995,114 @@ Return a JSON array of ${input.count} ideas. No markdown, no explanation, just t
    */
   superchargeIdeas: protectedProcedure
     .input(z.object({
-      ideas: z.array(z.object({
-        topic: z.string(),
-        rationale: z.string(),
-        audienceAlignment: z.number(),
-        contentGap: z.string(),
-        recommendedFormat: z.string(),
-        recommendedPatterns: z.array(z.string()),
-        analogDataSource: z.string(),
-      })),
+      // v2.1 Bug C item 3 — ids, not whole objects. The old signature accepted
+      // detached idea payloads, which made persistence impossible: there was no
+      // row to write the enrichment back to, so every result evaporated when the
+      // component unmounted and the credits were spent for nothing.
+      ideaIds: z.array(z.number()).min(1).max(20),
     }))
     .mutation(async ({ input }) => {
-      const enriched: SuperchargedIdea[] = [];
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Database unavailable" });
 
-      for (const idea of input.ideas) {
+      const rows = await db
+        .select()
+        .from(suggestedIdeas)
+        .where(inArray(suggestedIdeas.id, input.ideaIds));
+
+      if (rows.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No matching ideas found" });
+      }
+
+      // v2.1 Bug C item 5 — idempotency. Re-enriching an idea that already has
+      // VidIQ data burns 5 credits to overwrite identical numbers, so skip it.
+      const alreadyEnriched = rows.filter((r) => r.vidiqData !== null).map((r) => r.id);
+      const pending = rows.filter((r) => r.vidiqData === null);
+
+      // v2.1 Bug C item 4 — check the balance BEFORE spending. Discovering an
+      // exhausted quota five ideas into a loop wastes both time and credits.
+      const CREDITS_PER_IDEA = 5;
+      let balanceBefore: number | null = null;
+      if (pending.length > 0) {
         try {
-          // Extract a clean keyword from the topic (first 5 words work well for VidIQ)
-          const keyword = idea.topic.replace(/[^a-zA-Z0-9 ]/g, "").trim().split(/\s+/).slice(0, 6).join(" ");
-          const research = await vidiqKeywordResearch(keyword, true);
-
-          enriched.push({
-            ...idea,
-            vidiq: {
-              keyword: research.keyword,
-              volume: research.volume,
-              competition: research.competition,
-              opportunityScore: research.overall,
-              estimatedMonthlySearch: research.estimatedMonthlySearch,
-              topRelatedKeywords: research.related
-                .slice(0, 5)
-                .map((r) => ({ keyword: r.keyword, overall: r.overall, volume: r.volume })),
-            },
-          });
-        } catch {
-          // VidIQ failed for this idea — include it without metrics
-          enriched.push({
-            ...idea,
-            vidiq: null,
-          });
+          const bal = await vidiqBalance();
+          balanceBefore = bal.credits ?? null;
+          const needed = pending.length * CREDITS_PER_IDEA;
+          if (balanceBefore !== null && balanceBefore < needed) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message:
+                `VidIQ credits too low: ${balanceBefore} available, ${needed} needed ` +
+                `for ${pending.length} idea(s) at ${CREDITS_PER_IDEA} each.`,
+            });
+          }
+        } catch (err) {
+          // A balance endpoint that is itself down must not block the operator;
+          // only a *confirmed* shortfall is a hard stop.
+          if (err instanceof TRPCError) throw err;
+          console.warn("[ScriptFactory] VidIQ balance pre-check unavailable:", err);
         }
       }
 
-      return { ideas: enriched };
+      // v2.1 Bug C item 2 — a wall-clock budget across the whole batch. Per-call
+      // timeouts alone still allow 20 ideas x 20s = 6.7 minutes of hanging.
+      const BATCH_BUDGET_MS = 90_000;
+      const startedAt = Date.now();
+
+      const enrichedIds: number[] = [];
+      const failedIds: number[] = [];
+      const skippedForTime: number[] = [];
+      const errors: { ideaId: number; error: string }[] = [];
+
+      for (const idea of pending) {
+        if (Date.now() - startedAt > BATCH_BUDGET_MS) {
+          // Out of budget: report the remainder honestly instead of hanging.
+          skippedForTime.push(idea.id);
+          continue;
+        }
+
+        const keyword = normalizeKeyword(idea.topic);
+        try {
+          const research = await vidiqKeywordResearch(keyword, true);
+          const payload = {
+            keyword: research.keyword,
+            volume: research.volume,
+            competition: research.competition,
+            opportunityScore: research.overall,
+            estimatedMonthlySearch: research.estimatedMonthlySearch,
+            topRelatedKeywords: research.related
+              .slice(0, 5)
+              .map((r) => ({ keyword: r.keyword, overall: r.overall, volume: r.volume })),
+          };
+
+          // Persist immediately, one idea at a time. Writing per-iteration rather
+          // than after the loop means a later failure or timeout cannot discard
+          // credits already spent on earlier successes.
+          await db
+            .update(suggestedIdeas)
+            .set({ vidiqData: payload, seedKeyword: keyword, updatedAt: new Date() })
+            .where(eq(suggestedIdeas.id, idea.id));
+
+          enrichedIds.push(idea.id);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[ScriptFactory] supercharge failed for idea ${idea.id}: ${msg}`);
+          failedIds.push(idea.id);
+          errors.push({ ideaId: idea.id, error: msg.slice(0, 200) });
+        }
+      }
+
+      return {
+        requested: input.ideaIds.length,
+        enrichedIds,
+        failedIds,
+        skippedForTime,
+        alreadyEnriched,
+        creditsSpent: enrichedIds.length * CREDITS_PER_IDEA,
+        balanceBefore,
+        elapsedMs: Date.now() - startedAt,
+        errors,
+      };
     }),
 
   // ─── Get stats ────────────────────────────────────────────────────────────
@@ -2148,6 +2247,61 @@ Return a JSON array of ${input.count} ideas. No markdown, no explanation, just t
       }
 
       return { success: true, id: input.id, status: input.status };
+    }),
+
+  // ─── Repair orphaned "generated" stamps (v2.1 Bug A item 5) ───────────────
+  /**
+   * An idea stamped `generated` whose `generatedScriptId` points at a script row
+   * that no longer exists is an *orphan*: the operator sees "already generated"
+   * but there is nothing to open. Deleting a script is the normal way to create
+   * one (the delete procedure does not unlink its ideas).
+   *
+   * Resetting them to `shortlisted` (rather than `suggested`) preserves the
+   * operator's original intent — they had chosen this idea — and puts it straight
+   * back into the staging queue so it can be regenerated.
+   *
+   * Idempotent: running it twice finds zero orphans the second time.
+   */
+  repairOrphanedIdeas: protectedProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const stamped = await db
+        .select({ id: suggestedIdeas.id, topic: suggestedIdeas.topic, scriptId: suggestedIdeas.generatedScriptId })
+        .from(suggestedIdeas)
+        .where(eq(suggestedIdeas.status, "generated"));
+
+      const orphans: { ideaId: number; topic: string; missingScriptId: number | null }[] = [];
+
+      for (const row of stamped) {
+        // A `generated` stamp with no script id at all is also an orphan.
+        if (!row.scriptId) {
+          orphans.push({ ideaId: row.id, topic: row.topic, missingScriptId: null });
+          continue;
+        }
+        const [script] = await db
+          .select({ id: scriptFactoryOutputs.id })
+          .from(scriptFactoryOutputs)
+          .where(eq(scriptFactoryOutputs.id, row.scriptId))
+          .limit(1);
+        if (!script) {
+          orphans.push({ ideaId: row.id, topic: row.topic, missingScriptId: row.scriptId });
+        }
+      }
+
+      for (const orphan of orphans) {
+        await db
+          .update(suggestedIdeas)
+          .set({ status: "shortlisted", generatedScriptId: null, updatedAt: new Date() })
+          .where(eq(suggestedIdeas.id, orphan.ideaId));
+      }
+
+      console.log(
+        `[ScriptFactory] Orphan repair: checked ${stamped.length} generated ideas, reset ${orphans.length}.`
+      );
+
+      return { checked: stamped.length, repaired: orphans.length, orphans };
     }),
 
   // ─── Record idea feedback (legacy-compatible, now status-syncing) ─────────

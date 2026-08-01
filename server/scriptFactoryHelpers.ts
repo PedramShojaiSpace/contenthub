@@ -147,6 +147,68 @@ export function deriveSeedKeywords(
   return seeds;
 }
 
+/**
+ * TITLE PACKAGING RULES (spec 5.4) — injected into EVERY idea-generation prompt:
+ * the weekly cron, "Generate More" (suggestIdeas), and node-scoped generation.
+ *
+ * WHY THIS IS A SHARED CONSTANT rather than pasted into each prompt:
+ * the operator's complaint was that titles read like ebook chapters across every
+ * path. Three copies would drift apart within a month, and the acceptance test
+ * asserts the identical block appears in all three prompts — which is only a
+ * meaningful assertion if there is exactly one source of truth.
+ */
+export const TITLE_PACKAGING_RULES = `=== TITLE PACKAGING RULES (YOUTUBE) ===
+
+1. REAL YOUTUBE PACKAGING. Titles must read like something a successful health
+   channel would actually publish — not an ebook chapter, blog header, or
+   conference talk. Say it the way you would say it out loud to a friend.
+
+2. COLON BUDGET. At most 2 titles in the entire batch may use the
+   "Noun Phrase: Subtitle" template. Every other title must contain NO colon.
+   Once you have used your 2, rewrite the rest as plain statements or questions.
+
+3. SPECIFICITY ANCHOR (mandatory, every title). Each title must contain at
+   least one of: a number, a timeframe, a named object/food/test/supplement, or
+   a falsifiable claim. Vague abstraction is the single biggest failure mode.
+   BANNED PHRASES — never use these or close variants:
+     "ancient secrets", "ancient wisdom meets modern science",
+     "unlock your inner", "unlock the power of", "the hidden power of",
+     "the secret to", "transform your life", "the ultimate guide",
+     "everything you need to know", "a deep dive into"
+
+4. ROTATE ARCHETYPES ACROSS THE BATCH. Do not reuse an archetype until every
+   one below has been used at least once:
+     - contrarian / myth-bust    e.g. "Your 'Normal' Labs Are Lying to You"
+     - mistake / warning         e.g. "7 Everyday Foods Quietly Wrecking Your Gut Barrier"
+     - mechanism-reveal         e.g. "Why Bloating Starts 3 Hours After You Eat"
+     - question                 e.g. "Is Brain Fog Actually a Gut Problem?"
+     - stakes / consequence     e.g. "What 10 Years of Antibiotics Does to Your Gut Lining"
+     - listicle with a twist    e.g. "5 Gut Tests Worth Paying For (and 3 That Aren't)"
+     - versus / comparison      e.g. "Probiotics vs Fermented Food for a Damaged Gut"
+
+5. PACKAGING REFERENCES. When real winning titles are supplied below, study
+   their energy and concreteness and match that register. NEVER copy their
+   wording, structure, or subject matter.
+
+6. LENGTH. Target 70 characters or fewer; hard maximum 85. Front-load the hook
+   so it survives truncation on mobile.`;
+
+/**
+ * Format up to 8 real outlier/related titles as a PACKAGING REFERENCES block
+ * (rule 5). Returns "" when there is nothing to show, so prompts never carry an
+ * empty heading that the model might try to fill in.
+ */
+export function buildPackagingReferences(titles: (string | null | undefined)[]): string {
+  const clean = titles
+    .map((t) => (t ?? "").trim())
+    .filter((t) => t.length > 0)
+    .slice(0, 8);
+  if (clean.length === 0) return "";
+  return `PACKAGING REFERENCES — real titles that won in this space. Match their energy and concreteness; never copy their wording:\n${clean
+    .map((t) => `- ${t}`)
+    .join("\n")}`;
+}
+
 /** Word count used for target-length budgeting and the stored `wordCount`. */
 export function countWords(text: string): number {
   const cleaned = text

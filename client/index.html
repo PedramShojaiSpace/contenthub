@@ -11,26 +11,44 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <!-- Google Analytics 4 (Upstream) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CXZK2Q275S"></script>
+    <!-- Preconnect to critical third-party origins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    <link rel="preconnect" href="https://connect.facebook.net" />
+    <link rel="dns-prefetch" href="https://fast.wistia.net" />
+    <link rel="dns-prefetch" href="https://embed-ssl.wistia.com" />
+    <!-- Preload critical assets for Interconnected page LCP -->
+    <link rel="preload" href="/manus-storage/interconnected-poster_e31ef3aa.jpg" as="image" />
+    <link rel="preload" href="/manus-storage/urban-monk-logo-white_bea7991f.png" as="image" />
+    <!-- Google Fonts — subset to only weights used on Interconnected pages -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Google Analytics 4 — deferred to not block first paint -->
+    <script defer src="https://www.googletagmanager.com/gtag/js?id=G-CXZK2Q275S"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-CXZK2Q275S');
+      gtag('config', 'G-CXZK2Q275S', { 'send_page_view': false });
+      // Fire pageview after load to avoid blocking LCP
+      window.addEventListener('load', function() { gtag('event', 'page_view'); });
     </script>
-    <!-- Meta Pixel Code (1498608757116877) -->
+    <!-- Meta Pixel — deferred bootstrap, fires after interactive -->
     <script>
-      !function(f,b,e,v,n,t,s)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', '1498608757116877');
-      fbq('track', 'PageView');
+      window._fbPixelQueue = [];
+      window.fbq = function() { window._fbPixelQueue.push(arguments); };
+      window.addEventListener('load', function() {
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq&&f.fbq._loaded)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=window._fbPixelQueue||[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '1498608757116877');
+        fbq('track', 'PageView');
+      });
     </script>
     <!-- End Meta Pixel -->
     <!-- Google Tag Manager -->
@@ -40,9 +58,6 @@
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-MTRVLTFX');</script>
     <!-- End Google Tag Manager -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
   </head>
 
   <body>

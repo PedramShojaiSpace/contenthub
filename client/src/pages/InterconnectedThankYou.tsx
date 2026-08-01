@@ -264,7 +264,12 @@ function TyStickyBar({ onBuyClick }: { onBuyClick: () => void }) {
 }
 
 function TyCountdownBlock() {
-  const { timeLeft } = useCountdown(6480);
+  const { timeLeft, expired } = useCountdown(6480);
+  if (expired) return (
+    <div className="text-center my-8">
+      <p className="text-red-400 font-bold text-lg">This special offer has expired.</p>
+    </div>
+  );
   return (
     <div className="flex items-end justify-center gap-2 my-8">
       {[
@@ -300,7 +305,6 @@ const StarRating = ({ count = 5 }: { count?: number }) => (
 );
 
 export default function InterconnectedThankYou() {
-  const { expired } = useCountdown(6480); // only used for expired state
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   useEffect(() => {
@@ -339,7 +343,7 @@ export default function InterconnectedThankYou() {
       </header>
 
       {/* ── HERO / VIDEO SECTION ────────────────────────────────────────────────── */}
-      <section className="px-4 pt-4 pb-12" style={{ background: BG_DARK }}>
+      <section className="px-4 pt-4 pb-12" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px",  background: BG_DARK  }}>
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-gray-400 text-base mb-2 uppercase tracking-widest text-sm font-semibold">
             WAIT! Don't Close or Navigate Away From This Page!
@@ -404,11 +408,7 @@ export default function InterconnectedThankYou() {
             the moment you purchase. That way you'll have real solutions at your fingertips when you need them most.
           </p>
 
-          {!expired ? <TyCountdownBlock /> : (
-            <div className="text-center my-8">
-              <p className="text-red-400 font-bold text-lg">This special offer has expired.</p>
-            </div>
-          )}
+          <TyCountdownBlock />
         </div>
       </section>
 
@@ -458,7 +458,7 @@ export default function InterconnectedThankYou() {
       </section>
 
       {/* ── FIRST OFFER CARD ────────────────────────────────────────────────────── */}
-      <section id="offer" className="px-4 py-16" style={{ background: BG_DARK }}>
+      <section id="offer" className="px-4 py-16" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px",  background: BG_DARK  }}>
         <div className="max-w-2xl mx-auto">
           <p className="text-center text-sm font-bold uppercase tracking-widest mb-2" style={{ color: BLUE }}>
             Choose Your Access Below
@@ -556,7 +556,7 @@ export default function InterconnectedThankYou() {
       </section>
 
       {/* ── EPISODE BREAKDOWN ───────────────────────────────────────────────────── */}
-      <section className="px-4 py-16" style={{ background: BG_DARK }}>
+      <section className="px-4 py-16" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px",  background: BG_DARK  }}>
         <div className="max-w-4xl mx-auto">
           <p className="text-center text-sm font-bold uppercase tracking-widest mb-2" style={{ color: BLUE }}>
             The Groundbreaking Series Brought to You by The Urban Monk
@@ -603,12 +603,12 @@ export default function InterconnectedThankYou() {
       </section>
 
       {/* ── SECOND OFFER CARD ───────────────────────────────────────────────────── */}
-      <section className="px-4 py-16" style={{ background: BG_DARK }}>
+      <section className="px-4 py-16" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px",  background: BG_DARK  }}>
         <div className="max-w-2xl mx-auto">
           <p className="text-center font-bold text-sm uppercase tracking-widest mb-4" style={{ color: BLUE }}>
             Act Fast — This Special Offer Expires In…
           </p>
-          {!expired && <TyCountdownBlock />}
+          <TyCountdownBlock />
           <div
             className="rounded-2xl overflow-hidden mt-8"
             style={{ border: `2px solid ${BLUE}`, boxShadow: `0 0 60px ${BLUE_GLOW}` }}
@@ -668,7 +668,7 @@ export default function InterconnectedThankYou() {
       </section>
 
       {/* ── FINAL OFFER CARD ────────────────────────────────────────────────────── */}
-      <section className="px-4 py-16" style={{ background: BG_DARK }}>
+      <section className="px-4 py-16" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px",  background: BG_DARK  }}>
         <div className="max-w-2xl mx-auto text-center">
           <p className="text-gray-400 text-sm mb-4 uppercase tracking-widest">Last chance</p>
           <h2 className="text-3xl font-bold text-white mb-8" style={{ fontFamily: "Georgia, serif" }}>

@@ -1,0 +1,115 @@
+
+========================================================================
+1. EXTRACT TIERS FROM THE REAL SALES PAGE (id=3)
+========================================================================
+HTTP 200 · cached=false · error=null
+reason: (none — tiers found)
+
+TIER COUNT: 3
+
+  --- Path 3: The Upstream Bundle ---
+  type:        program
+  price:       $499 One-time payment.
+  guarantee:   30-Day Gut Reset Promise included.
+  timeline:    (none stated)
+  action:      Get the Upstream Bundle
+  deliverables:
+    - KBMO FIT22 Food Sensitivity Test
+    - Gut Barrier Permeability Panel
+    - The Complete Upstream Course — the full 6-week, 42-lesson 6R Framework taught by Dr. Pedram Shojai and Dr. Jeff Bland
+    - Exclusive Dr. Jeff Bland Masterclass Modules
+    - The Full Interconnected Docu-Series — all 10 episodes plus the Director's Cut, the complete bonus library, and every expert Q&A and masterclass
+    - 6 Downloadable Workbooks — weekly field guides with checklists, tracking tools, and action plans to keep you on protocol
+    - Private 1-on-1 Health Coach Call
+    - Lifetime Access + All Future Updates
+
+  --- Path 2: The Test + Consultation ---
+  type:        service
+  price:       $399 One-time payment.
+  guarantee:   (none stated — must NOT be invented)
+  timeline:    (none stated)
+  action:      Get the Test
+  deliverables:
+    - KBMO FIT22 Food Sensitivity Test
+    - Gut Barrier Permeability Panel
+    - Private 60-Minute Health Coach Call
+
+  --- Path 1: The Course ---
+  type:        program
+  price:       $299 One-time payment.
+  guarantee:   (none stated — must NOT be invented)
+  timeline:    (none stated)
+  action:      Get the Course
+  deliverables:
+    - The Complete Upstream Course — the full 6-week, 42-lesson 6R Framework with Dr. Pedram Shojai and Dr. Jeff Bland
+    - 6 Downloadable Workbooks — weekly field guides with checklists, tracking tools, and action plans
+    - Exclusive Dr. Jeff Bland Masterclass Modules — direct teaching from the Father of Functional Medicine, integrated throughout the course
+    - The Full Interconnected Docu-Series — all 10 episodes plus the complete bonus library of expert Q&As, guides, and masterclasses
+    - Lifetime Access — revisit the lessons, re-download the workbooks, and receive all future updates at no extra cost
+
+========================================================================
+2. NO TIER CHOSEN — must stay UNBOUND and report the options
+========================================================================
+HTTP 200 · error=null
+offerBinding:  {"mode":"unbound","offerName":null,"entryId":null}
+bindReason:    tier_not_chosen
+unresolved:    [{"offerName":"Path 3: The Upstream Bundle","pricePoint":"$499 One-time payment."},{"offerName":"Path 2: The Test + Consultation","pricePoint":"$399 One-time payment."},{"offerName":"Path 1: The Course","pricePoint":"$299 One-time payment."}]
+--- CTA VERBATIM ---
+[CTA]
+(12:00)
+You are not condemned to this merry-go-round of symptoms and dismissive "normal" lab results. It's time to stop playing Whac-A-Mole with your health. If you're tired of feeling horrible despite your labs being "normal," it's time to look upstream. I’ve put together a comprehensive resource that dives even deeper into these hidden causes of chronic sickness and fatigue, revealing how endotoxemia, leaky gut, and this 17-year medical knowledge gap are keeping you sick, tired, and dismissed. It’s time to get the data and take back your agency. Click the link below to learn more and discover how you can finally uncover the hidden causes of your chronic health issues and start your journey back to optimal health. Don't wait another 17 years for the medical system to catch up. Take control of your health, today.
+
+[CLOSE]
+(13:30)
+Thank you for watching. I’m Dr. Pedram Shojai, and I’m here to help you reclaim your vitality. See you next time.
+--- END ---
+
+stayed unbound:              true
+reported the tier choices:   true
+
+========================================================================
+3. EXPLICIT TIER — "Path 3: The Upstream Bundle"
+========================================================================
+HTTP 200 · error=null
+offerBinding:  {"mode":"offer","offerName":"Path 3: The Upstream Bundle","entryId":3}
+bindReason:    explicit_tier
+unresolved:    []
+--- CTA VERBATIM ---
+[CTA]
+(12:40)
+If you're tired of feeling dismissed, if you're tired of the Whac-A-Mole game, and if you're ready to stop the upstream fire from burning out of control, then it's time to take back your agency. You don't have 17 years to wait for conventional medicine to catch up. That's why I created Path 3: The Upstream Bundle. This isn't just another program; it's your comprehensive roadmap to understanding and healing your gut. With Path 3, you'll receive the KBMO FIT22 Food Sensitivity Test and the Gut Barrier Permeability Panel, so you can finally get the data that your "normal" labs are missing. You'll also get The Complete Upstream Course, my full 6-week, 42-lesson 6R Framework, taught by myself and Dr. Jeff Bland, giving you the science they never taught you. We even include a Private 1-on-1 Health Coach Call to guide you every step of the way. Stop guessing and start healing. Click the link below to get Path 3: The Upstream Bundle today, and remember, it's backed by our 30-Day 
+--- END ---
+
+bound to that tier:          true
+names the tier in the CTA:   true
+states that tier's price:    false ($499)
+guarantee on this tier:      30-Day Gut Reset Promise included.
+CTA mentions a guarantee:    false
+  → correct: allowed either way
+
+========================================================================
+4. UNKNOWN TIER — must NOT fall back to a different price point
+========================================================================
+HTTP 200 · error=null
+offerBinding:  {"mode":"unbound","offerName":null,"entryId":null}
+bindReason:    requested_tier_not_found
+unresolved:    [{"offerName":"Path 3: The Upstream Bundle","pricePoint":"$499 One-time payment."},{"offerName":"Path 2: The Test + Consultation","pricePoint":"$399 One-time payment."},{"offerName":"Path 1: The Course","pricePoint":"$299 One-time payment."}]
+--- CTA VERBATIM ---
+[CTA]
+(12:00)
+You've been dismissed by doctors who run basic, outdated blood panels. Your biology is clearly suffering, but you are being measured with the wrong, legacy tools. It's time to stop playing Whac-A-Mole with symptoms. You don't have to live with brain fog, anxiety, and willpower-proof fatigue. The merry-go-round has to stop. If you're ready to uncover the hidden causes of your chronic sickness and fatigue, and finally get the answers you deserve, I invite you to learn more about how to get the right data and take back your agency. Click the link in the description below to access resources that can help you bridge this knowledge gap and start your journey towards true healing. It's time to stop feeling horrible and start living vibrantly again.
+
+[CLOSE]
+(13:00)
+Thank you for watching. If you found this video helpful, please like, share, and subscribe for more insights into bridging ancient wisdom with modern science. Remember, your health is your greatest wealth, and you ha
+--- END ---
+
+stayed unbound:              true
+reason is not-found:         true
+
+========================================================================
+CLEANUP
+========================================================================
+deleted probe scripts: 30014, 30015, 30016
+entry 3 keeps its extracted ladder (real data, not a probe artifact)
+DONE

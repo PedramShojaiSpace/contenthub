@@ -16,6 +16,13 @@ import { invokeLLM } from "./_core/llm";
 import { parseLLMJson, wrapLLM } from "./llmUtils";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
+// Part 3B — offer binding. Extraction lives here because the offer belongs to
+// the analog entry, not to any one script.
+import {
+  OFFER_EXTRACTION_PROMPT,
+  validateOfferLadder,
+  parseStoredOfferLadder,
+} from "./offerProfile";
 
 const ANALOG_DATA_TYPES = [
   "sales_page",
@@ -73,6 +80,8 @@ export const analogDataRouter = router({
           personaId: analogDataEntries.personaId,
           extractedInsights: analogDataEntries.extractedInsights,
           inCorpus: analogDataEntries.inCorpus,
+          // Part 3B — the picker must show which entries can bind a CTA.
+          offerProfile: analogDataEntries.offerProfile,
           // Return first 300 chars of content as preview
           contentPreview: sql<string>`LEFT(${analogDataEntries.content}, 300)`,
           createdAt: analogDataEntries.createdAt,
@@ -84,16 +93,150 @@ export const analogDataRouter = router({
         .limit(input.limit)
         .offset(input.offset);
 
-      return rows.map((r) => ({
-        ...r,
-        tags: r.tags ? (JSON.parse(r.tags) as string[]) : [],
-        extractedInsights: r.extractedInsights
-          ? JSON.parse(r.extractedInsights)
-          : null,
-      }));
+      return rows.map((r) => {
+        // Part 3B — expose only whether a VALID profile exists plus its name.
+        // Shipping the raw blob would let the UI display a half-parsed offer that
+        // generation would refuse to bind, which is worse than showing nothing.
+        const ladder = parseStoredOfferLadder(r.offerProfile);
+        const { offerProfile: _raw, ...rest } = r;
+        return {
+          ...rest,
+          tags: r.tags ? (JSON.parse(r.tags) as string[]) : [],
+          extractedInsights: r.extractedInsights
+            ? JSON.parse(r.extractedInsights)
+            : null,
+          hasOffer: ladder.tiers.length > 0,
+          // Every tier, so the operator can choose which one a script closes on.
+          offerTiers: ladder.tiers.map((t) => ({
+            offerName: t.offerName,
+            pricePoint: t.pricePoint,
+            hasGuarantee: t.guarantee !== null,
+          })),
+          // Only unambiguous when there is exactly one tier.
+          offerName: ladder.tiers.length === 1 ? ladder.tiers[0].offerName : null,
+        };
+      });
     }),
 
   // ─── Get single entry (full content) ─────────────────────────────────────────
+  /**
+   * Part 3B — extract the commercial offer from an entry's copy.
+   *
+   * Idempotent by default: an entry that already has a validated profile is
+   * returned as-is unless `force` is set, so re-running costs nothing and cannot
+   * silently replace a good profile with a worse one.
+   *
+   * Returns `{ profile: null }` rather than throwing when the copy contains no
+   * identifiable offer. A missing offer is a normal state (an interview
+   * transcript has no offer); it is not an error, and it must not become a
+   * fabricated offer.
+   */
+  extractOfferProfile: protectedProcedure
+    .input(z.object({ id: z.number().int().positive(), force: z.boolean().default(false) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const [row] = await db
+        .select({
+          id: analogDataEntries.id,
+          title: analogDataEntries.title,
+          content: analogDataEntries.content,
+          type: analogDataEntries.type,
+          offerProfile: analogDataEntries.offerProfile,
+        })
+        .from(analogDataEntries)
+        .where(eq(analogDataEntries.id, input.id))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Entry not found" });
+
+      const existing = parseStoredOfferLadder(row.offerProfile);
+      if (existing.tiers.length > 0 && !input.force) {
+        return {
+          tiers: existing.tiers,
+          cached: true,
+          reason: null as string | null,
+          rawExtraction: null as string | null,
+        };
+      }
+
+      const content = String(row.content ?? "");
+      if (content.trim().length < 50) {
+        return {
+          tiers: [],
+          cached: false,
+          reason: "Entry content is too short to contain an offer.",
+          rawExtraction: null as string | null,
+        };
+      }
+
+      let raw: unknown = null;
+      let rawText = "";
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: OFFER_EXTRACTION_PROMPT },
+            { role: "user", content: content.slice(0, 12000) },
+          ],
+        });
+        // The content union includes multimodal parts; only a string is usable here.
+        const rawContent = response.choices?.[0]?.message?.content;
+        const text = typeof rawContent === "string" ? rawContent : "";
+        rawText = text;
+        // parseLLMJson tolerates fenced output; a bare "null" is a valid answer
+        // meaning "this copy contains no offer", which must not become a throw.
+        raw = text.trim().toLowerCase() === "null" ? null : parseLLMJson(text);
+      } catch (err) {
+        // Extraction failure must not block the operator. Nothing is written.
+        return {
+          tiers: [],
+          cached: false,
+          reason: `Extraction failed: ${err instanceof Error ? err.message : String(err)}`,
+          rawExtraction: rawText.slice(0, 2000) || null,
+        };
+      }
+
+      const ladder = validateOfferLadder(raw);
+      if (ladder.tiers.length === 0) {
+        // `rawExtraction` makes a refusal DIAGNOSABLE. The real corpus page was
+        // rejected silently once, and without the model's own output there was no
+        // way to tell "no offer here" from "my schema was too narrow".
+        return {
+          tiers: [],
+          cached: false,
+          reason:
+            "No complete offer found in this copy. A partial offer is not saved, because " +
+            "an incomplete profile would let the script invent the missing parts.",
+          rawExtraction: rawText.slice(0, 2000) || null,
+        };
+      }
+
+      await db
+        .update(analogDataEntries)
+        .set({ offerProfile: JSON.stringify(ladder) })
+        .where(eq(analogDataEntries.id, input.id));
+
+      return {
+        tiers: ladder.tiers,
+        cached: false,
+        reason: null as string | null,
+        rawExtraction: null as string | null,
+      };
+    }),
+
+  /** Part 3B — drop a profile so the entry stops binding CTAs. */
+  clearOfferProfile: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      await db
+        .update(analogDataEntries)
+        .set({ offerProfile: null })
+        .where(eq(analogDataEntries.id, input.id));
+      return { cleared: true };
+    }),
+
   getEntry: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {

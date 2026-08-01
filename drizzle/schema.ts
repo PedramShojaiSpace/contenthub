@@ -3384,6 +3384,10 @@ export const analogDataEntries = mysqlTable("analog_data_entries", {
   extractedInsights: text("extractedInsights"),
   // Whether this entry has been added to the corpus for the Script Factory
   inCorpus: boolean("inCorpus").default(false).notNull(),
+  // Part 3B — the commercial offer this entry sells, LLM-extracted.
+  // Nullable by design: a NULL profile omits the offer block from generation
+  // rather than binding the CTA to a guessed offer. Stored as JSON text.
+  offerProfile: text("offer_profile"),
   createdAt: timestamp("ad_createdAt").defaultNow().notNull(),
   updatedAt: timestamp("ad_updatedAt").defaultNow().onUpdateNow().notNull(),
 });

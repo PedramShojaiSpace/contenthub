@@ -9,6 +9,7 @@
  */
 
 import { useState, useMemo } from "react";
+import { RefreshCw, Wifi, WifiOff, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -79,6 +80,19 @@ export default function FunnelEconomics() {
   const [crMid, setCrMid] = useState(8);      // $67 buyers → mid-tier ($299/$399/$499)
   const [midPrice, setMidPrice] = useState(399); // which mid-tier they buy
   const [crHighTicket, setCrHighTicket] = useState(20); // mid-tier → $9,850 sales call close
+
+  // ── Live Meta data ──
+  const [datePreset, setDatePreset] = useState<"today" | "yesterday" | "last_7d" | "last_14d" | "last_30d" | "this_month">("last_7d");
+  const [liveMode, setLiveMode] = useState(true);
+
+  const { data: liveData, isLoading: liveLoading, refetch: refetchLive, dataUpdatedAt } =
+    trpc.metaFunnelMetrics.getLiveMetrics.useQuery(
+      { datePreset },
+      { enabled: liveMode, refetchInterval: 5 * 60 * 1000, staleTime: 4 * 60 * 1000 }
+    );
+
+  // Auto-fill CPL and leads from live data when available
+  const liveCpl = liveData?.avgCpl ?? null;
 
   // ── Scenario save ──
   const [scenarioName, setScenarioName] = useState("");
@@ -154,8 +168,159 @@ export default function FunnelEconomics() {
               Model your full 6-layer monetization funnel and find break-even in real time
             </p>
           </div>
-          <ROASBadge roas={calc.roas} />
+          <div className="flex items-center gap-2">
+            <ROASBadge roas={calc.roas} />
+            <button
+              onClick={() => setLiveMode((v) => !v)}
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${
+                liveMode ? "bg-green-50 border-green-300 text-green-700" : "bg-muted border-border text-muted-foreground"
+              }`}
+            >
+              {liveMode ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+              {liveMode ? "Live" : "Manual"}
+            </button>
+          </div>
         </div>
+
+        {/* Live Meta Data Banner */}
+        {liveMode && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex flex-wrap items-start gap-4">
+                {/* Date range selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Window:</span>
+                  {(["today", "yesterday", "last_7d", "last_14d", "last_30d", "this_month"] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setDatePreset(p)}
+                      className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                        datePreset === p ? "bg-primary text-primary-foreground border-primary" : "border-border bg-background"
+                      }`}
+                    >
+                      {p === "last_7d" ? "7d" : p === "last_14d" ? "14d" : p === "last_30d" ? "30d" : p === "this_month" ? "MTD" : p}
+                    </button>
+                  ))}
+                </div>
+
+                {liveLoading && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Fetching Meta data…
+                  </div>
+                )}
+
+                {liveData && !liveLoading && (
+                  <>
+                    {/* Key live metrics */}
+                    <div className="flex flex-wrap gap-4 flex-1">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Ad Spend</p>
+                        <p className="font-bold text-sm">{liveData.totalSpend.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Leads</p>
+                        <p className="font-bold text-sm">{liveData.totalLeads.toLocaleString()}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Avg CPL</p>
+                        <p className={`font-bold text-sm ${
+                          liveCpl === null ? "" : liveCpl <= 5 ? "text-green-600" : liveCpl <= 8 ? "text-yellow-600" : "text-red-500"
+                        }`}>
+                          {liveCpl !== null ? `$${liveCpl.toFixed(2)}` : "—"}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Today Spend</p>
+                        <p className="font-bold text-sm">${liveData.dailySpend.toFixed(0)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Today Leads</p>
+                        <p className="font-bold text-sm">{liveData.dailyLeads}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Campaigns</p>
+                        <p className="font-bold text-sm">{liveData.campaigns.length}</p>
+                      </div>
+                    </div>
+
+                    {/* Apply to calculator button */}
+                    {liveCpl !== null && (
+                      <button
+                        onClick={() => {
+                          setCpl(parseFloat(liveCpl.toFixed(2)));
+                          // Annualise leads: for multi-day presets, estimate monthly
+                          const days = datePreset === "today" ? 1 : datePreset === "yesterday" ? 1 : datePreset === "last_7d" ? 7 : datePreset === "last_14d" ? 14 : 30;
+                          const monthlyLeads = Math.round((liveData.totalLeads / days) * 30);
+                          if (monthlyLeads > 0) setLeadsPerMonth(monthlyLeads);
+                          toast.success("Live CPL and leads applied to calculator");
+                        }}
+                        className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground font-medium whitespace-nowrap"
+                      >
+                        Apply to Calculator
+                      </button>
+                    )}
+
+                    <button onClick={() => refetchLive()} className="text-xs text-muted-foreground hover:text-foreground">
+                      <RefreshCw className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Flags */}
+              {liveData?.flags && liveData.flags.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {liveData.flags.map((flag, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                        flag.level === "ok" ? "bg-green-100 text-green-800" :
+                        flag.level === "warn" ? "bg-yellow-100 text-yellow-800" :
+                        "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {flag.level === "ok" ? <CheckCircle2 className="w-3 h-3" /> :
+                       flag.level === "warn" ? <AlertTriangle className="w-3 h-3" /> :
+                       <AlertCircle className="w-3 h-3" />}
+                      {flag.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Campaign breakdown (collapsible) */}
+              {liveData?.campaigns && liveData.campaigns.length > 0 && (
+                <details className="mt-3">
+                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                    {liveData.campaigns.length} Interconnected campaigns — click to expand
+                  </summary>
+                  <div className="mt-2 space-y-1">
+                    {liveData.campaigns.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-0">
+                        <span className="text-muted-foreground truncate max-w-[60%]" title={c.name}>
+                          {c.name.replace(/^CM - (Top|Middle|Bottom) - /i, "").slice(0, 60)}
+                        </span>
+                        <div className="flex gap-3 text-right shrink-0">
+                          <span>${c.spend.toFixed(0)} spend</span>
+                          <span>{c.leads} leads</span>
+                          <span className={c.cpl === null ? "" : c.cpl <= 5 ? "text-green-600 font-semibold" : c.cpl <= 8 ? "text-yellow-600 font-semibold" : "text-red-500 font-semibold"}>
+                            {c.cpl !== null ? `$${c.cpl.toFixed(2)} CPL` : "—"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+
+              {dataUpdatedAt > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Last refreshed {new Date(dataUpdatedAt).toLocaleTimeString()} · auto-refreshes every 5 min
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* ── Left: Inputs ── */}

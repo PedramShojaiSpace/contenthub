@@ -3921,14 +3921,22 @@ export const researchJobs = mysqlTable("research_jobs", {
    * setStatus call typechecked via `as any` while writing nothing, which is the
    * exact failure class Part 1 fixes 6-8 corrected (drizzle names that did not
    * match live columns). Column added by migrate_3c_structure_summary.mjs.
+   *
+   * The field list below MUST stay identical to the `StructureSummary` interface
+   * in server/researchGrounding.ts. It originally described a different, earlier
+   * shape (commonOpeningMoves/proofStyle/ctaStyle/avgWordCount) that the code
+   * never wrote, so writes failed to typecheck the moment the `as any` was
+   * removed. A column type that disagrees with its only writer is drift by
+   * definition — the same defect class as fixes 6-8.
    */
   structureSummary: longtextJson<{
-    commonOpeningMoves: string[];
     sectionFlow: string[];
-    proofStyle: string;
-    ctaStyle: string;
-    avgWordCount: number;
+    pacingNotes: string;
+    firstPayoffPoint: string;
+    reHookPlacement: string;
+    ctaPlacement: string;
     sourceVideoIds: string[];
+    sourceCount: number;
   }>("structure_summary"),
   errorMessage: varchar("error_message", { length: 512 }),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),

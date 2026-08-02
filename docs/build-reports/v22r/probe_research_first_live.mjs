@@ -91,7 +91,7 @@ hr("0. BASELINE (scratch DB)");
 line(JSON.stringify(before));
 
 const bal0 = await trpc(cookie, "scriptFactory.vidiqBalance", {}, "query");
-const credits0 = bal0.data?.totalCredits ?? null;
+const credits0 = bal0.json?.result?.data?.totalCredits ?? null;
 line(`vidIQ totalCredits before: ${credits0}`);
 
 const SEED = "morning cortisol spike gut";
@@ -109,9 +109,9 @@ const g1 = await trpc(cookie, "scriptFactory.generate", {
   seedKeyword: SEED,
   targetLengthMinutes: 10,
 });
-const d1 = g1.data;
+const d1 = g1.json?.result?.data;
 line(`HTTP ${g1.status} · elapsed ${((Date.now() - t1) / 1000).toFixed(1)}s`);
-if (!d1) { line("FAILED: " + (g1.error ?? g1.raw)); }
+if (!d1) { line("FAILED: " + JSON.stringify(g1.json).slice(0, 600)); }
 else {
   line(`scriptId: ${d1.id}`);
   line(`researchAttempted: ${d1.researchAttempted}`);
@@ -132,7 +132,7 @@ else {
 // ── 2. REUSE on a second run ────────────────────────────────────────────────
 hr("2. SECOND GENERATE, SAME SEED — must REUSE, not re-research");
 const bal1 = await trpc(cookie, "scriptFactory.vidiqBalance", {}, "query");
-const credits1 = bal1.data?.totalCredits ?? null;
+const credits1 = bal1.json?.result?.data?.totalCredits ?? null;
 const t2 = Date.now();
 const g2 = await trpc(cookie, "scriptFactory.generate", {
   topic: TOPIC + " (second pass)",
@@ -140,9 +140,9 @@ const g2 = await trpc(cookie, "scriptFactory.generate", {
   seedKeyword: SEED,
   targetLengthMinutes: 10,
 });
-const d2 = g2.data;
+const d2 = g2.json?.result?.data;
 const bal2 = await trpc(cookie, "scriptFactory.vidiqBalance", {}, "query");
-const credits2 = bal2.data?.totalCredits ?? null;
+const credits2 = bal2.json?.result?.data?.totalCredits ?? null;
 line(`HTTP ${g2.status} · elapsed ${((Date.now() - t2) / 1000).toFixed(1)}s`);
 if (d2) {
   line(`researchReused: ${d2.researchReused}   <-- must be true`);
@@ -160,7 +160,7 @@ const g3 = await trpc(cookie, "scriptFactory.generate", {
   skipResearch: true,
   targetLengthMinutes: 10,
 });
-const d3 = g3.data;
+const d3 = g3.json?.result?.data;
 if (d3) {
   line(`researchAttempted: ${d3.researchAttempted}  <-- must be false`);
   line(`researchGrounded:  ${d3.researchGrounded}`);
@@ -177,11 +177,11 @@ const g4 = await trpc(cookie, "scriptFactory.generate", {
   seedKeyword: "qwzxjkvbnm zzzqqq nonexistent keyword 9182",
   targetLengthMinutes: 10,
 });
-const d4 = g4.data;
+const d4 = g4.json?.result?.data;
 line(`HTTP ${g4.status}`);
 if (!d4) {
   line("*** FAIL-OPEN VIOLATED: no script returned ***");
-  line(g4.error ?? g4.raw);
+  line(JSON.stringify(g4.json).slice(0, 600));
 } else {
   line(`script returned: YES (id ${d4.id}, ${d4.wordCount} words)  <-- fail-open holds`);
   line(`researchAttempted: ${d4.researchAttempted}`);
@@ -192,10 +192,10 @@ if (!d4) {
 // ── 5. Relevance gate + persisted grounding ────────────────────────────────
 hr("5. RELEVANCE GATE + PERSISTED GROUNDING (from research_jobs.notes)");
 const [jobRows] = await conn.query(
-  "SELECT id, seed_keyword, research_status, notes, structure_summary IS NOT NULL AS has_summary FROM research_jobs ORDER BY id DESC LIMIT 4"
+  "SELECT id, seed_keyword, status, notes, structure_summary IS NOT NULL AS has_summary FROM research_jobs ORDER BY id DESC LIMIT 4"
 );
 for (const r of jobRows) {
-  line(`job #${r.id} seed=${JSON.stringify(r.seed_keyword)} status=${r.research_status} has_structure_summary=${r.has_summary}`);
+  line(`job #${r.id} seed=${JSON.stringify(r.seed_keyword)} status=${r.status} has_structure_summary=${r.has_summary}`);
   line(`  notes: ${r.notes}`);
 }
 
@@ -223,7 +223,7 @@ line(`content_patterns:${before.patterns} -> ${after.patterns}`);
 line(`hook references: ${before.hooks} -> ${after.hooks}`);
 line(`yt_transcripts:  ${before.transcripts} -> ${after.transcripts}`);
 const bal3 = await trpc(cookie, "scriptFactory.vidiqBalance", {}, "query");
-line(`vidIQ totalCredits: ${credits0} -> ${bal3.data?.totalCredits ?? "n/a"}`);
+line(`vidIQ totalCredits: ${credits0} -> ${bal3.json?.result?.data?.totalCredits ?? "n/a"}`);
 
 // ── Cleanup by MARKER, never by id range ───────────────────────────────────
 hr("7. CLEANUP (marker-based)");

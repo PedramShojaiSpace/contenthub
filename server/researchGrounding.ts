@@ -208,6 +208,9 @@ export const STRUCTURE_SUMMARY_PROMPT = [
   "You are analysing how successful YouTube videos on one topic are STRUCTURED.",
   "You are NOT summarising their content. Return ONLY JSON.",
   "",
+  "You will be given SEVERAL transcripts. Return ONE aggregate object describing",
+  "the pattern ACROSS them — not an array, and not one object per video.",
+  "",
   "Schema:",
   "{",
   '  "sectionFlow": string[],      // ordered beats, e.g. ["cold open contradiction","credential","problem mechanism"]',
@@ -222,6 +225,7 @@ export const STRUCTURE_SUMMARY_PROMPT = [
   "- If the transcripts disagree, describe the dominant pattern and say so.",
   "- Base every field on the transcripts provided. Do not generalise from",
   "  YouTube conventions you already believe.",
+  "- Return a single JSON object. Do NOT wrap it in an array.",
 ].join("\n");
 
 /** Validate an LLM structure summary; a malformed field becomes a safe default. */
@@ -234,6 +238,58 @@ export function validateStructureSummary(
     try { obj = JSON.parse(obj); } catch { return null; }
   }
   if (!obj || typeof obj !== "object") return null;
+
+  /*
+   * MEASURED REJECTION (docs/build-reports/v22r/proof_structure_summary.txt).
+   *
+   * EVERY research job recorded `structure_summary=no`, including jobs that
+   * completed with real transcripts. Cause: the prompt showed a SINGLE-object
+   * schema but handed the model THREE transcripts, so it reasonably returned one
+   * object per video — `[{...},{...},{...}]`. JSON.parse succeeded,
+   * `obj.sectionFlow` was undefined on an array, flow came out empty, and the
+   * summary was silently discarded. The model was not wrong; the prompt was
+   * ambiguous and the validator was too literal about a shape it never pinned.
+   *
+   * The prompt is now explicit, but a model may still return an array, and an
+   * aggregate is what this feature wants — so per-video objects are MERGED
+   * rather than refused. Section flows concatenate in order and are deduped
+   * (winning videos in one niche genuinely share beats, and a flow listing
+   * "cold open" three times is noise). Prose fields take the first non-empty
+   * value rather than gluing three paragraphs into an unreadable wall.
+   */
+  if (Array.isArray(obj)) {
+    const parts = obj.filter((p) => p && typeof p === "object" && !Array.isArray(p));
+    if (parts.length === 0) return null;
+
+    const seen = new Set<string>();
+    const mergedFlow: string[] = [];
+    for (const p of parts) {
+      if (!Array.isArray(p.sectionFlow)) continue;
+      for (const beat of p.sectionFlow) {
+        if (typeof beat !== "string" || !beat.trim()) continue;
+        const key = beat.trim().toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        mergedFlow.push(beat.trim().slice(0, 200));
+      }
+    }
+
+    const firstNonEmpty = (field: string): string => {
+      for (const p of parts) {
+        const v = p[field];
+        if (typeof v === "string" && v.trim()) return v.trim();
+      }
+      return "";
+    };
+
+    obj = {
+      sectionFlow: mergedFlow,
+      pacingNotes: firstNonEmpty("pacingNotes"),
+      firstPayoffPoint: firstNonEmpty("firstPayoffPoint"),
+      reHookPlacement: firstNonEmpty("reHookPlacement"),
+      ctaPlacement: firstNonEmpty("ctaPlacement"),
+    };
+  }
 
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 1000) : "");
   const flow = Array.isArray(obj.sectionFlow)

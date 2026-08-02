@@ -19,7 +19,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
   TrendingUp, TrendingDown, Minus, DollarSign, Users, Target,
-  Save, History, ChevronDown, ChevronUp, Info
+  Save, History, ChevronDown, ChevronUp, Info, BarChart3
 } from "lucide-react";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -383,6 +383,42 @@ export default function FunnelEconomics() {
                   value={calc.buyers67 > 0 ? `$${(calc.totalRev / calc.buyers67).toFixed(0)}` : "$0"}
                   sub="Total revenue ÷ $67 buyers"
                 />
+              </CardContent>
+            </Card>
+
+            {/* ROAS Breakdown */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" /> ROAS by Layer
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { label: "L1 · $67 Core",        rev: calc.rev67,                        color: "bg-indigo-500" },
+                  { label: "L2 · $27 Bump",         rev: calc.rev67 + calc.revBump,         color: "bg-purple-500" },
+                  { label: "L3 · $97 OTO",          rev: calc.rev67 + calc.revBump + calc.revOto, color: "bg-pink-500" },
+                  { label: `L4 · $${midPrice} Mid`, rev: calc.rev67 + calc.revBump + calc.revOto + calc.revMid, color: "bg-orange-500" },
+                  { label: "L5 · $9,850 HT",        rev: calc.totalRev,                     color: "bg-green-600" },
+                ].map(({ label, rev, color }) => {
+                  const layerRoas = calc.adSpend > 0 ? rev / calc.adSpend : 0;
+                  const barW = Math.min(100, (layerRoas / 5) * 100);
+                  const roasColor = layerRoas >= 2 ? "text-green-600" : layerRoas >= 1 ? "text-yellow-600" : "text-red-500";
+                  return (
+                    <div key={label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className={`font-bold ${roasColor}`}>{layerRoas.toFixed(2)}x</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className={`h-full ${color} rounded-full`} style={{ width: `${barW}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="border-t pt-2 mt-1">
+                  <p className="text-xs text-muted-foreground">Bar = ROAS scaled to 5x max. Each row shows cumulative ROAS as layers are added.</p>
+                </div>
               </CardContent>
             </Card>
 

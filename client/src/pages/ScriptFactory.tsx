@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
@@ -64,18 +63,27 @@ const FORMATS = [
   { value: "sales_page_section", label: "Sales Page Section" },
   { value: "podcast_outline", label: "Podcast Outline" },
 ] as const;
-
-const PATTERN_TYPES = [
-  "hook", "pain_point", "proof_element", "objection_handler", "cta",
-  "story_structure", "key_phrase", "transformation_arc", "authority_signal",
-  "social_proof", "open_loop",
-];
-
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-yellow-100 text-yellow-800",
   approved: "bg-green-100 text-green-800",
   archived: "bg-gray-100 text-gray-600",
 };
+
+/*
+ * v2.2 Part 3E — was this row's grounding number produced by the old metric?
+ *
+ * Creation-date heuristic, and deliberately so: the rows carry no metric-version
+ * column, and backfilling one would mean asserting history we cannot verify. The
+ * cutoff is the v2.2 branch date. Approximate and labelled as approximate beats
+ * presenting two incompatible definitions as if they were one number.
+ */
+const V22_METRIC_CUTOFF_MS = Date.parse("2026-07-25T00:00:00Z");
+
+function isLegacyMetric(createdAt: unknown): boolean {
+  if (createdAt == null) return false;
+  const t = typeof createdAt === "number" ? createdAt : Date.parse(String(createdAt));
+  return Number.isFinite(t) && t < V22_METRIC_CUTOFF_MS;
+}
 
 const FORMAT_LABELS: Record<string, string> = {
   youtube_script: "YouTube Script",
@@ -765,11 +773,16 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
   const utils = trpc.useUtils();
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState<string>("youtube_script");
-  const [minEff, setMinEff] = useState(0.5);
-  const [topPerType, setTopPerType] = useState(3);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([
-    "hook", "pain_point", "proof_element", "cta", "transformation_arc",
-  ]);
+  /*
+   * v2.2 Part 3D — `minEff` / `topPerType` / the visible type grid are gone.
+   *
+   * What remains is `ideaPatternHint`: an idea card can still carry a per-idea
+   * pattern recommendation from the idea engine, and that is a real signal worth
+   * honouring. It is passed to the server invisibly and there is no control for
+   * it, because the operator never chose it — the idea engine did. Empty means
+   * "compose freely", which is the ordinary case for a topic typed by hand.
+   */
+  const [ideaPatternHint, setIdeaPatternHint] = useState<string[]>([]);
 
   // ── Phase 2: persona, North Star, target length, idea linkage ─────────────
   const [personaId, setPersonaId] = useState<string>("none");
@@ -807,6 +820,33 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
     patternsUsed: number; corpusEntriesUsed: number; externalTranscriptsUsed?: number;
     wordCount?: number; targetWordCount?: number | null; continuationPassUsed?: boolean;
     personaName?: string | null; northStarTitles?: string[]; researchJobId?: number | null;
+    /*
+     * ── Part 3C/3D grounding disclosure ────────────────────────────────────
+     *
+     * All optional because the server may legitimately return a run with no
+     * research at all. The point of splitting these out rather than shipping one
+     * `researched: boolean` is that "attempted", "succeeded", "was on topic" and
+     * "which beats got grounding" are four different questions, and a single
+     * green badge answers the wrong one — it reported success on the finding #10
+     * runs where resolution threw and nothing reached the prompt.
+     */
+    researchAttempted?: boolean;
+    researchGrounded?: boolean;
+    researchReused?: boolean;
+    researchFailureReason?: string | null;
+    researchGroundingSources?: string[];
+    researchOnTopicRatio?: string | null;
+    hookReferencesUsed?: number;
+    structureSummaryUsed?: boolean;
+    patternComposition?: {
+      total: number;
+      researchCount: number;
+      globalCount: number;
+      byType: Record<string, number>;
+      unfilledTypes: string[];
+      candidatesConsidered: number;
+      disclosure: string;
+    };
   } | null>(null);
 
   // Persona list — reused pattern from AnalyzeData.tsx
@@ -868,12 +908,6 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
 
   const researchReady = researchJob?.status === "complete";
 
-  const toggleType = (type: string) => {
-    setSelectedTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    );
-  };
-
   const toggleNorthStar = (id: number) => {
     setNorthStarIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
@@ -899,7 +933,8 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
   const handleSelectIdea = (handoff: IdeaHandoff) => {
     setTopic(handoff.topic);
     setFormat(handoff.format);
-    setSelectedTypes(handoff.patterns.length > 0 ? handoff.patterns : selectedTypes);
+    // Part 3D — carried through as a hint, not shown as a control.
+    setIdeaPatternHint(handoff.patterns.length > 0 ? handoff.patterns : []);
     setSourceIdeaId(handoff.ideaId);
     setPersonaId(handoff.personaId ? String(handoff.personaId) : "none");
     setNorthStarIds(handoff.analogDataEntryId ? [handoff.analogDataEntryId] : []);
@@ -1288,50 +1323,32 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  Pattern Types to Include
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {PATTERN_TYPES.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => toggleType(type)}
-                      className={`text-xs px-2 py-1 rounded border transition-colors ${
-                        selectedTypes.includes(type)
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-muted text-muted-foreground border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {type.replace(/_/g, " ")}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/*
+                v2.2 Part 3D — the pattern-type grid and the two dials that used to
+                live here are GONE, not hidden.
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  Min Pattern Effectiveness: <span className="text-primary font-bold">{(minEff * 100).toFixed(0)}%</span>
-                </label>
-                <Slider min={0} max={1} step={0.05} value={[minEff]} onValueChange={([v]) => setMinEff(v)} />
-              </div>
+                They asked the operator for a decision he had no basis for: nobody
+                knows whether "objection_handler" belongs in a given script, and
+                "min effectiveness 55%" is not a judgement a human can form. The
+                corpus can answer both, so the server now composes the set
+                automatically (server/patternComposition.ts) and reports what it
+                chose — including which beats it could find NO grounding for.
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  Top Patterns Per Type: <span className="text-primary font-bold">{topPerType}</span>
-                </label>
-                <Slider min={1} max={5} step={1} value={[topPerType]} onValueChange={([v]) => setTopPerType(v)} />
-              </div>
-
+                Removing them also kills the dead-button bug: unchecking every type
+                disabled Generate with no explanation anywhere on screen.
+              */}
               <Button
                 className="w-full"
-                disabled={generate.isPending || topic.trim().length < 10 || selectedTypes.length === 0}
+                disabled={generate.isPending || topic.trim().length < 10}
                 onClick={() => generate.mutate({
                   topic,
                   format: format as any,
-                  patternTypes: selectedTypes,
-                  minPatternEffectiveness: minEff,
-                  topPatternsPerType: topPerType,
+                  /*
+                   * Part 3D — empty array means "no hint": the server composes
+                   * across all types. A non-empty hint only ever arrives from an
+                   * idea card, never from a control the operator touched.
+                   */
+                  patternTypes: ideaPatternHint,
                   useCorpusSearch: true,
                   // Phase 2/3 wiring
                   personaId: personaId !== "none" ? Number(personaId) : undefined,
@@ -1431,6 +1448,79 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                 </p>
               </CardHeader>
               <CardContent>
+                {/*
+                  ── GROUNDING DISCLOSURE (Part 3D) ────────────────────────────
+
+                  The operator lost the pattern dials, so he is owed a straight
+                  answer to "what did you actually ground this in?". Deliberately
+                  states absence as loudly as presence: an amber "no grounding for
+                  these beats" line is the most useful thing on this panel when
+                  the corpus is thin, and rounding it away is exactly the kind of
+                  reassuring-but-false reporting this build removes.
+                */}
+                {result.patternComposition && (
+                  <div className="mb-4 rounded-lg border bg-muted/20 p-3 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Grounding
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {result.patternComposition.researchCount} pattern
+                      {result.patternComposition.researchCount === 1 ? "" : "s"} from this topic&rsquo;s
+                      research · {result.patternComposition.globalCount} from the global corpus
+                      {" "}(chosen from {result.patternComposition.candidatesConsidered} candidates)
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(result.patternComposition.byType).map(([type, n]) => (
+                        <span
+                          key={type}
+                          className="text-[11px] px-1.5 py-0.5 rounded border bg-background text-muted-foreground"
+                        >
+                          {type.replace(/_/g, " ")} ×{n}
+                        </span>
+                      ))}
+                    </div>
+                    {result.patternComposition.unfilledTypes.length > 0 && (
+                      <p className="text-xs text-amber-700">
+                        No grounding available for:{" "}
+                        {result.patternComposition.unfilledTypes
+                          .map((t) => t.replace(/_/g, " "))
+                          .join(", ")}
+                        . Those beats were written unguided — review them first.
+                      </p>
+                    )}
+                    {result.researchGrounded && (result.researchGroundingSources?.length ?? 0) > 0 && (
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <p className="font-medium text-foreground">
+                          Grounded in
+                          {result.researchOnTopicRatio
+                            ? ` (${result.researchOnTopicRatio} discovery results on topic)`
+                            : ""}
+                          :
+                        </p>
+                        {result.researchGroundingSources!.map((s, i) => (
+                          <p key={i} className="truncate">• {s}</p>
+                        ))}
+                        <p className="text-[11px] italic">
+                          If these titles look unrelated to your topic, the grounding is noise —
+                          regenerate with a more specific seed keyword.
+                        </p>
+                      </div>
+                    )}
+                    {result.researchAttempted && !result.researchGrounded && (
+                      <p className="text-xs text-amber-700">
+                        Research ran but no grounding reached the script
+                        {result.researchFailureReason ? `: ${result.researchFailureReason}` : "."}
+                      </p>
+                    )}
+                    {(result.hookReferencesUsed ?? 0) > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {result.hookReferencesUsed} hook reference
+                        {result.hookReferencesUsed === 1 ? "" : "s"} analysed
+                        {result.structureSummaryUsed ? " · structure summary applied" : ""}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
                   {renderScriptWithTags(result.scriptBody)}
                 </div>
@@ -1507,6 +1597,17 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
 
   const { data: scriptDetail } = trpc.scriptFactory.get.useQuery(
     { id: selectedScript?.id ?? 0 },
+    { enabled: !!selectedScript }
+  );
+
+  /*
+   * Part 3E — claims status for the open script, keyed by contentType +
+   * contentId. Read from the claims table itself rather than a mirrored column on
+   * the script row, so the badge cannot drift out of sync with the Claims Review
+   * queue it links to.
+   */
+  const { data: claimsStatus } = trpc.claimsReview.getForContent.useQuery(
+    { contentType: "youtube_script" as const, contentId: String(selectedScript?.id ?? 0) },
     { enabled: !!selectedScript }
   );
 
@@ -1631,10 +1732,54 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
                 <Badge className={`text-xs ${STATUS_COLORS[scriptDetail.status ?? "draft"]}`}>
                   {scriptDetail.status}
                 </Badge>
-                <Badge className="bg-green-50 text-green-700 border border-green-200 text-xs">
+                {/*
+                  Part 3E — reads "N of M sections grounded", because that is what
+                  the stored counts now mean.
+
+                  Rows written before v2.2 hold numbers from the old metric
+                  ([VERIFIED] over ALL bracketed tokens, structure labels
+                  included), so they are marked as legacy rather than silently
+                  compared against new rows. The creation-date heuristic is
+                  approximate and says so in the tooltip — an approximate,
+                  self-declared marker beats presenting two incompatible
+                  definitions as one number.
+                */}
+                <Badge
+                  className="bg-green-50 text-green-700 border border-green-200 text-xs"
+                  title={
+                    isLegacyMetric(scriptDetail.createdAt)
+                      ? "Legacy metric: this script predates v2.2. Its number divided [VERIFIED] tags by ALL bracketed tags, so structure labels diluted it. Not comparable with newer scripts."
+                      : "Section instances containing at least one [VERIFIED] element. Story-slot-only sections are excluded."
+                  }
+                >
                   <ShieldCheck className="w-2.5 h-2.5 mr-0.5" />
-                  {scriptDetail.verificationPct ?? 0}% verified
+                  {(scriptDetail.totalElements ?? 0) > 0
+                    ? `${scriptDetail.verifiedCount ?? 0} of ${scriptDetail.totalElements} sections grounded`
+                    : `${scriptDetail.verificationPct ?? 0}% verified`}
+                  {isLegacyMetric(scriptDetail.createdAt) && (
+                    <span className="ml-1 opacity-70">(legacy)</span>
+                  )}
                 </Badge>
+                {/*
+                  Claims badge — sourced by contentType + contentId, linking to the
+                  existing Claims Review page. Never a generation gate: the
+                  operator is the qualified reviewer, this only tells him whether a
+                  review exists and how many flags it raised.
+                */}
+                {claimsStatus && (
+                  <button
+                    onClick={() => { window.location.href = "/claims-review"; }}
+                    className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                      claimsStatus.flagCount > 0
+                        ? "bg-amber-50 text-amber-800 border-amber-200 hover:border-amber-400"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400"
+                    }`}
+                    title="Open the Claims Review queue"
+                  >
+                    Claims review: {String(claimsStatus.status).replace(/_/g, " ")}
+                    {claimsStatus.flagCount > 0 ? ` (${claimsStatus.flagCount} flags)` : ""}
+                  </button>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {FORMAT_LABELS[scriptDetail.format] ?? scriptDetail.format}
                 </span>

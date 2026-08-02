@@ -3587,6 +3587,28 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
   wordCount: int("word_count"),
   /** scripts.id once sent to production — also the idempotency key */
   productionScriptId: int("production_script_id"),
+  /**
+   * v2.2 Part 3D — what pattern composition actually chose for this script.
+   *
+   * DECLARED, because an undeclared column silently does not persist: writes
+   * typecheck via `as any` while nothing lands. That is the failure class Part 1
+   * fixes 6-8 corrected and Part 3C's structure_summary hit again. Column added
+   * by migrate_3d_pattern_composition.mjs.
+   *
+   * `unfilledTypes` is the field that earns this column's existence: it records
+   * the beats that reached the prompt with NO grounding, so thin coverage is
+   * auditable after the fact rather than being invisible once the script is
+   * saved.
+   */
+  patternComposition: longtextJson<{
+    total: number;
+    researchCount: number;
+    globalCount: number;
+    byType: Record<string, number>;
+    unfilledTypes: string[];
+    candidatesConsidered: number;
+    disclosure: string;
+  }>("pattern_composition"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

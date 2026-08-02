@@ -26,6 +26,13 @@ import { analogDataEntries, contentPatterns, corpusEntries, ideaFeedback, person
  */
 import { asArray, hasItems } from "../drizzle/longtextJson";
 import { protectedProcedure, router } from "./_core/trpc";
+import {
+  composePatterns,
+  describeComposition,
+  outlierEffectiveness,
+  type CompositionCandidate,
+  type PatternComposition,
+} from "./patternComposition";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { parseLLMJson } from "./llmUtils";
@@ -40,6 +47,14 @@ import {
 } from "./vidiq";
 import { getAvatarContextBlockForPersona } from "./avatarRouter";
 import { searchCorpusEntries } from "./corpusRouter";
+import { createClaimsReview } from "./claimsReviewRouter";
+import {
+  computeGroundingMetric,
+  describeGrounding,
+  insertTimestamps,
+  lintCadence,
+  buildCadenceBlock,
+} from "./scriptMetrics";
 import { fetchTranscriptWithQuota } from "./transcriptRouter";
 import { extractPatternsFromContent } from "./patternExtractorRouter";
 import {
@@ -222,6 +237,25 @@ export interface SuperchargedIdea extends VideoIdea {
 /**
  * Count [VERIFIED] tags in a script body.
  * Also counts total bracketed elements for verification %.
+ */
+/**
+ * @deprecated Pre-v2.2 grounding metric. KEPT, and kept exported, purely as
+ * documentation of what the numbers on legacy rows actually meant.
+ *
+ * It divides `[VERIFIED]` count by the count of ALL bracketed tokens — which
+ * includes the structure labels `[HOOK]`, `[TEACH]`, `[CTA]` and so on. So
+ * labelling a script more thoroughly LOWERED its reported "verified %" while
+ * changing nothing about how grounded the script was, and a fully-grounded
+ * four-section script scored 50%.
+ *
+ * Every live call site now uses `computeGroundingMetric()` from
+ * `./scriptMetrics` (section instances, slot-only sections excluded). Rows
+ * written before v2.2 carry numbers produced by THIS function; the UI marks them
+ * as a legacy metric rather than silently comparing them against new rows.
+ *
+ * Do not call this in new code. `server/scriptMetrics.test.ts` asserts the exact
+ * divergence between the two, so the difference stays documented rather than
+ * becoming folklore.
  */
 export function countVerifiedTags(scriptBody: string): { verified: number; total: number; pct: number } {
   const verifiedMatches = scriptBody.match(/\[VERIFIED\]/g) ?? [];
@@ -444,6 +478,17 @@ interface ResolvedResearch {
   groundingSources: string[];
   onTopicRatio: string | null;
   /**
+   * v2.2 Part 3D — the job's discovery order, as source video ids.
+   *
+   * Composition weights research-tagged patterns by the RANK of the video they
+   * were mined from, so the ordering the research pipeline already established
+   * (relevance-partitioned, then by outlier score) has to survive the trip to
+   * generation. Deriving rank at composition time from effectiveness alone
+   * would not reproduce it, because effectiveness is a per-pattern score and
+   * several patterns share one source video.
+   */
+  rankedVideoIds: string[];
+  /**
    * Set when RESOLUTION itself threw (finding #10 class: a completed research
    * job whose grounding could not be read back). Distinct from "no research
    * requested" and from "research failed" -- those leave this null. Generation
@@ -465,7 +510,20 @@ const EMPTY_RESEARCH: ResolvedResearch = {
   resolutionError: null,
   groundingSources: [],
   onTopicRatio: null,
+  rankedVideoIds: [],
 };
+
+/*
+ * Part 3D — how many pattern rows are pulled into memory for composition.
+ *
+ * One wide fetch replaces the old per-type queries. 400 is chosen against the
+ * live corpus size rather than as a round number: composition needs enough rows
+ * to fill every type quota from a lopsided corpus (hooks dominate, because every
+ * research job mines one hook reference per video), while staying small enough
+ * that the sort is trivial. Ordered by effectiveness so a corpus larger than the
+ * limit is truncated at the WEAK end.
+ */
+const CANDIDATE_FETCH_LIMIT = 400;
 
 /**
  * Resolve the research job to use for a generation run.
@@ -597,6 +655,14 @@ async function resolveResearchContext(
       groundingSources: transcripts.map((t) => t.title ?? "Untitled").slice(0, 6),
       // Recorded by the pipeline into notes as `on_topic=N/M`.
       onTopicRatio: /on_topic=(\d+\/\d+)/.exec(job.notes ?? "")?.[1] ?? null,
+      /*
+       * Part 3D — `outlier_videos` is written in DISCOVERY ORDER by the research
+       * pipeline (on-topic results first, then by outlier score), so array
+       * position is the rank. Passed through unchanged rather than re-sorted
+       * here, because re-deriving the order in a second place is how the two
+       * definitions drift apart.
+       */
+      rankedVideoIds: outliers.map((o) => o.videoId).filter(Boolean),
     };
   } catch (err) {
     /*
@@ -788,10 +854,17 @@ VERIFIED TAGGING RULES (CRITICAL):
   immediately follow it with [VERIFIED]
 - When you use a structural element from the CORPUS REFERENCE EXCERPTS, tag the sentence with [VERIFIED]
 - Do NOT tag elements you invented — only tag elements drawn from the provided corpus
-- Aim for at least 40% [VERIFIED] coverage of key structural elements
+- Aim for at least one [VERIFIED] element in EVERY section you write. The grounding
+  metric is measured per section, so a single heavily-tagged hook does not make up
+  for four untagged teaching blocks.
 - Format: "Your hook text here [VERIFIED]" — the tag goes AFTER the element, inline
+- Do NOT emit (m:ss) timestamps. They are computed deterministically after generation
+  and any you write will be stripped.
 
 ${buildStoryIntegrityBlock(storyMode)}
+
+${buildCadenceBlock()}
+
 ${offerSection}${hookSection}${structureSection}
 
 SCRIPT STRUCTURE TAGS (use these to label each section):
@@ -1062,12 +1135,20 @@ export async function executeDeepResearch(
         // Top 5 per video keeps the pattern table signal-dense.
         for (const p of extracted.slice(0, 5)) {
           const outlier = outlierVideos.find((o) => o.videoId === item.videoId);
-          // Normalize the outlier score into the 0-1 effectiveness band this
-          // table uses; competitor-sourced patterns cap at 0.9 so the
-          // operator's own proven analog data can still outrank them.
-          const effectiveness = outlier?.outlierScore
-            ? Math.min(0.9, Math.max(0.5, outlier.outlierScore / 10))
-            : 0.6;
+          /*
+           * Part 3D — variance-preserving effectiveness.
+           *
+           * This line used to be `min(0.9, max(0.5, outlierScore / 10))`.
+           * Health-niche outlier scores are routinely 9-60+, so every score >= 9
+           * clamped to the ceiling and 13 of 15 real rows stored exactly 0.90.
+           * Composition is specified to fill slots "by effectivenessScore", which
+           * means nothing when the score is a constant — the effective tie-break
+           * was insertion order. `outlierEffectiveness()` compresses
+           * logarithmically instead, so a 60 still outranks a 12 while both stay
+           * below the operator's own analog data. See patternComposition.ts for
+           * the mapping table and its tests.
+           */
+          const effectiveness = outlierEffectiveness(outlier?.outlierScore ?? null);
 
           const patternInsert = await db.insert(contentPatterns).values({
             sourceVideoId: item.videoId,
@@ -1317,25 +1398,29 @@ export const scriptFactoryRouter = router({
         ? input.targetLengthMinutes
         : undefined;
 
-      // 1. Pull top patterns per type
-      const allPatterns: typeof contentPatterns.$inferSelect[] = [];
-      const usedPatternIds: number[] = [];
-
-      for (const type of input.patternTypes) {
-        const rows = await db
-          .select()
-          .from(contentPatterns)
-          .where(
-            and(
-              eq(contentPatterns.patternType, type as any),
-              sql`effectiveness_score >= ${input.minPatternEffectiveness}`
-            )
-          )
-          .orderBy(desc(contentPatterns.effectivenessScore))
-          .limit(input.topPatternsPerType);
-        allPatterns.push(...rows);
-        usedPatternIds.push(...rows.map((r) => r.id));
-      }
+      /*
+       * 1. PATTERN CANDIDATES — Part 3D.
+       *
+       * The v2.1 code ran one query per requested type here and pushed every
+       * fetched row into `usedPatternIds`, which was later used to bump
+       * usage_count. Two defects in one loop:
+       *
+       *   - It composed BEFORE research resolved, so the research-weighting the
+       *     spec asks for could not exist; research patterns were appended
+       *     afterwards as an afterthought.
+       *   - It counted FETCHED rows as USED. usage_count feeds the effectiveness
+       *     signal every future composition reads, so inflating it on rows that
+       *     never entered the prompt corrupts the corpus permanently.
+       *
+       * Now: one candidate fetch, wide, no per-type queries. Composition happens
+       * after research resolution (see step 2c) and usage is incremented only
+       * for the composed set (step 8).
+       */
+      const candidateRows = await db
+        .select()
+        .from(contentPatterns)
+        .orderBy(desc(contentPatterns.effectivenessScore))
+        .limit(CANDIDATE_FETCH_LIMIT);
 
       // 1b. Explicit Northstar — operator-selected analog entries (Phase 2.3.1).
       // When present these REPLACE the keyword-matched analog lookup entirely:
@@ -1565,18 +1650,69 @@ export const scriptFactoryRouter = router({
         researchFailureReason = `Research completed but its grounding could not be loaded: ${research.resolutionError.slice(0, 240)}`;
       }
 
-      // Patterns mined from the research job join the pool for this script.
-      let researchPatterns: typeof contentPatterns.$inferSelect[] = [];
+      /*
+       * 2c. AUTOMATIC PATTERN COMPOSITION — Part 3D.
+       *
+       * ORDERING IS THE POINT. This sits AFTER research resolution because
+       * composition ranks research-tagged patterns above global ones and weights
+       * them by their source video's discovery rank. Composing earlier — which is
+       * what v2.1 did — makes that weighting unreachable, so research patterns
+       * could only ever be appended to an already-chosen set.
+       *
+       * A research job's own patterns may not be in the candidate fetch if the
+       * corpus is larger than CANDIDATE_FETCH_LIMIT and they scored low, so they
+       * are fetched explicitly and merged before composing. Their ids are then
+       * deduped by composition itself.
+       */
+      let researchCandidateRows: typeof contentPatterns.$inferSelect[] = [];
       if (hasItems<number>(research.patternIds)) {
-        researchPatterns = await db
+        researchCandidateRows = await db
           .select()
           .from(contentPatterns)
           .where(inArray(contentPatterns.id, research.patternIds));
-        for (const p of researchPatterns) {
-          if (!usedPatternIds.includes(p.id)) usedPatternIds.push(p.id);
-        }
       }
-      const promptPatterns = [...allPatterns, ...researchPatterns];
+
+      const candidateById = new Map<number, CompositionCandidate>();
+      for (const r of [...candidateRows, ...researchCandidateRows]) {
+        candidateById.set(r.id, {
+          id: r.id,
+          patternType: r.patternType,
+          patternText: r.patternText,
+          patternContext: r.patternContext,
+          effectivenessScore: r.effectivenessScore,
+          sourceVideoId: r.sourceVideoId,
+          tags: asArray<string>(r.tags),
+          usageCount: r.usageCount,
+        });
+      }
+
+      const composition: PatternComposition = composePatterns(
+        Array.from(candidateById.values()),
+        {
+          researchJobId: research.jobId,
+          rankedVideoIds: research.rankedVideoIds,
+          /*
+           * API-level override only. The UI no longer sends pattern types (the
+           * checkbox grid is gone), but the idea engine's per-idea pattern
+           * recommendation still passes `patternTypes` through, so honouring it
+           * keeps that path working without a second code path.
+           *
+           * `undefined` rather than the zod default means "not specified": an
+           * explicit empty array from a caller must not silently become "all
+           * types", and the default array must not masquerade as a choice.
+           */
+          selectedTypes: input.patternTypes.length > 0 ? input.patternTypes : null,
+          minEffectiveness: input.minPatternEffectiveness,
+        }
+      );
+
+      const promptPatterns = composition.patterns;
+      /*
+       * USAGE INTEGRITY (Part 3D). This is the ONLY list that may be used to
+       * increment usage_count, and it holds exactly the patterns that entered the
+       * prompt — not the candidate pool. See step 8.
+       */
+      const usedPatternIds: number[] = composition.composedIds;
 
       // 3b. Legacy Supadata path. Retired whenever a research job supplies
       //     competitive context (Phase 3.3) — the job's ledgered, cached
@@ -1749,17 +1885,52 @@ export const scriptFactoryRouter = router({
         }
       }
 
-      // 5. Count [VERIFIED] tags (before stripping — so percentage is accurate)
-      const { verified, total, pct } = countVerifiedTags(scriptBody);
+      /*
+       * ── 5. Cadence lint (Part 3E) ─────────────────────────────────────────
+       *
+       * Runs BEFORE the metric and before stripping, on the tagged body.
+       *
+       * DEGRADES, NEVER BLOCKS — the opposite of the story lint above, which
+       * throws, because a fabricated patient case is a compliance problem while a
+       * cliché opener is taste. The violations ride along on the response so the
+       * operator can fix them in seconds; withholding a usable script over them
+       * would be the wrong trade.
+       */
+      const cadence = lintCadence(scriptBody);
+
+      /*
+       * ── 5b. Grounding metric (Part 3E) ────────────────────────────────────
+       *
+       * Instance-based, computed on the still-tagged body because [VERIFIED] is
+       * about to be stripped. Replaces countVerifiedTags, whose denominator
+       * counted structure labels — so labelling a script more thoroughly lowered
+       * its reported grounding without changing anything real.
+       */
+      const grounding = computeGroundingMetric(scriptBody);
+      const verified = grounding.grounded;
+      const total = grounding.total;
+      const pct = grounding.pct;
 
       // Strip internal markup tags from the clean copy:
       // - [VERIFIED] tags are internal grounding markers — never shown to end users
       // - Structure tags [HOOK], [PAIN], [PROOF], etc. are kept as readable section labels
       //   but [VERIFIED] must be removed so copy-paste output is clean
-      const cleanScriptBody = scriptBody
+      const strippedScriptBody = scriptBody
         .replace(/\[VERIFIED\]/g, "")
         .replace(/ {2,}/g, " ")
         .trim();
+
+      /*
+       * ── Deterministic timestamps (Part 3E) ────────────────────────────────
+       *
+       * Applied LAST, after every rewrite pass (story correction, continuation),
+       * because a stamp computed before a pass that adds words is wrong.
+       *
+       * insertTimestamps strips before it inserts, so this is idempotent and pass
+       * ordering is no longer load-bearing — the earlier failure mode was
+       * `(0:00) (0:00)` accumulating when a conditional pass ran.
+       */
+      const cleanScriptBody = insertTimestamps(strippedScriptBody);
 
       // 6. Generate title
       const titleResponse = await invokeLLM({
@@ -1791,6 +1962,23 @@ export const scriptFactoryRouter = router({
         sourceIdeaId: input.sourceIdeaId ?? null,
         researchJobId: research.jobId ?? null,
         wordCount: finalWordCount,
+        /*
+         * Part 3D — persisted so the Grounding disclosure survives the request.
+         * Returning it only in the mutation response would show the operator the
+         * composition once, then lose it: reopening the script from the Library
+         * would report nothing about how it was grounded, and `unfilledTypes` —
+         * the beats with no grounding at all — is exactly the fact you want when
+         * reviewing a script later, not at the moment you generated it.
+         */
+        patternComposition: {
+          total: composition.patterns.length,
+          researchCount: composition.researchCount,
+          globalCount: composition.globalCount,
+          byType: composition.byType,
+          unfilledTypes: composition.unfilledTypes,
+          candidatesConsidered: composition.candidatesConsidered,
+          disclosure: describeComposition(composition),
+        },
       });
 
       const insertId = Number(
@@ -1834,7 +2022,21 @@ export const scriptFactoryRouter = router({
         }
       }
 
-      // 8. Increment usage on patterns used
+      /*
+       * 8. USAGE INTEGRITY — Part 3D.
+       *
+       * `usedPatternIds` is `composition.composedIds`: exactly the patterns that
+       * entered the prompt. It is NOT the candidate pool.
+       *
+       * Why this matters beyond tidiness: usage_count is an input to the
+       * effectiveness signal (performanceLoopRouter weights by it, and
+       * composition's tie-break prefers less-used rows to rotate the corpus).
+       * v2.1 incremented every FETCHED row, so a pattern that was never shown to
+       * a model accumulated usage identical to one that shaped every script.
+       * That corrupts the signal every future composition reads, and unlike a
+       * display bug it is not recoverable after the fact — the true counts are
+       * gone. Fetch is not use.
+       */
       if (usedPatternIds.length > 0) {
         await db
           .update(contentPatterns)
@@ -1843,6 +2045,46 @@ export const scriptFactoryRouter = router({
             lastUsedAt: sql`NOW()`,
           })
           .where(inArray(contentPatterns.id, usedPatternIds));
+      }
+
+      /*
+       * ── 9. CLAIMS REVIEW — Part 3E ────────────────────────────────────────
+       *
+       * POST-COMMIT, BEST-EFFORT, INSIDE try/catch. The script row is already
+       * saved above and `insertId` is already known.
+       *
+       * This ordering is not stylistic. The claims review is an LLM call, and an
+       * LLM call inside the generation path is what destroyed finished scripts in
+       * the earlier build: the rubric threw, the error propagated out of the
+       * mutation, and the operator lost a script that had already been written.
+       * A compliance check failing is not a reason to discard compliant work.
+       *
+       * Routed through `createClaimsReview` — the SAME path the Claims Review
+       * page's own button uses. A parallel claims engine for scripts would mean
+       * two rubrics, two verdict shapes, and a review queue that silently omits
+       * scripts.
+       *
+       * youtube_script only, per spec. Never a gate: the operator is the
+       * qualified reviewer and the badge just tells him where to look.
+       */
+      let claimsQueued = false;
+      if (input.format === "youtube_script") {
+        try {
+          await createClaimsReview({
+            contentType: "youtube_script",
+            contentId: String(insertId),
+            contentTitle: title,
+            contentText: cleanScriptBody,
+          });
+          claimsQueued = true;
+        } catch (err) {
+          // Logged, never raised. The script survives a claims-side failure.
+          console.error(
+            `[scriptFactory] claims review failed for script #${insertId} — ` +
+              "the script is saved and unaffected:",
+            err instanceof Error ? err.message : err
+          );
+        }
       }
 
       return {
@@ -1883,7 +2125,26 @@ export const scriptFactoryRouter = router({
         researchJobId: research.jobId ?? null,
         researchOutliersUsed: research.outlierCount,
         researchTranscriptsUsed: research.transcriptCount,
-        researchPatternsUsed: researchPatterns.length,
+        researchPatternsUsed: composition.researchCount,
+        /*
+         * ── Part 3D: composition disclosure ──────────────────────────────
+         *
+         * The operator no longer chooses pattern types, so he has to be able to
+         * see what the system chose on his behalf and — more importantly — what
+         * it could NOT find. `unfilledTypes` names the beats that reached the
+         * prompt with no grounding at all. Padding those slots with off-type
+         * patterns to make the number look better is exactly the dishonest
+         * reporting this build exists to remove.
+         */
+        patternComposition: {
+          total: composition.patterns.length,
+          researchCount: composition.researchCount,
+          globalCount: composition.globalCount,
+          byType: composition.byType,
+          unfilledTypes: composition.unfilledTypes,
+          candidatesConsidered: composition.candidatesConsidered,
+          disclosure: describeComposition(composition),
+        },
         // ── Part 3C: honest grounding disclosure ───────────────────────────
         // Each of these answers a distinct question, because one boolean cannot.
         // "Was research attempted" is not "did it succeed", and "did it succeed"
@@ -1910,6 +2171,24 @@ export const scriptFactoryRouter = router({
         hookReferencesUsed: research.hookReferenceCount,
         structureSummaryUsed: research.hasStructureSummary,
         sourceIdeaId: input.sourceIdeaId ?? null,
+        /*
+         * ── Part 3E: honest grounding + cadence ───────────────────────────
+         *
+         * `groundingLabel` is generated in ONE place (describeGrounding) and
+         * reused by `update`, so an edited script cannot start reporting the
+         * same columns under a different definition — two racing definitions on
+         * shared columns would be worse than the original inflated metric.
+         */
+        groundingLabel: describeGrounding(grounding),
+        groundingByTag: grounding.byTag,
+        slotOnlySections: grounding.slotOnlySections,
+        metricVersion: grounding.metricVersion,
+        /*
+         * Cadence is advisory. Returned so the UI can list what to fix; it never
+         * gated the save, and the script above is already committed.
+         */
+        cadenceViolations: cadence.violations,
+        claimsReviewQueued: claimsQueued,
       };
     }),
 
@@ -1985,10 +2264,24 @@ export const scriptFactoryRouter = router({
       if (input.notes !== undefined) updates.notes = input.notes;
       if (input.scriptBody) {
         updates.scriptBody = input.scriptBody;
-        const { verified, total, pct } = countVerifiedTags(input.scriptBody);
-        updates.verifiedCount = verified;
-        updates.totalElements = total;
-        updates.verificationPct = pct;
+        /*
+         * Part 3E — the SAME metric `generate` uses, deliberately.
+         *
+         * The spec's warning applies directly here: two definitions racing on the
+         * same three columns, chosen by whether a script happened to be edited,
+         * is worse than the original inflated metric. An operator fixing a typo
+         * would have watched "verified %" jump for no reason he could see.
+         *
+         * Timestamps are recomputed too. An edit that adds or removes words moves
+         * every later stamp, and insertTimestamps strips before inserting, so
+         * re-saving an already-stamped body is stable.
+         */
+        const stamped = insertTimestamps(input.scriptBody);
+        updates.scriptBody = stamped;
+        const grounding = computeGroundingMetric(stamped);
+        updates.verifiedCount = grounding.grounded;
+        updates.totalElements = grounding.total;
+        updates.verificationPct = grounding.pct;
       }
       if (input.status) {
         updates.status = input.status;
@@ -2086,7 +2379,12 @@ export const scriptFactoryRouter = router({
         `Topic: ${output.topic}`,
         `Format: ${output.format}`,
         output.verificationPct != null
-          ? `Grounding: ${output.verificationPct.toFixed(0)}% verified (${output.verifiedCount}/${output.totalElements} elements)`
+          /*
+           * Part 3E — "sections", not "elements". The stored counts are now
+           * section instances, and carrying the old wording onto a production
+           * board would describe the new numbers using the old, wrong unit.
+           */
+          ? `Grounding: ${output.verifiedCount} of ${output.totalElements} sections grounded (${output.verificationPct.toFixed(0)}%)`
           : null,
         output.wordCount ? `Word count: ${output.wordCount}` : null,
         output.researchJobId ? `Competitive research job: #${output.researchJobId}` : null,

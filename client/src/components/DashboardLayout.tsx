@@ -90,6 +90,7 @@ import { Button } from "./ui/button";
 // OWNER workspace — Pedram's Monday view: funnels, ascension, approvals, ads
 const ownerItems = [
   { icon: LayoutDashboard, label: "Funnel Command", path: "/funnels" },
+  { icon: Target, label: "Funnel Economics", path: "/funnel-economics" },
   { icon: Brain, label: "Analyze", path: "/analyze" },
   { icon: FileText, label: "Transcript Engine", path: "/transcript-engine" },
   { icon: Database, label: "Corpus Builder", path: "/corpus-builder" },

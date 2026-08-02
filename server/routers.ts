@@ -157,6 +157,7 @@ import { patternExtractorRouter } from "./patternExtractorRouter";
 import { scriptFactoryRouter } from "./scriptFactoryRouter";
 import { performanceLoopRouter } from "./performanceLoopRouter";
 import { funnelsRouter } from "./funnelsRouter";
+import { funnelEconomicsRouter } from "./funnelEconomicsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -532,6 +533,7 @@ export const appRouter = router({
   adsMonitor: adsMonitorRouter,
   funnelCommand: funnelCommandRouter,
   funnels: funnelsRouter,
+  funnelEconomics: funnelEconomicsRouter,
   ascension: ascensionRouter,
   quiz: quizRouter,
   abTest: abTestRouter,

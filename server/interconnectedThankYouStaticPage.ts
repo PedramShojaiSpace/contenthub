@@ -279,7 +279,7 @@ export function renderInterconnectedThankYouPage(): string {
         <!-- Thumbnail from Wistia CDN — single lightweight image, no JS -->
         <img
           id="wistia-thumb"
-          src="https://embed-ssl.wistia.com/deliveries/hobj7srg3q.jpg?image_crop_resized=960x540"
+          src="https://embed-ssl.wistia.com/deliveries/88da17f5c1637186bb1f35d4c62300012d68271d.jpg?image_crop_resized=960x540"
           alt="Watch Dr. Pedram Shojai's message"
           fetchpriority="high"
           decoding="async"

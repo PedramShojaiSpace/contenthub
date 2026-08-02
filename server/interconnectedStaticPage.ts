@@ -476,7 +476,7 @@ function submitForm(e, id) {
   if (errEl) errEl.style.display = 'none';
   if (btn) { btn.disabled = true; btn.textContent = 'Registering...'; }
 
-  fetch('/api/trpc/interconnected.register', {
+  fetch('/api/trpc/interconnected.register?batch=1', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

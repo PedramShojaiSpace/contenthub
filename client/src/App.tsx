@@ -101,6 +101,7 @@ const ScriptFactory = lazy(() => import("./pages/ScriptFactory"));
 const PerformanceLoop = lazy(() => import("./pages/PerformanceLoop"));
 const FunnelEconomics = lazy(() => import("./pages/FunnelEconomics"));
 const FunnelAdvisor = lazy(() => import("./pages/FunnelAdvisor"));
+const MofContentEngine = lazy(() => import("./pages/MofContentEngine"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -210,6 +211,7 @@ function Router() {
         <Route path={"/performance-loop"} component={PerformanceLoop} />
         <Route path={"/funnel-economics"} component={FunnelEconomics} />
         <Route path={"/funnel-advisor"} component={FunnelAdvisor} />
+        <Route path={"/mof-content"} component={MofContentEngine} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

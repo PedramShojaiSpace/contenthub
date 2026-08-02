@@ -161,6 +161,7 @@ import { funnelEconomicsRouter } from "./funnelEconomicsRouter";
 import { metaFunnelMetricsRouter } from "./metaFunnelMetricsRouter";
 import { kajabiSalesRouter } from "./kajabiSalesRouter";
 import { funnelAdvisorRouter } from "./funnelAdvisorRouter";
+import { mofContentRouter } from "./mofContentRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -540,6 +541,7 @@ export const appRouter = router({
   metaFunnelMetrics: metaFunnelMetricsRouter,
   kajabiSales: kajabiSalesRouter,
   funnelAdvisor: funnelAdvisorRouter,
+  mofContent: mofContentRouter,
   ascension: ascensionRouter,
   quiz: quizRouter,
   abTest: abTestRouter,

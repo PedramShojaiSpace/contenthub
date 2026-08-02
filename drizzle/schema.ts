@@ -3719,3 +3719,27 @@ export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
 
 export type TantraQuizLead = typeof tantraQuizLeads.$inferSelect;
 export type InsertTantraQuizLead = typeof tantraQuizLeads.$inferInsert;
+
+// ─── Interconnected Documentary Opt-In Leads ─────────────────────────────────
+// Safety backup of every lead that submits the /interconnected opt-in form.
+// Stored locally so leads are never lost even if Kajabi or Klaviyo is down.
+export const interconnectedLeads = mysqlTable("interconnected_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 30 }),
+  smsConsent: boolean("sms_consent").notNull().default(false),
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmMedium: varchar("utm_medium", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 128 }),
+  utmContent: varchar("utm_content", { length: 128 }),
+  referrer: varchar("referrer", { length: 512 }),
+  kajabiTagged: boolean("kajabi_tagged").notNull().default(false),
+  kajabiTaggedAt: bigint("kajabi_tagged_at", { mode: "number" }),
+  klaviyoSynced: boolean("klaviyo_synced").notNull().default(false),
+  klaviyoSyncedAt: bigint("klaviyo_synced_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type InterconnectedLead = typeof interconnectedLeads.$inferSelect;
+export type InsertInterconnectedLead = typeof interconnectedLeads.$inferInsert;

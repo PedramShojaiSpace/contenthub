@@ -100,6 +100,7 @@ const PatternExtractor = lazy(() => import("./pages/PatternExtractor"));
 const ScriptFactory = lazy(() => import("./pages/ScriptFactory"));
 const PerformanceLoop = lazy(() => import("./pages/PerformanceLoop"));
 const FunnelEconomics = lazy(() => import("./pages/FunnelEconomics"));
+const FunnelAdvisor = lazy(() => import("./pages/FunnelAdvisor"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -208,6 +209,7 @@ function Router() {
         <Route path={"/script-factory"} component={ScriptFactory} />
         <Route path={"/performance-loop"} component={PerformanceLoop} />
         <Route path={"/funnel-economics"} component={FunnelEconomics} />
+        <Route path={"/funnel-advisor"} component={FunnelAdvisor} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

@@ -109,7 +109,7 @@ export function renderInterconnectedThankYouPage(): string {
   const buyBtn = (label = "YES — Give Me Instant Access to All 9 Episodes") => `
     <div class="buy-wrap">
       <a href="${OTO_URL}" class="buy-btn" onclick="firePixel()">${label}</a>
-      <p class="buy-note">🔒 Secure checkout · 30-day money-back guarantee · Instant access</p>
+      <p class="buy-note">🔒 Secure checkout · 30-day money-back guarantee · Instant access · Cancel anytime</p>
     </div>`;
 
   return `<!DOCTYPE html>
@@ -271,8 +271,9 @@ export function renderInterconnectedThankYouPage(): string {
 <!-- HERO / VIDEO -->
 <section style="background:var(--bg0);padding-top:16px">
   <div class="container-sm">
-    <p style="text-align:center;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;margin-bottom:8px">WAIT! Don't Close or Navigate Away From This Page!</p>
-    <h1 class="section-title" style="margin-bottom:24px">Wait, one more thing!</h1>
+    <p style="text-align:center;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:8px">⚠️ IMPORTANT — Read This Before You Leave</p>
+    <h1 class="section-title" style="margin-bottom:8px">You're In. But You're About to Miss the Most Important Part.</h1>
+    <p style="text-align:center;color:#fca5a5;font-weight:600;font-size:1rem;margin-bottom:24px">This offer only appears once — and it disappears when you close this tab.</p>
     <!-- Wistia click-to-play facade: zero network cost until user taps play -->
     <div class="video-wrap" id="wistia-facade" onclick="loadWistia()" style="cursor:pointer;position:relative">
       <div class="video-ratio" style="background:#020d18">
@@ -296,17 +297,16 @@ export function renderInterconnectedThankYouPage(): string {
       </div>
     </div>
     <p style="color:#d1d5db;font-size:1.1rem;line-height:1.7;margin-bottom:20px;text-align:center">
-      First, you have successfully signed up to watch <strong style="color:var(--blue)">Interconnected: The Power to Heal From Within</strong> — starting <strong>tomorrow</strong>.
+      ✅ You're confirmed for <strong style="color:var(--blue)">Interconnected: The Power to Heal From Within</strong>. Your first episode drops tomorrow.
     </p>
-    <h2 class="section-title" style="font-size:1.5rem;margin-bottom:16px">But before you go, here's what you need to know…</h2>
     <p style="color:#d1d5db;font-size:1.1rem;line-height:1.7;margin-bottom:20px;text-align:center">
-      <strong>Interconnected</strong> has 9 episodes and each episode will be available for just <strong>24 hours</strong>. <em style="color:#fca5a5">If you miss a day, you will miss that episode… forever.</em>
+      <strong>Here's the problem:</strong> Each of the 9 episodes is only available for <strong>24 hours</strong>. Miss a day — miss that episode. <em style="color:#fca5a5">There is no replay. There is no catch-up. It's gone.</em>
     </p>
-    <h2 class="section-title" style="font-size:1.5rem;margin-bottom:16px">But, here's the good news…</h2>
     <p style="color:#d1d5db;font-size:1.1rem;line-height:1.7;margin-bottom:16px;text-align:center">
-      If you act before the timer below expires, you can secure <strong style="color:var(--blue)">instant, permanent access to all 9 episodes</strong> right now.
+      <strong style="color:#fff">Dr. Pedram recorded a short message for you</strong> — watch it now to understand why this matters and what to do next:
     </p>
-    <p style="text-align:center;font-weight:700;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:4px">Act Fast — This Special Offer Expires In…</p>
+    <p style="text-align:center;color:#d1d5db;font-size:1rem;line-height:1.7;margin-bottom:16px;margin-top:8px">👆 <strong>Watch that video.</strong> Then scroll down and grab the all-access bundle before the timer hits zero — this price disappears with it.</p>
+    <p style="text-align:center;font-weight:700;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:4px">⏱ This Special Offer Expires In…</p>
     <div class="countdown-block">
       <div class="cd-seg"><div class="cd-num" id="cd-h">--</div><div class="cd-unit">HOURS</div></div>
       <span class="cd-colon">:</span>
@@ -320,8 +320,9 @@ export function renderInterconnectedThankYouPage(): string {
 <!-- WHAT YOU GET -->
 <section style="background:var(--bg1);border-top:1px solid rgba(46,145,252,.12);border-bottom:1px solid rgba(46,145,252,.12)">
   <div class="container-sm">
-    <p class="section-eyebrow">When you order today</p>
-    <h2 class="section-title">Here's What You're Going to Get:</h2>
+    <p class="section-eyebrow">Only available on this page — never offered again at this price</p>
+    <h2 class="section-title">Lock In Permanent Access to All 9 Episodes — Right Now</h2>
+    <p style="text-align:center;color:#d1d5db;font-size:1rem;line-height:1.7;margin-bottom:32px">You've already done the hard part — you signed up. Don't let a missed day cost you the episode you needed most. Here's everything you get when you secure your all-access bundle today:</p>
     <div class="bundle-card">
       <ul class="bundle-list">${bundleItemsHtml}</ul>
       <div class="shojai-quote">
@@ -339,11 +340,14 @@ export function renderInterconnectedThankYouPage(): string {
     <p class="section-eyebrow">Choose Your Access Below</p>
     <h2 class="section-title">Interconnected: The Complete Healing Series</h2>
     <div class="offer-card">
-      <div class="offer-header">All-Access Bundle</div>
+      <div class="offer-header">All-Access Bundle — Today Only</div>
       <div class="offer-body">
-        <p class="price-old">Normally $197</p>
+        <div style="text-align:center;margin-bottom:8px">
+          <span style="text-decoration:line-through;color:#6b7280;font-size:1rem">Regular price: $197</span>
+        </div>
         <p class="price-new">$67</p>
-        <p class="price-save">You save $130 — today only</p>
+        <p class="price-save">💰 You save $130 — but only while the timer above is running</p>
+        <p style="text-align:center;color:#fca5a5;font-size:.875rem;font-weight:600;margin-bottom:20px">⚠️ This price is only available on this page. Once you leave, it's gone.</p>
         <p style="text-align:center;font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:20px">Here's What You'll Receive:</p>
         <ul class="bundle-list">${bundleItemsHtml}</ul>
         ${buyBtn("YES — Give Me Instant Access Now")}
@@ -396,7 +400,7 @@ export function renderInterconnectedThankYouPage(): string {
       <div class="cd-seg"><div class="cd-num" id="cd2-s">--</div><div class="cd-unit">SECONDS</div></div>
     </div>
     <div class="offer-card">
-      <div class="offer-header">All-Access Bundle — $67 One-Time</div>
+      <div class="offer-header">All-Access Bundle — $67 One-Time · This Page Only</div>
       <div class="offer-body">
         <ul class="bundle-list">${bundleItemsHtml}</ul>
         ${buyBtn("YES — I Want Instant Access to All 9 Episodes")}
@@ -417,8 +421,9 @@ export function renderInterconnectedThankYouPage(): string {
 <!-- FINAL CTA -->
 <section style="background:var(--bg0);content-visibility:auto;contain-intrinsic-size:0 300px">
   <div class="container-sm" style="text-align:center">
-    <p style="color:#6b7280;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px">Last chance</p>
-    <h2 class="section-title">Don't Miss Your Chance to Own the Entire Series</h2>
+    <p style="color:#fca5a5;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:16px">⚠️ Final Warning — Timer Is Running</p>
+    <h2 class="section-title">This Is the Last Time You'll See This Price</h2>
+    <p style="color:#d1d5db;font-size:1rem;line-height:1.7;margin-bottom:24px">When the timer hits zero, the $67 price expires and this page will no longer offer the bundle. You'll have watched the series — but without the protocols, the companion guide, and the community to actually implement what you learned.</p>
     ${buyBtn("YES — Give Me Instant Access to All 9 Episodes")}
     <p style="color:#374151;font-size:.75rem;margin-top:16px;max-width:448px;margin-left:auto;margin-right:auto">30-day money-back guarantee. No questions asked. Instant access delivered to your inbox.</p>
   </div>

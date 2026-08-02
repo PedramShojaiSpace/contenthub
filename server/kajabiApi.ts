@@ -8,6 +8,8 @@ import { safeParseJson } from "./fetchUtils";
 
 const KAJABI_API_BASE = "https://api.kajabi.com/v1";
 const KAJABI_TOKEN_URL = "https://api.kajabi.com/v1/oauth/token";
+// Site ID for "The Urban Monk Academy" — required by Kajabi API
+const URBAN_MONK_SITE_ID = "2148432935";
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
@@ -133,9 +135,6 @@ export async function kajabiCreateContact(params: {
   if (firstName) attributes.first_name = firstName;
   if (lastName) attributes.last_name = lastName;
 
-  // Site ID for "The Urban Monk Academy" — required by Kajabi API for contact creation
-  const URBAN_MONK_SITE_ID = "2148432935";
-
   const res = await fetch(`${KAJABI_API_BASE}/contacts`, {
     method: "POST",
     headers: {
@@ -211,7 +210,7 @@ export async function kajabiFindContactByEmail(
 ): Promise<{ id: string; email: string } | null> {
   const token = await getAccessToken();
   const res = await fetch(
-    `${KAJABI_API_BASE}/contacts?filter[email_eq]=${encodeURIComponent(email)}&page[size]=1`,
+    `${KAJABI_API_BASE}/contacts?filter[email_eq]=${encodeURIComponent(email)}&filter[site_id]=${URBAN_MONK_SITE_ID}&page[size]=1`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -219,7 +218,11 @@ export async function kajabiFindContactByEmail(
       },
     }
   );
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error(`[Kajabi] findContactByEmail failed (${res.status}): ${errText.slice(0, 200)}`);
+    return null;
+  }
   const data = await safeParseJson<{
     data: Array<{ id: string; attributes: { email: string } }>;
   }>(res, "Kajabi findContactByEmail");

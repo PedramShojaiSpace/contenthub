@@ -9,7 +9,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { RefreshCw, Wifi, WifiOff, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
+import { RefreshCw, Wifi, WifiOff, AlertTriangle, CheckCircle2, AlertCircle, ShoppingCart } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -93,6 +93,13 @@ export default function FunnelEconomics() {
 
   // Auto-fill CPL and leads from live data when available
   const liveCpl = liveData?.avgCpl ?? null;
+
+  // ── Kajabi sales data ──
+  const { data: salesData, isLoading: salesLoading, refetch: refetchSales } =
+    trpc.kajabiSales.getFunnelSales.useQuery(
+      { datePreset },
+      { enabled: liveMode, refetchInterval: 10 * 60 * 1000, staleTime: 9 * 60 * 1000 }
+    );
 
   // ── Scenario save ──
   const [scenarioName, setScenarioName] = useState("");
@@ -317,6 +324,121 @@ export default function FunnelEconomics() {
                 <p className="text-xs text-muted-foreground mt-2">
                   Last refreshed {new Date(dataUpdatedAt).toLocaleTimeString()} · auto-refreshes every 5 min
                 </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Kajabi Live Sales Card */}
+        {liveMode && (
+          <Card className="border-green-200 bg-green-50/40">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4 text-green-700" />
+                  <span>Kajabi Funnel Sales</span>
+                  {salesLoading && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
+                </span>
+                <button onClick={() => refetchSales()} className="text-xs text-muted-foreground hover:text-foreground">
+                  <RefreshCw className="w-3 h-3" />
+                </button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4">
+              {salesData && !salesLoading ? (
+                <>
+                  {/* Tier breakdown */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                    {([
+                      { tier: "67",  label: "$67 OTO",         color: "text-indigo-700" },
+                      { tier: "299", label: "$299 Course",      color: "text-purple-700" },
+                      { tier: "399", label: "$399 Test+Consult",color: "text-orange-700" },
+                      { tier: "499", label: "$499 Bundle",      color: "text-red-700"    },
+                    ]).map(({ tier, label, color }) => {
+                      const t = salesData.tiers.find((x) => x.tier === tier);
+                      const count = t?.count ?? 0;
+                      const rev = t ? (t.revenueCents / 100) : 0;
+                      // Compute CR vs leads
+                      const leads = liveData?.totalLeads ?? 0;
+                      const cr = leads > 0 && count > 0 ? ((count / leads) * 100).toFixed(1) : null;
+                      return (
+                        <div key={tier} className="bg-white rounded-lg p-3 border border-border/50">
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className={`font-bold text-lg ${color}`}>{count}</p>
+                          <p className="text-xs text-muted-foreground">${rev.toFixed(0)} rev</p>
+                          {cr && <p className="text-xs font-medium text-green-700">{cr}% CR</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Subscription tiers */}
+                  {salesData.tiers.filter(t => ["297", "369"].includes(t.tier)).length > 0 && (
+                    <div className="flex gap-3 mb-3">
+                      {salesData.tiers.filter(t => ["297", "369"].includes(t.tier)).map(t => (
+                        <div key={t.tier} className="bg-white rounded-lg p-3 border border-border/50 flex-1">
+                          <p className="text-xs text-muted-foreground">{t.label}</p>
+                          <p className="font-bold text-lg text-green-700">{t.count}</p>
+                          <p className="text-xs text-muted-foreground">${(t.revenueCents/100).toFixed(0)} rev</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Totals + Apply button */}
+                  <div className="flex items-center justify-between border-t pt-3">
+                    <div className="flex gap-6">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Sales</p>
+                        <p className="font-bold">{salesData.totalPurchases}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Revenue</p>
+                        <p className="font-bold text-green-700">${(salesData.totalRevenueCents/100).toLocaleString("en-US", {maximumFractionDigits:0})}</p>
+                      </div>
+                      {liveData && liveData.totalSpend > 0 && salesData.totalRevenueCents > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Actual ROAS</p>
+                          <p className={`font-bold ${
+                            salesData.totalRevenueCents / 100 / liveData.totalSpend >= 2 ? "text-green-700" :
+                            salesData.totalRevenueCents / 100 / liveData.totalSpend >= 1 ? "text-yellow-600" : "text-red-600"
+                          }`}>
+                            {(salesData.totalRevenueCents / 100 / liveData.totalSpend).toFixed(2)}x
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        // Apply live conversion rates to the calculator sliders
+                        const leads = liveData?.totalLeads ?? 0;
+                        if (leads === 0) return;
+                        const t67 = salesData.tiers.find(t => t.tier === "67");
+                        const t299 = salesData.tiers.find(t => t.tier === "299");
+                        const t399 = salesData.tiers.find(t => t.tier === "399");
+                        const t499 = salesData.tiers.find(t => t.tier === "499");
+                        if (t67 && t67.count > 0) setCr67(parseFloat(((t67.count / leads) * 100).toFixed(1)));
+                        // Mid-tier: use whichever has sales, pick highest revenue
+                        const midTier = [t399, t499, t299].find(t => t && t.count > 0);
+                        if (midTier) {
+                          setCrMid(parseFloat(((midTier.count / leads) * 100).toFixed(1)));
+                          if (midTier.tier === "299") setMidPrice(299);
+                          else if (midTier.tier === "399") setMidPrice(399);
+                          else if (midTier.tier === "499") setMidPrice(499);
+                        }
+                        toast.success("Live conversion rates applied to calculator");
+                      }}
+                      className="text-xs px-3 py-1.5 rounded bg-green-700 text-white font-medium whitespace-nowrap"
+                    >
+                      Apply CRs to Calculator
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">Kajabi data · auto-refreshes every 10 min</p>
+                </>
+              ) : salesLoading ? (
+                <p className="text-xs text-muted-foreground">Loading Kajabi sales…</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">No sales data available for this window.</p>
               )}
             </CardContent>
           </Card>

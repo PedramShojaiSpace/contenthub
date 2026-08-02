@@ -147,6 +147,54 @@ describe("3A false-positive coverage (mandatory)", () => {
 });
 
 describe("3A composite mode", () => {
+  // placeholder anchor
+  it("anchor", () => { expect(true).toBe(true); });
+});
+
+/*
+ * REGRESSION SUITE — measured class-3 false positives.
+ *
+ * These are not invented fixtures. The first string is the exact sentence that
+ * caused Script Factory to refuse generation with HTTP 422 during the Part 3C
+ * live proof (docs/build-reports/v22r/proof_research_first.txt). It is generic
+ * second-person physiology: no patient, no individual, no lab value. It fired
+ * because "cortisol" (a bare hormone NAME), "their" (generic plural) and "3pm"
+ * (an unrelated time) happened to co-occur in one sentence.
+ *
+ * A lint that blocks ordinary health explanation gets switched off by the
+ * operator, and then the real fabrications ship. So these must stay clean.
+ */
+describe("3A class 3 — measured false positives must NOT flag", () => {
+  const legitimate = [
+    "This stress response signals your adrenal glands to release cortisol, spiking your levels at precisely the time they should be at their lowest, leading to that 3pm crash.",
+    "Cortisol should peak around 8am and fall through the evening.",
+    "If your CRP came back at 3.1, that is worth a conversation with your doctor.",
+    "Most people never see their cortisol curve, let alone the 4am portion of it.",
+    "Insulin, glucose and cholesterol all move together across a 24 hour cycle.",
+  ];
+  for (const body of legitimate) {
+    it(`stays clean: ${body.slice(0, 48)}...`, () => {
+      const found = classes(body).filter((c) => c === "individual_clinical_specific");
+      expect(found, `FALSE POSITIVE on: ${body}`).toEqual([]);
+    });
+  }
+});
+
+describe("3A class 3 — real individual-attributed values must STILL flag", () => {
+  const violations = [
+    "Her CRP was 8.2 mg/L when she first came in.",
+    "His ferritin sat at 12 ng/ml, which explained the exhaustion.",
+    "The patient's A1c was 6.4 at intake.",
+    "My patient's vitamin D came back at 18.",
+  ];
+  for (const body of violations) {
+    it(`still flags: ${body.slice(0, 42)}...`, () => {
+      expect(classes(body), `MISSED: ${body}`).toContain("individual_clinical_specific");
+    });
+  }
+});
+
+describe("3A composite mode (continued)", () => {
   const labelled = [
     "[STORY] Let me give you a composite of patients I see all the time.",
     "This person wakes up tired, pushes through on caffeine, and crashes by three.",

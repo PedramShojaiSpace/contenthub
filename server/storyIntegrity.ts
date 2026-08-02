@@ -126,8 +126,54 @@ const CLINICAL_MARKERS = [
   "lab", "labs", "bloodwork", "blood work", "panel", "biopsy", "scan",
   "test result", "test results", "diagnos",
 ];
-const INDIVIDUAL_SUBJECT = /\b(?:her|his|their|the\s+patient's|my\s+(?:patient|client)'s)\b/i;
-const NUMERIC = /\b\d+(?:\.\d+)?\s*(?:mg|mcg|ng|pg|mmol|mg\/dl|ng\/ml|iu|%|points?)?\b/i;
+/*
+ * MEASURED FALSE POSITIVE (docs/build-reports/v22r/proof_research_first.txt).
+ * This class refused two entirely legitimate scripts with HTTP 422 on the line:
+ *
+ *   "This stress response signals your adrenal glands to release cortisol,
+ *    spiking your levels at precisely the time they should be at their lowest,
+ *    leading to that 3pm crash."
+ *
+ * Generic second-person physiology. No patient, no individual, no lab value.
+ * It fired because three loose conditions happened to co-occur in one sentence:
+ *   clinical marker : "cortisol"  — a bare hormone NAME, not a measured value
+ *   individual subj : "their"     — generic plural, not a specific person
+ *   numeric         : "3pm"       — an unrelated time of day
+ *
+ * A lint that blocks ordinary health explanation is worse than no lint: the
+ * operator learns to disable it, and the real fabrications ship. Three
+ * corrections, each targeting one of the three loose conditions:
+ */
+
+/*
+ * 1. "their" is removed. In health copy it is overwhelmingly generic or plural
+ *    ("their lowest", "people and their gut"), not a specific individual. The
+ *    fabrication shape this class exists to catch attributes a value to ONE
+ *    person, which English marks with her/his/the patient's/my patient's.
+ */
+const INDIVIDUAL_SUBJECT = /\b(?:her|his|the\s+patient's|my\s+(?:patient|client)'s)\b/i;
+
+/*
+ * 2. Bare analyte names are not evidence of an individual-attributed VALUE.
+ *    "release cortisol" is mechanism; "her cortisol was 22" is a claim. Class 3
+ *    now requires the number to sit ADJACENT to the clinical marker — within a
+ *    short span, optionally through a linking verb — rather than merely
+ *    co-occurring somewhere in the same sentence.
+ */
+const CLINICAL_VALUE_ADJACENT = new RegExp(
+  `(?:${CLINICAL_MARKERS.map((m) => m.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).join("|")})` +
+  `[^.!?]{0,24}?\\b\\d+(?:\\.\\d+)?\\s*(?:mg|mcg|ng|pg|mmol|mg\\/dl|ng\\/ml|iu|%|points?)?\\b` +
+  `|\\b\\d+(?:\\.\\d+)?\\s*(?:mg|mcg|ng|pg|mmol|mg\\/dl|ng\\/ml|iu|%|points?)?[^.!?]{0,24}?` +
+  `(?:${CLINICAL_MARKERS.map((m) => m.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).join("|")})`,
+  "i"
+);
+
+/*
+ * 3. Second-person address is never an individual patient claim. "your cortisol
+ *    spikes at 4am" speaks to the viewer about their own body — the exact thing
+ *    this content is supposed to do. Its presence suppresses the class.
+ */
+const SECOND_PERSON = /\b(?:you|your|you're|yours|yourself)\b/i;
 
 /** Class 4 — invented recovery timelines tied to an individual. */
 const RECOVERY_TIMELINE = new RegExp(
@@ -279,8 +325,12 @@ export function lintStoryIntegrity(
     const lower = text.toLowerCase();
 
     // Class 3 — individual-attributed clinical specifics.
-    const hasClinical = CLINICAL_MARKERS.some((k) => lower.includes(k));
-    if (hasClinical && INDIVIDUAL_SUBJECT.test(text) && NUMERIC.test(text) && !hasPopulationMarker(text)) {
+    const hasIndividualClinicalValue =
+      CLINICAL_VALUE_ADJACENT.test(lower) &&
+      INDIVIDUAL_SUBJECT.test(text) &&
+      !SECOND_PERSON.test(text) &&
+      !hasPopulationMarker(text);
+    if (hasIndividualClinicalValue) {
       push({
         violationClass: "individual_clinical_specific",
         matchedText: text.trim().slice(0, 160),

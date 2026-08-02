@@ -46,6 +46,7 @@ import {
   extractOpening,
   classifyHookStructure,
   partitionByRelevance,
+  MIN_TOPICAL_RELEVANCE,
   scoreTopicalRelevance,
   validateStructureSummary,
   buildHookReferenceBlock,
@@ -431,6 +432,18 @@ interface ResolvedResearch {
   hookReferenceCount: number;
   hasStructureSummary: boolean;
   /**
+   * v2.2 Part 3C — WHAT the grounding was, not merely THAT there was some.
+   *
+   * Measured problem: a run seeded with nonsense reported `researchGrounded:
+   * true` because grounding text did reach the prompt — but the text was a
+   * Hindi/Urdu television drama transcript. A boolean that says "grounded"
+   * without saying "grounded in what" is the same dishonest metric this build
+   * exists to remove, so the source titles and the on-topic ratio travel with
+   * the flag and the operator can judge the grounding for himself.
+   */
+  groundingSources: string[];
+  onTopicRatio: string | null;
+  /**
    * Set when RESOLUTION itself threw (finding #10 class: a completed research
    * job whose grounding could not be read back). Distinct from "no research
    * requested" and from "research failed" -- those leave this null. Generation
@@ -450,6 +463,8 @@ const EMPTY_RESEARCH: ResolvedResearch = {
   hookReferenceCount: 0,
   hasStructureSummary: false,
   resolutionError: null,
+  groundingSources: [],
+  onTopicRatio: null,
 };
 
 /**
@@ -573,6 +588,15 @@ async function resolveResearchContext(
       structureBlock: summary ? buildStructureSummaryBlock(summary) : "",
       hookReferenceCount: hookRefs.length,
       hasStructureSummary: summary !== null,
+      /*
+       * Titles of the videos whose transcripts actually became grounding text.
+       * This is what makes "grounded" auditable: if the operator sees a TV
+       * drama or a gaming video in this list, the badge is worthless and he can
+       * see that at a glance instead of trusting a green checkmark.
+       */
+      groundingSources: transcripts.map((t) => t.title ?? "Untitled").slice(0, 6),
+      // Recorded by the pipeline into notes as `on_topic=N/M`.
+      onTopicRatio: /on_topic=(\d+\/\d+)/.exec(job.notes ?? "")?.[1] ?? null,
     };
   } catch (err) {
     /*
@@ -930,6 +954,44 @@ export async function executeDeepResearch(
       );
     }
 
+    /*
+     * HARD GATE (v2.2 Part 3C). Deprioritising is not enough on its own.
+     * Measured: the nonsense seed "qwzxjkvbnm zzzqqq" scored on_topic=0/10 and
+     * the job still COMPLETED, writing 10 patterns mined from unrelated videos
+     * into content_patterns at effectiveness 0.9. Those rows are permanent and
+     * every later composition draws from them, so a seed that matches NOTHING
+     * must fail loudly rather than silently poison the corpus.
+     *
+     * The gate is deliberately narrow: it fires only when literally zero results
+     * clear MIN_TOPICAL_RELEVANCE. A single weak match is enough to proceed,
+     * because the scorer is a keyword-overlap noise filter, not a semantic
+     * ranker, and over-blocking real research costs more than a marginal video.
+     */
+    if (outlierVideos.length > 0 && onTopic.length === 0) {
+      const gateMsg =
+        `No discovery result was topically relevant to "${seedKeyword}". ` +
+        `${outlierVideos.length} videos returned; all scored below the relevance ` +
+        `floor (${MIN_TOPICAL_RELEVANCE}). e.g. ` +
+        offTopic.slice(0, 3).map((v) => JSON.stringify(v.title)).join(", ") +
+        `. Refusing to mine patterns from unrelated videos — try a more specific seed keyword.`;
+      await setStatus("failed", {
+        outlierVideos,
+        errorMessage: gateMsg.slice(0, 512),
+      });
+      return {
+        jobId,
+        status: "failed" as const,
+        outlierCount: outlierVideos.length,
+        transcriptsFetched: 0,
+        transcriptsCached: 0,
+        transcriptsFailed: 0,
+        quotaBlocked: false,
+        patternCount: 0,
+        error: gateMsg,
+        offTopicDropped,
+      };
+    }
+
     if (outlierVideos.length === 0) {
       // Nothing to research is a failure, but a clean, explained one.
       await setStatus("failed", {
@@ -1091,9 +1153,25 @@ export async function executeDeepResearch(
         // Models often fence JSON; strip the fence before parsing.
         const unfenced = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
         structureSummary = validateStructureSummary(unfenced, top3.map((t) => t.videoId));
+        /*
+         * DIAGNOSABLE REJECTION. Job #3 completed with structure_summary=no and
+         * no explanation anywhere, which made a silently-failing LLM pass
+         * indistinguishable from one that was never attempted. Log the raw head
+         * on rejection so the next failure is inspectable instead of invisible.
+         */
+        if (!structureSummary) {
+          console.error(
+            `[DeepResearch] structure summary REJECTED by validation. ` +
+            `raw length=${raw.length}, head=${JSON.stringify(unfenced.slice(0, 400))}`
+          );
+        } else {
+          console.log("[DeepResearch] structure summary accepted");
+        }
+      } else {
+        console.log("[DeepResearch] structure summary skipped: no transcripts secured");
       }
     } catch (err) {
-      console.error("[DeepResearch] structure summary failed:", err);
+      console.error("[DeepResearch] structure summary threw:", err);
     }
 
     const notes = [
@@ -1112,7 +1190,8 @@ export async function executeDeepResearch(
       outlierVideos,
       transcriptVideoIds,
       patternIds: [...patternIds, ...hookPatternIds],
-      structureSummary: structureSummary as any,
+      // longtextJson() types this column correctly now, so no `as any` is needed.
+      structureSummary,
       transcriptsFetched,
       transcriptsCached,
       transcriptsFailed,
@@ -1820,6 +1899,14 @@ export const scriptFactoryRouter = router({
          */
         researchGrounded:
           research.jobId !== null && (research.context.length > 0 || research.hookBlock.length > 0),
+        /*
+         * WHAT it was grounded in. A nonsense-seeded run once reported
+         * researchGrounded=true while grounded in a Hindi/Urdu TV drama
+         * transcript; the boolean was accurate and the script was worthless.
+         * These two fields make the badge auditable at a glance.
+         */
+        researchGroundingSources: research.groundingSources,
+        researchOnTopicRatio: research.onTopicRatio,
         hookReferencesUsed: research.hookReferenceCount,
         structureSummaryUsed: research.hasStructureSummary,
         sourceIdeaId: input.sourceIdeaId ?? null,

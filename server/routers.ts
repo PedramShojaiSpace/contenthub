@@ -158,6 +158,7 @@ import { scriptFactoryRouter } from "./scriptFactoryRouter";
 import { performanceLoopRouter } from "./performanceLoopRouter";
 import { funnelsRouter } from "./funnelsRouter";
 import { funnelEconomicsRouter } from "./funnelEconomicsRouter";
+import { metaFunnelMetricsRouter } from "./metaFunnelMetricsRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -534,6 +535,7 @@ export const appRouter = router({
   funnelCommand: funnelCommandRouter,
   funnels: funnelsRouter,
   funnelEconomics: funnelEconomicsRouter,
+  metaFunnelMetrics: metaFunnelMetricsRouter,
   ascension: ascensionRouter,
   quiz: quizRouter,
   abTest: abTestRouter,

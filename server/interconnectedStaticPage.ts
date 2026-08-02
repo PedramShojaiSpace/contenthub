@@ -473,6 +473,12 @@ function submitForm(e, id) {
     if (errEl) { errEl.textContent = 'Please enter your name and email.'; errEl.style.display = 'block'; }
     return;
   }
+  if (phone && !smsConsent) {
+    if (errEl) { errEl.textContent = 'Please check the SMS consent box to include your phone number.'; errEl.style.display = 'block'; }
+    var cbEl = form.elements['smsConsent'];
+    if (cbEl) { cbEl.style.outline = '2px solid #f87171'; cbEl.focus(); }
+    return;
+  }
   if (errEl) errEl.style.display = 'none';
   if (btn) { btn.disabled = true; btn.textContent = 'Registering...'; }
 

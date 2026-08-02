@@ -383,6 +383,7 @@ function toggleSms(which) {
     var box = document.getElementById('sms-box-bottom');
     if (box) {
       box.classList.toggle('checked', smsCheckedBottom);
+      box.style.outline = '';
       box.innerHTML = smsCheckedBottom
         ? '<svg width="12" height="12" fill="none" viewBox="0 0 12 12"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         : '';
@@ -392,6 +393,7 @@ function toggleSms(which) {
     var box = document.getElementById('sms-box');
     if (box) {
       box.classList.toggle('checked', smsChecked);
+      box.style.outline = '';
       box.innerHTML = smsChecked
         ? '<svg width="12" height="12" fill="none" viewBox="0 0 12 12"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         : '';
@@ -416,6 +418,13 @@ function handleSubmit(e, which) {
 
   if (!name || !email) {
     if (errEl) { errEl.textContent = 'Please enter your name and email.'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (phone && !consent) {
+    if (errEl) { errEl.textContent = 'Please check the SMS consent box to include your phone number.'; errEl.style.display = 'block'; }
+    var cbId = which === 'bottom' ? 'sms-box-bottom' : 'sms-box';
+    var cbEl = document.getElementById(cbId);
+    if (cbEl) { cbEl.style.outline = '2px solid #f87171'; cbEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     return;
   }
   if (errEl) errEl.style.display = 'none';

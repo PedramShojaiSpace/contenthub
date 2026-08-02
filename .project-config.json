@@ -14,10 +14,10 @@
   "experiments": null,
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZHHZ6AKOK",
-    "secret_access_key": "sutglTckUKZLHOlqPaOo2rW4mFaobqevdlEWLNDO",
-    "session_token": "IQoJb3JpZ2luX2VjEAEaCXVzLWVhc3QtMSJGMEQCIHhXkjcy5A+BMaOw6mDOSeSZUqT2T2rKJwy2od/XJe/RAiAWeWD67ub7Aj71w30hUGkmBlEisHJlBJdfaLnUpbz6rir+AwjJ//////////8BEAQaDDY2NTM4NjA5ODg2NiIM1hJ731sWTbBBsio1KtIDxKN9PeTS84dJfKuiHLZu37gCh32aB76KqBp7/QQ01bpAcLEIi8AvDkYC0o6E/INdJ5xLyptTufgrtydj6PjoRSrZgID+cftErQvkq1MwB5Oup8Q3bAprTR1wux1krMzdujIIgenAzO5M8DWx3nepi5pRUek2CmlAwRm4RiyIc2msJEtRHXwwTxGrNBtPeWEh9w54IkXBdr+cmgJ77fAEvu5B+mbTVGKiciI7rYZ/XwTVoaIm0XPzytdCfmNkGh6WAIUjf6sJWgYlKpda1pbBbK1w1UTuWwi3bNDrUWM+NFZDvGcdOxsqd1NMX1sgTA4J4JrK7G4ZcwiqzigAzqyJw8DIhl5175PAeKQgXAwbHpeX8TfHjebc63LtQm1hnInCPujHfZc1Vv5051Ac+3c5A9oW4yYDaNiElPoFZsk4vZbNOzglrsxoucaQrvtmMH1DIfJ+XMDL1OQkSZzPAXT0VOUJ7hu0zk9TMusdticolEtY36TEZBqyDujBI1l5tqFBD7lXby1so9wgXVHLbr0LtG2BKFgcVFxzDhfI5G4d+E5mMEoRj28dJfv3IeBMsD5s/hP0dDu2oA0z8jnvHeIvUuzvvmCm+YvE18rL1c8My2mdyjCtuLjTBjqeARKmwTnkbNYZj/kB7X/CMaCBGC0wuEcNaVpqUzXlLYwHop4MP6YKsf7HTsCFrZ+6XrQxG02sn5Hp5/DIEJQGuRKh2EXcbGoRNnbCAB182vSU23R2fIzB2Jnqx2FCyxdnFxNHzyKA3tzIRdG4PVgVlkHTqcNMJEW74J44HIxXZm5unHts3wA/bkcGzuP0g5f6Xq1p11P64/aCh70RwKz6",
-    "expiration": "2026-08-02T04:17:49.000Z",
+    "access_key_id": "ASIAZV3A2ECZCOEJXOAC",
+    "secret_access_key": "MoLEE7DSlBSy6MrnmT7wPaVZT0HkiMOnO6hNITod",
+    "session_token": "IQoJb3JpZ2luX2VjEBcaCXVzLWVhc3QtMSJHMEUCIQDf+l6voTqw5Zn43GAzy14U3DdcTnpzq3yJQ1opXIFqbAIgEf3fSKzAZy0hAd1M5OEDCyL0weMrdyuuQOfgp4oqpsEq/gMI4P//////////ARAEGgw2NjUzODYwOTg4NjYiDGyPGLs4D7JOnMZLHirSAw0dzbMhsdvFjkrTLX9S89jrol1KFU5duun74vmftEy6oxOq7v7MsWR9KPZNJMiK7Roz4YEi+V7waNNWrmNEWu+jS3/TEMcz5nWa15Zv/o/KHjUAJFntkGBc2nEe/RT/YOUefNmoj+qhowaC1MZaXGT8tRDfuHv51IhPixVwtPRGmhg8y4vy98d+7ecQq3zH1F1u/Lc6iBn68I8mJB02tLNcZv/IDcqouAarTfmT4RtWNKHIX/xq7236aEdZzo896knPCYUYDiOrdXDMzdPSVfWexZM12IxlmqCMZAmx7JVJtWuCrqQ7wby9w+pY4l9i3p7wjX2Ikm95fNjIEaJJ0AGyuBrQDk9XZKmyiXyPPnxXs4eAQH3fmdNkJhwvg84ntQscjzH4eriFswpUEkzVsBlEOcUKM+ii2GlxiI+Th+fwEplEhZyqSbuIr77i3uWZQy20ZqIpamOfkdkNtR7MZsS+8GvROv/nP4QOnwr2pEIlnvhDQh9TCAIkeGoeUy1LNCyqQn560hxPsWJEZm7lNOmtQA3McA1qxo9J8RUY3W/5AZF9xv3J10kpwI1+YqQWvk2HQjJtnpnFVLcA7JM0NwmupVxU9YqebaYMAbnll+Y26lgwuLa90wY6nQHzGF/m84kNNknYYhhiMIoCASlcXFZYTDhajjsbIdM+kuS/xT95Mnz4sJ9AOevAXYXx6DGigm/Rl/WbZAGDhyFednyN+iUFnvE1jSBJBHGx5cccdTa90lhq5PsriZvaIdJA9Fv7sMWoc/LR+ATPpq2lSyZtnDqVKKIpEEYkmGtmccGT8UDMLdb0a3Ycz2wVj0pkqS3b0B1bue72f4re",
+    "expiration": "2026-08-03T02:59:04.000Z",
     "backend": "GIT_BACKEND_S3"
   },
   "name": "lights-on-optin",

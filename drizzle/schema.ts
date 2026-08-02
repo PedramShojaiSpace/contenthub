@@ -3743,3 +3743,23 @@ export const interconnectedLeads = mysqlTable("interconnected_leads", {
 
 export type InterconnectedLead = typeof interconnectedLeads.$inferSelect;
 export type InsertInterconnectedLead = typeof interconnectedLeads.$inferInsert;
+
+// ─── Funnel Economics Scenarios ───────────────────────────────────────────────
+export const funnelEconomicsScenarios = mysqlTable("funnel_economics_scenarios", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  leadsPerMonth: int("leads_per_month").notNull(),
+  cpl: double("cpl").notNull(),
+  cr67: double("cr_67").notNull(),
+  crBump: double("cr_bump").notNull(),
+  crOto: double("cr_oto").notNull(),
+  crMid: double("cr_mid").notNull(),
+  midPrice: int("mid_price").notNull(),
+  crHighTicket: double("cr_high_ticket").notNull(),
+  totalRevenue: double("total_revenue").notNull(),
+  netProfit: double("net_profit").notNull(),
+  roas: double("roas").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type FunnelEconomicsScenario = typeof funnelEconomicsScenarios.$inferSelect;
+export type InsertFunnelEconomicsScenario = typeof funnelEconomicsScenarios.$inferInsert;

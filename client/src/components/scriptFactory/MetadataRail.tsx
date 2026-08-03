@@ -47,6 +47,17 @@ interface MetadataRailProps {
   onApprove: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  /**
+   * v2.3 Part 3 — the Regenerate group, injected rather than built here.
+   *
+   * MetadataRail stays a presentational facts column: it holds no mutation, no
+   * tRPC call and no knowledge of variants. The panel is composed in by the
+   * workspace, which is also what lets the mobile Sheet and the desktop rail
+   * share one instance of it instead of two diverging copies.
+   */
+  regenerateSlot?: React.ReactNode;
+  /** v2.3 Part 3 — variant lineage summary, shown above Actions when present. */
+  lineage?: React.ReactNode;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -72,6 +83,8 @@ export function MetadataRail({
   onApprove,
   onArchive,
   onDelete,
+  regenerateSlot,
+  lineage,
 }: MetadataRailProps) {
   const legacy = isLegacyMetric(script.createdAt);
   const slotCount = sections.filter((s) => s.slotOnly).length;
@@ -174,6 +187,8 @@ export function MetadataRail({
         </Row>
       </div>
 
+      {lineage}
+
       <div className="border-t pt-3 space-y-1.5">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
           Actions
@@ -229,6 +244,8 @@ export function MetadataRail({
           <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
         </Button>
       </div>
+
+      {regenerateSlot}
     </div>
   );
 }

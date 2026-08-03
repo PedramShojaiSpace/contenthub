@@ -43,10 +43,13 @@ import {
   Network,
   AlertTriangle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import DashboardLayout from "../components/DashboardLayout";
 import { ScriptWorkspace } from "@/components/scriptFactory/ScriptWorkspace";
+import { RegeneratePanel } from "@/components/scriptFactory/RegeneratePanel";
+import { SectionRegenerateButton } from "@/components/scriptFactory/SectionRegenerateButton";
+import { VariantLineage } from "@/components/scriptFactory/VariantLineage";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FORMATS = [
@@ -1677,6 +1680,146 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
     onError: (err) => toast.error(err.message),
   });
 
+  /*
+   * ── v2.3 Part 3 — regeneration ────────────────────────────────────────────
+   *
+   * Personas are needed to render names instead of ids in the confirm dialog. A
+   * dialog that says "Persona: 4 → 7" tells the operator nothing about what he is
+   * about to spend money on.
+   */
+  const { data: personaList } = trpc.personas.list.useQuery();
+  /*
+   * Family for the open script. Fetched from the server rather than derived from
+   * the list rows, because a sibling variant may sit outside the 50-row window and
+   * would then silently vanish from the lineage block.
+   */
+  const { data: family } = trpc.scriptFactory.getScriptFamily.useQuery(
+    { scriptId: selectedScript?.id ?? 0 },
+    { enabled: !!selectedScript }
+  );
+  const personaOptions = useMemo(
+    () => (personaList ?? []).map((p: { id: number; name: string }) => ({ id: p.id, name: p.name })),
+    [personaList]
+  );
+
+  /** Which section is mid-rewrite, so only that header shows a spinner. */
+  const [pendingSectionKey, setPendingSectionKey] = useState<string | null>(null);
+  const [pendingLabel, setPendingLabel] = useState<string | null>(null);
+
+  const regenerateVariant = trpc.scriptFactory.regenerateVariant.useMutation({
+    onSuccess: (data) => {
+      utils.scriptFactory.list.invalidate();
+      utils.scriptFactory.getStats.invalidate();
+      utils.scriptFactory.getScriptFamily.invalidate();
+      setPendingLabel(null);
+      /*
+       * The toast reports the SERVER's diff, not the dialog's preview. The preview
+       * exists to inform the click; this is the record of what actually ran.
+       */
+      const changed = data.changedParams?.length
+        ? data.changedParams.map((c) => c.field).join(", ")
+        : "same settings";
+      toast.success(`Variant saved: ${data.variantLabel ?? `#${data.id}`} (${changed})`, {
+        description: data.researchReusedFromSource
+          ? "Reused the source script's research — no new research was run."
+          : undefined,
+        action: {
+          label: "Open variant",
+          onClick: () => openWorkspace(data.id, data.title ?? `Script #${data.id}`),
+        },
+      });
+    },
+    onError: (err) => {
+      setPendingLabel(null);
+      toast.error(err.message);
+    },
+  });
+
+  const regenerateAsNew = trpc.scriptFactory.regenerateAsNew.useMutation({
+    onSuccess: (data) => {
+      utils.scriptFactory.list.invalidate();
+      utils.scriptFactory.getStats.invalidate();
+      setPendingLabel(null);
+      toast.success(`New script #${data.id} created — filed separately, not as a variant.`, {
+        action: {
+          label: "Open it",
+          onClick: () => openWorkspace(data.id, data.title ?? `Script #${data.id}`),
+        },
+      });
+    },
+    onError: (err) => {
+      setPendingLabel(null);
+      toast.error(err.message);
+    },
+  });
+
+  const regenerateSection = trpc.scriptFactory.regenerateSection.useMutation({
+    onSuccess: (data) => {
+      setPendingSectionKey(null);
+      /*
+       * `get` is invalidated rather than patched from the response: the mutation
+       * changed the body, every later timestamp AND the grounding numbers, and a
+       * hand-merged subset is how a rail and a body get out of step.
+       */
+      utils.scriptFactory.get.invalidate({ id: data.scriptId });
+      utils.scriptFactory.list.invalidate();
+      const drift = data.newWordCount - data.previousWordCount;
+      toast.success(`${data.sectionLabel} rewritten.`, {
+        description:
+          `${data.previousWordCount} → ${data.newWordCount} words` +
+          (Math.abs(drift) > 40 ? ` (${drift > 0 ? "+" : ""}${drift}, runtime shifted)` : "") +
+          `. ${data.groundingLabel}.`,
+        action: {
+          label: "Undo",
+          onClick: () => restoreSection.mutate({ scriptId: data.scriptId, sectionKey: data.sectionKey }),
+        },
+      });
+      if (data.cadenceViolations?.length) {
+        toast.warning(`Cadence: ${data.cadenceViolations.length} note(s) on the rewritten section.`);
+      }
+    },
+    onError: (err) => {
+      setPendingSectionKey(null);
+      toast.error(err.message);
+    },
+  });
+
+  const restoreSection = trpc.scriptFactory.restoreSection.useMutation({
+    onSuccess: (data) => {
+      utils.scriptFactory.get.invalidate({ id: data.scriptId });
+      utils.scriptFactory.list.invalidate();
+      toast.success(`${data.sectionLabel} restored to its previous wording.`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  /*
+   * Frozen params for the open script. NULL for pre-v2.3 rows, which the panel
+   * turns into an explanation rather than a disabled button with no reason.
+   */
+  const frozenParams = useMemo(() => {
+    if (!scriptDetail) return null;
+    const gp = (scriptDetail as { generationParams?: Record<string, unknown> | null }).generationParams;
+    if (!gp) return null;
+    return {
+      personaId: (gp.personaId as number) ?? null,
+      targetLengthMinutes: (gp.targetLengthMinutes as number) ?? scriptDetail.targetLengthMinutes ?? null,
+      storyMode: (gp.storyMode as string) ?? null,
+      offerTier: (gp.offerTier as string) ?? null,
+      ctaOverride: (gp.ctaOverride as string) ?? null,
+      researchJobId: (gp.researchJobId as number) ?? scriptDetail.researchJobId ?? null,
+      format: scriptDetail.format,
+      topic: scriptDetail.topic,
+    };
+  }, [scriptDetail]);
+
+  /** Section keys with a recoverable previous version, from section_history. */
+  const undoableSections = useMemo(() => {
+    const hist = (scriptDetail as { sectionHistory?: { sectionKey: string }[] | null } | undefined)
+      ?.sectionHistory;
+    return new Set((hist ?? []).map((h) => h.sectionKey));
+  }, [scriptDetail]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32 text-muted-foreground gap-2">
@@ -1763,6 +1906,51 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
         formatLabels={FORMAT_LABELS}
         isLegacyMetric={isLegacyMetric}
         sendToProductionPending={sendToProduction.isPending}
+        lineageSlot={
+          scriptDetail ? (
+            <VariantLineage
+              currentId={scriptDetail.id}
+              family={family?.members}
+              onOpen={(id, title) => openWorkspace(id, title)}
+            />
+          ) : undefined
+        }
+        regenerateSlot={
+          scriptDetail ? (
+            <RegeneratePanel
+              scriptId={scriptDetail.id}
+              frozen={frozenParams}
+              personas={personaOptions}
+              pending={regenerateVariant.isPending || regenerateAsNew.isPending}
+              pendingLabel={pendingLabel}
+              onRegenerateVariant={(overrides) => {
+                setPendingLabel("Generating variant — this takes a minute or two…");
+                regenerateVariant.mutate({ sourceScriptId: scriptDetail.id, overrides });
+              }}
+              onRegenerateAsNew={(overrides) => {
+                setPendingLabel("Generating a new script…");
+                regenerateAsNew.mutate({ sourceScriptId: scriptDetail.id, overrides });
+              }}
+            />
+          ) : undefined
+        }
+        sectionActions={(section) => (
+          <SectionRegenerateButton
+            section={section}
+            pending={regenerateSection.isPending || restoreSection.isPending}
+            pendingKey={pendingSectionKey}
+            canUndo={undoableSections.has(section.sectionKey)}
+            onRegenerate={(sectionKey, instruction) => {
+              if (!scriptDetail) return;
+              setPendingSectionKey(sectionKey);
+              regenerateSection.mutate({ scriptId: scriptDetail.id, sectionKey, instruction });
+            }}
+            onUndo={(sectionKey) => {
+              if (!scriptDetail) return;
+              restoreSection.mutate({ scriptId: scriptDetail.id, sectionKey });
+            }}
+          />
+        )}
         onSendToProduction={() => {
           if (scriptDetail) sendToProduction.mutate({ id: scriptDetail.id });
         }}

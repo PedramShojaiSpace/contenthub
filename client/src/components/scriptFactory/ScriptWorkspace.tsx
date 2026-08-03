@@ -63,6 +63,18 @@ interface ScriptWorkspaceProps {
   onApprove: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  /**
+   * v2.3 Part 3 — composed in by the page, which owns the mutations.
+   *
+   * The workspace stays a layout shell: it knows where the Regenerate group and
+   * the per-section control go, not how they run. One `regenerateSlot` node is
+   * passed to BOTH the desktop rail and the mobile Sheet so the two cannot drift.
+   */
+  regenerateSlot?: React.ReactNode;
+  /** Variant lineage block for the rail (parent / sibling variants). */
+  lineageSlot?: React.ReactNode;
+  /** Per-section action, rendered in each section header in the body pane. */
+  sectionActions?: (section: SectionOutlineEntry) => React.ReactNode;
 }
 
 export function ScriptWorkspace({
@@ -80,6 +92,9 @@ export function ScriptWorkspace({
   onApprove,
   onArchive,
   onDelete,
+  regenerateSlot,
+  lineageSlot,
+  sectionActions,
 }: ScriptWorkspaceProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -203,6 +218,8 @@ export function ScriptWorkspace({
                     onApprove={onApprove}
                     onArchive={onArchive}
                     onDelete={onDelete}
+                    regenerateSlot={regenerateSlot}
+                    lineage={lineageSlot}
                   />
                 </SheetContent>
               </Sheet>
@@ -231,7 +248,11 @@ export function ScriptWorkspace({
                   This script row has no body text saved.
                 </p>
               ) : (
-                <ScriptBody scriptBody={script.scriptBody} sections={sections} />
+                <ScriptBody
+                  scriptBody={script.scriptBody}
+                  sections={sections}
+                  sectionActions={sectionActions}
+                />
               )}
             </div>
 
@@ -248,6 +269,8 @@ export function ScriptWorkspace({
                 onApprove={onApprove}
                 onArchive={onArchive}
                 onDelete={onDelete}
+                regenerateSlot={regenerateSlot}
+                lineage={lineageSlot}
               />
             </aside>
           </div>

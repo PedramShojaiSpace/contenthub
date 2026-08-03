@@ -82,7 +82,7 @@ export function ScriptBody({ scriptBody, sections, sectionActions }: ScriptBodyP
             key={s.sectionKey}
             id={`section-${s.sectionKey}`}
             data-section-key={s.sectionKey}
-            className="scroll-mt-4 mb-7"
+            className="group/section scroll-mt-4 mb-7"
           >
             <header className="flex items-center gap-2 mb-2 pb-1.5 border-b">
               <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
@@ -113,4 +113,3 @@ export function ScriptBody({ scriptBody, sections, sectionActions }: ScriptBodyP
     </article>
   );
 }
-

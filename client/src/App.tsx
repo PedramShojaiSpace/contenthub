@@ -105,6 +105,7 @@ const FunnelEconomics = lazy(() => import("./pages/FunnelEconomics"));
 const FunnelAdvisor = lazy(() => import("./pages/FunnelAdvisor"));
 const MofContentEngine = lazy(() => import("./pages/MofContentEngine"));
 const Reconciliation = lazy(() => import("./pages/Reconciliation"));
+const InterconnectedCommandCenter = lazy(() => import("./pages/InterconnectedCommandCenter"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -218,6 +219,7 @@ function Router() {
         <Route path={"/funnel-advisor"} component={FunnelAdvisor} />
         <Route path={"/mof-content"} component={MofContentEngine} />
         <Route path={"/reconciliation"} component={Reconciliation} />
+        <Route path={"/interconnected-command"} component={InterconnectedCommandCenter} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

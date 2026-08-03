@@ -204,3 +204,44 @@ describe("buildSectionOutline — char offsets anchor into the RAW body", () => 
     expect(stripTimestamps(stamped)).not.toBe(stamped);
   });
 });
+
+/*
+ * sectionKey — the single naming authority shared by the navigator anchors, the
+ * `?section=` deep link, and Part 3's regenerateSection input. These assertions
+ * exist because a mismatch between those three consumers would regenerate the
+ * wrong section of a script, not merely scroll to the wrong place.
+ */
+describe("buildSectionOutline — sectionKey", () => {
+  it("uses a bare slug when a tag occurs once, and -N when it recurs", () => {
+    const body = [
+      "[HOOK] Opening line here.",
+      "[TEACH] First teaching block.",
+      "[TEACH] Second teaching block.",
+      "[TEACH] Third teaching block.",
+      "[CTA] Book the intake.",
+    ].join("\n\n");
+    const out = buildSectionOutline(body);
+    expect(out.map((s) => s.sectionKey)).toEqual([
+      "hook",
+      "teach-1",
+      "teach-2",
+      "teach-3",
+      "cta",
+    ]);
+  });
+
+  it("keeps sectionKey and label in lockstep on the suffix rule", () => {
+    const body = "[HOOK] a\n\n[TEACH] b\n\n[TEACH] c\n\n[CLOSE] d";
+    for (const s of buildSectionOutline(body)) {
+      // "Teach 2" <-> "teach-2"; "Hook" <-> "hook". If one gains a suffix the
+      // other must too, or Part 3 will target a section the operator did not click.
+      expect(s.sectionKey).toBe(s.label.toLowerCase().replace(/ /g, "-"));
+    }
+  });
+
+  it("produces unique keys for every section in a script", () => {
+    const body = "[HOOK] a\n\n[PAIN] b\n\n[TEACH] c\n\n[TEACH] d\n\n[OBJECTION] e\n\n[OBJECTION] f\n\n[CTA] g";
+    const keys = buildSectionOutline(body).map((s) => s.sectionKey);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});

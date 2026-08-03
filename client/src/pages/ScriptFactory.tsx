@@ -9,12 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -52,7 +46,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import DashboardLayout from "../components/DashboardLayout";
-
+import { ScriptWorkspace } from "@/components/scriptFactory/ScriptWorkspace";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FORMATS = [
@@ -1551,11 +1545,17 @@ interface LibraryTabProps {
 
 function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
   const utils = trpc.useUtils();
-  const [selectedScript, setSelectedScript] = useState<{
-    id: number; title: string; scriptBody: string; topic: string; format: string;
-    verifiedCount: number; totalElements: number; verificationPct: number;
-    status: string; notes: string | null; createdAt: Date;
-  } | null>(null);
+  /*
+   * v2.3 Part 1 — the workspace is keyed by id + title only.
+   *
+   * The v2.2 modal duplicated a dozen row fields into local state and then
+   * showed `scriptDetail` anyway, so the copy existed only to render a title
+   * during the fetch. Keeping just the title makes that explicit and removes a
+   * second, staler source of truth for the same numbers.
+   */
+  const [selectedScript, setSelectedScript] = useState<{ id: number; title: string } | null>(null);
+  /* Deep-linked section, consumed once by the workspace after it renders. */
+  const [initialSectionKey, setInitialSectionKey] = useState<string | null>(null);
   const { data: scripts, isLoading } = trpc.scriptFactory.list.useQuery({
     format: "all",
     status: "all",
@@ -1576,24 +1576,49 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
     if (!scripts) return; // list still loading — try again when it arrives
     const match = scripts.find((s) => s.id === scriptToOpen);
     if (match) {
-      setSelectedScript({
-        id: match.id,
-        title: match.title,
-        scriptBody: "",
-        topic: match.topic,
-        format: match.format,
-        verifiedCount: match.verifiedCount,
-        totalElements: match.totalElements,
-        verificationPct: match.verificationPct ?? 0,
-        status: match.status,
-        notes: null,
-        createdAt: match.createdAt,
-      });
+      setSelectedScript({ id: match.id, title: match.title });
     } else {
       toast.error(`Script #${scriptToOpen} is no longer in the library.`);
     }
     onScriptOpened?.();
   }, [scriptToOpen, scripts, onScriptOpened]);
+
+  /*
+   * v2.3 Part 1 — deep links (`?scriptId=N&section=teach-2`).
+   *
+   * Runs once per mount, before the list resolves, so a pasted link opens the
+   * workspace without waiting on the 50-row window. The section key is passed
+   * through untouched: it is a server-derived slug, and validating it here would
+   * mean re-deriving section names on the client. The workspace falls back to
+   * the first section if the key does not match anything.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = Number(params.get("scriptId"));
+    if (!Number.isFinite(id) || id <= 0) return;
+    setInitialSectionKey(params.get("section"));
+    setSelectedScript({ id, title: `Script #${id}` });
+  }, []);
+
+  /** Open the workspace and make the current script linkable. */
+  const openWorkspace = (id: number, title: string) => {
+    setInitialSectionKey(null);
+    setSelectedScript({ id, title });
+    const url = new URL(window.location.href);
+    url.searchParams.set("scriptId", String(id));
+    url.searchParams.delete("section");
+    window.history.replaceState({}, "", url);
+  };
+
+  /** Close and strip the workspace params so a refresh lands on the list. */
+  const closeWorkspace = () => {
+    setSelectedScript(null);
+    setInitialSectionKey(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("scriptId");
+    url.searchParams.delete("section");
+    window.history.replaceState({}, "", url);
+  };
 
   const { data: scriptDetail } = trpc.scriptFactory.get.useQuery(
     { id: selectedScript?.id ?? 0 },
@@ -1624,7 +1649,7 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
     onSuccess: () => {
       utils.scriptFactory.list.invalidate();
       utils.scriptFactory.getStats.invalidate();
-      setSelectedScript(null);
+      closeWorkspace();
       toast.success("Script deleted.");
     },
     onError: (err) => toast.error(err.message),
@@ -1676,7 +1701,7 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
         <Card
           key={script.id}
           className="cursor-pointer hover:border-primary/40 transition-colors"
-          onClick={() => setSelectedScript(script as any)}
+          onClick={() => openWorkspace(script.id, script.title)}
         >
           <CardContent className="pt-4 pb-3">
             <div className="flex items-start justify-between gap-2">
@@ -1720,139 +1745,39 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
         </Card>
       ))}
 
-      {/* Script detail dialog */}
-      <Dialog open={!!selectedScript} onOpenChange={(open) => !open && setSelectedScript(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedScript?.title}</DialogTitle>
-          </DialogHeader>
-          {scriptDetail && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge className={`text-xs ${STATUS_COLORS[scriptDetail.status ?? "draft"]}`}>
-                  {scriptDetail.status}
-                </Badge>
-                {/*
-                  Part 3E — reads "N of M sections grounded", because that is what
-                  the stored counts now mean.
-
-                  Rows written before v2.2 hold numbers from the old metric
-                  ([VERIFIED] over ALL bracketed tokens, structure labels
-                  included), so they are marked as legacy rather than silently
-                  compared against new rows. The creation-date heuristic is
-                  approximate and says so in the tooltip — an approximate,
-                  self-declared marker beats presenting two incompatible
-                  definitions as one number.
-                */}
-                <Badge
-                  className="bg-green-50 text-green-700 border border-green-200 text-xs"
-                  title={
-                    isLegacyMetric(scriptDetail.createdAt)
-                      ? "Legacy metric: this script predates v2.2. Its number divided [VERIFIED] tags by ALL bracketed tags, so structure labels diluted it. Not comparable with newer scripts."
-                      : "Section instances containing at least one [VERIFIED] element. Story-slot-only sections are excluded."
-                  }
-                >
-                  <ShieldCheck className="w-2.5 h-2.5 mr-0.5" />
-                  {(scriptDetail.totalElements ?? 0) > 0
-                    ? `${scriptDetail.verifiedCount ?? 0} of ${scriptDetail.totalElements} sections grounded`
-                    : `${scriptDetail.verificationPct ?? 0}% verified`}
-                  {isLegacyMetric(scriptDetail.createdAt) && (
-                    <span className="ml-1 opacity-70">(legacy)</span>
-                  )}
-                </Badge>
-                {/*
-                  Claims badge — sourced by contentType + contentId, linking to the
-                  existing Claims Review page. Never a generation gate: the
-                  operator is the qualified reviewer, this only tells him whether a
-                  review exists and how many flags it raised.
-                */}
-                {claimsStatus && (
-                  <button
-                    onClick={() => { window.location.href = "/claims-review"; }}
-                    className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-                      claimsStatus.flagCount > 0
-                        ? "bg-amber-50 text-amber-800 border-amber-200 hover:border-amber-400"
-                        : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400"
-                    }`}
-                    title="Open the Claims Review queue"
-                  >
-                    Claims review: {String(claimsStatus.status).replace(/_/g, " ")}
-                    {claimsStatus.flagCount > 0 ? ` (${claimsStatus.flagCount} flags)` : ""}
-                  </button>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  {FORMAT_LABELS[scriptDetail.format] ?? scriptDetail.format}
-                </span>
-              </div>
-
-              <div className="flex gap-2 flex-wrap">
-                {/* Production bridge: only approved scripts may cross over. */}
-                {scriptDetail.status === "approved" && (
-                  scriptDetail.productionScriptId ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-blue-400 text-blue-700"
-                      onClick={() => {
-                        window.location.href = `/script-library?scriptId=${scriptDetail.productionScriptId}`;
-                      }}
-                    >
-                      In Production →
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                      disabled={sendToProduction.isPending}
-                      onClick={() => sendToProduction.mutate({ id: scriptDetail.id })}
-                    >
-                      {sendToProduction.isPending
-                        ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                        : <Zap className="w-3.5 h-3.5 mr-1" />}
-                      Send to Production
-                    </Button>
-                  )
-                )}
-                {scriptDetail.status !== "approved" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-green-400 text-green-700"
-                    onClick={() => updateScript.mutate({ id: scriptDetail.id, status: "approved" })}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
-                  </Button>
-                )}
-                {scriptDetail.status !== "archived" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => updateScript.mutate({ id: scriptDetail.id, status: "archived" })}
-                  >
-                    Archive
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-red-300 text-red-600"
-                  onClick={() => {
-                    if (confirm("Delete this script?")) {
-                      deleteScript.mutate({ id: scriptDetail.id });
-                    }
-                  }}
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
-                </Button>
-              </div>
-
-              <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono max-h-[400px] overflow-y-auto">
-                {renderScriptWithTags(scriptDetail.scriptBody ?? "")}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/*
+        v2.3 Part 1 — the detail modal is replaced by a full-screen workspace.
+        Every badge, metric caveat and action that lived in the modal moved into
+        MetadataRail verbatim; nothing was dropped in the move. The script body
+        is now split by server-supplied section offsets rather than rendered as
+        one scrolling block.
+      */}
+      <ScriptWorkspace
+        open={!!selectedScript}
+        onClose={closeWorkspace}
+        fallbackTitle={selectedScript?.title}
+        script={scriptDetail}
+        claimsStatus={claimsStatus}
+        initialSectionKey={initialSectionKey}
+        statusColors={STATUS_COLORS}
+        formatLabels={FORMAT_LABELS}
+        isLegacyMetric={isLegacyMetric}
+        sendToProductionPending={sendToProduction.isPending}
+        onSendToProduction={() => {
+          if (scriptDetail) sendToProduction.mutate({ id: scriptDetail.id });
+        }}
+        onApprove={() => {
+          if (scriptDetail) updateScript.mutate({ id: scriptDetail.id, status: "approved" });
+        }}
+        onArchive={() => {
+          if (scriptDetail) updateScript.mutate({ id: scriptDetail.id, status: "archived" });
+        }}
+        onDelete={() => {
+          if (scriptDetail && confirm("Delete this script?")) {
+            deleteScript.mutate({ id: scriptDetail.id });
+          }
+        }}
+      />
     </div>
   );
 }
@@ -1923,6 +1848,22 @@ export default function ScriptFactory() {
     setScriptToOpen(scriptId);
     setActiveTab("library");
   };
+
+  /*
+   * v2.3 Part 1 — a `?scriptId=` deep link has to land on the Library tab.
+   *
+   * The tab lives here, above LibraryTab, so LibraryTab alone cannot honour the
+   * link: on a cold load it is not even mounted, and the workspace it owns
+   * therefore never opens. Reading the param at this level is what makes a
+   * pasted link work from a fresh page load rather than only from inside the
+   * tab. LibraryTab still reads the same params for the section key and the id;
+   * both readers are idempotent, so there is no ordering dependency between
+   * them.
+   */
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("scriptId"));
+    if (Number.isFinite(id) && id > 0) setActiveTab("library");
+  }, []);
 
   return (
     <DashboardLayout>

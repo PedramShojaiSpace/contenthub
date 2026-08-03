@@ -213,19 +213,28 @@ function getUtmAttribution() {
   }
   // Read from current URL
   const params = new URLSearchParams(window.location.search);
+  const fbclid = params.get('fbclid') ?? undefined;
+  // Read _fbp and _fbc cookies
+  const getCookie = (name: string) => {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : undefined;
+  };
+  const fbp = getCookie('_fbp');
+  const fbc = getCookie('_fbc') ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : undefined);
   const attrib: Record<string, string | undefined> = {
     utmSource: params.get('utm_source') ?? undefined,
     utmMedium: params.get('utm_medium') ?? undefined,
     utmCampaign: params.get('utm_campaign') ?? undefined,
     utmContent: params.get('utm_content') ?? params.get('utm_term') ?? undefined,
     referrer: document.referrer || undefined,
+    fbclid,
+    fbp,
+    fbc,
   };
   // If fbclid present but no utm_source, infer source=meta
-  const fbclid = params.get('fbclid');
   if (fbclid && !attrib.utmSource) {
     attrib.utmSource = 'meta';
     attrib.utmMedium = attrib.utmMedium ?? 'paid';
-    attrib.utmContent = (attrib.utmContent ?? '') + (attrib.utmContent ? '|' : '') + 'fbclid:' + fbclid.substring(0, 40);
   }
   // If referrer is facebook/instagram and no utm_source, infer source
   if (!attrib.utmSource && attrib.referrer) {
@@ -247,7 +256,13 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState("");
 
   const submit = trpc.interconnected.register.useMutation({
-    onSuccess: () => navigate("/interconnected/thank-you"),
+    onSuccess: (data) => {
+      // Store the CAPI lead event_id so the TY page pixel call can use it for deduplication
+      if (data?.capiLeadEventId) {
+        sessionStorage.setItem('__capi_lead_event_id', data.capiLeadEventId);
+      }
+      navigate("/interconnected/thank-you");
+    },
     onError: (e) => setError(e.message),
   });
 
@@ -269,6 +284,9 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
       utmCampaign: attrib.utmCampaign,
       utmContent: attrib.utmContent,
       referrer: attrib.referrer,
+      fbclid: attrib.fbclid,
+      fbp: attrib.fbp,
+      fbc: attrib.fbc,
     });
   };
 

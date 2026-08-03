@@ -1474,6 +1474,80 @@ async function startServer() {
     return handleShopifyOrderPaid(req, res);
   });
 
+  // POST /api/kajabi/purchase — Kajabi webhook: member_purchase event
+  // Configure in Kajabi Admin → Settings → Integrations → Webhooks
+  // URL: https://content.theurbanmonk.com/api/kajabi/purchase
+  // Fires on every successful purchase; we use it to send CAPI Purchase event to Meta
+  app.post("/api/kajabi/purchase", async (req, res) => {
+    try {
+      const secret = process.env.INGEST_SECRET;
+      // Kajabi sends a signature header — verify if secret is configured
+      if (secret) {
+        const sig = req.headers["x-kajabi-signature"] as string | undefined;
+        if (sig) {
+          const { createHmac } = await import("crypto");
+          const expected = createHmac("sha256", secret).update(JSON.stringify(req.body)).digest("hex");
+          if (sig !== expected) {
+            console.warn("[kajabi/purchase] Invalid signature — ignoring");
+            return res.status(401).json({ error: "Invalid signature" });
+          }
+        }
+      }
+      const payload = req.body as Record<string, unknown>;
+      const event = payload.event as string | undefined;
+      // Only process purchase events
+      if (event && !event.toLowerCase().includes("purchase") && !event.toLowerCase().includes("payment")) {
+        return res.json({ ok: true, skipped: true, event });
+      }
+      const email = (payload.email ?? (payload.member as any)?.email ?? "") as string;
+      const name = (payload.name ?? (payload.member as any)?.name ?? "") as string;
+      const amount = parseFloat(String(payload.amount ?? payload.total ?? 0));
+      const orderId = String(payload.id ?? payload.order_id ?? payload.purchase_id ?? Date.now());
+      const offerName = String(payload.offer_name ?? payload.product_name ?? payload.title ?? "Kajabi Purchase");
+      if (!email) {
+        console.warn("[kajabi/purchase] No email in payload — cannot send CAPI");
+        return res.json({ ok: false, reason: "no_email" });
+      }
+      // Look up the lead in our DB to get fbclid/fbp/fbc/ip/ua for better matching
+      const { getDb } = await import("../db");
+      const { interconnectedLeads } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { sendCapiEvent, generateEventId } = await import("../capiHelper");
+      const db = await getDb();
+      let lead: typeof interconnectedLeads.$inferSelect | undefined;
+      if (db) {
+        const rows = await db.select().from(interconnectedLeads)
+          .where(eq(interconnectedLeads.email, email.toLowerCase().trim()))
+          .limit(1);
+        lead = rows[0];
+      }
+      const purchaseEventId = generateEventId(email, "Purchase", orderId);
+      const capiSent = await sendCapiEvent({
+        eventName: "Purchase",
+        eventId: purchaseEventId,
+        eventSourceUrl: "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout",
+        email,
+        phone: lead?.phone ?? null,
+        fbclid: lead?.fbclid ?? null,
+        fbp: lead?.fbp ?? null,
+        fbc: lead?.fbc ?? null,
+        clientIpAddress: lead?.clientIp ?? null,
+        clientUserAgent: lead?.userAgent ?? null,
+        value: amount,
+        currency: "USD",
+        contentName: offerName,
+        orderId,
+        utmCampaign: lead?.utmCampaign ?? null,
+        utmSource: lead?.utmSource ?? null,
+      });
+      console.log(`[kajabi/purchase] CAPI Purchase sent for ${email} — amount: $${amount}, event_id: ${purchaseEventId}, ok: ${capiSent}`);
+      res.json({ ok: true, capiSent, purchaseEventId, email, amount });
+    } catch (err: any) {
+      console.error("[kajabi/purchase] Error:", err);
+      res.status(500).json({ error: err?.message });
+    }
+  });
+
   // POST /api/scheduled/daily-ads-sync — Daily 8am UTC: Meta Ads Insights sync + AI briefing
   // Cron task UID: Pq6UqXmJ5pfED4TAiUYM8Y
   app.post("/api/scheduled/daily-ads-sync", async (req, res) => {

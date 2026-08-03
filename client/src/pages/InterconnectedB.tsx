@@ -50,18 +50,26 @@ function getUtmAttribution() {
   const stored = sessionStorage.getItem('__utm_attrib');
   if (stored) { try { return JSON.parse(stored) as Record<string, string | undefined>; } catch {} }
   const params = new URLSearchParams(window.location.search);
+  const fbclid = params.get('fbclid') ?? undefined;
+  const getCookie = (name: string) => {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : undefined;
+  };
+  const fbp = getCookie('_fbp');
+  const fbc = getCookie('_fbc') ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : undefined);
   const attrib: Record<string, string | undefined> = {
     utmSource: params.get('utm_source') ?? undefined,
     utmMedium: params.get('utm_medium') ?? undefined,
     utmCampaign: params.get('utm_campaign') ?? undefined,
     utmContent: params.get('utm_content') ?? params.get('utm_term') ?? undefined,
     referrer: document.referrer || undefined,
+    fbclid,
+    fbp,
+    fbc,
   };
-  const fbclid = params.get('fbclid');
   if (fbclid && !attrib.utmSource) {
     attrib.utmSource = 'meta';
     attrib.utmMedium = attrib.utmMedium ?? 'paid';
-    attrib.utmContent = (attrib.utmContent ?? '') + (attrib.utmContent ? '|' : '') + 'fbclid:' + fbclid.substring(0, 40);
   }
   if (!attrib.utmSource && attrib.referrer) {
     if (/facebook\.com|fb\.com/i.test(attrib.referrer)) attrib.utmSource = 'meta';
@@ -81,7 +89,12 @@ function OptInFormB() {
   const [error, setError] = useState("");
 
   const submit = trpc.interconnected.register.useMutation({
-    onSuccess: () => navigate("/interconnected/thank-you"),
+    onSuccess: (data) => {
+      if (data?.capiLeadEventId) {
+        sessionStorage.setItem('__capi_lead_event_id', data.capiLeadEventId);
+      }
+      navigate("/interconnected/thank-you");
+    },
     onError: (e) => setError(e.message),
   });
 
@@ -103,6 +116,9 @@ function OptInFormB() {
       utmCampaign: attrib.utmCampaign,
       utmContent: attrib.utmContent,
       referrer: attrib.referrer,
+      fbclid: attrib.fbclid,
+      fbp: attrib.fbp,
+      fbc: attrib.fbc,
     });
   };
 

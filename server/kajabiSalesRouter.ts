@@ -34,19 +34,24 @@ const SITE_ID = "2148432935"; // The Urban Monk Academy
 // These are the exact prices for each funnel offer. Since the API doesn't
 // filter by offer, we identify offers by their unique price points.
 const AMOUNT_TO_TIER: Record<number, { tier: string; label: string; priceCents: number }> = {
-  6700:   { tier: "67",    label: "Interconnected $67 Bundle OTO",    priceCents: 6700   },
-  10000:  { tier: "100",   label: "Upstream: Complete Microbiome",     priceCents: 10000  },
+  // ── Interconnected Funnel ──────────────────────────────────────────────────
+  6700:   { tier: "67",    label: "Interconnected $67 Bundle OTO",                              priceCents: 6700   },
   29900:  { tier: "299",   label: "Gut Permeability + Food Sensitivity Test w/ Coach ($299 Upsell)", priceCents: 29900  },
-  29700:  { tier: "297",   label: "Academy Annual $297",               priceCents: 29700  },
-  36900:  { tier: "369",   label: "Lights On Annual $369",             priceCents: 36900  },
-  39900:  { tier: "399",   label: "Testing Package $399",              priceCents: 39900  },
-  49900:  { tier: "499",   label: "Supported Package $499",            priceCents: 49900  },
-  165000: { tier: "1650",  label: "Explore Testing Tier DSS $1650",    priceCents: 165000 },
-  585000: { tier: "5850",  label: "Catalyst Coaching $5850",           priceCents: 585000 },
-  625000: { tier: "6250",  label: "International Client $6250",        priceCents: 625000 },
-  // Legacy
-  19700:  { tier: "197",   label: "Deep Sleep Solution $197",          priceCents: 19700  },
-  19900:  { tier: "199",   label: "Enhanced Package $199",             priceCents: 19900  },
+  39900:  { tier: "399",   label: "Gut Test + Health Coach Consultation $399",                  priceCents: 39900  },
+  49900:  { tier: "499",   label: "Supported Package $499",                                     priceCents: 49900  },
+  145000: { tier: "1450",  label: "Explore Tier $1,450",                                        priceCents: 145000 },
+  165000: { tier: "1650",  label: "Explore Testing Tier DSS $1,650",                            priceCents: 165000 },
+  // ── Upstream Course ────────────────────────────────────────────────────────
+  10000:  { tier: "100",   label: "Upstream: Complete Microbiome $100",                         priceCents: 10000  },
+  // ── Academy / Lights On ────────────────────────────────────────────────────
+  29700:  { tier: "297",   label: "Academy Annual / Upstream Course $297",                      priceCents: 29700  },
+  36900:  { tier: "369",   label: "Lights On Annual $369",                                      priceCents: 36900  },
+  // ── High-Ticket Programs ───────────────────────────────────────────────────
+  585000: { tier: "5850",  label: "Catalyst Coaching $5,850",                                   priceCents: 585000 },
+  625000: { tier: "6250",  label: "International Client $6,250",                                priceCents: 625000 },
+  // ── Legacy ─────────────────────────────────────────────────────────────────
+  19700:  { tier: "197",   label: "Deep Sleep Solution $197",                                   priceCents: 19700  },
+  19900:  { tier: "199",   label: "Enhanced Package $199",                                      priceCents: 19900  },
 };
 
 // ── Token cache ───────────────────────────────────────────────────────────────

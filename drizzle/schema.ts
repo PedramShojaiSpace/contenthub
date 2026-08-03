@@ -3773,3 +3773,25 @@ export const funnelEconomicsScenarios = mysqlTable("funnel_economics_scenarios",
 });
 export type FunnelEconomicsScenario = typeof funnelEconomicsScenarios.$inferSelect;
 export type InsertFunnelEconomicsScenario = typeof funnelEconomicsScenarios.$inferInsert;
+
+// ─── Kajabi Purchases (webhook-captured, funnel-attributed) ───────────────────
+// Populated by the /api/kajabi/purchase webhook handler.
+// funnel_source tags which funnel the purchase came from (e.g. 'interconnected').
+// is_email_list_buyer flags purchases confirmed as pre-existing email subscribers
+// (not Meta leads) so they can be excluded from Meta ROAS calculations.
+// is_meta_attributed is set when the buyer's email matches an interconnected_leads record.
+export const kajabiPurchases = mysqlTable("kajabi_purchases", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 256 }).notNull(),
+  amountCents: int("amount_cents").notNull(),
+  offerName: varchar("offer_name", { length: 256 }),
+  funnelSource: varchar("funnel_source", { length: 64 }).default("interconnected"),
+  kajabiOrderId: varchar("kajabi_order_id", { length: 128 }),
+  isEmailListBuyer: tinyint("is_email_list_buyer").default(0),
+  isMetaAttributed: tinyint("is_meta_attributed").default(0),
+  notes: text("notes"),
+  purchasedAt: bigint("purchased_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type KajabiPurchase = typeof kajabiPurchases.$inferSelect;
+export type InsertKajabiPurchase = typeof kajabiPurchases.$inferInsert;

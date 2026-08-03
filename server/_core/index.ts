@@ -1521,6 +1521,26 @@ async function startServer() {
           .limit(1);
         lead = rows[0];
       }
+      // ── Save purchase to local DB for funnel attribution tracking ──────────
+      if (db) {
+        try {
+          const { kajabiPurchases } = await import("../../drizzle/schema");
+          await db.insert(kajabiPurchases).values({
+            email: email.toLowerCase().trim(),
+            amountCents: Math.round(amount * 100),
+            offerName,
+            funnelSource: "interconnected",
+            kajabiOrderId: orderId,
+            isEmailListBuyer: 0,
+            isMetaAttributed: lead ? 1 : 0,
+            purchasedAt: Date.now(),
+          });
+          console.log(`[kajabi/purchase] DB record saved for ${email} — amount: $${amount}, meta_attributed: ${lead ? 1 : 0}`);
+        } catch (dbErr: any) {
+          // Don't block CAPI on DB error — log and continue
+          console.warn("[kajabi/purchase] DB insert failed:", dbErr?.message);
+        }
+      }
       const purchaseEventId = generateEventId(email, "Purchase", orderId);
       const capiSent = await sendCapiEvent({
         eventName: "Purchase",

@@ -268,6 +268,37 @@ const normalizeResponseFormat = ({
 const INVOKE_LLM_MAX_RETRIES = 5;
 const INVOKE_LLM_BASE_DELAY_MS = 1000; // 1s → 2s → 4s → 8s → 16s
 
+/**
+ * The flagship model every invokeLLM call uses. Overridable with LLM_MODEL so a
+ * sandbox can be pointed at a cheaper tier without a code change.
+ *
+ * Chosen for a long-form copywriting workload (15-minute YouTube scripts), where
+ * prose quality matters more than latency.
+ */
+export const LLM_MODEL = process.env.LLM_MODEL || "gpt-5.5";
+
+/**
+ * `max_tokens` vs `max_completion_tokens` is model-dependent, so it is derived
+ * from the model name rather than hardcoded. The gpt-5 family and the o-series
+ * reasoning models accept only `max_completion_tokens`; gpt-4o / gpt-4.1 and
+ * earlier accept only `max_tokens`. Sending the wrong one is a hard 400.
+ */
+const usesCompletionTokensParam = (model: string) =>
+  /^(gpt-5|o1|o3|o4)/.test(model);
+
+const MAX_TOKENS_PARAM = usesCompletionTokensParam(LLM_MODEL)
+  ? "max_completion_tokens"
+  : "max_tokens";
+
+/**
+ * On reasoning-capable models this budget is shared between internal reasoning
+ * and the visible answer, so the previous 8192 could be consumed before a
+ * 15-minute script (~2,000+ words) finished — returning truncated prose with
+ * finish_reason "length". Raised for the completion-tokens family only; the
+ * older families keep the 8192 that was tuned for their gateway timeouts.
+ */
+const DEFAULT_MAX_TOKENS = MAX_TOKENS_PARAM === "max_completion_tokens" ? 32768 : 8192;
+
 export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<InvokeResult> {
   assertApiKey();
 
@@ -283,7 +314,10 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    // Single-point model config. Verified present on the operator's account via
+    // GET /v1/models (2026-08). Changing the flagship model is a one-line edit
+    // here — no caller passes a model, so this is the only place it is decided.
+    model: LLM_MODEL,
     messages: messages.map(normalizeMessage),
   };
 
@@ -303,7 +337,17 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
   // 8192 is sufficient for full blog posts and avoids gateway timeouts that
   // occurred with the previous 32768 value on the Cloud Run infrastructure.
   const callerMaxTokens = params.maxTokens ?? params.max_tokens;
-  payload.max_tokens = callerMaxTokens ?? 8192;
+  // PARAMETER NAME IS MODEL-DEPENDENT. The gpt-5 family REJECTS `max_tokens`
+  // outright:
+  //   400 "Unsupported parameter: 'max_tokens' is not supported with this
+  //        model. Use 'max_completion_tokens' instead."
+  // Older chat models (gpt-4o, gpt-4.1) accept `max_tokens`. The public
+  // maxTokens/max_tokens caller API is unchanged — only the wire name differs.
+  //
+  // The budget also covers reasoning tokens on this family, so it must be
+  // generous: a starved budget returns finish_reason "length" with empty
+  // content, which reads as a silent failure rather than an error.
+  payload[MAX_TOKENS_PARAM] = callerMaxTokens ?? DEFAULT_MAX_TOKENS;
   // NOTE: The 'thinking' parameter was removed — it caused intermittent
   // 'Service Unavailable' gateway errors on the Forge API proxy.
 

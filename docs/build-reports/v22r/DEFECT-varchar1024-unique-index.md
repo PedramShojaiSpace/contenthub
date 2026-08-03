@@ -44,6 +44,34 @@ successfully and has never surfaced this.
 **The schema is therefore not portable across server charset configurations.**
 It builds only where the server default is at most 3 bytes per character.
 
+## Open question — what charset does production actually use?
+
+Unknown, and deliberately not guessed. Determining it requires a connection to
+the production database, which was not attempted.
+
+**Query to run on production** (read-only; returns two server variables and
+touches no table data, no rows, no schema):
+
+```sql
+SELECT @@character_set_server, @@collation_server;
+```
+
+One line of context for whoever runs it: this reads the MySQL server's default
+character set, which determines the maximum byte length of an indexed column —
+we need it to confirm why the `varchar(1024) UNIQUE` columns build in production
+but fail on a default MySQL 8 install.
+
+Expected outcomes and what each means:
+
+| Result | Meaning |
+|---|---|
+| `utf8mb3` / `utf8mb3_general_ci` | Production sits exactly at the 3072-byte ceiling. The `varchar(768)` fix is still correct and makes fresh builds work; production was never at risk. |
+| `latin1` / `latin1_swedish_ci` | Same conclusion, more headroom (1 byte/char). **Also means production cannot store 4-byte characters** — emoji and some CJK in URLs or titles would be corrupted or rejected. Worth a separate look. |
+| `utf8mb4` / `utf8mb4_*` | Unexpected. Would mean these tables were created under a different setting than the server currently reports, or the constraint was added out-of-band. Investigate before altering anything. |
+
+Record the answer here once known — fresh builds will keep hitting the 1071
+error until the schema is fixed, regardless of what production reports.
+
 ## Affected declarations
 
 | Location | Table | Column |

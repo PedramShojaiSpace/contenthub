@@ -266,6 +266,41 @@ describe("3A prompt block + helpers", () => {
     expect(buildStoryIntegrityBlock("composite")).toContain("UNLABELLED composite is a violation");
   });
 
+  // These three exist because the prompt and the lint used to DISAGREE.
+  //
+  // The block previously forbade stating an individual's results "unless that
+  // exact material appears verbatim in the provided corpus". Once a sales page
+  // carrying named customer testimonials is seeded as corpus, that clause
+  // PERMITS lifting "JoAnn Alexander, 79, ulcerative colitis for 40 years" into
+  // a script — while the lint, which has no corpus awareness, hard-fails it with
+  // a 422 after the full generation has already been paid for.
+  //
+  // Steering the model away is strictly cheaper than catching it downstream, so
+  // the escape hatch is closed and testimonials are named explicitly. These
+  // tests fail if anyone reopens the hatch.
+  it("does NOT grant a corpus exemption for an individual's clinical specifics", () => {
+    for (const mode of ["brief", "none", "composite"] as const) {
+      const b = buildStoryIntegrityBlock(mode);
+      expect(b).not.toContain("unless that exact material appears verbatim");
+      expect(b).toContain("EVEN IF the material appears verbatim in the provided corpus");
+    }
+  });
+
+  it("instructs that corpus testimonials are proof-of-outcome, not narrative material", () => {
+    const b = buildStoryIntegrityBlock("brief");
+    expect(b).toContain("TESTIMONIALS IN THE CORPUS");
+    expect(b).toContain("They are NOT narrative raw material");
+    // The permitted form is aggregate; the forbidden form is naming/quoting.
+    expect(b).toContain("aggregate evidence of outcome");
+    expect(b).toContain("naming the person, quoting them, or narrating their case");
+  });
+
+  it("carries the testimonial steer in every story mode, not just brief", () => {
+    for (const mode of ["brief", "none", "composite"] as const) {
+      expect(buildStoryIntegrityBlock(mode)).toContain("TESTIMONIALS IN THE CORPUS");
+    }
+  });
+
   it("stripStorySlots removes slot bodies but keeps surrounding copy", () => {
     const body = `before ${STORY_SLOT_OPEN} inner ${STORY_SLOT_CLOSE} after`;
     const s = stripStorySlots(body);

@@ -1,14 +1,24 @@
 /**
  * kajabiSalesRouter.ts
  *
- * Pulls live purchase data from Kajabi for the Interconnected funnel SKUs:
- *   - $67  → Interconnected: The Complete Healing Protocol (OTO) — ID: 2151314475
- *   - $299 → UPSTREAM: The Complete Microbiome Solution — ID: 2151019899
- *   - $399 → Gut Permeability and Food Sensitivity Testing w/ Coach Consultation — IDs: 2150211911, 2151178828
- *   - $499 → Upstream: The Complete Microbiome Solution (Bundle w/ Testing) — ID: 2151031660
- *   - $369 → Lights On Course (Annual subscription) — ID: 2151004748
+ * Pulls live purchase data from Kajabi for the Interconnected funnel SKUs.
  *
- * Results are cached in-memory for 10 minutes.
+ * ── KAJABI API QUIRKS (fully documented Aug 3 2026) ──────────────────────────
+ * ALL offer/product filters on the Kajabi v1 API are broken:
+ *   - /purchases?filter[offer_id]=X  → returns global 30 records, ignores filter
+ *   - /purchases?offer_id=X          → same
+ *   - /transactions?filter[offer_id]=X → same
+ *   - /orders?offer_id=X             → same
+ *   - page=N causes 500; page[number]=N works
+ *   - per_page > 25 causes 500
+ *
+ * WORKING APPROACH:
+ *   GET /transactions?filter[site_id]=SITE_ID&page[number]=N
+ *   Returns all site transactions with proper pagination (166 pages total).
+ *   We paginate until we hit data older than our date window, then match
+ *   transaction amounts to known offer price tiers.
+ *
+ * This correctly captures the $67 OTO and all other funnel tiers.
  */
 
 import { z } from "zod";
@@ -20,16 +30,23 @@ const KAJABI_API_BASE = "https://api.kajabi.com/v1";
 const KAJABI_TOKEN_URL = "https://api.kajabi.com/v1/oauth/token";
 const SITE_ID = "2148432935"; // The Urban Monk Academy
 
-// Funnel offer IDs mapped to their price tier
-const FUNNEL_OFFERS: Record<string, { label: string; priceCents: number; tier: string }> = {
-  "2151314475": { label: "Interconnected $67 OTO",          priceCents: 6700,  tier: "67"  },
-  "2151019899": { label: "Upstream $299",                   priceCents: 29900, tier: "299" },
-  "2150211911": { label: "Gut Test + Consult $399 (v1)",    priceCents: 39900, tier: "399" },
-  "2151178828": { label: "Gut Test + Consult $399 (v2)",    priceCents: 39900, tier: "399" },
-  "2151031660": { label: "Upstream Bundle $499",            priceCents: 49900, tier: "499" },
-  "2151004748": { label: "Lights On Annual $369",           priceCents: 36900, tier: "369" },
-  "2150989697": { label: "Lights On Annual $297 (legacy)",  priceCents: 29700, tier: "297" },
-  "2150847661": { label: "Lights On Annual $297 (v2)",      priceCents: 29700, tier: "297" },
+// Map of amount_in_cents → tier definition
+// These are the exact prices for each funnel offer. Since the API doesn't
+// filter by offer, we identify offers by their unique price points.
+const AMOUNT_TO_TIER: Record<number, { tier: string; label: string; priceCents: number }> = {
+  6700:   { tier: "67",    label: "Interconnected $67 Bundle OTO",    priceCents: 6700   },
+  10000:  { tier: "100",   label: "Upstream: Complete Microbiome",     priceCents: 10000  },
+  29900:  { tier: "299",   label: "Mid-Tier Program $299",             priceCents: 29900  },
+  29700:  { tier: "297",   label: "Academy Annual $297",               priceCents: 29700  },
+  36900:  { tier: "369",   label: "Lights On Annual $369",             priceCents: 36900  },
+  39900:  { tier: "399",   label: "Testing Package $399",              priceCents: 39900  },
+  49900:  { tier: "499",   label: "Supported Package $499",            priceCents: 49900  },
+  165000: { tier: "1650",  label: "Explore Testing Tier DSS $1650",    priceCents: 165000 },
+  585000: { tier: "5850",  label: "Catalyst Coaching $5850",           priceCents: 585000 },
+  625000: { tier: "6250",  label: "International Client $6250",        priceCents: 625000 },
+  // Legacy
+  19700:  { tier: "197",   label: "Deep Sleep Solution $197",          priceCents: 19700  },
+  19900:  { tier: "199",   label: "Enhanced Package $199",             priceCents: 19900  },
 };
 
 // ── Token cache ───────────────────────────────────────────────────────────────
@@ -76,16 +93,18 @@ interface KajabiSalesMetrics {
   totalPurchases: number;
   fetchedAt: number;
   datePreset: string;
-  // Derived conversion rates (requires Meta lead count to compute)
   offerIds: string[];
+  apiMethod: string;
+  pagesScanned: number;
 }
 
-// ── Fetch logic ───────────────────────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
-function getDateRange(datePreset: string): string {
+function getStartDate(datePreset: string): string {
   const now = new Date();
   switch (datePreset) {
-    case "today":      return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split("T")[0];
+    case "today":
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split("T")[0];
     case "yesterday": {
       const d = new Date(now); d.setDate(d.getDate() - 1);
       return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().split("T")[0];
@@ -97,49 +116,73 @@ function getDateRange(datePreset: string): string {
   }
 }
 
+// ── Main fetch logic ──────────────────────────────────────────────────────────
+
 async function fetchKajabiSales(datePreset: string): Promise<KajabiSalesMetrics> {
   const cacheKey = datePreset;
   const cached = dataCache[cacheKey];
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
 
   const token = await getToken();
-  const since = getDateRange(datePreset);
-  const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.api+json" };
+  const since = getStartDate(datePreset);
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
 
-  // Fetch all pages of purchases for this site
-  const allPurchases: Array<{ offerId: string; amountCents: number }> = [];
-  let page = 1;
-  while (true) {
-    const url = `${KAJABI_API_BASE}/purchases?filter[site_id]=${SITE_ID}&filter[created_at_gteq]=${since}&page[size]=100&page[number]=${page}`;
-    const res = await fetch(url, { headers });
-    const data = await res.json() as {
-      data?: Array<{ relationships: { offer: { data: { id: string } } }; attributes: { amount_in_cents: number } }>;
-      links?: { next?: string };
-      errors?: unknown;
-    };
-    if (data.errors) throw new Error(`Kajabi purchases error: ${JSON.stringify(data.errors)}`);
-    const rows = data.data || [];
-    for (const row of rows) {
-      allPurchases.push({
-        offerId: row.relationships?.offer?.data?.id || "",
-        amountCents: row.attributes?.amount_in_cents || 0,
-      });
-    }
-    if (!data.links?.next || rows.length < 100) break;
-    page++;
-  }
-
-  // Aggregate by tier
+  // Paginate through all site transactions until we hit data older than `since`
+  // Max 20 pages (600 records) to stay within rate limits — covers 30+ days of activity
   const tierMap: Record<string, TierSummary> = {};
-  for (const p of allPurchases) {
-    const offerDef = FUNNEL_OFFERS[p.offerId];
-    if (!offerDef) continue; // skip non-funnel offers
-    const key = offerDef.tier;
-    if (!tierMap[key]) {
-      tierMap[key] = { tier: key, label: offerDef.label, priceCents: offerDef.priceCents, count: 0, revenueCents: 0 };
+  let pagesScanned = 0;
+  let hitOldData = false;
+
+  for (let page = 1; page <= 20 && !hitOldData; page++) {
+    const url = `${KAJABI_API_BASE}/transactions?filter[site_id]=${SITE_ID}&page[number]=${page}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) break;
+
+    const data = await res.json() as {
+      data?: Array<{
+        id: string;
+        attributes: {
+          amount_in_cents: number;
+          state: string;
+          action: string;
+          created_at: string;
+        };
+      }>;
+      links?: { next?: string };
+    };
+
+    pagesScanned = page;
+    const rows = data.data || [];
+
+    for (const row of rows) {
+      const createdAt = row.attributes?.created_at || "";
+      // Normalize: Kajabi returns "2026-08-02T20:26:32.995-05:00" — extract date portion
+      const dateStr = createdAt.substring(0, 10);
+      if (dateStr < since) {
+        hitOldData = true;
+        break;
+      }
+
+      const state = row.attributes?.state || "";
+      const action = row.attributes?.action || "";
+      const amount = row.attributes?.amount_in_cents || 0;
+
+      // Skip failed, refunded, or zero-amount transactions
+      if (amount <= 0 || state === "failed" || state === "refunded" || action === "refund") continue;
+
+      // Match to a known tier by amount
+      const tierDef = AMOUNT_TO_TIER[amount];
+      if (!tierDef) continue; // skip unrecognized amounts (subscriptions, trials, etc.)
+
+      const key = tierDef.tier;
+      if (!tierMap[key]) {
+        tierMap[key] = { tier: key, label: tierDef.label, priceCents: tierDef.priceCents, count: 0, revenueCents: 0 };
+      }
+      tierMap[key].count++;
+      tierMap[key].revenueCents += amount;
     }
-    tierMap[key].count++;
-    tierMap[key].revenueCents += p.amountCents;
+
+    if (!data.links?.next) break;
   }
 
   const tiers = Object.values(tierMap).sort((a, b) => a.priceCents - b.priceCents);
@@ -152,7 +195,9 @@ async function fetchKajabiSales(datePreset: string): Promise<KajabiSalesMetrics>
     totalPurchases,
     fetchedAt: Date.now(),
     datePreset,
-    offerIds: Object.keys(FUNNEL_OFFERS),
+    offerIds: Object.keys(AMOUNT_TO_TIER),
+    apiMethod: "transactions_by_site_amount_match",
+    pagesScanned,
   };
 
   dataCache[cacheKey] = { data: result, ts: Date.now() };

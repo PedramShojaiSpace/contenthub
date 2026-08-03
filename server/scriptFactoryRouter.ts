@@ -54,6 +54,10 @@ import {
   insertTimestamps,
   lintCadence,
   buildCadenceBlock,
+  parseSectionInstances,
+  stripTimestamps,
+  SPEAKING_WPM,
+  type SectionInstance,
 } from "./scriptMetrics";
 import { fetchTranscriptWithQuota } from "./transcriptRouter";
 import { extractPatternsFromContent } from "./patternExtractorRouter";
@@ -1315,6 +1319,104 @@ export async function executeDeepResearch(
   }
 }
 
+// ─── v2.3 Part 1 — section outline for the workspace navigator ───────────────
+
+/** One entry in the workspace navigator rail. */
+export interface SectionOutlineEntry {
+  /** Zero-based instance index — also the anchor id the client scrolls to. */
+  index: number;
+  tag: string;
+  /** Human label, disambiguated when a tag recurs: "Teach 3". */
+  label: string;
+  /** Character offset of the tag in the RAW (timestamped) body. */
+  charStart: number;
+  charEnd: number;
+  /** Spoken words in this section, story slots credited at 200. */
+  wordCount: number;
+  /** Cumulative start time in seconds at SPEAKING_WPM. */
+  startSeconds: number;
+  /** mm:ss form of startSeconds, for display. */
+  startLabel: string;
+  /** True when the section contains a [VERIFIED] marker outside a story slot. */
+  grounded: boolean;
+  /** True when the section is nothing but an operator story slot. */
+  slotOnly: boolean;
+}
+
+function fmtClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const mm = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${mm}:${String(ss).padStart(2, "0")}`;
+}
+
+/**
+ * Turn a script body into the navigator outline.
+ *
+ * Deliberately a thin adapter over `parseSectionInstances`: it adds only
+ * presentation concerns (recurrence-disambiguated labels, clock strings,
+ * character offsets for scroll anchoring) and invents no notion of what a
+ * section IS. That definition stays in scriptMetrics.ts, singular.
+ *
+ * Offsets are computed against the RAW body the client will render, so the
+ * client can anchor without re-parsing. Timestamps are stripped only for the
+ * word/duration arithmetic, matching how insertTimestamps itself works.
+ */
+export function buildSectionOutline(scriptBody: string): SectionOutlineEntry[] {
+  const raw = scriptBody ?? "";
+  if (!raw.trim()) return [];
+
+  // Word/time arithmetic must ignore injected "(m:ss)" stamps, otherwise the
+  // stamps themselves inflate every section's word count.
+  const instances: SectionInstance[] = parseSectionInstances(stripTimestamps(raw));
+  if (instances.length === 0) return [];
+
+  const wordsPerSecond = SPEAKING_WPM / 60;
+  const seen: Record<string, number> = {};
+  let cumulativeWords = 0;
+  let searchFrom = 0;
+
+  return instances.map((inst) => {
+    // Locate this instance's tag in the RAW body, scanning forward so repeated
+    // tags resolve to successive occurrences rather than all to the first.
+    const needle = `[${inst.tag}]`;
+    const found = raw.indexOf(needle, searchFrom);
+    const charStart = found === -1 ? searchFrom : found;
+    const charEnd = charStart + needle.length;
+    searchFrom = charEnd;
+
+    const n = (seen[inst.tag] ?? 0) + 1;
+    seen[inst.tag] = n;
+    const pretty = inst.tag.charAt(0) + inst.tag.slice(1).toLowerCase();
+    const total = instances.filter((x) => x.tag === inst.tag).length;
+
+    const startSeconds = cumulativeWords / wordsPerSecond;
+    /*
+     * `spokenWords + creditedWords` is the same quantity insertTimestamps
+     * advances its clock by (spokenWordsWithSlotCredit): prose the presenter
+     * actually says, plus a 200-word allowance per story slot for the case the
+     * operator will paste in. Using raw `words` would count slot INSTRUCTIONS
+     * as spoken content and push every later timestamp late.
+     */
+    const counted = countWordsWithStorySlots(inst.text);
+    const wordCount = counted.spokenWords + counted.creditedWords;
+    cumulativeWords += wordCount;
+
+    return {
+      index: inst.index,
+      tag: inst.tag,
+      label: total > 1 ? `${pretty} ${n}` : pretty,
+      charStart,
+      charEnd,
+      wordCount,
+      startSeconds,
+      startLabel: fmtClock(startSeconds),
+      grounded: inst.grounded,
+      slotOnly: inst.slotOnly,
+    };
+  });
+}
+
 export const scriptFactoryRouter = router({
 
   // ─── Generate a new script ────────────────────────────────────────────────
@@ -2278,7 +2380,24 @@ export const scriptFactoryRouter = router({
         .from(scriptFactoryOutputs)
         .where(eq(scriptFactoryOutputs.id, input.id))
         .limit(1);
-      return row ?? null;
+      if (!row) return null;
+      /*
+       * v2.3 Part 1 — sections are parsed HERE, on the server, and shipped to
+       * the client. Decided explicitly with the operator (Option A) over two
+       * rejected alternatives:
+       *
+       *   - moving parseSectionInstances into shared/ would drag
+       *     storyIntegrity's slot constants along with it, and shared/ is
+       *     outside the v2.3 scope wall;
+       *   - reimplementing the tag regex in the client would create a SECOND
+       *     parser over the same tags. Add a tag server-side and the navigator
+       *     silently stops showing it. This codebase already has three logged
+       *     schema-drift instances; a fourth by construction is not acceptable.
+       *
+       * So `parseSectionInstances` stays the one definition of what a section
+       * is, and the workspace navigator is a pure consumer of its output.
+       */
+      return { ...row, sections: buildSectionOutline(row.scriptBody ?? "") };
     }),
 
   // ─── Update script status or notes ───────────────────────────────────────

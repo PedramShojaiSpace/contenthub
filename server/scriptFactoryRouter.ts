@@ -1577,6 +1577,196 @@ export interface GenerationLineage {
   variantLabel?: string | null;
 }
 
+/**
+ * ─── v2.3 Part 3 — what a regeneration is allowed to change ──────────────────
+ *
+ * A deliberately SMALL subset of `scriptGenerationInput`. The spec names exactly
+ * these seven, and the restriction is the point: a variant that could override
+ * `topic` would not be a variant of anything, and one that could override
+ * `researchJobId` would quietly break the "reuse the source's research" promise
+ * that makes regeneration cheap.
+ */
+export const scriptVariantOverrides = z.object({
+  personaId: z.number().int().positive().optional(),
+  targetLengthMinutes: z.union([z.literal(10), z.literal(15), z.literal(20)]).optional(),
+  storyMode: z.enum(STORY_MODES).optional(),
+  offerTier: z.string().trim().min(1).max(200).optional(),
+  analogDataEntryIds: z.array(z.number().int().positive()).max(5).optional(),
+  ctaOverride: z.string().trim().min(3).max(500).optional(),
+  format: z.enum(SCRIPT_FORMATS).optional(),
+});
+export type ScriptVariantOverrides = z.infer<typeof scriptVariantOverrides>;
+
+/** One parameter the operator changed, for the confirm dialog and the response. */
+export interface ChangedParam {
+  field: string;
+  from: string | null;
+  to: string | null;
+}
+
+/**
+ * Rebuild a generation input from a source script's FROZEN params plus overrides.
+ *
+ * Shared by `regenerateVariant` and `regenerateAsNew`, which differ only in the
+ * lineage they attach afterwards.
+ *
+ * The load-bearing decisions, all of which are about not lying to the operator:
+ *
+ * 1. RESEARCH IS REUSED, NOT RE-RUN. `researchJobId` comes from the source and
+ *    `skipResearch` is forced true, so no `research_jobs` row is created. Deep
+ *    research is the slow, paid part; a "different length" button that silently
+ *    re-ran it would make a 10-second action a 3-minute one and change the
+ *    grounding underneath a comparison that is supposed to isolate one variable.
+ *
+ * 2. A SOURCE WITH NO FROZEN PARAMS IS A HARD ERROR, not a silent partial replay.
+ *    Scripts generated before v2.3 have `generation_params` NULL. We could
+ *    reconstruct an approximation from the row's own columns, but persona and
+ *    length would survive while storyMode, offerTier and ctaOverride silently
+ *    reverted to defaults — producing a "different length" variant that also
+ *    quietly dropped the operator's custom close. Refusing is the honest move.
+ *
+ * 3. The auto-label describes what CHANGED, computed from the same diff the
+ *    confirm dialog shows, so the chip in the Library cannot disagree with what
+ *    the operator approved.
+ */
+export async function planRegeneration(
+  sourceScriptId: number,
+  overrides: ScriptVariantOverrides
+): Promise<{
+  source: typeof scriptFactoryOutputs.$inferSelect;
+  input: ScriptGenerationInput;
+  changed: ChangedParam[];
+  autoLabel: string;
+  researchReused: number | null;
+}> {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+  const [source] = await db
+    .select()
+    .from(scriptFactoryOutputs)
+    .where(eq(scriptFactoryOutputs.id, sourceScriptId))
+    .limit(1);
+  if (!source) {
+    throw new TRPCError({ code: "NOT_FOUND", message: `Script #${sourceScriptId} was not found.` });
+  }
+
+  const frozen = source.generationParams;
+  if (!frozen) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        `Script #${sourceScriptId} was generated before variant tracking existed, so the exact ` +
+        "settings that produced it were never recorded. Regenerating from it would silently " +
+        "reset the story mode, offer tier and custom close to defaults. Generate a new script " +
+        "with the settings you want instead.",
+    });
+  }
+
+  const format = overrides.format ?? (frozen.format as ScriptFormat);
+
+  /*
+   * Target length only applies to long-form video, and the pipeline clears it
+   * for other formats anyway. Cleared HERE too so the diff the operator confirms
+   * matches what actually runs, rather than promising a 20-minute email.
+   */
+  const requestedLength = overrides.targetLengthMinutes ?? frozen.targetLengthMinutes ?? undefined;
+  const targetLengthMinutes = format === "youtube_script"
+    ? (requestedLength as 10 | 15 | 20 | undefined)
+    : undefined;
+
+  const input: ScriptGenerationInput = {
+    topic: frozen.topic,
+    format,
+    /*
+     * Pattern selection knobs are NOT part of the frozen set, and are left at
+     * their defaults rather than invented: since Part 3D the operator no longer
+     * chooses pattern types, and composition happens inside the pipeline.
+     */
+    patternTypes: ["hook", "pain_point", "proof_element", "cta", "transformation_arc"],
+    minPatternEffectiveness: 0.5,
+    topPatternsPerType: 3,
+    useCorpusSearch: frozen.useCorpusSearch ?? true,
+    personaId: overrides.personaId ?? frozen.personaId ?? undefined,
+    analogDataEntryIds: overrides.analogDataEntryIds ?? frozen.analogDataEntryIds ?? undefined,
+    targetLengthMinutes,
+    /*
+     * NOT carried over. `sourceIdeaId` closes the loop on a suggested idea by
+     * stamping it `generated` and pointing it at a script; re-stamping it would
+     * repoint the idea at the variant and lose the original it actually produced.
+     */
+    sourceIdeaId: undefined,
+    /*
+     * Reuse, don't re-run. `useDeepResearch` stays false and `skipResearch` true:
+     * passing an explicit `researchJobId` is what makes the pipeline resolve the
+     * SAME job rather than looking for a newer one.
+     *
+     * Verified against the pipeline rather than assumed: `wantsAutoResearch`
+     * requires `!skipResearch && !researchJobId`, so both flags independently
+     * suppress the executeDeepResearch call, and `resolveResearchContext` returns
+     * early only when there is NO job id AND no useDeepResearch — an explicit id
+     * is honoured on its own. So the source's grounding is loaded from the cache
+     * it already populated, and no `research_jobs` row is written.
+     */
+    useDeepResearch: false,
+    researchJobId: frozen.researchJobId ?? undefined,
+    skipResearch: true,
+    seedKeyword: frozen.seedKeyword ?? undefined,
+    storyMode: (overrides.storyMode ?? frozen.storyMode ?? "brief") as typeof STORY_MODES[number],
+    ctaOverride: overrides.ctaOverride ?? frozen.ctaOverride ?? undefined,
+    offerTier: overrides.offerTier ?? frozen.offerTier ?? undefined,
+  };
+
+  // ── The diff, computed against the FROZEN values, not the row's columns ─────
+  const changed: ChangedParam[] = [];
+  const note = (field: string, from: unknown, to: unknown) => {
+    const f = from == null ? null : String(from);
+    const t = to == null ? null : String(to);
+    if (f !== t) changed.push({ field, from: f, to: t });
+  };
+  note("format", frozen.format, format);
+  note("personaId", frozen.personaId, input.personaId ?? null);
+  note("targetLengthMinutes", frozen.targetLengthMinutes, targetLengthMinutes ?? null);
+  note("storyMode", frozen.storyMode ?? "brief", input.storyMode);
+  note("offerTier", frozen.offerTier, input.offerTier ?? null);
+  note("ctaOverride", frozen.ctaOverride, input.ctaOverride ?? null);
+  note(
+    "analogDataEntryIds",
+    (frozen.analogDataEntryIds ?? []).join(","),
+    (input.analogDataEntryIds ?? []).join(",")
+  );
+
+  /*
+   * Auto-label, from the diff. Length and persona get readable names because they
+   * are the two the dedicated buttons produce; anything else is named by field so
+   * the label is never a guess about intent.
+   */
+  let autoLabel: string;
+  const lengthChange = changed.find((c) => c.field === "targetLengthMinutes");
+  const personaChange = changed.find((c) => c.field === "personaId");
+  if (changed.length === 0) {
+    /*
+     * Zero overrides is legitimate — "run it again with the same settings" is a
+     * real request, since the model is non-deterministic. The label must say so
+     * rather than implying a change that did not happen.
+     */
+    autoLabel = "Re-run, same settings";
+  } else if (lengthChange && changed.length === 1) {
+    autoLabel = `${lengthChange.to}-min cut`;
+  } else if (personaChange && changed.length === 1) {
+    const [p] = await db
+      .select({ name: personas.name })
+      .from(personas)
+      .where(eq(personas.id, Number(personaChange.to)))
+      .limit(1);
+    autoLabel = `Persona: ${p?.name ?? personaChange.to}`;
+  } else {
+    autoLabel = `Changed: ${changed.map((c) => c.field).join(", ")}`.slice(0, 120);
+  }
+
+  return { source, input, changed, autoLabel, researchReused: frozen.researchJobId ?? null };
+}
+
 export async function runScriptGeneration(
   input: ScriptGenerationInput,
   lineage: GenerationLineage = {}
@@ -2664,6 +2854,78 @@ export const scriptFactoryRouter = router({
       }
 
       return { rootId, rootMissing: false as const, members: [root, ...descendants] };
+    }),
+
+  // ─── v2.3 Part 3 — regenerate as a VARIANT of an existing script ───────────
+  /**
+   * Re-run generation from a source script's frozen params, with overrides.
+   *
+   * Three UI buttons funnel in here (Different length, Different persona, Change
+   * parameters) rather than each getting its own procedure, because they differ
+   * only in which override they set.
+   */
+  regenerateVariant: protectedProcedure
+    .input(z.object({
+      sourceScriptId: z.number().int().positive(),
+      overrides: scriptVariantOverrides.default({}),
+      /** Omitted means auto-label from whatever actually changed. */
+      variantLabel: z.string().trim().min(1).max(120).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const plan = await planRegeneration(input.sourceScriptId, input.overrides);
+      const result = await runScriptGeneration(plan.input, {
+        parentScriptId: plan.source.id,
+        /*
+         * The ROOT, not the parent. A variant of a variant belongs to the same
+         * family as the original — `variantOfRootId ?? id` is the same coalesce
+         * the family key uses, and getting it wrong here would create a second
+         * family that the Library renders as an unrelated top-level script.
+         */
+        variantOfRootId: plan.source.variantOfRootId ?? plan.source.id,
+        variantLabel: input.variantLabel ?? plan.autoLabel,
+      });
+      return {
+        ...result,
+        /*
+         * Echo the diff the operator is about to see attributed to this run. The
+         * UI shows params before running, but the RESOLVED set can differ from the
+         * requested one (a target length on a non-long-form format is dropped),
+         * and the operator should see what was actually used.
+         */
+        variantOf: plan.source.id,
+        rootId: plan.source.variantOfRootId ?? plan.source.id,
+        variantLabel: input.variantLabel ?? plan.autoLabel,
+        changedParams: plan.changed,
+        researchReusedFromSource: plan.researchReused,
+      };
+    }),
+
+  // ─── v2.3 Part 3 — regenerate as a NEW ROOT ────────────────────────────────
+  /**
+   * Identical to `regenerateVariant` except the result is an ORIGINAL: parent and
+   * root both NULL. For when a rewrite is a new piece of content that merely
+   * started from an old one's settings, and filing it under the old script would
+   * misrepresent it.
+   */
+  regenerateAsNew: protectedProcedure
+    .input(z.object({
+      sourceScriptId: z.number().int().positive(),
+      overrides: scriptVariantOverrides.default({}),
+    }))
+    .mutation(async ({ input }) => {
+      const plan = await planRegeneration(input.sourceScriptId, input.overrides);
+      /*
+       * No lineage argument at all — not `{parentScriptId: null}` for show. This
+       * call is byte-identical to what `generate` does, which is exactly the
+       * claim "the result is a new original" has to mean.
+       */
+      const result = await runScriptGeneration(plan.input);
+      return {
+        ...result,
+        derivedFrom: plan.source.id,
+        changedParams: plan.changed,
+        researchReusedFromSource: plan.researchReused,
+      };
     }),
 
   // ─── Get a single script ──────────────────────────────────────────────────

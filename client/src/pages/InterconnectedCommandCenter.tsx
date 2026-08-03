@@ -205,34 +205,31 @@ export default function InterconnectedCommandCenter() {
     { staleTime: 5 * 60_000, refetchInterval: 5 * 60_000 }
   );
 
+  // getFunnelPurchases = local DB, funnel-only (webhook-confirmed, non-email-list)
+  // This is the source of truth for tier breakdown and ROAS.
   const {
-    data: kajabiData,
-    isLoading: kajabiLoading,
-    refetch: refetchKajabi,
-  } = trpc.kajabiSales.getCustomRangeSales.useQuery(
+    data: funnelData,
+    isLoading: funnelLoading,
+    refetch: refetchFunnel,
+  } = trpc.kajabiSales.getFunnelPurchases.useQuery(
     { startDate, endDate },
-    { staleTime: 10 * 60_000, refetchInterval: 10 * 60_000 }
+    { staleTime: 2 * 60_000, refetchInterval: 2 * 60_000 }
   );
 
-  const isLoading = metaLoading || kajabiLoading;
+  const isLoading = metaLoading || funnelLoading;
 
-  // Derived metrics
+  // Derived metrics — all revenue/purchase numbers come from funnel-only DB source
   const spend = metaData?.spend ?? 0;
   const leads = metaData?.leads ?? 0;
   const checkouts = metaData?.checkouts ?? 0;
   const metaPurchases = metaData?.purchases ?? 0;
   const cpl = leads > 0 ? spend / leads : null;
   const checkoutRate = leads > 0 ? (checkouts / leads) * 100 : null;
-  const kajabiRevenue = kajabiData ? kajabiData.totalRevenueCents / 100 : 0;
-  const kajabiPurchases = kajabiData?.totalPurchases ?? 0;
-  // Meta-attributed revenue excludes the $499 "Supported Package" tier — confirmed as an
-  // email-list buyer (2+ year subscriber), not a Meta lead. Tier key is '499'.
-  // As CAPI + Kajabi webhook attribution matures, this will be fully automated.
-  const emailListTier = kajabiData?.tiers?.find(t => t.tier === '499');
-  const emailListRevenue = emailListTier ? emailListTier.revenueCents / 100 : 0;
-  const emailListCount = emailListTier?.count ?? 0;
-  const metaAttributedRevenue = Math.max(0, kajabiRevenue - emailListRevenue);
-  const metaAttributedPurchases = Math.max(0, kajabiPurchases - emailListCount);
+  const kajabiRevenue = funnelData ? funnelData.totalRevenueCents / 100 : 0;
+  const kajabiPurchases = funnelData?.totalPurchases ?? 0;
+  // All purchases from getFunnelPurchases are already funnel-sourced and non-email-list
+  const metaAttributedRevenue = kajabiRevenue;
+  const metaAttributedPurchases = kajabiPurchases;
   const roas = spend > 0 && metaAttributedRevenue > 0 ? metaAttributedRevenue / spend : null;
   const cpp = metaAttributedPurchases > 0 ? spend / metaAttributedPurchases : null;
 
@@ -251,22 +248,22 @@ export default function InterconnectedCommandCenter() {
 
   function handleRefresh() {
     refetchMeta();
-    refetchKajabi();
+    refetchFunnel();
   }
 
   // ── Upsell KPI: $299 Gut Permeability + Food Sensitivity Test (primary funnel metric) ──
-  const upsellTier = kajabiData?.tiers?.find(t => t.tier === '299');
+  const upsellTier = funnelData?.tiers?.find(t => t.tier === '299');
   const upsellCount = upsellTier?.count ?? 0;
   const upsellRevenue = (upsellTier?.revenueCents ?? 0) / 100;
-  const otoTier = kajabiData?.tiers?.find(t => t.tier === '67');
+  const otoTier = funnelData?.tiers?.find(t => t.tier === '67');
   const otoCount = otoTier?.count ?? 0;
   // Upsell take rate = upsell purchases / $67 OTO purchases
   const upsellTakeRate = otoCount > 0 ? (upsellCount / otoCount) * 100 : null;
   // Cost per upsell = Meta spend / upsell purchases
   const costPerUpsell = upsellCount > 0 ? spend / upsellCount : null;
 
-  // Tier breakdown
-  const tiers = kajabiData?.tiers ?? [];
+  // Tier breakdown — from funnel-only DB source
+  const tiers = funnelData?.tiers ?? [];
 
   return (
     <DashboardLayout>

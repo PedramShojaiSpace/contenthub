@@ -15,7 +15,6 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "./_core/trpc";
 import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
-import { notifyOwner } from "./_core/notification";
 import { pushInterconnectedOptIn } from "./klaviyo";
 import { validateEmail } from "./emailScrubber";
 import { getDb } from "./db";
@@ -133,17 +132,8 @@ export const interconnectedRouter = router({
         console.error("[interconnectedRouter] Klaviyo error:", err);
       }
 
-      // ── Step 5: Notify owner ──────────────────────────────────────────────────
-      try {
-        const smsNote = smsConsent && phone ? ` | SMS: ${phone} ✓` : "";
-        const kajNote = kajabiTagged ? " | Kajabi ✓" : " | Kajabi ✗";
-        await notifyOwner({
-          title: "New Interconnected Opt-In",
-          content: `${name} (${email}) just registered for the Interconnected series.${smsNote}${kajNote}`,
-        });
-      } catch (_) {
-        // Non-critical
-      }
+      // Per-lead notifications removed — replaced by hourly watchdog
+      // (notifies only when lead flow drops to zero for 60+ minutes)
 
       return { success: true, kajabiTagged, smsSubscribed };
     }),

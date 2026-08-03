@@ -27,6 +27,7 @@ import {
   ChevronRight,
   ClipboardCopy,
   FileText,
+  GitBranch,
   Lightbulb,
   Loader2,
   RefreshCw,
@@ -1884,6 +1885,53 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
                 </div>
               </div>
             </div>
+
+            {/*
+              v2.3 Part 3 — variant children.
+
+              Part 2 made `list` return one row per FAMILY, with siblings on
+              `row.variants`. Without rendering them here the grouping is a
+              disappearance: the variant is correctly excluded as a top-level row
+              but nothing shows it, so a script the operator just paid to generate
+              is reachable only by deep link. Found in live verification.
+
+              Rendered as indented children rather than as separate cards, because
+              the point of the grouping is that a family occupies one row.
+            */}
+            {script.variants && script.variants.length > 0 && (
+              <div className="mt-2.5 border-t pt-2 space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {script.variants.length} variant{script.variants.length === 1 ? "" : "s"}
+                </p>
+                {script.variants.map((v) => (
+                  <button
+                    key={v.id}
+                    className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left hover:bg-muted/60 transition-colors duration-150"
+                    onClick={(e) => {
+                      // The parent Card is itself clickable; without this the
+                      // click would open the ORIGINAL instead of the variant.
+                      e.stopPropagation();
+                      openWorkspace(v.id, v.label);
+                    }}
+                  >
+                    <GitBranch className="w-3 h-3 shrink-0 text-muted-foreground" />
+                    <span className="text-xs font-medium truncate">{v.label}</span>
+                    <Badge className={`text-[10px] ${STATUS_COLORS[v.status ?? "draft"]}`}>
+                      {v.status ?? "draft"}
+                    </Badge>
+                    {v.personaName && (
+                      <span className="text-[11px] text-muted-foreground truncate shrink-0">
+                        {v.personaName}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-muted-foreground tabular-nums ml-auto shrink-0">
+                      {v.wordCount ?? "—"}w
+                      {v.targetLengthMinutes ? ` · ${v.targetLengthMinutes} min` : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       ))}

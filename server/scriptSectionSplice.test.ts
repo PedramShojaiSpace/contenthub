@@ -13,6 +13,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { buildSectionOutline } from "./scriptFactoryRouter";
+import { computeGroundingMetric, describeGrounding, type GroundingMetric } from "./scriptMetrics";
 
 const BODY = [
   "[HOOK] (0:00) You wake at 2 AM and blame stress.",
@@ -111,5 +112,63 @@ describe("section splice — undo is a verbatim restore", () => {
     const e = sliceOf(edited, "pain");
     const restored = e.before + original + e.after;
     expect(restored).toBe(BODY);
+  });
+});
+
+describe("section splice — grounding must be preserved, never recomputed", () => {
+  /*
+   * DEFECT P3-3, pinned. Live on script #7 the rail read "7 of 15 sections
+   * grounded"; rewriting a single Hook made it read "0 of 15". The cause is
+   * structural, not arithmetic: [VERIFIED] is stripped before a body is saved, so
+   * grounding recomputed from a STORED body is zero for every section. Recomputing
+   * on the regenerate path therefore overwrites a stored true value with a false
+   * zero, and the operator sees a fully-grounded script report as ungrounded
+   * because he fixed one paragraph.
+   */
+  const STORED_BODY = BODY.replace(/\[VERIFIED\]/g, "").replace(/ {2,}/g, " ");
+
+  it("demonstrates why: a stored body yields zero grounded sections", () => {
+    // The tagged body has one grounded section...
+    expect(computeGroundingMetric(BODY).grounded).toBe(1);
+    // ...and the saved copy of that same script has none, because markers are gone.
+    expect(STORED_BODY).not.toContain("[VERIFIED]");
+    expect(computeGroundingMetric(STORED_BODY).grounded).toBe(0);
+  });
+
+  it("preserving the stored counts keeps the label truthful across an edit", () => {
+    // What the row holds, measured at generation time when markers still existed.
+    const stored = { verifiedCount: 7, totalElements: 15, verificationPct: 47 };
+
+    // The regenerate path's construction: carry the stored counts forward.
+    const preserved: GroundingMetric = {
+      grounded: stored.verifiedCount,
+      total: stored.totalElements,
+      pct: stored.verificationPct,
+      slotOnlySections: 0,
+      byTag: {},
+      metricVersion: "v2.2-instance",
+    };
+    expect(describeGrounding(preserved)).toBe("7 of 15 sections grounded");
+
+    // The rejected alternative, for contrast: recomputing from the spliced body.
+    const { before, after } = sliceOf(STORED_BODY, "teach-2");
+    const spliced = `${before}[TEACH] Rewritten second mechanism.\n\n${after}`;
+    const recomputed = computeGroundingMetric(spliced);
+    expect(recomputed.grounded).toBe(0);
+    expect(describeGrounding(recomputed)).toBe("0 of 15 sections grounded".replace("15", String(recomputed.total)));
+    // The two disagree, and the preserved one is the honest figure.
+    expect(recomputed.grounded).not.toBe(preserved.grounded);
+  });
+
+  it("the label never disagrees with the counts stored beside it", () => {
+    /*
+     * The label is derived from the same preserved object that is written to the
+     * three count columns, so a row cannot say "7 of 15" while holding 0.
+     */
+    const preserved: GroundingMetric = {
+      grounded: 3, total: 9, pct: 33,
+      slotOnlySections: 0, byTag: {}, metricVersion: "v2.2-instance",
+    };
+    expect(describeGrounding(preserved)).toContain(`${preserved.grounded} of ${preserved.total}`);
   });
 });

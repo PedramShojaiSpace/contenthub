@@ -3738,6 +3738,16 @@ export const interconnectedLeads = mysqlTable("interconnected_leads", {
   kajabiTaggedAt: bigint("kajabi_tagged_at", { mode: "number" }),
   klaviyoSynced: boolean("klaviyo_synced").notNull().default(false),
   klaviyoSyncedAt: bigint("klaviyo_synced_at", { mode: "number" }),
+  // CAPI tracking — Lead event
+  capiLeadEventId: varchar("capi_lead_event_id", { length: 64 }),
+  capiLeadSent: boolean("capi_lead_sent").notNull().default(false),
+  capiLeadSentAt: bigint("capi_lead_sent_at", { mode: "number" }),
+  // Client-side signals for CAPI user matching
+  fbclid: varchar("fbclid", { length: 256 }),
+  fbp: varchar("fbp", { length: 256 }),
+  fbc: varchar("fbc", { length: 256 }),
+  clientIp: varchar("client_ip", { length: 64 }),
+  userAgent: varchar("user_agent", { length: 512 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
 });
 

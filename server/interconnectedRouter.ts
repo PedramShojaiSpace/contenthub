@@ -20,6 +20,7 @@ import { validateEmail } from "./emailScrubber";
 import { getDb } from "./db";
 import { interconnectedLeads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { sendCapiEvent, generateEventId } from "./capiHelper";
 
 const KAJABI_TAG = "Interconnected Opt In";
 
@@ -36,10 +37,16 @@ export const interconnectedRouter = router({
         utmCampaign: z.string().max(128).optional(),
         utmContent: z.string().max(128).optional(),
         referrer: z.string().max(512).optional(),
+        // Client-side signals for CAPI matching
+        fbclid: z.string().max(256).optional(),
+        fbp: z.string().max(256).optional(),
+        fbc: z.string().max(256).optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const { name, email, phone, smsConsent, utmSource, utmMedium, utmCampaign, utmContent, referrer } = input;
+    .mutation(async ({ input, ctx }) => {
+      const { name, email, phone, smsConsent, utmSource, utmMedium, utmCampaign, utmContent, referrer, fbclid, fbp, fbc } = input;
+      const clientIp = (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || ctx.req.socket?.remoteAddress || null;
+      const userAgent = ctx.req.headers["user-agent"] || null;
 
       // ── Step 1: Validate email — reject disposable/throwaway domains ──────────
       const emailCheck = validateEmail(email);
@@ -65,6 +72,11 @@ export const interconnectedRouter = router({
             utmCampaign: utmCampaign ?? null,
             utmContent: utmContent ?? null,
             referrer: referrer ?? null,
+            fbclid: fbclid ?? null,
+            fbp: fbp ?? null,
+            fbc: fbc ?? null,
+            clientIp: clientIp ?? null,
+            userAgent: userAgent ? userAgent.substring(0, 512) : null,
             kajabiTagged: false,
             klaviyoSynced: false,
             createdAt: Date.now(),
@@ -132,9 +144,38 @@ export const interconnectedRouter = router({
         console.error("[interconnectedRouter] Klaviyo error:", err);
       }
 
-      // Per-lead notifications removed — replaced by hourly watchdog
-      // (notifies only when lead flow drops to zero for 60+ minutes)
+      // ── Step 5: CAPI — fire Lead event server-side ────────────────────────────
+      const capiLeadEventId = generateEventId(email, "Lead");
+      try {
+        const capiSent = await sendCapiEvent({
+          eventName: "Lead",
+          eventId: capiLeadEventId,
+          eventSourceUrl: "https://content.theurbanmonk.com/interconnected",
+          email,
+          phone: phone ?? null,
+          fbclid: fbclid ?? null,
+          fbp: fbp ?? null,
+          fbc: fbc ?? null,
+          clientIpAddress: clientIp,
+          clientUserAgent: userAgent,
+          utmCampaign: utmCampaign ?? null,
+          utmSource: utmSource ?? null,
+        });
+        if (capiSent && localLeadId) {
+          try {
+            const db = await getDb();
+            if (db) {
+              await db
+                .update(interconnectedLeads)
+                .set({ capiLeadSent: true, capiLeadEventId, capiLeadSentAt: Date.now() })
+                .where(eq(interconnectedLeads.id, localLeadId));
+            }
+          } catch (_) {}
+        }
+      } catch (err) {
+        console.error("[interconnectedRouter] CAPI Lead error:", err);
+      }
 
-      return { success: true, kajabiTagged, smsSubscribed };
+      return { success: true, kajabiTagged, smsSubscribed, capiLeadEventId };
     }),
 });

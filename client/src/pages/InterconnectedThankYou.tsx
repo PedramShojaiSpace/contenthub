@@ -14,11 +14,17 @@ const OTO_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/ch
 // CDN base for expert headshots (uploaded from Google Drive)
 const CDN = "/manus-storage/";
 
-function firePixel(eventName: string, params?: Record<string, unknown>) {
+function firePixel(eventName: string, params?: Record<string, unknown>, eventId?: string) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fbq = (window as any).fbq;
-    if (typeof fbq === "function") fbq("track", eventName, params || {});
+    if (typeof fbq === "function") {
+      if (eventId) {
+        fbq("track", eventName, params || {}, { eventID: eventId });
+      } else {
+        fbq("track", eventName, params || {});
+      }
+    }
   } catch (_) {}
 }
 
@@ -308,11 +314,18 @@ export default function InterconnectedThankYou() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   useEffect(() => {
-    firePixel("Lead");
+    // Use stored CAPI event_id from server response for deduplication
+    // The server generates: sha256(email:Lead:YYYY-MM-DD).slice(0,32)
+    // We store it in sessionStorage after registration and retrieve it here
+    const leadEventId = sessionStorage.getItem('__capi_lead_event_id') ?? undefined;
+    firePixel("Lead", {}, leadEventId);
   }, []);
 
   const handleBuyClick = () => {
-    firePixel("InitiateCheckout", { value: 67, currency: "USD", content_name: "Interconnected All-Access Bundle" });
+    // Generate a unique event_id for InitiateCheckout for CAPI deduplication
+    const checkoutEventId = `ic_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    sessionStorage.setItem('__capi_checkout_event_id', checkoutEventId);
+    firePixel("InitiateCheckout", { value: 67, currency: "USD", content_name: "Interconnected All-Access Bundle" }, checkoutEventId);
     window.location.href = OTO_CHECKOUT_URL;
   };
 

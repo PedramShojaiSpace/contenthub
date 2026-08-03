@@ -396,4 +396,53 @@ export const kajabiSalesRouter = router({
     .query(async ({ input }) => {
       return fetchKajabiSales(input.datePreset);
     }),
+
+  // Returns only purchases from the Interconnected funnel (webhook-confirmed, non-email-list)
+  // This is the source of truth for the Command Center dashboard tier breakdown.
+  getFunnelPurchases: protectedProcedure
+    .input(z.object({
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }))
+    .query(async ({ input }) => {
+      const { getDb } = await import("./db");
+      const { kajabiPurchases } = await import("../drizzle/schema");
+      const { and, eq, gte, lte } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return { tiers: [], totalRevenueCents: 0, totalPurchases: 0 };
+
+      // Convert date strings to epoch ms boundaries (UTC)
+      const startMs = new Date(input.startDate + "T00:00:00.000Z").getTime();
+      const endMs   = new Date(input.endDate   + "T23:59:59.999Z").getTime();
+
+      const rows = await db
+        .select()
+        .from(kajabiPurchases)
+        .where(
+          and(
+            eq(kajabiPurchases.funnelSource, "interconnected"),
+            eq(kajabiPurchases.isEmailListBuyer, 0),
+            gte(kajabiPurchases.createdAt, startMs),
+            lte(kajabiPurchases.createdAt, endMs)
+          )
+        );
+
+      // Build tier summary from local DB rows
+      const tierMap: Record<string, { tier: string; label: string; priceCents: number; count: number; revenueCents: number }> = {};
+      for (const row of rows) {
+        const tierDef = AMOUNT_TO_TIER[row.amountCents];
+        const key = tierDef?.tier ?? String(Math.round(row.amountCents / 100));
+        const label = tierDef?.label ?? row.offerName ?? `$${Math.round(row.amountCents / 100)} Purchase`;
+        if (!tierMap[key]) {
+          tierMap[key] = { tier: key, label, priceCents: row.amountCents, count: 0, revenueCents: 0 };
+        }
+        tierMap[key].count++;
+        tierMap[key].revenueCents += row.amountCents;
+      }
+
+      const tiers = Object.values(tierMap).sort((a, b) => a.priceCents - b.priceCents);
+      const totalRevenueCents = tiers.reduce((s, t) => s + t.revenueCents, 0);
+      const totalPurchases = tiers.reduce((s, t) => s + t.count, 0);
+      return { tiers, totalRevenueCents, totalPurchases };
+    }),
 });

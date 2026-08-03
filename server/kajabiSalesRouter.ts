@@ -118,6 +118,85 @@ function getStartDate(datePreset: string): string {
 
 // ── Main fetch logic ──────────────────────────────────────────────────────────
 
+async function fetchKajabiSalesCustomRange(startDate: string, endDate: string): Promise<KajabiSalesMetrics & { startDate: string; endDate: string; individualSales: Array<{ time: string; amountCents: number; label: string; offerId: string }> }> {
+  const token = await getToken();
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+
+  const tierMap: Record<string, TierSummary> = {};
+  const individualSales: Array<{ time: string; amountCents: number; label: string; offerId: string }> = [];
+  let pagesScanned = 0;
+  let hitOldData = false;
+
+  for (let page = 1; page <= 60 && !hitOldData; page++) {
+    const url = `${KAJABI_API_BASE}/transactions?filter[site_id]=${SITE_ID}&page[number]=${page}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) break;
+
+    const data = await res.json() as {
+      data?: Array<{
+        id: string;
+        attributes: { amount_in_cents: number; state: string; action: string; created_at: string };
+        relationships?: { offer?: { data?: { id: string } } };
+      }>;
+      links?: { next?: string };
+    };
+
+    pagesScanned = page;
+    const rows = data.data || [];
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      const createdAt = row.attributes?.created_at || "";
+      const dateStr = createdAt.substring(0, 10);
+
+      // Stop when we go past the start date
+      if (dateStr < startDate) { hitOldData = true; break; }
+      // Skip if after end date
+      if (dateStr > endDate) continue;
+
+      const state = row.attributes?.state || "";
+      const action = row.attributes?.action || "";
+      const amount = row.attributes?.amount_in_cents || 0;
+      if (amount <= 0 || state === "failed" || state === "refunded" || action === "refund") continue;
+
+      const tierDef = AMOUNT_TO_TIER[amount];
+      if (!tierDef) continue;
+
+      const key = tierDef.tier;
+      if (!tierMap[key]) {
+        tierMap[key] = { tier: key, label: tierDef.label, priceCents: tierDef.priceCents, count: 0, revenueCents: 0 };
+      }
+      tierMap[key].count++;
+      tierMap[key].revenueCents += amount;
+
+      individualSales.push({
+        time: createdAt,
+        amountCents: amount,
+        label: tierDef.label,
+        offerId: row.relationships?.offer?.data?.id || "",
+      });
+    }
+
+    if (!data.links?.next) break;
+  }
+
+  const tiers = Object.values(tierMap).sort((a, b) => a.priceCents - b.priceCents);
+  const totalRevenueCents = tiers.reduce((s, t) => s + t.revenueCents, 0);
+  const totalPurchases = tiers.reduce((s, t) => s + t.count, 0);
+
+  return {
+    tiers, totalRevenueCents, totalPurchases,
+    fetchedAt: Date.now(),
+    datePreset: `custom:${startDate}:${endDate}`,
+    offerIds: Object.keys(AMOUNT_TO_TIER),
+    apiMethod: "transactions_by_site_amount_match",
+    pagesScanned,
+    startDate,
+    endDate,
+    individualSales: individualSales.sort((a, b) => a.time.localeCompare(b.time)),
+  };
+}
+
 async function fetchKajabiSales(datePreset: string): Promise<KajabiSalesMetrics> {
   const cacheKey = datePreset;
   const cached = dataCache[cacheKey];
@@ -207,6 +286,15 @@ async function fetchKajabiSales(datePreset: string): Promise<KajabiSalesMetrics>
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export const kajabiSalesRouter = router({
+  getCustomRangeSales: protectedProcedure
+    .input(z.object({
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }))
+    .query(async ({ input }) => {
+      return fetchKajabiSalesCustomRange(input.startDate, input.endDate);
+    }),
+
   getFunnelSales: protectedProcedure
     .input(z.object({
       datePreset: z

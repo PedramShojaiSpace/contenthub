@@ -45,6 +45,32 @@ const FEATURED = [
   { name: "Izabella Wentz, PharmD", img: K + "izabella-wentz-pharm-d_88697c7e.jpg" },
 ];
 
+// ─── UTM capture helper ──────────────────────────────────────────────────────
+function getUtmAttribution() {
+  const stored = sessionStorage.getItem('__utm_attrib');
+  if (stored) { try { return JSON.parse(stored) as Record<string, string | undefined>; } catch {} }
+  const params = new URLSearchParams(window.location.search);
+  const attrib: Record<string, string | undefined> = {
+    utmSource: params.get('utm_source') ?? undefined,
+    utmMedium: params.get('utm_medium') ?? undefined,
+    utmCampaign: params.get('utm_campaign') ?? undefined,
+    utmContent: params.get('utm_content') ?? params.get('utm_term') ?? undefined,
+    referrer: document.referrer || undefined,
+  };
+  const fbclid = params.get('fbclid');
+  if (fbclid && !attrib.utmSource) {
+    attrib.utmSource = 'meta';
+    attrib.utmMedium = attrib.utmMedium ?? 'paid';
+    attrib.utmContent = (attrib.utmContent ?? '') + (attrib.utmContent ? '|' : '') + 'fbclid:' + fbclid.substring(0, 40);
+  }
+  if (!attrib.utmSource && attrib.referrer) {
+    if (/facebook\.com|fb\.com/i.test(attrib.referrer)) attrib.utmSource = 'meta';
+    else if (/instagram\.com/i.test(attrib.referrer)) attrib.utmSource = 'instagram';
+  }
+  sessionStorage.setItem('__utm_attrib', JSON.stringify(attrib));
+  return attrib;
+}
+
 // ─── Opt-In Form ──────────────────────────────────────────────────────────────
 function OptInFormB() {
   const [, navigate] = useLocation();
@@ -66,7 +92,18 @@ function OptInFormB() {
       setError("Please enter your name and email.");
       return;
     }
-    submit.mutate({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, smsConsent });
+    const attrib = getUtmAttribution();
+    submit.mutate({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+      smsConsent,
+      utmSource: attrib.utmSource,
+      utmMedium: attrib.utmMedium,
+      utmCampaign: attrib.utmCampaign,
+      utmContent: attrib.utmContent,
+      referrer: attrib.referrer,
+    });
   };
 
   return (

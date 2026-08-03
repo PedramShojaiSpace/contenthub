@@ -1358,6 +1358,28 @@ export interface SectionOutlineEntry {
   slotOnly: boolean;
 }
 
+// ─── v2.3 Part 2 — variant summary carried on grouped Library rows ───────────
+
+/**
+ * A variant as it appears nested under its original in the Library list.
+ *
+ * Deliberately NOT the whole row: this shape exists to render a collapsed chip
+ * ("20-min cut · 2,940 words") and to be clicked. Shipping `scriptBody` for every
+ * variant of every row on the page would make the list response grow with the
+ * square of the operator's regeneration habit.
+ */
+export interface ScriptVariantSummary {
+  id: number;
+  /** `variantLabel`, falling back to the title when the operator cleared it. */
+  label: string;
+  wordCount: number | null;
+  targetLengthMinutes: number | null;
+  /** Resolved persona name, not the id — the chip has no way to look one up. */
+  personaName: string | null;
+  status: string;
+  createdAt: Date;
+}
+
 /*
  * Clock formatting must match `fmt` in scriptMetrics.ts EXACTLY — it floors,
  * it does not round.
@@ -2362,6 +2384,19 @@ export const scriptFactoryRouter = router({
       status: z.enum(["draft", "approved", "archived", "all"]).default("all"),
       limit: z.number().min(1).max(100).default(20),
       offset: z.number().min(0).default(0),
+      /**
+       * v2.3 Part 2 — collapse variants under their original.
+       *
+       * Defaults TRUE per spec, which means THE DEFAULT SHAPE OF THIS RESPONSE
+       * CHANGED: every row now carries a `variants` array. That is deliberate.
+       * The acceptance criterion is that creating a variant leaves the Library
+       * showing one row with a count rather than two rows, and defaulting to
+       * false would have made the honest Library the opt-in.
+       *
+       * Pass false for a flat list including variants as top-level rows — used
+       * by the comparison view and anything that addresses a variant directly.
+       */
+      groupVariants: z.boolean().default(true),
     }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -2371,7 +2406,17 @@ export const scriptFactoryRouter = router({
       if (input.format !== "all") conditions.push(eq(scriptFactoryOutputs.format, input.format as ScriptFormat));
       if (input.status !== "all") conditions.push(eq(scriptFactoryOutputs.status, input.status as any));
 
-      return db
+      /*
+       * When grouping, only originals are eligible for the top level, and that
+       * restriction MUST be in the SQL rather than a filter applied afterwards:
+       * `limit` would otherwise count variants against the page size, so a page
+       * of ten scripts could arrive holding three.
+       */
+      if (input.groupVariants) {
+        conditions.push(sql`${scriptFactoryOutputs.parentScriptId} IS NULL`);
+      }
+
+      const rows = await db
         .select({
           id: scriptFactoryOutputs.id,
           title: scriptFactoryOutputs.title,
@@ -2389,12 +2434,142 @@ export const scriptFactoryRouter = router({
           targetLengthMinutes: scriptFactoryOutputs.targetLengthMinutes,
           personaId: scriptFactoryOutputs.personaId,
           researchJobId: scriptFactoryOutputs.researchJobId,
+          // v2.3 Part 2 lineage — returned in BOTH modes, so a caller that
+          // turned grouping off can still tell what it is holding.
+          parentScriptId: scriptFactoryOutputs.parentScriptId,
+          variantLabel: scriptFactoryOutputs.variantLabel,
+          variantOfRootId: scriptFactoryOutputs.variantOfRootId,
         })
         .from(scriptFactoryOutputs)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(scriptFactoryOutputs.createdAt))
         .limit(input.limit)
         .offset(input.offset);
+
+      /*
+       * Both modes return the same field set. A key that appears in one mode and
+       * vanishes in the other forces every consumer to guard, and the guard is
+       * precisely what gets forgotten.
+       */
+      const rootIds = rows.map((r) => r.id);
+      if (!input.groupVariants || rootIds.length === 0) {
+        return rows.map((r) => ({ ...r, variants: [] as ScriptVariantSummary[] }));
+      }
+
+      /*
+       * Every descendant of the originals on this page, in one query.
+       *
+       * Matching on `variant_of_root_id` rather than walking `parent_script_id`
+       * recursively is the whole reason that column exists: a variant OF a
+       * variant belongs to the same family and must appear under the SAME
+       * original, not nested two deep in a UI that only draws one level.
+       */
+      const descendants = await db
+        .select({
+          id: scriptFactoryOutputs.id,
+          title: scriptFactoryOutputs.title,
+          variantLabel: scriptFactoryOutputs.variantLabel,
+          wordCount: scriptFactoryOutputs.wordCount,
+          targetLengthMinutes: scriptFactoryOutputs.targetLengthMinutes,
+          personaId: scriptFactoryOutputs.personaId,
+          status: scriptFactoryOutputs.status,
+          createdAt: scriptFactoryOutputs.createdAt,
+          variantOfRootId: scriptFactoryOutputs.variantOfRootId,
+        })
+        .from(scriptFactoryOutputs)
+        .where(inArray(scriptFactoryOutputs.variantOfRootId, rootIds))
+        .orderBy(desc(scriptFactoryOutputs.createdAt));
+
+      /*
+       * Persona NAMES, resolved once for the page. The spec asks each variant
+       * summary to carry a persona name and the row holds only an id; resolving
+       * per variant would be N queries for a list that exists to be cheap.
+       */
+      const personaIds = Array.from(
+        new Set(descendants.map((d) => d.personaId).filter((x): x is number => x != null))
+      );
+      const personaNames = new Map<number, string>();
+      if (personaIds.length > 0) {
+        const prows = await db
+          .select({ id: personas.id, name: personas.name })
+          .from(personas)
+          .where(inArray(personas.id, personaIds));
+        for (const p of prows) personaNames.set(p.id, p.name);
+      }
+
+      const byRoot = new Map<number, ScriptVariantSummary[]>();
+      for (const d of descendants) {
+        const root = d.variantOfRootId;
+        if (root == null) continue;
+        const list = byRoot.get(root) ?? [];
+        list.push({
+          id: d.id,
+          // Fall back to the title rather than showing an empty chip: a variant
+          // whose label the operator cleared is still a real, openable script.
+          label: d.variantLabel ?? d.title,
+          wordCount: d.wordCount,
+          targetLengthMinutes: d.targetLengthMinutes,
+          personaName: d.personaId != null ? (personaNames.get(d.personaId) ?? null) : null,
+          status: d.status,
+          createdAt: d.createdAt,
+        });
+        byRoot.set(root, list);
+      }
+
+      return rows.map((r) => ({ ...r, variants: byRoot.get(r.id) ?? [] }));
+    }),
+
+  // ─── Get a script's whole family (root + every descendant) ─────────────────
+  /**
+   * v2.3 Part 2. Accepts ANY member of the family, not only the root, because
+   * the caller is usually the workspace — which knows the id it has open, not
+   * whether that id happens to be an original.
+   */
+  getScriptFamily: protectedProcedure
+    .input(z.object({ scriptId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const [seed] = await db
+        .select()
+        .from(scriptFactoryOutputs)
+        .where(eq(scriptFactoryOutputs.id, input.scriptId))
+        .limit(1);
+      if (!seed) return null;
+
+      /*
+       * The family key. `variantOfRootId` is NULL on originals by design (see the
+       * schema comment), so an original's family key is its own id. This coalesce
+       * is the application-side counterpart of that choice, and skipping it is
+       * the one way to silently lose the root from its own family.
+       */
+      const rootId = seed.variantOfRootId ?? seed.id;
+
+      const [root] = await db
+        .select()
+        .from(scriptFactoryOutputs)
+        .where(eq(scriptFactoryOutputs.id, rootId))
+        .limit(1);
+
+      const descendants = await db
+        .select()
+        .from(scriptFactoryOutputs)
+        .where(eq(scriptFactoryOutputs.variantOfRootId, rootId))
+        .orderBy(desc(scriptFactoryOutputs.createdAt));
+
+      if (!root) {
+        /*
+         * The root row is gone but descendants survive — reachable because these
+         * columns carry no foreign key (append-only migration on a live table)
+         * and delete does not cascade. Report the orphans rather than returning
+         * null, which the UI would render as "no family" and the operator would
+         * read as "no variants exist".
+         */
+        return { rootId, rootMissing: true as const, members: descendants };
+      }
+
+      return { rootId, rootMissing: false as const, members: [root, ...descendants] };
     }),
 
   // ─── Get a single script ──────────────────────────────────────────────────

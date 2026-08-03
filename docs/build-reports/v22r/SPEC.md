@@ -103,13 +103,30 @@ Acceptance: default generation on a story-less corpus yields a delimited slot wh
 
 Previously a 15-minute script built the case for testing, then closed on a generic brand CTA — the system has no concept of "the offer."
 
-- ALTER `analog_data_entries`: add `offer_profile` json nullable — `{ offerName, offerType: "product"|"service"|"program"|"lead_magnet"|"other", deliverables: string[], guarantee: string|null, timeline: string|null, pricePoint: string|null, primaryCtaUrl: string|null, targetAction: string }`.
-- `extractOfferProfile({ analogDataEntryId })`: LLM-extracts from the entry's content, saves, returns; idempotent (re-run overwrites). **Extraction failure returns null, never a partial object** (a saved profile with an empty offerName would instruct the model to "name the offer: ''" and it would invent one). Null profile → the offer block is omitted entirely and generation proceeds unbound. The extractor must not invent absent facts — a page that states no duration yields `timeline: null`.
-- Generate panel: when a selected North Star lacks a profile, an inline "Extract offer" control runs extraction and renders the parsed offer for a visual check.
+> **AMENDED after live-data failure.** This section originally specified
+> `offer_profile` as a **single** object. Extraction against the real corpus
+> returned `null` every time, because the live sales page ladders several
+> purchasable tiers and a single-object shape cannot represent it — the extractor
+> had no valid way to answer. The operator's decision was to surface every tier
+> and choose one at generation time. The text below describes the **shipped
+> code**; the single-object shape it replaces is retained as `OfferProfile`, now
+> nested inside a ladder. Recorded here so the spec and the code do not disagree
+> after context loss.
+
+- ALTER `analog_data_entries`: add `offer_profile` json nullable. Stored shape is a **ladder**: `{ tiers: OfferProfile[] }`, where each `OfferProfile` is `{ offerName, offerType: "product"|"service"|"program"|"lead_magnet"|"other", deliverables: string[], guarantee: string|null, timeline: string|null, pricePoint: string|null, primaryCtaUrl: string|null, targetAction: string }`. A page selling exactly one thing stores a single-element `tiers` array — the ladder is always the outer shape, never conditionally applied.
+- `extractOfferProfile({ analogDataEntryId })`: LLM-extracts from the entry's content, saves, returns; idempotent (re-run overwrites). The extractor returns **every distinct tier a buyer could purchase**, richest first. Tiers must be genuinely purchasable options — never features, bonuses, or chapters; two names for the same purchase collapse to one tier. **Extraction failure returns an empty `tiers` array, never a partial object** (a saved profile with an empty offerName would instruct the model to "name the offer: ''" and it would invent one). Empty ladder → the offer block is omitted entirely and generation proceeds unbound. The extractor must not invent absent facts — a page that states no duration yields `timeline: null`. A guarantee stated page-wide applies only to the tiers the copy actually covers, never copied onto an excluded tier.
+- Tier selection at generation time — `selectOfferTier(ladder, requestedOfferName?)` returns `{ profile, reason }`:
+  - empty ladder → `{ null, "no_offer" }`
+  - explicit `offerName` matches a tier → `{ tier, "explicit_tier" }`
+  - explicit `offerName` matches nothing → `{ null, "requested_tier_not_found" }`
+  - exactly one tier, none requested → `{ tier, "single_tier" }`
+  - multiple tiers, none requested → `{ null, "tier_not_chosen" }`
+  The `tier_not_chosen` refusal is deliberate: with several price points available, guessing which one the script sells would put an unintended price in a CTA. The system declines to bind rather than pick.
+- Generate panel: when a selected North Star lacks a profile, an inline "Extract offer" control runs extraction and renders the parsed tiers for a visual check. When the stored ladder holds more than one tier, the panel presents tier chips and the chosen `offerName` is passed to generation as `offerTier` (optional string input). A single-tier ladder surfaces no picker.
 - Generation: when a selected entry has a profile, inject `=== THE OFFER (what this script ultimately sells) ===`; the `[CTA]` must name the offer, cite ≥2 concrete deliverables, and state the guarantee **only when one exists** (instructing "state the guarantee" when there is none invites invented refund terms); teaching sections build toward `targetAction`. Optional `ctaOverride` string **replaces** the offer binding rather than coexisting with it (otherwise the script argues with itself for fifteen minutes).
 - Free-value guard: max 3 practical tips; each must connect back to why `targetAction` remains the necessary next step; tips may never be framed as sufficient to resolve the core problem.
 
-Acceptance: extraction on the live sales page in the corpus yields its real offer name, deliverables, guarantee, and a sensible targetAction, with unstated fields null (fixture test + live run printed); generated CTA meets the binding rules (mocked-prompt assertion + live inspection); ctaOverride path tested; failure→null path tested.
+Acceptance: extraction on the live sales page in the corpus yields its real tiers, each with real offer name, deliverables, guarantee, and a sensible targetAction, with unstated fields null (fixture test + live run printed); every `selectOfferTier` branch tested, including the `tier_not_chosen` refusal and `requested_tier_not_found`; generated CTA meets the binding rules and names the **selected** tier only (mocked-prompt assertion + live inspection); ctaOverride path tested; failure→empty-ladder path tested.
 
 ### 3C — Research-First Generation: hooks and structure from winning videos
 

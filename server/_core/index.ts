@@ -833,6 +833,13 @@ async function startServer() {
     }
   });
 
+  // ── Lead Watchdog ─────────────────────────────────────────────────────────
+  // POST /api/scheduled/lead-watchdog — fires every 60 min, alerts only if zero leads in 65 min
+  app.post("/api/scheduled/lead-watchdog", async (req, res) => {
+    const { leadWatchdogHandler } = await import("../leadWatchdogHandler");
+    return leadWatchdogHandler(req, res);
+  });
+
   // ── Email Sequence Scheduler ──────────────────────────────────────────────
   // POST /api/scheduled/email-sequence-send — fires hourly, sends queued Emails 2 & 3
   app.post("/api/scheduled/email-sequence-send", async (req, res) => {

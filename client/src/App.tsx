@@ -83,6 +83,8 @@ const DeepDive = lazy(() => import("./pages/DeepDive"));
 const TantraQuiz = lazy(() => import("./pages/TantraQuiz"));
 const Interconnected = lazy(() => import("./pages/Interconnected"));
 const InterconnectedThankYou = lazy(() => import("./pages/InterconnectedThankYou"));
+const InterconnectedThankYouB = lazy(() => import("./pages/InterconnectedThankYouB"));
+const InterconnectedThankYouSplitter = lazy(() => import("./pages/InterconnectedThankYouSplitter"));
 const InterconnectedPurchased = lazy(() => import("./pages/InterconnectedPurchased"));
 const InterconnectedB = lazy(() => import("./pages/InterconnectedB"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
@@ -193,7 +195,9 @@ function Router() {
         <Route path={"/deep-dive"} component={DeepDive} />
         <Route path={"/quiz/tantra"} component={TantraQuiz} />
         <Route path={"/interconnected"} component={Interconnected} />
-        <Route path={"/interconnected/thank-you"} component={InterconnectedThankYou} />
+        <Route path={"/interconnected/thank-you"} component={InterconnectedThankYouSplitter} />
+        <Route path={"/interconnected/thank-you-b"} component={InterconnectedThankYouB} />
+        <Route path={"/interconnected/thank-you-a"} component={InterconnectedThankYou} />
         <Route path={"/interconnected/purchased"} component={InterconnectedPurchased} />
         <Route path={"/interconnected-b"} component={InterconnectedB} />
         <Route path={"/system-health"} component={SystemHealth} />

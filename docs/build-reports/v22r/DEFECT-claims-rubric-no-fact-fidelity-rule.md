@@ -44,26 +44,71 @@ misrepresents a purchase to a real buyer.
 This is a **fidelity** defect, not a **compliance** defect, and the system
 currently checks only the latter.
 
-## Proposed fix (needs a decision, not just code)
+## SPEC — decided 2026-08-03, build AFTER v2.3 ships
 
-Add an eighth rule, `offer_fact_fidelity`, that receives the source
-`offer_profile` alongside the script and flags any offer specific in the
-script that does not match the profile. Design notes:
+The three open questions below were put to the operator and answered. This is
+now a specification, not a proposal. It is deliberately scheduled as its own
+item after v2.3 rather than inside it.
 
-- It needs a **second input**. Every existing rule reads only `content_text`.
-  This one requires the offer profile the script was generated against, which
-  means threading `analog_data_entries.offer_profile` (or the resolved tier)
-  into the rubric call.
-- Scripts generated with **no** offer bound must skip the rule rather than
-  fail it, or every ungrounded draft flags spuriously.
-- Numeric comparison should be exact-match on digit strings, not semantic.
-  "22" vs "176" is the failure mode; a model asked to judge semantic
-  equivalence may well rationalise a mismatch, as it did above.
-- Consider whether this belongs in claims review at all, or as a separate
-  pre-save gate in the generate path like the story-integrity lint. Claims
-  review is post-hoc and advisory (`status: pending`); the story lint is a
-  hard 422 before save. A wrong product spec arguably deserves the harder
-  treatment.
+### 1. Threading — pass it in, do not re-derive
+
+The offer profile is already in scope at generation time, so it is passed into
+the rubric path as an **optional second input** rather than re-fetched or
+re-derived inside the rubric. Re-deriving would mean a second read of
+`analog_data_entries.offer_profile` that could disagree with the one the
+script was actually generated against — the tier resolution in particular is
+a decision made once at generation time and must not be recomputed later.
+
+Signature shape: the shared creation path gains an optional
+`offerProfile?: OfferProfile | null` argument. Non-script content types pass
+nothing and are unaffected.
+
+### 2. Skip condition — `not_applicable`, never `passed`
+
+When a script has no bound offer — null profile, or a ladder that resolved to
+`tier_not_chosen` — the rule is **skipped entirely and reported as
+`not_applicable`**. It must never report `passed`.
+
+> Operator's reasoning, recorded verbatim because it is the load-bearing part:
+> "A silent pass on an unchecked script is how a fidelity gap hides."
+
+This means the verdict enum needs a third state. A boolean `passed` field
+cannot express "not checked", and coercing it to `true` reproduces exactly the
+dishonesty that the v2.2 grounding metric was rewritten to remove (100% of
+zero reading as perfect).
+
+### 3. Severity — advisory, but its own prominent badge
+
+**Advisory, not a hard 422.** The distinction the operator drew:
+
+| | story integrity | offer fact fidelity |
+|---|---|---|
+| nature | legal hazard | correctness problem |
+| a fabricated patient / a wrong panel number | must never be saved | must be seen and fixed |
+| enforcement | hard 422 before save | advisory flag after save |
+| remedy | regenerate | edit the wrong value |
+
+A wrong panel number does not justify discarding a 2,000-word script and
+burning a full regeneration; it justifies changing two characters. So it is
+surfaced, loudly, and left to the operator.
+
+Surface as a **separate badge in the workspace right rail** — "Offer fidelity:
+2 flags" — distinct from the claims-review badge, not folded into it. The two
+answer different questions and must not be conflated. Expanding the badge
+lists each mismatch as:
+
+- the claimed value as it appears in the script,
+- the profile value it should have matched,
+- the section it appeared in (e.g. "Teach 3").
+
+### Implementation notes carried forward
+
+- Numeric comparison must be **exact-match on digit strings**, not semantic. A
+  model asked to judge equivalence will rationalise a mismatch — it already
+  did exactly that above, reasoning fluently about "FIT 176" and passing it.
+- The section attribution needs `parseSectionInstances`, so this depends on
+  the v2.3 Part 1 server-side section parser being in place. Another reason to
+  build it after v2.3, not during.
 
 ## Why it is logged rather than fixed
 

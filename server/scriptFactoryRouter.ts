@@ -1343,10 +1343,21 @@ export interface SectionOutlineEntry {
   slotOnly: boolean;
 }
 
+/*
+ * Clock formatting must match `fmt` in scriptMetrics.ts EXACTLY — it floors,
+ * it does not round.
+ *
+ * The first version here rounded, and on live scripts that produced stamps one
+ * second later than the ones insertTimestamps had already written into the body
+ * (PAIN stamped 1:01, navigator said 1:02). Cosmetic, but a navigator that
+ * disagrees with the script it is navigating is exactly the class of quiet
+ * divergence this whole part was structured to prevent. Floor, like the
+ * original.
+ */
 function fmtClock(totalSeconds: number): string {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const mm = Math.floor(s / 60);
-  const ss = s % 60;
+  const t = Math.max(0, totalSeconds);
+  const mm = Math.floor(t / 60);
+  const ss = Math.floor(t % 60);
   return `${mm}:${String(ss).padStart(2, "0")}`;
 }
 

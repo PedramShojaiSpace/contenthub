@@ -127,8 +127,16 @@ describe("buildSectionOutline — story slots", () => {
     const withSlot = body(145, "HOOK") + `[STORY] ${slot}\n\n` + body(50, "CTA");
     const outline = buildSectionOutline(withSlot);
     const cta = outline.find((s) => s.tag === "CTA")!;
-    // 145 words (1:00) + 200 credited (~1:23) => 2:23
-    expect(cta.startLabel).toBe("2:23");
+    /*
+     * 145 words = 60.0s, + 200 credited = 82.75s → 142.75s. Floored, not
+     * rounded: "2:22". The clock in scriptMetrics.ts floors, and the navigator
+     * must agree with the stamps already written into the body rather than
+     * being independently "more accurate" by a second.
+     */
+    expect(cta.startLabel).toBe("2:22");
+    // and the authority for that: insertTimestamps' own output.
+    const stamped = insertTimestamps(withSlot);
+    expect(stamped).toContain("[CTA] (2:22)");
   });
 
   /*

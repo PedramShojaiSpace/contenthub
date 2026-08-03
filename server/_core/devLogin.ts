@@ -16,6 +16,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import { getSessionCookieOptions } from "./cookies";
+import { ENV } from "./env";
 import { sdk } from "./sdk";
 
 export function registerDevLoginRoute(app: Express) {
@@ -27,9 +28,13 @@ export function registerDevLoginRoute(app: Express) {
   }
 
   app.get("/api/dev/login", async (req: Request, res: Response) => {
+    // Read through ENV rather than process.env directly, so this route inherits
+    // the same ownerOpenId fallback the rest of the app uses. Reading
+    // process.env here meant the route could 500 with "OWNER_OPEN_ID is not
+    // set" on a host where every other ownership-scoped query worked fine.
     const openId =
       (typeof req.query.openId === "string" && req.query.openId) ||
-      process.env.OWNER_OPEN_ID ||
+      ENV.ownerOpenId ||
       "";
     const name = process.env.OWNER_NAME || "Local Dev";
 

@@ -57,6 +57,7 @@ import {
   parseSectionInstances,
   stripTimestamps,
   SPEAKING_WPM,
+  type GroundingMetric,
   type SectionInstance,
 } from "./scriptMetrics";
 import { fetchTranscriptWithQuota } from "./transcriptRouter";
@@ -3117,8 +3118,53 @@ export const scriptFactoryRouter = router({
 
       // Cadence degrades and never blocks — same asymmetry as generate.
       const cadence = lintCadence(splicedRaw);
-      // Grounding on the tagged body, before any stripping.
-      const grounding = computeGroundingMetric(splicedRaw);
+      /*
+       * ── Grounding: PRESERVED, NOT RECOMPUTED ───────────────────────────────
+       *
+       * The comment that stood here said "grounding on the tagged body, before any
+       * stripping". That is true in `generate`, where the body still carries
+       * [VERIFIED]. It is FALSE here. `splicedRaw` is built from `row.scriptBody`,
+       * and a stored body has had its markers stripped before it was ever saved
+       * (the Part 1 finding). So `computeGroundingMetric(splicedRaw)` returns zero
+       * for every section, and writing that to the grounding columns OVERWRITES a
+       * stored true value with a false zero.
+       *
+       * Live proof: #7 read "7 of 15 sections grounded"; rewriting one Hook made it
+       * "0 of 15". Recomputing here is strictly destructive — it cannot learn
+       * anything the stored value does not already hold, and it can only lose.
+       *
+       * So the stored counts carry forward untouched. `totalElements` is preserved
+       * too rather than re-derived: a section count derived from a stripped body is
+       * not evidence of anything, and a total disagreeing with its own numerator
+       * would read worse than one that is merely stale.
+       *
+       * The honest limitation: if the rewritten section WAS one of the grounded
+       * ones, the preserved count is optimistic by one. That is a bounded
+       * one-section error on a figure the operator reads as approximate, and it is
+       * not silent — the response carries `groundingStale: true` so the UI can say
+       * the figure predates this edit. A confident zero, by contrast, misinforms.
+       *
+       * Note on the field set: `groundingLabel`, `groundingByTag`, `slotOnlySections`
+       * and `metricVersion` are NOT columns on this table. `generate` returns them in
+       * its response payload but they were never persisted (confirmed against both
+       * `drizzle/schema.ts` and `SHOW COLUMNS`). Reading them off `row` would be
+       * reading a field that does not exist, and writing them would silently do
+       * nothing, so only the three real stored counts are carried forward.
+       *
+       * The two presentation-only fields (`slotOnlySections`, `byTag`) are zeroed
+       * rather than guessed. `describeGrounding` reads only `grounded` and `total`,
+       * so the label is unaffected; anything that wanted a per-tag breakdown after
+       * an edit would need the tag offsets persisted at generation time, which is
+       * the same prerequisite the Part 1 finding already logged.
+       */
+      const grounding: GroundingMetric = {
+        grounded: row.verifiedCount ?? 0,
+        total: row.totalElements ?? 0,
+        pct: row.verificationPct ?? 0,
+        slotOnlySections: 0,
+        byTag: {},
+        metricVersion: "v2.2-instance",
+      };
       /*
        * [VERIFIED] must not survive into a saved body — the stored copy is the
        * clean one, which is the invariant Part 1 discovered the hard way.
@@ -3153,10 +3199,6 @@ export const scriptFactoryRouter = router({
           verifiedCount: grounding.grounded,
           totalElements: grounding.total,
           verificationPct: grounding.pct,
-          groundingLabel: describeGrounding(grounding),
-          groundingByTag: grounding.byTag,
-          slotOnlySections: grounding.slotOnlySections,
-          metricVersion: grounding.metricVersion,
           sectionHistory,
           /*
            * `updatedAt` deliberately untouched, consistent with `update`, which
@@ -3176,10 +3218,21 @@ export const scriptFactoryRouter = router({
         previousWordCount: target.wordCount,
         newWordCount: countWordsWithStorySlots(replacement).words,
         wordCount: countWords(finalBody),
+        /*
+         * Derived from the PRESERVED counts, not from the spliced body — same input,
+         * so the label cannot disagree with the numbers beside it.
+         */
         groundingLabel: describeGrounding(grounding),
         verifiedCount: grounding.grounded,
         totalElements: grounding.total,
         verificationPct: grounding.pct,
+        /*
+         * Tells the client this grounding figure predates the edit. If the section
+         * just rewritten happened to be a grounded one the count is optimistic by
+         * one, and that cannot be corrected from a stripped body — so the UI says as
+         * much rather than presenting a stale number as freshly measured.
+         */
+        groundingStale: true as const,
         cadenceViolations: cadence.violations,
         canUndo: true as const,
         historyDepth: sectionHistory.length,
@@ -3240,11 +3293,27 @@ export const scriptFactoryRouter = router({
         body.slice(0, target.charStart) + history[entryIdx].previousText + body.slice(sliceEnd);
 
       /*
-       * Same recompute as the outbound path. The restored text is known-good — it
-       * passed the story lint when it was first generated — so this is not
-       * re-litigated; what matters is that the NUMBERS match the text again.
+       * Grounding preserved, exactly as on the outbound path and for the identical
+       * reason: `restoredRaw` comes from a stored body, whose [VERIFIED] markers
+       * were stripped before saving, so recomputing yields a false zero.
+       *
+       * Undo has a stronger claim than the rewrite did, though. Restoring the prior
+       * text returns the script to the wording the stored count was measured
+       * against, so the preserved count is not merely the best available figure —
+       * on this path it is once again the correct one. No staleness flag is
+       * reported for that reason.
+       *
+       * The restored text is known-good (it passed the story lint when first
+       * generated), so that is not re-litigated here.
        */
-      const grounding = computeGroundingMetric(restoredRaw);
+      const grounding: GroundingMetric = {
+        grounded: row.verifiedCount ?? 0,
+        total: row.totalElements ?? 0,
+        pct: row.verificationPct ?? 0,
+        slotOnlySections: 0,
+        byTag: {},
+        metricVersion: "v2.2-instance",
+      };
       const finalBody = insertTimestamps(
         restoredRaw.replace(/\[VERIFIED\]/g, "").replace(/ {2,}/g, " ")
       );
@@ -3258,10 +3327,6 @@ export const scriptFactoryRouter = router({
           verifiedCount: grounding.grounded,
           totalElements: grounding.total,
           verificationPct: grounding.pct,
-          groundingLabel: describeGrounding(grounding),
-          groundingByTag: grounding.byTag,
-          slotOnlySections: grounding.slotOnlySections,
-          metricVersion: grounding.metricVersion,
           sectionHistory: remaining,
         } as any)
         .where(eq(scriptFactoryOutputs.id, input.scriptId));

@@ -6,6 +6,24 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { trpc } from "@/lib/trpc";
+
+// ─── A/B Test constants ───────────────────────────────────────────────────────
+// Test ID 1 = "Interconnected TY Page — Video A vs B" (the active test with variants 1 & 2)
+const AB_TEST_ID = 1;
+const VIDEO_A = "hobj7srg3q"; // Control: original video
+const VIDEO_B = "10cdtpm3il"; // Treatment: new teleprompter script
+
+/** Get or create a stable visitor ID stored in localStorage */
+function getVisitorId(): string {
+  const KEY = "__um_vid";
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    id = `v_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
 
 const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png";
 
@@ -312,16 +330,52 @@ const StarRating = ({ count = 5 }: { count?: number }) => (
 
 export default function InterconnectedThankYou() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  // A/B test state: which video to show
+  const [videoId, setVideoId] = useState<string>(VIDEO_A); // default to control until assigned
+  const visitorId = useRef(getVisitorId());
+
+  // ── A/B test: assign variant on mount ──────────────────────────────────────
+  const assignVariant = trpc.abTest.assignVariant.useMutation({
+    onSuccess: (data) => {
+      // Variant 1 = control (Video A), Variant 2 = treatment (Video B)
+      // isControl flag from the server is the authoritative signal
+      const useB = !data.isControl;
+      setVideoId(useB ? VIDEO_B : VIDEO_A);
+      // Store for conversion recording
+      sessionStorage.setItem('__ab_variant_id', String(data.variantId));
+    },
+  });
+
+  const recordConversion = trpc.abTest.recordConversion.useMutation();
 
   useEffect(() => {
-    // Use stored CAPI event_id from server response for deduplication
-    // The server generates: sha256(email:Lead:YYYY-MM-DD).slice(0,32)
-    // We store it in sessionStorage after registration and retrieve it here
+    // Assign visitor to a variant (sticky — same visitor always gets same variant)
+    const attrib = (() => {
+      try { return JSON.parse(sessionStorage.getItem('__utm_attrib') || '{}'); } catch { return {}; }
+    })();
+    assignVariant.mutate({
+      testId: AB_TEST_ID,
+      visitorId: visitorId.current,
+      utmSource: attrib.utmSource,
+      utmCampaign: attrib.utmCampaign,
+    });
+    // Fire pixel Lead event
     const leadEventId = sessionStorage.getItem('__capi_lead_event_id') ?? undefined;
     firePixel("Lead", {}, leadEventId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleBuyClick = () => {
+    // Record A/B conversion
+    const storedVariantId = sessionStorage.getItem('__ab_variant_id');
+    if (storedVariantId) {
+      recordConversion.mutate({
+        testId: AB_TEST_ID,
+        visitorId: visitorId.current,
+        conversionType: "checkout_start",
+        revenueCents: 6700,
+      });
+    }
     // Generate a unique event_id for InitiateCheckout for CAPI deduplication
     const checkoutEventId = `ic_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     sessionStorage.setItem('__capi_checkout_event_id', checkoutEventId);
@@ -376,7 +430,7 @@ export default function InterconnectedThankYou() {
                 style={{ height: "100%", left: 0, position: "absolute", top: 0, width: "100%" }}
               >
                 <iframe
-                  src="https://fast.wistia.net/embed/iframe/hobj7srg3q?seo=true&videoFoam=true"
+                  src={`https://fast.wistia.net/embed/iframe/${videoId}?seo=true&videoFoam=true`}
                   title="Interconnected Thank You Video"
                   allow="autoplay; fullscreen"
                   allowTransparency

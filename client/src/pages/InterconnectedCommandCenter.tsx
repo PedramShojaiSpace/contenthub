@@ -225,14 +225,14 @@ export default function InterconnectedCommandCenter() {
   const checkoutRate = leads > 0 ? (checkouts / leads) * 100 : null;
   const kajabiRevenue = kajabiData ? kajabiData.totalRevenueCents / 100 : 0;
   const kajabiPurchases = kajabiData?.totalPurchases ?? 0;
-  // Meta-attributed revenue excludes purchases confirmed as email-list buyers (not Meta leads).
-  // The $499 purchase on Aug 3 was a 2+ year email subscriber — excluded from Meta ROAS.
-  // As CAPI + Kajabi webhook attribution matures, this will be automated via kajabi_purchases.is_email_list_buyer.
-  const emailListRevenue = kajabiData?.tiers?.find(t => t.tier === 'combo')?.revenueCents
-    ? (kajabiData.tiers.find(t => t.tier === 'combo')!.revenueCents >= 49900 ? 499 : 0)
-    : 0;
+  // Meta-attributed revenue excludes the $499 "Supported Package" tier — confirmed as an
+  // email-list buyer (2+ year subscriber), not a Meta lead. Tier key is '499'.
+  // As CAPI + Kajabi webhook attribution matures, this will be fully automated.
+  const emailListTier = kajabiData?.tiers?.find(t => t.tier === '499');
+  const emailListRevenue = emailListTier ? emailListTier.revenueCents / 100 : 0;
+  const emailListCount = emailListTier?.count ?? 0;
   const metaAttributedRevenue = Math.max(0, kajabiRevenue - emailListRevenue);
-  const metaAttributedPurchases = emailListRevenue > 0 ? Math.max(0, kajabiPurchases - 1) : kajabiPurchases;
+  const metaAttributedPurchases = Math.max(0, kajabiPurchases - emailListCount);
   const roas = spend > 0 && metaAttributedRevenue > 0 ? metaAttributedRevenue / spend : null;
   const cpp = metaAttributedPurchases > 0 ? spend / metaAttributedPurchases : null;
 

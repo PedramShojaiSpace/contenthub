@@ -132,7 +132,7 @@ export function pickVariantByWeight(
 export const abTestRouter = router({
   // ── Test management ──────────────────────────────────────────────────────
 
-  listTests: protectedProcedure.query(async () => {
+  listTests: publicProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
     const tests = await db.select().from(abTests).orderBy(desc(abTests.createdAt));
@@ -362,7 +362,7 @@ export const abTestRouter = router({
 
   // ── Results + significance ─────────────────────────────────────────────────
 
-  getResults: protectedProcedure
+  getResults: publicProcedure
     .input(z.object({ testId: z.number() }))
     .query(async ({ input }) => {
       const db = await getDb();

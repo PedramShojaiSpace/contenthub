@@ -285,7 +285,85 @@ async function fetchKajabiSales(datePreset: string): Promise<KajabiSalesMetrics>
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
+// ── Meta Ads Spend Fetcher ────────────────────────────────────────────────────
+async function fetchMetaSpendForRange(startDate: string, endDate: string) {
+  const accessToken = process.env.META_AD_ACCESS_TOKEN;
+  const adAccountId = process.env.META_AD_ACCOUNT_ID;
+  if (!accessToken || !adAccountId) {
+    return { spend: 0, leads: 0, checkouts: 0, campaigns: [] as any[], error: "Meta credentials not configured" };
+  }
+
+  const fields = [
+    "campaign_name", "adset_name",
+    "spend", "impressions", "clicks",
+    "actions", "cost_per_action_type",
+  ].join(",");
+
+  const timeRange = JSON.stringify({ since: startDate, until: endDate });
+  const url = `https://graph.facebook.com/v19.0/act_${adAccountId}/insights?fields=${fields}&time_range=${encodeURIComponent(timeRange)}&level=campaign&limit=100&access_token=${accessToken}`;
+
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const errText = await resp.text();
+    console.error("[MetaSpend] API error:", errText);
+    return { spend: 0, leads: 0, checkouts: 0, campaigns: [] as any[], error: `Meta API error: ${resp.status}` };
+  }
+
+  const json = await resp.json() as any;
+  const data: any[] = json.data || [];
+
+  let totalSpend = 0;
+  let totalLeads = 0;
+  let totalCheckouts = 0;
+  const campaigns: any[] = [];
+
+  for (const row of data) {
+    const spend = parseFloat(row.spend || "0");
+    const actions: any[] = row.actions || [];
+
+    // Lead actions: lead, complete_registration, onsite_conversion.lead_grouped
+    const leads =
+      parseInt(actions.find((a: any) => a.action_type === "lead")?.value || "0") +
+      parseInt(actions.find((a: any) => a.action_type === "onsite_conversion.lead_grouped")?.value || "0") +
+      parseInt(actions.find((a: any) => a.action_type === "complete_registration")?.value || "0");
+
+    // Checkout / add to cart actions
+    const checkouts =
+      parseInt(actions.find((a: any) => a.action_type === "initiate_checkout")?.value || "0") +
+      parseInt(actions.find((a: any) => a.action_type === "add_to_cart")?.value || "0");
+
+    totalSpend += spend;
+    totalLeads += leads;
+    totalCheckouts += checkouts;
+
+    campaigns.push({
+      name: row.campaign_name,
+      spend: spend,
+      leads: leads,
+      checkouts: checkouts,
+      cpl: leads > 0 ? spend / leads : null,
+    });
+  }
+
+  return {
+    spend: Math.round(totalSpend * 100) / 100,
+    leads: totalLeads,
+    checkouts: totalCheckouts,
+    campaigns,
+    error: null,
+  };
+}
+
 export const kajabiSalesRouter = router({
+  getMetaSpend: protectedProcedure
+    .input(z.object({
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }))
+    .query(async ({ input }) => {
+      return fetchMetaSpendForRange(input.startDate, input.endDate);
+    }),
+
   getCustomRangeSales: protectedProcedure
     .input(z.object({
       startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

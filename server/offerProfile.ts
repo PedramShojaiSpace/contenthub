@@ -254,6 +254,42 @@ export function buildOfferBlock(profile: OfferProfile): string {
     );
   }
 
+  /**
+   * v2.3 Part 0. Offer specifics are VERBATIM FACTS, not paraphrasable prose.
+   *
+   * Before this block, the only field with verbatim protection was `guarantee`
+   * ("State the guarantee as written", above). Deliverables, panel names,
+   * counts, prices and timelines were emitted as plain bullets, leaving the
+   * model free to round "22" to "about 20", expand a panel name into a
+   * description, or restate "$399" as "under $400". Any of those, in a script
+   * that sells a real clinical product, is a misrepresentation of what the
+   * buyer receives.
+   *
+   * This is defence in depth, NOT the cause of the FIT 176 incident — that was
+   * wrong data in the profile itself (see scripts/seed-sandbox.mjs). A prompt
+   * cannot rescue a profile that is already wrong; it can only stop a correct
+   * profile from drifting on the way into the script.
+   */
+  lines.push(
+    "",
+    "FACT FIDELITY — the strictest rule in this block:",
+    "Every number, panel name, product name, price, count, duration and timeline",
+    "above is a VERBATIM FACT about a real product a real person will buy. When",
+    "you refer to any of them you MUST reproduce them exactly as written.",
+    "- NEVER change a number. Not rounded, not approximated, not 'over' or",
+    "  'nearly', not converted to a different unit.",
+    "- NEVER alter a product, panel, test or kit name — not a word of it, and",
+    "  never a different model number or variant you know of from elsewhere.",
+    "- NEVER add a specific that is absent above. No extra markers, no extra",
+    "  foods tested, no additional sessions, no invented turnaround time.",
+    "- NEVER elaborate a deliverable into a claim about what it detects or",
+    "  proves beyond the words given.",
+    "- If you are unsure of a specific, describe the deliverable in general",
+    "  terms WITHOUT the number rather than guessing at it.",
+    "Your own background knowledge about this product or its category is NOT a",
+    "source. The block above is the only source."
+  );
+
   lines.push(
     "",
     "TEACHING SECTIONS must build toward the target action: every mechanism you",

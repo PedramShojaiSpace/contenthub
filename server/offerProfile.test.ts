@@ -170,6 +170,79 @@ describe("3B ctaOverride replaces rather than coexists", () => {
   });
 });
 
+/**
+ * v2.3 Part 0 — fact fidelity.
+ *
+ * Regression cover for the FIT 176 incident. The root cause was wrong DATA in
+ * the seeded offer profile, not a prompt defect, so no prompt test could have
+ * caught it. What these tests DO cover is the second half of the failure: once
+ * a specific reaches the prompt, nothing previously told the model that numbers
+ * and product names were untouchable. The fixture below uses deliberately
+ * distinctive, unroundable numbers so a drifted assertion is unmistakable.
+ */
+describe("3B fact fidelity locks offer specifics verbatim", () => {
+  const DISTINCTIVE: OfferProfile = {
+    offerName: "Meridian FIT 37 & Barrier Integrity Panel",
+    offerType: "service",
+    deliverables: [
+      "Screens 37 primary inflammatory food triggers",
+      "Measures Zonulin/Occludin across 4 barrier sites",
+      "1-Hour private clinical review session",
+    ],
+    guarantee: null,
+    timeline: "Results in 3–5 Weeks",
+    pricePoint: "$399",
+    primaryCtaUrl: null,
+    targetAction: "order the Meridian panel and book the review session",
+  };
+
+  const block = buildOfferBlock(DISTINCTIVE);
+
+  it("emits every distinctive specific verbatim, digits intact", () => {
+    expect(block).toContain("Meridian FIT 37 & Barrier Integrity Panel");
+    expect(block).toContain("Screens 37 primary inflammatory food triggers");
+    expect(block).toContain("Measures Zonulin/Occludin across 4 barrier sites");
+    expect(block).toContain("Results in 3–5 Weeks");
+    expect(block).toContain("$399");
+  });
+
+  it("carries an explicit fact-fidelity instruction, not just a bullet list", () => {
+    expect(block).toContain("FACT FIDELITY");
+    expect(block).toContain("VERBATIM FACT");
+    expect(block).toContain("reproduce them exactly as written");
+  });
+
+  it("forbids each drift mode that produced FIT 176", () => {
+    // rounding / approximating a count
+    expect(block).toContain("NEVER change a number");
+    // substituting a different model or variant number from outside knowledge
+    expect(block).toContain("never a different model number or variant");
+    // adding specifics the profile never stated
+    expect(block).toContain("NEVER add a specific that is absent above");
+    // elaborating a deliverable into a bigger claim
+    expect(block).toContain("NEVER elaborate a deliverable");
+  });
+
+  it("names the model's own background knowledge as a non-source", () => {
+    // This is the exact failure mode: a plausible product number recalled from
+    // outside the page and stated as fact.
+    expect(block).toContain("background knowledge");
+    expect(block).toContain("is NOT a");
+    expect(block).toContain("the only source");
+  });
+
+  it("prefers omitting a number over guessing it", () => {
+    expect(block).toContain("WITHOUT the number rather than guessing");
+  });
+
+  it("keeps the fidelity rule even when there is no guarantee to protect", () => {
+    // The guarantee line was previously the ONLY verbatim-protected field.
+    // Fidelity must not be coupled to a guarantee existing.
+    expect(block).not.toContain("State the guarantee as written");
+    expect(block).toContain("FACT FIDELITY");
+  });
+});
+
 describe("3B extraction prompt forbids invention", () => {
   it("instructs null over fabrication for guarantee and timeline", () => {
     expect(OFFER_EXTRACTION_PROMPT).toContain("NEVER invent a fact that is not in the copy");

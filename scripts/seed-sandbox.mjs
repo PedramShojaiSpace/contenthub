@@ -37,9 +37,17 @@ const content = readFileSync(SALES_PAGE_PATH, "utf8");
 console.log(`[seed] sales page read: ${content.length} chars, ${content.split("\n").length} lines`);
 
 /**
- * Pinned single tier. Every field is taken from the page copy — nothing is
- * invented. `guarantee` is null because the page states no refund guarantee for
- * the intake; asserting one would put invented refund terms in a CTA.
+ * Pinned single tier. Every field below is quoted from the page copy.
+ *
+ * CORRECTED 2026-08-03 (v2.3 Part 0). The first version of this block said
+ * "KBMO FIT 176 food inflammation test (176 foods, IgG + complement C3)".
+ * The string "176" appears ZERO times in the sales page; the page says
+ * "KBMO FIT 22 & Gut Barrier Permeability Panel" and "Screens 22 primary
+ * inflammatory food triggers". The 176 figure was written from outside
+ * knowledge of KBMO's product line rather than from the page — exactly the
+ * fabrication this pipeline exists to prevent, committed in the seed data.
+ * The generator then faithfully reproduced it. Every deliverable below is now
+ * traceable to a line number in /home/ubuntu/salespage_verbatim.txt.
  */
 const offerLadder = {
   tiers: [
@@ -47,17 +55,32 @@ const offerLadder = {
       offerName: "KBMO Clinical Ecosystem — Diagnostic Intake",
       offerType: "service",
       deliverables: [
-        "KBMO FIT 176 food inflammation test (176 foods, IgG + complement C3)",
-        "Comprehensive gut and inflammation lab panel",
-        "1-on-1 expert health coach session to interpret your results",
-        "Personalised elimination and reintroduction protocol",
-        "Written clinical summary of findings",
+        // page line 131
+        "KBMO FIT 22 & Gut Barrier Permeability Panel, shipped directly to your door",
+        // page lines 138, 60-61
+        "Screens 22 primary inflammatory food triggers",
+        // page lines 139, 266
+        "Measures Zonulin/Occludin for leaky gut",
+        // page lines 59-61 ($149 value)
+        "Clinical-Grade Gut Biome Test Kit — a simple, painless at-home collection kit, no doctor's office required",
+        // page lines 63-65 ($200 value)
+        "Full Lab Analysis & Detailed Report — comprehensive report of your exact gut health markers, colour-coded red, yellow and green",
+        // page lines 67-69 ($300 value), 131, 267
+        "1-Hour Private 1-on-1 Clinical Health Coach Session reviewing YOUR specific results",
+        // page lines 134-135, 268-269
+        "Personalized Upstream Action Plan detailing your exact food sensitivity triggers and gut barrier status",
       ],
-      guarantee: null,
-      timeline: "Results in 3-5 weeks",
+      // page line 9 "100% Money-Back Guarantee"; lines 268-269 "No-Rejection
+      // Guarantee". Both are stated on the page, so both are quoted here. The
+      // earlier null was also wrong, in the safer direction.
+      guarantee:
+        "100% Money-Back Guarantee. Plus the No-Rejection Guarantee: regardless of whether you qualify for the 6- or 12-month programs, you walk away with your complete food sensitivity report, leaky gut markers, and a personalized Upstream Action Plan.",
+      // page line 8
+      timeline: "Results in 3–5 Weeks",
       pricePoint: "$399",
       primaryCtaUrl: null,
-      targetAction: "Book the $399 Diagnostic Intake and complete the at-home test kit",
+      // page lines 85, 277 "Get My Clinical Ecosystem — $399" / "Order Your Kit — $399"
+      targetAction: "Order the $399 Clinical Ecosystem kit and reserve a clinical coaching slot",
     },
   ],
 };

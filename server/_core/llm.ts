@@ -278,6 +278,46 @@ const INVOKE_LLM_BASE_DELAY_MS = 1000; // 1s → 2s → 4s → 8s → 16s
 export const LLM_MODEL = process.env.LLM_MODEL || "gpt-5.5";
 
 /**
+ * Raised when the provider stopped generating because the token budget ran out
+ * (`finish_reason: "length"`) rather than because the answer was finished.
+ *
+ * This is deliberately an ERROR rather than a returned flag. The failure mode it
+ * prevents is the worst kind: a 2,000-word script cut off mid-sentence looks
+ * like a complete script to every downstream consumer — the story lint, the
+ * grounding metric, the cadence lint and the DB write all accept it happily, and
+ * the operator sees a saved "finished" script whose last section silently does
+ * not exist. Failing loudly here means a truncated generation can never be
+ * persisted as if it were complete.
+ */
+export class LLMTruncatedError extends Error {
+  readonly finishReason: string;
+  readonly completionTokens: number | null;
+  readonly maxTokens: number;
+  readonly partialContent: string;
+
+  constructor(args: {
+    finishReason: string;
+    completionTokens: number | null;
+    maxTokens: number;
+    partialContent: string;
+  }) {
+    super(
+      `The model stopped because it ran out of output budget ` +
+        `(finish_reason="${args.finishReason}"). It produced ` +
+        `${args.completionTokens ?? "an unknown number of"} completion tokens against a ` +
+        `limit of ${args.maxTokens}, so the result is cut off mid-generation and ` +
+        `was NOT saved. Retry with a shorter target length, or raise the token ` +
+        `budget for this call.`
+    );
+    this.name = "LLMTruncatedError";
+    this.finishReason = args.finishReason;
+    this.completionTokens = args.completionTokens;
+    this.maxTokens = args.maxTokens;
+    this.partialContent = args.partialContent;
+  }
+}
+
+/**
  * `max_tokens` vs `max_completion_tokens` is model-dependent, so it is derived
  * from the model name rather than hardcoded. The gpt-5 family and the o-series
  * reasoning models accept only `max_completion_tokens`; gpt-4o / gpt-4.1 and
@@ -503,6 +543,36 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
       }
       throw new Error(`SERVICE_UNAVAILABLE: The AI service returned an unexpected response. Please try again in a moment.`);
     }
+  }
+
+  /**
+   * TRUNCATION GUARD.
+   *
+   * Every guard above catches a response that is obviously broken. This one
+   * catches the response that looks perfect: valid envelope, real prose, no
+   * error field — but the model was cut off mid-sentence because the output
+   * budget ran out. Without this check the truncated text flows straight into
+   * the DB and is presented as a finished script.
+   *
+   * Not retried: a retry with the same budget produces the same truncation, so
+   * failing immediately with an actionable message is the honest response.
+   */
+  const finishReason = parsed?.choices?.[0]?.finish_reason;
+  if (finishReason === "length") {
+    const usage = (parsed as any)?.usage;
+    const content = parsed?.choices?.[0]?.message?.content;
+    console.error(
+      `[invokeLLM] TRUNCATED: finish_reason=length, ` +
+        `completion_tokens=${usage?.completion_tokens ?? "?"}, ` +
+        `budget=${payload[MAX_TOKENS_PARAM]}, model=${LLM_MODEL}`
+    );
+    throw new LLMTruncatedError({
+      finishReason,
+      completionTokens:
+        typeof usage?.completion_tokens === "number" ? usage.completion_tokens : null,
+      maxTokens: Number(payload[MAX_TOKENS_PARAM]),
+      partialContent: typeof content === "string" ? content : "",
+    });
   }
 
   return parsed;

@@ -34,7 +34,7 @@ import {
   type PatternComposition,
 } from "./patternComposition";
 import { getDb } from "./db";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, LLMTruncatedError } from "./_core/llm";
 import { parseLLMJson } from "./llmUtils";
 import {
   vidiqBalance,
@@ -1748,15 +1748,48 @@ export const scriptFactoryRouter = router({
         ? `\n\nThis must be a ${targetLengthMinutes}-minute script: approximately ${budget.target} spoken words. Write the FULL script.`
         : "";
 
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about the following topic:\n\n${input.topic}\n\nRemember to tag verified elements with [VERIFIED] inline.${lengthAsk}`,
-          },
-        ],
-      });
+      /*
+       * Truncation is surfaced, never silently saved.
+       *
+       * invokeLLM throws LLMTruncatedError when the provider reports
+       * finish_reason "length" — the model ran out of output budget and stopped
+       * mid-sentence. That response is syntactically perfect, so without this
+       * translation it would sail through the story lint, the grounding metric
+       * and the cadence lint and be written to the DB as a finished script whose
+       * final section simply does not exist.
+       *
+       * Mapped to UNPROCESSABLE_CONTENT rather than a 500 because the condition
+       * is actionable by the operator (shorter target length, or a larger
+       * budget) and because that is the same code the story-integrity refusal
+       * uses — both mean "we refused to save this", which is what the UI needs
+       * to communicate.
+       */
+      let response;
+      try {
+        response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about the following topic:\n\n${input.topic}\n\nRemember to tag verified elements with [VERIFIED] inline.${lengthAsk}`,
+            },
+          ],
+        });
+      } catch (err) {
+        if (err instanceof LLMTruncatedError) {
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message:
+              `Generation refused: the model hit its output limit and the script is ` +
+              `cut off mid-generation. Nothing was saved.\n\n` +
+              `Produced ${err.completionTokens ?? "an unknown number of"} completion tokens ` +
+              `against a budget of ${err.maxTokens}` +
+              (targetLengthMinutes ? ` for a ${targetLengthMinutes}-minute target` : "") +
+              `.\n\nTry a shorter target length, or raise the output budget.`,
+          });
+        }
+        throw err;
+      }
 
       let scriptBody = String(response?.choices?.[0]?.message?.content ?? "");
       if (!scriptBody || scriptBody.length < 50) {

@@ -2928,6 +2928,357 @@ export const scriptFactoryRouter = router({
       };
     }),
 
+  // ─── v2.3 Part 3 — regenerate ONE section, in place ────────────────────────
+  /**
+   * Rewrite a single section of an existing script, editing the row in place.
+   *
+   * NOT a variant, deliberately: "fix this hook" means the operator wants the
+   * script they already have with a better hook, not a second script to reconcile
+   * against the first. The previous wording is pushed onto `section_history` so the
+   * edit is undoable — see `restoreSection`.
+   *
+   * The section is located by `sectionKey` from the SAME `buildSectionOutline` the
+   * navigator renders, which is why that key is derived server-side. If the client
+   * re-derived it and diverged, this would rewrite the wrong section of a script.
+   */
+  regenerateSection: protectedProcedure
+    .input(z.object({
+      scriptId: z.number().int().positive(),
+      /** Slug from the outline: "hook", "teach-2", "cta". */
+      sectionKey: z.string().trim().min(1).max(60),
+      /** Optional operator steer, e.g. "make it colder, lead with the 2 AM detail". */
+      instruction: z.string().trim().max(500).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const [row] = await db
+        .select()
+        .from(scriptFactoryOutputs)
+        .where(eq(scriptFactoryOutputs.id, input.scriptId))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: `Script #${input.scriptId} was not found.` });
+
+      const body = row.scriptBody ?? "";
+      const outline = buildSectionOutline(body);
+      const target = outline.find((s) => s.sectionKey === input.sectionKey);
+      if (!target) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message:
+            `Section "${input.sectionKey}" is not in script #${input.scriptId}. ` +
+            `Sections present: ${outline.map((s) => s.sectionKey).join(", ") || "none"}.`,
+        });
+      }
+
+      /*
+       * ── Slice boundaries ───────────────────────────────────────────────────
+       *
+       * A section runs from its own tag up to the next section's tag, or to end of
+       * body for the last one. Taken from the outline's offsets rather than
+       * re-searched, so the boundary the operator saw in the navigator is exactly
+       * the boundary that gets replaced.
+       */
+      const idxInOutline = outline.indexOf(target);
+      const sliceStart = target.charStart;
+      const sliceEnd = idxInOutline + 1 < outline.length ? outline[idxInOutline + 1].charStart : body.length;
+      const previousText = body.slice(sliceStart, sliceEnd);
+      const before = body.slice(0, sliceStart);
+      const after = body.slice(sliceEnd);
+
+      /*
+       * A story slot is the operator's own case, not model output. Rewriting it
+       * would either delete the slot they are meant to fill or, worse, invite the
+       * model to fill it — which is the exact fabrication the v2.2 story rules
+       * exist to prevent.
+       */
+      if (target.slotOnly) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            `"${target.label}" is a story slot reserved for your own case, not generated copy. ` +
+            "Regenerating it would either remove the slot or invite the model to invent a patient. " +
+            "Edit it directly instead.",
+        });
+      }
+
+      const storyMode = (row.generationParams?.storyMode ?? "brief") as StoryMode;
+      const format = (row.generationParams?.format ?? row.format ?? "youtube_script") as ScriptFormat;
+
+      /*
+       * ── The rewrite prompt ─────────────────────────────────────────────────
+       *
+       * Neighbours are supplied as READ-ONLY context. Without the preceding
+       * section a regenerated HOOK cannot hand off into what follows, and the seam
+       * is exactly where a section-level rewrite shows.
+       *
+       * The story integrity block is included verbatim — the same block generation
+       * uses. A section rewrite is a generation, so it gets the same non-negotiable
+       * rules rather than a shortened restatement of them.
+       */
+      const prevSection = idxInOutline > 0
+        ? body.slice(outline[idxInOutline - 1].charStart, sliceStart)
+        : "";
+      const nextSection = idxInOutline + 1 < outline.length
+        ? body.slice(sliceEnd, idxInOutline + 2 < outline.length ? outline[idxInOutline + 2].charStart : body.length)
+        : "";
+
+      const rewritten = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: [
+              `You are rewriting ONE SECTION of an existing ${FORMAT_DESCRIPTIONS[format] ?? "script"}.`,
+              "",
+              buildStoryIntegrityBlock(storyMode),
+              "",
+              "=== OUTPUT CONTRACT (STRICT) ===",
+              `Return ONLY the replacement section. Begin with the literal tag [${target.tag}] and`,
+              "nothing before it. Do NOT return the surrounding sections, a preamble, an",
+              "explanation, or markdown fences.",
+              "Do NOT include a (m:ss) timestamp — timestamps are recomputed after your text is",
+              "inserted, and one you write would be wrong the moment the length changes.",
+              `Target length: about ${target.wordCount} spoken words, so the script's overall`,
+              "runtime stays close to what the operator approved.",
+              "=== END OUTPUT CONTRACT ===",
+            ].join("\n"),
+          },
+          {
+            role: "user",
+            content: [
+              `TOPIC: ${row.topic}`,
+              "",
+              prevSection ? `PRECEDING SECTION (read-only, for continuity):\n${prevSection.trim()}` : "",
+              "",
+              `SECTION TO REPLACE — ${target.label}:\n${previousText.trim()}`,
+              "",
+              nextSection ? `FOLLOWING SECTION (read-only, must still follow on):\n${nextSection.trim()}` : "",
+              "",
+              input.instruction
+                ? `OPERATOR INSTRUCTION (highest priority): ${input.instruction}`
+                : "No specific instruction: make it materially better, not merely reworded.",
+            ].filter(Boolean).join("\n"),
+          },
+        ],
+      });
+
+      let replacement = String(rewritten?.choices?.[0]?.message?.content ?? "").trim();
+      // Strip markdown fences the model sometimes adds despite the contract.
+      replacement = replacement.replace(/^```[a-z]*\s*/i, "").replace(/\s*```$/, "").trim();
+      // Strip any timestamp it wrote anyway; insertTimestamps owns these.
+      replacement = stripTimestamps(replacement).trim();
+
+      if (replacement.length < 20) {
+        throw new TRPCError({
+          code: "UNPROCESSABLE_CONTENT",
+          message: "The model returned an empty or unusably short section. Nothing was changed.",
+        });
+      }
+
+      /*
+       * Re-attach the tag if the model dropped it. Without this the section would
+       * silently merge into the previous one, changing the script's structure and
+       * every timestamp after it.
+       */
+      if (!replacement.startsWith(`[${target.tag}]`)) {
+        replacement = `[${target.tag}] ${replacement.replace(/^\[[A-Z_]+\]\s*/, "")}`;
+      }
+
+      /*
+       * ── Splice, then re-run EVERY v2.2 guard on the result ─────────────────
+       *
+       * The guards run on the WHOLE spliced body, not on the new section alone.
+       * Cadence rules are positional (a cliché opener is only a violation at the
+       * top of the script) and the grounding metric has a script-wide denominator,
+       * so linting the fragment would answer a different question.
+       */
+      const splicedRaw = `${before}${replacement}${after.startsWith("\n") ? "" : "\n"}${after}`;
+
+      /*
+       * STORY INTEGRITY IS A HARD FAILURE, matching generate. A fabricated patient
+       * is a legal hazard, so an offending rewrite is discarded and the script is
+       * left exactly as it was — no history entry, no partial save.
+       *
+       * Linted on the spliced body because a name introduced in the new section
+       * and a name already elsewhere are the same hazard, and because
+       * `missingCompositeLabel` is a property of the whole narrative.
+       */
+      const storyLint = lintStoryIntegrity(splicedRaw, storyMode);
+      if (storyLint.violations.length > 0 || storyLint.missingCompositeLabel) {
+        throw new TRPCError({
+          code: "UNPROCESSABLE_CONTENT",
+          message:
+            "Section regeneration refused: the rewrite fabricated patient material. " +
+            "The script was left unchanged.\n\n" +
+            formatViolations(storyLint.violations, storyLint.missingCompositeLabel),
+        });
+      }
+
+      // Cadence degrades and never blocks — same asymmetry as generate.
+      const cadence = lintCadence(splicedRaw);
+      // Grounding on the tagged body, before any stripping.
+      const grounding = computeGroundingMetric(splicedRaw);
+      /*
+       * [VERIFIED] must not survive into a saved body — the stored copy is the
+       * clean one, which is the invariant Part 1 discovered the hard way.
+       */
+      const stripped = splicedRaw.replace(/\[VERIFIED\]/g, "").replace(/ {2,}/g, " ");
+      // Recomputed last: the new section almost certainly changed the word count,
+      // which moves every later stamp. Idempotent — it strips before inserting.
+      const finalBody = insertTimestamps(stripped);
+
+      /*
+       * ── History, newest first, capped at 10 ────────────────────────────────
+       *
+       * `previousText` is the verbatim prior slice, so an undo is a byte-for-byte
+       * splice rather than a reconstruction that might reformat the rest.
+       */
+      const priorHistory = row.sectionHistory ?? [];
+      const sectionHistory = [
+        {
+          sectionKey: target.sectionKey,
+          previousText,
+          instruction: input.instruction ?? null,
+          replacedAt: new Date().toISOString(),
+        },
+        ...priorHistory,
+      ].slice(0, 10);
+
+      await db
+        .update(scriptFactoryOutputs)
+        .set({
+          scriptBody: finalBody,
+          wordCount: countWords(finalBody),
+          verifiedCount: grounding.grounded,
+          totalElements: grounding.total,
+          verificationPct: grounding.pct,
+          groundingLabel: describeGrounding(grounding),
+          groundingByTag: grounding.byTag,
+          slotOnlySections: grounding.slotOnlySections,
+          metricVersion: grounding.metricVersion,
+          sectionHistory,
+          /*
+           * `updatedAt` deliberately untouched, consistent with `update`, which
+           * moves it only on status changes. The 90-day performance clock keys off
+           * `approvedAt`, and an editing session should not look like a re-approval.
+           */
+        } as any)
+        .where(eq(scriptFactoryOutputs.id, input.scriptId));
+
+      return {
+        ok: true as const,
+        scriptId: input.scriptId,
+        sectionKey: target.sectionKey,
+        sectionLabel: target.label,
+        scriptBody: finalBody,
+        sections: buildSectionOutline(finalBody),
+        previousWordCount: target.wordCount,
+        newWordCount: countWordsWithStorySlots(replacement).words,
+        wordCount: countWords(finalBody),
+        groundingLabel: describeGrounding(grounding),
+        verifiedCount: grounding.grounded,
+        totalElements: grounding.total,
+        verificationPct: grounding.pct,
+        cadenceViolations: cadence.violations,
+        canUndo: true as const,
+        historyDepth: sectionHistory.length,
+      };
+    }),
+
+  // ─── v2.3 Part 3 — undo the most recent section regeneration ───────────────
+  /**
+   * Restore the most recent previous version of a section.
+   *
+   * Pops the newest matching `section_history` entry and splices its verbatim text
+   * back in. Metrics and timestamps are recomputed exactly as on the way out, so a
+   * regenerate-then-undo round trip returns the script to consistent state rather
+   * than to old text with new numbers.
+   */
+  restoreSection: protectedProcedure
+    .input(z.object({
+      scriptId: z.number().int().positive(),
+      sectionKey: z.string().trim().min(1).max(60),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const [row] = await db
+        .select()
+        .from(scriptFactoryOutputs)
+        .where(eq(scriptFactoryOutputs.id, input.scriptId))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: `Script #${input.scriptId} was not found.` });
+
+      const history = row.sectionHistory ?? [];
+      const entryIdx = history.findIndex((h) => h.sectionKey === input.sectionKey);
+      if (entryIdx === -1) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            `There is no saved previous version of "${input.sectionKey}" on this script. ` +
+            "Only the last 10 section regenerations are kept.",
+        });
+      }
+
+      const body = row.scriptBody ?? "";
+      const outline = buildSectionOutline(body);
+      const target = outline.find((s) => s.sectionKey === input.sectionKey);
+      if (!target) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            `"${input.sectionKey}" no longer exists in this script, so its previous version ` +
+            "cannot be put back. The script's structure has changed since that regeneration.",
+        });
+      }
+
+      const i = outline.indexOf(target);
+      const sliceEnd = i + 1 < outline.length ? outline[i + 1].charStart : body.length;
+      const restoredRaw =
+        body.slice(0, target.charStart) + history[entryIdx].previousText + body.slice(sliceEnd);
+
+      /*
+       * Same recompute as the outbound path. The restored text is known-good — it
+       * passed the story lint when it was first generated — so this is not
+       * re-litigated; what matters is that the NUMBERS match the text again.
+       */
+      const grounding = computeGroundingMetric(restoredRaw);
+      const finalBody = insertTimestamps(
+        restoredRaw.replace(/\[VERIFIED\]/g, "").replace(/ {2,}/g, " ")
+      );
+      const remaining = history.filter((_, idx) => idx !== entryIdx);
+
+      await db
+        .update(scriptFactoryOutputs)
+        .set({
+          scriptBody: finalBody,
+          wordCount: countWords(finalBody),
+          verifiedCount: grounding.grounded,
+          totalElements: grounding.total,
+          verificationPct: grounding.pct,
+          groundingLabel: describeGrounding(grounding),
+          groundingByTag: grounding.byTag,
+          slotOnlySections: grounding.slotOnlySections,
+          metricVersion: grounding.metricVersion,
+          sectionHistory: remaining,
+        } as any)
+        .where(eq(scriptFactoryOutputs.id, input.scriptId));
+
+      return {
+        ok: true as const,
+        scriptId: input.scriptId,
+        sectionKey: input.sectionKey,
+        sectionLabel: target.label,
+        scriptBody: finalBody,
+        sections: buildSectionOutline(finalBody),
+        wordCount: countWords(finalBody),
+        groundingLabel: describeGrounding(grounding),
+        historyDepth: remaining.length,
+      };
+    }),
+
   // ─── Get a single script ──────────────────────────────────────────────────
   get: protectedProcedure
     .input(z.object({ id: z.number() }))

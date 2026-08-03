@@ -1467,11 +1467,16 @@ export function buildSectionOutline(scriptBody: string): SectionOutlineEntry[] {
   });
 }
 
-export const scriptFactoryRouter = router({
-
-  // ─── Generate a new script ────────────────────────────────────────────────
-  generate: protectedProcedure
-    .input(z.object({
+/**
+ * ─── v2.3 Part 3 — the generation input contract, named ──────────────────────
+ *
+ * Lifted VERBATIM out of `generate.input` (was scriptFactoryRouter.ts:1474-1542)
+ * so that `generate`, `regenerateVariant` and `regenerateAsNew` validate against
+ * ONE schema object rather than three copies that drift apart. A regenerate path
+ * with its own hand-written schema is how a new generate option silently stops
+ * applying to variants.
+ */
+export const scriptGenerationInput = z.object({
       topic: z.string().min(10).max(1000),
       format: z.enum(SCRIPT_FORMATS),
       patternTypes: z.array(z.string()).default([
@@ -1539,843 +1544,932 @@ export const scriptFactoryRouter = router({
        * rather than picking a price point on the operator's behalf.
        */
       offerTier: z.string().trim().min(1).max(200).optional(),
-    }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+});
 
-      // Target length only applies to long-form video; silently ignored elsewhere
-      // so the client never has to special-case clearing it.
-      const targetLengthMinutes = input.format === "youtube_script"
-        ? input.targetLengthMinutes
-        : undefined;
+/** Fully-defaulted generation input, i.e. what the resolver actually receives. */
+export type ScriptGenerationInput = z.infer<typeof scriptGenerationInput>;
 
-      /*
-       * 1. PATTERN CANDIDATES — Part 3D.
-       *
-       * The v2.1 code ran one query per requested type here and pushed every
-       * fetched row into `usedPatternIds`, which was later used to bump
-       * usage_count. Two defects in one loop:
-       *
-       *   - It composed BEFORE research resolved, so the research-weighting the
-       *     spec asks for could not exist; research patterns were appended
-       *     afterwards as an afterthought.
-       *   - It counted FETCHED rows as USED. usage_count feeds the effectiveness
-       *     signal every future composition reads, so inflating it on rows that
-       *     never entered the prompt corrupts the corpus permanently.
-       *
-       * Now: one candidate fetch, wide, no per-type queries. Composition happens
-       * after research resolution (see step 2c) and usage is incremented only
-       * for the composed set (step 8).
-       */
-      const candidateRows = await db
-        .select()
-        .from(contentPatterns)
-        .orderBy(desc(contentPatterns.effectivenessScore))
-        .limit(CANDIDATE_FETCH_LIMIT);
+/**
+ * ─── v2.3 Part 3 — the generation pipeline, extracted ────────────────────────
+ *
+ * This is the ENTIRE former body of the `generate` mutation, moved without
+ * behavioural change (was scriptFactoryRouter.ts:1543-2377). `generate` is now a
+ * thin wrapper over it, and the regenerate mutations call the same function.
+ *
+ * WHY EXTRACT RATHER THAN CALL THE MUTATION: a resolver is reachable only through
+ * a tRPC caller, which would mean re-validating input, re-entering middleware and
+ * losing the ability to pass lineage that is not part of the public input. And
+ * WHY NOT FORK: every v2.2 guarantee lives in this pipeline — story-slot
+ * integrity, cadence lint, deterministic timestamps, honest grounding, the
+ * fetch-is-not-use rule on usage_count, post-commit claims review. A second copy
+ * would hold those guarantees only until the first divergent edit.
+ *
+ * `lineage` is the one genuinely new behaviour: it is written into the inserted
+ * row and nothing else reads it, so a caller that omits it produces exactly the
+ * row the pre-v2.3 code produced.
+ */
+export interface GenerationLineage {
+  /** Direct source of this script. NULL means the script is an original. */
+  parentScriptId?: number | null;
+  /** Ultimate ancestor. NULL on originals — see the schema comment on the column. */
+  variantOfRootId?: number | null;
+  /** Operator-facing label, e.g. "20-min cut". */
+  variantLabel?: string | null;
+}
 
-      // 1b. Explicit Northstar — operator-selected analog entries (Phase 2.3.1).
-      // When present these REPLACE the keyword-matched analog lookup entirely:
-      // a deliberate choice must not be diluted by fuzzy retrieval.
-      const northStarIds = input.analogDataEntryIds ?? [];
-      // Part 3B — resolved below from the selected North Star entries.
-      let boundOffer: OfferProfile | null = null;
-      let boundOfferEntryId: number | null = null;
-      let offerBindReason: string | null = null;
-      let unresolvedOfferTiers: { offerName: string; pricePoint: string | null }[] = [];
-      let explicitNorthStar: { title: string | null; content: string; type: string | null }[] = [];
-      if (northStarIds.length > 0) {
-        const rows = await db
-          .select({
-            id: analogDataEntries.id,
-            title: analogDataEntries.title,
-            content: analogDataEntries.content,
-            type: analogDataEntries.type,
-            offerProfile: analogDataEntries.offerProfile,
-          })
-          .from(analogDataEntries)
-          .where(inArray(analogDataEntries.id, northStarIds));
-        // Preserve the operator's ordering — the first pick is the primary model.
-        explicitNorthStar = northStarIds
-          .map((id) => rows.find((r) => r.id === id))
-          .filter((r): r is typeof rows[number] => Boolean(r))
-          .map((r) => ({ title: r.title, content: r.content, type: r.type }));
-        /**
-         * Part 3B — bind the CTA to the FIRST selected entry that has a validated
-         * offer. First-pick-wins mirrors the existing rule that the
-         * operator's first selection is the primary model; binding to several
-         * offers at once would produce a script selling two things.
-         *
-         * An entry with no offer, or one that fails validation, simply
-         * does not bind. Generation proceeds unbound rather than guessing.
-         *
-         * MULTI-TIER: a page that ladders several purchasable tiers does NOT
-         * auto-bind. Silently choosing a tier would make the script sell a price
-         * point the operator never picked, so an unchosen ladder generates
-         * unbound and reports the available tiers back to the caller.
-         */
-        for (const id of northStarIds) {
-          const row = rows.find((r) => r.id === id);
-          if (!row) continue;
-          const ladder = parseStoredOfferLadder(row.offerProfile);
-          if (ladder.tiers.length === 0) continue;
-          const picked = selectOfferTier(ladder, input.offerTier);
-          if (picked.profile) {
-            boundOffer = picked.profile;
-            boundOfferEntryId = id;
-            offerBindReason = picked.reason;
-            break;
-          }
-          // Tiers exist but none resolved: surface them so the UI can ask.
-          offerBindReason = picked.reason;
-          unresolvedOfferTiers = ladder.tiers.map((t) => ({
-            offerName: t.offerName,
-            pricePoint: t.pricePoint,
-          }));
-          boundOfferEntryId = id;
-          break;
-        }
+export async function runScriptGeneration(
+  input: ScriptGenerationInput,
+  lineage: GenerationLineage = {}
+) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+  // Target length only applies to long-form video; silently ignored elsewhere
+  // so the client never has to special-case clearing it.
+  const targetLengthMinutes = input.format === "youtube_script"
+    ? input.targetLengthMinutes
+    : undefined;
+
+  /*
+   * 1. PATTERN CANDIDATES — Part 3D.
+   *
+   * The v2.1 code ran one query per requested type here and pushed every
+   * fetched row into `usedPatternIds`, which was later used to bump
+   * usage_count. Two defects in one loop:
+   *
+   *   - It composed BEFORE research resolved, so the research-weighting the
+   *     spec asks for could not exist; research patterns were appended
+   *     afterwards as an afterthought.
+   *   - It counted FETCHED rows as USED. usage_count feeds the effectiveness
+   *     signal every future composition reads, so inflating it on rows that
+   *     never entered the prompt corrupts the corpus permanently.
+   *
+   * Now: one candidate fetch, wide, no per-type queries. Composition happens
+   * after research resolution (see step 2c) and usage is incremented only
+   * for the composed set (step 8).
+   */
+  const candidateRows = await db
+    .select()
+    .from(contentPatterns)
+    .orderBy(desc(contentPatterns.effectivenessScore))
+    .limit(CANDIDATE_FETCH_LIMIT);
+
+  // 1b. Explicit Northstar — operator-selected analog entries (Phase 2.3.1).
+  // When present these REPLACE the keyword-matched analog lookup entirely:
+  // a deliberate choice must not be diluted by fuzzy retrieval.
+  const northStarIds = input.analogDataEntryIds ?? [];
+  // Part 3B — resolved below from the selected North Star entries.
+  let boundOffer: OfferProfile | null = null;
+  let boundOfferEntryId: number | null = null;
+  let offerBindReason: string | null = null;
+  let unresolvedOfferTiers: { offerName: string; pricePoint: string | null }[] = [];
+  let explicitNorthStar: { title: string | null; content: string; type: string | null }[] = [];
+  if (northStarIds.length > 0) {
+    const rows = await db
+      .select({
+        id: analogDataEntries.id,
+        title: analogDataEntries.title,
+        content: analogDataEntries.content,
+        type: analogDataEntries.type,
+        offerProfile: analogDataEntries.offerProfile,
+      })
+      .from(analogDataEntries)
+      .where(inArray(analogDataEntries.id, northStarIds));
+    // Preserve the operator's ordering — the first pick is the primary model.
+    explicitNorthStar = northStarIds
+      .map((id) => rows.find((r) => r.id === id))
+      .filter((r): r is typeof rows[number] => Boolean(r))
+      .map((r) => ({ title: r.title, content: r.content, type: r.type }));
+    /**
+     * Part 3B — bind the CTA to the FIRST selected entry that has a validated
+     * offer. First-pick-wins mirrors the existing rule that the
+     * operator's first selection is the primary model; binding to several
+     * offers at once would produce a script selling two things.
+     *
+     * An entry with no offer, or one that fails validation, simply
+     * does not bind. Generation proceeds unbound rather than guessing.
+     *
+     * MULTI-TIER: a page that ladders several purchasable tiers does NOT
+     * auto-bind. Silently choosing a tier would make the script sell a price
+     * point the operator never picked, so an unchosen ladder generates
+     * unbound and reports the available tiers back to the caller.
+     */
+    for (const id of northStarIds) {
+      const row = rows.find((r) => r.id === id);
+      if (!row) continue;
+      const ladder = parseStoredOfferLadder(row.offerProfile);
+      if (ladder.tiers.length === 0) continue;
+      const picked = selectOfferTier(ladder, input.offerTier);
+      if (picked.profile) {
+        boundOffer = picked.profile;
+        boundOfferEntryId = id;
+        offerBindReason = picked.reason;
+        break;
       }
+      // Tiers exist but none resolved: surface them so the UI can ask.
+      offerBindReason = picked.reason;
+      unresolvedOfferTiers = ladder.tiers.map((t) => ({
+        offerName: t.offerName,
+        pricePoint: t.pricePoint,
+      }));
+      boundOfferEntryId = id;
+      break;
+    }
+  }
 
-      // 2. Corpus retrieval. Vector search is primary (Phase 2.3.2); the keyword
-      //    LIKE query remains as the documented fallback when embeddings are
-      //    unavailable (no API key, network failure, or no embedded rows).
-      let corpusExcerpts: { title: string | null; content: string; sourceType: string; id: number }[] = [];
-      const usedCorpusIds: number[] = [];
-      let retrievalMethod: "vector" | "keyword" | "none" = "none";
+  // 2. Corpus retrieval. Vector search is primary (Phase 2.3.2); the keyword
+  //    LIKE query remains as the documented fallback when embeddings are
+  //    unavailable (no API key, network failure, or no embedded rows).
+  let corpusExcerpts: { title: string | null; content: string; sourceType: string; id: number }[] = [];
+  const usedCorpusIds: number[] = [];
+  let retrievalMethod: "vector" | "keyword" | "none" = "none";
 
-      if (input.useCorpusSearch) {
-        // With an explicit Northstar we only need supporting transcripts; without
-        // one we still need analog entries to anchor the script.
-        const wantAnalog = explicitNorthStar.length === 0;
+  if (input.useCorpusSearch) {
+    // With an explicit Northstar we only need supporting transcripts; without
+    // one we still need analog entries to anchor the script.
+    const wantAnalog = explicitNorthStar.length === 0;
 
-        try {
-          const hits = await searchCorpusEntries(db, {
-            query: input.topic,
-            topK: 8,
-            sourceType: "all",
-          });
-          retrievalMethod = hits.method;
-
-          const analogHits = wantAnalog
-            ? hits.results.filter((h) => h.sourceType === "analog_data").slice(0, 3)
-            : [];
-          const transcriptHits = hits.results
-            .filter((h) => h.sourceType !== "analog_data")
-            .slice(0, Math.max(0, 5 - analogHits.length));
-
-          corpusExcerpts = [...analogHits, ...transcriptHits].map((h) => ({
-            id: h.id,
-            title: h.title,
-            content: h.content,
-            sourceType: h.sourceType,
-          }));
-          usedCorpusIds.push(...corpusExcerpts.map((r) => r.id));
-        } catch {
-          // Retrieval is best-effort: a corpus outage must not block generation.
-          retrievalMethod = "none";
-        }
-
-        // Last-resort fallback, unchanged from v1 behavior.
-        if (corpusExcerpts.length === 0 && wantAnalog) {
-          const analogFallback = await db
-            .select({ id: corpusEntries.id, title: corpusEntries.title, content: corpusEntries.content, sourceType: corpusEntries.sourceType })
-            .from(corpusEntries)
-            .where(and(eq(corpusEntries.inCorpus, 1), eq(corpusEntries.sourceType, "analog_data")))
-            .orderBy(desc(corpusEntries.createdAt))
-            .limit(3);
-          corpusExcerpts = analogFallback;
-          usedCorpusIds.push(...analogFallback.map((r) => r.id));
-        }
-      }
-
-      // 2b. Persona context (Phase 2.3.3).
-      let personaContext: PersonaContext | null = null;
-      if (input.personaId) {
-        const personaRows = await db
-          .select()
-          .from(personas)
-          .where(eq(personas.id, input.personaId))
-          .limit(1);
-        if (personaRows.length === 0) {
-          throw new TRPCError({ code: "NOT_FOUND", message: `Persona ${input.personaId} not found` });
-        }
-        const persona = personaRows[0];
-        // The avatar helper matches on NAME against a separate table and returns
-        // "" when it finds nothing, so this is always safe.
-        let avatarBlock = "";
-        try {
-          avatarBlock = await getAvatarContextBlockForPersona(input.topic, persona.name);
-        } catch {
-          avatarBlock = "";
-        }
-        personaContext = buildPersonaBlock(persona, avatarBlock);
-      }
-
-      // 3. Deep research context (Phase 3.5). Resolved before generation so the
-      //    competitive block can be injected into the same prompt.
-      //
-      // v2.2 Part 3C — RESEARCH-FIRST GENERATION.
-      //
-      // A long-form script now RUNS research when none exists, instead of
-      // silently generating ungrounded because nobody ticked a box. Three
-      // behaviours matter here and each is deliberate:
-      //
-      //   REUSE — a complete job for the same seed within the reuse window is
-      //   reused at zero cost. Without this, every generation on a topic would
-      //   spend fresh vidIQ credits and Supadata units on research that already
-      //   exists, which would make research-first prohibitively expensive.
-      //
-      //   FAIL-OPEN — research failure must never fail generation. vidIQ can be
-       //  down, out of credits, or return nothing for an obscure seed; in every
-      //   such case the operator still gets their script, just ungrounded and
-      //   labelled as such. A hard failure here would make v2.2 strictly worse
-      //   than v2.1 for the user.
-      //
-      //   HONEST REPORTING — `researchAttempted` / `researchReused` /
-      //   `researchFailureReason` are returned so the UI can state what actually
-      //   happened rather than implying grounding that is not there.
-      const RESEARCH_REUSE_DAYS = 14;
-      const wantsAutoResearch =
-        !input.skipResearch &&
-        !input.researchJobId &&
-        !input.useDeepResearch &&
-        input.format === "youtube_script";
-
-      let autoResearchJobId: number | undefined;
-      let researchAttempted = false;
-      let researchReused = false;
-      let researchFailureReason: string | null = null;
-
-      if (wantsAutoResearch) {
-        researchAttempted = true;
-        const seed = (input.seedKeyword ?? input.topic).slice(0, 255);
-        try {
-          // Reuse first: cheapest possible outcome.
-          const cutoff = new Date(Date.now() - RESEARCH_REUSE_DAYS * 86400_000);
-          const existing = await db
-            .select({ id: researchJobs.id, createdAt: researchJobs.createdAt })
-            .from(researchJobs)
-            .where(and(
-              eq(researchJobs.seedKeyword, seed),
-              eq(researchJobs.status, "complete"),
-              gte(researchJobs.createdAt, cutoff),
-            ))
-            .orderBy(desc(researchJobs.createdAt))
-            .limit(1);
-
-          if (existing[0]) {
-            autoResearchJobId = existing[0].id;
-            researchReused = true;
-            console.log(`[ScriptFactory] reusing research job #${autoResearchJobId} for seed "${seed}"`);
-          } else {
-            const rr = await executeDeepResearch(db, {
-              topic: input.topic,
-              seedKeyword: seed,
-              maxTranscripts: 3,
-            });
-            if (rr.status === "complete") {
-              autoResearchJobId = rr.jobId;
-            } else {
-              researchFailureReason = rr.error ?? "Research produced no usable grounding";
-            }
-          }
-        } catch (err) {
-          // FAIL-OPEN. Recorded, reported, and then generation continues.
-          researchFailureReason = err instanceof Error ? err.message.slice(0, 300) : "Research failed";
-          console.error("[ScriptFactory] auto-research failed (continuing ungrounded):", err);
-        }
-      }
-
-      const research = await resolveResearchContext(db, {
-        useDeepResearch: input.useDeepResearch || Boolean(autoResearchJobId),
-        researchJobId: input.researchJobId ?? autoResearchJobId,
-        topic: input.topic,
+    try {
+      const hits = await searchCorpusEntries(db, {
+        query: input.topic,
+        topK: 8,
+        sourceType: "all",
       });
+      retrievalMethod = hits.method;
 
-      /*
-       * FINDING #10 DISCLOSURE. If resolution threw, the job may be `complete`
-       * with real transcripts on disk yet none of it reached the prompt. Report
-       * that explicitly rather than letting it look like a clean ungrounded run.
-       */
-      if (research.resolutionError && !researchFailureReason) {
-        researchFailureReason = `Research completed but its grounding could not be loaded: ${research.resolutionError.slice(0, 240)}`;
-      }
+      const analogHits = wantAnalog
+        ? hits.results.filter((h) => h.sourceType === "analog_data").slice(0, 3)
+        : [];
+      const transcriptHits = hits.results
+        .filter((h) => h.sourceType !== "analog_data")
+        .slice(0, Math.max(0, 5 - analogHits.length));
 
-      /*
-       * 2c. AUTOMATIC PATTERN COMPOSITION — Part 3D.
-       *
-       * ORDERING IS THE POINT. This sits AFTER research resolution because
-       * composition ranks research-tagged patterns above global ones and weights
-       * them by their source video's discovery rank. Composing earlier — which is
-       * what v2.1 did — makes that weighting unreachable, so research patterns
-       * could only ever be appended to an already-chosen set.
-       *
-       * A research job's own patterns may not be in the candidate fetch if the
-       * corpus is larger than CANDIDATE_FETCH_LIMIT and they scored low, so they
-       * are fetched explicitly and merged before composing. Their ids are then
-       * deduped by composition itself.
-       */
-      let researchCandidateRows: typeof contentPatterns.$inferSelect[] = [];
-      if (hasItems<number>(research.patternIds)) {
-        researchCandidateRows = await db
-          .select()
-          .from(contentPatterns)
-          .where(inArray(contentPatterns.id, research.patternIds));
-      }
+      corpusExcerpts = [...analogHits, ...transcriptHits].map((h) => ({
+        id: h.id,
+        title: h.title,
+        content: h.content,
+        sourceType: h.sourceType,
+      }));
+      usedCorpusIds.push(...corpusExcerpts.map((r) => r.id));
+    } catch {
+      // Retrieval is best-effort: a corpus outage must not block generation.
+      retrievalMethod = "none";
+    }
 
-      const candidateById = new Map<number, CompositionCandidate>();
-      for (const r of [...candidateRows, ...researchCandidateRows]) {
-        candidateById.set(r.id, {
-          id: r.id,
-          patternType: r.patternType,
-          patternText: r.patternText,
-          patternContext: r.patternContext,
-          effectivenessScore: r.effectivenessScore,
-          sourceVideoId: r.sourceVideoId,
-          tags: asArray<string>(r.tags),
-          usageCount: r.usageCount,
+    // Last-resort fallback, unchanged from v1 behavior.
+    if (corpusExcerpts.length === 0 && wantAnalog) {
+      const analogFallback = await db
+        .select({ id: corpusEntries.id, title: corpusEntries.title, content: corpusEntries.content, sourceType: corpusEntries.sourceType })
+        .from(corpusEntries)
+        .where(and(eq(corpusEntries.inCorpus, 1), eq(corpusEntries.sourceType, "analog_data")))
+        .orderBy(desc(corpusEntries.createdAt))
+        .limit(3);
+      corpusExcerpts = analogFallback;
+      usedCorpusIds.push(...analogFallback.map((r) => r.id));
+    }
+  }
+
+  // 2b. Persona context (Phase 2.3.3).
+  let personaContext: PersonaContext | null = null;
+  if (input.personaId) {
+    const personaRows = await db
+      .select()
+      .from(personas)
+      .where(eq(personas.id, input.personaId))
+      .limit(1);
+    if (personaRows.length === 0) {
+      throw new TRPCError({ code: "NOT_FOUND", message: `Persona ${input.personaId} not found` });
+    }
+    const persona = personaRows[0];
+    // The avatar helper matches on NAME against a separate table and returns
+    // "" when it finds nothing, so this is always safe.
+    let avatarBlock = "";
+    try {
+      avatarBlock = await getAvatarContextBlockForPersona(input.topic, persona.name);
+    } catch {
+      avatarBlock = "";
+    }
+    personaContext = buildPersonaBlock(persona, avatarBlock);
+  }
+
+  // 3. Deep research context (Phase 3.5). Resolved before generation so the
+  //    competitive block can be injected into the same prompt.
+  //
+  // v2.2 Part 3C — RESEARCH-FIRST GENERATION.
+  //
+  // A long-form script now RUNS research when none exists, instead of
+  // silently generating ungrounded because nobody ticked a box. Three
+  // behaviours matter here and each is deliberate:
+  //
+  //   REUSE — a complete job for the same seed within the reuse window is
+  //   reused at zero cost. Without this, every generation on a topic would
+  //   spend fresh vidIQ credits and Supadata units on research that already
+  //   exists, which would make research-first prohibitively expensive.
+  //
+  //   FAIL-OPEN — research failure must never fail generation. vidIQ can be
+   //  down, out of credits, or return nothing for an obscure seed; in every
+  //   such case the operator still gets their script, just ungrounded and
+  //   labelled as such. A hard failure here would make v2.2 strictly worse
+  //   than v2.1 for the user.
+  //
+  //   HONEST REPORTING — `researchAttempted` / `researchReused` /
+  //   `researchFailureReason` are returned so the UI can state what actually
+  //   happened rather than implying grounding that is not there.
+  const RESEARCH_REUSE_DAYS = 14;
+  const wantsAutoResearch =
+    !input.skipResearch &&
+    !input.researchJobId &&
+    !input.useDeepResearch &&
+    input.format === "youtube_script";
+
+  let autoResearchJobId: number | undefined;
+  let researchAttempted = false;
+  let researchReused = false;
+  let researchFailureReason: string | null = null;
+
+  if (wantsAutoResearch) {
+    researchAttempted = true;
+    const seed = (input.seedKeyword ?? input.topic).slice(0, 255);
+    try {
+      // Reuse first: cheapest possible outcome.
+      const cutoff = new Date(Date.now() - RESEARCH_REUSE_DAYS * 86400_000);
+      const existing = await db
+        .select({ id: researchJobs.id, createdAt: researchJobs.createdAt })
+        .from(researchJobs)
+        .where(and(
+          eq(researchJobs.seedKeyword, seed),
+          eq(researchJobs.status, "complete"),
+          gte(researchJobs.createdAt, cutoff),
+        ))
+        .orderBy(desc(researchJobs.createdAt))
+        .limit(1);
+
+      if (existing[0]) {
+        autoResearchJobId = existing[0].id;
+        researchReused = true;
+        console.log(`[ScriptFactory] reusing research job #${autoResearchJobId} for seed "${seed}"`);
+      } else {
+        const rr = await executeDeepResearch(db, {
+          topic: input.topic,
+          seedKeyword: seed,
+          maxTranscripts: 3,
         });
-      }
-
-      const composition: PatternComposition = composePatterns(
-        Array.from(candidateById.values()),
-        {
-          researchJobId: research.jobId,
-          rankedVideoIds: research.rankedVideoIds,
-          /*
-           * API-level override only. The UI no longer sends pattern types (the
-           * checkbox grid is gone), but the idea engine's per-idea pattern
-           * recommendation still passes `patternTypes` through, so honouring it
-           * keeps that path working without a second code path.
-           *
-           * `undefined` rather than the zod default means "not specified": an
-           * explicit empty array from a caller must not silently become "all
-           * types", and the default array must not masquerade as a choice.
-           */
-          selectedTypes: input.patternTypes.length > 0 ? input.patternTypes : null,
-          minEffectiveness: input.minPatternEffectiveness,
+        if (rr.status === "complete") {
+          autoResearchJobId = rr.jobId;
+        } else {
+          researchFailureReason = rr.error ?? "Research produced no usable grounding";
         }
-      );
+      }
+    } catch (err) {
+      // FAIL-OPEN. Recorded, reported, and then generation continues.
+      researchFailureReason = err instanceof Error ? err.message.slice(0, 300) : "Research failed";
+      console.error("[ScriptFactory] auto-research failed (continuing ungrounded):", err);
+    }
+  }
 
-      const promptPatterns = composition.patterns;
+  const research = await resolveResearchContext(db, {
+    useDeepResearch: input.useDeepResearch || Boolean(autoResearchJobId),
+    researchJobId: input.researchJobId ?? autoResearchJobId,
+    topic: input.topic,
+  });
+
+  /*
+   * FINDING #10 DISCLOSURE. If resolution threw, the job may be `complete`
+   * with real transcripts on disk yet none of it reached the prompt. Report
+   * that explicitly rather than letting it look like a clean ungrounded run.
+   */
+  if (research.resolutionError && !researchFailureReason) {
+    researchFailureReason = `Research completed but its grounding could not be loaded: ${research.resolutionError.slice(0, 240)}`;
+  }
+
+  /*
+   * 2c. AUTOMATIC PATTERN COMPOSITION — Part 3D.
+   *
+   * ORDERING IS THE POINT. This sits AFTER research resolution because
+   * composition ranks research-tagged patterns above global ones and weights
+   * them by their source video's discovery rank. Composing earlier — which is
+   * what v2.1 did — makes that weighting unreachable, so research patterns
+   * could only ever be appended to an already-chosen set.
+   *
+   * A research job's own patterns may not be in the candidate fetch if the
+   * corpus is larger than CANDIDATE_FETCH_LIMIT and they scored low, so they
+   * are fetched explicitly and merged before composing. Their ids are then
+   * deduped by composition itself.
+   */
+  let researchCandidateRows: typeof contentPatterns.$inferSelect[] = [];
+  if (hasItems<number>(research.patternIds)) {
+    researchCandidateRows = await db
+      .select()
+      .from(contentPatterns)
+      .where(inArray(contentPatterns.id, research.patternIds));
+  }
+
+  const candidateById = new Map<number, CompositionCandidate>();
+  for (const r of [...candidateRows, ...researchCandidateRows]) {
+    candidateById.set(r.id, {
+      id: r.id,
+      patternType: r.patternType,
+      patternText: r.patternText,
+      patternContext: r.patternContext,
+      effectivenessScore: r.effectivenessScore,
+      sourceVideoId: r.sourceVideoId,
+      tags: asArray<string>(r.tags),
+      usageCount: r.usageCount,
+    });
+  }
+
+  const composition: PatternComposition = composePatterns(
+    Array.from(candidateById.values()),
+    {
+      researchJobId: research.jobId,
+      rankedVideoIds: research.rankedVideoIds,
       /*
-       * USAGE INTEGRITY (Part 3D). This is the ONLY list that may be used to
-       * increment usage_count, and it holds exactly the patterns that entered the
-       * prompt — not the candidate pool. See step 8.
+       * API-level override only. The UI no longer sends pattern types (the
+       * checkbox grid is gone), but the idea engine's per-idea pattern
+       * recommendation still passes `patternTypes` through, so honouring it
+       * keeps that path working without a second code path.
+       *
+       * `undefined` rather than the zod default means "not specified": an
+       * explicit empty array from a caller must not silently become "all
+       * types", and the default array must not masquerade as a choice.
        */
-      const usedPatternIds: number[] = composition.composedIds;
+      selectedTypes: input.patternTypes.length > 0 ? input.patternTypes : null,
+      minEffectiveness: input.minPatternEffectiveness,
+    }
+  );
 
-      // 3b. Legacy Supadata path. Retired whenever a research job supplies
-      //     competitive context (Phase 3.3) — the job's ledgered, cached
-      //     transcripts supersede the un-ledgered 800-char excerpts.
-      const externalTranscripts = research.jobId
-        ? []
-        : await fetchRelevantTranscripts(input.topic, 3);
+  const promptPatterns = composition.patterns;
+  /*
+   * USAGE INTEGRITY (Part 3D). This is the ONLY list that may be used to
+   * increment usage_count, and it holds exactly the patterns that entered the
+   * prompt — not the candidate pool. See step 8.
+   */
+  const usedPatternIds: number[] = composition.composedIds;
 
-      // 3c. Build grounded context + system prompt
-      const groundedContext = buildGroundedContext(
-        promptPatterns,
-        corpusExcerpts,
-        externalTranscripts,
-        explicitNorthStar,
-        research.context
-      );
-      const lengthInstruction = buildLengthInstruction(targetLengthMinutes);
-      const systemPrompt = buildSystemPrompt(input.format, groundedContext, {
-        persona: personaContext,
-        lengthInstruction,
-        storyMode: input.storyMode,
-        offerProfile: boundOffer,
-        ctaOverride: input.ctaOverride ?? null,
-        // v2.2 Part 3C — structural grounding. Empty strings when no research
-        // exists, so an ungrounded run gets no misleading scaffolding.
-        hookBlock: research.hookBlock,
-        structureBlock: research.structureBlock,
+  // 3b. Legacy Supadata path. Retired whenever a research job supplies
+  //     competitive context (Phase 3.3) — the job's ledgered, cached
+  //     transcripts supersede the un-ledgered 800-char excerpts.
+  const externalTranscripts = research.jobId
+    ? []
+    : await fetchRelevantTranscripts(input.topic, 3);
+
+  // 3c. Build grounded context + system prompt
+  const groundedContext = buildGroundedContext(
+    promptPatterns,
+    corpusExcerpts,
+    externalTranscripts,
+    explicitNorthStar,
+    research.context
+  );
+  const lengthInstruction = buildLengthInstruction(targetLengthMinutes);
+  const systemPrompt = buildSystemPrompt(input.format, groundedContext, {
+    persona: personaContext,
+    lengthInstruction,
+    storyMode: input.storyMode,
+    offerProfile: boundOffer,
+    ctaOverride: input.ctaOverride ?? null,
+    // v2.2 Part 3C — structural grounding. Empty strings when no research
+    // exists, so an ungrounded run gets no misleading scaffolding.
+    hookBlock: research.hookBlock,
+    structureBlock: research.structureBlock,
+  });
+
+  // 4. Generate script via LLM
+  const budget = targetLengthMinutes ? wordBudget(targetLengthMinutes) : null;
+  const lengthAsk = budget
+    ? `\n\nThis must be a ${targetLengthMinutes}-minute script: approximately ${budget.target} spoken words. Write the FULL script.`
+    : "";
+
+  /*
+   * Truncation is surfaced, never silently saved.
+   *
+   * invokeLLM throws LLMTruncatedError when the provider reports
+   * finish_reason "length" — the model ran out of output budget and stopped
+   * mid-sentence. That response is syntactically perfect, so without this
+   * translation it would sail through the story lint, the grounding metric
+   * and the cadence lint and be written to the DB as a finished script whose
+   * final section simply does not exist.
+   *
+   * Mapped to UNPROCESSABLE_CONTENT rather than a 500 because the condition
+   * is actionable by the operator (shorter target length, or a larger
+   * budget) and because that is the same code the story-integrity refusal
+   * uses — both mean "we refused to save this", which is what the UI needs
+   * to communicate.
+   */
+  let response;
+  try {
+    response = await invokeLLM({
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about the following topic:\n\n${input.topic}\n\nRemember to tag verified elements with [VERIFIED] inline.${lengthAsk}`,
+        },
+      ],
+    });
+  } catch (err) {
+    if (err instanceof LLMTruncatedError) {
+      throw new TRPCError({
+        code: "UNPROCESSABLE_CONTENT",
+        message:
+          `Generation refused: the model hit its output limit and the script is ` +
+          `cut off mid-generation. Nothing was saved.\n\n` +
+          `Produced ${err.completionTokens ?? "an unknown number of"} completion tokens ` +
+          `against a budget of ${err.maxTokens}` +
+          (targetLengthMinutes ? ` for a ${targetLengthMinutes}-minute target` : "") +
+          `.\n\nTry a shorter target length, or raise the output budget.`,
       });
+    }
+    throw err;
+  }
 
-      // 4. Generate script via LLM
-      const budget = targetLengthMinutes ? wordBudget(targetLengthMinutes) : null;
-      const lengthAsk = budget
-        ? `\n\nThis must be a ${targetLengthMinutes}-minute script: approximately ${budget.target} spoken words. Write the FULL script.`
-        : "";
+  let scriptBody = String(response?.choices?.[0]?.message?.content ?? "");
+  if (!scriptBody || scriptBody.length < 50) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM returned empty script" });
+  }
 
-      /*
-       * Truncation is surfaced, never silently saved.
-       *
-       * invokeLLM throws LLMTruncatedError when the provider reports
-       * finish_reason "length" — the model ran out of output budget and stopped
-       * mid-sentence. That response is syntactically perfect, so without this
-       * translation it would sail through the story lint, the grounding metric
-       * and the cadence lint and be written to the DB as a finished script whose
-       * final section simply does not exist.
-       *
-       * Mapped to UNPROCESSABLE_CONTENT rather than a 500 because the condition
-       * is actionable by the operator (shorter target length, or a larger
-       * budget) and because that is the same code the story-integrity refusal
-       * uses — both mean "we refused to save this", which is what the UI needs
-       * to communicate.
-       */
-      let response;
+  // 4b. Length enforcement (Phase 2.3.4). Models routinely under-deliver on
+  //     long asks, so if we land below 80% of target we run exactly ONE
+  //     continuation pass that expands the thinnest sections in place.
+  let continuationPassUsed = false;
+  if (budget) {
+    // Part 3A: story slots are credited at ~200 words each and their
+    // instructional text is excluded. Without this, a COMPLIANT script that
+    // emitted two slots would read ~400 words short, trip this gate, and the
+    // continuation prompt below would explicitly ask the model to "deepen
+    // the thinnest [STORY] sections" — i.e. length enforcement would demand
+    // the very fabricated story the integrity rules forbid.
+    const counted = countWordsWithStorySlots(scriptBody);
+    const firstPassWords = counted.words;
+    if (firstPassWords < budget.target * 0.8) {
       try {
-        response = await invokeLLM({
+        const continuation = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
             {
               role: "user",
-              content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about the following topic:\n\n${input.topic}\n\nRemember to tag verified elements with [VERIFIED] inline.${lengthAsk}`,
+              content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about: ${input.topic}`,
+            },
+            { role: "assistant", content: scriptBody },
+            {
+              role: "user",
+              content:
+                `This draft is ${firstPassWords} words but the target is ${budget.target} ` +
+                `(minimum ${budget.min}). Expand it to full length.\n\n` +
+                "RULES:\n" +
+                "- Return the COMPLETE expanded script, not just the new parts.\n" +
+                "- Keep every existing [VERIFIED] tag exactly where it is.\n" +
+                "- Deepen the thinnest [TEACH], [STORY], and [PROOF] sections with concrete\n" +
+                "  examples, specific mechanisms, and immediately actionable steps.\n" +
+                "- Do NOT pad with filler, repetition, or restatement.\n" +
+                "- Preserve the same structure tags and section order.",
             },
           ],
         });
-      } catch (err) {
-        if (err instanceof LLMTruncatedError) {
-          throw new TRPCError({
-            code: "UNPROCESSABLE_CONTENT",
-            message:
-              `Generation refused: the model hit its output limit and the script is ` +
-              `cut off mid-generation. Nothing was saved.\n\n` +
-              `Produced ${err.completionTokens ?? "an unknown number of"} completion tokens ` +
-              `against a budget of ${err.maxTokens}` +
-              (targetLengthMinutes ? ` for a ${targetLengthMinutes}-minute target` : "") +
-              `.\n\nTry a shorter target length, or raise the output budget.`,
-          });
+        const expanded = String(continuation?.choices?.[0]?.message?.content ?? "");
+        // Only accept the retry if it actually improved length.
+        if (expanded.length > 50 && countWords(expanded) > firstPassWords) {
+          scriptBody = expanded;
+          continuationPassUsed = true;
         }
-        throw err;
+      } catch {
+        // A failed expansion leaves the (short but valid) first pass intact.
       }
+    }
+  }
 
-      let scriptBody = String(response?.choices?.[0]?.message?.content ?? "");
-      if (!scriptBody || scriptBody.length < 50) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM returned empty script" });
-      }
-
-      // 4b. Length enforcement (Phase 2.3.4). Models routinely under-deliver on
-      //     long asks, so if we land below 80% of target we run exactly ONE
-      //     continuation pass that expands the thinnest sections in place.
-      let continuationPassUsed = false;
-      if (budget) {
-        // Part 3A: story slots are credited at ~200 words each and their
-        // instructional text is excluded. Without this, a COMPLIANT script that
-        // emitted two slots would read ~400 words short, trip this gate, and the
-        // continuation prompt below would explicitly ask the model to "deepen
-        // the thinnest [STORY] sections" — i.e. length enforcement would demand
-        // the very fabricated story the integrity rules forbid.
-        const counted = countWordsWithStorySlots(scriptBody);
-        const firstPassWords = counted.words;
-        if (firstPassWords < budget.target * 0.8) {
-          try {
-            const continuation = await invokeLLM({
-              messages: [
-                { role: "system", content: systemPrompt },
-                {
-                  role: "user",
-                  content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about: ${input.topic}`,
-                },
-                { role: "assistant", content: scriptBody },
-                {
-                  role: "user",
-                  content:
-                    `This draft is ${firstPassWords} words but the target is ${budget.target} ` +
-                    `(minimum ${budget.min}). Expand it to full length.\n\n` +
-                    "RULES:\n" +
-                    "- Return the COMPLETE expanded script, not just the new parts.\n" +
-                    "- Keep every existing [VERIFIED] tag exactly where it is.\n" +
-                    "- Deepen the thinnest [TEACH], [STORY], and [PROOF] sections with concrete\n" +
-                    "  examples, specific mechanisms, and immediately actionable steps.\n" +
-                    "- Do NOT pad with filler, repetition, or restatement.\n" +
-                    "- Preserve the same structure tags and section order.",
-                },
-              ],
-            });
-            const expanded = String(continuation?.choices?.[0]?.message?.content ?? "");
-            // Only accept the retry if it actually improved length.
-            if (expanded.length > 50 && countWords(expanded) > firstPassWords) {
-              scriptBody = expanded;
-              continuationPassUsed = true;
-            }
-          } catch {
-            // A failed expansion leaves the (short but valid) first pass intact.
-          }
-        }
-      }
-
-      // 4c. STORY INTEGRITY ENFORCEMENT (Part 3A).
-      //
-      // Runs AFTER the continuation pass, because that pass rewrites the whole
-      // script and could reintroduce a fabricated patient that an earlier check
-      // had cleared. One automatic correction attempt; if it still violates we
-      // throw, and because nothing has been inserted yet, nothing is saved.
-      // A violating script must never reach the library.
-      let storyLint = lintStoryIntegrity(scriptBody, input.storyMode);
-      let storyCorrectionPassUsed = false;
-      if (storyLint.violations.length > 0 || storyLint.missingCompositeLabel) {
-        const digest = formatViolations(storyLint.violations, storyLint.missingCompositeLabel);
-        console.warn(`[ScriptFactory] story integrity violations (mode=${input.storyMode}):\n${digest}`);
-        try {
-          const corrected = await invokeLLM({
-            messages: [
-              { role: "system", content: systemPrompt },
-              {
-                role: "user",
-                content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about: ${input.topic}`,
-              },
-              { role: "assistant", content: scriptBody },
-              {
-                role: "user",
-                content:
-                  "STOP. This draft violates the STORY INTEGRITY rules. These are " +
-                  "non-negotiable: the script is for a licensed practitioner with real " +
-                  "patients, and an invented patient is indistinguishable from a real " +
-                  "one to a listener.\n\nVIOLATIONS FOUND:\n" + digest +
-                  "\n\nRewrite the COMPLETE script, fixing every violation:\n" +
-                  "- Remove every invented named individual and every quoted patient line.\n" +
-                  "- Remove every individual-attributed lab value, diagnosis and recovery timeline.\n" +
-                  (input.storyMode === "brief"
-                    ? "- Replace any narrative with the delimited STORY SLOT block exactly as specified.\n"
-                    : input.storyMode === "composite"
-                      ? "- Keep the narrative but open it with the audible composite label and remove all proper names.\n"
-                      : "- Remove story sections entirely and expand the teaching sections instead.\n") +
-                  "- Population-level evidence stays; individual fabrication goes.\n" +
-                  "- Preserve every [VERIFIED] tag and the existing structure and length.",
-              },
-            ],
-          });
-          const fixed = String(corrected?.choices?.[0]?.message?.content ?? "");
-          if (fixed.length > 50) {
-            const recheck = lintStoryIntegrity(fixed, input.storyMode);
-            // Accept only a genuine improvement; a rewrite that trades one
-            // violation for another is not progress.
-            if (recheck.violations.length === 0 && !recheck.missingCompositeLabel) {
-              scriptBody = fixed;
-              storyLint = recheck;
-              storyCorrectionPassUsed = true;
-            } else if (recheck.violations.length < storyLint.violations.length) {
-              scriptBody = fixed;
-              storyLint = recheck;
-              storyCorrectionPassUsed = true;
-            }
-          }
-        } catch (err) {
-          // A failed correction call must not mask the violation below.
-          console.error("[ScriptFactory] story correction pass failed:", err);
-        }
-
-        if (storyLint.violations.length > 0 || storyLint.missingCompositeLabel) {
-          throw new TRPCError({
-            code: "UNPROCESSABLE_CONTENT",
-            message:
-              "Generation refused: the model fabricated patient material and did not " +
-              "correct it. Nothing was saved.\n\n" +
-              formatViolations(storyLint.violations, storyLint.missingCompositeLabel),
-          });
-        }
-      }
-
-      /*
-       * ── 5. Cadence lint (Part 3E) ─────────────────────────────────────────
-       *
-       * Runs BEFORE the metric and before stripping, on the tagged body.
-       *
-       * DEGRADES, NEVER BLOCKS — the opposite of the story lint above, which
-       * throws, because a fabricated patient case is a compliance problem while a
-       * cliché opener is taste. The violations ride along on the response so the
-       * operator can fix them in seconds; withholding a usable script over them
-       * would be the wrong trade.
-       */
-      const cadence = lintCadence(scriptBody);
-
-      /*
-       * ── 5b. Grounding metric (Part 3E) ────────────────────────────────────
-       *
-       * Instance-based, computed on the still-tagged body because [VERIFIED] is
-       * about to be stripped. Replaces countVerifiedTags, whose denominator
-       * counted structure labels — so labelling a script more thoroughly lowered
-       * its reported grounding without changing anything real.
-       */
-      const grounding = computeGroundingMetric(scriptBody);
-      const verified = grounding.grounded;
-      const total = grounding.total;
-      const pct = grounding.pct;
-
-      // Strip internal markup tags from the clean copy:
-      // - [VERIFIED] tags are internal grounding markers — never shown to end users
-      // - Structure tags [HOOK], [PAIN], [PROOF], etc. are kept as readable section labels
-      //   but [VERIFIED] must be removed so copy-paste output is clean
-      const strippedScriptBody = scriptBody
-        .replace(/\[VERIFIED\]/g, "")
-        .replace(/ {2,}/g, " ")
-        .trim();
-
-      /*
-       * ── Deterministic timestamps (Part 3E) ────────────────────────────────
-       *
-       * Applied LAST, after every rewrite pass (story correction, continuation),
-       * because a stamp computed before a pass that adds words is wrong.
-       *
-       * insertTimestamps strips before it inserts, so this is idempotent and pass
-       * ordering is no longer load-bearing — the earlier failure mode was
-       * `(0:00) (0:00)` accumulating when a conditional pass ran.
-       */
-      const cleanScriptBody = insertTimestamps(strippedScriptBody);
-
-      // 6. Generate title
-      const titleResponse = await invokeLLM({
+  // 4c. STORY INTEGRITY ENFORCEMENT (Part 3A).
+  //
+  // Runs AFTER the continuation pass, because that pass rewrites the whole
+  // script and could reintroduce a fabricated patient that an earlier check
+  // had cleared. One automatic correction attempt; if it still violates we
+  // throw, and because nothing has been inserted yet, nothing is saved.
+  // A violating script must never reach the library.
+  let storyLint = lintStoryIntegrity(scriptBody, input.storyMode);
+  let storyCorrectionPassUsed = false;
+  if (storyLint.violations.length > 0 || storyLint.missingCompositeLabel) {
+    const digest = formatViolations(storyLint.violations, storyLint.missingCompositeLabel);
+    console.warn(`[ScriptFactory] story integrity violations (mode=${input.storyMode}):\n${digest}`);
+    try {
+      const corrected = await invokeLLM({
         messages: [
-          { role: "system", content: "Generate a concise, compelling title for this script. Return only the title, nothing else. Max 80 characters." },
-          { role: "user", content: `Topic: ${input.topic}\nFormat: ${input.format}\n\nFirst 200 chars of script:\n${cleanScriptBody.slice(0, 200)}` },
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about: ${input.topic}`,
+          },
+          { role: "assistant", content: scriptBody },
+          {
+            role: "user",
+            content:
+              "STOP. This draft violates the STORY INTEGRITY rules. These are " +
+              "non-negotiable: the script is for a licensed practitioner with real " +
+              "patients, and an invented patient is indistinguishable from a real " +
+              "one to a listener.\n\nVIOLATIONS FOUND:\n" + digest +
+              "\n\nRewrite the COMPLETE script, fixing every violation:\n" +
+              "- Remove every invented named individual and every quoted patient line.\n" +
+              "- Remove every individual-attributed lab value, diagnosis and recovery timeline.\n" +
+              (input.storyMode === "brief"
+                ? "- Replace any narrative with the delimited STORY SLOT block exactly as specified.\n"
+                : input.storyMode === "composite"
+                  ? "- Keep the narrative but open it with the audible composite label and remove all proper names.\n"
+                  : "- Remove story sections entirely and expand the teaching sections instead.\n") +
+              "- Population-level evidence stays; individual fabrication goes.\n" +
+              "- Preserve every [VERIFIED] tag and the existing structure and length.",
+          },
         ],
       });
-      const title = String(titleResponse?.choices?.[0]?.message?.content ?? input.topic).slice(0, 500).trim();
+      const fixed = String(corrected?.choices?.[0]?.message?.content ?? "");
+      if (fixed.length > 50) {
+        const recheck = lintStoryIntegrity(fixed, input.storyMode);
+        // Accept only a genuine improvement; a rewrite that trades one
+        // violation for another is not progress.
+        if (recheck.violations.length === 0 && !recheck.missingCompositeLabel) {
+          scriptBody = fixed;
+          storyLint = recheck;
+          storyCorrectionPassUsed = true;
+        } else if (recheck.violations.length < storyLint.violations.length) {
+          scriptBody = fixed;
+          storyLint = recheck;
+          storyCorrectionPassUsed = true;
+        }
+      }
+    } catch (err) {
+      // A failed correction call must not mask the violation below.
+      console.error("[ScriptFactory] story correction pass failed:", err);
+    }
 
-      const finalWordCount = countWords(cleanScriptBody);
-
-      // 7. Save to DB (store clean version without [VERIFIED] tags)
-      const insertResult = await db.insert(scriptFactoryOutputs).values({
-        title,
-        topic: input.topic,
-        format: input.format,
-        scriptBody: cleanScriptBody,
-        verifiedPatternIds: usedPatternIds,
-        corpusEntryIds: usedCorpusIds,
-        verifiedCount: verified,
-        totalElements: total,
-        verificationPct: pct,
-        status: "draft",
-        // ── Phase 2/3 provenance ──────────────────────────────────────────
-        personaId: input.personaId ?? null,
-        analogDataEntryIds: northStarIds.length > 0 ? northStarIds : null,
-        targetLengthMinutes: targetLengthMinutes ?? null,
-        sourceIdeaId: input.sourceIdeaId ?? null,
-        researchJobId: research.jobId ?? null,
-        wordCount: finalWordCount,
-        /*
-         * Part 3D — persisted so the Grounding disclosure survives the request.
-         * Returning it only in the mutation response would show the operator the
-         * composition once, then lose it: reopening the script from the Library
-         * would report nothing about how it was grounded, and `unfilledTypes` —
-         * the beats with no grounding at all — is exactly the fact you want when
-         * reviewing a script later, not at the moment you generated it.
-         */
-        patternComposition: {
-          total: composition.patterns.length,
-          researchCount: composition.researchCount,
-          globalCount: composition.globalCount,
-          byType: composition.byType,
-          unfilledTypes: composition.unfilledTypes,
-          candidatesConsidered: composition.candidatesConsidered,
-          disclosure: describeComposition(composition),
-        },
+    if (storyLint.violations.length > 0 || storyLint.missingCompositeLabel) {
+      throw new TRPCError({
+        code: "UNPROCESSABLE_CONTENT",
+        message:
+          "Generation refused: the model fabricated patient material and did not " +
+          "correct it. Nothing was saved.\n\n" +
+          formatViolations(storyLint.violations, storyLint.missingCompositeLabel),
       });
+    }
+  }
 
-      const insertId = Number(
-        (insertResult as any)[0]?.insertId ?? (insertResult as any).insertId ?? 0
+  /*
+   * ── 5. Cadence lint (Part 3E) ─────────────────────────────────────────
+   *
+   * Runs BEFORE the metric and before stripping, on the tagged body.
+   *
+   * DEGRADES, NEVER BLOCKS — the opposite of the story lint above, which
+   * throws, because a fabricated patient case is a compliance problem while a
+   * cliché opener is taste. The violations ride along on the response so the
+   * operator can fix them in seconds; withholding a usable script over them
+   * would be the wrong trade.
+   */
+  const cadence = lintCadence(scriptBody);
+
+  /*
+   * ── 5b. Grounding metric (Part 3E) ────────────────────────────────────
+   *
+   * Instance-based, computed on the still-tagged body because [VERIFIED] is
+   * about to be stripped. Replaces countVerifiedTags, whose denominator
+   * counted structure labels — so labelling a script more thoroughly lowered
+   * its reported grounding without changing anything real.
+   */
+  const grounding = computeGroundingMetric(scriptBody);
+  const verified = grounding.grounded;
+  const total = grounding.total;
+  const pct = grounding.pct;
+
+  // Strip internal markup tags from the clean copy:
+  // - [VERIFIED] tags are internal grounding markers — never shown to end users
+  // - Structure tags [HOOK], [PAIN], [PROOF], etc. are kept as readable section labels
+  //   but [VERIFIED] must be removed so copy-paste output is clean
+  const strippedScriptBody = scriptBody
+    .replace(/\[VERIFIED\]/g, "")
+    .replace(/ {2,}/g, " ")
+    .trim();
+
+  /*
+   * ── Deterministic timestamps (Part 3E) ────────────────────────────────
+   *
+   * Applied LAST, after every rewrite pass (story correction, continuation),
+   * because a stamp computed before a pass that adds words is wrong.
+   *
+   * insertTimestamps strips before it inserts, so this is idempotent and pass
+   * ordering is no longer load-bearing — the earlier failure mode was
+   * `(0:00) (0:00)` accumulating when a conditional pass ran.
+   */
+  const cleanScriptBody = insertTimestamps(strippedScriptBody);
+
+  // 6. Generate title
+  const titleResponse = await invokeLLM({
+    messages: [
+      { role: "system", content: "Generate a concise, compelling title for this script. Return only the title, nothing else. Max 80 characters." },
+      { role: "user", content: `Topic: ${input.topic}\nFormat: ${input.format}\n\nFirst 200 chars of script:\n${cleanScriptBody.slice(0, 200)}` },
+    ],
+  });
+  const title = String(titleResponse?.choices?.[0]?.message?.content ?? input.topic).slice(0, 500).trim();
+
+  const finalWordCount = countWords(cleanScriptBody);
+
+  // 7. Save to DB (store clean version without [VERIFIED] tags)
+  const insertResult = await db.insert(scriptFactoryOutputs).values({
+    title,
+    topic: input.topic,
+    format: input.format,
+    scriptBody: cleanScriptBody,
+    verifiedPatternIds: usedPatternIds,
+    corpusEntryIds: usedCorpusIds,
+    verifiedCount: verified,
+    totalElements: total,
+    verificationPct: pct,
+    status: "draft",
+    // ── Phase 2/3 provenance ──────────────────────────────────────────
+    personaId: input.personaId ?? null,
+    analogDataEntryIds: northStarIds.length > 0 ? northStarIds : null,
+    targetLengthMinutes: targetLengthMinutes ?? null,
+    sourceIdeaId: input.sourceIdeaId ?? null,
+    researchJobId: research.jobId ?? null,
+    wordCount: finalWordCount,
+    /*
+     * Part 3D — persisted so the Grounding disclosure survives the request.
+     * Returning it only in the mutation response would show the operator the
+     * composition once, then lose it: reopening the script from the Library
+     * would report nothing about how it was grounded, and `unfilledTypes` —
+     * the beats with no grounding at all — is exactly the fact you want when
+     * reviewing a script later, not at the moment you generated it.
+     */
+    patternComposition: {
+      total: composition.patterns.length,
+      researchCount: composition.researchCount,
+      globalCount: composition.globalCount,
+      byType: composition.byType,
+      unfilledTypes: composition.unfilledTypes,
+      candidatesConsidered: composition.candidatesConsidered,
+      disclosure: describeComposition(composition),
+    },
+    /*
+     * ── v2.3 Part 2/3 lineage ─────────────────────────────────────────────
+     *
+     * All three default to NULL, which is precisely what an original is — so a
+     * caller that passes no lineage (i.e. `generate`) writes exactly the row the
+     * pre-v2.3 code wrote. Nothing in the pipeline above reads these.
+     */
+    parentScriptId: lineage.parentScriptId ?? null,
+    variantOfRootId: lineage.variantOfRootId ?? null,
+    variantLabel: lineage.variantLabel ?? null,
+    /*
+     * The recipe, persisted so a variant can be derived from this script later.
+     *
+     * Stored from the RESOLVED values rather than echoing `input`: the effective
+     * research job is `research.jobId` (auto-research may have selected or reused
+     * one the caller never named), and `targetLengthMinutes` has already been
+     * cleared for non-long-form formats. Persisting the request instead of the
+     * outcome would make a variant "reuse research" that the original never used.
+     *
+     * `offerTier` records what the operator CHOSE, not what bound — an unchosen
+     * ladder must stay unchosen when re-derived, per the multi-tier rule above.
+     */
+    generationParams: {
+      topic: input.topic,
+      format: input.format,
+      personaId: input.personaId ?? null,
+      analogDataEntryIds: northStarIds.length > 0 ? northStarIds : null,
+      targetLengthMinutes: targetLengthMinutes ?? null,
+      storyMode: input.storyMode,
+      offerTier: input.offerTier ?? null,
+      ctaOverride: input.ctaOverride ?? null,
+      researchJobId: research.jobId ?? null,
+      seedKeyword: input.seedKeyword ?? null,
+      useCorpusSearch: input.useCorpusSearch,
+      /*
+       * Recorded, not read back on regeneration. The model that wrote a script is
+       * an audit fact; pinning a future variant to a stale model would silently
+       * freeze regenerations on whatever was configured months earlier.
+       */
+      model: process.env.SCRIPT_MODEL ?? null,
+    },
+  });
+
+  const insertId = Number(
+    (insertResult as any)[0]?.insertId ?? (insertResult as any).insertId ?? 0
+  );
+
+  // v2.1 Bug A item 1 — ordering hardening.
+  //
+  // The insert above already runs BEFORE the idea is stamped, so a failed
+  // insert can never produce a `generated` idea (the throw exits here). The
+  // one remaining hole was a *silent* one: if the driver returned no usable
+  // insertId we used to fall through with `insertId = 0`, handing the client
+  // an unopenable id 0 and leaving the script unreachable. Failing loudly is
+  // correct — the row exists, but we cannot address it, and the operator
+  // needs to know that rather than discover it later in the Library.
+  if (!Number.isFinite(insertId) || insertId <= 0) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message:
+        "Script was saved but the database did not return its id, so it cannot be opened. " +
+        "Check the Library for the newest draft before regenerating.",
+    });
+  }
+
+  // 7b. Close the loop on the originating idea (Phase 2.3.5).
+  //     Reached only once the script row is committed AND addressable, so
+  //     the idea can never be stamped `generated` without a real script.
+  //     Still best-effort: bookkeeping must not fail a successful generation.
+  if (input.sourceIdeaId) {
+    try {
+      await db
+        .update(suggestedIdeas)
+        .set({
+          status: "generated",
+          generatedScriptId: insertId,
+          updatedAt: sql`NOW()`,
+        })
+        .where(eq(suggestedIdeas.id, input.sourceIdeaId));
+    } catch (err) {
+      console.error("[ScriptFactory] Failed to link source idea:", err);
+    }
+  }
+
+  /*
+   * 8. USAGE INTEGRITY — Part 3D.
+   *
+   * `usedPatternIds` is `composition.composedIds`: exactly the patterns that
+   * entered the prompt. It is NOT the candidate pool.
+   *
+   * Why this matters beyond tidiness: usage_count is an input to the
+   * effectiveness signal (performanceLoopRouter weights by it, and
+   * composition's tie-break prefers less-used rows to rotate the corpus).
+   * v2.1 incremented every FETCHED row, so a pattern that was never shown to
+   * a model accumulated usage identical to one that shaped every script.
+   * That corrupts the signal every future composition reads, and unlike a
+   * display bug it is not recoverable after the fact — the true counts are
+   * gone. Fetch is not use.
+   */
+  if (usedPatternIds.length > 0) {
+    await db
+      .update(contentPatterns)
+      .set({
+        usageCount: sql`usage_count + 1`,
+        lastUsedAt: sql`NOW()`,
+      })
+      .where(inArray(contentPatterns.id, usedPatternIds));
+  }
+
+  /*
+   * ── 9. CLAIMS REVIEW — Part 3E ────────────────────────────────────────
+   *
+   * POST-COMMIT, BEST-EFFORT, INSIDE try/catch. The script row is already
+   * saved above and `insertId` is already known.
+   *
+   * This ordering is not stylistic. The claims review is an LLM call, and an
+   * LLM call inside the generation path is what destroyed finished scripts in
+   * the earlier build: the rubric threw, the error propagated out of the
+   * mutation, and the operator lost a script that had already been written.
+   * A compliance check failing is not a reason to discard compliant work.
+   *
+   * Routed through `createClaimsReview` — the SAME path the Claims Review
+   * page's own button uses. A parallel claims engine for scripts would mean
+   * two rubrics, two verdict shapes, and a review queue that silently omits
+   * scripts.
+   *
+   * youtube_script only, per spec. Never a gate: the operator is the
+   * qualified reviewer and the badge just tells him where to look.
+   */
+  let claimsQueued = false;
+  if (input.format === "youtube_script") {
+    try {
+      await createClaimsReview({
+        contentType: "youtube_script",
+        contentId: String(insertId),
+        contentTitle: title,
+        contentText: cleanScriptBody,
+      });
+      claimsQueued = true;
+    } catch (err) {
+      // Logged, never raised. The script survives a claims-side failure.
+      console.error(
+        `[scriptFactory] claims review failed for script #${insertId} — ` +
+          "the script is saved and unaffected:",
+        err instanceof Error ? err.message : err
       );
+    }
+  }
 
-      // v2.1 Bug A item 1 — ordering hardening.
-      //
-      // The insert above already runs BEFORE the idea is stamped, so a failed
-      // insert can never produce a `generated` idea (the throw exits here). The
-      // one remaining hole was a *silent* one: if the driver returned no usable
-      // insertId we used to fall through with `insertId = 0`, handing the client
-      // an unopenable id 0 and leaving the script unreachable. Failing loudly is
-      // correct — the row exists, but we cannot address it, and the operator
-      // needs to know that rather than discover it later in the Library.
-      if (!Number.isFinite(insertId) || insertId <= 0) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            "Script was saved but the database did not return its id, so it cannot be opened. " +
-            "Check the Library for the newest draft before regenerating.",
-        });
-      }
+  return {
+    id: insertId,
+    title,
+    scriptBody: cleanScriptBody,
+    verifiedCount: verified,
+    totalElements: total,
+    verificationPct: pct,
+    patternsUsed: promptPatterns.length,
+    corpusEntriesUsed: corpusExcerpts.length,
+    externalTranscriptsUsed: externalTranscripts.length,
+    // ── Phase 2/3 transparency: let the UI show HOW this was built ─────
+    wordCount: finalWordCount,
+    targetWordCount: budget?.target ?? null,
+    targetLengthMinutes: targetLengthMinutes ?? null,
+    continuationPassUsed,
+    // Part 3A: surfaced so the operator can see when the model had to be
+    // corrected, rather than the correction happening silently.
+    storyMode: input.storyMode,
+    storyCorrectionPassUsed,
+    storySlotCount: countWordsWithStorySlots(scriptBody).slotCount,
+    // Part 3B — the operator must be able to see WHY a CTA closed the way it
+    // did: bound to an offer, overridden, or unbound.
+    offerBinding: input.ctaOverride
+      ? { mode: "override" as const, offerName: null, entryId: null }
+      : boundOffer
+        ? { mode: "offer" as const, offerName: boundOffer.offerName, entryId: boundOfferEntryId }
+        : { mode: "unbound" as const, offerName: null, entryId: null },
+    // Multi-tier: when a ladder was found but no tier chosen, the caller gets
+    // the reason and the options so the UI can ask instead of guessing.
+    offerBindReason,
+    unresolvedOfferTiers,
+    retrievalMethod,
+    personaName: personaContext?.name ?? null,
+    northStarCount: explicitNorthStar.length,
+    northStarTitles: explicitNorthStar.map((e) => e.title ?? "Untitled"),
+    researchJobId: research.jobId ?? null,
+    researchOutliersUsed: research.outlierCount,
+    researchTranscriptsUsed: research.transcriptCount,
+    researchPatternsUsed: composition.researchCount,
+    /*
+     * ── Part 3D: composition disclosure ──────────────────────────────
+     *
+     * The operator no longer chooses pattern types, so he has to be able to
+     * see what the system chose on his behalf and — more importantly — what
+     * it could NOT find. `unfilledTypes` names the beats that reached the
+     * prompt with no grounding at all. Padding those slots with off-type
+     * patterns to make the number look better is exactly the dishonest
+     * reporting this build exists to remove.
+     */
+    patternComposition: {
+      total: composition.patterns.length,
+      researchCount: composition.researchCount,
+      globalCount: composition.globalCount,
+      byType: composition.byType,
+      unfilledTypes: composition.unfilledTypes,
+      candidatesConsidered: composition.candidatesConsidered,
+      disclosure: describeComposition(composition),
+    },
+    // ── Part 3C: honest grounding disclosure ───────────────────────────
+    // Each of these answers a distinct question, because one boolean cannot.
+    // "Was research attempted" is not "did it succeed", and "did it succeed"
+    // is not "was it fresh". A UI that shows a single "researched" badge
+    // would imply grounding on a run that failed open and produced none.
+    researchAttempted,
+    researchReused,
+    researchFailureReason,
+    /*
+     * HONEST METRIC: grounded means grounding text actually reached the
+     * prompt. `jobId !== null` was the old test and it reported TRUE for the
+     * finding #10 runs where resolution threw and context was empty.
+     */
+    researchGrounded:
+      research.jobId !== null && (research.context.length > 0 || research.hookBlock.length > 0),
+    /*
+     * WHAT it was grounded in. A nonsense-seeded run once reported
+     * researchGrounded=true while grounded in a Hindi/Urdu TV drama
+     * transcript; the boolean was accurate and the script was worthless.
+     * These two fields make the badge auditable at a glance.
+     */
+    researchGroundingSources: research.groundingSources,
+    researchOnTopicRatio: research.onTopicRatio,
+    hookReferencesUsed: research.hookReferenceCount,
+    structureSummaryUsed: research.hasStructureSummary,
+    sourceIdeaId: input.sourceIdeaId ?? null,
+    /*
+     * ── Part 3E: honest grounding + cadence ───────────────────────────
+     *
+     * `groundingLabel` is generated in ONE place (describeGrounding) and
+     * reused by `update`, so an edited script cannot start reporting the
+     * same columns under a different definition — two racing definitions on
+     * shared columns would be worse than the original inflated metric.
+     */
+    groundingLabel: describeGrounding(grounding),
+    groundingByTag: grounding.byTag,
+    slotOnlySections: grounding.slotOnlySections,
+    metricVersion: grounding.metricVersion,
+    /*
+     * Cadence is advisory. Returned so the UI can list what to fix; it never
+     * gated the save, and the script above is already committed.
+     */
+    cadenceViolations: cadence.violations,
+    claimsReviewQueued: claimsQueued,
+  };
+}
 
-      // 7b. Close the loop on the originating idea (Phase 2.3.5).
-      //     Reached only once the script row is committed AND addressable, so
-      //     the idea can never be stamped `generated` without a real script.
-      //     Still best-effort: bookkeeping must not fail a successful generation.
-      if (input.sourceIdeaId) {
-        try {
-          await db
-            .update(suggestedIdeas)
-            .set({
-              status: "generated",
-              generatedScriptId: insertId,
-              updatedAt: sql`NOW()`,
-            })
-            .where(eq(suggestedIdeas.id, input.sourceIdeaId));
-        } catch (err) {
-          console.error("[ScriptFactory] Failed to link source idea:", err);
-        }
-      }
-
-      /*
-       * 8. USAGE INTEGRITY — Part 3D.
-       *
-       * `usedPatternIds` is `composition.composedIds`: exactly the patterns that
-       * entered the prompt. It is NOT the candidate pool.
-       *
-       * Why this matters beyond tidiness: usage_count is an input to the
-       * effectiveness signal (performanceLoopRouter weights by it, and
-       * composition's tie-break prefers less-used rows to rotate the corpus).
-       * v2.1 incremented every FETCHED row, so a pattern that was never shown to
-       * a model accumulated usage identical to one that shaped every script.
-       * That corrupts the signal every future composition reads, and unlike a
-       * display bug it is not recoverable after the fact — the true counts are
-       * gone. Fetch is not use.
-       */
-      if (usedPatternIds.length > 0) {
-        await db
-          .update(contentPatterns)
-          .set({
-            usageCount: sql`usage_count + 1`,
-            lastUsedAt: sql`NOW()`,
-          })
-          .where(inArray(contentPatterns.id, usedPatternIds));
-      }
-
-      /*
-       * ── 9. CLAIMS REVIEW — Part 3E ────────────────────────────────────────
-       *
-       * POST-COMMIT, BEST-EFFORT, INSIDE try/catch. The script row is already
-       * saved above and `insertId` is already known.
-       *
-       * This ordering is not stylistic. The claims review is an LLM call, and an
-       * LLM call inside the generation path is what destroyed finished scripts in
-       * the earlier build: the rubric threw, the error propagated out of the
-       * mutation, and the operator lost a script that had already been written.
-       * A compliance check failing is not a reason to discard compliant work.
-       *
-       * Routed through `createClaimsReview` — the SAME path the Claims Review
-       * page's own button uses. A parallel claims engine for scripts would mean
-       * two rubrics, two verdict shapes, and a review queue that silently omits
-       * scripts.
-       *
-       * youtube_script only, per spec. Never a gate: the operator is the
-       * qualified reviewer and the badge just tells him where to look.
-       */
-      let claimsQueued = false;
-      if (input.format === "youtube_script") {
-        try {
-          await createClaimsReview({
-            contentType: "youtube_script",
-            contentId: String(insertId),
-            contentTitle: title,
-            contentText: cleanScriptBody,
-          });
-          claimsQueued = true;
-        } catch (err) {
-          // Logged, never raised. The script survives a claims-side failure.
-          console.error(
-            `[scriptFactory] claims review failed for script #${insertId} — ` +
-              "the script is saved and unaffected:",
-            err instanceof Error ? err.message : err
-          );
-        }
-      }
-
-      return {
-        id: insertId,
-        title,
-        scriptBody: cleanScriptBody,
-        verifiedCount: verified,
-        totalElements: total,
-        verificationPct: pct,
-        patternsUsed: promptPatterns.length,
-        corpusEntriesUsed: corpusExcerpts.length,
-        externalTranscriptsUsed: externalTranscripts.length,
-        // ── Phase 2/3 transparency: let the UI show HOW this was built ─────
-        wordCount: finalWordCount,
-        targetWordCount: budget?.target ?? null,
-        targetLengthMinutes: targetLengthMinutes ?? null,
-        continuationPassUsed,
-        // Part 3A: surfaced so the operator can see when the model had to be
-        // corrected, rather than the correction happening silently.
-        storyMode: input.storyMode,
-        storyCorrectionPassUsed,
-        storySlotCount: countWordsWithStorySlots(scriptBody).slotCount,
-        // Part 3B — the operator must be able to see WHY a CTA closed the way it
-        // did: bound to an offer, overridden, or unbound.
-        offerBinding: input.ctaOverride
-          ? { mode: "override" as const, offerName: null, entryId: null }
-          : boundOffer
-            ? { mode: "offer" as const, offerName: boundOffer.offerName, entryId: boundOfferEntryId }
-            : { mode: "unbound" as const, offerName: null, entryId: null },
-        // Multi-tier: when a ladder was found but no tier chosen, the caller gets
-        // the reason and the options so the UI can ask instead of guessing.
-        offerBindReason,
-        unresolvedOfferTiers,
-        retrievalMethod,
-        personaName: personaContext?.name ?? null,
-        northStarCount: explicitNorthStar.length,
-        northStarTitles: explicitNorthStar.map((e) => e.title ?? "Untitled"),
-        researchJobId: research.jobId ?? null,
-        researchOutliersUsed: research.outlierCount,
-        researchTranscriptsUsed: research.transcriptCount,
-        researchPatternsUsed: composition.researchCount,
-        /*
-         * ── Part 3D: composition disclosure ──────────────────────────────
-         *
-         * The operator no longer chooses pattern types, so he has to be able to
-         * see what the system chose on his behalf and — more importantly — what
-         * it could NOT find. `unfilledTypes` names the beats that reached the
-         * prompt with no grounding at all. Padding those slots with off-type
-         * patterns to make the number look better is exactly the dishonest
-         * reporting this build exists to remove.
-         */
-        patternComposition: {
-          total: composition.patterns.length,
-          researchCount: composition.researchCount,
-          globalCount: composition.globalCount,
-          byType: composition.byType,
-          unfilledTypes: composition.unfilledTypes,
-          candidatesConsidered: composition.candidatesConsidered,
-          disclosure: describeComposition(composition),
-        },
-        // ── Part 3C: honest grounding disclosure ───────────────────────────
-        // Each of these answers a distinct question, because one boolean cannot.
-        // "Was research attempted" is not "did it succeed", and "did it succeed"
-        // is not "was it fresh". A UI that shows a single "researched" badge
-        // would imply grounding on a run that failed open and produced none.
-        researchAttempted,
-        researchReused,
-        researchFailureReason,
-        /*
-         * HONEST METRIC: grounded means grounding text actually reached the
-         * prompt. `jobId !== null` was the old test and it reported TRUE for the
-         * finding #10 runs where resolution threw and context was empty.
-         */
-        researchGrounded:
-          research.jobId !== null && (research.context.length > 0 || research.hookBlock.length > 0),
-        /*
-         * WHAT it was grounded in. A nonsense-seeded run once reported
-         * researchGrounded=true while grounded in a Hindi/Urdu TV drama
-         * transcript; the boolean was accurate and the script was worthless.
-         * These two fields make the badge auditable at a glance.
-         */
-        researchGroundingSources: research.groundingSources,
-        researchOnTopicRatio: research.onTopicRatio,
-        hookReferencesUsed: research.hookReferenceCount,
-        structureSummaryUsed: research.hasStructureSummary,
-        sourceIdeaId: input.sourceIdeaId ?? null,
-        /*
-         * ── Part 3E: honest grounding + cadence ───────────────────────────
-         *
-         * `groundingLabel` is generated in ONE place (describeGrounding) and
-         * reused by `update`, so an edited script cannot start reporting the
-         * same columns under a different definition — two racing definitions on
-         * shared columns would be worse than the original inflated metric.
-         */
-        groundingLabel: describeGrounding(grounding),
-        groundingByTag: grounding.byTag,
-        slotOnlySections: grounding.slotOnlySections,
-        metricVersion: grounding.metricVersion,
-        /*
-         * Cadence is advisory. Returned so the UI can list what to fix; it never
-         * gated the save, and the script above is already committed.
-         */
-        cadenceViolations: cadence.violations,
-        claimsReviewQueued: claimsQueued,
-      };
-    }),
+export const scriptFactoryRouter = router({
+  /**
+   * Generate a script from scratch.
+   *
+   * The pipeline itself now lives in `runScriptGeneration` above, shared with the
+   * v2.3 regenerate mutations. This procedure deliberately adds NOTHING: input
+   * validation and the call. Anything that belongs to generation belongs in the
+   * shared function, or the regenerate paths would not get it.
+   */
+  generate: protectedProcedure
+    .input(scriptGenerationInput)
+    .mutation(async ({ input }) => runScriptGeneration(input)),
 
   // ─── List saved scripts ───────────────────────────────────────────────────
   list: protectedProcedure

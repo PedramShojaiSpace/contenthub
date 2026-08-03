@@ -3656,7 +3656,12 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
    */
   generationParams: longtextJson<{
     personaId: number | null;
-    analogDataEntryIds: number[];
+    /*
+     * NULL and [] are different facts here and both must be storable: NULL means
+     * "no explicit North Star was selected", while an empty array would claim a
+     * selection was made and found nothing. The insert path writes NULL.
+     */
+    analogDataEntryIds: number[] | null;
     offerTier: string | null;
     targetLengthMinutes: number | null;
     storyMode: string | null;
@@ -3665,6 +3670,14 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
     model: string | null;
     format: string;
     topic: string;
+    /*
+     * Also frozen, because both change what the pipeline retrieves and therefore
+     * what a replay would produce. Optional so rows written before this widening
+     * (there are none in production, but the type must not lie about that) stay
+     * assignable.
+     */
+    seedKeyword?: string | null;
+    useCorpusSearch?: boolean;
   }>("generation_params"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),

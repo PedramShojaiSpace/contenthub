@@ -254,6 +254,17 @@ export default function InterconnectedCommandCenter() {
     refetchKajabi();
   }
 
+  // ── Upsell KPI: $299 Gut Permeability + Food Sensitivity Test (primary funnel metric) ──
+  const upsellTier = kajabiData?.tiers?.find(t => t.tier === '299');
+  const upsellCount = upsellTier?.count ?? 0;
+  const upsellRevenue = (upsellTier?.revenueCents ?? 0) / 100;
+  const otoTier = kajabiData?.tiers?.find(t => t.tier === '67');
+  const otoCount = otoTier?.count ?? 0;
+  // Upsell take rate = upsell purchases / $67 OTO purchases
+  const upsellTakeRate = otoCount > 0 ? (upsellCount / otoCount) * 100 : null;
+  // Cost per upsell = Meta spend / upsell purchases
+  const costPerUpsell = upsellCount > 0 ? spend / upsellCount : null;
+
   // Tier breakdown
   const tiers = kajabiData?.tiers ?? [];
 
@@ -299,6 +310,46 @@ export default function InterconnectedCommandCenter() {
             {startDate === endDate ? startDate : `${startDate} → ${endDate}`}
           </span>
         </div>
+
+        {/* ★ UPSELL SPOTLIGHT: $299 Gut Permeability + Food Sensitivity Test */}
+        <Card className="border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <FlaskConical className="h-5 w-5 text-amber-600" />
+                <span className="font-bold text-sm text-amber-800 dark:text-amber-300">PRIMARY KPI — $299 Upsell: Gut Permeability + Food Sensitivity Test w/ Coach</span>
+              </div>
+              <Badge className="bg-amber-500 text-white text-xs">Day-Zero Upsell</Badge>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-3xl font-black text-amber-700 dark:text-amber-300">{upsellCount}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Upsells Taken</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-black text-emerald-600">{upsellTakeRate !== null ? `${upsellTakeRate.toFixed(1)}%` : '—'}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Take Rate (of $67 OTOs)</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-black text-blue-600">{costPerUpsell !== null ? fmtDollars(costPerUpsell) : '—'}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Cost Per Upsell</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-black text-foreground">{fmtDollars(upsellRevenue)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Upsell Revenue</p>
+              </div>
+            </div>
+            {otoCount > 0 && (
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                {otoCount} people bought the $67 OTO → {upsellCount} took the $299 upsell
+                {upsellTakeRate !== null && ` (${upsellTakeRate.toFixed(1)}% take rate)`}
+              </p>
+            )}
+            {otoCount === 0 && kajabiLoading && (
+              <div className="flex justify-center mt-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Top KPI row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

@@ -3679,6 +3679,30 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
     seedKeyword?: string | null;
     useCorpusSearch?: boolean;
   }>("generation_params"),
+  /**
+   * ─── v2.3 Part 3 — undo trail for in-place section regeneration ───────────
+   *
+   * Append-only, newest first, CAPPED AT 10 ENTRIES. `regenerateSection` rewrites
+   * one section of `script_body` in place — it does NOT create a variant — so
+   * without this the previous wording is simply gone, and an operator who
+   * regenerates a section they were happy with has no way back.
+   *
+   * Deliberately NOT a separate table. The cap makes the row bounded, the data is
+   * meaningless apart from its script, and it is read only when the script is
+   * open — the join a table would add buys nothing.
+   *
+   * `previousText` stores the section's text WITH its tag and timestamp exactly as
+   * it appeared, so restoring is a byte-for-byte splice rather than a
+   * reconstruction that could subtly reformat the rest of the script.
+   */
+  sectionHistory: longtextJson<Array<{
+    sectionKey: string;
+    /** Verbatim prior slice of script_body, including the leading [TAG]. */
+    previousText: string;
+    /** The instruction that produced the replacement, if the operator gave one. */
+    instruction: string | null;
+    replacedAt: string;
+  }>>("section_history"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

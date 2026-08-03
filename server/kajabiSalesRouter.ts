@@ -36,7 +36,7 @@ const SITE_ID = "2148432935"; // The Urban Monk Academy
 const AMOUNT_TO_TIER: Record<number, { tier: string; label: string; priceCents: number }> = {
   6700:   { tier: "67",    label: "Interconnected $67 Bundle OTO",    priceCents: 6700   },
   10000:  { tier: "100",   label: "Upstream: Complete Microbiome",     priceCents: 10000  },
-  29900:  { tier: "299",   label: "Mid-Tier Program $299",             priceCents: 29900  },
+  29900:  { tier: "299",   label: "Gut Permeability + Food Sensitivity Test w/ Coach ($299 Upsell)", priceCents: 29900  },
   29700:  { tier: "297",   label: "Academy Annual $297",               priceCents: 29700  },
   36900:  { tier: "369",   label: "Lights On Annual $369",             priceCents: 36900  },
   39900:  { tier: "399",   label: "Testing Package $399",              priceCents: 39900  },

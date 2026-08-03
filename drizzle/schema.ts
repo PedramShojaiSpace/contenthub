@@ -3609,6 +3609,63 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
     candidatesConsidered: number;
     disclosure: string;
   }>("pattern_composition"),
+  // ─── v2.3 Part 2 — variant lineage (append-only, all nullable) ─────────────
+  /**
+   * The script this one was regenerated FROM. NULL means this row is an original.
+   *
+   * Nullable rather than NOT NULL with a sentinel because every row that already
+   * exists is an original, and a sentinel (0, or self-id) would then have to be
+   * special-cased at every read site. NULL already means "no parent" in SQL;
+   * inventing a second spelling of the same fact is how the two spellings drift.
+   */
+  parentScriptId: int("parent_script_id"),
+  /**
+   * Human-readable name for this variant — "20-min cut", "Persona: Skeptic".
+   *
+   * Auto-generated at creation from whichever override was applied, then freely
+   * editable by the operator. NULL on originals: an original is not a variant OF
+   * anything, so labelling it would imply a lineage that does not exist.
+   */
+  variantLabel: varchar("variant_label", { length: 120 }),
+  /**
+   * Denormalised ultimate ancestor, so a whole family is one indexed query.
+   *
+   * THE CHOICE, STATED (the spec asks for it explicitly): originals store NULL
+   * here, NOT their own id.
+   *
+   * Self-id would make "is this an original?" read as `variant_of_root_id = id`,
+   * which is pleasant, but it cannot be populated by the INSERT itself — the id
+   * does not exist until after the write — so every original would need a second
+   * UPDATE to become self-consistent, and any row failing between the two writes
+   * would be a silently malformed original. With NULL, `parent_script_id IS NULL`
+   * is the single test for "original", it is true the instant the row lands, and
+   * the family key is `COALESCE(variant_of_root_id, id)`.
+   *
+   * Consequence to remember: family queries MUST coalesce. A bare
+   * `WHERE variant_of_root_id = N` silently omits the root itself.
+   */
+  variantOfRootId: int("variant_of_root_id"),
+  /**
+   * The exact inputs this script was generated from, so a variant can be made by
+   * changing ONE of them instead of re-typing the brief from memory.
+   *
+   * Several of these facts are already columns (personaId, targetLengthMinutes,
+   * researchJobId). They are repeated here deliberately: the columns are the
+   * script's CURRENT state, while this is the frozen input set that produced its
+   * body. Regeneration replays the inputs, not the current state.
+   */
+  generationParams: longtextJson<{
+    personaId: number | null;
+    analogDataEntryIds: number[];
+    offerTier: string | null;
+    targetLengthMinutes: number | null;
+    storyMode: string | null;
+    researchJobId: number | null;
+    ctaOverride: string | null;
+    model: string | null;
+    format: string;
+    topic: string;
+  }>("generation_params"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

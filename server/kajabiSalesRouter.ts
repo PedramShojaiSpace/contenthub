@@ -300,7 +300,8 @@ async function fetchMetaSpendForRange(startDate: string, endDate: string) {
   ].join(",");
 
   const timeRange = JSON.stringify({ since: startDate, until: endDate });
-  const url = `https://graph.facebook.com/v19.0/act_${adAccountId}/insights?fields=${fields}&time_range=${encodeURIComponent(timeRange)}&level=campaign&limit=100&access_token=${accessToken}`;
+  // Use adset level so we can filter by adset name containing "Agora"
+  const url = `https://graph.facebook.com/v19.0/act_${adAccountId}/insights?fields=${fields}&time_range=${encodeURIComponent(timeRange)}&level=adset&limit=500&access_token=${accessToken}`;
 
   const resp = await fetch(url);
   if (!resp.ok) {
@@ -310,7 +311,15 @@ async function fetchMetaSpendForRange(startDate: string, endDate: string) {
   }
 
   const json = await resp.json() as any;
-  const data: any[] = json.data || [];
+  const allData: any[] = json.data || [];
+
+  // Filter to only Agora funnel ad sets — exclude unrelated campaigns
+  const FUNNEL_SLUG = "agora";
+  const data = allData.filter((row: any) => {
+    const adsetName: string = (row.adset_name || "").toLowerCase();
+    const campaignName: string = (row.campaign_name || "").toLowerCase();
+    return adsetName.includes(FUNNEL_SLUG) || campaignName.includes(FUNNEL_SLUG);
+  });
 
   let totalSpend = 0;
   let totalLeads = 0;

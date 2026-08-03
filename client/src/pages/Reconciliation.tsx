@@ -143,7 +143,7 @@ export default function Reconciliation() {
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <Zap className="h-3.5 w-3.5" /> Meta Ad Spend
+                  <Zap className="h-3.5 w-3.5" /> Meta Spend (Agora)
                 </div>
                 <div className="text-2xl font-bold text-foreground">{fmtDollars(spendNum)}</div>
                 {metaData?.error && (

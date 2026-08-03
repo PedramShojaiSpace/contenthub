@@ -1328,6 +1328,21 @@ export interface SectionOutlineEntry {
   tag: string;
   /** Human label, disambiguated when a tag recurs: "Teach 3". */
   label: string;
+  /*
+   * Stable slug identifying this instance: "hook", "teach-2", "cta".
+   *
+   * Derived HERE, on the server, for the same reason the outline itself is
+   * server-side: it is the single naming authority for three consumers that
+   * must agree exactly — the navigator's scroll anchors, the `?section=` deep
+   * link, and v2.3 Part 3's `regenerateSection({ sectionKey })` input. Were the
+   * client to re-derive it from `label`, a divergence would not merely misplace
+   * a scroll target — it would regenerate the WRONG SECTION of a script.
+   *
+   * Suffix rule matches `label` exactly: bare slug when the tag occurs once in
+   * this script, `-N` (1-based) when it recurs. One TEACH yields "teach"; three
+   * yield "teach-1", "teach-2", "teach-3".
+   */
+  sectionKey: string;
   /** Character offset of the tag in the RAW (timestamped) body. */
   charStart: number;
   charEnd: number;
@@ -1400,6 +1415,7 @@ export function buildSectionOutline(scriptBody: string): SectionOutlineEntry[] {
     seen[inst.tag] = n;
     const pretty = inst.tag.charAt(0) + inst.tag.slice(1).toLowerCase();
     const total = instances.filter((x) => x.tag === inst.tag).length;
+    const slug = inst.tag.toLowerCase().replace(/_/g, "-");
 
     const startSeconds = cumulativeWords / wordsPerSecond;
     /*
@@ -1417,6 +1433,7 @@ export function buildSectionOutline(scriptBody: string): SectionOutlineEntry[] {
       index: inst.index,
       tag: inst.tag,
       label: total > 1 ? `${pretty} ${n}` : pretty,
+      sectionKey: total > 1 ? `${slug}-${n}` : slug,
       charStart,
       charEnd,
       wordCount,

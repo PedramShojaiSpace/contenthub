@@ -482,11 +482,30 @@ function submitForm(e, id) {
   if (errEl) errEl.style.display = 'none';
   if (btn) { btn.disabled = true; btn.textContent = 'Registering...'; }
 
+  // Capture UTM + Meta attribution signals for CAPI matching
+  var params = new URLSearchParams(window.location.search);
+  var fbclid = params.get('fbclid') || '';
+  function getCookie(n) { var m = document.cookie.match('(?:^|;\\s*)' + n + '=([^;]*)'); return m ? decodeURIComponent(m[1]) : ''; }
+  var fbp = getCookie('_fbp');
+  var fbc = getCookie('_fbc') || (fbclid ? 'fb.1.' + Date.now() + '.' + fbclid : '');
+  var payload = {
+    name: name, email: email, phone: phone || undefined, smsConsent: smsConsent,
+    pageVariant: 'A',
+    utmSource: params.get('utm_source') || undefined,
+    utmMedium: params.get('utm_medium') || undefined,
+    utmCampaign: params.get('utm_campaign') || undefined,
+    utmContent: params.get('utm_content') || undefined,
+    referrer: document.referrer || undefined,
+    fbclid: fbclid || undefined,
+    fbp: fbp || undefined,
+    fbc: fbc || undefined
+  };
+
   fetch('/api/trpc/interconnected.register?batch=1', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ "0": { json: { name: name, email: email, phone: phone || undefined, smsConsent: smsConsent } } })
+    body: JSON.stringify({ "0": { json: payload } })
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {

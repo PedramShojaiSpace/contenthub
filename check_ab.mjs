@@ -1,0 +1,11 @@
+import { createConnection } from 'mysql2/promise';
+import dotenv from 'dotenv';
+dotenv.config();
+const conn = await createConnection(process.env.DATABASE_URL);
+const [variants] = await conn.query('SELECT * FROM ab_test_variants WHERE test_id = 1');
+console.log('VARIANTS:', JSON.stringify(variants, null, 2));
+const [events] = await conn.query('SELECT variant_id, event_type, COUNT(*) as cnt FROM ab_test_events GROUP BY variant_id, event_type');
+console.log('EVENTS:', JSON.stringify(events, null, 2));
+const [tests] = await conn.query('SELECT * FROM ab_tests');
+console.log('TESTS:', JSON.stringify(tests, null, 2));
+await conn.end();

@@ -10,8 +10,7 @@ import type { Request, Response } from "express";
 import { sdk } from "./_core/sdk";
 import { notifyOwner } from "./_core/notification";
 import { getDb } from "./db";
-import { interconnectedLeads } from "../drizzle/schema";
-import { gte, count } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 export async function leadWatchdogHandler(req: Request, res: Response) {
   try {
@@ -30,12 +29,13 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
     const windowMs = 65 * 60 * 1000;
     const since = Date.now() - windowMs;
 
-    const [result] = await db
-      .select({ cnt: count() })
-      .from(interconnectedLeads)
-      .where(gte(interconnectedLeads.createdAt, since));
-
-    const leadsInWindow = result?.cnt ?? 0;
+    // Use raw SQL to avoid Drizzle camelCase→snake_case column mapping issues
+    const rows = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM interconnected_leads WHERE created_at >= ${since}`
+    ) as any;
+    const rowData = Array.isArray(rows) ? rows[0] : rows;
+    const firstRow = Array.isArray(rowData) ? rowData[0] : rowData;
+    const leadsInWindow = Number(firstRow?.cnt ?? 0);
 
     if (leadsInWindow === 0) {
       // No leads in 65 minutes — alert the owner

@@ -841,6 +841,12 @@ async function startServer() {
     return leadWatchdogHandler(req, res);
   });
 
+  // POST /api/scheduled/day0-verification — one-time check 60 min after form-submission fix deployment
+  app.post("/api/scheduled/day0-verification", async (req, res) => {
+    const { day0VerificationHandler } = await import("../day0VerificationHandler");
+    return day0VerificationHandler(req, res);
+  });
+
   // POST /api/scheduled/ab-significance-check — fires every 6 hours, notifies owner when A/B test reaches significance
   app.post("/api/scheduled/ab-significance-check", async (req, res) => {
     const { abSignificanceWatchdog } = await import("../abSignificanceWatchdog");

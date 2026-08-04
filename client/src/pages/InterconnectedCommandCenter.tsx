@@ -218,6 +218,15 @@ export default function InterconnectedCommandCenter() {
 
   const isLoading = metaLoading || funnelLoading;
 
+  // ── Buyer Quality Scorecard: which opt goal produces actual customers? ────────
+  const {
+    data: optPerfData,
+    isLoading: optPerfLoading,
+  } = trpc.kajabiSales.getOptPathPerformance.useQuery(
+    { startDate, endDate },
+    { staleTime: 5 * 60_000, refetchInterval: 5 * 60_000 }
+  );
+
   // Derived metrics — all revenue/purchase numbers come from funnel-only DB source
   const spend = metaData?.spend ?? 0;
   const leads = metaData?.leads ?? 0;
@@ -473,6 +482,96 @@ export default function InterconnectedCommandCenter() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ★ BUYER QUALITY SCORECARD — central question: which opt goal produces buyers? */}
+        <Card className="border-2 border-blue-400 bg-blue-50/30 dark:bg-blue-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              <span className="font-bold">Which Optimization Goal Produces Buyers?</span>
+              <Badge className="bg-blue-600 text-white text-xs ml-1">Attribution Scorecard</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {optPerfLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading attribution data...
+              </div>
+            ) : !optPerfData?.scorecard ? (
+              <p className="text-sm text-muted-foreground">No data available for this period</p>
+            ) : (
+              <div className="space-y-4">
+                {/* Column headers */}
+                <div className="grid grid-cols-7 gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
+                  <div className="col-span-2">Optimization Goal</div>
+                  <div className="text-right">Leads</div>
+                  <div className="text-right">Buyers</div>
+                  <div className="text-right">Conv Rate</div>
+                  <div className="text-right">True CPA</div>
+                  <div className="text-right">Rev / Lead</div>
+                </div>
+                {optPerfData.scorecard.map((row: any) => {
+                  const typeColors: Record<string, string> = {
+                    'MAX VALUE PURCHASE': 'text-emerald-600',
+                    'MAX VALUE LEADS':    'text-blue-600',
+                    'LEADS':             'text-violet-600',
+                  };
+                  const typeBg: Record<string, string> = {
+                    'MAX VALUE PURCHASE': 'bg-emerald-500',
+                    'MAX VALUE LEADS':    'bg-blue-500',
+                    'LEADS':             'bg-violet-500',
+                  };
+                  const color = typeColors[row.type] || 'text-foreground';
+                  const bg = typeBg[row.type] || 'bg-gray-400';
+                  const isBest = optPerfData.scorecard.reduce((best: any, r: any) =>
+                    (r.revenuePerLead ?? 0) > (best.revenuePerLead ?? 0) ? r : best
+                  , optPerfData.scorecard[0])?.type === row.type && (row.revenuePerLead ?? 0) > 0;
+                  return (
+                    <div key={row.type} className={`grid grid-cols-7 gap-2 items-center text-sm rounded-lg p-2 ${
+                      isBest ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300' : 'hover:bg-muted/40'
+                    }`}>
+                      <div className="col-span-2 flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${bg} shrink-0`} />
+                        <span className={`font-semibold text-xs uppercase tracking-wide ${color}`}>{row.type}</span>
+                        {isBest && <Badge className="bg-emerald-500 text-white text-xs px-1 py-0">WINNER</Badge>}
+                      </div>
+                      <div className="text-right font-medium">{row.leads.toLocaleString()}</div>
+                      <div className="text-right font-bold">{row.purchases.toLocaleString()}</div>
+                      <div className={`text-right font-bold ${
+                        row.convRate === null ? 'text-muted-foreground'
+                        : row.convRate >= 0.05 ? 'text-emerald-600'
+                        : row.convRate >= 0.02 ? 'text-blue-600'
+                        : 'text-amber-600'
+                      }`}>
+                        {row.convRate !== null ? `${(row.convRate * 100).toFixed(1)}%` : '—'}
+                      </div>
+                      <div className={`text-right font-medium ${
+                        row.trueCPA === null ? 'text-muted-foreground'
+                        : row.trueCPA < 50 ? 'text-emerald-600'
+                        : row.trueCPA < 150 ? 'text-blue-600'
+                        : 'text-amber-600'
+                      }`}>
+                        {row.trueCPA !== null ? fmtDollars(row.trueCPA) : '—'}
+                      </div>
+                      <div className={`text-right font-bold ${
+                        row.revenuePerLead === null ? 'text-muted-foreground'
+                        : row.revenuePerLead >= 5 ? 'text-emerald-600'
+                        : row.revenuePerLead >= 2 ? 'text-blue-600'
+                        : 'text-amber-600'
+                      }`}>
+                        {row.revenuePerLead !== null ? fmtDollars(row.revenuePerLead) : '—'}
+                      </div>
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-muted-foreground pt-1">
+                  Attribution: purchases matched to leads by email within the selected date range.
+                  {optPerfData.metaError && <span className="text-amber-600 ml-1">Meta spend unavailable — showing DB data only.</span>}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Optimization Path Comparison */}
         <Card>

@@ -92,16 +92,13 @@ export function renderInterconnectedPage(): string {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=optional" rel="stylesheet" />
-  <!-- Meta Pixel — delayed 3s after load so it never blocks LCP -->
+  <!-- Meta Pixel — loads immediately so fbq() is available for Lead event on form submit -->
   <script>
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init','1498608757116877');
-        fbq('track','PageView');
-      }, 3000);
-    });
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init','1498608757116877');
+    fbq('track','PageView');
   </script>
+  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1498608757116877&ev=PageView&noscript=1"/></noscript>
   <!-- GA4 — deferred -->
   <script defer src="https://www.googletagmanager.com/gtag/js?id=G-CXZK2Q275S"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-CXZK2Q275S');</script>
@@ -513,7 +510,10 @@ function submitForm(e, id) {
     if (result && result.data) {
       // Tag landing page variant so TY splitter can cross-tabulate LP-A vs LP-B
       try { localStorage.setItem('ic_lp_variant', 'A'); } catch(e) {}
-      window.location.href = '/interconnected/thank-you';
+      // Fire browser-side Lead pixel event for real-time Meta attribution
+      try { if (typeof fbq !== 'undefined') { fbq('track', 'Lead', { content_name: 'Interconnected Free Screening', content_category: 'Agora' }); } } catch(e) {}
+      // Small delay to allow pixel to fire before redirect
+      setTimeout(function() { window.location.href = '/interconnected/thank-you'; }, 300);
     } else {
       var msg = (data && data[0] && data[0].error && data[0].error.message) || 'Something went wrong. Please try again.';
       if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }

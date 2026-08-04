@@ -16,7 +16,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "./_core/trpc";
-import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
+import { kajabiCreateContact, kajabiAddTagByName, kajabiSubmitForm } from "./kajabiApi";
 import { pushInterconnectedOptIn } from "./klaviyo";
 import { validateEmail } from "./emailScrubber";
 import { getDb } from "./db";
@@ -26,6 +26,10 @@ import { eq, sql, gte, lte, and } from "drizzle-orm";
 import { sendCapiEvent, generateEventId } from "./capiHelper";
 
 const KAJABI_TAG = "Interconnected Opt In";
+// Form ID for "IC META LEADS - SP 26 Test" — submitting this form is the
+// ONLY reliable way to trigger the Interconnected sequence from Day 0.
+// Kajabi does NOT fire sequence triggers when a tag is applied to existing contacts.
+const KAJABI_SEQUENCE_FORM_ID = "2149563926";
 const KAJABI_MAX_RETRIES = 3;
 const KAJABI_RETRY_DELAY_MS = 2000;
 
@@ -35,7 +39,13 @@ function sleep(ms: number) {
 }
 
 /**
- * Attempt to tag a contact in Kajabi with linear backoff.
+ * Attempt to enroll a contact in Kajabi with linear backoff.
+ *
+ * Strategy (two-step for reliability):
+ * 1. Submit the sequence trigger form — this ALWAYS fires Day 0 for both new
+ *    and existing contacts (form submission is the only reliable sequence trigger).
+ * 2. Also apply the tag directly — belt-and-suspenders for other automations.
+ *
  * Returns { success, contactId?, error? }
  */
 async function kajabiTagWithRetry(
@@ -45,9 +55,27 @@ async function kajabiTagWithRetry(
   let lastError = "";
   for (let attempt = 1; attempt <= KAJABI_MAX_RETRIES; attempt++) {
     try {
-      const contact = await kajabiCreateContact({ email, name });
-      await kajabiAddTagByName({ contactId: contact.id, tagName: KAJABI_TAG });
-      return { success: true, contactId: contact.id };
+      // Step 1: Submit the form — triggers the sequence from Day 0 reliably
+      await kajabiSubmitForm({
+        formId: KAJABI_SEQUENCE_FORM_ID,
+        email,
+        name,
+      });
+
+      // Step 2: Also create/update the contact and apply the tag
+      // (non-fatal if this fails — the form submission already enrolled them)
+      let contactId: string | undefined;
+      try {
+        const contact = await kajabiCreateContact({ email, name });
+        await kajabiAddTagByName({ contactId: contact.id, tagName: KAJABI_TAG });
+        contactId = contact.id;
+      } catch (tagErr: any) {
+        console.warn(
+          `[interconnectedRouter] Tag step failed for ${email} (form submit succeeded): ${tagErr?.message}`
+        );
+      }
+
+      return { success: true, contactId };
     } catch (err: any) {
       lastError = err?.message ?? String(err);
       console.warn(

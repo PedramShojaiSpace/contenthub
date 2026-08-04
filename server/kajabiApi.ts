@@ -283,6 +283,50 @@ export async function kajabiOptIn(params: {
   return { contactId: contact.id };
 }
 
+/**
+ * Submit a Kajabi form on behalf of a contact.
+ * This is the ONLY reliable way to trigger sequence enrollment via API —
+ * Kajabi's sequence triggers fire on form submission but NOT on tag application
+ * for existing contacts.
+ *
+ * @param formId  - The Kajabi form ID (numeric string)
+ * @param email   - Contact's email address
+ * @param name    - Contact's full name (optional)
+ */
+export async function kajabiSubmitForm(params: {
+  formId: string;
+  email: string;
+  name?: string;
+}): Promise<{ submissionId: string }> {
+  const token = await getAccessToken();
+
+  const attributes: Record<string, string> = { email: params.email };
+  if (params.name) attributes.name = params.name;
+
+  const res = await fetch(`${KAJABI_API_BASE}/forms/${params.formId}/submit`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/vnd.api+json",
+      Accept: "application/vnd.api+json",
+    },
+    body: JSON.stringify({
+      data: {
+        type: "form_submissions",
+        attributes,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Kajabi submitForm failed (${res.status}): ${text}`);
+  }
+
+  const data = await safeParseJson<{ data: { id: string } }>(res, "Kajabi submitForm");
+  return { submissionId: data.data.id };
+}
+
 // ─── Attribution helpers ──────────────────────────────────────────────────────
 
 /**

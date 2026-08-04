@@ -10,9 +10,13 @@
 
 import { getDb } from "./db";
 import { kajabiRetryQueue, interconnectedLeads } from "../drizzle/schema";
-import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
+import { kajabiCreateContact, kajabiAddTagByName, kajabiSubmitForm } from "./kajabiApi";
+
 import { notifyOwner } from "./_core/notification";
 import { eq, and } from "drizzle-orm";
+
+// Form ID for "IC META LEADS - SP 26 Test" — the only reliable sequence trigger via API
+const KAJABI_SEQUENCE_FORM_ID = "2149563926";
 
 const WORKER_MAX_RETRIES = 3;
 const WORKER_RETRY_DELAY_MS = 3000;
@@ -53,8 +57,17 @@ export async function runKajabiRetryWorker(): Promise<void> {
 
     for (let attempt = 1; attempt <= WORKER_MAX_RETRIES; attempt++) {
       try {
-        const contact = await kajabiCreateContact({ email: item.email, name: item.name });
-        await kajabiAddTagByName({ contactId: contact.id, tagName: item.tag_name });
+        // Step 1: Submit the form — triggers sequence from Day 0 reliably
+        await kajabiSubmitForm({
+          formId: KAJABI_SEQUENCE_FORM_ID,
+          email: item.email,
+          name: item.name,
+        });
+        // Step 2: Also tag (belt-and-suspenders)
+        try {
+          const contact = await kajabiCreateContact({ email: item.email, name: item.name });
+          await kajabiAddTagByName({ contactId: contact.id, tagName: item.tag_name });
+        } catch (_tagErr) { /* form submit succeeded — tagging failure is non-fatal */ }
         success = true;
         break;
       } catch (err: any) {

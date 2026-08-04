@@ -511,6 +511,8 @@ function submitForm(e, id) {
   .then(function(data) {
     var result = data && data[0] && data[0].result;
     if (result && result.data) {
+      // Tag landing page variant so TY splitter can cross-tabulate LP-A vs LP-B
+      try { localStorage.setItem('ic_lp_variant', 'A'); } catch(e) {}
       window.location.href = '/interconnected/thank-you';
     } else {
       var msg = (data && data[0] && data[0].error && data[0].error.message) || 'Something went wrong. Please try again.';

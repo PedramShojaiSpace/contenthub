@@ -1230,32 +1230,23 @@ async function startServer() {
   });
 
   // ── Interconnected Static HTML Pages (bypasses React SPA bundle for speed) ──
-  // 50/50 cookie-sticky A/B split: half of visitors see Page A, half see Page B.
-  // The variant is assigned once per browser and stored in a cookie (ic_variant)
-  // so the same visitor always lands on the same page on repeat visits.
-  app.get("/interconnected", async (req, res) => {
+  //
+  // SPLIT TEST ARCHITECTURE (updated):
+  //   FRONT-END SPLIT (Landing Page A vs B) — managed externally by Curt's ad campaigns:
+  //     /interconnected   → Page A (Curt points some ads here)
+  //     /interconnected-b → Page B (Curt points other ads here)
+  //   Both pages tag the lead with pageVariant 'A' or 'B' on form submit.
+  //
+  //   BACK-END SPLIT (Thank You Page A vs B) — managed by our server:
+  //     /interconnected/thank-you → InterconnectedThankYouSplitter (50/50 random, DB-sticky)
+  //     Variant A: Wistia hobj7srg3q  |  Variant B: Wistia 10cdtpm3il
+  //
+  // /interconnected now serves Page A directly — NO server-side redirect to B.
+  app.get("/interconnected", async (_req, res) => {
     try {
-      // Read existing variant cookie
-      const cookieHeader = req.headers.cookie ?? "";
-      const cookieMatch = cookieHeader.match(/(?:^|;\s*)ic_variant=([AB])/);
-      let variant: "A" | "B";
-      if (cookieMatch) {
-        variant = cookieMatch[1] as "A" | "B";
-      } else {
-        // Assign new visitor randomly 50/50
-        variant = Math.random() < 0.5 ? "A" : "B";
-        // Sticky for 30 days, no-cache so assignment runs per-request
-        res.setHeader("Set-Cookie", `ic_variant=${variant}; Path=/; Max-Age=2592000; SameSite=Lax`);
-      }
-      // Redirect B visitors to the B page (which tags them as variant B on form submit)
-      if (variant === "B") {
-        console.log(`[interconnected] Routing visitor to Page B (ic_variant cookie)`);
-        return res.redirect(302, "/interconnected-b");
-      }
       const { renderInterconnectedPage } = await import("../interconnectedStaticPage");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      // No-store: variant assignment must run on every new request (no CDN caching)
-      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
       return res.send(renderInterconnectedPage());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

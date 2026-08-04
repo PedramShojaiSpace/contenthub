@@ -119,6 +119,7 @@ function OptInFormB() {
       fbclid: attrib.fbclid,
       fbp: attrib.fbp,
       fbc: attrib.fbc,
+      pageVariant: 'B',
     });
   };
 

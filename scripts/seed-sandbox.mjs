@@ -23,7 +23,24 @@
 import { readFileSync } from "node:fs";
 import mysql from "mysql2/promise";
 
-const SALES_PAGE_PATH = "/home/ubuntu/salespage_verbatim.txt";
+/**
+ * The sales page now lives IN THE REPO at scripts/seed-data/salespage_verbatim.txt.
+ *
+ * It used to be read from /home/ubuntu/salespage_verbatim.txt, which was never
+ * committed. When the sandbox was reset on 2026-08-04 the seed script survived in
+ * git and its input did not, so the seed was unrunnable and the demo could not be
+ * rebuilt. A seed whose input lives outside version control is not reproducible.
+ *
+ * Resolved relative to THIS FILE rather than process.cwd() so the script works
+ * regardless of the directory it is invoked from. SALES_PAGE_PATH still overrides,
+ * for pointing at a newer export without editing code.
+ */
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SALES_PAGE_PATH =
+  process.env.SALES_PAGE_PATH || resolve(HERE, "seed-data", "salespage_verbatim.txt");
 const ENTRY_TITLE = "KBMO Clinical Ecosystem — Diagnostic Intake ($399)";
 const PERSONA_SLUG = "exhausted-optimizer";
 
@@ -33,7 +50,16 @@ if (!url) {
   process.exit(1);
 }
 
-const content = readFileSync(SALES_PAGE_PATH, "utf8");
+let content;
+try {
+  content = readFileSync(SALES_PAGE_PATH, "utf8");
+} catch (err) {
+  console.error(`[seed] cannot read sales page at ${SALES_PAGE_PATH}: ${err.code}`);
+  console.error("[seed] expected scripts/seed-data/salespage_verbatim.txt in the repo,");
+  console.error("[seed] or SALES_PAGE_PATH pointing at a readable copy.");
+  process.exit(1);
+}
+console.log(`[seed] sales page source: ${SALES_PAGE_PATH}`);
 console.log(`[seed] sales page read: ${content.length} chars, ${content.split("\n").length} lines`);
 
 /**

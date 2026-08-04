@@ -1525,11 +1525,40 @@ async function startServer() {
       const amount = parseFloat(String(payload.amount ?? payload.total ?? 0));
       const orderId = String(payload.id ?? payload.order_id ?? payload.purchase_id ?? Date.now());
       const offerName = String(payload.offer_name ?? payload.product_name ?? payload.title ?? "Kajabi Purchase");
+      const offerId = String(payload.offer_id ?? payload.product_id ?? "");
       if (!email) {
         console.warn("[kajabi/purchase] No email in payload — cannot send CAPI");
         return res.json({ ok: false, reason: "no_email" });
       }
-      // Look up the lead in our DB to get fbclid/fbp/fbc/ip/ua for better matching
+
+      // ── Detect funnel from offer ID, offer name, or amount ─────────────────
+      // Offer ID 2150211911 = Gut Permeability Test ($399) → interconnected
+      // Offer ID 2151031660 = Upstream: Complete Microbiome Solution ($100/$297) → upstream_webinar
+      // Amount-based fallback: $67/$299/$399/$499/$1450/$1650 → interconnected
+      //                        $100/$297 → upstream_webinar
+      const amountCents = Math.round(amount * 100);
+      let funnelSource = "unknown";
+      const offerNameLower = offerName.toLowerCase();
+      if (offerId === "2150211911" || offerId === "2151031660") {
+        funnelSource = offerId === "2151031660" ? "upstream_webinar" : "interconnected";
+      } else if (offerNameLower.includes("upstream") || offerNameLower.includes("microbiome") || offerNameLower.includes("gut check")) {
+        funnelSource = "upstream_webinar";
+      } else if (offerNameLower.includes("deep sleep") || offerNameLower.includes("dss")) {
+        funnelSource = "dss_webinar";
+      } else if (offerNameLower.includes("gateway")) {
+        funnelSource = "gateway_health";
+      } else if (offerNameLower.includes("lights on") || offerNameLower.includes("lights-on")) {
+        funnelSource = "lights_on";
+      } else if (offerNameLower.includes("reboot") || offerNameLower.includes("7 day") || offerNameLower.includes("7-day")) {
+        funnelSource = "reboot_7day";
+      } else if ([6700, 29900, 39900, 49900, 145000, 165000].includes(amountCents) ||
+                 offerNameLower.includes("interconnected") || offerNameLower.includes("gut permeability") ||
+                 offerNameLower.includes("food sensitivity") || offerNameLower.includes("agora")) {
+        funnelSource = "interconnected";
+      }
+      console.log(`[kajabi/purchase] Detected funnel: ${funnelSource} for offer "${offerName}" (ID: ${offerId}, amount: $${amount})`);
+
+      // ── Look up the lead in our DB to get fbclid/fbp/fbc/ip/ua for CAPI ────
       const { getDb } = await import("../db");
       const { interconnectedLeads } = await import("../../drizzle/schema");
       const { eq } = await import("drizzle-orm");
@@ -1537,36 +1566,53 @@ async function startServer() {
       const db = await getDb();
       let lead: typeof interconnectedLeads.$inferSelect | undefined;
       if (db) {
+        // Check interconnected_leads first (covers Interconnected funnel)
         const rows = await db.select().from(interconnectedLeads)
           .where(eq(interconnectedLeads.email, email.toLowerCase().trim()))
           .limit(1);
         lead = rows[0];
+        // Future: add lookup in upstream_leads, dss_leads etc. as those tables are created
       }
+      const isMetaAttributed = lead ? 1 : 0;
+
       // ── Save purchase to local DB for funnel attribution tracking ──────────
       if (db) {
         try {
           const { kajabiPurchases } = await import("../../drizzle/schema");
           await db.insert(kajabiPurchases).values({
             email: email.toLowerCase().trim(),
-            amountCents: Math.round(amount * 100),
+            amountCents,
             offerName,
-            funnelSource: "interconnected",
+            funnelSource,
             kajabiOrderId: orderId,
             isEmailListBuyer: 0,
-            isMetaAttributed: lead ? 1 : 0,
+            isMetaAttributed,
+            notes: `offer_id:${offerId}`,
             purchasedAt: Date.now(),
           });
-          console.log(`[kajabi/purchase] DB record saved for ${email} — amount: $${amount}, meta_attributed: ${lead ? 1 : 0}`);
+          console.log(`[kajabi/purchase] DB record saved for ${email} — funnel: ${funnelSource}, amount: $${amount}, meta_attributed: ${isMetaAttributed}`);
         } catch (dbErr: any) {
           // Don't block CAPI on DB error — log and continue
           console.warn("[kajabi/purchase] DB insert failed:", dbErr?.message);
         }
       }
+
+      // ── Determine event source URL per funnel ──────────────────────────────
+      const eventSourceUrls: Record<string, string> = {
+        interconnected:  "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout",
+        upstream_webinar: "https://theacademy.theurbanmonk.com/upstream/checkout",
+        dss_webinar:     "https://theacademy.theurbanmonk.com/dss/checkout",
+        gateway_health:  "https://theacademy.theurbanmonk.com/gateway/checkout",
+        lights_on:       "https://theacademy.theurbanmonk.com/lights-on/checkout",
+        reboot_7day:     "https://theacademy.theurbanmonk.com/reboot/checkout",
+      };
+      const eventSourceUrl = eventSourceUrls[funnelSource] ?? "https://theacademy.theurbanmonk.com/checkout";
+
       const purchaseEventId = generateEventId(email, "Purchase", orderId);
       const capiSent = await sendCapiEvent({
         eventName: "Purchase",
         eventId: purchaseEventId,
-        eventSourceUrl: "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout",
+        eventSourceUrl,
         email,
         phone: lead?.phone ?? null,
         fbclid: lead?.fbclid ?? null,
@@ -1581,8 +1627,8 @@ async function startServer() {
         utmCampaign: lead?.utmCampaign ?? null,
         utmSource: lead?.utmSource ?? null,
       });
-      console.log(`[kajabi/purchase] CAPI Purchase sent for ${email} — amount: $${amount}, event_id: ${purchaseEventId}, ok: ${capiSent}`);
-      res.json({ ok: true, capiSent, purchaseEventId, email, amount });
+      console.log(`[kajabi/purchase] CAPI Purchase sent for ${email} — funnel: ${funnelSource}, amount: $${amount}, event_id: ${purchaseEventId}, ok: ${capiSent}`);
+      res.json({ ok: true, capiSent, purchaseEventId, email, amount, funnelSource, isMetaAttributed });
     } catch (err: any) {
       console.error("[kajabi/purchase] Error:", err);
       res.status(500).json({ error: err?.message });

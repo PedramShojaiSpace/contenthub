@@ -408,7 +408,7 @@ export default function InterconnectedCommandCenter() {
                 {upsellTakeRate !== null && ` (${upsellTakeRate.toFixed(1)}% take rate)`}
               </p>
             )}
-            {otoCount === 0 && kajabiLoading && (
+            {otoCount === 0 && funnelLoading && (
               <div className="flex justify-center mt-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
             )}
           </CardContent>
@@ -443,7 +443,7 @@ export default function InterconnectedCommandCenter() {
             sub={`${kajabiPurchases} purchases`}
             icon={TrendingUp}
             color={roas !== null && roas >= 1 ? "text-emerald-600" : "text-red-600"}
-            loading={kajabiLoading}
+            loading={funnelLoading}
           />
           <StatCard
             label="ROAS"
@@ -474,7 +474,7 @@ export default function InterconnectedCommandCenter() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {kajabiLoading ? (
+              {funnelLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               ) : tiers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No sales in this period</p>

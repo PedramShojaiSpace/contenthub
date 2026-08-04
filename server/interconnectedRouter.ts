@@ -19,7 +19,7 @@ import { pushInterconnectedOptIn } from "./klaviyo";
 import { validateEmail } from "./emailScrubber";
 import { getDb } from "./db";
 import { interconnectedLeads } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql, gte, lte, and } from "drizzle-orm";
 import { sendCapiEvent, generateEventId } from "./capiHelper";
 
 const KAJABI_TAG = "Interconnected Opt In";
@@ -179,5 +179,25 @@ export const interconnectedRouter = router({
       }
 
       return { success: true, kajabiTagged, smsSubscribed, capiLeadEventId };
+    }),
+  getVariantStats: publicProcedure
+    .input(z.object({
+      startTs: z.number().optional(),
+      endTs: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { A: 0, B: 0, total: 0 };
+      const conditions: any[] = [];
+      if (input.startTs) conditions.push(gte(interconnectedLeads.createdAt, input.startTs));
+      if (input.endTs) conditions.push(lte(interconnectedLeads.createdAt, input.endTs));
+      const rows = await db
+        .select({ variant: interconnectedLeads.pageVariant, count: sql`count(*)` })
+        .from(interconnectedLeads)
+        .where(conditions.length ? and(...conditions) : undefined)
+        .groupBy(interconnectedLeads.pageVariant);
+      const A = rows.find(r => r.variant === 'A')?.count ?? 0;
+      const B = rows.find(r => r.variant === 'B')?.count ?? 0;
+      return { A: Number(A), B: Number(B), total: Number(A) + Number(B) };
     }),
 });

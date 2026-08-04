@@ -3734,6 +3734,7 @@ export const interconnectedLeads = mysqlTable("interconnected_leads", {
   utmCampaign: varchar("utm_campaign", { length: 128 }),
   utmContent: varchar("utm_content", { length: 128 }),
   referrer: varchar("referrer", { length: 512 }),
+  pageVariant: varchar("page_variant", { length: 10 }).default("A"),
   kajabiTagged: boolean("kajabi_tagged").notNull().default(false),
   kajabiTaggedAt: bigint("kajabi_tagged_at", { mode: "number" }),
   klaviyoSynced: boolean("klaviyo_synced").notNull().default(false),

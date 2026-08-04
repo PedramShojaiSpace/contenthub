@@ -3168,7 +3168,7 @@ export const abConversions = mysqlTable("ab_conversions", {
   testId: int("test_id").notNull(),
   variantId: int("variant_id").notNull(),
   visitorId: varchar("visitor_id", { length: 128 }).notNull(),
-  conversionType: mysqlEnum("ab_conversion_type", [
+  conversionType: mysqlEnum("conversion_type", [
     "purchase",
     "email_capture",
     "quiz_start",

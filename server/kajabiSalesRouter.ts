@@ -331,6 +331,22 @@ async function fetchMetaSpendForRange(startDate: string, endDate: string) {
   let totalCheckouts = 0;
   const campaigns: any[] = [];
 
+  // Per-optimization-type buckets matching Kurt's campaign naming:
+  //   "max value purchase" -> purchase-optimized
+  //   "max value leads"    -> value-based leads
+  //   "leads"              -> standard lead acquisition (catch-all)
+  const optBuckets: Record<string, { spend: number; leads: number; checkouts: number }> = {
+    'MAX VALUE PURCHASE': { spend: 0, leads: 0, checkouts: 0 },
+    'MAX VALUE LEADS':    { spend: 0, leads: 0, checkouts: 0 },
+    'LEADS':              { spend: 0, leads: 0, checkouts: 0 },
+  };
+  function classifyOptType(campaignName: string): string {
+    const n = (campaignName || '').toLowerCase();
+    if (n.includes('max value purchase')) return 'MAX VALUE PURCHASE';
+    if (n.includes('max value leads'))    return 'MAX VALUE LEADS';
+    return 'LEADS';
+  }
+
   for (const row of data) {
     const spend = parseFloat(row.spend || "0");
     const actions: any[] = row.actions || [];
@@ -350,8 +366,14 @@ async function fetchMetaSpendForRange(startDate: string, endDate: string) {
     totalLeads += leads;
     totalCheckouts += checkouts;
 
+    const optType = classifyOptType(row.campaign_name || '');
+    optBuckets[optType].spend += spend;
+    optBuckets[optType].leads += leads;
+    optBuckets[optType].checkouts += checkouts;
+
     campaigns.push({
       name: row.campaign_name,
+      optType,
       spend: spend,
       leads: leads,
       checkouts: checkouts,
@@ -359,11 +381,22 @@ async function fetchMetaSpendForRange(startDate: string, endDate: string) {
     });
   }
 
+  const optSummary = Object.keys(optBuckets).map(type => ({
+    type,
+    spend: Math.round(optBuckets[type].spend * 100) / 100,
+    leads: optBuckets[type].leads,
+    checkouts: optBuckets[type].checkouts,
+    cpl: optBuckets[type].leads > 0
+      ? Math.round((optBuckets[type].spend / optBuckets[type].leads) * 100) / 100
+      : null,
+  }));
+
   return {
     spend: Math.round(totalSpend * 100) / 100,
     leads: totalLeads,
     checkouts: totalCheckouts,
     campaigns,
+    optSummary,
     error: null,
   };
 }

@@ -471,6 +471,8 @@ function handleSubmit(e, which) {
   .then(function(data) {
     var result = Array.isArray(data) ? data[0] : data;
     if (result && result.result && result.result.data && result.result.data.json && result.result.data.json.success) {
+      // Tag landing page variant so TY splitter can cross-tabulate LP-A vs LP-B
+      try { localStorage.setItem('ic_lp_variant', 'B'); } catch(e) {}
       window.location.href = '/interconnected/thank-you';
     } else {
       var msg = (result && result.error && result.error.message) ? result.error.message : 'Something went wrong. Please try again.';

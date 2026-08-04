@@ -85,7 +85,65 @@ function RoasBadge({ roas }: { roas: number | null }) {
   );
 }
 
-// ── A/B Test Mini Widget ──────────────────────────────────────────────────────
+// ── Landing Page Split Widget (Curt's external split) ───────────────────────
+function LandingPageSplitWidget({ startDate, endDate }: { startDate: string; endDate: string }) {
+  const startTs = useMemo(() => new Date(startDate + "T00:00:00").getTime(), [startDate]);
+  const endTs = useMemo(() => new Date(endDate + "T23:59:59").getTime(), [endDate]);
+  const { data, isLoading } = trpc.interconnected.getVariantStats.useQuery(
+    { startTs, endTs },
+    { staleTime: 60_000 }
+  );
+  const A = data?.A ?? 0;
+  const B = data?.B ?? 0;
+  const total = data?.total ?? 0;
+  const pctA = total > 0 ? Math.round((A / total) * 100) : 0;
+  const pctB = total > 0 ? Math.round((B / total) * 100) : 0;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-violet-500" />
+            Split 1 — Landing Page
+          </span>
+          <Badge variant="outline" className="text-xs">Curt's Split</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">Opt-in leads by landing page variant (ad URL controls routing)</p>
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        ) : total === 0 ? (
+          <p className="text-sm text-muted-foreground">No leads in this period</p>
+        ) : (
+          <div className="space-y-2">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="font-medium">Page A <span className="text-muted-foreground">(content.theurbanmonk.com/interconnected)</span></span>
+                <span className="font-bold">{A.toLocaleString()} <span className="text-muted-foreground">({pctA}%)</span></span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-violet-500 rounded-full" style={{ width: `${pctA}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="font-medium">Page B <span className="text-muted-foreground">(content.theurbanmonk.com/interconnected-b)</span></span>
+                <span className="font-bold">{B.toLocaleString()} <span className="text-muted-foreground">({pctB}%)</span></span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pctB}%` }} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground pt-1">{total.toLocaleString()} total leads · No server-side redirect — Curt's ad URLs control routing</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── A/B Test Mini Widget (our TY page split) ─────────────────────────────────
 function ABTestWidget() {
   const { data: tests, isLoading } = trpc.abTest.listTests.useQuery(undefined, { staleTime: 60_000 });
   const runningTests = tests?.filter(t => t.status === "running") ?? [];
@@ -404,8 +462,8 @@ export default function InterconnectedCommandCenter() {
           />
         </div>
 
-        {/* Middle row: Kajabi breakdown + A/B test + Campaign breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Middle row: Kajabi breakdown + Split 1 (LP) + Split 2 (TY) + Campaign breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
 
           {/* Kajabi Sales Breakdown */}
           <Card>
@@ -443,7 +501,9 @@ export default function InterconnectedCommandCenter() {
             </CardContent>
           </Card>
 
-          {/* A/B Test Widget */}
+          {/* Split 1 — Curt's Landing Page Split */}
+          <LandingPageSplitWidget startDate={startDate} endDate={endDate} />
+          {/* Split 2 — Our Thank You Page Split */}
           <ABTestWidget />
 
           {/* Meta Campaign Breakdown */}

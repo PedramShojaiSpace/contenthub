@@ -37,6 +37,7 @@ export const interconnectedRouter = router({
         utmCampaign: z.string().max(128).optional(),
         utmContent: z.string().max(128).optional(),
         referrer: z.string().max(512).optional(),
+        pageVariant: z.enum(['A', 'B']).optional().default('A'),
         // Client-side signals for CAPI matching
         fbclid: z.string().max(256).optional(),
         fbp: z.string().max(256).optional(),
@@ -44,7 +45,7 @@ export const interconnectedRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { name, email, phone, smsConsent, utmSource, utmMedium, utmCampaign, utmContent, referrer, fbclid, fbp, fbc } = input;
+      const { name, email, phone, smsConsent, utmSource, utmMedium, utmCampaign, utmContent, referrer, pageVariant, fbclid, fbp, fbc } = input;
       const clientIp = (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || ctx.req.socket?.remoteAddress || null;
       const userAgent = ctx.req.headers["user-agent"] || null;
 
@@ -72,6 +73,7 @@ export const interconnectedRouter = router({
             utmCampaign: utmCampaign ?? null,
             utmContent: utmContent ?? null,
             referrer: referrer ?? null,
+            pageVariant: pageVariant ?? 'A',
             fbclid: fbclid ?? null,
             fbp: fbp ?? null,
             fbc: fbc ?? null,

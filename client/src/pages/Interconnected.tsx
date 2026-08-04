@@ -287,6 +287,7 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
       fbclid: attrib.fbclid,
       fbp: attrib.fbp,
       fbc: attrib.fbc,
+      pageVariant: 'A',
     });
   };
 

@@ -474,6 +474,72 @@ export default function InterconnectedCommandCenter() {
           </Card>
         </div>
 
+        {/* Optimization Path Comparison */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-violet-600" />
+              Optimization Path Comparison
+              <span className="text-xs font-normal text-muted-foreground ml-1">(Agora Funnel)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {metaLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : !metaData?.optSummary?.some((o: any) => o.spend > 0) ? (
+              <p className="text-sm text-muted-foreground">No spend data in this period — campaigns may not have run yet</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {(metaData.optSummary as Array<{ type: string; spend: number; leads: number; checkouts: number; cpl: number | null }>)
+                  .map((opt) => {
+                    const pctOfSpend = spend > 0 ? (opt.spend / spend) * 100 : 0;
+                    const typeColors: Record<string, string> = {
+                      'MAX VALUE PURCHASE': 'text-emerald-600',
+                      'MAX VALUE LEADS': 'text-blue-600',
+                      'LEADS': 'text-violet-600',
+                    };
+                    const typeBg: Record<string, string> = {
+                      'MAX VALUE PURCHASE': 'bg-emerald-500',
+                      'MAX VALUE LEADS': 'bg-blue-500',
+                      'LEADS': 'bg-violet-500',
+                    };
+                    const color = typeColors[opt.type] || 'text-foreground';
+                    const bg = typeBg[opt.type] || 'bg-gray-400';
+                    return (
+                      <div key={opt.type} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${bg} shrink-0`} />
+                          <p className="text-xs font-semibold uppercase tracking-wide truncate">{opt.type}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Spend</span>
+                            <span className={`font-bold ${color}`}>{fmtDollars(opt.spend)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Leads</span>
+                            <span className="font-medium">{opt.leads.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">CPL</span>
+                            <span className="font-medium">{opt.cpl !== null ? fmtDollars(opt.cpl) : '—'}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">% of Budget</span>
+                            <span className="font-medium">{fmtPct(pctOfSpend)}</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                          <div className={`${bg} h-1.5 rounded-full`} style={{ width: `${Math.min(pctOfSpend, 100)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Reconciliation note */}
         <Card className="bg-muted/30">
           <CardContent className="pt-4 pb-3">

@@ -3810,7 +3810,7 @@ export const kajabiRetryQueue = mysqlTable("kajabi_retry_queue", {
   tagName: varchar("tag_name", { length: 128 }).notNull(),
   attempts: int("attempts").notNull().default(0),
   lastAttemptAt: bigint("last_attempt_at", { mode: "number" }),
-  status: mysqlEnum("kajabi_retry_status", ["pending", "success", "failed"]).notNull().default("pending"),
+  status: mysqlEnum("status", ["pending", "success", "failed"]).notNull().default("pending"),
   errorMessage: text("error_message"),
   createdAt: bigint("created_at_retry", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
 });

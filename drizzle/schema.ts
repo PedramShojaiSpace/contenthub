@@ -3796,3 +3796,23 @@ export const kajabiPurchases = mysqlTable("kajabi_purchases", {
 });
 export type KajabiPurchase = typeof kajabiPurchases.$inferSelect;
 export type InsertKajabiPurchase = typeof kajabiPurchases.$inferInsert;
+
+// ─── Kajabi Retry Queue ────────────────────────────────────────────────────────
+// Dead letter queue for Kajabi tagging failures.
+// When kajabiAddTagByName fails all retries during opt-in, a row is inserted here.
+// A background worker (every 15 minutes) picks up 'pending' rows and retries.
+// After 3 more background attempts, status moves to 'failed' and owner is notified.
+export const kajabiRetryQueue = mysqlTable("kajabi_retry_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  leadId: int("lead_id"),  // FK to interconnected_leads.id (nullable)
+  tagName: varchar("tag_name", { length: 128 }).notNull(),
+  attempts: int("attempts").notNull().default(0),
+  lastAttemptAt: bigint("last_attempt_at", { mode: "number" }),
+  status: mysqlEnum("kajabi_retry_status", ["pending", "success", "failed"]).notNull().default("pending"),
+  errorMessage: text("error_message"),
+  createdAt: bigint("created_at_retry", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type KajabiRetryQueueItem = typeof kajabiRetryQueue.$inferSelect;
+export type InsertKajabiRetryQueueItem = typeof kajabiRetryQueue.$inferInsert;

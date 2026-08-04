@@ -478,4 +478,134 @@ export const kajabiSalesRouter = router({
       const totalPurchases = tiers.reduce((s, t) => s + t.count, 0);
       return { tiers, totalRevenueCents, totalPurchases };
     }),
+
+  /**
+   * getOptPathPerformance
+   * The central "which optimization goal produces buyers?" scorecard.
+   *
+   * For each optimization type (LEADS / MAX VALUE LEADS / MAX VALUE PURCHASE):
+   *   - Leads from interconnected_leads (classified by utmCampaign)
+   *   - Purchases attributed by email-matching leads → kajabi_purchases
+   *   - Spend from Meta Ads API (same Agora Funnel filter, classified by campaign name)
+   *
+   * Returns per-path: leads, purchases, convRate, revenueCents, spend, trueCPA, revenuePerLead
+   */
+  getOptPathPerformance: protectedProcedure
+    .input(z.object({
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }))
+    .query(async ({ input }) => {
+      const { getDb } = await import('./db');
+      const { interconnectedLeads, kajabiPurchases } = await import('../drizzle/schema');
+      const { and, gte, lte, inArray } = await import('drizzle-orm');
+      const db = await getDb();
+
+      const OPT_TYPES = ['LEADS', 'MAX VALUE LEADS', 'MAX VALUE PURCHASE'] as const;
+      type OptType = typeof OPT_TYPES[number];
+
+      function classifyOpt(campaignName: string | null): OptType {
+        const n = (campaignName || '').toLowerCase();
+        if (n.includes('max value purchase')) return 'MAX VALUE PURCHASE';
+        if (n.includes('max value leads'))    return 'MAX VALUE LEADS';
+        return 'LEADS';
+      }
+
+      const startMs = new Date(input.startDate + 'T00:00:00.000Z').getTime();
+      const endMs   = new Date(input.endDate   + 'T23:59:59.999Z').getTime();
+
+      // ── 1. Pull all leads in range ─────────────────────────────────────────────
+      const leads = db
+        ? await db.select({
+            email:       interconnectedLeads.email,
+            utmCampaign: interconnectedLeads.utmCampaign,
+          })
+          .from(interconnectedLeads)
+          .where(and(
+            gte(interconnectedLeads.createdAt, startMs),
+            lte(interconnectedLeads.createdAt, endMs),
+          ))
+        : [];
+
+      // ── 2. Classify leads by opt type ─────────────────────────────────────────
+      const leadsByType: Record<OptType, Set<string>> = {
+        'LEADS':               new Set(),
+        'MAX VALUE LEADS':     new Set(),
+        'MAX VALUE PURCHASE':  new Set(),
+      };
+      for (const l of leads) {
+        leadsByType[classifyOpt(l.utmCampaign)].add(l.email.toLowerCase());
+      }
+
+      // ── 3. Pull all purchases whose email matches a lead in range ─────────────
+      const allLeadEmails = leads.map(l => l.email.toLowerCase());
+      const purchases = (db && allLeadEmails.length > 0)
+        ? await db.select({
+            email:       kajabiPurchases.email,
+            amountCents: kajabiPurchases.amountCents,
+          })
+          .from(kajabiPurchases)
+          .where(inArray(kajabiPurchases.email, allLeadEmails))
+        : [];
+
+      // ── 4. Attribute each purchase to the opt type of the matching lead ───────
+      const purchasesByType: Record<OptType, { count: number; revenueCents: number }> = {
+        'LEADS':               { count: 0, revenueCents: 0 },
+        'MAX VALUE LEADS':     { count: 0, revenueCents: 0 },
+        'MAX VALUE PURCHASE':  { count: 0, revenueCents: 0 },
+      };
+      for (const p of purchases) {
+        const email = p.email.toLowerCase();
+        // Find which opt type this buyer's lead came from
+        let optType: OptType = 'LEADS';
+        for (const t of OPT_TYPES) {
+          if (leadsByType[t].has(email)) { optType = t; break; }
+        }
+        purchasesByType[optType].count++;
+        purchasesByType[optType].revenueCents += p.amountCents;
+      }
+
+      // ── 5. Pull Meta spend per opt type ───────────────────────────────────────
+      const metaResult = await fetchMetaSpendForRange(input.startDate, input.endDate);
+      const spendByType: Record<OptType, number> = {
+        'LEADS':               0,
+        'MAX VALUE LEADS':     0,
+        'MAX VALUE PURCHASE':  0,
+      };
+      if (metaResult.campaigns) {
+        for (const c of metaResult.campaigns as Array<{ name: string; spend: number; optType?: string }>) {
+          const t = classifyOpt(c.name) as OptType;
+          spendByType[t] += c.spend;
+        }
+      }
+
+      // ── 6. Build scorecard rows ────────────────────────────────────────────────
+      const scorecard = OPT_TYPES.map(type => {
+        const leads_count   = leadsByType[type].size;
+        const purchases_count = purchasesByType[type].count;
+        const revenueCents  = purchasesByType[type].revenueCents;
+        const spend         = Math.round(spendByType[type] * 100) / 100;
+        const convRate      = leads_count > 0 ? purchases_count / leads_count : null;
+        const trueCPA       = purchases_count > 0 ? Math.round((spend / purchases_count) * 100) / 100 : null;
+        const revenuePerLead = leads_count > 0 ? Math.round((revenueCents / 100 / leads_count) * 100) / 100 : null;
+        const roas          = spend > 0 ? Math.round(((revenueCents / 100) / spend) * 100) / 100 : null;
+        return {
+          type,
+          leads:         leads_count,
+          purchases:     purchases_count,
+          revenueCents,
+          spend,
+          convRate,       // e.g. 0.042 = 4.2%
+          trueCPA,        // $ per purchase
+          revenuePerLead, // $ revenue generated per lead
+          roas,           // revenue / spend
+        };
+      });
+
+      return {
+        scorecard,
+        dateRange: { startDate: input.startDate, endDate: input.endDate },
+        metaError: metaResult.error,
+      };
+    }),
 });

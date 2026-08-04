@@ -14,9 +14,9 @@ const AB_TEST_ID = 1;
 const VIDEO_A = "hobj7srg3q"; // Control: original video
 const VIDEO_B = "10cdtpm3il"; // Treatment: new teleprompter script
 
-/** Get or create a stable visitor ID stored in localStorage */
+/** Get or create a stable visitor ID stored in localStorage — shared with the splitter */
 function getVisitorId(): string {
-  const KEY = "__um_vid";
+  const KEY = "ty_visitor_id"; // Must match the key used in InterconnectedThankYouSplitter
   let id = localStorage.getItem(KEY);
   if (!id) {
     id = `v_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;

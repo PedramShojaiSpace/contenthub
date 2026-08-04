@@ -3118,7 +3118,7 @@ export const abTests = mysqlTable("ab_tests", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   pageUrl: varchar("page_url", { length: 500 }),
-  status: mysqlEnum("ab_test_status", ["draft", "running", "paused", "concluded"])
+  status: mysqlEnum("status", ["draft", "running", "paused", "concluded"])
     .notNull()
     .default("draft"),
   minExposures: int("min_exposures").notNull().default(300),

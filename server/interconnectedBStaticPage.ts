@@ -430,14 +430,35 @@ function handleSubmit(e, which) {
   if (errEl) errEl.style.display = 'none';
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Registering...'; }
 
-  // Capture UTM params
+  // Capture UTM params + Meta attribution signals (fbclid, fbp, fbc)
   var params = new URLSearchParams(window.location.search);
+  var fbclid = params.get('fbclid') || '';
+  // _fbp cookie: Meta browser ID
+  var fbp = '';
+  try {
+    var fbpMatch = document.cookie.match(/_fbp=([^;]+)/);
+    if (fbpMatch) fbp = fbpMatch[1];
+  } catch(e) {}
+  // _fbc cookie: Meta click ID (prefer URL param, fall back to cookie)
+  var fbc = '';
+  if (fbclid) {
+    fbc = 'fb.1.' + Date.now() + '.' + fbclid;
+  } else {
+    try {
+      var fbcMatch = document.cookie.match(/_fbc=([^;]+)/);
+      if (fbcMatch) fbc = fbcMatch[1];
+    } catch(e) {}
+  }
   var utm = {
-    utm_source: params.get('utm_source') || '',
-    utm_medium: params.get('utm_medium') || '',
-    utm_campaign: params.get('utm_campaign') || '',
-    utm_content: params.get('utm_content') || '',
-    referrer: document.referrer || ''
+    utmSource: params.get('utm_source') || '',
+    utmMedium: params.get('utm_medium') || '',
+    utmCampaign: params.get('utm_campaign') || '',
+    utmContent: params.get('utm_content') || '',
+    referrer: document.referrer || '',
+    pageVariant: 'B',
+    fbclid: fbclid || undefined,
+    fbp: fbp || undefined,
+    fbc: fbc || undefined,
   };
 
   fetch('/api/trpc/interconnected.register?batch=1', {

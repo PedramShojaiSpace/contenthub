@@ -15,6 +15,9 @@
 
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { getDb } from "./db";
+import { kajabiPurchases, interconnectedLeads } from "../drizzle/schema";
+import { and, gte, lte, eq } from "drizzle-orm";
 
 // ── Funnel registry ───────────────────────────────────────────────────────────
 
@@ -176,12 +179,63 @@ interface IndividualSale {
   amountCents: number;
   label: string;
   source: "kajabi" | "shopify";
+  /** Attribution type for this sale */
+  customerType: "meta_lead" | "returning" | "unknown";
+  /** ISO date the lead opted into our funnel (if meta_lead) */
+  leadOptInDate?: string;
+}
+
+/**
+ * Build a lookup map from the kajabi_purchases DB table for the given date range.
+ * Returns a map of email -> { isMetaAttributed, leadCreatedAt }
+ */
+async function buildKajabiPurchasesLookup(
+  startDate: string,
+  endDate: string
+): Promise<Map<string, { isMetaAttributed: number; leadCreatedAt: number | null }>> {
+  const map = new Map<string, { isMetaAttributed: number; leadCreatedAt: number | null }>();
+  try {
+    const db = await getDb();
+    if (!db) return map;
+    const startMs = new Date(startDate + "T00:00:00Z").getTime();
+    const endMs   = new Date(endDate   + "T23:59:59Z").getTime();
+    const rows = await db.select({
+      email: kajabiPurchases.email,
+      isMetaAttributed: kajabiPurchases.isMetaAttributed,
+      purchasedAt: kajabiPurchases.purchasedAt,
+    }).from(kajabiPurchases)
+      .where(and(
+        gte(kajabiPurchases.purchasedAt, startMs),
+        lte(kajabiPurchases.purchasedAt, endMs)
+      ));
+    for (const row of rows) {
+      if (!row.email) continue;
+      // Also look up when this person opted in as a lead
+      let leadCreatedAt: number | null = null;
+      if (row.isMetaAttributed) {
+        const leadRows = await db.select({ createdAt: interconnectedLeads.createdAt })
+          .from(interconnectedLeads)
+          .where(eq(interconnectedLeads.email, row.email.toLowerCase().trim()))
+          .limit(1);
+        leadCreatedAt = leadRows[0]?.createdAt ?? null;
+      }
+      map.set(row.email.toLowerCase().trim(), {
+        isMetaAttributed: row.isMetaAttributed ?? 0,
+        leadCreatedAt,
+      });
+    }
+  } catch (e) {
+    // Non-fatal — fall back to unknown attribution
+    console.warn("[reconciliation] DB lookup failed:", (e as Error).message);
+  }
+  return map;
 }
 
 async function fetchKajabiForFunnel(
   funnel: FunnelDef,
   startDate: string,
-  endDate: string
+  endDate: string,
+  dbLookup?: Map<string, { isMetaAttributed: number; leadCreatedAt: number | null }>
 ): Promise<{
   tiers: TierSummary[];
   totalRevenueCents: number;
@@ -239,7 +293,10 @@ async function fetchKajabiForFunnel(
       }
       tierMap[key].count++;
       tierMap[key].revenueCents += amount;
-      individualSales.push({ time: createdAt, amountCents: amount, label: skuDef.label, source: "kajabi" });
+      // Determine customer type from DB lookup (if available)
+      // The transaction API doesn't return email, so we match by time+amount from webhook DB
+      // For now mark as "unknown" — the DB cross-reference happens at the procedure level
+      individualSales.push({ time: createdAt, amountCents: amount, label: skuDef.label, source: "kajabi", customerType: "unknown" });
     }
 
     if (!data.links?.next) break;
@@ -608,32 +665,126 @@ export const funnelReconciliationRouter = router({
 
   getReconciliation: protectedProcedure
     .input(z.object({
-      funnelId:  z.string(),
-      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      endDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      funnelId:        z.string(),
+      startDate:       z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate:         z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      /** When true, only count sales from buyers who opted in during the campaign window */
+      newCustomersOnly: z.boolean().optional().default(false),
+      /** Attribution filter: 'all' | 'meta_only' | 'non_meta' */
+      attributionFilter: z.enum(["all", "meta_only", "non_meta"]).optional().default("all"),
     }))
     .query(async ({ input }) => {
       const funnel = FUNNELS.find(f => f.id === input.funnelId);
       if (!funnel) throw new Error(`Unknown funnel: ${input.funnelId}`);
 
+      // Build DB lookup for attribution cross-reference
+      const dbLookup = await buildKajabiPurchasesLookup(input.startDate, input.endDate);
+
       const [kajabi, shopify, meta] = await Promise.all([
-        fetchKajabiForFunnel(funnel, input.startDate, input.endDate),
+        fetchKajabiForFunnel(funnel, input.startDate, input.endDate, dbLookup),
         fetchShopifyForFunnel(funnel, input.startDate, input.endDate),
         fetchMetaForFunnel(funnel, input.startDate, input.endDate),
       ]);
 
-      const totalRevenueCents = kajabi.totalRevenueCents + shopify.totalRevenueCents;
+      // ── Cross-reference Kajabi sales with DB attribution data ──────────────
+      // The DB lookup is keyed by email, but the transaction scan doesn't return emails.
+      // We use the webhook DB records to enrich sales: if a sale's timestamp+amount
+      // matches a DB record, we can flag it. For now, we use the DB count of
+      // meta-attributed purchases in the window to produce a separate "meta-attributed" total.
+      let metaAttributedCount = 0;
+      let metaAttributedRevenueCents = 0;
+      let returningCount = 0;
+      let returningRevenueCents = 0;
+
+      // Count from DB records (webhook-captured purchases)
+      for (const [, v] of dbLookup) {
+        // We don't have per-sale amounts in the lookup, so count records
+        if (v.isMetaAttributed) metaAttributedCount++;
+        else returningCount++;
+      }
+
+      // ── Apply attribution filter to individual sales ────────────────────────
+      // Since transaction scan doesn't have emails, we use the DB record count
+      // to annotate the summary. Individual sale rows are annotated as "unknown"
+      // unless the webhook DB has a matching record (matched by purchasedAt timestamp).
+      //
+      // Build a timestamp set from DB for fast matching
+      const dbTimestamps = new Map<number, { isMetaAttributed: number; leadCreatedAt: number | null }>();
+      try {
+        const db = await getDb();
+        if (db) {
+          const startMs = new Date(input.startDate + "T00:00:00Z").getTime();
+          const endMs   = new Date(input.endDate   + "T23:59:59Z").getTime();
+          const rows = await db.select({
+            email: kajabiPurchases.email,
+            amountCents: kajabiPurchases.amountCents,
+            isMetaAttributed: kajabiPurchases.isMetaAttributed,
+            purchasedAt: kajabiPurchases.purchasedAt,
+          }).from(kajabiPurchases)
+            .where(and(
+              gte(kajabiPurchases.purchasedAt, startMs),
+              lte(kajabiPurchases.purchasedAt, endMs)
+            ));
+          for (const row of rows) {
+            if (row.purchasedAt) {
+              // Round to nearest minute for fuzzy matching with Kajabi transaction timestamps
+              const roundedMs = Math.round(row.purchasedAt / 60000) * 60000;
+              dbTimestamps.set(roundedMs, {
+                isMetaAttributed: row.isMetaAttributed ?? 0,
+                leadCreatedAt: null,
+              });
+            }
+          }
+        }
+      } catch (e) { /* non-fatal */ }
+
+      // Annotate individual Kajabi sales with attribution type
+      const annotatedKajabiSales: IndividualSale[] = kajabi.individualSales.map(sale => {
+        const saleMs = new Date(sale.time).getTime();
+        const roundedMs = Math.round(saleMs / 60000) * 60000;
+        const dbRecord = dbTimestamps.get(roundedMs);
+        let customerType: IndividualSale["customerType"] = "unknown";
+        let leadOptInDate: string | undefined;
+        if (dbRecord) {
+          customerType = dbRecord.isMetaAttributed ? "meta_lead" : "returning";
+          if (dbRecord.leadCreatedAt) {
+            leadOptInDate = new Date(dbRecord.leadCreatedAt).toISOString().substring(0, 10);
+          }
+        }
+        return { ...sale, customerType, leadOptInDate };
+      });
+
+      // ── Apply filters ──────────────────────────────────────────────────────
+      const filterSales = (sales: IndividualSale[]) => {
+        let filtered = sales;
+        if (input.newCustomersOnly) {
+          // Only include sales where we have a meta_lead attribution
+          filtered = filtered.filter(s => s.customerType === "meta_lead");
+        }
+        if (input.attributionFilter === "meta_only") {
+          filtered = filtered.filter(s => s.customerType === "meta_lead");
+        } else if (input.attributionFilter === "non_meta") {
+          filtered = filtered.filter(s => s.customerType !== "meta_lead");
+        }
+        return filtered;
+      };
+
+      const filteredKajabiSales = filterSales(annotatedKajabiSales);
+      const filteredKajabiRevenueCents = filteredKajabiSales.reduce((s, t) => s + t.amountCents, 0);
+      const filteredKajabiPurchases = filteredKajabiSales.length;
+
+      const totalRevenueCents = filteredKajabiRevenueCents + shopify.totalRevenueCents;
       const totalRevenue = totalRevenueCents / 100;
       const roas = meta.spend > 0 ? Math.round((totalRevenue / meta.spend) * 100) / 100 : null;
       const cpl  = meta.spend > 0 && meta.leads > 0 ? Math.round((meta.spend / meta.leads) * 100) / 100 : null;
-      const totalPurchases = kajabi.totalPurchases + shopify.totalOrders;
+      const totalPurchases = filteredKajabiPurchases + shopify.totalOrders;
       const convRate = meta.leads > 0 && totalPurchases > 0
         ? Math.round((totalPurchases / meta.leads) * 10000) / 100
         : null;
 
       // Merge and sort individual sales
       const allSales = [
-        ...kajabi.individualSales,
+        ...filteredKajabiSales,
         ...shopify.individualSales,
       ].sort((a, b) => b.time.localeCompare(a.time));
 
@@ -656,10 +807,17 @@ export const funnelReconciliationRouter = router({
         },
         kajabi: {
           tiers: kajabi.tiers,
-          totalRevenueCents: kajabi.totalRevenueCents,
-          totalPurchases: kajabi.totalPurchases,
+          totalRevenueCents: filteredKajabiRevenueCents,
+          totalPurchases: filteredKajabiPurchases,
           pagesScanned: kajabi.pagesScanned,
           note: kajabi.note as string | undefined,
+          // Attribution breakdown from DB webhook records
+          attribution: {
+            metaAttributed: metaAttributedCount,
+            returning: returningCount,
+            unknown: kajabi.totalPurchases - metaAttributedCount - returningCount,
+            dbCoverage: dbLookup.size, // how many purchases hit the webhook
+          },
         },
         shopify: {
           tiers: shopify.tiers,
@@ -670,12 +828,16 @@ export const funnelReconciliationRouter = router({
         summary: {
           totalRevenue,
           totalRevenueCents,
-          kajabiRevenue: kajabi.totalRevenueCents / 100,
+          kajabiRevenue: filteredKajabiRevenueCents / 100,
           shopifyRevenue: shopify.totalRevenueCents / 100,
           roas,
           cpl,
           convRate,
           totalPurchases,
+          // Filter context
+          filterApplied: input.newCustomersOnly || input.attributionFilter !== "all",
+          newCustomersOnly: input.newCustomersOnly,
+          attributionFilter: input.attributionFilter,
         },
         individualSales: allSales.slice(0, 200), // cap at 200 rows
       };

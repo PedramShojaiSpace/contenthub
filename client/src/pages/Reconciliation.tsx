@@ -10,8 +10,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2, RefreshCw, TrendingUp, DollarSign, Users, Zap,
-  ChevronDown, Lock, CheckCircle2, ShoppingCart, BookOpen,
+  ChevronDown, Lock, CheckCircle2, ShoppingCart, BookOpen, Filter,
 } from "lucide-react";
+
+type AttributionFilter = "all" | "meta_only" | "non_meta";
+
+function CustomerTypeBadge({ type }: { type: string }) {
+  if (type === "meta_lead") return (
+    <Badge className="text-xs bg-green-500/10 text-green-700 border-green-500/20 gap-1">
+      <Zap className="h-2.5 w-2.5" /> Meta Lead
+    </Badge>
+  );
+  if (type === "returning") return (
+    <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/30 gap-1">
+      ↩ Returning
+    </Badge>
+  );
+  return (
+    <Badge variant="secondary" className="text-xs text-muted-foreground gap-1">
+      ? Unknown
+    </Badge>
+  );
+}
 
 function fmt(cents: number) {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -32,16 +52,18 @@ const PRESETS = [
 ];
 
 export default function Reconciliation() {
-  const [funnelId, setFunnelId]   = useState("interconnected_agora");
-  const [preset, setPreset]       = useState("Today");
-  const [startDate, setStartDate] = useState(todayStr());
-  const [endDate, setEndDate]     = useState(todayStr());
-  const [menuOpen, setMenuOpen]   = useState(false);
+  const [funnelId, setFunnelId]         = useState("interconnected_agora");
+  const [preset, setPreset]             = useState("Today");
+  const [startDate, setStartDate]       = useState(todayStr());
+  const [endDate, setEndDate]           = useState(todayStr());
+  const [menuOpen, setMenuOpen]         = useState(false);
+  const [newCustOnly, setNewCustOnly]   = useState(false);
+  const [attrFilter, setAttrFilter]     = useState<AttributionFilter>("all");
 
   const { data: funnels = [] } = trpc.funnelRecon.listFunnels.useQuery();
 
   const { data, isLoading, isRefetching, refetch } = trpc.funnelRecon.getReconciliation.useQuery(
-    { funnelId, startDate, endDate },
+    { funnelId, startDate, endDate, newCustomersOnly: newCustOnly, attributionFilter: attrFilter },
     { staleTime: 60_000 }
   );
 
@@ -134,6 +156,55 @@ export default function Reconciliation() {
                     <Zap className="h-3 w-3" /> Meta {activeFunnel.metaActive ? "✓" : "—"}
                   </Badge>
                 </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Attribution Filters */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex flex-wrap gap-3 items-center">
+              <span className="text-sm text-muted-foreground font-medium flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5" /> Attribution:
+              </span>
+              {/* New customers only toggle */}
+              <button
+                onClick={() => setNewCustOnly(!newCustOnly)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                  newCustOnly
+                    ? "bg-green-500/10 border-green-500/30 text-green-700"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                New Customers Only
+              </button>
+              {/* Attribution source filter */}
+              {(["all", "meta_only", "non_meta"] as AttributionFilter[]).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setAttrFilter(f)}
+                  className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                    attrFilter === f
+                      ? f === "meta_only"
+                        ? "bg-green-500/10 border-green-500/30 text-green-700"
+                        : f === "non_meta"
+                          ? "bg-amber-500/10 border-amber-500/30 text-amber-700"
+                          : "bg-primary/10 border-primary/30 text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {f === "all" ? "All Sales" : f === "meta_only" ? "⚡ Meta-Attributed Only" : "↩ Non-Meta Only"}
+                </button>
+              ))}
+              {(newCustOnly || attrFilter !== "all") && (
+                <button
+                  onClick={() => { setNewCustOnly(false); setAttrFilter("all"); }}
+                  className="text-xs text-muted-foreground underline hover:text-foreground"
+                >
+                  Clear filters
+                </button>
               )}
             </div>
           </CardContent>
@@ -405,7 +476,15 @@ export default function Reconciliation() {
         {individualSales && individualSales.length > 0 && !loading && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Transaction Log (Kajabi + Shopify)</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2 justify-between">
+                <span>Transaction Log (Kajabi + Shopify)</span>
+                {(newCustOnly || attrFilter !== "all") && (
+                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/30">
+                    <Filter className="h-3 w-3 mr-1" />
+                    Filtered: {newCustOnly ? "New customers only" : ""}{newCustOnly && attrFilter !== "all" ? " + " : ""}{attrFilter !== "all" ? (attrFilter === "meta_only" ? "Meta-attributed only" : "Non-Meta only") : ""}
+                  </Badge>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -415,6 +494,7 @@ export default function Reconciliation() {
                       <th className="text-left py-2 font-medium">Time (CT)</th>
                       <th className="text-left py-2 font-medium">Source</th>
                       <th className="text-left py-2 font-medium">Product</th>
+                      <th className="text-left py-2 font-medium">Attribution</th>
                       <th className="text-right py-2 font-medium">Amount</th>
                     </tr>
                   </thead>
@@ -434,7 +514,10 @@ export default function Reconciliation() {
                               {s.source}
                             </Badge>
                           </td>
-                          <td className="py-1.5 max-w-[200px] truncate" title={s.label}>{s.label}</td>
+                          <td className="py-1.5 max-w-[180px] truncate" title={s.label}>{s.label}</td>
+                          <td className="py-1.5">
+                            <CustomerTypeBadge type={(s as any).customerType ?? "unknown"} />
+                          </td>
                           <td className="py-1.5 text-right text-green-600 font-semibold">{fmt(s.amountCents)}</td>
                         </tr>
                       );

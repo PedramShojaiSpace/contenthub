@@ -6,6 +6,21 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { trpc } from "@/lib/trpc";
+
+// A/B test constants — must match InterconnectedThankYou.tsx and the splitter
+const AB_TEST_ID = 1;
+
+/** Shared visitor ID key — must match InterconnectedThankYouSplitter and InterconnectedThankYou */
+function getVisitorId(): string {
+  const KEY = "ty_visitor_id";
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    id = `v_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
 
 const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png";
 
@@ -14,11 +29,17 @@ const OTO_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/ch
 // CDN base for expert headshots (uploaded from Google Drive)
 const CDN = "/manus-storage/";
 
-function firePixel(eventName: string, params?: Record<string, unknown>) {
+function firePixel(eventName: string, params?: Record<string, unknown>, eventId?: string) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fbq = (window as any).fbq;
-    if (typeof fbq === "function") fbq("track", eventName, params || {});
+    if (typeof fbq === "function") {
+      if (eventId) {
+        fbq("track", eventName, params || {}, { eventID: eventId });
+      } else {
+        fbq("track", eventName, params || {});
+      }
+    }
   } catch (_) {}
 }
 
@@ -306,13 +327,49 @@ const StarRating = ({ count = 5 }: { count?: number }) => (
 
 export default function InterconnectedThankYouB() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const visitorId = useRef(getVisitorId());
+
+  // A/B tracking: assign variant (records exposure) and set up conversion recording
+  const assignVariant = trpc.abTest.assignVariant.useMutation({
+    onSuccess: (data) => {
+      // Store variantId for conversion recording
+      sessionStorage.setItem('__ab_variant_id', String(data.variantId));
+    },
+  });
+  const recordConversion = trpc.abTest.recordConversion.useMutation();
 
   useEffect(() => {
-    firePixel("Lead");
+    // Record exposure for this visitor on Version B
+    const attrib = (() => {
+      try { return JSON.parse(sessionStorage.getItem('__utm_attrib') || '{}'); } catch { return {}; }
+    })();
+    assignVariant.mutate({
+      testId: AB_TEST_ID,
+      visitorId: visitorId.current,
+      utmSource: attrib.utmSource,
+      utmCampaign: attrib.utmCampaign,
+    });
+    // Fire pixel Lead event
+    const leadEventId = sessionStorage.getItem('__capi_lead_event_id') ?? undefined;
+    firePixel("Lead", {}, leadEventId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleBuyClick = () => {
-    firePixel("InitiateCheckout", { value: 67, currency: "USD", content_name: "Interconnected All-Access Bundle" });
+    // Record A/B conversion
+    const storedVariantId = sessionStorage.getItem('__ab_variant_id');
+    if (storedVariantId) {
+      recordConversion.mutate({
+        testId: AB_TEST_ID,
+        visitorId: visitorId.current,
+        conversionType: "checkout_start",
+        revenueCents: 6700,
+      });
+    }
+    // Generate a unique event_id for InitiateCheckout for CAPI deduplication
+    const checkoutEventId = `ic_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    sessionStorage.setItem('__capi_checkout_event_id', checkoutEventId);
+    firePixel("InitiateCheckout", { value: 67, currency: "USD", content_name: "Interconnected All-Access Bundle" }, checkoutEventId);
     window.location.href = OTO_CHECKOUT_URL;
   };
 

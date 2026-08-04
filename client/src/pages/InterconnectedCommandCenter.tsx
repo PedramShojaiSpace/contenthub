@@ -222,7 +222,6 @@ export default function InterconnectedCommandCenter() {
   const spend = metaData?.spend ?? 0;
   const leads = metaData?.leads ?? 0;
   const checkouts = metaData?.checkouts ?? 0;
-  const metaPurchases = metaData?.purchases ?? 0;
   const cpl = leads > 0 ? spend / leads : null;
   const checkoutRate = leads > 0 ? (checkouts / leads) * 100 : null;
   const kajabiRevenue = funnelData ? funnelData.totalRevenueCents / 100 : 0;
@@ -390,7 +389,7 @@ export default function InterconnectedCommandCenter() {
           <StatCard
             label="Cost / Purchase"
             value={cpp !== null ? fmtDollars(cpp) : "—"}
-            sub={`${metaPurchases} pixel events`}
+            sub={`${kajabiPurchases} confirmed purchases`}
             icon={Activity}
             loading={isLoading}
           />

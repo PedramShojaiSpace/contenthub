@@ -1,8 +1,5 @@
 /**
- * Reconciliation — per-funnel ad spend vs. Kajabi sales
- *
- * Select a funnel, pick a date range, see spend + revenue scoped
- * ONLY to that funnel's campaigns and SKUs.
+ * Reconciliation — per-funnel ad spend vs. Kajabi + Shopify sales
  */
 
 import { useState } from "react";
@@ -13,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2, RefreshCw, TrendingUp, DollarSign, Users, Zap,
-  ChevronDown, Lock, CheckCircle2,
+  ChevronDown, Lock, CheckCircle2, ShoppingCart, BookOpen,
 } from "lucide-react";
 
 function fmt(cents: number) {
@@ -35,11 +32,11 @@ const PRESETS = [
 ];
 
 export default function Reconciliation() {
-  const [funnelId, setFunnelId]         = useState("interconnected_agora");
-  const [preset, setPreset]             = useState("Today");
-  const [startDate, setStartDate]       = useState(todayStr());
-  const [endDate, setEndDate]           = useState(todayStr());
-  const [menuOpen, setMenuOpen]         = useState(false);
+  const [funnelId, setFunnelId]   = useState("interconnected_agora");
+  const [preset, setPreset]       = useState("Today");
+  const [startDate, setStartDate] = useState(todayStr());
+  const [endDate, setEndDate]     = useState(todayStr());
+  const [menuOpen, setMenuOpen]   = useState(false);
 
   const { data: funnels = [] } = trpc.funnelRecon.listFunnels.useQuery();
 
@@ -50,7 +47,10 @@ export default function Reconciliation() {
 
   const loading = isLoading || isRefetching;
   const activeFunnel = funnels.find(f => f.id === funnelId);
-  const { summary, meta, kajabi } = data ?? {};
+  const { summary, meta, kajabi, shopify, individualSales } = data ?? {};
+
+  const isFullyPlaceholder = activeFunnel &&
+    !activeFunnel.kajabiActive && !activeFunnel.shopifyActive && !activeFunnel.metaActive;
 
   return (
     <DashboardLayout>
@@ -61,9 +61,9 @@ export default function Reconciliation() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Sales Reconciliation</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Ad spend + Kajabi revenue scoped to the selected funnel only.{" "}
+              Meta spend vs. Kajabi + Shopify revenue — scoped to the selected funnel only.{" "}
               <span className="text-amber-500 font-medium">
-                ⚠️ Meta pixel cannot see Kajabi sales — always verify here.
+                ⚠️ Meta pixel cannot see Kajabi or Shopify sales — always verify here.
               </span>
             </p>
           </div>
@@ -81,35 +81,60 @@ export default function Reconciliation() {
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted text-sm font-medium text-foreground min-w-[300px] justify-between"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted text-sm font-medium text-foreground min-w-[320px] justify-between"
                 >
                   <span className="flex items-center gap-2">
-                    {activeFunnel && !activeFunnel.active && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                    {activeFunnel && isFullyPlaceholder && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                     {activeFunnel?.label ?? "Select a funnel…"}
                   </span>
                   <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 </button>
 
                 {menuOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-full min-w-[320px] bg-card border border-border rounded-md shadow-lg z-50 overflow-hidden">
-                    {funnels.map(f => (
-                      <button
-                        key={f.id}
-                        onClick={() => { setFunnelId(f.id); setMenuOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-muted transition-colors ${
-                          f.id === funnelId ? "bg-primary/10 text-primary font-medium" : "text-foreground"
-                        }`}
-                      >
-                        {f.active
-                          ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                          : <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                        <span className="flex-1">{f.label}</span>
-                        {!f.active && <Badge variant="secondary" className="text-xs">Placeholder</Badge>}
-                      </button>
-                    ))}
+                  <div className="absolute top-full left-0 mt-1 w-full min-w-[340px] bg-card border border-border rounded-md shadow-lg z-50 overflow-hidden">
+                    {funnels.map(f => {
+                      const isPlaceholder = !f.kajabiActive && !f.shopifyActive && !f.metaActive;
+                      const sources = [
+                        f.kajabiActive && "Kajabi",
+                        f.shopifyActive && "Shopify",
+                        f.metaActive && "Meta",
+                      ].filter(Boolean).join(" · ");
+                      return (
+                        <button
+                          key={f.id}
+                          onClick={() => { setFunnelId(f.id); setMenuOpen(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-muted transition-colors ${
+                            f.id === funnelId ? "bg-primary/10 text-primary font-medium" : "text-foreground"
+                          }`}
+                        >
+                          {!isPlaceholder
+                            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                            : <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                          <span className="flex-1">{f.label}</span>
+                          {sources
+                            ? <span className="text-xs text-muted-foreground">{sources}</span>
+                            : <Badge variant="secondary" className="text-xs">Placeholder</Badge>}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
+
+              {/* Source badges */}
+              {activeFunnel && (
+                <div className="flex gap-1.5 ml-2">
+                  <Badge variant={activeFunnel.kajabiActive ? "default" : "secondary"} className="text-xs gap-1">
+                    <BookOpen className="h-3 w-3" /> Kajabi {activeFunnel.kajabiActive ? "✓" : "—"}
+                  </Badge>
+                  <Badge variant={activeFunnel.shopifyActive ? "default" : "secondary"} className="text-xs gap-1">
+                    <ShoppingCart className="h-3 w-3" /> Shopify {activeFunnel.shopifyActive ? "✓" : "—"}
+                  </Badge>
+                  <Badge variant={activeFunnel.metaActive ? "default" : "secondary"} className="text-xs gap-1">
+                    <Zap className="h-3 w-3" /> Meta {activeFunnel.metaActive ? "✓" : "—"}
+                  </Badge>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -138,11 +163,23 @@ export default function Reconciliation() {
         </Card>
 
         {/* Placeholder notice */}
-        {activeFunnel && !activeFunnel.active && (
+        {isFullyPlaceholder && (
           <Card className="border-amber-500/30 bg-amber-500/5">
             <CardContent className="pt-4 text-sm text-amber-700">
-              <strong>{activeFunnel.label}</strong> is a placeholder. SKUs and Meta campaign keywords
-              will be wired in when this funnel launches. No live data is available yet.
+              <strong>{activeFunnel?.label}</strong> is a placeholder funnel. Kajabi SKUs, Shopify products,
+              and Meta campaign keywords will be wired in when this funnel launches.
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Shopify disabled notice */}
+        {activeFunnel && !activeFunnel.shopifyActive && !isFullyPlaceholder && (
+          <Card className="border-blue-500/30 bg-blue-500/5">
+            <CardContent className="pt-4 text-sm text-blue-700">
+              <ShoppingCart className="h-4 w-4 inline mr-1" />
+              <strong>Shopify:</strong> Products are mapped for this funnel but Shopify pulling is currently
+              disabled. Enable <code>shopifyActive: true</code> in the funnel registry when you start routing
+              this funnel through Shopify.
             </CardContent>
           </Card>
         )}
@@ -151,7 +188,7 @@ export default function Reconciliation() {
         {loading && (
           <div className="flex items-center gap-3 text-muted-foreground text-sm py-4">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Pulling live data from Meta and Kajabi…
+            Pulling live data from Meta, Kajabi, and Shopify…
           </div>
         )}
 
@@ -159,6 +196,7 @@ export default function Reconciliation() {
         {data && !loading && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
+            {/* Meta Spend */}
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
@@ -173,17 +211,32 @@ export default function Reconciliation() {
               </CardContent>
             </Card>
 
+            {/* Combined Revenue */}
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <DollarSign className="h-3.5 w-3.5" /> Kajabi Revenue
+                  <DollarSign className="h-3.5 w-3.5" /> Total Revenue
                 </div>
                 <div className="text-2xl font-bold text-green-600">{fmtD(summary?.totalRevenue ?? 0)}</div>
-                <div className="text-xs text-muted-foreground mt-1">{kajabi?.totalPurchases ?? 0} sales</div>
-                {kajabi?.note === "placeholder" && <div className="text-xs text-muted-foreground mt-1 italic">Placeholder</div>}
+                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                  {(kajabi?.totalRevenueCents ?? 0) > 0 && (
+                    <div className="flex items-center gap-1">
+                      <BookOpen className="h-3 w-3" /> Kajabi: {fmt(kajabi!.totalRevenueCents)}
+                    </div>
+                  )}
+                  {(shopify?.totalRevenueCents ?? 0) > 0 && (
+                    <div className="flex items-center gap-1">
+                      <ShoppingCart className="h-3 w-3" /> Shopify: {fmt(shopify!.totalRevenueCents)}
+                    </div>
+                  )}
+                  {(summary?.totalPurchases ?? 0) > 0 && (
+                    <div>{summary!.totalPurchases} total sales</div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
+            {/* ROAS */}
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
@@ -204,6 +257,7 @@ export default function Reconciliation() {
               </CardContent>
             </Card>
 
+            {/* CPL */}
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
@@ -228,10 +282,12 @@ export default function Reconciliation() {
         {kajabi && !loading && kajabi.tiers.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                Kajabi Sales by Tier
+              <CardTitle className="text-base flex items-center gap-2 justify-between">
+                <span className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" /> Kajabi Sales by Tier
+                </span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  {kajabi.pagesScanned} pages scanned · {startDate === endDate ? startDate : `${startDate} → ${endDate}`}
+                  {kajabi.pagesScanned} pages scanned
                 </span>
               </CardTitle>
             </CardHeader>
@@ -242,7 +298,6 @@ export default function Reconciliation() {
                     <th className="text-left py-2 font-medium">Product</th>
                     <th className="text-right py-2 font-medium">Sales</th>
                     <th className="text-right py-2 font-medium">Revenue</th>
-                    {(meta?.spend ?? 0) > 0 && <th className="text-right py-2 font-medium">% of Rev</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -251,18 +306,12 @@ export default function Reconciliation() {
                       <td className="py-2 font-medium">{tier.label}</td>
                       <td className="py-2 text-right"><Badge variant="secondary">{tier.count}</Badge></td>
                       <td className="py-2 text-right text-green-600 font-semibold">{fmt(tier.revenueCents)}</td>
-                      {(meta?.spend ?? 0) > 0 && (
-                        <td className="py-2 text-right text-muted-foreground">
-                          {((tier.revenueCents / kajabi.totalRevenueCents) * 100).toFixed(0)}%
-                        </td>
-                      )}
                     </tr>
                   ))}
                   <tr className="font-bold border-t-2">
-                    <td className="py-2">TOTAL</td>
+                    <td className="py-2">Kajabi Total</td>
                     <td className="py-2 text-right">{kajabi.totalPurchases}</td>
                     <td className="py-2 text-right text-green-600">{fmt(kajabi.totalRevenueCents)}</td>
-                    {(meta?.spend ?? 0) > 0 && <td className="py-2 text-right">100%</td>}
                   </tr>
                 </tbody>
               </table>
@@ -270,10 +319,49 @@ export default function Reconciliation() {
           </Card>
         )}
 
-        {kajabi && !loading && kajabi.tiers.length === 0 && activeFunnel?.active && (
+        {/* Shopify Tier Breakdown */}
+        {shopify && !loading && shopify.tiers.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" /> Shopify Sales by Product
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="text-left py-2 font-medium">Product</th>
+                    <th className="text-right py-2 font-medium">Orders</th>
+                    <th className="text-right py-2 font-medium">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shopify.tiers.map((tier, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="py-2 font-medium">{tier.label}</td>
+                      <td className="py-2 text-right"><Badge variant="secondary">{tier.count}</Badge></td>
+                      <td className="py-2 text-right text-green-600 font-semibold">{fmt(tier.revenueCents)}</td>
+                    </tr>
+                  ))}
+                  <tr className="font-bold border-t-2">
+                    <td className="py-2">Shopify Total</td>
+                    <td className="py-2 text-right">{shopify.totalOrders}</td>
+                    <td className="py-2 text-right text-green-600">{fmt(shopify.totalRevenueCents)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* No sales notice */}
+        {data && !loading &&
+          (kajabi?.tiers.length === 0 && shopify?.tiers.length === 0) &&
+          (activeFunnel?.kajabiActive || activeFunnel?.shopifyActive) && (
           <Card>
             <CardContent className="pt-4 text-center text-muted-foreground text-sm py-8">
-              No sales found for <strong>{activeFunnel.label}</strong> in this date range.
+              No sales found for <strong>{activeFunnel?.label}</strong> in this date range.
             </CardContent>
           </Card>
         )}
@@ -313,11 +401,11 @@ export default function Reconciliation() {
           </Card>
         )}
 
-        {/* Transaction Log */}
-        {kajabi?.individualSales && kajabi.individualSales.length > 0 && (
+        {/* Combined Transaction Log */}
+        {individualSales && individualSales.length > 0 && !loading && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Transaction Log</CardTitle>
+              <CardTitle className="text-base">Transaction Log (Kajabi + Shopify)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -325,12 +413,13 @@ export default function Reconciliation() {
                   <thead>
                     <tr className="border-b text-muted-foreground">
                       <th className="text-left py-2 font-medium">Time (CT)</th>
+                      <th className="text-left py-2 font-medium">Source</th>
                       <th className="text-left py-2 font-medium">Product</th>
                       <th className="text-right py-2 font-medium">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {kajabi.individualSales.map((s, i) => {
+                    {individualSales.map((s, i) => {
                       const ct = new Date(s.time).toLocaleString("en-US", {
                         timeZone: "America/Chicago",
                         month: "short", day: "numeric",
@@ -339,7 +428,13 @@ export default function Reconciliation() {
                       return (
                         <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="py-1.5 text-muted-foreground font-mono text-xs">{ct}</td>
-                          <td className="py-1.5">{s.label}</td>
+                          <td className="py-1.5">
+                            <Badge variant={s.source === "shopify" ? "outline" : "secondary"} className="text-xs">
+                              {s.source === "shopify" ? <ShoppingCart className="h-3 w-3 mr-1 inline" /> : <BookOpen className="h-3 w-3 mr-1 inline" />}
+                              {s.source}
+                            </Badge>
+                          </td>
+                          <td className="py-1.5 max-w-[200px] truncate" title={s.label}>{s.label}</td>
                           <td className="py-1.5 text-right text-green-600 font-semibold">{fmt(s.amountCents)}</td>
                         </tr>
                       );
@@ -352,14 +447,15 @@ export default function Reconciliation() {
         )}
 
         {/* Attribution Note */}
-        {data && (meta?.spend ?? 0) > 0 && (
+        {data && ((meta?.spend ?? 0) > 0 || (summary?.totalRevenue ?? 0) > 0) && (
           <Card className="border-amber-500/30 bg-amber-500/5">
             <CardContent className="pt-4 text-sm text-amber-700 space-y-1">
               <p className="font-semibold">Attribution note</p>
               <p>
-                Meta spend is filtered to campaigns/adsets matching <strong>{activeFunnel?.label}</strong> keywords only.
-                Kajabi revenue is filtered to SKUs registered for this funnel only.
-                ROAS is the true ratio between these two independently scoped numbers.
+                Meta spend is filtered to campaigns/adsets matching <strong>{activeFunnel?.label}</strong> keywords.
+                Kajabi revenue is filtered to registered SKUs for this funnel.
+                Shopify revenue is filtered to registered product IDs for this funnel.
+                ROAS = (Kajabi + Shopify revenue) ÷ Meta spend — all three independently scoped to the same funnel.
               </p>
             </CardContent>
           </Card>

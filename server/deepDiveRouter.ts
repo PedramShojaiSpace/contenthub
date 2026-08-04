@@ -305,6 +305,7 @@ export const deepDiveRouter = router({
         notes: z.string().optional(),
         status: z.enum(["draft", "ready", "published", "archived"]).optional(),
         scheduledAt: z.number().optional(),
+        paidOnly: z.boolean().optional(), // true = paid subscribers only, false = free/everyone
       })
     )
     .mutation(async ({ input }) => {
@@ -332,12 +333,14 @@ export const deepDiveRouter = router({
       return { success: true };
     }),
 
-  /** Publish a deep dive to Substack as a paid-only post */
+  /** Publish a deep dive to Substack — free or paid */
   publish: protectedProcedure
     .input(
       z.object({
         id: z.number(),
         sendEmail: z.boolean().default(true),
+        /** Override audience at publish time. If omitted, falls back to the dive's paidOnly field. */
+        paidOnly: z.boolean().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -351,7 +354,15 @@ export const deepDiveRouter = router({
       if (!dive) throw new Error("Deep dive not found");
       if (dive.status === "published") throw new Error("Already published");
 
+      // Resolve audience: input override takes precedence, then dive.paidOnly, default free
+      const isPaid = input.paidOnly !== undefined ? input.paidOnly : (dive.paidOnly ?? false);
+
       // Build HTML for Substack
+      // Paid posts: clean close, no marketing push. Free posts: include Academy CTA.
+      const closingHtml = isPaid
+        ? `<p><em>Thank you for being on this journey with me. — Pedram</em></p>`
+        : `<p><em>Want to go deeper? Everything we cover in these deep dives — the protocols, the science, and the community — lives inside the <a href="https://theurbanmonk.com/academy">Urban Monk Academy</a>. Come join us. — Pedram</em></p>`;
+
       const bodyHtml = `
 <p><em>${dive.teaser ?? ""}</em></p>
 <hr/>
@@ -361,7 +372,7 @@ ${markdownToHtml(dive.insightBody ?? "")}
 <hr/>
 ${markdownToHtml(dive.protocolBody ?? "")}
 <hr/>
-<p><em>This deep dive is part of your Urban Monk Academy paid membership. Thank you for being on this journey with me. — Pedram</em></p>
+${closingHtml}
       `.trim();
 
       const result = await publishToSubstack({
@@ -369,7 +380,7 @@ ${markdownToHtml(dive.protocolBody ?? "")}
         subtitle: dive.teaser ?? undefined,
         bodyHtml,
         sendEmail: input.sendEmail,
-        audience: dive.paidOnly ? "only_paid" : "everyone",
+        audience: isPaid ? "only_paid" : "everyone",
       });
 
       const db2 = await getDb();
@@ -381,13 +392,14 @@ ${markdownToHtml(dive.protocolBody ?? "")}
           publishedAt: Date.now(),
           substackPostId: result.postId,
           substackPostUrl: result.postUrl,
+          paidOnly: isPaid,
           updatedAt: new Date(),
         })
         .where(eq(weeklyDeepDives.id, input.id));
 
       await notifyOwner({
-        title: "✅ Paid Deep Dive Published",
-        content: `"${dive.title}" has been published to Substack paid subscribers.\n${result.postUrl}`,
+        title: isPaid ? "✅ Paid Deep Dive Published" : "✅ Free Deep Dive Published",
+        content: `"${dive.title}" has been published to Substack ${isPaid ? "paid subscribers only" : "everyone (free)"}.\n${result.postUrl}`,
       });
 
       return { postId: result.postId, postUrl: result.postUrl };

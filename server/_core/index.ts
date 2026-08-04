@@ -1520,13 +1520,41 @@ async function startServer() {
       }
       const email = (payload.email ?? (payload.member as any)?.email ?? "") as string;
       const name = (payload.name ?? (payload.member as any)?.name ?? "") as string;
-      const amount = parseFloat(String(payload.amount ?? payload.total ?? 0));
+      const rawAmount = parseFloat(String(payload.amount ?? payload.total ?? payload.price ?? 0));
       const orderId = String(payload.id ?? payload.order_id ?? payload.purchase_id ?? Date.now());
       const offerName = String(payload.offer_name ?? payload.product_name ?? payload.title ?? "Kajabi Purchase");
       const offerId = String(payload.offer_id ?? payload.product_id ?? "");
       if (!email) {
         console.warn("[kajabi/purchase] No email in payload — cannot send CAPI");
         return res.json({ ok: false, reason: "no_email" });
+      }
+
+      // ── Known offer price map: offer ID → price in cents ──────────────────
+      // Kajabi sometimes sends amount=0 in webhooks; use this map as authoritative fallback
+      const OFFER_PRICE_MAP: Record<string, number> = {
+        "2150211911": 39900,  // Gut Permeability Test ($399) — Interconnected upsell
+        "2151031660": 29700,  // Upstream: Complete Microbiome Solution ($297)
+        "57E3XFtT":   6700,   // Interconnected All-Access Bundle ($67) — slug-based ID
+      };
+      // Also map by offer name patterns
+      const offerNameLower_pre = String(offerName).toLowerCase();
+      let knownPriceCents = 0;
+      if (offerId && OFFER_PRICE_MAP[offerId]) {
+        knownPriceCents = OFFER_PRICE_MAP[offerId];
+      } else if (offerNameLower_pre.includes("interconnected") || offerNameLower_pre.includes("all-access") || offerNameLower_pre.includes("all access")) {
+        knownPriceCents = 6700; // $67 bundle
+      } else if (offerNameLower_pre.includes("gut permeability") || offerNameLower_pre.includes("food sensitivity")) {
+        knownPriceCents = 39900; // $399
+      } else if (offerNameLower_pre.includes("upstream") || offerNameLower_pre.includes("microbiome solution")) {
+        knownPriceCents = 29700; // $297
+      } else if (offerNameLower_pre.includes("ocus") || offerNameLower_pre.includes("online course")) {
+        knownPriceCents = 29900; // $299 OCUS
+      }
+      // Use rawAmount if non-zero, otherwise fall back to known price map
+      const rawAmountCents = Math.round(rawAmount * 100);
+      const amount = rawAmountCents > 0 ? rawAmount : knownPriceCents / 100;
+      if (rawAmountCents === 0 && knownPriceCents > 0) {
+        console.log(`[kajabi/purchase] amount=0 in webhook — using known price $${knownPriceCents/100} for offer "${offerName}" (ID: ${offerId})`);
       }
 
       // ── Detect funnel from offer ID, offer name, or amount ─────────────────

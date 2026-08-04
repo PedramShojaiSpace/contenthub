@@ -6,8 +6,10 @@
  * 1. Validate email (reject disposable/throwaway domains)
  * 2. Save lead to local DB immediately (safety backup — never lose a lead)
  * 3. Tag in Kajabi (create contact + apply "Interconnected Opt In" tag)
+ *    - Up to 3 retries with 2s backoff
+ *    - On all-retry failure: write to kajabi_retry_queue dead letter queue + notify owner
  * 4. Sync to Klaviyo (profile + optional SMS subscription)
- * 5. Notify owner
+ * 5. CAPI — fire Lead event server-side
  * 6. Update DB row with Kajabi/Klaviyo success flags
  */
 
@@ -18,11 +20,46 @@ import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
 import { pushInterconnectedOptIn } from "./klaviyo";
 import { validateEmail } from "./emailScrubber";
 import { getDb } from "./db";
-import { interconnectedLeads } from "../drizzle/schema";
+import { interconnectedLeads, kajabiRetryQueue } from "../drizzle/schema";
+import { notifyOwner } from "./_core/notification";
 import { eq, sql, gte, lte, and } from "drizzle-orm";
 import { sendCapiEvent, generateEventId } from "./capiHelper";
 
 const KAJABI_TAG = "Interconnected Opt In";
+const KAJABI_MAX_RETRIES = 3;
+const KAJABI_RETRY_DELAY_MS = 2000;
+
+/** Sleep helper for retry backoff */
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Attempt to tag a contact in Kajabi with linear backoff.
+ * Returns { success, contactId?, error? }
+ */
+async function kajabiTagWithRetry(
+  email: string,
+  name: string
+): Promise<{ success: boolean; contactId?: string; error?: string }> {
+  let lastError = "";
+  for (let attempt = 1; attempt <= KAJABI_MAX_RETRIES; attempt++) {
+    try {
+      const contact = await kajabiCreateContact({ email, name });
+      await kajabiAddTagByName({ contactId: contact.id, tagName: KAJABI_TAG });
+      return { success: true, contactId: contact.id };
+    } catch (err: any) {
+      lastError = err?.message ?? String(err);
+      console.warn(
+        `[interconnectedRouter] Kajabi attempt ${attempt}/${KAJABI_MAX_RETRIES} failed for ${email}: ${lastError}`
+      );
+      if (attempt < KAJABI_MAX_RETRIES) {
+        await sleep(KAJABI_RETRY_DELAY_MS * attempt); // 2s, 4s
+      }
+    }
+  }
+  return { success: false, error: lastError };
+}
 
 export const interconnectedRouter = router({
   register: publicProcedure
@@ -92,13 +129,15 @@ export const interconnectedRouter = router({
         console.error("[interconnectedRouter] DB save error:", err);
       }
 
-      // ── Step 3: Kajabi — create contact and apply tag ─────────────────────────
+      // ── Step 3: Kajabi — create contact and apply tag (with retry + DLQ) ──────
       let kajabiTagged = false;
-      try {
-        const contact = await kajabiCreateContact({ email, name });
-        await kajabiAddTagByName({ contactId: contact.id, tagName: KAJABI_TAG });
-        kajabiTagged = true;
+      const kajabiResult = await kajabiTagWithRetry(
+        email.toLowerCase().trim(),
+        name.trim()
+      );
 
+      if (kajabiResult.success) {
+        kajabiTagged = true;
         // Update DB row with Kajabi success
         if (localLeadId) {
           try {
@@ -111,8 +150,38 @@ export const interconnectedRouter = router({
             }
           } catch (_) {}
         }
-      } catch (err) {
-        console.error("[interconnectedRouter] Kajabi error:", err);
+      } else {
+        // All retries exhausted — write to dead letter queue
+        console.error(
+          `[interconnectedRouter] Kajabi all retries failed for ${email}: ${kajabiResult.error}. Writing to retry queue.`
+        );
+        try {
+          const db = await getDb();
+          if (db) {
+            await db.insert(kajabiRetryQueue).values({
+              email: email.toLowerCase().trim(),
+              name: name.trim(),
+              leadId: localLeadId ?? undefined,
+              tagName: KAJABI_TAG,
+              attempts: KAJABI_MAX_RETRIES,
+              lastAttemptAt: Date.now(),
+              status: "pending",
+              errorMessage: kajabiResult.error?.substring(0, 500) ?? "Unknown error",
+              createdAt: Date.now(),
+            } as any);
+            console.log(`[interconnectedRouter] Written to kajabi_retry_queue: ${email}`);
+          }
+        } catch (dlqErr) {
+          console.error("[interconnectedRouter] Failed to write to retry queue:", dlqErr);
+        }
+
+        // Notify owner of persistent failure
+        try {
+          await notifyOwner({
+            title: "⚠️ Kajabi Tag Failed — Lead in Retry Queue",
+            content: `Lead ${email} (${name}) failed Kajabi tagging after ${KAJABI_MAX_RETRIES} attempts.\n\nError: ${kajabiResult.error}\n\nLead saved in DB (id: ${localLeadId ?? "unknown"}). Background worker will retry every 15 min.`,
+          });
+        } catch (_) {}
       }
 
       // ── Step 4: Klaviyo — push profile + subscribe to SMS list if consent given ─

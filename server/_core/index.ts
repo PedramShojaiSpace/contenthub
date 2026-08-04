@@ -28,6 +28,7 @@ import { apolloDailyDrawHandler, apolloAudienceValidationHandler } from "../apol
 import { videoVariants } from "../../drizzle/schema";
 import { getDriveAuthUrl, exchangeCodeForTokens, exportVariantsToDrive, isDriveAuthorized } from "../googleDrive";
 import { sdk } from "./sdk";
+import { startKajabiRetryWorker } from "../kajabiRetryWorker";
 import { getDb } from "../db";
 import { videoVariantJobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -1859,6 +1860,9 @@ async function startServer() {
     runUploadWatchdog();
     // Then every 10 minutes
     setInterval(runUploadWatchdog, 10 * 60 * 1000);
+
+    // Start Kajabi retry worker — processes dead letter queue every 15 minutes
+    startKajabiRetryWorker();
   });
 
 }

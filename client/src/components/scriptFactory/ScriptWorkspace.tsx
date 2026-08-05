@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { MetadataRail } from "./MetadataRail";
+import type { SellDensityRailReport } from "./MetadataRail";
 import { ScriptBody } from "./ScriptBody";
 import { SectionNavigator } from "./SectionNavigator";
 import type { SectionOutlineEntry } from "./types";
@@ -53,6 +54,17 @@ interface ScriptWorkspaceProps {
     | null
     | undefined;
   claimsStatus?: { status: string; flagCount: number } | null;
+  /**
+   * v2.4 — the resolved sell style of the open script, and its density report.
+   *
+   * Both are supplied by the page rather than derived here, and the three-state
+   * contract of `sellDensity` (undefined / null / object) is passed through
+   * UNCHANGED. Collapsing undefined to null on the way past would erase the
+   * difference between "no report exists for this script" and "the lint did not
+   * apply", which is the distinction the rail exists to show.
+   */
+  ctaStyle?: string | null;
+  sellDensity?: SellDensityRailReport | null;
   /** Deep-linked section to land on, read from the URL by the caller. */
   initialSectionKey?: string | null;
   statusColors: Record<string, string>;
@@ -83,6 +95,8 @@ export function ScriptWorkspace({
   fallbackTitle,
   script,
   claimsStatus,
+  ctaStyle,
+  sellDensity,
   initialSectionKey,
   statusColors,
   formatLabels,
@@ -220,6 +234,8 @@ export function ScriptWorkspace({
                     onDelete={onDelete}
                     regenerateSlot={regenerateSlot}
                     lineage={lineageSlot}
+                    ctaStyle={ctaStyle}
+                    sellDensity={sellDensity}
                   />
                 </SheetContent>
               </Sheet>
@@ -271,6 +287,8 @@ export function ScriptWorkspace({
                 onDelete={onDelete}
                 regenerateSlot={regenerateSlot}
                 lineage={lineageSlot}
+                ctaStyle={ctaStyle}
+                sellDensity={sellDensity}
               />
             </aside>
           </div>

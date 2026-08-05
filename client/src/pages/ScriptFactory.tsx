@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import type { SellDensityRailReport } from "@/components/scriptFactory/MetadataRail";
 import {
   BarChart3,
   Bookmark,
@@ -30,6 +31,7 @@ import {
   GitBranch,
   Lightbulb,
   Loader2,
+  Megaphone,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -765,9 +767,16 @@ function VideoIdeaEngine({ onSelectIdea, onOpenScript }: VideoIdeaEngineProps) {
 interface GenerateTabProps {
   /** Opens a saved script in the Library tab (v2.1 Bug A items 3 & 4). */
   onOpenScript: (scriptId: number) => void;
+  /**
+   * v2.4 — hands the freshly generated sell-density report up to the page.
+   *
+   * Optional because the report only exists for value-first generations with a
+   * bound offer; absence is a real state, not a missing wire.
+   */
+  onSellDensity?: (scriptId: number, report: SellDensityRailReport) => void;
 }
 
-function GenerateTab({ onOpenScript }: GenerateTabProps) {
+function GenerateTab({ onOpenScript, onSellDensity }: GenerateTabProps) {
   const utils = trpc.useUtils();
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState<string>("youtube_script");
@@ -804,6 +813,14 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
    * the one you get without choosing.
    */
   const [storyMode, setStoryMode] = useState<"brief" | "composite" | "none">("brief");
+  /*
+   * v2.4 — sell style. Defaults to value_first, which is the DEFAULT FOR
+   * youtube_script, matching the server's FORMAT_DEFAULT_CTA_STYLE. Held as a
+   * plain state rather than left undefined so the panel always shows the operator
+   * which mode he is about to generate in; the server re-resolves regardless, so
+   * a mismatch here cannot produce a script that disagrees with its own record.
+   */
+  const [ctaStyle, setCtaStyle] = useState<"value_first" | "balanced">("value_first");
   // Part 3B — the operator's own close. Non-empty REPLACES offer binding.
   const [ctaOverride, setCtaOverride] = useState("");
   // Part 3B multi-tier — which laddered tier this script closes on. Never
@@ -855,6 +872,16 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
   const generate = trpc.scriptFactory.generate.useMutation({
     onSuccess: (data) => {
       setResult(data);
+      /*
+       * v2.4 — capture the sell-density report NOW.
+       *
+       * This is the only moment the full report exists: `midRollPercent` is
+       * measured against the body as generated, and `rewritePassUsed` is a fact
+       * about this run. Neither survives in the saved row, so a report not
+       * captured here can never be shown for this script.
+       */
+      const fresh = (data as { sellDensity?: SellDensityRailReport | null }).sellDensity;
+      if (onSellDensity && fresh) onSellDensity(data.id, fresh);
       const wordNote = data.wordCount ? ` · ${data.wordCount} words` : "";
       utils.scriptFactory.list.invalidate();
       utils.scriptFactory.getStats.invalidate();
@@ -1132,6 +1159,55 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                 </p>
               </div>
 
+              {/* ── v2.4: Sell style ──────────────────────────────────────
+                  Shown only for the two long-form spoken formats. On an email or
+                  a social caption the offer IS the content, so a "pure value
+                  throughout" mode would be incoherent — and the server refuses
+                  it there, so offering the control would be offering a choice
+                  that silently does nothing.
+              */}
+              {(format === "youtube_script" || format === "podcast_outline") && (
+                <div className="space-y-2 rounded-lg border border-sky-200 bg-sky-50/50 p-3">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <Megaphone className="w-3.5 h-3.5 text-sky-600" />
+                    Sell style
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                    {([
+                      {
+                        v: "value_first",
+                        label: "Value-first",
+                        hint: "One CTA at the end, pure value throughout.",
+                      },
+                      {
+                        v: "balanced",
+                        label: "Balanced",
+                        hint: "Offer woven throughout — for direct-response formats.",
+                      },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.v}
+                        title={opt.hint}
+                        onClick={() => setCtaStyle(opt.v)}
+                        className={`text-xs px-2 py-1.5 rounded border transition-colors duration-150 ${
+                          ctaStyle === opt.v
+                            ? "bg-sky-600 text-white border-sky-600"
+                            : "bg-background text-muted-foreground border-border hover:border-sky-400"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/80 leading-snug">
+                    {ctaStyle === "value_first" &&
+                      "The offer is confined to the closing CTA plus at most one mid-roll signpost. Teaching sections carry no branded mentions, no prices and no urgency language — and the CTA still reproduces the panel name, deliverables, guarantee and price exactly."}
+                    {ctaStyle === "balanced" &&
+                      "The offer is woven through the teaching sections, with a free-value limit and each tip tied back to the next step. This is the pre-v2.4 behaviour, kept for direct-response formats."}
+                  </p>
+                </div>
+              )}
+
               {/* ── Part 3B: Offer binding ──────────────────────── */}
               <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
                 <label className="text-sm font-medium flex items-center gap-1.5">
@@ -1362,6 +1438,15 @@ function GenerateTab({ onOpenScript }: GenerateTabProps) {
                   storyMode,
                   ctaOverride: ctaOverride.trim() ? ctaOverride.trim() : undefined,
                   offerTier: offerTier || undefined,
+                  /*
+                   * Sent only for the formats where it applies. Sending it on an
+                   * email would trip the server's own guard and log a warning for
+                   * a choice the operator never made.
+                   */
+                  ctaStyle:
+                    format === "youtube_script" || format === "podcast_outline"
+                      ? ctaStyle
+                      : undefined,
                 })}
               >
                 {generate.isPending ? (
@@ -1545,9 +1630,21 @@ interface LibraryTabProps {
   scriptToOpen?: number | null;
   /** Cleared once we have honoured the request, so it does not re-fire. */
   onScriptOpened?: () => void;
+  /*
+   * v2.4 — sell-density reports produced by THIS SESSION's generations, keyed by
+   * script id.
+   *
+   * Lifted to the page parent rather than held here because `generate` runs in
+   * GenerateTab, a sibling component; a report kept inside GenerateTab would be
+   * unreachable from the workspace the operator lands in. The map is
+   * deliberately session-scoped: nothing is persisted server-side, so a script
+   * opened after a reload has no entry and the rail says so rather than showing
+   * a recomputed number it cannot stand behind.
+   */
+  sellDensityByScript?: Record<number, SellDensityRailReport | undefined>;
 }
 
-function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
+function LibraryTab({ scriptToOpen, onScriptOpened, sellDensityByScript }: LibraryTabProps = {}) {
   const utils = trpc.useUtils();
   /*
    * v2.3 Part 1 — the workspace is keyed by id + title only.
@@ -1809,6 +1906,12 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
       offerTier: (gp.offerTier as string) ?? null,
       ctaOverride: (gp.ctaOverride as string) ?? null,
       researchJobId: (gp.researchJobId as number) ?? scriptDetail.researchJobId ?? null,
+      /*
+       * v2.4. Left as NULL when the key is absent rather than defaulted to
+       * "balanced" here, because the panel needs to tell those two cases apart:
+       * a genuinely balanced script and a pre-v2.4 script get different copy.
+       */
+      ctaStyle: (gp.ctaStyle as string) ?? null,
       format: scriptDetail.format,
       topic: scriptDetail.topic,
     };
@@ -1949,6 +2052,21 @@ function LibraryTab({ scriptToOpen, onScriptOpened }: LibraryTabProps = {}) {
         fallbackTitle={selectedScript?.title}
         script={scriptDetail}
         claimsStatus={claimsStatus}
+        /*
+         * v2.4. `ctaStyle` comes from the script's own FROZEN params — never
+         * re-resolved from the format on the client, because a script generated
+         * under an explicit override would then be mislabelled in the rail.
+         *
+         * `sellDensity` is the live report from THIS SESSION's generation, held by
+         * the page. It is deliberately `undefined` for a script opened from the
+         * Library rather than recomputed from the saved body: the recompute would
+         * lose midRollPercent (offsets shift on any edit) and rewritePassUsed (a
+         * fact about generation history, unrecoverable from text), and a badge
+         * built from a partial recount would read as a full check. Same trap as
+         * the v2.3 per-section grounding marker.
+         */
+        ctaStyle={frozenParams?.ctaStyle ?? null}
+        sellDensity={sellDensityByScript?.[scriptDetail?.id ?? -1]}
         initialSectionKey={initialSectionKey}
         statusColors={STATUS_COLORS}
         formatLabels={FORMAT_LABELS}
@@ -2078,6 +2196,18 @@ export default function ScriptFactory() {
   // "generate → land on the script" and "click Script #N → open it" possible.
   const [activeTab, setActiveTab] = useState("generate");
   const [scriptToOpen, setScriptToOpen] = useState<number | null>(null);
+  /*
+   * v2.4 — session-scoped sell-density reports, keyed by script id.
+   *
+   * Held HERE because generation happens in GenerateTab while the report is read
+   * in LibraryTab's workspace — siblings. Nothing is persisted server-side (there
+   * is no `sell_density` column), so this map is the report's entire lifetime: it
+   * is gone on reload, and the rail is written to say so rather than recompute a
+   * partial figure from the saved body.
+   */
+  const [sellDensityByScript, setSellDensityByScript] = useState<
+    Record<number, SellDensityRailReport | undefined>
+  >({});
 
   /** Single entry point used by both the generate flow and idea-card links. */
   const openScriptInLibrary = (scriptId: number) => {
@@ -2131,7 +2261,12 @@ export default function ScriptFactory() {
           </TabsList>
 
           <TabsContent value="generate" className="mt-4">
-            <GenerateTab onOpenScript={openScriptInLibrary} />
+            <GenerateTab
+              onOpenScript={openScriptInLibrary}
+              onSellDensity={(id, report) =>
+                setSellDensityByScript((prev) => ({ ...prev, [id]: report }))
+              }
+            />
           </TabsContent>
           <TabsContent value="topics" className="mt-4">
             <TopicsTab onOpenScript={openScriptInLibrary} />
@@ -2140,6 +2275,7 @@ export default function ScriptFactory() {
             <LibraryTab
               scriptToOpen={scriptToOpen}
               onScriptOpened={() => setScriptToOpen(null)}
+              sellDensityByScript={sellDensityByScript}
             />
           </TabsContent>
           <TabsContent value="stats" className="mt-4">

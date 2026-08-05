@@ -12,7 +12,7 @@
  *  - pre-v2.2 rows are marked "(legacy)" with the incompatibility explained
  *  - the claims badge is sourced from the claims table, never mirrored
  */
-import { CheckCircle2, Loader2, MessageSquareQuote, ShieldCheck, Trash2, TrendingUp, Zap } from "lucide-react";
+import { CheckCircle2, Loader2, Megaphone, MessageSquareQuote, ShieldCheck, Trash2, TrendingUp, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SectionOutlineEntry } from "./types";
@@ -58,6 +58,33 @@ interface MetadataRailProps {
   regenerateSlot?: React.ReactNode;
   /** v2.3 Part 3 — variant lineage summary, shown above Actions when present. */
   lineage?: React.ReactNode;
+  /**
+   * v2.4 — the sell-density report.
+   *
+   * NULL vs undefined carries meaning here and the rail respects it:
+   *   undefined → the script has no stored report at all (pre-v2.4 row)
+   *   null      → the lint did not apply (balanced mode, or no offer bound)
+   *   object    → the lint ran, and `withinBudget` says what it found
+   * A "within budget" badge on a script the lint never examined would be exactly
+   * the silent-pass failure the operator ruled out for the offer-fidelity rule.
+   */
+  sellDensity?: SellDensityRailReport | null;
+  /** The resolved style of this script, for the rail's one-line disclosure. */
+  ctaStyle?: string | null;
+}
+
+/** Mirror of the server's sell-density response shape, narrowed to what the rail shows. */
+export interface SellDensityRailReport {
+  brandedMentions: number;
+  deliverablesLists: number;
+  priceMentions: number;
+  urgencyPhrases: number;
+  withinBudget: boolean;
+  midRollPercent: number | null;
+  midRollInWindow: boolean;
+  ctaAt: string | null;
+  summary: string;
+  rewritePassUsed?: boolean;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -85,6 +112,8 @@ export function MetadataRail({
   onDelete,
   regenerateSlot,
   lineage,
+  sellDensity,
+  ctaStyle,
 }: MetadataRailProps) {
   const legacy = isLegacyMetric(script.createdAt);
   const slotCount = sections.filter((s) => s.slotOnly).length;
@@ -154,6 +183,62 @@ export function MetadataRail({
             Claims review: {String(claimsStatus.status).replace(/_/g, " ")}
             {claimsStatus.flagCount > 0 ? ` (${claimsStatus.flagCount} flags)` : ""}
           </button>
+        )}
+
+        {/*
+          ── v2.4 sell density ────────────────────────────────────────────────
+
+          Its OWN block, deliberately not folded into the claims badge. The
+          operator's ruling on the offer-fidelity rule applies identically here:
+          a claims flag and a sell-density flag are different kinds of problem
+          with different fixes, and merging them into one number would tell him
+          something is wrong without telling him what to do about it.
+
+          Advisory styling, never red: an over-budget script is saved, usable and
+          editable. Red would imply a failure that did not occur.
+        */}
+        {ctaStyle === "value_first" && (
+          <div className="mt-1.5">
+            {sellDensity === null || sellDensity === undefined ? (
+              <div
+                className="flex items-start gap-1 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs leading-snug text-slate-600"
+                title="The sell-density lint runs only when an offer is bound to the script. With no bound offer there is no branded product to over-mention, so the check does not apply — it is reported as not applicable rather than as a pass."
+              >
+                <Megaphone className="w-3 h-3 mt-px shrink-0" />
+                <span>Sell density: not applicable (no bound offer)</span>
+              </div>
+            ) : (
+              <div
+                className={`flex items-start gap-1 rounded border px-2 py-1 text-xs leading-snug ${
+                  sellDensity.withinBudget
+                    ? "border-green-200 bg-green-50 text-green-700"
+                    : "border-amber-200 bg-amber-50 text-amber-800"
+                }`}
+                title={
+                  "Counts every branded mention, deliverables list, price and urgency phrase OUTSIDE the [CTA] section. " +
+                  "Budget: at most one branded mention (the mid-roll signpost), and zero of everything else."
+                }
+              >
+                <Megaphone className="w-3 h-3 mt-px shrink-0" />
+                <span>
+                  Sell density: {sellDensity.summary}
+                  {sellDensity.rewritePassUsed && (
+                    <span className="block opacity-75">Corrected by one rewrite pass.</span>
+                  )}
+                  {!sellDensity.withinBudget && (
+                    <span className="block opacity-90">
+                      Saved as-is — edit the flagged lines rather than regenerating.
+                    </span>
+                  )}
+                  {sellDensity.midRollPercent !== null && !sellDensity.midRollInWindow && (
+                    <span className="block opacity-75">
+                      Mid-roll sits outside the 40–60% window.
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

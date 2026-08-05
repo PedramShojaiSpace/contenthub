@@ -37,6 +37,12 @@ export interface VariantOverrides {
   targetLengthMinutes?: 10 | 15 | 20;
   storyMode?: "brief" | "composite" | "none";
   ctaOverride?: string;
+  /**
+   * v2.4. Absent means "inherit the source's style", which is why this is
+   * optional rather than defaulted here: a default in the client would send
+   * `balanced` on every regeneration of a value_first script and quietly undo it.
+   */
+  ctaStyle?: "value_first" | "balanced";
 }
 
 /** The frozen params of the source script, as persisted at generation time. */
@@ -49,6 +55,12 @@ export interface FrozenParams {
   researchJobId: number | null;
   format: string;
   topic: string;
+  /**
+   * NULL for any script generated before v2.4. Those were produced under the
+   * balanced rules, so the panel shows `balanced` for them — the honest label —
+   * rather than the format's current default.
+   */
+  ctaStyle: string | null;
 }
 
 interface RegeneratePanelProps {
@@ -115,6 +127,16 @@ export function RegeneratePanel({
 
   const currentPersona = personas.find((p) => p.id === frozen.personaId)?.name ?? "—";
   const isLongForm = frozen.format === "youtube_script";
+  /*
+   * The style selector is offered for the two formats where value_first is
+   * meaningful. Offering it on an email would present a choice the server is
+   * going to refuse, which is worse than not offering it: the operator would
+   * pick it, see no effect, and reasonably conclude the feature is broken.
+   */
+  const styleApplies = frozen.format === "youtube_script" || frozen.format === "podcast_outline";
+  const sourceStyle = (frozen.ctaStyle === "value_first" ? "value_first" : "balanced") as
+    | "value_first"
+    | "balanced";
 
   /** Preview rows for the confirm dialog: label, value, changed-flag. */
   const previewRows = (): { label: string; value: string; changed: boolean }[] => {
@@ -122,6 +144,7 @@ export function RegeneratePanel({
     const nextPersonaId = draft.personaId ?? frozen.personaId ?? null;
     const nextStory = draft.storyMode ?? frozen.storyMode ?? "brief";
     const nextCta = draft.ctaOverride ?? frozen.ctaOverride ?? null;
+    const nextStyle = draft.ctaStyle ?? sourceStyle;
     return [
       { label: "Topic", value: frozen.topic, changed: false },
       { label: "Format", value: frozen.format, changed: false },
@@ -141,6 +164,15 @@ export function RegeneratePanel({
         changed: String(nextStory) !== String(frozen.storyMode ?? "brief"),
       },
       { label: "Offer tier", value: frozen.offerTier ?? "—", changed: false },
+      ...(styleApplies
+        ? [
+            {
+              label: "Sell style",
+              value: nextStyle === "value_first" ? "Value-first" : "Balanced",
+              changed: nextStyle !== sourceStyle,
+            },
+          ]
+        : []),
       {
         label: "Custom close",
         value: nextCta ? `${nextCta.slice(0, 40)}${nextCta.length > 40 ? "…" : ""}` : "—",
@@ -242,6 +274,42 @@ export function RegeneratePanel({
 
             {(mode === "params" || mode === "asNew") && (
               <>
+                {styleApplies && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Sell style</Label>
+                    <Select
+                      value={draft.ctaStyle ?? sourceStyle}
+                      onValueChange={(v) =>
+                        setDraft((d) => ({ ...d, ctaStyle: v as "value_first" | "balanced" }))
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="value_first">
+                          Value-first — one CTA at the end, pure value throughout
+                        </SelectItem>
+                        <SelectItem value="balanced">
+                          Balanced — offer woven throughout, for direct-response formats
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {/*
+                      Named explicitly, because "Change parameters → Sell style →
+                      Value-first" on an existing salesy script is the whole
+                      two-click path the spec's walkthrough asks for, and the
+                      operator should be able to see that is what they are doing.
+                    */}
+                    {frozen.ctaStyle === null && (
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        This script predates the sell-style setting, so it was written under
+                        the balanced rules. Switching to Value-first regenerates it with the
+                        offer confined to the closing CTA.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-1">
                   <Label className="text-xs">Story mode</Label>
                   <Select

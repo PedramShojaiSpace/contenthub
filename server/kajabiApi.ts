@@ -209,26 +209,49 @@ export async function kajabiFindContactByEmail(
   email: string
 ): Promise<{ id: string; email: string } | null> {
   const token = await getAccessToken();
-  const res = await fetch(
-    `${KAJABI_API_BASE}/contacts?filter[email_eq]=${encodeURIComponent(email)}&filter[site_id]=${URBAN_MONK_SITE_ID}&page[size]=1`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.api+json",
-      },
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // NOTE: Kajabi's filter[email_eq] parameter does NOT actually filter by email —
+  // it returns all contacts regardless. We must paginate and find the exact match.
+  // We search up to 5 pages (500 contacts) before giving up.
+  const PAGE_SIZE = 100;
+  let page = 1;
+  const MAX_PAGES = 5;
+
+  while (page <= MAX_PAGES) {
+    const res = await fetch(
+      `${KAJABI_API_BASE}/contacts?filter[site_id]=${URBAN_MONK_SITE_ID}&page[size]=${PAGE_SIZE}&page[number]=${page}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.api+json",
+        },
+      }
+    );
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[Kajabi] findContactByEmail page ${page} failed (${res.status}): ${errText.slice(0, 200)}`);
+      return null;
     }
-  );
-  if (!res.ok) {
-    const errText = await res.text();
-    console.error(`[Kajabi] findContactByEmail failed (${res.status}): ${errText.slice(0, 200)}`);
-    return null;
+    const data = await safeParseJson<{
+      data: Array<{ id: string; attributes: { email: string } }>;
+    }>(res, "Kajabi findContactByEmail");
+
+    if (!data.data || data.data.length === 0) break; // no more pages
+
+    const match = data.data.find(
+      (c) => c.attributes?.email?.toLowerCase().trim() === normalizedEmail
+    );
+    if (match) {
+      return { id: match.id, email: match.attributes.email };
+    }
+
+    if (data.data.length < PAGE_SIZE) break; // last page
+    page++;
+    await new Promise((r) => setTimeout(r, 200)); // be kind to the API
   }
-  const data = await safeParseJson<{
-    data: Array<{ id: string; attributes: { email: string } }>;
-  }>(res, "Kajabi findContactByEmail");
-  const contact = data.data?.[0];
-  if (!contact) return null;
-  return { id: contact.id, email: contact.attributes.email };
+
+  return null; // not found in first 500 contacts
 }
 
 /**

@@ -4539,3 +4539,6 @@ Pricing model (corrected):
 - [ ] Frontend: History table of all generated deep dives with status
 - [ ] Heartbeat: Weekly Monday 8am job to auto-generate a deep dive and notify owner for review
 - [ ] Wire Substack paid-only flag (audience: "paid_subscribers") on post creation
+
+## Watchdog Fixes
+- [x] Fix watchdog false alerts during overnight low-traffic windows (10pm–6am CT uses 3-hour window instead of 65-min)

@@ -3407,6 +3407,47 @@ export const scriptFactoryRouter = router({
 
       const storyMode = (row.generationParams?.storyMode ?? "brief") as StoryMode;
       const format = (row.generationParams?.format ?? row.format ?? "youtube_script") as ScriptFormat;
+      /*
+       * v2.4 — a section rewrite INHERITS the parent script's ctaStyle. It never
+       * re-resolves from the format, because the parent may have been generated
+       * with an explicit override, and a rewrite that silently switched a
+       * value_first script's section back to balanced rules would put branded
+       * pitch language into a teach section that the whole point was to keep
+       * clean. ctaStyleFromParams maps a pre-v2.4 row (no key) to balanced.
+       */
+      const sectionCtaStyle = ctaStyleFromParams(row.generationParams);
+      /*
+       * The section-level restatement of the value-first rules. Deliberately
+       * scoped to the ONE section being rewritten: the full policy block talks
+       * about "exactly one mid-roll across the script", which a single-section
+       * rewrite cannot verify and must not try to satisfy on its own. So the
+       * section is told the invariant that holds locally — this section is either
+       * the CTA or it is not — rather than the global budget.
+       */
+      const valueFirstSectionRules =
+        sectionCtaStyle === "value_first"
+          ? target.tag === "CTA"
+            ? [
+                "=== VALUE-FIRST: THIS IS THE CTA ===",
+                "This is the ONE place in the script where selling belongs, so it must be",
+                "complete: the offer name exactly as given, at least two deliverables",
+                "reproduced faithfully, the guarantee as written, and the price.",
+                "Do NOT soften it and do NOT invent any detail not given to you.",
+                "=== END VALUE-FIRST ===",
+              ].join("\n")
+            : [
+                "=== VALUE-FIRST: THIS IS NOT THE CTA ===",
+                "This script sells in ONE place only — its [CTA] section — and this is not it.",
+                "Therefore in this section:",
+                "- Do NOT name the branded product or programme.",
+                "- Do NOT list deliverables, state a price, or give a purchase instruction.",
+                "- Do NOT use urgency or scarcity language of any kind.",
+                "- Category-level references are fine when the mechanism needs them",
+                "  (e.g. 'proper food-inflammation testing'), and are preferred over brand names.",
+                "The teaching must stand on its own as useful to someone who never buys anything.",
+                "=== END VALUE-FIRST ===",
+              ].join("\n")
+          : "";
 
       /*
        * ── The rewrite prompt ─────────────────────────────────────────────────
@@ -3435,6 +3476,7 @@ export const scriptFactoryRouter = router({
               "",
               buildStoryIntegrityBlock(storyMode),
               "",
+              valueFirstSectionRules,
               "=== OUTPUT CONTRACT (STRICT) ===",
               `Return ONLY the replacement section. Begin with the literal tag [${target.tag}] and`,
               "nothing before it. Do NOT return the surrounding sections, a preamble, an",

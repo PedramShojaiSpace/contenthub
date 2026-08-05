@@ -322,9 +322,17 @@ export async function kajabiSubmitForm(params: {
   name?: string;
 }): Promise<{ submissionId: string }> {
   const token = await getAccessToken();
-
-  const attributes: Record<string, string> = { email: params.email };
-  if (params.name) attributes.name = params.name;
+  // Kajabi form submission requires first_name + last_name separately (not just 'name')
+  const nameParts = (params.name ?? "").trim().split(/\s+/);
+  const firstName = nameParts[0] || "Friend"; // fallback so 'name' field is never blank
+  const lastName = nameParts.slice(1).join(" ") || "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+  const attributes: Record<string, string> = {
+    email: params.email,
+    name: fullName,
+    first_name: firstName,
+    ...(lastName ? { last_name: lastName } : {}),
+  };
 
   const res = await fetch(`${KAJABI_API_BASE}/forms/${params.formId}/submit`, {
     method: "POST",

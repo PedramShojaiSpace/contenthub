@@ -49,6 +49,11 @@ import { getAvatarContextBlockForPersona } from "./avatarRouter";
 import { searchCorpusEntries } from "./corpusRouter";
 import { createClaimsReview } from "./claimsReviewRouter";
 import {
+  lintSellDensity,
+  buildSellDensityRewriteInstruction,
+  type SellDensityReport,
+} from "./sellDensity";
+import {
   computeGroundingMetric,
   describeGrounding,
   insertTimestamps,
@@ -199,6 +204,23 @@ const SCRIPT_FORMATS = [
 ] as const;
 
 type ScriptFormat = typeof SCRIPT_FORMATS[number];
+
+/**
+ * ─── v2.4 Part 1 — CTA STYLE ─────────────────────────────────────────────────
+ *
+ * `balanced` is the pre-v2.4 behaviour, byte-for-byte. `value_first` replaces the
+ * offer-pressure rules with the VALUE-FIRST SELL POLICY.
+ *
+ * WHY AN ENUM AND NOT A BOOLEAN: `salesy: false` would name the thing we are
+ * moving away from rather than either of the two positions, and a third mode
+ * (an "authority" style with no mid-roll at all) is a plausible next request.
+ *
+ * Declared here beside SCRIPT_FORMATS rather than next to its resolver further
+ * down, because `scriptGenerationInput` consumes it and a `const` referenced
+ * before its declaration is a TDZ error, not a hoisted one.
+ */
+export const CTA_STYLES = ["value_first", "balanced"] as const;
+export type CtaStyle = typeof CTA_STYLES[number];
 
 const FORMAT_DESCRIPTIONS: Record<ScriptFormat, string> = {
   youtube_script: "Full YouTube video script (8–15 min, hook + body + CTA, with timestamps)",
@@ -771,6 +793,153 @@ function buildPersonaBlock(
 }
 
 /**
+ * ─── v2.4 Part 2 — THE VALUE-FIRST OFFER BLOCK ───────────────────────────────
+ *
+ * SIBLING OF `buildOfferBlock()` in server/offerProfile.ts:226. The two are a
+ * pair and should be read together; they live in different files only because the
+ * v2.4 scope wall does not include offerProfile.ts and that wall was drawn
+ * deliberately. If the wall is ever widened, move this next to its sibling.
+ *
+ * WHAT IS SHARED WITH THE BALANCED BLOCK, and must never diverge:
+ *   - the guarantee-only-when-present branch: instructing "state the guarantee"
+ *     when a tier has none is a direct invitation to invent refund terms.
+ *   - the FACT FIDELITY section: this is the v2.3 Part 0 fix for the FIT 176
+ *     incident. The brief is explicit that value_first CONCENTRATES fidelity
+ *     rather than relaxing it, so dropping this while writing a "gentler" block
+ *     would silently undo that fix in what is now the DEFAULT mode for long-form.
+ *
+ * WHAT DIFFERS: the balanced block ends with two instructions that are correct
+ * for direct response and are the mechanical cause of the operator's complaint —
+ * "TEACHING SECTIONS must build toward the target action" and the FREE-VALUE
+ * LIMIT that requires every tip to connect back to the offer (offerProfile.ts:
+ * 293-301). Those are replaced here by the seven-rule sell policy.
+ */
+export function buildValueFirstOfferBlock(profile: OfferProfile): string {
+  const lines = [
+    "=== VALUE-FIRST SELL POLICY (governs where the offer may appear) ===",
+    "This is a long-form video for an audience that did not come here to be sold to.",
+    "Sell density is the single biggest cause of drop-off in this format. The offer",
+    "below is REAL and you will sell it — but exactly once, at the end, having earned",
+    "it. Every rule in this block is about WHERE the offer may appear, never about",
+    "whether its facts may be altered. They may not.",
+    "",
+    "THE OFFER (what the [CTA] section, and only that section, sells):",
+    `Offer name: ${profile.offerName}`,
+    `Offer type: ${profile.offerType}`,
+    "Deliverables the buyer receives:",
+    ...profile.deliverables.map((d) => `  - ${d}`),
+  ];
+
+  if (profile.timeline) lines.push(`Timeline: ${profile.timeline}`);
+  if (profile.pricePoint) lines.push(`Price framing: ${profile.pricePoint}`);
+  if (profile.primaryCtaUrl) lines.push(`Action URL: ${profile.primaryCtaUrl}`);
+  lines.push(`TARGET ACTION: ${profile.targetAction}`);
+
+  lines.push(
+    "",
+    "RULE 1 — ONE FULL CTA, IN THE [CTA] SECTION ONLY.",
+    "That section is where you sell properly and completely. It must:",
+    `  - Name the offer explicitly: "${profile.offerName}".`,
+    "  - Cite at least TWO of the concrete deliverables listed above.",
+    `  - Drive the specific target action: ${profile.targetAction}.`
+  );
+
+  // Identical branch logic to buildOfferBlock — see the header note. An absent
+  // guarantee must produce a prohibition, never silence.
+  if (profile.guarantee) {
+    lines.push(`  - State the guarantee as written: ${profile.guarantee}`);
+  } else {
+    lines.push(
+      "  - This offer has NO stated guarantee. Do NOT mention, imply, or invent any",
+      "    refund, results guarantee, or risk-free framing."
+    );
+  }
+  if (profile.pricePoint) {
+    lines.push(`  - State the price exactly as written: ${profile.pricePoint}.`);
+  }
+
+  lines.push(
+    "",
+    "RULE 2 — EXACTLY ONE MID-SCRIPT SOFT MENTION. Not zero, not two.",
+    "Place it immediately AFTER a substantial value payoff, between 40% and 60% of",
+    "the way through the script. Constraints, all of them hard:",
+    "  - MAXIMUM two sentences.",
+    "  - It may name the product ONCE.",
+    "  - It may NOT contain a price, a deliverables list, urgency, scarcity, or any",
+    "    instruction to buy, order, click, or reserve.",
+    "  - Its register is a SIGNPOST, not a pitch. Then return immediately to teaching.",
+    "Worked example of the correct register:",
+    `  "The panel I use with patients for exactly this is called ${profile.offerName} —`,
+    '   I\'ll walk you through it at the end. Back to the mechanism."',
+    "",
+    "RULE 3 — TEACHING SECTIONS CARRY ZERO PRODUCT PRESENCE.",
+    "In [TEACH], [PAIN] and [STORY] sections: no brand or product names, no",
+    "deliverables, no 'when paired with…' pivots, no value-stack language, no",
+    "pricing, no purchase framing of any kind. Category-level references are fine",
+    "and often necessary — 'proper food-inflammation testing', 'a structured",
+    "reintroduction protocol' — when the mechanism genuinely requires them.",
+    "",
+    "RULE 4 — [OBJECTION] SECTIONS ARE BUYER'S-GUIDE EDUCATION, NOT DEFENCE.",
+    "Do NOT write 'why our offer is different'. Teach the viewer how to evaluate ANY",
+    "solution in this category: what separates a useful test from dashboard theater,",
+    "why interpretation matters more than raw data, what to ask any provider before",
+    "paying them. Name no brands. The differentiation you build here gets cashed in",
+    "once, at the CTA, by a viewer who now knows what to look for.",
+    "",
+    "RULE 5 — [PROOF] ESTABLISHES CREDIBILITY WITHOUT PITCHING.",
+    "Who the speaker is and why they have earned the next twenty minutes of",
+    "attention. At most a forward promise — 'at the end I'll tell you exactly what I",
+    "use'. No deliverables, no price, no description of the offer.",
+    "",
+    "RULE 6 — URGENCY AND SCARCITY LIVE ONLY IN [CTA].",
+    "No 'slots are limited', no 'don't wait', no 'you cannot go on living this way'",
+    "anywhere before the CTA. Mid-script urgency is precisely what makes value",
+    "content read as an infomercial.",
+    "",
+    "RULE 7 — THE FREE VALUE IS GENUINELY FREE.",
+    "Every protocol and tip must be complete and useful standing entirely alone. No",
+    "per-tip sales taglines, no tip that is deliberately truncated to create a gap",
+    "the product fills. The honest scoping of what self-directed work can and cannot",
+    "reveal happens EXACTLY ONCE, in a single bridge paragraph immediately before",
+    "the CTA — for example: 'tracking shows you the pattern; it cannot show you the",
+    "immune response driving it — that is what testing is for.' That bridge is the",
+    "only sanctioned pivot in the entire script."
+  );
+
+  /**
+   * Carried over verbatim from buildOfferBlock (offerProfile.ts:273-291). See the
+   * header note: value_first concentrates fact fidelity into one section, it does
+   * not relax it. A CTA that names the wrong panel is the FIT 176 failure again.
+   */
+  lines.push(
+    "",
+    "FACT FIDELITY — the strictest rule in this block, and it OUTRANKS every",
+    "placement rule above:",
+    "Every number, panel name, product name, price, count, duration and timeline",
+    "above is a VERBATIM FACT about a real product a real person will buy. When",
+    "you refer to any of them you MUST reproduce them exactly as written.",
+    "- NEVER change a number. Not rounded, not approximated, not 'over' or",
+    "  'nearly', not converted to a different unit.",
+    "- NEVER alter a product, panel, test or kit name — not a word of it, and",
+    "  never a different model number or variant you know of from elsewhere.",
+    "- NEVER add a specific that is absent above. No extra markers, no extra",
+    "  foods tested, no additional sessions, no invented turnaround time.",
+    "- NEVER elaborate a deliverable into a claim about what it detects or",
+    "  proves beyond the words given.",
+    "- If you are unsure of a specific, describe the deliverable in general",
+    "  terms WITHOUT the number rather than guessing at it.",
+    "Your own background knowledge about this product or its category is NOT a",
+    "source. The block above is the only source.",
+    "",
+    "Fewer, better-placed mentions is the goal. If you find yourself wanting to",
+    "mention the offer a third time, that is the signal to teach something instead.",
+    "=== END VALUE-FIRST SELL POLICY ==="
+  );
+
+  return lines.join("\n");
+}
+
+/**
  * Build the script generation system prompt.
  *
  * `opts` is optional so every existing caller and test keeps working unchanged.
@@ -798,6 +967,12 @@ function buildSystemPrompt(
     hookBlock?: string;
     /** Part 3C. Aggregate structural analysis across the researched transcripts. */
     structureBlock?: string;
+    /**
+     * v2.4 Part 1/2. Selects the offer block. Defaults to `balanced` so every
+     * existing caller and test — which pass no such key — keeps producing the
+     * exact prompt they produced before v2.4.
+     */
+    ctaStyle?: CtaStyle;
   } = {}
 ): string {
   const {
@@ -808,14 +983,24 @@ function buildSystemPrompt(
     ctaOverride = null,
     hookBlock = "",
     structureBlock = "",
+    ctaStyle = "balanced",
   } = opts;
   // Part 3B — mutually exclusive by construction. Two competing closes make the
   // script argue with itself for fifteen minutes, so an override wins outright
   // and the offer block is not emitted alongside it.
+  //
+  // v2.4 — which offer block gets emitted is the ONLY thing ctaStyle changes in
+  // this function. `balanced` reaches buildOfferBlock exactly as before, so a
+  // balanced prompt is byte-identical to its pre-v2.4 self (regression-tested).
+  // A ctaOverride still wins over both: the operator's own words outrank a
+  // placement policy, and a value-first block alongside an override would be the
+  // same two-competing-closes bug 3B already solved.
   const offerSection = ctaOverride && ctaOverride.trim()
     ? "\n" + buildCtaOverrideBlock(ctaOverride) + "\n"
     : offerProfile
-      ? "\n" + buildOfferBlock(offerProfile) + "\n"
+      ? "\n" + (ctaStyle === "value_first"
+          ? buildValueFirstOfferBlock(offerProfile)
+          : buildOfferBlock(offerProfile)) + "\n"
       : "";
 
   // Default demographic line, replaced wholesale when a persona is selected.
@@ -1545,10 +1730,96 @@ export const scriptGenerationInput = z.object({
        * rather than picking a price point on the operator's behalf.
        */
       offerTier: z.string().trim().min(1).max(200).optional(),
+      /**
+       * v2.4 Part 1 — sell density. Optional: omitted means "use the format
+       * default", which is `value_first` for long-form. Resolved by
+       * `resolveCtaStyle` and the RESOLVED value is what gets frozen into
+       * `generation_params`, so a stored row never says "default".
+       */
+      ctaStyle: z.enum(CTA_STYLES).optional(),
 });
 
 /** Fully-defaulted generation input, i.e. what the resolver actually receives. */
 export type ScriptGenerationInput = z.infer<typeof scriptGenerationInput>;
+
+/**
+ * Per-format DEFAULT sell density.
+ *
+ * Typed as an exhaustive `Record<ScriptFormat, CtaStyle>` on purpose: adding a
+ * seventh format becomes a compile error here rather than silently inheriting
+ * `balanced`, which is the failure mode where a new long-form format quietly
+ * ships with direct-response sell density.
+ *
+ * The split is by intent, not by length. `email`, `ad_copy` and
+ * `sales_page_section` exist to sell — v2.4's whole premise is that the 3B rules
+ * are CORRECT there. `short_form` is 60–90 seconds where there is no room for a
+ * mid-roll signpost plus a separate close, so its single mention should be the
+ * close: that is `balanced`.
+ */
+const FORMAT_DEFAULT_CTA_STYLE: Record<ScriptFormat, CtaStyle> = {
+  youtube_script: "value_first",
+  podcast_outline: "value_first",
+  short_form: "balanced",
+  email: "balanced",
+  ad_copy: "balanced",
+  sales_page_section: "balanced",
+};
+
+/** Formats where a `value_first` request is refused rather than honoured. */
+const DIRECT_RESPONSE_FORMATS: ReadonlySet<ScriptFormat> = new Set<ScriptFormat>([
+  "email", "ad_copy", "sales_page_section", "short_form",
+]);
+
+export interface ResolvedCtaStyle {
+  style: CtaStyle;
+  /** True when the operator asked for value_first on a direct-response format. */
+  overridden: boolean;
+  /** Operator-facing explanation, surfaced in the response. Null when honoured. */
+  warning: string | null;
+}
+
+/**
+ * Resolve the effective CTA style for a generation.
+ *
+ * The refusal is deliberate and is REPORTED rather than silent: an ad that
+ * withheld its offer until the last line would be a broken ad, so the request is
+ * declined — but a request that quietly did nothing would leave the operator
+ * believing they had changed something. Same principle as v2.3's
+ * `tier_not_chosen`: decline loudly, never pretend.
+ */
+export function resolveCtaStyle(
+  format: ScriptFormat,
+  requested?: CtaStyle | null
+): ResolvedCtaStyle {
+  const fallback = FORMAT_DEFAULT_CTA_STYLE[format];
+  if (!requested) {
+    return { style: fallback, overridden: false, warning: null };
+  }
+  if (requested === "value_first" && DIRECT_RESPONSE_FORMATS.has(format)) {
+    return {
+      style: "balanced",
+      overridden: true,
+      warning:
+        `Value-first was requested but ignored for format "${format}": this format is ` +
+        `direct-response by nature, where the offer belongs throughout. Generated as balanced.`,
+    };
+  }
+  return { style: requested, overridden: false, warning: null };
+}
+
+/**
+ * Read a frozen `generation_params.ctaStyle` back off a stored row.
+ *
+ * Pre-v2.4 rows have no such key, and a variant or section regeneration of one
+ * must not crash or silently pick the opposite mode. Those rows were generated
+ * under the old rules, so `balanced` is the honest reading of what they are —
+ * NOT the format default, which would retroactively claim an old salesy script
+ * had been written value-first.
+ */
+export function ctaStyleFromParams(params: unknown): CtaStyle {
+  const raw = (params as { ctaStyle?: unknown } | null | undefined)?.ctaStyle;
+  return raw === "value_first" || raw === "balanced" ? raw : "balanced";
+}
 
 /**
  * ─── v2.3 Part 3 — the generation pipeline, extracted ────────────────────────
@@ -1595,6 +1866,11 @@ export const scriptVariantOverrides = z.object({
   analogDataEntryIds: z.array(z.number().int().positive()).max(5).optional(),
   ctaOverride: z.string().trim().min(3).max(500).optional(),
   format: z.enum(SCRIPT_FORMATS).optional(),
+  /**
+   * v2.4 — this is the operator's stated two-click path: take an existing salesy
+   * script and produce a value-first variant of it.
+   */
+  ctaStyle: z.enum(CTA_STYLES).optional(),
 });
 export type ScriptVariantOverrides = z.infer<typeof scriptVariantOverrides>;
 
@@ -2112,6 +2388,18 @@ export async function runScriptGeneration(
     explicitNorthStar,
     research.context
   );
+  /*
+   * v2.4 Part 1 — resolve sell density BEFORE the prompt is built.
+   *
+   * Resolved once and reused for the prompt, the frozen params and the response,
+   * so those three can never disagree about which mode ran. The warning is
+   * surfaced rather than swallowed: a refused request that looked accepted is
+   * worse than one that was never offered.
+   */
+  const resolvedCtaStyle = resolveCtaStyle(input.format, input.ctaStyle ?? null);
+  if (resolvedCtaStyle.warning) {
+    console.warn(`[ScriptFactory] ${resolvedCtaStyle.warning}`);
+  }
   const lengthInstruction = buildLengthInstruction(targetLengthMinutes);
   const systemPrompt = buildSystemPrompt(input.format, groundedContext, {
     persona: personaContext,
@@ -2123,6 +2411,9 @@ export async function runScriptGeneration(
     // exists, so an ungrounded run gets no misleading scaffolding.
     hookBlock: research.hookBlock,
     structureBlock: research.structureBlock,
+    // v2.4 — resolved above, never the raw request: a value_first ask on an
+    // email is refused, and the prompt must reflect what was actually decided.
+    ctaStyle: resolvedCtaStyle.style,
   });
 
   // 4. Generate script via LLM
@@ -2315,6 +2606,85 @@ export async function runScriptGeneration(
   const cadence = lintCadence(scriptBody);
 
   /*
+   * ── 5a. Sell-density lint (v2.4 Part 3) ───────────────────────────────
+   *
+   * value_first ONLY, and only when an offer actually bound: with no profile
+   * there is no brand to over-mention, and running the lint anyway would report
+   * a meaningless "within budget" on a script it never checked.
+   *
+   * ORDERING — after the story lint, before timestamps. After, because the story
+   * correction pass can rewrite the whole body and would invalidate a
+   * sell-density measurement taken before it. Before timestamps, because
+   * insertTimestamps is applied last by design and a rewrite pass here would
+   * otherwise duplicate stamps.
+   *
+   * SEVERITY — degrades like cadence, never throws like story integrity. The
+   * operator's ruling, stated in their own terms: a slightly salesy script is
+   * editable, a destroyed generation is not.
+   */
+  let sellDensity: SellDensityReport | null = null;
+  let sellDensityRewriteUsed = false;
+  if (resolvedCtaStyle.style === "value_first" && boundOffer) {
+    sellDensity = lintSellDensity(scriptBody, boundOffer);
+
+    if (!sellDensity.withinBudget) {
+      console.warn(
+        `[ScriptFactory] sell density over budget: ${sellDensity.summary}\n` +
+        sellDensity.findings.map((f) => `  [${f.section}#${f.sectionIndex + 1}] ${f.kind}: ${f.matched}`).join("\n")
+      );
+      try {
+        const rewritten = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Write a ${FORMAT_DESCRIPTIONS[input.format]} about: ${input.topic}` },
+            { role: "assistant", content: scriptBody },
+            { role: "user", content: buildSellDensityRewriteInstruction(sellDensity) },
+          ],
+        });
+        const fixed = String(rewritten?.choices?.[0]?.message?.content ?? "");
+        if (fixed.length > 50) {
+          /*
+           * ACCEPTANCE GATE. The rewrite is accepted only if it reaches budget
+           * AND leaves the two guarantees already verified on this body intact.
+           * A pass that fixed sell density by deleting the story slot, or by
+           * reintroducing a fabricated patient, is not an improvement — it is a
+           * regression laundered through a lint. Story integrity is checked
+           * first and is disqualifying on its own.
+           */
+          const storyRecheck = lintStoryIntegrity(fixed, input.storyMode);
+          const storyStillClean =
+            storyRecheck.violations.length === 0 && !storyRecheck.missingCompositeLabel;
+          const cadenceRecheck = lintCadence(fixed);
+          const cadenceNotWorse = cadenceRecheck.violations.length <= cadence.violations.length;
+          const densityRecheck = lintSellDensity(fixed, boundOffer);
+
+          if (storyStillClean && cadenceNotWorse && densityRecheck.withinBudget) {
+            scriptBody = fixed;
+            sellDensity = densityRecheck;
+            sellDensityRewriteUsed = true;
+            console.log(`[ScriptFactory] sell-density rewrite accepted: ${densityRecheck.summary}`);
+          } else {
+            /*
+             * REJECTED, and the original body is kept. Reporting why matters:
+             * "the rewrite was refused because it broke story integrity" is a
+             * different fact from "the model could not reduce sell density", and
+             * an operator debugging a persistent advisory needs to know which.
+             */
+            console.warn(
+              "[ScriptFactory] sell-density rewrite REJECTED — " +
+              `story_clean=${storyStillClean} cadence_not_worse=${cadenceNotWorse} ` +
+              `within_budget=${densityRecheck.withinBudget}. Keeping original body.`
+            );
+          }
+        }
+      } catch (err) {
+        // A failed rewrite call must leave the advisory standing, not mask it.
+        console.error("[ScriptFactory] sell-density rewrite pass failed:", err);
+      }
+    }
+  }
+
+  /*
    * ── 5b. Grounding metric (Part 3E) ────────────────────────────────────
    *
    * Instance-based, computed on the still-tagged body because [VERIFIED] is
@@ -2429,6 +2799,12 @@ export async function runScriptGeneration(
       researchJobId: research.jobId ?? null,
       seedKeyword: input.seedKeyword ?? null,
       useCorpusSearch: input.useCorpusSearch,
+      /*
+       * v2.4 — the RESOLVED style, never the request. A value_first ask on an
+       * email resolves to balanced, and freezing the request would make the row
+       * claim a mode that never ran — then a variant of it would inherit the lie.
+       */
+      ctaStyle: resolvedCtaStyle.style,
       /*
        * Recorded, not read back on regeneration. The model that wrote a script is
        * an audit fact; pinning a future variant to a stale model would silently
@@ -2564,6 +2940,31 @@ export async function runScriptGeneration(
     storyMode: input.storyMode,
     storyCorrectionPassUsed,
     storySlotCount: countWordsWithStorySlots(scriptBody).slotCount,
+    /*
+     * ── v2.4 — sell density ────────────────────────────────────────────
+     *
+     * NULL means the lint did not run (balanced mode, or no offer bound), which
+     * is a different fact from "ran and found nothing". Same distinction the
+     * operator insisted on for the offer-fidelity rule: not_applicable is never
+     * reported as passed.
+     */
+    ctaStyle: resolvedCtaStyle.style,
+    ctaStyleWarning: resolvedCtaStyle.warning,
+    sellDensity: sellDensity
+      ? {
+          brandedMentions: sellDensity.brandedMentions,
+          deliverablesLists: sellDensity.deliverablesLists,
+          priceMentions: sellDensity.priceMentions,
+          urgencyPhrases: sellDensity.urgencyPhrases,
+          withinBudget: sellDensity.withinBudget,
+          midRollPercent: sellDensity.midRollPercent,
+          midRollInWindow: sellDensity.midRollInWindow,
+          ctaAt: sellDensity.ctaAt,
+          summary: sellDensity.summary,
+          findings: sellDensity.findings,
+          rewritePassUsed: sellDensityRewriteUsed,
+        }
+      : null,
     // Part 3B — the operator must be able to see WHY a CTA closed the way it
     // did: bound to an offer, overridden, or unbound.
     offerBinding: input.ctaOverride

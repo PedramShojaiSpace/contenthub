@@ -476,6 +476,86 @@ function toggleFaq(i) {
   if (btn) btn.setAttribute('aria-expanded', String(!open));
 }
 
+// ── A/B Test Tracking ────────────────────────────────────────────────────────
+// The static TY page bypasses the React SPA, so we call assignVariant directly.
+// Video A (control) = hobj7srg3q | Video B (treatment) = 10cdtpm3il
+var TY_AB_TEST_ID = 1;
+var VIDEO_A = 'hobj7srg3q';
+var VIDEO_B = '10cdtpm3il';
+var currentVideoId = VIDEO_A; // default; updated after variant assignment
+
+function getOrCreateVisitorId() {
+  var key = 'ty_visitor_id';
+  var id = localStorage.getItem(key);
+  if (!id) {
+    id = 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+function getCachedTyVariant() {
+  var v = localStorage.getItem('ty_ab_variant');
+  return (v === 'A' || v === 'B') ? v : null;
+}
+
+(function initAbTracking() {
+  var visitorId = getOrCreateVisitorId();
+  var cached = getCachedTyVariant();
+
+  function applyVariant(variant, variantId) {
+    localStorage.setItem('ty_ab_variant', variant);
+    sessionStorage.setItem('__ab_variant_id', String(variantId));
+    currentVideoId = variant === 'B' ? VIDEO_B : VIDEO_A;
+    // Update the thumb src if Wistia hasn't loaded yet
+    var thumb = document.getElementById('wistia-thumb');
+    if (thumb && variant === 'B') {
+      thumb.src = 'https://embed-ssl.wistia.com/deliveries/10cdtpm3il.jpg?image_crop_resized=960x540';
+    }
+  }
+
+  if (cached) {
+    // Sticky: re-apply cached variant without a new API call
+    applyVariant(cached, cached === 'B' ? 2 : 1);
+    return;
+  }
+
+  // New visitor — call assignVariant to get a fresh 50/50 assignment
+  var params = new URLSearchParams(window.location.search);
+  var lpVariant = localStorage.getItem('ic_lp_variant') || 'unknown';
+  var baseCampaign = params.get('utm_campaign') || 'organic';
+  var campaignWithLp = lpVariant !== 'unknown' ? baseCampaign + '__lp_' + lpVariant : baseCampaign;
+
+  var payload = JSON.stringify({
+    json: {
+      testId: TY_AB_TEST_ID,
+      visitorId: visitorId,
+      utmSource: params.get('utm_source') || undefined,
+      utmCampaign: campaignWithLp
+    }
+  });
+
+  fetch('/api/trpc/abTest.assignVariant', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: payload
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var result = data && data.result && data.result.data && data.result.data.json;
+    if (result) {
+      var variant = result.isControl ? 'A' : 'B';
+      applyVariant(variant, result.variantId);
+    }
+  })
+  .catch(function() {
+    // Fallback: random 50/50
+    var fallback = Math.random() < 0.5 ? 'A' : 'B';
+    applyVariant(fallback, fallback === 'B' ? 2 : 1);
+  });
+})();
+
 // ── Wistia click-to-play facade ─────────────────────────────────────────────
 var wistiaLoaded = false;
 function loadWistia() {
@@ -488,7 +568,8 @@ function loadWistia() {
   if (player) player.style.display = 'block';
   if (facade) facade.onclick = null;
   var iframe = document.createElement('iframe');
-  iframe.src = 'https://fast.wistia.net/embed/iframe/hobj7srg3q?seo=true&videoFoam=true&autoPlay=true';
+  // Use the variant-assigned video ID (set by initAbTracking above)
+  iframe.src = 'https://fast.wistia.net/embed/iframe/' + currentVideoId + '?seo=true&videoFoam=true&autoPlay=true';
   iframe.title = 'Interconnected Thank You Video';
   iframe.allow = 'autoplay; fullscreen';
   iframe.setAttribute('allowtransparency', 'true');
@@ -503,6 +584,27 @@ function firePixel() {
   try {
     var fbq = window.fbq;
     if (typeof fbq === 'function') fbq('track', 'InitiateCheckout', { value: 67, currency: 'USD', content_name: 'Interconnected All-Access Bundle' });
+  } catch(_) {}
+
+  // Record A/B conversion
+  try {
+    var storedVariantId = sessionStorage.getItem('__ab_variant_id');
+    var vid = getOrCreateVisitorId();
+    if (storedVariantId && vid) {
+      fetch('/api/trpc/abTest.recordConversion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          json: {
+            testId: TY_AB_TEST_ID,
+            visitorId: vid,
+            conversionType: 'checkout_start',
+            revenueCents: 6700
+          }
+        })
+      }).catch(function() {});
+    }
   } catch(_) {}
 }
 </script>

@@ -329,26 +329,19 @@ export default function InterconnectedThankYouB() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const visitorId = useRef(getVisitorId());
 
-  // A/B tracking: assign variant (records exposure) and set up conversion recording
-  const assignVariant = trpc.abTest.assignVariant.useMutation({
-    onSuccess: (data) => {
-      // Store variantId for conversion recording
-      sessionStorage.setItem('__ab_variant_id', String(data.variantId));
-    },
-  });
+  // A/B tracking: variant is already assigned by the Splitter before this page mounts.
+  // The Splitter calls assignVariant (records exposure in DB) and passes the variant
+  // via the 'ty_ab_variant' localStorage key. We just need to store variantId for
+  // conversion recording and fire the pixel.
   const recordConversion = trpc.abTest.recordConversion.useMutation();
 
   useEffect(() => {
-    // Record exposure for this visitor on Version B
-    const attrib = (() => {
-      try { return JSON.parse(sessionStorage.getItem('__utm_attrib') || '{}'); } catch { return {}; }
-    })();
-    assignVariant.mutate({
-      testId: AB_TEST_ID,
-      visitorId: visitorId.current,
-      utmSource: attrib.utmSource,
-      utmCampaign: attrib.utmCampaign,
-    });
+    // Read the variant assignment the Splitter already made
+    const cachedVariant = localStorage.getItem('ty_ab_variant'); // 'A' or 'B'
+    // Variant 1 = A (control), Variant 2 = B (treatment)
+    const variantId = cachedVariant === 'B' ? 2 : 1;
+    sessionStorage.setItem('__ab_variant_id', String(variantId));
+
     // Fire pixel Lead event
     const leadEventId = sessionStorage.getItem('__capi_lead_event_id') ?? undefined;
     firePixel("Lead", {}, leadEventId);

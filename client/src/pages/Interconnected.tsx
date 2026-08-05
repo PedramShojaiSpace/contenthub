@@ -261,6 +261,8 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
       if (data?.capiLeadEventId) {
         sessionStorage.setItem('__capi_lead_event_id', data.capiLeadEventId);
       }
+      // Tell the TY splitter which LP variant this visitor came from (for cross-tabulation)
+      localStorage.setItem('ic_lp_variant', 'A');
       navigate("/interconnected/thank-you");
     },
     onError: (e) => setError(e.message),

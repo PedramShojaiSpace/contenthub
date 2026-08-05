@@ -334,31 +334,20 @@ export default function InterconnectedThankYou() {
   const [videoId, setVideoId] = useState<string>(VIDEO_A); // default to control until assigned
   const visitorId = useRef(getVisitorId());
 
-  // ── A/B test: assign variant on mount ──────────────────────────────────────
-  const assignVariant = trpc.abTest.assignVariant.useMutation({
-    onSuccess: (data) => {
-      // Variant 1 = control (Video A), Variant 2 = treatment (Video B)
-      // isControl flag from the server is the authoritative signal
-      const useB = !data.isControl;
-      setVideoId(useB ? VIDEO_B : VIDEO_A);
-      // Store for conversion recording
-      sessionStorage.setItem('__ab_variant_id', String(data.variantId));
-    },
-  });
-
+  // ── A/B test: variant is already assigned by the Splitter before this page mounts.
+  // The Splitter calls assignVariant (records exposure in DB) and passes the variant
+  // via the 'ty_ab_variant' localStorage key. We just need to read it and store the
+  // variantId in sessionStorage for conversion recording.
   const recordConversion = trpc.abTest.recordConversion.useMutation();
 
   useEffect(() => {
-    // Assign visitor to a variant (sticky — same visitor always gets same variant)
-    const attrib = (() => {
-      try { return JSON.parse(sessionStorage.getItem('__utm_attrib') || '{}'); } catch { return {}; }
-    })();
-    assignVariant.mutate({
-      testId: AB_TEST_ID,
-      visitorId: visitorId.current,
-      utmSource: attrib.utmSource,
-      utmCampaign: attrib.utmCampaign,
-    });
+    // Read the variant assignment the Splitter already made
+    const cachedVariant = localStorage.getItem('ty_ab_variant'); // 'A' or 'B'
+    // Variant 1 = A (control), Variant 2 = B (treatment)
+    const variantId = cachedVariant === 'B' ? 2 : 1;
+    sessionStorage.setItem('__ab_variant_id', String(variantId));
+    // Video is always A here since this is the control page — no change needed
+
     // Fire pixel Lead event
     const leadEventId = sessionStorage.getItem('__capi_lead_event_id') ?? undefined;
     firePixel("Lead", {}, leadEventId);

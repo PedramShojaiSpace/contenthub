@@ -96,15 +96,18 @@ export default function InterconnectedThankYouSplitter() {
     const params = new URLSearchParams(window.location.search);
     const lpVariant = getLandingPageVariant();
 
+    // Encode LP variant into utmCampaign suffix so we can cross-tabulate LP-A/B × TY-A/B
+    // (utmContent is not in the assignVariant schema — encode in utmCampaign instead)
+    const baseCampaign = params.get("utm_campaign") ?? undefined;
+    const campaignWithLp = lpVariant !== "unknown"
+      ? `${baseCampaign ?? "organic"}__lp_${lpVariant}`
+      : baseCampaign;
+
     assignMutation.mutate({
       testId: TY_AB_TEST_ID,
       visitorId,
-      // Pass UTM context
       utmSource: params.get("utm_source") ?? undefined,
-      utmCampaign: params.get("utm_campaign") ?? undefined,
-      // Pass landing page variant so we can cross-tabulate LP-A/B × TY-A/B
-      // stored in metadata field if the abTest router supports it
-      utmContent: lpVariant !== "unknown" ? `lp_${lpVariant}` : undefined,
+      utmCampaign: campaignWithLp,
     });
   }, []);
 

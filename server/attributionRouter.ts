@@ -513,27 +513,61 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       receivedAt: Date.now(),
     });
 
-    // Fire CAPI for attributed sales
-    if (matchedClick) {
-      const capiSent = await sendCapiPurchase({
-        eventId,
-        orderTotal,
-        currency,
-        customerEmail,
-        fbclid: matchedClick.fbclid,
-        advertorialSlug: matchedClick.advertorialSlug,
-        utmCampaign: matchedClick.utmCampaign,
-      });
-
-      if (capiSent) {
-        await db.update(attributedSales)
-          .set({ capiEventSent: true, capiEventId: eventId, capiSentAt: Date.now() })
-          .where(eq(attributedSales.shopifyOrderId, shopifyOrderId));
-      }
+    // ── Fire Meta CAPI Purchase for ALL orders (attributed + unattributed) ───────────
+    const capiSent = await sendCapiPurchase({
+      eventId,
+      orderTotal,
+      currency,
+      customerEmail,
+      fbclid: matchedClick?.fbclid ?? null,
+      advertorialSlug: matchedClick?.advertorialSlug ?? null,
+      utmCampaign: matchedClick?.utmCampaign ?? null,
+    });
+    if (capiSent) {
+      await db.update(attributedSales)
+        .set({ capiEventSent: true, capiEventId: eventId, capiSentAt: Date.now() })
+        .where(eq(attributedSales.shopifyOrderId, shopifyOrderId));
     }
 
-    console.log(`[shopify/order-paid] Order ${shopifyOrderNumber} — attribution: ${attributionType}${matchedClick ? ` via ${matchedClick.utmCampaign || matchedClick.utmSource || "unknown"}` : ""}`);
-    return res.json({ status: "ok", orderId: shopifyOrderId, attributionType });
+    // ── Klaviyo post-purchase tagging + "Placed Order" event ─────────────────────
+    try {
+      const { tagKlaviyoPurchaser, detectFunnelProduct } = await import("../shopify");
+      const orderLineItems: any[] = order.line_items || [];
+      const purchaseTags: string[] = ["shopify_buyer"];
+      for (const li of orderLineItems) {
+        const detected = detectFunnelProduct(li);
+        if (detected) purchaseTags.push(detected.product.klaviyoTag);
+      }
+      let customerPhone: string | undefined;
+      if (customerEmail) {
+        const { interconnectedLeads } = await import("../../drizzle/schema");
+        const [lead] = await db.select({ phone: interconnectedLeads.phone })
+          .from(interconnectedLeads)
+          .where(eq(interconnectedLeads.email, customerEmail.toLowerCase().trim()))
+          .limit(1);
+        if (lead?.phone) customerPhone = lead.phone;
+      }
+      if (customerEmail) {
+        await tagKlaviyoPurchaser({
+          email: customerEmail,
+          firstName: order.customer?.first_name ?? undefined,
+          phone: customerPhone,
+          tags: purchaseTags,
+          orderTotal,
+          shopifyOrderId,
+          lineItems: orderLineItems.map((li: any) => ({
+            title: li.title ?? "",
+            sku: li.sku ?? undefined,
+            price: li.price ?? "0",
+          })),
+        });
+      }
+    } catch (klaviyoErr: any) {
+      console.warn("[shopify/order-paid] Klaviyo tagging failed:", klaviyoErr?.message);
+    }
+
+    console.log(`[shopify/order-paid] Order ${shopifyOrderNumber} — attribution: ${attributionType} — CAPI: ${capiSent}`);
+    return res.json({ status: "ok", orderId: shopifyOrderId, attributionType, capiSent });
   } catch (err) {
     console.error("[shopify/order-paid] Error:", err);
     return res.status(500).json({ error: "Internal error" });

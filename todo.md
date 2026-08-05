@@ -4548,3 +4548,13 @@ Pricing model (corrected):
 - [x] Fix splitter: cached visitors skip assignVariant entirely — no exposure re-recorded on return visits (correct behavior but means only first-time visitors are tracked)
 - [x] Fix TY pages A and B: both call assignVariant redundantly after splitter already called it — remove duplicate calls from individual pages
 - [x] Verify: after fix, ab_exposures table accumulates rows matching real traffic
+
+## Shopify Commerce Infrastructure (Prep for Funnel Migration)
+- [x] Create server/shopify.ts — FUNNEL_PRODUCTS SKU map, buildCheckoutUrl, tagKlaviyoPurchaser, createStorefrontCheckout, detectFunnelProduct
+- [x] Create server/shopifyRouter.ts — tRPC: listFunnelProducts, getCheckoutUrl, createCheckout, getWebhookConfig, testConnection
+- [x] Register shopifyRouter in appRouter
+- [x] Upgrade handleShopifyOrderPaid — CAPI fires for ALL orders (not just attributed), Klaviyo "Placed Order" event + buyer tagging
+- [ ] Register Shopify orders/paid webhook in Shopify Admin (URL: https://content.theurbanmonk.com/api/shopify/order-paid)
+- [ ] Add SHOPIFY_WEBHOOK_SECRET to project secrets after registering webhook
+- [ ] Create Urban Monk Academy $297/yr Shopify product and update upstream_academy variantId in FUNNEL_PRODUCTS
+- [ ] Update thank-you page buy buttons to use trpc.shopify.getCheckoutUrl when funnel switches to Shopify

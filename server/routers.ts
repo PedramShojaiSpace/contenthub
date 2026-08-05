@@ -136,6 +136,7 @@ import { vaTasksRouter } from "./vaTasksRouter";
 import { kajabiLiveRouter } from "./kajabiLiveRouter";
 import { advertorialRouter } from "./advertorialRouter";
 import { attributionRouter } from "./attributionRouter";
+import { shopifyRouter } from "./shopifyRouter";
 import { attributionPanelRouter } from "./attributionPanelRouter";
 import { funnelCommandRouter } from "./funnelCommandRouter";
 import { adsMonitorRouter } from "./adsMonitorRouter";
@@ -534,6 +535,7 @@ export const appRouter = router({
   kajabiLive: kajabiLiveRouter,
   advertorial: advertorialRouter,
   attribution: attributionRouter,
+  shopify: shopifyRouter,
   attributionPanel: attributionPanelRouter,
   adsMonitor: adsMonitorRouter,
   funnelCommand: funnelCommandRouter,

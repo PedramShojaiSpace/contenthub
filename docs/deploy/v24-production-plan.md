@@ -1,13 +1,21 @@
 # Script Factory v2.2 – v2.4: Production Deployment Plan
 
-**Branch:** `feature/script-factory-v22` @ `f330451`
+**Branch:** `feature/script-factory-v22` @ `f6bb622` (plan) — code changes from review round 1 applied on top
 **Target:** production database `iUgsiz76NwfDUVHZHV7CyJ` on TiDB Serverless
 **Status:** proposal for review. Nothing has been merged; production has not been written to.
-**Prepared:** 2026-08-05
+**Prepared:** 2026-08-05 · **Revised:** 2026-08-05 after review round 1
 
 > Everything in this document was verified against the live production database by
 > read-only introspection, or against the branch by direct file reading. Where a
 > figure is an estimate rather than a measurement, it says so.
+
+> **Revision note — what changed in round 1.** Q1 was resolved *against* my analysis:
+> `scripts.production_status` was never a real column, and the drift pair I reported was an
+> artifact of my own extractor. `metric_version` was added on the owner's instruction.
+> `collective_sourcing_candidates` was deferred out of this deploy. Verification step 5.7
+> contained a defect the owner caught — an `INSERT` that would have failed on a healthy
+> migration — and is now read-only. Details in Part 6, which now records resolutions
+> rather than open questions.
 
 ---
 
@@ -27,6 +35,15 @@ distinction matters for both the SQL and the backup mechanism.
 damage the database.** A naive live-vs-declared diff reports 55 missing columns. Only 16
 are real. 35 of the remainder are the same column under two names, and adding them would
 silently split live data away from the column the application reads.
+
+**One of those 35 was my own error, and it is worth knowing why.** I originally reported a
+36th pair — `scripts.production_status` versus live `scriptStatus` — and escalated it as a
+question I refused to answer myself. The owner resolved it with evidence: the SQL name has
+*always* been `scriptStatus`; `productionStatus` is only the TypeScript property name, and
+the string lives in a shared enum helper declared far from its usage site. My extractor
+could not see that far, so it fell back to the property key and invented a plausible column
+name. The lesson is now policy in this document: **every drift pair needs a three-way check
+— main declaration, branch declaration, live column — before it is called drift.**
 
 ---
 
@@ -73,6 +90,12 @@ Reproducible with two scripts committed alongside this plan:
 ```bash
 node scripts/extract-schema-columns.mjs drizzle/schema.ts /tmp/cols.json
 node scripts/pair-drift-vs-additions.mjs
+
+# And the reviewer's cross-check: every SQL name in the migration against its
+# declaration in schema.ts, resolved from the TypeScript AST rather than by regex.
+node scripts/verify-column-names.mjs
+# Output committed at docs/deploy/v24-column-name-verification.txt
+#   65 columns printed · UNRESOLVED: 0 · NOT FOUND: 0
 ```
 
 **Tables to create — 3.**
@@ -83,15 +106,24 @@ node scripts/pair-drift-vs-additions.mjs
 | `suggested_ideas` | 20 | Persistent idea engine |
 | `topic_nodes` | 14 | Topic tree for idea expansion |
 
-**Columns to add — 16.**
+**Columns to add — 15.**
 
 | Table | Columns | Rows affected |
 |---|---|---|
-| `script_factory_outputs` | 13 (see migration Section 2) | 5 |
+| `script_factory_outputs` | 14 (see migration Section 2) | 5 |
 | `analog_data_entries` | `offer_profile` | 1 |
-| `collective_sourcing_candidates` | `notes`, `updated_at` | 0 |
+| ~~`collective_sourcing_candidates`~~ | ~~`notes`, `updated_at`~~ | **deferred to v2.5 — excluded** |
 
-**Columns that must NOT be added — 35.** These are declaration drift: `schema.ts` and
+The 14th column on `script_factory_outputs` is `metric_version varchar(16) NULL`, added in
+review round 1. It records **which definition** produced that row's `verification_pct`. The
+column has held two incompatible measures under one name: pre-v2.2 it was the share of all
+bracketed markers that happened to be `[VERIFIED]`; from v2.2 it is the share of sections
+containing grounded material. `scriptMetrics.ts` already computed the version string and
+then discarded it. Production's 5 existing rows stay `NULL`, which reads truthfully as
+"pre-v2.2, not comparable" — see 1.4 and the note in migration Section 2 on why they are
+deliberately not backfilled.
+
+**Columns that must NOT be added — 36.** These are declaration drift: `schema.ts` and
 production use different names for the same live column. A sample:
 
 | Table | `schema.ts` says | Production has |
@@ -105,11 +137,16 @@ production use different names for the same live column. A sample:
 | `llm_assets` | `asset_type` | `llm_asset_type` |
 | `ab_conversions` | `ab_conversion_type` | `conversion_type` |
 | `book_snippets` | `platform`, `title_card_status` | `snippetPlatform`, `titleCardStatus` |
+| `scripts` | *(nothing — property name only)* | `scriptStatus` |
 
 Adding any of these leaves production holding both the real column, with its data, and a
 new empty one that the application then reads and writes. **No error is raised.** This is
 the single largest risk in the whole exercise and the migration deliberately does nothing
 about it. Reconciling drift is separate work (Part 6).
+
+The `scripts` row is the one my tooling got wrong, listed here so the count is honest: it
+was never a column to add, and it is not a rename to reconcile either. There is nothing to
+do for it at all. See Section 0.
 
 ### 1.4 Behavioural changes worth flagging to the owner
 
@@ -134,14 +171,34 @@ Main measures *the share of bracketed markers that are `[VERIFIED]`* — a numbe
 when structure changes even if grounding does not. The branch measures *the share of
 sections containing grounded material*. Both write to `verification_pct`.
 
-`metricVersion` is computed and **not persisted**, so after deploy the column holds two
-incompatible measures with no way to tell which produced a given row. Five live draft rows
-carry old-definition values.
+`metricVersion` was computed and **discarded**, so a row could not say which definition
+produced its number.
 
-Three options, none chosen here: accept a mixed column; null the five so they read "not
-measured"; or add a `metric_version` column so the distinction is recoverable. The third
-is the honest fix and is one more additive column — it is listed in Part 6 rather than
-included, because it is outside the agreed scope.
+**RESOLVED in review round 1 — the owner chose the third option, and it is now implemented.**
+`metric_version varchar(16) NULL` is added by migration Section 2, and the branch persists the
+already-computed value. Three details of the implementation matter more than the column
+itself:
+
+*It is written at exactly two sites, not four.* The generate path computes grounding from
+`computeGroundingMetric`, so stamping `'v2.2-instance'` there is literally true. The two
+section-edit paths (`regenerateSection`, `restoreSection`) deliberately **do not** write it:
+those paths *preserve* the stored counts rather than recomputing them — a correctness fix made
+during v2.3, because `[VERIFIED]` is stripped before save and recomputation yields a false
+zero. Their in-memory `metricVersion` is a literal constructed to satisfy the type, not a
+measurement. Stamping it would relabel a preserved number, and on a migrated row that number
+is the *pre-v2.2* value. A row's metric version is set once, by the generation that produced
+its number, and preserved thereafter — the same discipline as the counts.
+
+*The five legacy rows stay `NULL`, deliberately.* Backfilling them with `'v2.2-instance'`
+would assert a definition their numbers do not have, making the column lie about precisely
+the rows it exists to disambiguate. `NULL` reads as "pre-v2.2, not comparable."
+
+*The old formula is dead, which is what makes the label trustworthy.* `countVerifiedTags`
+still exists at `scriptFactoryRouter.ts:287` and is deliberately retained — exported, with a
+`@deprecated` docblock, and pinned by `scriptMetrics.test.ts` so the divergence between the
+two definitions stays documented rather than becoming folklore. It has **zero live callers**;
+every reference outside tests is a comment. So no live write path can produce a
+non-v2.2 number that then gets labelled v2.2.
 
 **Legacy rows cannot be regenerated as variants.** Variant regeneration replays the frozen
 `generation_params` of its source. The five existing rows have none, so the workspace
@@ -241,10 +298,11 @@ roughly an order of magnitude more per script than `gpt-5-mini`, and the absolut
 are small — cents to tens of cents per script.** At a few scripts per week this is
 immaterial; at hundreds per day it is not.
 
-### 2.4 Recommendation
+### 2.4 Recommendation — APPROVED AND APPLIED
 
 **Set `LLM_MODEL=gpt-5.5` explicitly in the production environment, and change the code
-default to `gemini-2.5-flash`.**
+default to `gemini-2.5-flash`.** Both halves were approved in review round 1. The code change
+is applied on the branch; the env change belongs to the runbook (Part 5).
 
 Two separate points. Setting the env var deliberately gives production the better model —
 `gpt-5.5` is the reason v2.4's value-first CTA and story-integrity work behaves as observed
@@ -261,8 +319,11 @@ behaviour; the upgrade should be a deliberate act. One line:
 + export const LLM_MODEL = process.env.LLM_MODEL || "gemini-2.5-flash";
 ```
 
-This change is **not** on the branch. It is proposed for review, not applied, because it
-reverses a decision made during development and that is the owner's call.
+**Applied.** The literal is now `gemini-2.5-flash`, with a comment at the declaration
+explaining why the default preserves current behaviour rather than naming the best model, and
+cross-referencing the token-parameter interaction in 2.5. Typecheck and test baselines were
+re-verified after the change: `tsc --noEmit` 22 pre-existing errors, none in `llm.ts`;
+`vitest` 33 failures across the same 14 missing-credential suites.
 
 ### 2.5 A token-parameter detail that will not bite, but should be known
 
@@ -294,10 +355,28 @@ during development was built with `push` from `schema.ts`, which is acceptable f
 throwaway database and unacceptable here.
 
 The migration file is structured as: pre-flight checks that abort if production is not in
-the expected state, three `CREATE TABLE` statements, three `ALTER TABLE` blocks, and eight
-verification queries with stated expected results. Every statement is additive. There is no
-`DROP`, `RENAME` or `MODIFY`, and the only data mutation is a self-cleaning utf8mb4 probe
-that can be skipped.
+the expected state, three `CREATE TABLE` statements, **two** `ALTER TABLE` blocks, and nine
+verification queries with stated expected results.
+
+**The file performs no data mutation whatsoever.** Every statement is either DDL or a
+`SELECT`. There is no `DROP`, `RENAME`, `MODIFY`, `INSERT`, `UPDATE` or `DELETE`. That is a
+change from the first draft, and it came out of review:
+
+> Verification 5.7 originally inserted a row containing emoji into `analog_data_entries` and
+> deleted it again, to prove a 4-byte round trip. The owner caught that
+> `analog_data_entries.content` is `NOT NULL` with no default, so the `INSERT` **would have
+> failed** — at the final step of an otherwise entirely successful migration, where an error
+> reads as "the migration broke something." It was also a write into a real business table
+> (this is where the sales page lives) to test a property `information_schema` reports
+> directly. 5.7 is now a read-only charset assertion across every new text column, and a new
+> 5.9 confirms row counts are unchanged.
+
+**Section 4 is intentionally excluded.** `collective_sourcing_candidates` has structurally
+diverged from its declaration — `schema.ts` expects `created_at`/`updated_at`/`status`/`notes`
+while production has `csc_createdAt`/`csc_status`/`imported_at`/`reviewed_at` — and nothing in
+v2.2–v2.4 reads or writes it. Deferred to a v2.5 micro-migration by owner decision. The
+statement and its full analysis are retained in the file, commented out, so v2.5 can lift them
+verbatim rather than re-deriving the reasoning. The rollback file mirrors the exclusion.
 
 **Charset.** Production is already `utf8mb4` / `utf8mb4_bin` at server, database and column
 level. The emoji-truncation risk was a sandbox-only condition caused by local MySQL
@@ -310,6 +389,19 @@ STRUCTURAL FIX"). Creating `JSON` columns that the code treats as `longtext` wou
 typecheck and then misbehave at the database boundary, so the SQL uses `LONGTEXT` and
 annotates every substitution. `0124` and `schema.ts` also disagree on an enum's members and
 on four columns that exist only in the code — all resolved in favour of `schema.ts`.
+
+**Reviewer cross-check on column names.** Because the SQL is hand-written and one wrong
+identifier creates a silent divergence, `docs/deploy/v24-column-name-verification.txt` lists
+every SQL column name in the migration beside the exact declaration string that produced it,
+with the `schema.ts` line number. It is generated by `scripts/verify-column-names.mjs`, which
+walks the **TypeScript AST** rather than pattern-matching text — a deliberate rewrite after
+four successive regex parsers each produced a plausible wrong answer (enum members read as
+column names; a shared enum helper's `.default("todo")` read as a column called `todo`;
+multi-line `longtextJson<{…}>` generics silently dropped; and the `production_status` artifact
+that became Q1). Where a name comes from a shared helper the table says so explicitly, e.g.
+`[helper researchStatusEnum @:3421]`, so that class of error is visible rather than invisible.
+Current output: **65 columns, 0 UNRESOLVED, 0 NOT FOUND.** The script exits non-zero if any
+name fails to resolve, so a gap is loud rather than absent.
 
 ---
 
@@ -407,27 +499,29 @@ Preconditions, all of which must hold before step 1:
 
 - [ ] This plan reviewed and approved by the repo owner.
 - [ ] A TiDB Cloud snapshot confirmed to exist, or a verified `mysqldump` artefact in hand.
-- [ ] Decision recorded on `LLM_MODEL` (Part 2.4).
-- [ ] Decision recorded on `scripts.production_status` (Part 6, Q1) — this one blocks,
-      because it determines whether the migration is 16 columns or 17.
+- [x] Decision recorded on `LLM_MODEL` (Part 2.4) — approved: default flipped to
+      `gemini-2.5-flash` on the branch, `LLM_MODEL=gpt-5.5` set in the production environment.
+- [x] `scripts.production_status` resolved (Part 6, Q1) — **not a column.** No longer blocking.
+- [ ] Migration rehearsed against a restored copy in a scratch TiDB cluster (Part 6, Q5).
+      The owner will supply the connection string; this step is planned, not yet done.
 
 | # | Step | Verify before continuing |
 |---|---|---|
 | 1 | Take the backup. | Size, `CREATE TABLE` count, `INSERT` present, "Dump completed". |
 | 2 | Run migration Section 0 (pre-flight) alone. | All four EXPECT values match. If 0.2 returns rows or 0.3 returns non-zero, **stop**. |
 | 3 | Run Section 1 (create tables). | Verification 5.1 and 5.2: three tables, column counts 16/20/14. |
-| 4 | Run Section 2 (13 columns + indexes). | Verification 5.3, 5.4. `empty_bodies` **must** be 0. |
+| 4 | Run Section 2 (14 columns + indexes). | Verification 5.3, 5.4. `empty_bodies` **must** be 0, and `null_metric_version` must equal `total_rows`. |
 | 5 | Run Section 3 (`offer_profile`). | Verification 5.5. Row count unchanged. |
-| 6 | Run Section 4 (`collective_sourcing_candidates`) — or skip it. | Optional; nothing in v2.2–v2.4 reads this table. |
-| 7 | Run remaining verification queries 5.6–5.8. | 11 indexes; table count 149. |
-| 8 | Set `LLM_MODEL` in the production environment. | Value matches the Part 2.4 decision. |
-| 9 | Set `NODE_ENV=production` explicitly. | Hardening; see 1.5. |
+| 6 | ~~Section 4~~ — **skip. Intentionally excluded**, deferred to v2.5. | Nothing to run. The statement is commented out in the SQL. |
+| 7 | Run remaining verification queries 5.6–5.9. | 11 indexes; table count 149; every new text column `utf8mb4`; row counts unchanged. |
+| 8 | Set `LLM_MODEL=gpt-5.5` in the production environment. | Value reads back exactly `gpt-5.5`. |
+| 9 | Set `NODE_ENV=production` explicitly. | Hardening; see 1.5. Removes the dependence on the variable being *absent*. |
 | 10 | Merge the PR and deploy the application. | Deploy completes; app boots. |
 | 11 | Smoke test: open Script Factory Library. | Five legacy scripts still listed and openable. |
 | 12 | Smoke test: open one legacy script. | Body renders. Regenerate group correctly shows "Unavailable for this script". |
-| 13 | Smoke test: generate one new script. | Completes; row has non-NULL `generation_params`; sell-density report appears. |
+| 13 | Smoke test: generate one new script. | Completes; row has non-NULL `generation_params`; `metric_version` reads `v2.2-instance`; sell-density report appears. |
 | 14 | Smoke test: create one variant from it. | Library collapses to one row reading "1 variant"; nested row opens the variant. |
-| 15 | Smoke test: regenerate one section, then undo. | Body changes, then restores verbatim; grounding figure unchanged. |
+| 15 | Smoke test: regenerate one section, then undo. | Body changes, then restores verbatim; grounding figure unchanged; `metric_version` unchanged (this path must not rewrite it — see 1.4). |
 
 Steps 11–15 are the ones that would catch a bad deploy. Steps 12 and 15 specifically
 exercise the two behaviours most likely to look like bugs to a first-time user.
@@ -456,49 +550,92 @@ The following are honest gaps in the evidence behind this plan:
    tier selection logic has only ever run with an unambiguous choice.
 6. **35 drift pairs remain unreconciled.** This deploy does not make them worse, and does
    not make them better. They are pre-existing.
+7. **My own tooling was wrong four times during this analysis**, each time producing a
+   plausible answer rather than an obvious failure: enum members read as column names
+   (`ADD COLUMN none`); a shared enum helper's `.default("todo")` read as a column called
+   `todo`; multi-line `longtextJson<{…}>` generics silently dropped from the column list; and
+   the `production_status` artifact the owner had to disprove with evidence. All four are
+   documented in the script headers. The final extractor walks the TypeScript AST and reports
+   `UNRESOLVED` rather than guessing. This is stated as a gap because the *reasoning* in this
+   document rests on those tools, and a reader should weight it accordingly.
 
 ---
 
-## Part 6 — Open questions for the owner
+## Part 6 — Questions, and how they were resolved
 
-**Q1 — `scripts.production_status` (blocking).** `schema.ts` declares
-`scripts.production_status`; production has `scripts.scriptStatus`. Two readings with
-opposite correct actions:
+All six were answered in review round 1. Recorded here with the reasoning, because the
+resolutions are the part a future reader will need.
 
-- *Rename.* Same lifecycle field under a new name → add nothing; treat as drift.
-- *New field.* A genuinely new v2.2 send-to-production state, with `scriptStatus` remaining
-  the draft/approved lifecycle → the column must be added, or writes to it silently vanish.
+**Q1 — `scripts.production_status`. RESOLVED: it is not a column. Nothing to do.**
 
-I could not determine which from the code alone and deliberately did not guess. Guessing
-"rename" when it is new loses data; guessing "new" when it is a rename creates exactly the
-divergence this plan otherwise avoids. **This blocks the migration**, because it decides
-whether the change is 16 columns or 17.
+Answered by the owner with evidence, and the answer was neither of the two readings I had
+offered. Pre-v2.2 `main` declares `scriptStatusEnum = mysqlEnum("scriptStatus", [...])` and
+uses it as `productionStatus: scriptStatusEnum...`. The **SQL name has always been
+`scriptStatus`**; `productionStatus` is only the TypeScript property name. Production matches
+the code that has always run against it, and `main`'s `scriptsRouter` uses it in ten places.
 
-**Q2 — `verification_pct` on the five legacy rows.** Accept a column holding two
-incompatible measures; null the five so they read "not measured"; or add a `metric_version`
-column so the distinction is recoverable. Recommendation: add the column — it is one more
-additive change and it makes the ambiguity self-documenting rather than folklore.
+I then ran the three-way check on the branch:
 
-**Q3 — should the sell-density report be persisted?** v2.4 computes it at generation time
-and returns it in the response, but there is no `sell_density` column, so it is
-session-scoped and absent when a script is reopened. Recomputing from the saved body would
-recover the mention counts but not `midRollPercent` or `rewritePassUsed`, so the rail would
-present a partial check as a complete one — which is why it currently reports the absence
-instead. A durable fix is one additive column.
+```
+MAIN   :304  export const scriptStatusEnum = mysqlEnum("scriptStatus", [
+MAIN   :320    productionStatus: scriptStatusEnum.notNull().default("idea"),
+BRANCH :314  export const scriptStatusEnum = mysqlEnum("scriptStatus", [
+BRANCH :330    productionStatus: scriptStatusEnum.notNull().default("idea"),
+grep '"production_status"' drizzle/schema.ts          -> NONE FOUND
+git diff origin/main...HEAD -- drizzle/schema.ts      -> no scriptStatus changes
+```
 
-**Q4 — Section 4 of the migration: in or out?** `collective_sourcing_candidates` has
-structurally diverged from its declaration, not merely drifted in naming. Nothing in
-v2.2–v2.4 reads or writes it. Including its two columns is harmless (the table has 0 rows);
-skipping it keeps this deploy strictly within Script Factory. Recommendation: skip, and
-handle that table with the drift workstream.
+Identical on both sides. The branch never touched it, so there is no string to revert and no
+commit to name. The migration stays at 15 columns (14 on `script_factory_outputs` including
+`metric_version`, plus `offer_profile`).
 
-**Q5 — rehearse the migration against a restored copy?** See Part 5, gap 2. This is the
-highest-value addition available and needs TiDB Cloud console access.
+**Q2 — `verification_pct` on the legacy rows. RESOLVED: add `metric_version`. Implemented.**
+See 1.4 for the implementation, including why it is written at two sites and not four, and
+why the five legacy rows are deliberately left `NULL`.
 
-**Q6 — schedule the drift reconciliation.** 35 pairs, in a codebase where `schema.ts` and
-production disagree about the names of live columns. Every one is a latent trap for exactly
-the kind of well-intentioned "let me just sync the schema" action that this plan spent most
-of its effort avoiding. It deserves its own piece of work, with its own review.
+**Q3 — persist the sell-density report? RESOLVED: defer to a v2.5 micro-migration.**
+It stays session-scoped for now: computed at generation time, shown on the freshly generated
+script, and honestly reported as unavailable on reopen rather than recomputed. Recomputing
+from a saved body would recover the mention counts but not `midRollPercent` (offsets shift on
+edit) or `rewritePassUsed` (a fact about generation history, not about the text), so the rail
+would present a partial check as a complete one.
+
+**Q4 — Section 4 in or out? RESOLVED: out.** Annotated as intentionally excluded in both SQL
+files, with the analysis preserved in comments for v2.5.
+
+**Q5 — rehearse against a restored copy? RESOLVED: yes, and it is planned.** When the owner
+restores the snapshot into a scratch TiDB Serverless cluster and supplies the connection
+string, the full migration and every verification query run there first. This closes Part 5
+gap 2, which is the largest gap in the plan. Until then the plan remains unrehearsed and says
+so.
+
+**Q6 — drift reconciliation. LOGGED as its own workstream, with a method attached.**
+
+35 pairs, in a codebase where `schema.ts` and production disagree about the names of live
+columns. Every one is a latent trap for exactly the kind of well-intentioned "let me just sync
+the schema" action that this plan spent most of its effort avoiding. It deserves its own piece
+of work, with its own review.
+
+**The Q1 lesson is now the required method for that workstream: every drift pair needs a
+three-way check before it is called drift —**
+
+| Check | Question | Why it is necessary |
+|---|---|---|
+| 1. Live | What column does production actually have? | `information_schema` is the only authority on what exists. |
+| 2. Main declaration | What SQL string does pre-branch code use? | If main and production agree, the code has always worked and nothing is broken. |
+| 3. Branch declaration | Did the branch change that SQL string? | Only a *changed string* is a real rename. An unchanged one means the tooling misread it. |
+
+Q1 failed check 3 and would have been called drift on checks 1 and 2 alone. The failure mode
+is specific and will recur: **when a column's type comes from a shared enum helper declared
+elsewhere in the file, the SQL name is not visible at the usage site**, and a tool that falls
+back to the TypeScript property name will invent a plausible column that does not exist. Any
+reconciliation pass that trusts a name-level diff without check 3 will produce confident,
+wrong recommendations — including recommendations to add columns that would silently split
+live data.
+
+Applied to my own figure: the "35 pairs" in 1.3 has **not** been re-verified with all three
+checks. It was produced by the same class of tooling that got Q1 wrong. Treat it as an upper
+bound on the count and a starting list, not a finding.
 
 ---
 
@@ -516,9 +653,20 @@ node scripts/pair-drift-vs-additions.mjs
 
 # Exact SQL types for the three new tables, from schema.ts rather than 0124
 node scripts/extract-table-ddl.mjs research_jobs suggested_ideas topic_nodes
+
+# Reviewer cross-check: every migration column name vs its schema.ts declaration.
+# TypeScript AST, not regex. Exits non-zero if any name fails to resolve.
+node scripts/verify-column-names.mjs
 ```
 
-Both analysis scripts carry header comments documenting the specific ways an earlier,
-simpler version of each produced wrong answers — enum members parsed as column names, and
-drifted columns reported as missing. Those notes are there because the wrong answers looked
-entirely plausible, and the next person to run this should know where the traps are.
+Every analysis script carries header comments documenting the specific ways an earlier, simpler
+version produced wrong answers: enum members parsed as column names, drifted columns reported
+as missing, a shared enum helper's `.default("todo")` read as a column called `todo`,
+multi-line `longtextJson<{…}>` generics dropped, and the `production_status` artifact that
+became Q1. Those notes are there because every one of those wrong answers looked entirely
+plausible, and the next person to run this should know where the traps are.
+
+**A note on dependencies**, since it wasted time here: use `pnpm install`. This repo is
+pnpm-managed with a lockfile; `npm install` fails on a pre-existing peer conflict
+(`@builder.io/vite-plugin-jsx-loc` wants `vite ^4||^5`, the project is on Vite 7). `pnpm`
+resolves it correctly in a few seconds.

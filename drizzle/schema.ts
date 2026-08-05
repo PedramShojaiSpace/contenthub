@@ -3569,6 +3569,22 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
   verifiedCount: int("verified_count").notNull().default(0),
   totalElements: int("total_elements").notNull().default(0),
   verificationPct: float("verification_pct"),
+  /**
+   * Which DEFINITION produced verification_pct on this row. Nullable by design:
+   * NULL means "written before this column existed", i.e. the pre-v2.2 metric.
+   *
+   * WHY THIS COLUMN EXISTS. verification_pct has held two incompatible measures
+   * under one name. Pre-v2.2 it was the share of all bracketed markers that
+   * happened to be [VERIFIED] — a number that moved when structure changed even
+   * if grounding did not. From v2.2 it is the share of SECTIONS containing
+   * grounded material (see scriptMetrics.ts, metricVersion "v2.2-instance").
+   * scriptMetrics already computed that version string and then discarded it, so
+   * a row could not say which definition produced its number. Persisting it makes
+   * the ambiguity self-documenting instead of folklore.
+   *
+   * Read NULL as "pre-v2.2 marker-ratio metric, not comparable to v2.2 values".
+   */
+  metricVersion: varchar("metric_version", { length: 16 }),
   status: mysqlEnum("status", ["draft", "approved", "archived"]).notNull().default("draft"),
   notes: text("notes"),
   approvedAt: datetime("approved_at"),

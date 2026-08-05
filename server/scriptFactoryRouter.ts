@@ -2743,6 +2743,18 @@ export async function runScriptGeneration(
     status: "draft",
     // ── Phase 2/3 provenance ──────────────────────────────────────────
     personaId: input.personaId ?? null,
+    /*
+     * v2.4 — stamp WHICH definition produced verificationPct. `pct` above comes
+     * from computeGroundingMetric, so "v2.2-instance" is literally true here.
+     *
+     * Only ever set this where the value demonstrably came from that function.
+     * The legacy countVerifiedTags formula still exists at :287 (deliberately
+     * retained, test-pinned, zero live callers) and computes a DIFFERENT measure;
+     * labelling such a value v2.2 would make this column actively misleading,
+     * which is worse than the NULL it replaces. Production's 5 pre-existing rows
+     * keep NULL, which reads correctly as "pre-v2.2, not comparable".
+     */
+    metricVersion: grounding.metricVersion,
     analogDataEntryIds: northStarIds.length > 0 ? northStarIds : null,
     targetLengthMinutes: targetLengthMinutes ?? null,
     sourceIdeaId: input.sourceIdeaId ?? null,
@@ -3599,6 +3611,19 @@ export const scriptFactoryRouter = router({
        * so the label is unaffected; anything that wanted a per-tag breakdown after
        * an edit would need the tag offsets persisted at generation time, which is
        * the same prerequisite the Part 1 finding already logged.
+       *
+       * v2.4 UPDATE — `metric_version` IS now a real column, and this path still
+       * must NOT write it. The `metricVersion` below is a literal constructed to
+       * satisfy the type, not a measurement: `grounded`/`total`/`pct` are read back
+       * off the row rather than recomputed (deliberately — [VERIFIED] is stripped
+       * before save, so recomputing yields a false zero). Stamping a version onto a
+       * preserved number would relabel it, and on a row migrated from production
+       * that number is the PRE-v2.2 marker-ratio value. The column would then
+       * assert a definition the value does not have, on precisely the legacy rows
+       * where the distinction matters most.
+       *
+       * A row's metric_version is set once, by the generation that produced its
+       * number, and preserved thereafter — the same discipline as the counts.
        */
       const grounding: GroundingMetric = {
         grounded: row.verifiedCount ?? 0,

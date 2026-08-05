@@ -274,8 +274,27 @@ const INVOKE_LLM_BASE_DELAY_MS = 1000; // 1s → 2s → 4s → 8s → 16s
  *
  * Chosen for a long-form copywriting workload (15-minute YouTube scripts), where
  * prose quality matters more than latency.
+ *
+ * ── THE DEFAULT MATCHES CURRENT PRODUCTION, NOT THE BEST MODEL ───────────────
+ * Production runs gemini-2.5-flash today — that was the hardcoded literal on
+ * main. Keeping it as the fallback means merging this branch WITHOUT setting an
+ * env var is behaviourally a no-op for every invokeLLM call in the product, not
+ * just Script Factory's. Defaulting to gpt-5.5 would silently change the model
+ * for unrelated features the moment the branch merged; a default should preserve
+ * existing behaviour and the upgrade should be a deliberate act.
+ *
+ * To upgrade: set LLM_MODEL=gpt-5.5 in the production environment. Verified
+ * available on the Forge gateway using production's existing
+ * BUILT_IN_FORGE_API_KEY, so it needs no OpenAI account and bills as Manus
+ * credits. See docs/deploy/v24-production-plan.md Part 2.
+ *
+ * NOTE the interaction with usesCompletionTokensParam() below: that regex keys on
+ * the model FAMILY, so gemini receives `max_tokens` and the gpt-5 family receives
+ * `max_completion_tokens`. Both are correct for their family — Gemini returns
+ * content:null with finish_reason "length" if given the wrong one. A future third
+ * family needs that regex extended.
  */
-export const LLM_MODEL = process.env.LLM_MODEL || "gpt-5.5";
+export const LLM_MODEL = process.env.LLM_MODEL || "gemini-2.5-flash";
 
 /**
  * Raised when the provider stopped generating because the token budget ran out

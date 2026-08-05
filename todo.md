@@ -4542,3 +4542,9 @@ Pricing model (corrected):
 
 ## Watchdog Fixes
 - [x] Fix watchdog false alerts during overnight low-traffic windows (10pm–6am CT uses 3-hour window instead of 65-min)
+
+## A/B Test Tracking Fixes
+- [x] Fix splitter: utmContent field not in assignVariant schema — causes silent tRPC validation error, no exposure recorded
+- [x] Fix splitter: cached visitors skip assignVariant entirely — no exposure re-recorded on return visits (correct behavior but means only first-time visitors are tracked)
+- [x] Fix TY pages A and B: both call assignVariant redundantly after splitter already called it — remove duplicate calls from individual pages
+- [x] Verify: after fix, ab_exposures table accumulates rows matching real traffic

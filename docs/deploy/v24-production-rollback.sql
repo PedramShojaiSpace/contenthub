@@ -161,7 +161,7 @@ WHERE table_schema = DATABASE()
   AND table_name IN ('research_jobs','suggested_ideas','topic_nodes');
 -- EXPECT: empty result set.
 
--- 3.2 script_factory_outputs is back to 15 columns and none of the 13 remain.
+-- 3.2 script_factory_outputs is back to 15 columns and none of the 14 remain.
 SELECT COUNT(*) AS total_columns FROM information_schema.columns
 WHERE table_schema = DATABASE() AND table_name = 'script_factory_outputs';
 -- EXPECT: 15.

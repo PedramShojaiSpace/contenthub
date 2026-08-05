@@ -75,7 +75,14 @@ WHERE table_schema = DATABASE()
 -- EXPECT: empty result set.
 
 -- 0.3 Confirm script_factory_outputs is still at the pre-v2.2 shape (15 columns)
---     and none of the 13 columns we add already exist.
+--     and none of the 14 columns we add already exist.
+--
+--     This IN-list MUST stay in lockstep with the ADD COLUMN list in Section 2.
+--     If they diverge, this check silently stops guarding whichever column was
+--     omitted — it would return 0 and read as "safe" while that column already
+--     existed. `scripts/verify-column-names.mjs` asserts set-equality between
+--     Section 2 and drizzle/schema.ts, but it does NOT read this list, so keep
+--     them aligned by hand. (metric_version was missing here in the first draft.)
 SELECT COUNT(*) AS existing_v22_plus_columns
 FROM information_schema.columns
 WHERE table_schema = DATABASE()
@@ -84,7 +91,7 @@ WHERE table_schema = DATABASE()
     'persona_id','analog_data_entry_ids','target_length_minutes','source_idea_id',
     'research_job_id','word_count','production_script_id','pattern_composition',
     'parent_script_id','variant_label','variant_of_root_id','generation_params',
-    'section_history'
+    'section_history','metric_version'
   );
 -- EXPECT: 0
 

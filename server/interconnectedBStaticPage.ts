@@ -1,4 +1,4 @@
-const CDN = "https://content.theurbanmonk.com/manus-storage/";
+const CDN = "https://content.theurbanmonk.comhttps://d36hbw14aib5lz.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/";
 
 export function renderInterconnectedBPage(): string {
   const experts = [

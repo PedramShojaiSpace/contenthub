@@ -834,6 +834,13 @@ async function startServer() {
     }
   });
 
+  // ── Keep-Alive Ping ──────────────────────────────────────────────────────
+  // POST /api/scheduled/keepalive — fires every 5 min to prevent cold starts on Autoscale
+  // No auth required — just a lightweight heartbeat to keep the container warm
+  app.post("/api/scheduled/keepalive", (_req, res) => {
+    return res.json({ ok: true, ts: Date.now(), uptime: Math.round(process.uptime()) });
+  });
+
   // ── Lead Watchdog ─────────────────────────────────────────────────────────
   // POST /api/scheduled/lead-watchdog — fires every 60 min, alerts only if zero leads in 65 min
   app.post("/api/scheduled/lead-watchdog", async (req, res) => {

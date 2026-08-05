@@ -7,7 +7,7 @@
  */
 
 export function renderInterconnectedPage(): string {
-  const CDN = "/manus-storage/";
+  const CDN = "https://d36hbw14aib5lz.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/";
   const LOGO = CDN + "urban-monk-logo-white_bea7991f.png";
   const DOCTOR_PHOTO = CDN + "pedram-white-coat_7321e611.webp";
   const POSTER = CDN + "interconnected-poster_e31ef3aa.jpg";
@@ -88,7 +88,7 @@ export function renderInterconnectedPage(): string {
   <meta name="robots" content="noindex, nofollow" />
   <title>Interconnected — The Power to Heal From Within | The Urban Monk</title>
   <meta name="description" content="70 world-leading doctors reveal the hidden root of chronic disease — and the breakthrough science that can heal it. Free 9-part documentary series." />
-  <link rel="icon" type="image/x-icon" href="/manus-storage/urban-monk-favicon_27ae5d07.ico" />
+  <link rel="icon" type="image/x-icon" href="https://d36hbw14aib5lz.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/urban-monk-favicon_27ae5d07.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=optional" rel="stylesheet" />

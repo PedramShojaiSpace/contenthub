@@ -201,7 +201,7 @@ CREATE INDEX `topic_nodes_status_idx` ON `topic_nodes` (`topic_status`);
 
 
 -- ───────────────────────────────────────────────────────────────────────────────
--- SECTION 2 — script_factory_outputs: 13 NEW COLUMNS
+-- SECTION 2 — script_factory_outputs: 14 NEW COLUMNS
 --
 -- Every one is nullable with no default, so the 5 existing rows are untouched
 -- and read back as NULL. No existing column is modified. The app treats NULL on
@@ -230,7 +230,22 @@ ALTER TABLE `script_factory_outputs`
   ADD COLUMN `variant_label`         VARCHAR(120) CHARACTER SET utf8mb4 NULL,
   ADD COLUMN `variant_of_root_id`    INT NULL,
   ADD COLUMN `generation_params`     LONGTEXT CHARACTER SET utf8mb4 NULL,  -- JSON-in-longtext; carries ctaStyle from v2.4
-  ADD COLUMN `section_history`       LONGTEXT CHARACTER SET utf8mb4 NULL;  -- JSON-in-longtext; per-section undo
+  ADD COLUMN `section_history`       LONGTEXT CHARACTER SET utf8mb4 NULL,  -- JSON-in-longtext; per-section undo
+  -- v2.4: which DEFINITION produced verification_pct on this row.
+  --
+  -- verification_pct has held two incompatible measures under one name. Pre-v2.2
+  -- it was the share of all bracketed markers that happened to be [VERIFIED] — a
+  -- number that moved when a script was labelled more thoroughly, even though its
+  -- grounding had not changed. From v2.2 it is the share of SECTIONS containing
+  -- grounded material. scriptMetrics.ts already computed the version string and
+  -- then discarded it, so a row could not say which definition produced its number.
+  --
+  -- NULLABLE ON PURPOSE, AND THAT IS THE POINT: the 5 rows already in production
+  -- were written under the OLD definition and will read NULL, which is the truthful
+  -- value. Backfilling them with 'v2.2-instance' would relabel a marker-ratio
+  -- number as a section-ratio number and make this column lie about exactly the
+  -- rows it exists to disambiguate. Read NULL as "pre-v2.2, not comparable".
+  ADD COLUMN `metric_version`        VARCHAR(16) CHARACTER SET utf8mb4 NULL;
 
 -- Variant lookups. Originals store NULL in variant_of_root_id (never their own
 -- id), so the family key is COALESCE(variant_of_root_id, id) and a bare
@@ -254,11 +269,20 @@ ALTER TABLE `analog_data_entries`
 
 
 -- ───────────────────────────────────────────────────────────────────────────────
--- SECTION 4 — collective_sourcing_candidates: notes, updated_at
+-- SECTION 4 — collective_sourcing_candidates  ⟨INTENTIONALLY EXCLUDED — DO NOT RUN⟩
 --
--- ⚠ READ THE PLAN DOCUMENT BEFORE RUNNING THIS SECTION.
+-- EXCLUDED BY OWNER DECISION (review round 1, Q3: "defer, note it as a v2.5
+-- micro-migration"). The statement is retained below, COMMENTED OUT, so the
+-- analysis is not lost and the v2.5 migration can lift it verbatim. Running it
+-- is not part of this deployment.
 --
--- This table has STRUCTURALLY DIVERGED from its declaration, not merely drifted
+-- WHY IT WAS DEFERRED: this table has STRUCTURALLY DIVERGED from its declaration,
+-- not merely drifted in naming, and nothing in v2.2–v2.4 reads or writes it. There
+-- is no reason to touch a diverged table during a Script Factory deploy.
+--
+-- THE ANALYSIS, PRESERVED FOR v2.5
+-- --------------------------------
+-- schema.ts expects created_at / updated_at / status / notes;
 -- in naming. schema.ts expects created_at / updated_at / status / notes;
 -- production has csc_createdAt / csc_status / imported_at / reviewed_at /
 -- collective_product_handle. The pairing analysis matched created_at→csc_createdAt
@@ -278,15 +302,12 @@ ALTER TABLE `analog_data_entries`
 -- remains valid if rows appear between now and execution; the app always writes
 -- an explicit Date.now(), so a stored 0 would only ever be a visible marker of a
 -- row inserted outside the app.
---
--- Section 4 is SEPARABLE. If the owner would rather not touch a diverged table
--- during a Script Factory deploy, skip this section entirely — nothing in
--- v2.2–v2.4 reads or writes it. The rollback file treats it separately too.
 -- ───────────────────────────────────────────────────────────────────────────────
 
-ALTER TABLE `collective_sourcing_candidates`
-  ADD COLUMN `notes`      TEXT CHARACTER SET utf8mb4 NULL,
-  ADD COLUMN `updated_at` BIGINT NOT NULL DEFAULT 0;
+-- DEFERRED TO v2.5 — deliberately commented out, not deleted:
+-- ALTER TABLE `collective_sourcing_candidates`
+--   ADD COLUMN `notes`      TEXT CHARACTER SET utf8mb4 NULL,
+--   ADD COLUMN `updated_at` BIGINT NOT NULL DEFAULT 0;
 
 
 -- ───────────────────────────────────────────────────────────────────────────────
@@ -309,7 +330,7 @@ WHERE table_schema = DATABASE()
 GROUP BY table_name ORDER BY table_name;
 -- EXPECT: research_jobs 16, suggested_ideas 20, topic_nodes 14.
 
--- 5.3 All 13 script_factory_outputs columns landed, with the right types.
+-- 5.3 All 14 script_factory_outputs columns landed, with the right types.
 SELECT column_name, column_type, is_nullable, character_set_name
 FROM information_schema.columns
 WHERE table_schema = DATABASE()
@@ -318,21 +339,28 @@ WHERE table_schema = DATABASE()
     'persona_id','analog_data_entry_ids','target_length_minutes','source_idea_id',
     'research_job_id','word_count','production_script_id','pattern_composition',
     'parent_script_id','variant_label','variant_of_root_id','generation_params',
-    'section_history'
+    'section_history','metric_version'
   )
 ORDER BY column_name;
--- EXPECT: 13 rows. Every is_nullable = YES. The four *_ids/params/history/
+-- EXPECT: 14 rows. Every is_nullable = YES. The four *_ids/params/history/
 --         composition columns are longtext with character_set utf8mb4.
---         variant_label is varchar(120). The rest int.
+--         variant_label is varchar(120), metric_version varchar(16). The rest int.
+--         EVERY character_set_name that is non-NULL must read utf8mb4. A latin1
+--         here means the ALTER did not inherit the table charset — STOP, because
+--         emoji and en-dashes would be silently mangled on write.
 
 -- 5.4 The 5 pre-existing rows are intact and their new columns read NULL.
 SELECT COUNT(*) AS total_rows,
        SUM(CASE WHEN generation_params IS NULL THEN 1 ELSE 0 END) AS null_gen_params,
        SUM(CASE WHEN parent_script_id  IS NULL THEN 1 ELSE 0 END) AS null_parent,
+       SUM(CASE WHEN metric_version    IS NULL THEN 1 ELSE 0 END) AS null_metric_version,
        SUM(CASE WHEN script_body IS NULL OR script_body = '' THEN 1 ELSE 0 END) AS empty_bodies
 FROM script_factory_outputs;
 -- EXPECT: total_rows unchanged from pre-flight 0.4 (5 at time of writing).
 --         null_gen_params = total_rows. null_parent = total_rows.
+--         null_metric_version = total_rows. These 5 rows were written under the
+--         PRE-v2.2 metric definition, so NULL is the truthful value and a
+--         non-NULL here would mean something backfilled a label it cannot know.
 --         empty_bodies = 0  ← if this is non-zero, existing data was damaged. STOP.
 
 -- 5.5 offer_profile exists and the 1 existing row is untouched.
@@ -355,24 +383,52 @@ WHERE table_schema = DATABASE()
 GROUP BY table_name, index_name ORDER BY table_name, index_name;
 -- EXPECT: 11 rows.
 
--- 5.7 4-byte character round trip, proving emoji and non-BMP text survive.
---     Uses the new offer_profile column and cleans up after itself.
-INSERT INTO `analog_data_entries` (`offer_profile`) VALUES ('utf8mb4 probe 🧬📊 — en–dash');
-SELECT `offer_profile`,
-       CHAR_LENGTH(`offer_profile`) AS chars,
-       LENGTH(`offer_profile`)      AS bytes
-FROM `analog_data_entries`
-WHERE `offer_profile` LIKE 'utf8mb4 probe%';
--- EXPECT: the emoji and en-dash render intact; bytes > chars (multi-byte present).
---         If the emoji come back as '?' the column is not really utf8mb4. STOP.
-DELETE FROM `analog_data_entries` WHERE `offer_profile` LIKE 'utf8mb4 probe%';
--- NOTE: this INSERT/DELETE pair is the ONLY data mutation in this file, it is
--- self-cleaning, and it touches only a row it created. If you would rather not
--- write at all, skip 5.7 and confirm charset from 5.3's character_set_name.
+-- 5.7 Charset assertion across every new text column. READ-ONLY.
+--
+-- REPLACES A DEFECTIVE WRITE PROBE. The first draft of this step inserted a row
+-- containing emoji into analog_data_entries and deleted it again. Two things were
+-- wrong with that. First, it would have FAILED on a completely healthy migration:
+-- analog_data_entries.content is NOT NULL with no default, so an INSERT supplying
+-- only offer_profile errors — and an error at the final verification step reads as
+-- "the migration broke something" when nothing broke. Second, it wrote junk into a
+-- real business table (this is where the sales page lives) to test a property that
+-- information_schema reports directly.
+--
+-- This version asserts the same property by reading the catalogue, so the whole
+-- migration file now performs NO data mutation of any kind — only DDL and SELECTs.
+SELECT table_name, column_name, character_set_name, collation_name
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND (
+        (table_name = 'script_factory_outputs' AND column_name IN
+          ('analog_data_entry_ids','pattern_composition','variant_label',
+           'generation_params','section_history','metric_version'))
+     OR (table_name = 'analog_data_entries'    AND column_name = 'offer_profile')
+     OR (table_name IN ('research_jobs','suggested_ideas','topic_nodes')
+           AND character_set_name IS NOT NULL)
+      )
+ORDER BY table_name, column_name;
+-- EXPECT: every row reads character_set_name = utf8mb4 (collation utf8mb4_bin on
+--         this server). Any latin1 or utf8mb3 row means that column cannot store
+--         4-byte characters and emoji/en-dashes will be mangled on write. STOP and
+--         fix that column before deploying the application code.
+--
+-- Production was confirmed utf8mb4 at server, database and existing-column level
+-- during planning, so this is a regression check rather than a discovery.
 
 -- 5.8 Nothing was dropped: total table count should have gone UP by exactly 3.
 SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema = DATABASE();
 -- EXPECT: 149 (was 146 before this migration).
+
+-- 5.9 No data was written by this file. Confirm the row counts are unchanged.
+SELECT
+  (SELECT COUNT(*) FROM script_factory_outputs) AS sfo_rows,
+  (SELECT COUNT(*) FROM analog_data_entries)    AS ade_rows,
+  (SELECT COUNT(*) FROM research_jobs)          AS rj_rows,
+  (SELECT COUNT(*) FROM suggested_ideas)        AS si_rows,
+  (SELECT COUNT(*) FROM topic_nodes)            AS tn_rows;
+-- EXPECT: sfo_rows and ade_rows identical to pre-flight 0.4. The three new tables
+--         read 0 — they were created empty and this file inserts nothing.
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- END. If any EXPECT failed, stop and consult v24-production-rollback.sql.

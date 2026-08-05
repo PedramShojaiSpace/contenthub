@@ -5,7 +5,7 @@
 -- Target: TiDB Serverless, database iUgsiz76NwfDUVHZHV7CyJ
 --
 -- ┌─ WHAT ROLLBACK CAN AND CANNOT RECOVER ──────────────────────────────────┐
--- │ CAN:    remove the 3 tables and 16 columns the migration added, putting  │
+-- │ CAN:    remove the 3 tables and 15 columns the migration added, putting  │
 -- │         the schema back to its pre-migration shape.                      │
 -- │                                                                          │
 -- │ CANNOT: recover data written INTO those columns or tables after the      │
@@ -68,6 +68,19 @@ FROM analog_data_entries;
 --                           sales-page seed, but it is not recoverable from the
 --                           column itself once dropped.
 
+-- 0.3b Are there rows whose metric definition is only knowable from metric_version?
+SELECT SUM(CASE WHEN metric_version IS NOT NULL THEN 1 ELSE 0 END) AS labelled_rows,
+       SUM(CASE WHEN metric_version IS NULL     THEN 1 ELSE 0 END) AS unlabelled_rows
+FROM script_factory_outputs;
+-- labelled_rows > 0 -> those rows carry a v2.2-instance verification_pct. Dropping
+--                      metric_version does not change the NUMBER, but it removes the
+--                      only marker distinguishing it from the pre-v2.2 marker-ratio
+--                      figure on the older rows. After the drop, verification_pct is
+--                      once again a column holding two incompatible measures under
+--                      one name, with no way to tell them apart. Metadata loss, not
+--                      data loss — but it is the exact ambiguity this column existed
+--                      to remove.
+
 -- 0.4 Take a fresh backup NOW, before any drop. The pre-deploy backup does not
 --     contain anything created since the deploy. See plan document Part 4.
 
@@ -102,10 +115,11 @@ DROP TABLE IF EXISTS `research_jobs`;
 DROP INDEX `sfo_parent_idx`       ON `script_factory_outputs`;
 DROP INDEX `sfo_variant_root_idx` ON `script_factory_outputs`;
 
--- 2.2 script_factory_outputs — remove the 13 added columns.
+-- 2.2 script_factory_outputs — remove the 14 added columns.
 --     Listed in reverse order of addition, purely for readability against the
 --     migration file.
 ALTER TABLE `script_factory_outputs`
+  DROP COLUMN `metric_version`,
   DROP COLUMN `section_history`,
   DROP COLUMN `generation_params`,
   DROP COLUMN `variant_of_root_id`,
@@ -124,11 +138,17 @@ ALTER TABLE `script_factory_outputs`
 ALTER TABLE `analog_data_entries`
   DROP COLUMN `offer_profile`;
 
--- 2.4 collective_sourcing_candidates — remove notes and updated_at.
---     SKIP THIS if you skipped Section 4 of the migration.
-ALTER TABLE `collective_sourcing_candidates`
-  DROP COLUMN `updated_at`,
-  DROP COLUMN `notes`;
+-- 2.4 collective_sourcing_candidates — NOTHING TO DROP.
+--
+-- Section 4 of the migration is INTENTIONALLY EXCLUDED (owner decision: deferred to
+-- a v2.5 micro-migration), so this deployment never adds `notes` or `updated_at` and
+-- there is nothing here to reverse. The statement is kept commented for whenever the
+-- v2.5 migration does run.
+--
+-- DEFERRED — matches the commented-out Section 4 in the migration file:
+-- ALTER TABLE `collective_sourcing_candidates`
+--   DROP COLUMN `updated_at`,
+--   DROP COLUMN `notes`;
 
 
 -- ───────────────────────────────────────────────────────────────────────────────
@@ -152,7 +172,7 @@ WHERE table_schema = DATABASE() AND table_name = 'script_factory_outputs'
     'persona_id','analog_data_entry_ids','target_length_minutes','source_idea_id',
     'research_job_id','word_count','production_script_id','pattern_composition',
     'parent_script_id','variant_label','variant_of_root_id','generation_params',
-    'section_history'
+    'section_history','metric_version'
   );
 -- EXPECT: 0.
 

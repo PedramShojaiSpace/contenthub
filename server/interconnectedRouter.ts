@@ -275,6 +275,27 @@ export const interconnectedRouter = router({
         console.error("[interconnectedRouter] CAPI Lead error:", err);
       }
 
+      // ── Instant owner notification on every new opt-in ────────────────────────────────────────
+      try {
+        const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
+        const sourceLabel = utmSource ? `${utmSource}${utmCampaign ? ` / ${utmCampaign}` : ""}` : "organic";
+        const phoneLabel = phone ? ` | Phone: ${phone}${smsConsent ? " (SMS ✅)" : ""}` : "";
+        await notifyOwner({
+          title: `✅ New Interconnected Lead: ${name || email}`,
+          content:
+            `Name: ${name || "(none)"}\n` +
+            `Email: ${email}\n` +
+            `${phoneLabel ? phoneLabel + "\n" : ""}` +
+            `Source: ${sourceLabel}\n` +
+            `Kajabi tagged: ${kajabiTagged ? "✅ Yes" : "❌ No (in retry queue)"}\n` +
+            `Klaviyo synced: ${smsSubscribed ? "✅ SMS subscribed" : "email only"}\n` +
+            `Time: ${nowStr} CT`,
+        });
+      } catch (notifyErr) {
+        // Non-fatal
+        console.warn("[interconnectedRouter] notifyOwner failed:", notifyErr);
+      }
+
       return { success: true, kajabiTagged, smsSubscribed, capiLeadEventId };
     }),
   getVariantStats: publicProcedure

@@ -92,7 +92,7 @@ export function renderInterconnectedPage(): string {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=optional" rel="stylesheet" />
-  <!-- Meta Pixel — loads immediately so fbq() is available for Lead event on form submit -->
+  <!-- Meta Pixel — PageView only on opt-in page. Lead event fires on thank-you page load (confirmed conversion). -->
   <script>
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
     fbq('init','1498608757116877');
@@ -510,10 +510,8 @@ function submitForm(e, id) {
     if (result && result.data) {
       // Tag landing page variant so TY splitter can cross-tabulate LP-A vs LP-B
       try { localStorage.setItem('ic_lp_variant', 'A'); } catch(e) {}
-      // Fire browser-side Lead pixel event for real-time Meta attribution
-      try { if (typeof fbq !== 'undefined') { fbq('track', 'Lead', { content_name: 'Interconnected Free Screening', content_category: 'Agora' }); } } catch(e) {}
-      // Small delay to allow pixel to fire before redirect
-      setTimeout(function() { window.location.href = '/interconnected/thank-you'; }, 300);
+      // Redirect to thank-you page — Lead pixel fires there on confirmed load
+      window.location.href = '/interconnected/thank-you';
     } else {
       var msg = (data && data[0] && data[0].error && data[0].error.message) || 'Something went wrong. Please try again.';
       if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }

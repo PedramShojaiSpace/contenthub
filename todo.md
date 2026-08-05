@@ -4562,3 +4562,10 @@ Pricing model (corrected):
 ## Lead Notification & Kajabi Spot-Check
 - [x] Add instant notifyOwner email on every new Interconnected opt-in (name, email, phone, UTM source, Kajabi tag status)
 - [x] Upgrade hourly watchdog to also spot-check Kajabi: query contacts with "Interconnected Opt In" tag, compare count vs DB, alert if gap > threshold
+
+## Meta Pixel & Opt-in Rate Fix (Aug 5 — URGENT)
+- [x] Remove Lead pixel from opt-in page form submit handler (fires before server confirms)
+- [x] Keep Lead pixel ONLY on thank-you page load (confirmed conversion)
+- [x] Remove duplicate Lead pixel from opt-in page entirely
+- [ ] Investigate why 439 LP views → only 26 leads (5.9%) when Aug 3 was 36%
+- [ ] Check if form is silently failing for most visitors today

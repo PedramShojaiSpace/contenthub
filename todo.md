@@ -4558,3 +4558,7 @@ Pricing model (corrected):
 - [ ] Add SHOPIFY_WEBHOOK_SECRET to project secrets after registering webhook
 - [ ] Create Urban Monk Academy $297/yr Shopify product and update upstream_academy variantId in FUNNEL_PRODUCTS
 - [ ] Update thank-you page buy buttons to use trpc.shopify.getCheckoutUrl when funnel switches to Shopify
+
+## Lead Notification & Kajabi Spot-Check
+- [x] Add instant notifyOwner email on every new Interconnected opt-in (name, email, phone, UTM source, Kajabi tag status)
+- [x] Upgrade hourly watchdog to also spot-check Kajabi: query contacts with "Interconnected Opt In" tag, compare count vs DB, alert if gap > threshold

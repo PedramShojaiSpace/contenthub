@@ -2,11 +2,14 @@
  * leadWatchdogHandler.ts
  * Hourly Heartbeat cron — fires every 60 minutes.
  *
- * Smart watchdog logic:
- * - During peak hours (6am–10pm CT): alert if ZERO leads in 65 min
- * - During overnight hours (10pm–6am CT): alert only if ZERO leads in 3 hours
- *   (overnight lulls are normal — ads run at lower frequency, audience is asleep)
- * - Also checks: if today's total is suspiciously low vs yesterday's average
+ * Does two things:
+ * 1. Lead flow watchdog — alerts if no new opt-ins in the window
+ *    - Peak hours (6am–10pm CT): 65-min window
+ *    - Overnight (10pm–6am CT): 3-hour window
+ *
+ * 2. Kajabi spot-check — queries Kajabi for contacts with the
+ *    "Interconnected Opt In" tag and compares against our DB count.
+ *    Alerts if Kajabi count is significantly behind our DB (tagging broken).
  */
 
 import type { Request, Response } from "express";
@@ -14,14 +17,16 @@ import { sdk } from "./_core/sdk";
 import { notifyOwner } from "./_core/notification";
 import { getDb } from "./db";
 import { sql } from "drizzle-orm";
+import { getKajabiContactsByTag } from "./kajabiApi";
 
-// CT = UTC-5 (CDT) or UTC-6 (CST). We use UTC-5 (CDT) as a safe approximation.
+const KAJABI_TAG = "Interconnected Opt In";
+
+// CT = UTC-5 (CDT). Safe approximation.
 const CT_OFFSET_HOURS = -5;
 
 function getCurrentHourCT(): number {
   const nowUtc = new Date();
-  const ctHour = (nowUtc.getUTCHours() + 24 + CT_OFFSET_HOURS) % 24;
-  return ctHour;
+  return (nowUtc.getUTCHours() + 24 + CT_OFFSET_HOURS) % 24;
 }
 
 export async function leadWatchdogHandler(req: Request, res: Response) {
@@ -38,14 +43,13 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
     }
 
     const hourCT = getCurrentHourCT();
-    const isPeakHour = hourCT >= 6 && hourCT < 22; // 6am–10pm CT
-
-    // During peak hours: 65-min window. Overnight: 3-hour window.
+    const isPeakHour = hourCT >= 6 && hourCT < 22;
     const windowMs = isPeakHour ? 65 * 60 * 1000 : 3 * 60 * 60 * 1000;
     const windowLabel = isPeakHour ? "65 minutes" : "3 hours (overnight)";
     const since = Date.now() - windowMs;
+    const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
 
-    // Count leads in the window
+    // ── 1. Count leads in the window ─────────────────────────────────────────
     const rows = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM interconnected_leads WHERE created_at >= ${since}`
     ) as any;
@@ -53,9 +57,9 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
     const firstRow = Array.isArray(rowData) ? rowData[0] : rowData;
     const leadsInWindow = Number(firstRow?.cnt ?? 0);
 
-    // Also get today's total (midnight CT = 05:00 UTC during CDT)
+    // Today's total (midnight CT = 05:00 UTC during CDT)
     const midnightCT = new Date();
-    midnightCT.setUTCHours(5, 0, 0, 0); // midnight CT (CDT = UTC-5)
+    midnightCT.setUTCHours(5, 0, 0, 0);
     if (Date.now() < midnightCT.getTime()) {
       midnightCT.setUTCDate(midnightCT.getUTCDate() - 1);
     }
@@ -66,46 +70,99 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
     const todayFirstRow = Array.isArray(todayRowData) ? todayRowData[0] : todayRowData;
     const todayTotal = Number(todayFirstRow?.cnt ?? 0);
 
-    const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
+    // All-time DB total
+    const totalRows = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM interconnected_leads`
+    ) as any;
+    const totalRowData = Array.isArray(totalRows) ? totalRows[0] : totalRows;
+    const totalFirstRow = Array.isArray(totalRowData) ? totalRowData[0] : totalRowData;
+    const dbTotal = Number(totalFirstRow?.cnt ?? 0);
 
+    // ── 2. Kajabi spot-check ──────────────────────────────────────────────────
+    let kajabiCount = 0;
+    let kajabiCheckError: string | null = null;
+    let kajabiGap = 0;
+    let kajabiAlertNeeded = false;
+
+    try {
+      const kajabiContacts = await getKajabiContactsByTag(KAJABI_TAG);
+      kajabiCount = kajabiContacts.length;
+      // Gap = DB total minus Kajabi count (DB should be ≤ Kajabi + small retry buffer)
+      // Alert if Kajabi is more than 10 behind our DB (indicates tagging is broken)
+      kajabiGap = dbTotal - kajabiCount;
+      kajabiAlertNeeded = kajabiGap > 10;
+    } catch (kajabiErr: any) {
+      kajabiCheckError = kajabiErr?.message ?? "Unknown Kajabi error";
+      console.warn("[leadWatchdog] Kajabi spot-check failed:", kajabiCheckError);
+    }
+
+    const alerts: string[] = [];
+
+    // ── Alert: no leads in window ─────────────────────────────────────────────
     if (leadsInWindow === 0) {
-      // No leads in the window — alert the owner
       const timeContext = isPeakHour
         ? `during peak hours (${hourCT}:00 CT)`
         : `overnight (${hourCT}:00 CT — low-traffic window)`;
 
+      alerts.push("no_leads_in_window");
       await notifyOwner({
         title: `⚠️ Lead Flow Alert — No Leads in ${windowLabel}`,
         content:
-          `No new Interconnected opt-ins in the last ${windowLabel} ${timeContext}. ` +
-          `Today's total so far: ${todayTotal} leads. ` +
-          `\n\nCheck: (1) Meta Ads Manager — are campaigns active? ` +
+          `No new Interconnected opt-ins in the last ${windowLabel} ${timeContext}.\n` +
+          `Today's total: ${todayTotal} leads | All-time DB: ${dbTotal}\n` +
+          `Kajabi "${KAJABI_TAG}" tag count: ${kajabiCount}${kajabiCheckError ? ` (check failed: ${kajabiCheckError})` : ""}\n\n` +
+          `Check: (1) Meta Ads Manager — campaigns active? ` +
           `(2) content.theurbanmonk.com/interconnected — form loading? ` +
-          `(3) Server logs for errors. ` +
-          `\nChecked at ${nowStr} CT.`,
-      });
-      return res.json({
-        ok: true,
-        alert: true,
-        leadsInWindow,
-        todayTotal,
-        windowLabel,
-        hourCT,
-        isPeakHour,
-        message: `Alert sent — no leads in ${windowLabel} (${timeContext})`,
+          `(3) Server logs for errors.\n` +
+          `Checked at ${nowStr} CT.`,
       });
     }
 
-    // Leads are flowing — stay silent
+    // ── Alert: Kajabi tagging gap ─────────────────────────────────────────────
+    if (kajabiAlertNeeded) {
+      alerts.push("kajabi_tag_gap");
+      await notifyOwner({
+        title: `⚠️ Kajabi Tagging Gap Detected — ${kajabiGap} Leads Not Tagged`,
+        content:
+          `Our DB has ${dbTotal} total Interconnected leads, but Kajabi only shows ${kajabiCount} contacts with the "${KAJABI_TAG}" tag.\n\n` +
+          `Gap: ${kajabiGap} leads are in our system but NOT tagged in Kajabi.\n\n` +
+          `This may mean:\n` +
+          `• Kajabi API is intermittently failing (check retry queue)\n` +
+          `• The tag name changed in Kajabi\n` +
+          `• Kajabi API credentials expired\n\n` +
+          `Action: Check the retry queue in the admin dashboard and verify Kajabi API is responding.\n` +
+          `Checked at ${nowStr} CT.`,
+      });
+    }
+
+    // ── Hourly status notification (always send during peak hours) ────────────
+    // Sends a clean hourly status so you can see leads flowing without needing to check manually
+    if (isPeakHour && leadsInWindow > 0) {
+      await notifyOwner({
+        title: `📊 Hourly Lead Report — ${leadsInWindow} new opt-ins`,
+        content:
+          `${leadsInWindow} new Interconnected opt-ins in the last ${windowLabel}.\n` +
+          `Today's total: ${todayTotal} leads\n` +
+          `Kajabi "${KAJABI_TAG}" tag: ${kajabiCount} contacts${kajabiGap > 0 ? ` (${kajabiGap} gap ⚠️)` : " ✅"}\n` +
+          `Checked at ${nowStr} CT.`,
+      });
+    }
+
     return res.json({
       ok: true,
-      alert: false,
+      alerts,
       leadsInWindow,
       todayTotal,
+      dbTotal,
+      kajabiCount,
+      kajabiGap,
+      kajabiCheckError,
       windowLabel,
       hourCT,
       isPeakHour,
-      message: `${leadsInWindow} leads in last ${windowLabel} — all good (today total: ${todayTotal})`,
+      message: alerts.length === 0
+        ? `${leadsInWindow} leads in last ${windowLabel} — Kajabi: ${kajabiCount} (gap: ${kajabiGap})`
+        : `Alerts sent: ${alerts.join(", ")}`,
     });
   } catch (err: any) {
     console.error("[leadWatchdog] Error:", err);

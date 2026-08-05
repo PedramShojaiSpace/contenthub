@@ -62,7 +62,7 @@ interface MetadataRailProps {
    * v2.4 — the sell-density report.
    *
    * NULL vs undefined carries meaning here and the rail respects it:
-   *   undefined → the script has no stored report at all (pre-v2.4 row)
+   *   undefined → no report is in hand (cold reopen, or a pre-v2.4 row)
    *   null      → the lint did not apply (balanced mode, or no offer bound)
    *   object    → the lint ran, and `withinBudget` says what it found
    * A "within budget" badge on a script the lint never examined would be exactly
@@ -199,7 +199,40 @@ export function MetadataRail({
         */}
         {ctaStyle === "value_first" && (
           <div className="mt-1.5">
-            {sellDensity === null || sellDensity === undefined ? (
+            {/*
+              THREE states, not two. Collapsing the two absence states produced a
+              FALSE STATEMENT, caught in live verification on script #1:
+
+                undefined → no report in hand. Almost always a cold page load, because
+                            the report is session-scoped: there is no sell_density
+                            column, and midRollPercent/rewritePassUsed cannot be
+                            recovered from a saved body (offsets shift on edit, and
+                            rewrite history is not in the text). Report the ABSENCE.
+                            Do NOT guess why it is absent.
+                null      → the lint genuinely did not apply: no bound offer, so there
+                            is no branded product to over-mention.
+
+              The first cut rendered "not applicable (no bound offer)" for both. On
+              reopening script #1 — which IS offer-bound to KBMO Diagnostic Intake and
+              whose lint HAD passed at 1 mention / 55% / within budget — the rail
+              asserted the script had no bound offer. A blank would have been fine;
+              inventing the reason was not. Same family as the v2.3 [VERIFIED] trap:
+              a value absent for structural reasons, presented as a finding.
+            */}
+            {sellDensity === undefined ? (
+              <div
+                className="flex items-start gap-1 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs leading-snug text-slate-600"
+                title="The sell-density report is produced at generation time and is not stored on the script row, so it is unavailable after reopening. This says nothing about whether the script passed — to see the numbers, generate or regenerate."
+              >
+                <Megaphone className="w-3 h-3 mt-px shrink-0" />
+                <span>
+                  Sell density: not retained
+                  <span className="block opacity-75">
+                    Measured at generation, not stored on the script.
+                  </span>
+                </span>
+              </div>
+            ) : sellDensity === null ? (
               <div
                 className="flex items-start gap-1 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs leading-snug text-slate-600"
                 title="The sell-density lint runs only when an offer is bound to the script. With no bound offer there is no branded product to over-mention, so the check does not apply — it is reported as not applicable rather than as a pass."

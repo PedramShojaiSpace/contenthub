@@ -3678,6 +3678,17 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
      */
     seedKeyword?: string | null;
     useCorpusSearch?: boolean;
+    /*
+     * v2.4 — resolved sell density ("value_first" | "balanced").
+     *
+     * OPTIONAL, and that is load-bearing: every row written before v2.4 lacks the
+     * key entirely. Reading it back goes through `ctaStyleFromParams`, which maps
+     * absence to "balanced" — the honest reading, since those scripts WERE
+     * generated under the balanced rules. Typed as a widened string rather than
+     * importing the router's CtaStyle union, to keep the schema free of a
+     * dependency on server code.
+     */
+    ctaStyle?: string | null;
   }>("generation_params"),
   /**
    * ─── v2.3 Part 3 — undo trail for in-place section regeneration ───────────

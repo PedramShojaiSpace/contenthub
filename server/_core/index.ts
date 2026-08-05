@@ -1253,7 +1253,8 @@ async function startServer() {
     try {
       const { renderInterconnectedPage } = await import("../interconnectedStaticPage");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      // MUST be no-store: page captures fbclid/UTM params from URL on load — caching breaks attribution
+      res.setHeader("Cache-Control", "no-store");
       return res.send(renderInterconnectedPage());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1266,7 +1267,8 @@ async function startServer() {
     try {
       const { renderInterconnectedThankYouPage } = await import("../interconnectedThankYouStaticPage");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      // MUST be no-store: fires Lead pixel on load — caching would fire duplicate Lead events
+      res.setHeader("Cache-Control", "no-store");
       return res.send(renderInterconnectedThankYouPage());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1279,7 +1281,8 @@ async function startServer() {
     try {
       const { renderInterconnectedBPage } = await import("../interconnectedBStaticPage");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      // MUST be no-store: page captures fbclid/UTM params from URL on load — caching breaks attribution
+      res.setHeader("Cache-Control", "no-store");
       return res.send(renderInterconnectedBPage());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

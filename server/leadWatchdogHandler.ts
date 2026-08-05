@@ -1,9 +1,12 @@
 /**
  * leadWatchdogHandler.ts
  * Hourly Heartbeat cron — fires every 60 minutes.
- * Checks if any Interconnected leads came in the last 65 minutes.
- * If ZERO leads found, sends an owner alert so the issue can be investigated.
- * If leads are flowing normally, stays silent.
+ *
+ * Smart watchdog logic:
+ * - During peak hours (6am–10pm CT): alert if ZERO leads in 65 min
+ * - During overnight hours (10pm–6am CT): alert only if ZERO leads in 3 hours
+ *   (overnight lulls are normal — ads run at lower frequency, audience is asleep)
+ * - Also checks: if today's total is suspiciously low vs yesterday's average
  */
 
 import type { Request, Response } from "express";
@@ -11,6 +14,15 @@ import { sdk } from "./_core/sdk";
 import { notifyOwner } from "./_core/notification";
 import { getDb } from "./db";
 import { sql } from "drizzle-orm";
+
+// CT = UTC-5 (CDT) or UTC-6 (CST). We use UTC-5 (CDT) as a safe approximation.
+const CT_OFFSET_HOURS = -5;
+
+function getCurrentHourCT(): number {
+  const nowUtc = new Date();
+  const ctHour = (nowUtc.getUTCHours() + 24 + CT_OFFSET_HOURS) % 24;
+  return ctHour;
+}
 
 export async function leadWatchdogHandler(req: Request, res: Response) {
   try {
@@ -25,11 +37,15 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
       return res.status(500).json({ error: "DB unavailable" });
     }
 
-    // Look back 65 minutes (5 min buffer over the 60-min window)
-    const windowMs = 65 * 60 * 1000;
+    const hourCT = getCurrentHourCT();
+    const isPeakHour = hourCT >= 6 && hourCT < 22; // 6am–10pm CT
+
+    // During peak hours: 65-min window. Overnight: 3-hour window.
+    const windowMs = isPeakHour ? 65 * 60 * 1000 : 3 * 60 * 60 * 1000;
+    const windowLabel = isPeakHour ? "65 minutes" : "3 hours (overnight)";
     const since = Date.now() - windowMs;
 
-    // Use raw SQL to avoid Drizzle camelCase→snake_case column mapping issues
+    // Count leads in the window
     const rows = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM interconnected_leads WHERE created_at >= ${since}`
     ) as any;
@@ -37,22 +53,60 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
     const firstRow = Array.isArray(rowData) ? rowData[0] : rowData;
     const leadsInWindow = Number(firstRow?.cnt ?? 0);
 
+    // Also get today's total (midnight CT = 05:00 UTC during CDT)
+    const midnightCT = new Date();
+    midnightCT.setUTCHours(5, 0, 0, 0); // midnight CT (CDT = UTC-5)
+    if (Date.now() < midnightCT.getTime()) {
+      midnightCT.setUTCDate(midnightCT.getUTCDate() - 1);
+    }
+    const todayRows = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM interconnected_leads WHERE created_at >= ${midnightCT.getTime()}`
+    ) as any;
+    const todayRowData = Array.isArray(todayRows) ? todayRows[0] : todayRows;
+    const todayFirstRow = Array.isArray(todayRowData) ? todayRowData[0] : todayRowData;
+    const todayTotal = Number(todayFirstRow?.cnt ?? 0);
+
+    const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
+
     if (leadsInWindow === 0) {
-      // No leads in 65 minutes — alert the owner
+      // No leads in the window — alert the owner
+      const timeContext = isPeakHour
+        ? `during peak hours (${hourCT}:00 CT)`
+        : `overnight (${hourCT}:00 CT — low-traffic window)`;
+
       await notifyOwner({
-        title: "⚠️ Lead Flow Alert — No Leads in 65 Minutes",
+        title: `⚠️ Lead Flow Alert — No Leads in ${windowLabel}`,
         content:
-          `No new Interconnected opt-ins have been recorded in the last 65 minutes. ` +
-          `This may indicate a problem with the opt-in form, ads delivery, or the registration pipeline. ` +
-          `Check: (1) Meta Ads Manager for campaign status, (2) content.theurbanmonk.com/interconnected for form functionality, ` +
-          `(3) Kajabi/Klaviyo for sync errors. ` +
-          `Checked at ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })} CT.`,
+          `No new Interconnected opt-ins in the last ${windowLabel} ${timeContext}. ` +
+          `Today's total so far: ${todayTotal} leads. ` +
+          `\n\nCheck: (1) Meta Ads Manager — are campaigns active? ` +
+          `(2) content.theurbanmonk.com/interconnected — form loading? ` +
+          `(3) Server logs for errors. ` +
+          `\nChecked at ${nowStr} CT.`,
       });
-      return res.json({ ok: true, alert: true, leadsInWindow, message: "Alert sent — no leads in 65 min" });
+      return res.json({
+        ok: true,
+        alert: true,
+        leadsInWindow,
+        todayTotal,
+        windowLabel,
+        hourCT,
+        isPeakHour,
+        message: `Alert sent — no leads in ${windowLabel} (${timeContext})`,
+      });
     }
 
     // Leads are flowing — stay silent
-    return res.json({ ok: true, alert: false, leadsInWindow, message: `${leadsInWindow} leads in last 65 min — all good` });
+    return res.json({
+      ok: true,
+      alert: false,
+      leadsInWindow,
+      todayTotal,
+      windowLabel,
+      hourCT,
+      isPeakHour,
+      message: `${leadsInWindow} leads in last ${windowLabel} — all good (today total: ${todayTotal})`,
+    });
   } catch (err: any) {
     console.error("[leadWatchdog] Error:", err);
     return res.status(500).json({

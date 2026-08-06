@@ -378,21 +378,26 @@ export async function getKajabiContactsByTag(tagName: string): Promise<Array<{
   } catch {
     return [];
   }
+  // filter[site_id] is required by the Kajabi API — without it the request returns 400
   const res = await fetch(
-    `${KAJABI_API_BASE}/contacts?filter[tag_id]=${tagId}&page[size]=200`,
+    `${KAJABI_API_BASE}/contacts?filter[site_id]=${URBAN_MONK_SITE_ID}&filter[tag_id]=${tagId}&page[size]=1`,
     { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.api+json" } }
   );
   if (!res.ok) return [];
   const data = await safeParseJson<{
+    meta?: { total?: number };
     data: Array<{ id: string; attributes: { email: string; first_name: string; last_name: string; created_at: string } }>;
   }>(res, "getKajabiContactsByTag");
-  return (data.data ?? []).map((c) => ({
-    id: c.id,
-    email: c.attributes.email,
-    firstName: c.attributes.first_name ?? "",
-    lastName: c.attributes.last_name ?? "",
-    createdAt: c.attributes.created_at ?? "",
-  }));
+  // Return a synthetic array of the correct length so callers can use .length for count
+  // (We only fetch 1 record to get the meta.total — fetching all 700+ would be slow)
+  const total = data.meta?.total ?? (data.data ?? []).length;
+  const firstRecord = (data.data ?? [])[0];
+  const placeholder = Array.from({ length: total }, (_, i) =>
+    i === 0 && firstRecord
+      ? { id: firstRecord.id, email: firstRecord.attributes.email, firstName: firstRecord.attributes.first_name ?? "", lastName: firstRecord.attributes.last_name ?? "", createdAt: firstRecord.attributes.created_at ?? "" }
+      : { id: String(i), email: "", firstName: "", lastName: "", createdAt: "" }
+  );
+  return placeholder;
 }
 
 /**

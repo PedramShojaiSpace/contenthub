@@ -1,13 +1,38 @@
 import { bigint, boolean, date, datetime, decimal, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, tinyint, varchar } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 /*
- * FINDING #10 (v2.2): all 15 columns below that hold JSON are physically
- * LONGTEXT, not MySQL json. Declaring them `json()` made the driver hand back
- * raw STRINGS while the types claimed arrays, so `as T[]` casts silently
- * produced strings at runtime and broke `inArray`. Proof:
- * docs/build-reports/v22r/probe_json_column_drift.mjs (MISMATCHED 15/15) and
- * probe_inarray_app.ts. `longtextJson()` parses on read / stringifies on write.
- * DO NOT revert these to `json()` without first migrating the physical columns.
+ * FINDING #10 (v2.2 — CORRECTED v2.4): the JSON-bearing columns below do NOT
+ * all share one physical type. Verified against PRODUCTION 2026-08-06 by reading
+ * information_schema.columns on the live cluster, for all 8 longtextJson sites:
+ *
+ *   longtext : research_jobs.pattern_ids            (line ~4052)
+ *              research_jobs.transcript_video_ids   (line ~4050)
+ *              script_factory_outputs.analog_data_entry_ids (line ~3595)
+ *              suggested_ideas.recommended_patterns (line ~3938)
+ *   json     : corpus_entries.tags                  (line ~3509)
+ *              content_patterns.tags                (line ~3546)
+ *              script_factory_outputs.corpus_entry_ids      (line ~3568)
+ *              script_factory_outputs.verified_pattern_ids  (line ~3567)
+ *
+ * The previous version of this note claimed "all 15 columns ... are physically
+ * LONGTEXT", citing docs/build-reports/v22r/probe_json_column_drift.mjs
+ * (MISMATCHED 15/15). That probe ran against the LOCAL DEV MySQL, not production,
+ * and there are 8 longtextJson call sites, not 15. Both the count and the
+ * type claim were wrong about the live database. Recorded plainly because
+ * asserting a dev-environment measurement as a production fact is the exact
+ * error class this schema's history is full of.
+ *
+ * The underlying bug was real: declaring a physically-longtext column as `json()`
+ * makes the driver return a raw STRING while the type says array, so `as T[]`
+ * silently yields a string and breaks `inArray`.
+ *
+ * `longtextJson()` is correct for BOTH physical types, which is why the split
+ * above does not matter at runtime: fromDriver passes an already-parsed object
+ * through untouched (real json columns) and JSON.parses a string (longtext
+ * columns); toDriver always emits a valid JSON document, which a json column
+ * accepts. See drizzle/longtextJson.ts.
+ *
+ * DO NOT revert these to `json()` — that breaks the four longtext columns above.
  */
 import { longtextJson } from "./longtextJson";
 

@@ -1,0 +1,41 @@
+=== the statement as written in the file (lines 274-275) ===
+ALTER TABLE `analog_data_entries`
+  ADD COLUMN `offer_profile` TEXT CHARACTER SET utf8mb4 NULL;
+=== pre-check: column absent, and current row/column state ===
++----------------------+
+| offer_profile_exists |
++----------------------+
+|                    0 |
++----------------------+
++----------------+
+| columns_before |
++----------------+
+|             10 |
++----------------+
++-------------+
+| rows_before |
++-------------+
+|           1 |
++-------------+
+=== EXECUTING SECTION 3 (single statement) ===
+exit=
+=== READ-BACK ===
++------+---------------+-------------+-------------+---------+----------------+-------------+
+| pos  | column_name   | column_type | is_nullable | charset | collation_name | col_default |
++------+---------------+-------------+-------------+---------+----------------+-------------+
+|   11 | offer_profile | text        | YES         | utf8mb4 | utf8mb4_bin    | NULL        |
++------+---------------+-------------+-------------+---------+----------------+-------------+
+-- EXPECT: text, YES nullable, utf8mb4, default NULL
+=== the 1 live row: intact, offer_profile NULL ===
++------------+--------------------+
+| rows_after | null_offer_profile |
++------------+--------------------+
+|          1 |                  1 |
++------------+--------------------+
+-- EXPECT: 1 / 1
+=== no indexes expected in Section 3 — confirm none were added ===
++------------+------+
+| index_name | cols |
++------------+------+
+| PRIMARY    | id   |
++------------+------+

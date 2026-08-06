@@ -1,0 +1,59 @@
+FINAL INTEGRITY SWEEP — 2026-08-06T18:04:30Z
+
+=== 5.8 re-measured FRESH after Section 3, not inherited from the Section 1 reading ===
++-------------+
+| base_tables |
++-------------+
+|         149 |
++-------------+
++-----------------------+
+| all_tables_incl_views |
++-----------------------+
+|                   149 |
++-----------------------+
+-- EXPECT: 149 both ways (no views in this schema). Baseline was 146.
+
+=== all five Script Factory table row counts vs pre-migration baseline ===
++--------------------------------+----------+----------+
+| tbl                            | rows_now | baseline |
++--------------------------------+----------+----------+
+| analog_data_entries            |        1 |        1 |
+| research_jobs (new)            |        0 |        0 |
+| script_factory_outputs         |        5 |        5 |
+| suggested_ideas (new)          |        0 |        0 |
+| collective_sourcing_candidates |        0 |        0 |
+| topic_nodes (new)              |        0 |        0 |
++--------------------------------+----------+----------+
+
+=== drift assertion: any table where rows_now <> baseline? ===
++-------------------+
+| tables_with_drift |
++-------------------+
+|                 0 |
++-------------------+
+-- EXPECT: 0
+
+=== collective_sourcing_candidates: Section 4 was INTENTIONALLY EXCLUDED. Confirm untouched. ===
++-------------+
+| csc_columns |
++-------------+
+|          19 |
++-------------+
+
+=== live vs schema.ts, ALL FIVE tables ===
+script_factory_outputs live= 29  schema.ts= 29  SET-EQUAL
+analog_data_entries  live= 11  schema.ts= 11  SET-EQUAL
+research_jobs        live= 16  schema.ts= 16  SET-EQUAL
+suggested_ideas      live= 20  schema.ts= 20  SET-EQUAL
+topic_nodes          live= 14  schema.ts= 14  SET-EQUAL
+
+5 table(s) compared, 0 mismatch(es).
+COMPARE EXIT: 
+
+=== and the checker itself, still green at HEAD ===
+verify-column-names.mjs EXIT: 0
+
+================================================================================================
+columns printed: 65   UNRESOLVED: 0   NOT FOUND: 0   SET MISMATCHES: 0
+All names resolve from a column constructor's first argument, and the SQL and
+schema.ts agree on every table's column set.

@@ -148,7 +148,9 @@ export const interconnectedRouter = router({
             klaviyoSynced: false,
             createdAt: Date.now(),
           });
-          localLeadId = (result as any).insertId ?? null;
+          // drizzle-orm mysql2 v0.44+: insert returns an array [ResultSetHeader, ...]
+          // insertId lives on result[0] in newer versions, fallback to result directly for older
+          localLeadId = (result as any)?.[0]?.insertId ?? (result as any)?.insertId ?? null;
           console.log(`[interconnectedRouter] Lead saved to DB: ${email} (id: ${localLeadId})`);
         }
       } catch (err) {

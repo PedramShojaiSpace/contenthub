@@ -274,18 +274,9 @@ export function renderInterconnectedThankYouPage(): string {
     <p style="text-align:center;color:#fca5a5;font-weight:600;font-size:1rem;margin-bottom:24px">This offer only appears once — and it disappears when you close this tab.</p>
     <!-- Wistia click-to-play facade: zero network cost until user taps play -->
     <div class="video-wrap" id="wistia-facade" onclick="loadWistia()" style="cursor:pointer;position:relative">
-      <div class="video-ratio" style="background:#020d18">
-        <!-- Thumbnail from Wistia CDN — single lightweight image, no JS -->
-        <img
-          id="wistia-thumb"
-          src="https://embed-ssl.wistia.com/deliveries/88da17f5c1637186bb1f35d4c62300012d68271d.jpg?image_crop_resized=960x540"
-          alt="Watch Dr. Pedram Shojai's message"
-          fetchpriority="high"
-          decoding="async"
-          width="960"
-          height="540"
-          style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover"
-        />
+     <div class="video-ratio" style="background:#020d18">
+        <!-- Wistia serves its own poster/thumbnail — no custom image needed -->
+        <div id="wistia-thumb" style="position:absolute;top:0;left:0;width:100%;height:100%;background:#020d18"></div>
         <!-- Play button overlay -->
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:72px;height:72px;background:rgba(46,145,252,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 32px rgba(46,145,252,0.5);pointer-events:none">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
@@ -507,11 +498,8 @@ function getCachedTyVariant() {
     localStorage.setItem('ty_ab_variant', variant);
     sessionStorage.setItem('__ab_variant_id', String(variantId));
     currentVideoId = variant === 'B' ? VIDEO_B : VIDEO_A;
-    // Update the thumb src if Wistia hasn't loaded yet
-    var thumb = document.getElementById('wistia-thumb');
-    if (thumb && variant === 'B') {
-      thumb.src = 'https://embed-ssl.wistia.com/deliveries/10cdtpm3il.jpg?image_crop_resized=960x540';
-    }
+   // Update the thumb src if Wistia hasn't loaded yet
+    // Thumbnail removed — Wistia serves its own poster on load
   }
 
   if (cached) {

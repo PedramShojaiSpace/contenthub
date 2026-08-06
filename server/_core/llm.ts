@@ -268,6 +268,96 @@ const normalizeResponseFormat = ({
 const INVOKE_LLM_MAX_RETRIES = 5;
 const INVOKE_LLM_BASE_DELAY_MS = 1000; // 1s → 2s → 4s → 8s → 16s
 
+/**
+ * The flagship model every invokeLLM call uses. Overridable with LLM_MODEL so a
+ * sandbox can be pointed at a cheaper tier without a code change.
+ *
+ * Chosen for a long-form copywriting workload (15-minute YouTube scripts), where
+ * prose quality matters more than latency.
+ *
+ * ── THE DEFAULT MATCHES CURRENT PRODUCTION, NOT THE BEST MODEL ───────────────
+ * Production runs gemini-2.5-flash today — that was the hardcoded literal on
+ * main. Keeping it as the fallback means merging this branch WITHOUT setting an
+ * env var is behaviourally a no-op for every invokeLLM call in the product, not
+ * just Script Factory's. Defaulting to gpt-5.5 would silently change the model
+ * for unrelated features the moment the branch merged; a default should preserve
+ * existing behaviour and the upgrade should be a deliberate act.
+ *
+ * To upgrade: set LLM_MODEL=gpt-5.5 in the production environment. Verified
+ * available on the Forge gateway using production's existing
+ * BUILT_IN_FORGE_API_KEY, so it needs no OpenAI account and bills as Manus
+ * credits. See docs/deploy/v24-production-plan.md Part 2.
+ *
+ * NOTE the interaction with usesCompletionTokensParam() below: that regex keys on
+ * the model FAMILY, so gemini receives `max_tokens` and the gpt-5 family receives
+ * `max_completion_tokens`. Both are correct for their family — Gemini returns
+ * content:null with finish_reason "length" if given the wrong one. A future third
+ * family needs that regex extended.
+ */
+export const LLM_MODEL = process.env.LLM_MODEL || "gemini-2.5-flash";
+
+/**
+ * Raised when the provider stopped generating because the token budget ran out
+ * (`finish_reason: "length"`) rather than because the answer was finished.
+ *
+ * This is deliberately an ERROR rather than a returned flag. The failure mode it
+ * prevents is the worst kind: a 2,000-word script cut off mid-sentence looks
+ * like a complete script to every downstream consumer — the story lint, the
+ * grounding metric, the cadence lint and the DB write all accept it happily, and
+ * the operator sees a saved "finished" script whose last section silently does
+ * not exist. Failing loudly here means a truncated generation can never be
+ * persisted as if it were complete.
+ */
+export class LLMTruncatedError extends Error {
+  readonly finishReason: string;
+  readonly completionTokens: number | null;
+  readonly maxTokens: number;
+  readonly partialContent: string;
+
+  constructor(args: {
+    finishReason: string;
+    completionTokens: number | null;
+    maxTokens: number;
+    partialContent: string;
+  }) {
+    super(
+      `The model stopped because it ran out of output budget ` +
+        `(finish_reason="${args.finishReason}"). It produced ` +
+        `${args.completionTokens ?? "an unknown number of"} completion tokens against a ` +
+        `limit of ${args.maxTokens}, so the result is cut off mid-generation and ` +
+        `was NOT saved. Retry with a shorter target length, or raise the token ` +
+        `budget for this call.`
+    );
+    this.name = "LLMTruncatedError";
+    this.finishReason = args.finishReason;
+    this.completionTokens = args.completionTokens;
+    this.maxTokens = args.maxTokens;
+    this.partialContent = args.partialContent;
+  }
+}
+
+/**
+ * `max_tokens` vs `max_completion_tokens` is model-dependent, so it is derived
+ * from the model name rather than hardcoded. The gpt-5 family and the o-series
+ * reasoning models accept only `max_completion_tokens`; gpt-4o / gpt-4.1 and
+ * earlier accept only `max_tokens`. Sending the wrong one is a hard 400.
+ */
+const usesCompletionTokensParam = (model: string) =>
+  /^(gpt-5|o1|o3|o4)/.test(model);
+
+const MAX_TOKENS_PARAM = usesCompletionTokensParam(LLM_MODEL)
+  ? "max_completion_tokens"
+  : "max_tokens";
+
+/**
+ * On reasoning-capable models this budget is shared between internal reasoning
+ * and the visible answer, so the previous 8192 could be consumed before a
+ * 15-minute script (~2,000+ words) finished — returning truncated prose with
+ * finish_reason "length". Raised for the completion-tokens family only; the
+ * older families keep the 8192 that was tuned for their gateway timeouts.
+ */
+const DEFAULT_MAX_TOKENS = MAX_TOKENS_PARAM === "max_completion_tokens" ? 32768 : 8192;
+
 export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<InvokeResult> {
   assertApiKey();
 
@@ -283,7 +373,10 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    // Single-point model config. Verified present on the operator's account via
+    // GET /v1/models (2026-08). Changing the flagship model is a one-line edit
+    // here — no caller passes a model, so this is the only place it is decided.
+    model: LLM_MODEL,
     messages: messages.map(normalizeMessage),
   };
 
@@ -303,7 +396,17 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
   // 8192 is sufficient for full blog posts and avoids gateway timeouts that
   // occurred with the previous 32768 value on the Cloud Run infrastructure.
   const callerMaxTokens = params.maxTokens ?? params.max_tokens;
-  payload.max_tokens = callerMaxTokens ?? 8192;
+  // PARAMETER NAME IS MODEL-DEPENDENT. The gpt-5 family REJECTS `max_tokens`
+  // outright:
+  //   400 "Unsupported parameter: 'max_tokens' is not supported with this
+  //        model. Use 'max_completion_tokens' instead."
+  // Older chat models (gpt-4o, gpt-4.1) accept `max_tokens`. The public
+  // maxTokens/max_tokens caller API is unchanged — only the wire name differs.
+  //
+  // The budget also covers reasoning tokens on this family, so it must be
+  // generous: a starved budget returns finish_reason "length" with empty
+  // content, which reads as a silent failure rather than an error.
+  payload[MAX_TOKENS_PARAM] = callerMaxTokens ?? DEFAULT_MAX_TOKENS;
   // NOTE: The 'thinking' parameter was removed — it caused intermittent
   // 'Service Unavailable' gateway errors on the Forge API proxy.
 
@@ -459,6 +562,36 @@ export async function invokeLLM(params: InvokeParams, _retryCount = 0): Promise<
       }
       throw new Error(`SERVICE_UNAVAILABLE: The AI service returned an unexpected response. Please try again in a moment.`);
     }
+  }
+
+  /**
+   * TRUNCATION GUARD.
+   *
+   * Every guard above catches a response that is obviously broken. This one
+   * catches the response that looks perfect: valid envelope, real prose, no
+   * error field — but the model was cut off mid-sentence because the output
+   * budget ran out. Without this check the truncated text flows straight into
+   * the DB and is presented as a finished script.
+   *
+   * Not retried: a retry with the same budget produces the same truncation, so
+   * failing immediately with an actionable message is the honest response.
+   */
+  const finishReason = parsed?.choices?.[0]?.finish_reason;
+  if (finishReason === "length") {
+    const usage = (parsed as any)?.usage;
+    const content = parsed?.choices?.[0]?.message?.content;
+    console.error(
+      `[invokeLLM] TRUNCATED: finish_reason=length, ` +
+        `completion_tokens=${usage?.completion_tokens ?? "?"}, ` +
+        `budget=${payload[MAX_TOKENS_PARAM]}, model=${LLM_MODEL}`
+    );
+    throw new LLMTruncatedError({
+      finishReason,
+      completionTokens:
+        typeof usage?.completion_tokens === "number" ? usage.completion_tokens : null,
+      maxTokens: Number(payload[MAX_TOKENS_PARAM]),
+      partialContent: typeof content === "string" ? content : "",
+    });
   }
 
   return parsed;

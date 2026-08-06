@@ -94,6 +94,41 @@ function LibraryTab() {
     { enabled: viewEntry !== null }
   );
 
+  /**
+   * Part 3B — extract the commercial offer so generated CTAs can close on the
+   * real thing. A "no offer found" result is reported plainly rather than as an
+   * error: most entries (interviews, surveys) genuinely have no offer.
+   */
+  const extractOffer = trpc.analogData.extractOfferProfile.useMutation({
+    onSuccess: (res) => {
+      const n = res.tiers?.length ?? 0;
+      if (n === 1) {
+        toast.success(
+          res.cached
+            ? `Already bound: ${res.tiers[0].offerName}`
+            : `Offer extracted: ${res.tiers[0].offerName}`
+        );
+      } else if (n > 1) {
+        // A ladder is not an error — the operator picks the tier at generation.
+        toast.success(
+          `${n} offer tiers found: ${res.tiers.map((t) => t.offerName).join(", ")}`
+        );
+      } else {
+        toast.info(res.reason ?? "No offer found in this copy.");
+        // The model's own output makes a refusal diagnosable rather than silent.
+        if (res.rawExtraction) console.info("[offer extraction] raw:", res.rawExtraction);
+      }
+      utils.analogData.listEntries.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const clearOffer = trpc.analogData.clearOfferProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Offer binding cleared");
+      utils.analogData.listEntries.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const deleteEntry = trpc.analogData.deleteEntry.useMutation({
     onSuccess: () => {
       toast.success("Entry deleted");
@@ -212,6 +247,17 @@ function LibraryTab() {
                         {entry.title ?? <span className="text-muted-foreground italic">Untitled</span>}
                         <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
+                      {/* Part 3B — visible proof of what a CTA would close on. */}
+                      {(entry as any).hasOffer && (
+                        <p className="text-xs text-emerald-700 mt-0.5 font-medium">
+                          {((entry as any).offerTiers ?? []).length > 1
+                            ? `${((entry as any).offerTiers ?? []).length} offer tiers: ` +
+                              ((entry as any).offerTiers ?? [])
+                                .map((t: any) => t.pricePoint ? `${t.offerName} (${t.pricePoint})` : t.offerName)
+                                .join(" · ")
+                            : `Offer: ${(entry as any).offerName ?? ((entry as any).offerTiers ?? [])[0]?.offerName}`}
+                        </p>
+                      )}
                       {entry.contentPreview && (
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                           {entry.contentPreview}
@@ -255,18 +301,46 @@ function LibraryTab() {
                       {new Date(entry.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          if (confirm("Delete this entry?")) {
-                            deleteEntry.mutate({ id: entry.id });
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1 justify-end">
+                        {/* Part 3B */}
+                        {(entry as any).hasOffer ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            title="Stop binding CTAs to this offer"
+                            disabled={clearOffer.isPending}
+                            onClick={() => clearOffer.mutate({ id: entry.id })}
+                          >
+                            Clear offer
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-emerald-700 hover:text-emerald-900"
+                            title="Read the offer out of this copy so CTAs can close on it"
+                            disabled={extractOffer.isPending}
+                            onClick={() => extractOffer.mutate({ id: entry.id })}
+                          >
+                            {extractOffer.isPending && extractOffer.variables?.id === entry.id
+                              ? "Reading…"
+                              : "Extract offer"}
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            if (confirm("Delete this entry?")) {
+                              deleteEntry.mutate({ id: entry.id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );

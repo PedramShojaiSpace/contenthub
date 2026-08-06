@@ -1,0 +1,159 @@
+=== PART 0 — GROUND TRUTH (raw) ===
+generated: 2026-08-01 17:30:13 UTC
+
+=== 0.1 GIT STATE ===
+$ git branch -a
+  feature/massive-update[m
+* [32mfeature/script-factory-v22[m
+  main[m
+  [31mremotes/origin/HEAD[m -> origin/main
+  [31mremotes/origin/feature/script-factory-v22[m
+  [31mremotes/origin/main[m
+
+$ git log --oneline -10
+[33m0b7c600[m v2.2 Step One: preserve build spec verbatim as docs/build-reports/v22r/SPEC.md
+[33m525780b[m Script Factory v2.1: fix vanishing-script navigation, restructure idea buckets, harden VidIQ supercharge, add Topic Tree
+[33m4e8183d[m Staging tooling: env builder and prod DB credential reader
+[33mb4e70e3[m Script Factory v2: the Daily Video Engine (Phases 1-4)
+[33m08c6efe[m Checkpoint: Updated emailBoost.ts with 3 additional techniques reverse-engineered from second agency email sample: (4) double-encoded inner HTML using HTML entities, (5) quoted-printable artifacts (=E2=80=8B, =E2=80=93, =3D), (6) locked identical boostData block across all sends for consistent sender fingerprint. All 8 tests pass.
+[33mda3375d[m Checkpoint: Reverse-engineered the email deliverability agency's boostData technique and implemented it natively. Created emailBoost.ts with buildEmailHtml() and buildMimeMessage() helpers. Updated sendGmailOutreach() in gmail.ts to send multipart/alternative MIME (plain text + HTML) with the hidden boostData block. Updated sender name to 'Dr. Pedram Shojai'. All 5 emailBoost tests pass.
+[33m0fd931b[m Checkpoint: Klaviyo list ID Xer7ua verified as 'Interconnected SMS Subscribers' — SMS opt-ins now automatically added to this list. Swapped Wistia video on thank-you page from 2tt1q5l0np to hobj7srg3q (revised LP video).
+[33mde362ad[m Checkpoint: Added Klaviyo helper module (server/klaviyo.ts) with profile upsert, SMS subscription, and E.164 phone normalization. Updated interconnectedRouter to call pushInterconnectedOptIn() on every registration — if smsConsent=true and phone is provided, the subscriber is automatically pushed to Klaviyo with SMS consent recorded. All tests pass (12/12). Klaviyo API key verified against Urban Monk Productions account.
+[33m646b629[m Checkpoint: InterconnectedThankYou.tsx: replaced the placeholder video box with the actual Wistia iframe embed (media ID: 2tt1q5l0np). Responsive 16:9 wrapper, blue glow border, autoplay/fullscreen allowed.
+[33m14b7e37[m Checkpoint: Interconnected documentary campaign wired into Meta Ad Push system: 4 ads (Expert Collage, Urgency, Pattern Interrupt, Retargeting OTO) added to AD_CATALOG with real Meta image hashes obtained by uploading JPEGs to Meta's ad image library. Color theme (cyan) added to MetaAdPushTab UI. All ads point to content.theurbanmonk.com/interconnected (cold traffic) or Kajabi checkout (retargeting OTO). Ready to push as PAUSED drafts from the content hub.
+
+$ git reflog | head -20
+[33m0b7c600[m HEAD@{0}: commit: v2.2 Step One: preserve build spec verbatim as docs/build-reports/v22r/SPEC.md
+[33m525780b[m HEAD@{1}: checkout: moving from feature/massive-update to feature/script-factory-v22
+[33m525780b[m HEAD@{2}: commit: Script Factory v2.1: fix vanishing-script navigation, restructure idea buckets, harden VidIQ supercharge, add Topic Tree
+[33m4e8183d[m HEAD@{3}: commit: Staging tooling: env builder and prod DB credential reader
+[33mb4e70e3[m HEAD@{4}: commit: Script Factory v2: the Daily Video Engine (Phases 1-4)
+[33m08c6efe[m HEAD@{5}: checkout: moving from main to feature/massive-update
+[33m08c6efe[m HEAD@{6}: clone: from https://github.com/PedramShojaiSpace/contenthub.git
+
+$ git ls-remote origin
+0dd5ad5e8365703b47fd98346b4701220af27b18	HEAD
+0b7c600240be241617ee67bc72bb1306c7fc3434	refs/heads/feature/script-factory-v22
+0dd5ad5e8365703b47fd98346b4701220af27b18	refs/heads/main
+
+$ git status
+On branch feature/script-factory-v22
+Your branch is up to date with 'origin/feature/script-factory-v22'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	[31mdocs/build-reports/v22r/00-ground-truth.txt[m
+
+nothing added to commit but untracked files present (use "git add" to track)
+
+=== 0.2 STAGING ROW COUNTS ===
+tbl	n
+content_patterns	0
+yt_transcripts	0
+yt_video_outliers	0
+research_jobs	1
+claims_reviews	0
+script_factory_outputs	8
+analog_data_entries	1
+suggested_ideas	24
+
+--- research_jobs: all rows, status + error ---
+*************************** 1. row ***************************
+                  id: 1
+               topic: Unlock Your Energy: The Ancient Wisdom of Circadian Rhythms & Modern Science
+        seed_keyword: unlock your energy the ancient wisdom
+     research_status: failed
+      outlier_videos: []
+transcript_video_ids: NULL
+         pattern_ids: NULL
+ transcripts_fetched: 0
+  transcripts_cached: 0
+  transcripts_failed: 0
+       quota_blocked: 0
+               notes: discovery=vidiq_outliers; seed="unlock your energy the ancient wisdom"
+       error_message: No outlier or trending videos found for this keyword
+          created_at: 2026-08-01 12:24:54
+          updated_at: 2026-08-01 12:24:56
+
+=== 0.3 v2.2 COLUMN ABSENCE PROBES (expected ABSENT) ===
+analog_data_entries.offer_profile : ABSENT (count=0)
+script_factory_outputs.pattern_composition : ABSENT (count=0)
+research_jobs.structure_summary : ABSENT (count=0)
+
+--- direct SELECT proof ---
+--------------
+SELECT offer_profile FROM analog_data_entries LIMIT 1
+--------------
+SELECT pattern_composition FROM script_factory_outputs LIMIT 1
+--------------
+SELECT structure_summary FROM research_jobs LIMIT 1
+
+=== PART 1 PREREQ — claims_reviews.content_type LIVE TYPE (spec line 63) ===
+Field	Type	Null	Key	Default	Extra
+id	int(11)	NO	PRI	NULL	auto_increment
+content_type	varchar(64)	NO	MUL	NULL	
+content_id	varchar(255)	YES		NULL	
+content_title	varchar(512)	YES		NULL	
+content_text	mediumtext	NO		NULL	
+verdicts	longtext	NO		NULL	
+overall_flag	tinyint(1)	NO		0	
+flag_count	int(11)	NO		0	
+status	enum('pending','approved','rejected','auto_approved')	NO	MUL	pending	
+reviewed_by	varchar(255)	YES		NULL	
+reviewed_at	bigint(20)	YES		NULL	
+reviewer_note	text	YES		NULL	
+created_at	bigint(20)	NO	MUL	NULL	
+updated_at	bigint(20)	NO		NULL	
+
+--- content_type only ---
+*************************** 1. row ***************************
+  Field: content_type
+   Type: varchar(64)
+   Null: NO
+    Key: MUL
+Default: NULL
+  Extra: 
+
+=== 0.4 SCRATCH DB CLONE ===
+$ mysqldump --single-transaction --routines --triggers contenthub_staging > /tmp/staging_dump.sql   (28,483,784 bytes, exit 0)
+$ CREATE DATABASE contenthub_v22_sandbox  +  GRANT ALL to chstaging (as root)
+$ mysql contenthub_v22_sandbox < /tmp/staging_dump.sql   (exit 0)
+
+tables: staging=145  sandbox=145
+
+--- row counts side by side ---
+TABLE                           STAGING    SANDBOX MATCH
+content_patterns                      0          0 OK
+yt_transcripts                        0          0 OK
+yt_video_outliers                     0          0 OK
+research_jobs                         1          1 OK
+claims_reviews                        0          0 OK
+script_factory_outputs                8          8 OK
+analog_data_entries                   1          1 OK
+suggested_ideas                      24         24 OK
+personas                              8          8 OK
+
+--- 0.3 column-absence probes, real driver errors (mysql CLI swallows stderr here) ---
+=== column absence probes  [db=contenthub_staging] ===
+
+$ SELECT `offer_profile` FROM `analog_data_entries` LIMIT 1
+  ABSENT — ER_BAD_FIELD_ERROR: Unknown column 'offer_profile' in 'SELECT'
+
+$ SELECT `pattern_composition` FROM `script_factory_outputs` LIMIT 1
+  ABSENT — ER_BAD_FIELD_ERROR: Unknown column 'pattern_composition' in 'SELECT'
+
+$ SELECT `structure_summary` FROM `research_jobs` LIMIT 1
+  ABSENT — ER_BAD_FIELD_ERROR: Unknown column 'structure_summary' in 'SELECT'
+
+--- same probes against the scratch DB ---
+=== column absence probes  [db=contenthub_v22_sandbox] ===
+
+$ SELECT `offer_profile` FROM `analog_data_entries` LIMIT 1
+  ABSENT — ER_BAD_FIELD_ERROR: Unknown column 'offer_profile' in 'SELECT'
+
+$ SELECT `pattern_composition` FROM `script_factory_outputs` LIMIT 1
+  ABSENT — ER_BAD_FIELD_ERROR: Unknown column 'pattern_composition' in 'SELECT'
+
+$ SELECT `structure_summary` FROM `research_jobs` LIMIT 1
+  ABSENT — ER_BAD_FIELD_ERROR: Unknown column 'structure_summary' in 'SELECT'
+

@@ -1,5 +1,15 @@
 import { bigint, boolean, date, datetime, decimal, double, float, int, json, longtext, mediumtext, mysqlEnum, mysqlTable, text, timestamp, tinyint, varchar } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
+/*
+ * FINDING #10 (v2.2): all 15 columns below that hold JSON are physically
+ * LONGTEXT, not MySQL json. Declaring them `json()` made the driver hand back
+ * raw STRINGS while the types claimed arrays, so `as T[]` casts silently
+ * produced strings at runtime and broke `inArray`. Proof:
+ * docs/build-reports/v22r/probe_json_column_drift.mjs (MISMATCHED 15/15) and
+ * probe_inarray_app.ts. `longtextJson()` parses on read / stringifies on write.
+ * DO NOT revert these to `json()` without first migrating the physical columns.
+ */
+import { longtextJson } from "./longtextJson";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -3187,27 +3197,32 @@ export type InsertAbConversion = typeof abConversions.$inferInsert;
 // ─── Claims Review Gate ───────────────────────────────────────────────────────
 export const claimsReviews = mysqlTable("claims_reviews", {
   id: int("id").autoincrement().primaryKey(),
-  contentType: mysqlEnum("cr_content_type", [
-    "wordpress_post",
-    "meta_ad",
-    "advertorial",
-    "email_sequence",
-    "landing_page",
-    "other",
-  ]).notNull(),
+  // v2.2 Part 1 fix 7 — declaration-only correction, ZERO DDL.
+  //
+  // Two defects were stacked here. The NAME was wrong (`cr_content_type` does
+  // not exist; the live column is `content_type`), AND the TYPE was wrong: the
+  // live column is `varchar(64)`, not an enum. SHOW COLUMNS on staging returns
+  // `content_type varchar(64) NO` with no enum constraint.
+  //
+  // Declaring varchar rather than mysqlEnum is what lets Part 3E route Script
+  // Factory output into Claims Review by writing 'youtube_script' directly,
+  // with no ALTER TABLE.
+  contentType: varchar("content_type", { length: 64 }).notNull(),
   contentId: varchar("content_id", { length: 255 }),
   contentTitle: varchar("content_title", { length: 512 }),
   contentText: text("content_text").notNull(),
-  verdicts: json("verdicts").notNull().$type<Array<{
+  verdicts: longtextJson<Array<{
     ruleId: string;
     ruleName: string;
     passed: boolean;
     flaggedText: string | null;
     explanation: string;
-  }>>(),
+  }>>("verdicts").notNull(),
   overallFlag: tinyint("overall_flag").notNull().default(0),
   flagCount: int("flag_count").notNull().default(0),
-  status: mysqlEnum("cr_status", ["pending", "approved", "rejected", "auto_approved"])
+  // Live column is `status`. Unlike content_type this IS a real enum in the
+  // database with exactly these four values — only the name was wrong.
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "auto_approved"])
     .notNull()
     .default("pending"),
   reviewedBy: varchar("reviewed_by", { length: 255 }),
@@ -3281,21 +3296,21 @@ export const ytHeadlineGenerations = mysqlTable("yt_headline_generations", {
   topic: varchar("topic", { length: 512 }).notNull(),
   pillar: varchar("pillar", { length: 128 }),
   // JSON array of 5 headline objects: { title, hook, rationale }
-  headlines: json("headlines").notNull().$type<Array<{
+  headlines: longtextJson<Array<{
     title: string;
     hook: string;
     rationale: string;
     estimatedCtrTier: "high" | "medium" | "low";
-  }>>(),
+  }>>("headlines").notNull(),
   // JSON array of 5 thumbnail concept objects (parallel to headlines)
-  thumbnailConcepts: json("thumbnail_concepts").$type<Array<{
+  thumbnailConcepts: longtextJson<Array<{
     layout: string;
     textOverlay: string;
     background: string;
     focalElement: string;
     colorMood: string;
     productionNotes: string;
-  }>>()
+  }>>("thumbnail_concepts")
     ,
   selectedTitle: varchar("selected_title", { length: 512 }),
   linkedScriptId: int("linked_script_id"),
@@ -3379,6 +3394,10 @@ export const analogDataEntries = mysqlTable("analog_data_entries", {
   extractedInsights: text("extractedInsights"),
   // Whether this entry has been added to the corpus for the Script Factory
   inCorpus: boolean("inCorpus").default(false).notNull(),
+  // Part 3B — the commercial offer this entry sells, LLM-extracted.
+  // Nullable by design: a NULL profile omits the offer block from generation
+  // rather than binding the CTA to a guessed offer. Stored as JSON text.
+  offerProfile: text("offer_profile"),
   createdAt: timestamp("ad_createdAt").defaultNow().notNull(),
   updatedAt: timestamp("ad_updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -3418,10 +3437,17 @@ export const ytTranscripts = mysqlTable("yt_transcripts", {
   lang: varchar("lang", { length: 16 }).default("en"),
   rawText: mediumtext("raw_text"),
   wordCount: int("word_count").default(0),
-  status: mysqlEnum("transcript_status", ["pending", "fetched", "no_transcript", "error"]).notNull().default("pending"),
+  // v2.2 Part 1 fix 6 — declaration-only correction, ZERO DDL.
+  // Live column is `status`; this declared `transcript_status`, which does not
+  // exist. Every read and write against yt_transcripts therefore failed with
+  // ER_BAD_FIELD_ERROR — the reason the table holds 0 rows. Verified by
+  // SHOW COLUMNS against staging on 2026-08-01.
+  status: mysqlEnum("status", ["pending", "fetched", "no_transcript", "error"]).notNull().default("pending"),
   errorMessage: varchar("error_message", { length: 512 }),
-  createdAt: datetime("tr_created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("tr_updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  // Same defect class: live columns are `created_at` / `updated_at`. The `tr_`
+  // prefix was never in the database.
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export type YtTranscript = typeof ytTranscripts.$inferSelect;
@@ -3453,8 +3479,11 @@ export const ytVideoOutliers = mysqlTable("yt_video_outliers", {
   baselineCtrStddev: float("baseline_ctr_stddev"),
   baselineRetentionStddev: float("baseline_retention_stddev"),
   scoredAt: datetime("scored_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  createdAt: datetime("outlier_created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("outlier_updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  // v2.2 Part 1 fix 8 — declaration-only correction, ZERO DDL.
+  // Live columns are `created_at` / `updated_at`; the `outlier_` prefix was
+  // never in the database. Same defect class as fixes 6 and 7.
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export type YtVideoOutlier = typeof ytVideoOutliers.$inferSelect;
@@ -3477,7 +3506,7 @@ export const corpusEntries = mysqlTable("corpus_entries", {
   contentChunk: mediumtext("content_chunk"),
   // embedding stored as JSON string (TiDB VECTOR type not in Drizzle ORM yet)
   embedding: text("embedding"),
-  tags: json("tags").$type<string[]>(),
+  tags: longtextJson<string[]>("tags"),
   personaId: int("persona_id"),
   wordCount: int("word_count").default(0),
   inCorpus: tinyint("in_corpus").notNull().default(1),
@@ -3514,7 +3543,7 @@ export const contentPatterns = mysqlTable("content_patterns", {
   effectivenessScore: float("effectiveness_score"),
   usageCount: int("usage_count").notNull().default(0),
   lastUsedAt: datetime("last_used_at"),
-  tags: json("tags").$type<string[]>(),
+  tags: longtextJson<string[]>("tags"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -3535,14 +3564,172 @@ export const scriptFactoryOutputs = mysqlTable("script_factory_outputs", {
     "youtube_script", "short_form", "email", "ad_copy", "sales_page_section", "podcast_outline",
   ]).notNull().default("youtube_script"),
   scriptBody: longtext("script_body").notNull(),
-  verifiedPatternIds: json("verified_pattern_ids").$type<number[]>(),
-  corpusEntryIds: json("corpus_entry_ids").$type<number[]>(),
+  verifiedPatternIds: longtextJson<number[]>("verified_pattern_ids"),
+  corpusEntryIds: longtextJson<number[]>("corpus_entry_ids"),
   verifiedCount: int("verified_count").notNull().default(0),
   totalElements: int("total_elements").notNull().default(0),
   verificationPct: float("verification_pct"),
+  /**
+   * Which DEFINITION produced verification_pct on this row. Nullable by design:
+   * NULL means "written before this column existed", i.e. the pre-v2.2 metric.
+   *
+   * WHY THIS COLUMN EXISTS. verification_pct has held two incompatible measures
+   * under one name. Pre-v2.2 it was the share of all bracketed markers that
+   * happened to be [VERIFIED] — a number that moved when structure changed even
+   * if grounding did not. From v2.2 it is the share of SECTIONS containing
+   * grounded material (see scriptMetrics.ts, metricVersion "v2.2-instance").
+   * scriptMetrics already computed that version string and then discarded it, so
+   * a row could not say which definition produced its number. Persisting it makes
+   * the ambiguity self-documenting instead of folklore.
+   *
+   * Read NULL as "pre-v2.2 marker-ratio metric, not comparable to v2.2 values".
+   */
+  metricVersion: varchar("metric_version", { length: 16 }),
   status: mysqlEnum("status", ["draft", "approved", "archived"]).notNull().default("draft"),
   notes: text("notes"),
   approvedAt: datetime("approved_at"),
+  // ─── Script Factory v2 additions (append-only, all nullable) ───────────────
+  /** Which persona this script targets (personas.id) */
+  personaId: int("persona_id"),
+  /** Explicit North Star selection — analog_data_entries.id[] */
+  analogDataEntryIds: longtextJson<number[]>("analog_data_entry_ids"),
+  /** Target video length in minutes (youtube_script only): 10 | 15 | 20 */
+  targetLengthMinutes: int("target_length_minutes"),
+  /** suggested_ideas.id this script was generated from */
+  sourceIdeaId: int("source_idea_id"),
+  /** research_jobs.id whose competitive research grounded this script */
+  researchJobId: int("research_job_id"),
+  /** Actual word count of the final script body */
+  wordCount: int("word_count"),
+  /** scripts.id once sent to production — also the idempotency key */
+  productionScriptId: int("production_script_id"),
+  /**
+   * v2.2 Part 3D — what pattern composition actually chose for this script.
+   *
+   * DECLARED, because an undeclared column silently does not persist: writes
+   * typecheck via `as any` while nothing lands. That is the failure class Part 1
+   * fixes 6-8 corrected and Part 3C's structure_summary hit again. Column added
+   * by migrate_3d_pattern_composition.mjs.
+   *
+   * `unfilledTypes` is the field that earns this column's existence: it records
+   * the beats that reached the prompt with NO grounding, so thin coverage is
+   * auditable after the fact rather than being invisible once the script is
+   * saved.
+   */
+  patternComposition: longtextJson<{
+    total: number;
+    researchCount: number;
+    globalCount: number;
+    byType: Record<string, number>;
+    unfilledTypes: string[];
+    candidatesConsidered: number;
+    disclosure: string;
+  }>("pattern_composition"),
+  // ─── v2.3 Part 2 — variant lineage (append-only, all nullable) ─────────────
+  /**
+   * The script this one was regenerated FROM. NULL means this row is an original.
+   *
+   * Nullable rather than NOT NULL with a sentinel because every row that already
+   * exists is an original, and a sentinel (0, or self-id) would then have to be
+   * special-cased at every read site. NULL already means "no parent" in SQL;
+   * inventing a second spelling of the same fact is how the two spellings drift.
+   */
+  parentScriptId: int("parent_script_id"),
+  /**
+   * Human-readable name for this variant — "20-min cut", "Persona: Skeptic".
+   *
+   * Auto-generated at creation from whichever override was applied, then freely
+   * editable by the operator. NULL on originals: an original is not a variant OF
+   * anything, so labelling it would imply a lineage that does not exist.
+   */
+  variantLabel: varchar("variant_label", { length: 120 }),
+  /**
+   * Denormalised ultimate ancestor, so a whole family is one indexed query.
+   *
+   * THE CHOICE, STATED (the spec asks for it explicitly): originals store NULL
+   * here, NOT their own id.
+   *
+   * Self-id would make "is this an original?" read as `variant_of_root_id = id`,
+   * which is pleasant, but it cannot be populated by the INSERT itself — the id
+   * does not exist until after the write — so every original would need a second
+   * UPDATE to become self-consistent, and any row failing between the two writes
+   * would be a silently malformed original. With NULL, `parent_script_id IS NULL`
+   * is the single test for "original", it is true the instant the row lands, and
+   * the family key is `COALESCE(variant_of_root_id, id)`.
+   *
+   * Consequence to remember: family queries MUST coalesce. A bare
+   * `WHERE variant_of_root_id = N` silently omits the root itself.
+   */
+  variantOfRootId: int("variant_of_root_id"),
+  /**
+   * The exact inputs this script was generated from, so a variant can be made by
+   * changing ONE of them instead of re-typing the brief from memory.
+   *
+   * Several of these facts are already columns (personaId, targetLengthMinutes,
+   * researchJobId). They are repeated here deliberately: the columns are the
+   * script's CURRENT state, while this is the frozen input set that produced its
+   * body. Regeneration replays the inputs, not the current state.
+   */
+  generationParams: longtextJson<{
+    personaId: number | null;
+    /*
+     * NULL and [] are different facts here and both must be storable: NULL means
+     * "no explicit North Star was selected", while an empty array would claim a
+     * selection was made and found nothing. The insert path writes NULL.
+     */
+    analogDataEntryIds: number[] | null;
+    offerTier: string | null;
+    targetLengthMinutes: number | null;
+    storyMode: string | null;
+    researchJobId: number | null;
+    ctaOverride: string | null;
+    model: string | null;
+    format: string;
+    topic: string;
+    /*
+     * Also frozen, because both change what the pipeline retrieves and therefore
+     * what a replay would produce. Optional so rows written before this widening
+     * (there are none in production, but the type must not lie about that) stay
+     * assignable.
+     */
+    seedKeyword?: string | null;
+    useCorpusSearch?: boolean;
+    /*
+     * v2.4 — resolved sell density ("value_first" | "balanced").
+     *
+     * OPTIONAL, and that is load-bearing: every row written before v2.4 lacks the
+     * key entirely. Reading it back goes through `ctaStyleFromParams`, which maps
+     * absence to "balanced" — the honest reading, since those scripts WERE
+     * generated under the balanced rules. Typed as a widened string rather than
+     * importing the router's CtaStyle union, to keep the schema free of a
+     * dependency on server code.
+     */
+    ctaStyle?: string | null;
+  }>("generation_params"),
+  /**
+   * ─── v2.3 Part 3 — undo trail for in-place section regeneration ───────────
+   *
+   * Append-only, newest first, CAPPED AT 10 ENTRIES. `regenerateSection` rewrites
+   * one section of `script_body` in place — it does NOT create a variant — so
+   * without this the previous wording is simply gone, and an operator who
+   * regenerates a section they were happy with has no way back.
+   *
+   * Deliberately NOT a separate table. The cap makes the row bounded, the data is
+   * meaningless apart from its script, and it is read only when the script is
+   * open — the join a table would add buys nothing.
+   *
+   * `previousText` stores the section's text WITH its tag and timestamp exactly as
+   * it appeared, so restoring is a byte-for-byte splice rather than a
+   * reconstruction that could subtly reformat the rest of the script.
+   */
+  sectionHistory: longtextJson<Array<{
+    sectionKey: string;
+    /** Verbatim prior slice of script_body, including the leading [TAG]. */
+    previousText: string;
+    /** The instruction that produced the replacement, if the operator gave one. */
+    instruction: string | null;
+    replacedAt: string;
+  }>>("section_history"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -3719,6 +3906,205 @@ export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
 
 export type TantraQuizLead = typeof tantraQuizLeads.$inferSelect;
 export type InsertTantraQuizLead = typeof tantraQuizLeads.$inferInsert;
+
+
+// ─── Script Factory v2 — Phase 1: Persistent Idea Engine ─────────────────────
+/**
+ * Persisted video ideas ("Suggested this week").
+ *
+ * Replaces the old ephemeral behavior where `suggestIdeas` returned ideas that
+ * lived only in React state. Every generated idea is now stored so that:
+ *   - ideas survive navigation and page refresh
+ *   - the dedup context can include EVERY idea ever shown (not just acted-on ones)
+ *   - a weekly cron can pre-fill the list on a cadence
+ *
+ * Status lifecycle: suggested → shortlisted → generated
+ *                   suggested → dismissed (recoverable)
+ */
+export const suggestedIdeas = mysqlTable("suggested_ideas", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Groups ideas generated together in one batch */
+  batchId: varchar("batch_id", { length: 32 }).notNull(),
+  /** ISO week label, e.g. "2026-W31" */
+  weekLabel: varchar("week_label", { length: 16 }).notNull(),
+  /** Whether this came from the Monday cron or an operator clicking Generate */
+  source: mysqlEnum("idea_source", ["weekly_auto", "manual_generate", "manual"]).notNull().default("manual_generate"),
+  topic: varchar("topic", { length: 500 }).notNull(),
+  rationale: text("rationale"),
+  audienceAlignment: int("audience_alignment"),
+  contentGap: text("content_gap"),
+  recommendedFormat: varchar("recommended_format", { length: 64 }),
+  /** JSON array of pattern type strings */
+  recommendedPatterns: longtextJson<string[]>("recommended_patterns"),
+  analogDataSource: text("analog_data_source"),
+  /** Reference to analog_data_entries.id when the source could be resolved */
+  analogDataEntryId: int("analog_data_entry_id"),
+  personaId: int("persona_id"),
+  /** VidIQ research payload when this idea was research-derived */
+  vidiqData: longtextJson<{
+    keyword: string;
+    volume: number;
+    competition: number;
+    opportunityScore: number;
+    estimatedMonthlySearch: number;
+    topRelatedKeywords: { keyword: string; overall: number; volume: number }[];
+  }>("vidiq_data"),
+  /** The VidIQ seed keyword that produced this idea (if research-sourced) */
+  seedKeyword: varchar("seed_keyword", { length: 255 }),
+  status: mysqlEnum("idea_status", ["suggested", "shortlisted", "dismissed", "generated"]).notNull().default("suggested"),
+  /** script_factory_outputs.id once a script has been generated from this idea */
+  generatedScriptId: int("generated_script_id"),
+  /** v2.1 Topic Tree — the branch this idea was mined from (null = unscoped) */
+  topicNodeId: int("topic_node_id"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type SuggestedIdea = typeof suggestedIdeas.$inferSelect;
+export type InsertSuggestedIdea = typeof suggestedIdeas.$inferInsert;
+
+// ─── Script Factory v2.1 — The Topic Tree ──────────────────────────────
+/**
+ * A hierarchy of topics mined from analog sources.
+ *
+ * Solves idea convergence: flat generation against a single sales page keeps
+ * re-orbiting the same 4–5 themes with reworded titles. A tree lets the operator
+ * — and the weekly cron — walk *different branches* instead of re-mining the
+ * trunk.
+ *
+ * Uses a materialized `path` of ancestor ids ("12/47/103", self excluded) so a
+ * full lineage or subtree is a single indexed LIKE query rather than N recursive
+ * round-trips.
+ */
+export const topicNodes = mysqlTable("topic_nodes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** null = root cluster */
+  parentId: int("parent_id"),
+  /** Materialized ancestor path, e.g. "12/47"; roots are "" */
+  path: varchar("path", { length: 255 }).notNull().default(""),
+  /** root = 0; hard cap of 5 enforced in the router */
+  depth: int("depth").notNull().default(0),
+  label: varchar("label", { length: 255 }).notNull(),
+  description: text("description"),
+  sourceType: mysqlEnum("topic_source_type", ["analog_extraction", "llm_expansion", "manual"])
+    .notNull()
+    .default("manual"),
+  analogDataEntryId: int("analog_data_entry_id"),
+  personaId: int("persona_id"),
+  /** Same payload shape as suggested_ideas.vidiqData, for the node's own keyword */
+  vidiqData: longtextJson<{
+    keyword: string;
+    volume: number;
+    competition: number;
+    opportunityScore: number;
+    estimatedMonthlySearch: number;
+    topRelatedKeywords: { keyword: string; overall: number; volume: number }[];
+  }>("vidiq_data"),
+  status: mysqlEnum("topic_status", ["active", "archived"]).notNull().default("active"),
+  /** Drives weekly cron rotation: least-recently-mined leaves are picked first */
+  lastMinedAt: datetime("last_mined_at"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type TopicNode = typeof topicNodes.$inferSelect;
+export type InsertTopicNode = typeof topicNodes.$inferInsert;
+
+// ─── Script Factory v2 — Phase 3: Deep Research Mode ─────────────────────────
+/**
+ * A deep-research run for one topic: find currently-winning YouTube videos,
+ * secure their transcripts (through the Supadata quota ledger), and mine them
+ * for patterns that shape the script.
+ *
+ * Staged status writes let the UI poll for progress. A partially-researched job
+ * is a valid job — quota exhaustion sets `quotaBlocked` rather than failing.
+ */
+export const researchJobs = mysqlTable("research_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  topic: varchar("topic", { length: 500 }).notNull(),
+  seedKeyword: varchar("seed_keyword", { length: 255 }),
+  status: mysqlEnum("research_status", [
+    "pending",
+    "researching_outliers",
+    "fetching_transcripts",
+    "extracting_patterns",
+    "complete",
+    "failed",
+  ]).notNull().default("pending"),
+  /**
+   * Ranked outlier videos discovered for this topic.
+   * NOTE: vidIQ's outliers response does not include channelId or
+   * subscriberCount, so those stay null when VidIQ is the source.
+   */
+  outlierVideos: longtextJson<{
+    videoId: string;
+    title: string;
+    channelId: string | null;
+    channelTitle: string;
+    views: number;
+    subscriberCount: number | null;
+    outlierScore: number;
+    publishedAt: string | null;
+  }[]>("outlier_videos"),
+  /** videoIds whose transcripts were secured (fetched or already cached) */
+  transcriptVideoIds: longtextJson<string[]>("transcript_video_ids"),
+  /** content_patterns rows mined from this research */
+  patternIds: longtextJson<number[]>("pattern_ids"),
+  transcriptsFetched: int("transcripts_fetched").notNull().default(0),
+  transcriptsCached: int("transcripts_cached").notNull().default(0),
+  transcriptsFailed: int("transcripts_failed").notNull().default(0),
+  /** True when the Supadata daily cap stopped the fetch early */
+  quotaBlocked: boolean("quota_blocked").notNull().default(false),
+  /** Free-form notes, e.g. which discovery source was used */
+  notes: text("notes"),
+  /**
+   * v2.2 Part 3C — aggregate structural analysis of the top transcripts.
+   *
+   * DECLARED because an undeclared column silently does not persist: the
+   * setStatus call typechecked via `as any` while writing nothing, which is the
+   * exact failure class Part 1 fixes 6-8 corrected (drizzle names that did not
+   * match live columns). Column added by migrate_3c_structure_summary.mjs.
+   *
+   * The field list below MUST stay identical to the `StructureSummary` interface
+   * in server/researchGrounding.ts. It originally described a different, earlier
+   * shape (commonOpeningMoves/proofStyle/ctaStyle/avgWordCount) that the code
+   * never wrote, so writes failed to typecheck the moment the `as any` was
+   * removed. A column type that disagrees with its only writer is drift by
+   * definition — the same defect class as fixes 6-8.
+   */
+  structureSummary: longtextJson<{
+    sectionFlow: string[];
+    pacingNotes: string;
+    firstPayoffPoint: string;
+    reHookPlacement: string;
+    ctaPlacement: string;
+    sourceVideoIds: string[];
+    sourceCount: number;
+  }>("structure_summary"),
+  errorMessage: varchar("error_message", { length: 512 }),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type ResearchJob = typeof researchJobs.$inferSelect;
+export type InsertResearchJob = typeof researchJobs.$inferInsert;
+
+// ─── Script Factory v2 — Phase 2/4: script_factory_outputs additions ─────────
+/**
+ * Append-only additions to `script_factory_outputs`.
+ *
+ * Drizzle requires all columns on the original table object, so these live on
+ * `scriptFactoryOutputs` above. This block documents the v2 additions:
+ *   personaId           — which persona the script targets
+ *   analogDataEntryIds  — explicit North Star selection
+ *   targetLengthMinutes — 10 / 15 / 20 (youtube_script only)
+ *   sourceIdeaId        — suggested_ideas.id this script came from
+ *   researchJobId       — research_jobs.id used to ground the script
+ *   wordCount           — actual words in the final body
+ *   productionScriptId  — scripts.id once sent to production (idempotency key)
+ *
+ * See migration 0124_script_factory_v2.sql.
+ */
 
 // ─── Interconnected Documentary Opt-In Leads ─────────────────────────────────
 // Safety backup of every lead that submits the /interconnected opt-in form.

@@ -1,0 +1,439 @@
+PART 1 PROOF — Script Factory v2.2
+generated: 2026-08-01T17:49:24Z
+branch: feature/script-factory-v22 @ 4e498fa
+
+Reproduce every section below with:
+  node docs/build-reports/v22r/probe_vidiq_live.mjs        # raw API wire shapes
+  pnpm tsx docs/build-reports/v22r/probe_vidiq_wrappers.ts # our fixed code, live
+  node docs/build-reports/v22r/probe_schema_fixes.mjs      # DB columns, scratch DB
+  node docs/build-reports/v22r/probe_absent_columns.mjs    # v2.2 columns absent (Part 0)
+
+
+################ SECTION A: RAW vidIQ API (probe_vidiq_live.mjs) ################
+
+Part 1 live vidIQ proof — 2026-08-01T17:49:25.066Z
+endpoint: https://mcp.vidiq.com/mcp
+api key: ...lHtubj (last 6 shown only)
+
+==============================================================================
+1+2. LIVE ENUMS from tools/list (the source of truth for fixes 3 and 4)
+==============================================================================
+tools advertised: 53
+vidiq_outliers.contentType enum = ["all","long","short"]
+vidiq_trending_videos.videoFormat enum = ["long","short"]
+
+==============================================================================
+3. OLD VALUE contentType:"video" — the failure that was invisible pre-fix
+==============================================================================
+
+--- vidiq_outliers contentType:"video" (v2.1 behaviour) ---
+HTTP 200
+jsonrpc.error present: false
+result.isError: true
+content[0].text (first 400 chars):
+MCP error -32602: Input validation error: Invalid arguments for tool vidiq_outliers: [
+  {
+    "received": "video",
+    "code": "invalid_enum_value",
+    "options": [
+      "all",
+      "long",
+      "short"
+    ],
+    "path": [
+      "contentType"
+    ],
+    "message": "Invalid enum value. Expected 'all' | 'long' | 'short', received 'video'"
+  }
+]
+structuredContent present: false
+
+NOTE: HTTP is 200 and jsonrpc.error is absent. Only result.isError reveals
+the failure — which v2.1 never checked, then fed this prose to JSON.parse.
+
+==============================================================================
+3b. OLD VALUE videoFormat:"video" on the fallback path
+==============================================================================
+
+--- vidiq_trending_videos videoFormat:"video" (v2.1 behaviour) ---
+HTTP 200
+jsonrpc.error present: false
+result.isError: true
+content[0].text (first 400 chars):
+MCP error -32602: Input validation error: Invalid arguments for tool vidiq_trending_videos: [
+  {
+    "received": "video",
+    "code": "invalid_enum_value",
+    "options": [
+      "long",
+      "short"
+    ],
+    "path": [
+      "videoFormat"
+    ],
+    "message": "Invalid enum value. Expected 'long' | 'short', received 'video'"
+  }
+]
+structuredContent present: false
+
+==============================================================================
+4. NEW VALUE contentType:"long" — top 5 outliers, printed
+==============================================================================
+
+--- vidiq_outliers contentType:"long" (v2.2) ---
+HTTP 200
+jsonrpc.error present: false
+result.isError: undefined
+content[0].text (first 400 chars):
+{"videos":[{"videoId":"CREAfc5QvuE","videoTitle":"Brud Sprunki EATS EVERYTHING, Then throws up... it's his hobby..","videoTags":[],"videoTopics":["Video game culture"],"videoThumbnail":"https://i.ytimg.com/vi/CREAfc5QvuE/maxresdefault.jpg","videoPublishedAt":1774063697,"videoDuration":636,"channelId":"UC5MqEjDv-gyWlHphdviBvCg","channelTitle":"Ashimation","channelThumbnail":"https://yt3.ggpht.com/b
+structuredContent present: true
+
+TOP 5 OUTLIERS RETURNED:
+1. "Brud Sprunki EATS EVERYTHING, Then throws up... it's his hobby.." — Ashimation — 329197 views — breakoutScore 27.37
+2. "You Won’t Believe How Old Engine oil Drums Become Heavy-Duty Outputs" — LOGIC CREATIONS — 51665 views — breakoutScore 8.23
+3. "'36 days left': Labor considering fuel rationing for Australians" — News24 — 76572 views — breakoutScore 14.76
+4. "Massive Cleanup Restores a Completely Clogged Drain" — Dam Pop — 104864 views — breakoutScore 23.43
+5. "Why You Keep Repeating the Same Problems- Healing Explained | Dr Karishma Ahuja" — Neha Ranglani — 44650 views — breakoutScore 330.3
+
+==============================================================================
+4b. NEW VALUE videoFormat:"long" on the fallback path
+==============================================================================
+
+--- vidiq_trending_videos videoFormat:"long" (v2.2) ---
+HTTP 200
+jsonrpc.error present: false
+result.isError: undefined
+content[0].text (first 400 chars):
+{"videos":[{"videoId":"0EM-JELwpjA","videoTitle":"This is Why Black Fatigue is Impossible to Ignore","videoTitleLanguage":"en","videoPublishedAt":"2026-07-28T14:52:05.000Z","videoDuration":928,"channelId":"UC86UHbl-iyV0M7e-PGc8D9Q","channelTitle":"Angry Unc ","channelCountry":"US","subscriberCount":17100,"viewCount":56048,"likeCount":2702,"commentCount":974,"engagementRate":0.066,"vph":603.3153928
+structuredContent present: true
+
+TRENDING RETURNED: 5 video(s)
+1. "This is Why Black Fatigue is Impossible to Ignore" — 56048 views — vph 603.3153928955866
+2. "Spider-Man: Brand New Day PROVES Superhero Fatigue is BULLSH**" — 6749 views — vph 149.70055452865063
+3. "How To Heal 20 Years of Gut Damage in 30 Days" — 182413 views — vph 1548.497453310696
+4. "You Don't Need Fiber - 1 Scoop Stops Wrinkles and Repairs Gut Cells" — 52819 views — vph 1143.680981595092
+5. "The FATIGUE has become EXHAUSTION ep. 204" — 37179 views — vph 453.6790726052471
+
+==============================================================================
+5. vidiq_keyword_research — structured metrics for a real keyword
+==============================================================================
+
+--- vidiq_keyword_research "gut health fatigue" ---
+HTTP 200
+jsonrpc.error present: false
+result.isError: undefined
+content[0].text (first 400 chars):
+Research for **gut health fatigue** found 10 related suggestions.
+Top opportunity: **functional medicine** at 70/100 overall (volume 67.4/100, competition 26.1/100).
+Low-competition alternative: **leaky gut** at 68/100 overall with 37.3/100 competition.
+structuredContent present: true
+
+seedKeyword: {
+  "keyword": "gut health fatigue",
+  "relatedScore": null,
+  "volume": 0,
+  "competition": 9.2,
+  "overall": 36.32,
+  "estimatedMonthlySearch": 0,
+  "countryVolume": null,
+  "topMarkets": []
+}
+relatedKeywords returned: 10
+
+==============================================================================
+6. vidiq_balance — proving `credits` does not exist and totalCredits does
+==============================================================================
+
+--- vidiq_balance ---
+HTTP 200
+jsonrpc.error present: false
+result.isError: undefined
+content[0].text (first 400 chars):
+{"type":"limited","totalCredits":5881,"renewableCredits":5880,"maxRenewableCredits":6000,"renewableResetsAt":"2026-09-01T13:56:05Z","addOnCredits":1,"maxAddOnCredits":300,"_credits":{"used":0}}
+structuredContent present: true
+
+FULL BALANCE PAYLOAD:
+{
+  "type": "limited",
+  "totalCredits": 5881,
+  "renewableCredits": 5880,
+  "maxRenewableCredits": 6000,
+  "renewableResetsAt": "2026-09-01T13:56:05Z",
+  "addOnCredits": 1,
+  "maxAddOnCredits": 300
+}
+
+keys present: ["type","totalCredits","renewableCredits","maxRenewableCredits","renewableResetsAt","addOnCredits","maxAddOnCredits"]
+balData.credits       => undefined   <-- what v2.1 read
+balData.totalCredits  => 5881   <-- what v2.2 reads
+
+v2.1 guard simulation: (undefined < 30) === false → a doomed batch fired every time.
+v2.2 guard simulation: (5881 < 30) === false → guard is now real.
+
+DONE.
+
+
+################ SECTION B: FIELD SHAPES (probe_vidiq_fields.mjs) ################
+
+=== vidiq_outliers: top-level keys ===
+["videos","keyword"]
+=== vidiq_outliers: videos[0] FULL OBJECT ===
+{
+  "videoId": "CREAfc5QvuE",
+  "videoTitle": "Brud Sprunki EATS EVERYTHING, Then throws up... it's his hobby..",
+  "videoTags": [],
+  "videoTopics": [
+    "Video game culture"
+  ],
+  "videoThumbnail": "https://i.ytimg.com/vi/CREAfc5QvuE/maxresdefault.jpg",
+  "videoPublishedAt": 1774063697,
+  "videoDuration": 636,
+  "channelId": "UC5MqEjDv-gyWlHphdviBvCg",
+  "channelTitle": "Ashimation",
+  "channelThumbnail": "https://yt3.ggpht.com/bKzAJGG7cZRMK0ZcrUZ4Lgt7UZpgeP5c14cNSrFx72jxOaNW2KEvvRoaNGjfEXi_KpDIQxzw8Q=s800-c-k-c0x00ffffff-no-rj",
+  "channelCountry": "AE",
+  "subscriberCount": 135000,
+  "mainCategory": "Film",
+  "viewCount": 329197,
+  "breakoutScore": 27.37,
+  "videoType": "long",
+  "engagementRate": 0.013,
+  "vph": 103.23,
+  "score": 0.12951520085334778,
+  "trendCategories": null
+}
+=== vidiq_outliers: videos[0] key list ===
+["videoId","videoTitle","videoTags","videoTopics","videoThumbnail","videoPublishedAt","videoDuration","channelId","channelTitle","channelThumbnail","channelCountry","subscriberCount","mainCategory","viewCount","breakoutScore","videoType","engagementRate","vph","score","trendCategories"]
+
+=== vidiq_trending_videos: top-level keys ===
+["videos"]
+=== vidiq_trending_videos: videos[0] FULL OBJECT ===
+{
+  "videoId": "0EM-JELwpjA",
+  "videoTitle": "This is Why Black Fatigue is Impossible to Ignore",
+  "videoTitleLanguage": "en",
+  "videoPublishedAt": "2026-07-28T14:52:05.000Z",
+  "videoDuration": 928,
+  "channelId": "UC86UHbl-iyV0M7e-PGc8D9Q",
+  "channelTitle": "Angry Unc ",
+  "channelCountry": "US",
+  "subscriberCount": 17100,
+  "viewCount": 56048,
+  "likeCount": 2702,
+  "commentCount": 974,
+  "engagementRate": 0.066,
+  "vph": 603.3153928955866,
+  "videoTags": []
+}
+=== vidiq_trending_videos: videos[0] key list ===
+["videoId","videoTitle","videoTitleLanguage","videoPublishedAt","videoDuration","channelId","channelTitle","channelCountry","subscriberCount","viewCount","likeCount","commentCount","engagementRate","vph","videoTags"]
+
+
+################ SECTION C: OUR FIXED CODE, LIVE (probe_vidiq_wrappers.ts) ################
+
+[env] parsed 60 lines, set 42 vars
+[env] VIDIQ_API_KEY resolved: yes (...lHtubj)
+[env] keys matching /VIDIQ/i in file: ["VIDIQ_API_KEY"]
+Part 1 wrapper-level proof — 2026-08-01T17:49:43.752Z
+calling the real exported functions from server/vidiq.ts, unmocked
+
+==============================================================================
+A. vidiqBalance() — fix 5, through the real wrapper
+==============================================================================
+{
+  "type": "limited",
+  "totalCredits": 5871,
+  "renewableCredits": 5870,
+  "maxRenewableCredits": 6000,
+  "renewableResetsAt": "2026-09-01T13:56:05Z",
+  "addOnCredits": 1,
+  "maxAddOnCredits": 300
+}
+spendableCredits(balance) = 5871
+(balance as any).credits = undefined <- v2.1 read this
+
+==============================================================================
+B. vidiqOutliers() — fixes 1, 2, 3 and 9, through the real wrapper
+==============================================================================
+returned 5 row(s)
+
+1. "Brud Sprunki EATS EVERYTHING, Then throws up... it's his hobby.."
+     channel: Ashimation (UC5MqEjDv-gyWlHphdviBvCg)
+     subs: 135000 · views: 329197 · vph: 103.23
+     outlierScore: 27.37 · engagement: 0.013
+     publishedAt: 2026-03-21T03:28:17.000Z · duration: 636s
+2. "You Won’t Believe How Old Engine oil Drums Become Heavy-Duty Outputs"
+     channel: LOGIC CREATIONS (UCswHoV3iQpGNWCD9FznM56w)
+     subs: 226000 · views: 51665 · vph: 16.44
+     outlierScore: 8.23 · engagement: 0.007
+     publishedAt: 2026-03-20T00:45:01.000Z · duration: 1202s
+3. "'36 days left': Labor considering fuel rationing for Australians"
+     channel: News24 (UCO0akufu9MOzyz3nvGIXAAw)
+     subs: 6240000 · views: 76572 · vph: 24.39
+     outlierScore: 14.76 · engagement: 0.03
+     publishedAt: 2026-03-21T03:27:51.000Z · duration: 235s
+4. "Massive Cleanup Restores a Completely Clogged Drain"
+     channel: Dam Pop (UC0pvrT2liODJg4hLLZrUVzg)
+     subs: 23700 · views: 104864 · vph: 32.76
+     outlierScore: 23.43 · engagement: 0.002
+     publishedAt: 2026-03-20T14:44:02.000Z · duration: 1219s
+5. "Why You Keep Repeating the Same Problems- Healing Explained | Dr Karishma Ahuja"
+     channel: Neha Ranglani (UC4Vx4Xdg29D-obxei8Iw5gA)
+     subs: 25600 · views: 44650 · vph: 8.43
+     outlierScore: 330.3 · engagement: 0.021
+     publishedAt: 2026-03-18T11:30:26.000Z · duration: 5501s
+
+ASSERTIONS:
+  every title is real (not "Untitled"/undefined): true
+  at least one outlierScore > 0 (ranking is meaningful): true
+  every publishedAt parses or is null: true
+  ranked descending by outlierScore: [27.37,8.23,14.76,23.43,330.3]
+
+==============================================================================
+C. vidiqTrendingVideos() — fixes 4 and 9, through the real wrapper
+==============================================================================
+returned 5 row(s)
+
+1. "This is Why Black Fatigue is Impossible to Ignore" — 56048 views · vph 603.3 · 2026-07-28T14:52:05.000Z
+2. "Spider-Man: Brand New Day PROVES Superhero Fatigue is BULLSH**" — 6749 views · vph 149.7 · 2026-07-30T04:00:01.000Z
+3. "How To Heal 20 Years of Gut Damage in 30 Days" — 182413 views · vph 1548.5 · 2026-07-27T11:00:23.000Z
+4. "You Don't Need Fiber - 1 Scoop Stops Wrinkles and Repairs Gut Cells" — 52819 views · vph 1143.7 · 2026-07-30T12:05:13.000Z
+5. "The FATIGUE has become EXHAUSTION ep. 204" — 37179 views · vph 453.7 · 2026-07-28T17:00:02.000Z
+
+==============================================================================
+D. vidiqKeywordResearch() — fix 2 (prose text + structuredContent)
+==============================================================================
+{
+  "keyword": "gut health fatigue",
+  "volume": 67.40177313979622,
+  "competition": 9.2,
+  "overall": 36.32,
+  "estimatedMonthlySearch": 32751,
+  "related": "10 related"
+}
+
+top 3 related by overall score:
+  1. functional medicine — overall 70.00106388387773, competition 26.1
+  2. leaky gut — overall 67.96203644937142, competition 37.3
+  3. gut health — overall 67.49681560001895, competition 53.5
+
+==============================================================================
+E. Fix 1 end-to-end — a real tool error is now a typed, readable failure
+==============================================================================
+isVidIQToolError(err): true
+err.name: VidIQToolError
+err.name === "SyntaxError" (the v2.1 symptom): false
+err.tool: vidiq_outliers
+err.rawMessage (verbatim from vidIQ):
+MCP error -32602: Input validation error: Invalid arguments for tool vidiq_outliers: [
+  {
+    "code": "too_small",
+    "minimum": 1,
+    "type": "number",
+    "inclusive": true,
+    "exact": false,
+    "message": "Number must be greater than or equal to 1",
+    "path": [
+      "limit"
+    ]
+  }
+]
+
+DONE.
+
+NOTE: the wrapper deliberately does NOT sort — it preserves vidIQ's own
+ordering. Ranking happens at the deep-research call site, verified below.
+
+==============================================================================
+B2. Ranking — the sort that fix 9 has just made functional for the first time
+==============================================================================
+v2.1 comparator input (outlierScore all 0) → order by views only:
+  1. 329197 views — "Brud Sprunki EATS EVERYTHING, Then throws up... it's hi"
+  2. 104864 views — "Massive Cleanup Restores a Completely Clogged Drain"
+  3. 76572 views — "'36 days left': Labor considering fuel rationing for Au"
+  4. 51665 views — "You Won’t Believe How Old Engine oil Drums Become Heavy"
+  5. 44650 views — "Why You Keep Repeating the Same Problems- Healing Expla"
+
+v2.2 comparator input (real breakoutScore) → order by score:
+  1. score 330.3 · 44650 views — "Why You Keep Repeating the Same Problems- Healing Expla"
+  2. score 27.37 · 329197 views — "Brud Sprunki EATS EVERYTHING, Then throws up... it's hi"
+  3. score 23.43 · 104864 views — "Massive Cleanup Restores a Completely Clogged Drain"
+  4. score 14.76 · 76572 views — "'36 days left': Labor considering fuel rationing for Au"
+  5. score 8.23 · 51665 views — "You Won’t Believe How Old Engine oil Drums Become Heavy"
+
+sorted descending: true → [330.3,27.37,23.43,14.76,8.23]
+top-ranked row is now: "Why You Keep Repeating the Same Problems- Healing Explained | Dr Karishma Ahuja" (score 330.3, 44650 views)
+
+OBSERVATION for the operator: breakoutScore is an unbounded
+over-performance-vs-channel-baseline figure, NOT a view multiplier. The UI
+renders it as `outlier ${score.toFixed(1)}x`, so a score of 330.3 displays as
+"330.3x", which is meaningless. Flagged in the Part 1 report; the `x` suffix
+is removed as part of the honest-metrics work in Part 3E.
+
+
+################ SECTION D: DB COLUMN FIXES (probe_schema_fixes.mjs) ################
+
+Part 1 schema-fix proof — 2026-08-01T17:49:51.891Z
+connected to: contenthub_v22_sandbox  (MUST be contenthub_v22_sandbox, not staging)
+
+==============================================================================
+1. OLD (declared) names vs NEW (live) names, per corrected column
+==============================================================================
+
+yt_transcripts:
+  OLD       SELECT `transcript_status` → ER_BAD_FIELD_ERROR: Unknown column 'transcript_status' in 'SELECT'
+  NEW       SELECT `status` → OK (column exists)
+  verdict: CORRECT (old absent: true, new present: true)
+  OLD       SELECT `tr_created_at` → ER_BAD_FIELD_ERROR: Unknown column 'tr_created_at' in 'SELECT'
+  NEW       SELECT `created_at` → OK (column exists)
+  verdict: CORRECT (old absent: true, new present: true)
+  OLD       SELECT `tr_updated_at` → ER_BAD_FIELD_ERROR: Unknown column 'tr_updated_at' in 'SELECT'
+  NEW       SELECT `updated_at` → OK (column exists)
+  verdict: CORRECT (old absent: true, new present: true)
+
+claims_reviews:
+  OLD       SELECT `cr_content_type` → ER_BAD_FIELD_ERROR: Unknown column 'cr_content_type' in 'SELECT'
+  NEW       SELECT `content_type` → OK (column exists)
+  verdict: CORRECT (old absent: true, new present: true)
+  OLD       SELECT `cr_status` → ER_BAD_FIELD_ERROR: Unknown column 'cr_status' in 'SELECT'
+  NEW       SELECT `status` → OK (column exists)
+  verdict: CORRECT (old absent: true, new present: true)
+
+yt_video_outliers:
+  OLD       SELECT `outlier_created_at` → ER_BAD_FIELD_ERROR: Unknown column 'outlier_created_at' in 'SELECT'
+  NEW       SELECT `created_at` → OK (column exists)
+  verdict: CORRECT (old absent: true, new present: true)
+  OLD       SELECT `outlier_updated_at` → ER_BAD_FIELD_ERROR: Unknown column 'outlier_updated_at' in 'SELECT'
+  NEW       SELECT `updated_at` → OK (column exists)
+  verdict: CORRECT (old absent: true, new present: true)
+
+==============================================================================
+2. Row counts BEFORE the write round-trip
+==============================================================================
+  yt_transcripts       0 rows
+  claims_reviews       0 rows
+  yt_video_outliers    0 rows
+
+==============================================================================
+3. Write round-trip using the CORRECTED column names
+==============================================================================
+  yt_transcripts INSERT + SELECT:
+    {"id":2,"video_id":"v22proof_1785606591904","status":"fetched","word_count":4,"created_at":"2026-08-01T17:49:51.000Z","updated_at":"2026-08-01T17:49:51.000Z"}
+  claims_reviews INSERT + SELECT (content_type='youtube_script'):
+    {"id":2,"content_type":"youtube_script","status":"pending","flag_count":0}
+    → a value outside the OLD declared enum was accepted, confirming the live
+      column is varchar(64). Part 3E needs no DDL.
+  yt_video_outliers INSERT + SELECT:
+    {"id":2,"video_id":"v22proof_1785606591904","views":12345,"outlier_score":27.37,"created_at":"2026-08-01T17:49:51.000Z"}
+
+==============================================================================
+4. Cleanup — proof rows removed, tables returned to their prior state
+==============================================================================
+  yt_transcripts       deleted 1 proof row(s)
+  claims_reviews       deleted 1 proof row(s)
+  yt_video_outliers    deleted 1 proof row(s)
+  yt_transcripts       0 rows (post-cleanup)
+  claims_reviews       0 rows (post-cleanup)
+  yt_video_outliers    0 rows (post-cleanup)
+
+DONE.

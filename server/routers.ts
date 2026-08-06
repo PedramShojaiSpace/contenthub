@@ -156,6 +156,7 @@ import { outlierRouter } from "./outlierRouter";
 import { corpusRouter } from "./corpusRouter";
 import { patternExtractorRouter } from "./patternExtractorRouter";
 import { scriptFactoryRouter } from "./scriptFactoryRouter";
+import { topicTreeRouter } from "./topicTreeRouter";
 import { performanceLoopRouter } from "./performanceLoopRouter";
 import { funnelsRouter } from "./funnelsRouter";
 import { funnelEconomicsRouter } from "./funnelEconomicsRouter";
@@ -559,6 +560,7 @@ export const appRouter = router({
   corpus: corpusRouter,
   patterns: patternExtractorRouter,
   scriptFactory: scriptFactoryRouter,
+  topicTree: topicTreeRouter,
   performanceLoop: performanceLoopRouter,
 
   // ─── Substack ────────────────────────────────────────────────────────────────

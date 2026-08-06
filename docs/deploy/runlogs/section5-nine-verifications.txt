@@ -1,0 +1,136 @@
+SECTION 5 — NINE VERIFICATIONS, run verbatim from the migration file
+Run: 2026-08-06T18:03:45Z
+
+════════ VERIFICATION 5.1 ════════
++-----------------+-----------------+
+| table_name      | table_collation |
++-----------------+-----------------+
+| research_jobs   | utf8mb4_bin     |
+| suggested_ideas | utf8mb4_bin     |
+| topic_nodes     | utf8mb4_bin     |
++-----------------+-----------------+
+
+════════ VERIFICATION 5.2 ════════
++-----------------+--------------+
+| table_name      | column_count |
++-----------------+--------------+
+| research_jobs   |           16 |
+| suggested_ideas |           20 |
+| topic_nodes     |           14 |
++-----------------+--------------+
+
+════════ VERIFICATION 5.3 ════════
++-----------------------+--------------+-------------+--------------------+
+| column_name           | column_type  | is_nullable | character_set_name |
++-----------------------+--------------+-------------+--------------------+
+| analog_data_entry_ids | longtext     | YES         | utf8mb4            |
+| generation_params     | longtext     | YES         | utf8mb4            |
+| metric_version        | varchar(16)  | YES         | utf8mb4            |
+| parent_script_id      | int          | YES         | NULL               |
+| pattern_composition   | longtext     | YES         | utf8mb4            |
+| persona_id            | int          | YES         | NULL               |
+| production_script_id  | int          | YES         | NULL               |
+| research_job_id       | int          | YES         | NULL               |
+| section_history       | longtext     | YES         | utf8mb4            |
+| source_idea_id        | int          | YES         | NULL               |
+| target_length_minutes | int          | YES         | NULL               |
+| variant_label         | varchar(120) | YES         | utf8mb4            |
+| variant_of_root_id    | int          | YES         | NULL               |
+| word_count            | int          | YES         | NULL               |
++-----------------------+--------------+-------------+--------------------+
+
+════════ VERIFICATION 5.4 ════════
++------------+-----------------+-------------+---------------------+--------------+
+| total_rows | null_gen_params | null_parent | null_metric_version | empty_bodies |
++------------+-----------------+-------------+---------------------+--------------+
+|          5 |               5 |           5 |                   5 |            0 |
++------------+-----------------+-------------+---------------------+--------------+
+
+════════ VERIFICATION 5.5 ════════
++------------+--------------------+
+| rows_total | null_offer_profile |
++------------+--------------------+
+|          1 |                  1 |
++------------+--------------------+
+
+════════ VERIFICATION 5.6 ════════
++------------------------+-----------------------------+
+| table_name             | index_name                  |
++------------------------+-----------------------------+
+| research_jobs          | research_jobs_status_idx    |
+| research_jobs          | research_jobs_topic_idx     |
+| script_factory_outputs | sfo_parent_idx              |
+| script_factory_outputs | sfo_variant_root_idx        |
+| suggested_ideas        | suggested_ideas_batch_idx   |
+| suggested_ideas        | suggested_ideas_created_idx |
+| suggested_ideas        | suggested_ideas_status_idx  |
+| suggested_ideas        | suggested_ideas_week_idx    |
+| topic_nodes            | topic_nodes_parent_idx      |
+| topic_nodes            | topic_nodes_path_idx        |
+| topic_nodes            | topic_nodes_status_idx      |
++------------------------+-----------------------------+
+
+════════ VERIFICATION 5.7 ════════
++------------------------+-----------------------+--------------------+----------------+
+| table_name             | column_name           | character_set_name | collation_name |
++------------------------+-----------------------+--------------------+----------------+
+| analog_data_entries    | offer_profile         | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | error_message         | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | notes                 | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | outlier_videos        | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | pattern_ids           | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | research_status       | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | seed_keyword          | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | structure_summary     | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | topic                 | utf8mb4            | utf8mb4_bin    |
+| research_jobs          | transcript_video_ids  | utf8mb4            | utf8mb4_bin    |
+| script_factory_outputs | analog_data_entry_ids | utf8mb4            | utf8mb4_bin    |
+| script_factory_outputs | generation_params     | utf8mb4            | utf8mb4_bin    |
+| script_factory_outputs | metric_version        | utf8mb4            | utf8mb4_bin    |
+| script_factory_outputs | pattern_composition   | utf8mb4            | utf8mb4_bin    |
+| script_factory_outputs | section_history       | utf8mb4            | utf8mb4_bin    |
+| script_factory_outputs | variant_label         | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | analog_data_source    | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | batch_id              | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | content_gap           | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | idea_source           | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | idea_status           | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | rationale             | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | recommended_format    | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | recommended_patterns  | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | seed_keyword          | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | topic                 | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | vidiq_data            | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas        | week_label            | utf8mb4            | utf8mb4_bin    |
+| topic_nodes            | description           | utf8mb4            | utf8mb4_bin    |
+| topic_nodes            | label                 | utf8mb4            | utf8mb4_bin    |
+| topic_nodes            | path                  | utf8mb4            | utf8mb4_bin    |
+| topic_nodes            | topic_source_type     | utf8mb4            | utf8mb4_bin    |
+| topic_nodes            | topic_status          | utf8mb4            | utf8mb4_bin    |
+| topic_nodes            | vidiq_data            | utf8mb4            | utf8mb4_bin    |
++------------------------+-----------------------+--------------------+----------------+
+
+════════ VERIFICATION 5.8 ════════
++-------------+
+| table_count |
++-------------+
+|         149 |
++-------------+
+
+════════ VERIFICATION 5.9 ════════
++----------+----------+---------+---------+---------+
+| sfo_rows | ade_rows | rj_rows | si_rows | tn_rows |
++----------+----------+---------+---------+---------+
+|        5 |        1 |       0 |       0 |       0 |
++----------+----------+---------+---------+---------+
+
+════════ 5.6 row count (must be 11) ════════
++----+
+| 11 |
++----+
+════════ 5.7 non-utf8mb4 check (must be 0) ════════
++---------------------+
+| non_utf8mb4_columns |
++---------------------+
+|                   0 |
++---------------------+

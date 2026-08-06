@@ -29,6 +29,9 @@ type ContentType =
   | "advertorial"
   | "email_sequence"
   | "landing_page"
+  // v2.2 Part 3E — Script Factory scripts route through this same queue, via the
+  // same creation path, so they appear here rather than in a parallel review UI.
+  | "youtube_script"
   | "other";
 
 type ReviewStatus = "pending" | "approved" | "rejected" | "auto_approved";
@@ -63,6 +66,7 @@ function contentTypeLabel(ct: string) {
     advertorial: "Advertorial",
     email_sequence: "Email Sequence",
     landing_page: "Landing Page",
+    youtube_script: "YouTube Script",
     other: "Other",
   };
   return map[ct] ?? ct;
@@ -282,6 +286,7 @@ function SubmitReview() {
               <SelectItem value="advertorial">Advertorial</SelectItem>
               <SelectItem value="email_sequence">Email Sequence</SelectItem>
               <SelectItem value="landing_page">Landing Page</SelectItem>
+              <SelectItem value="youtube_script">YouTube Script</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>

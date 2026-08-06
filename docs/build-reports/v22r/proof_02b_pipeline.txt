@@ -1,0 +1,86 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides", "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+Part 2b pipeline proof — 2026-08-01T18:34:29.958Z
+app: http://localhost:3000 · db: contenthub_v22_sandbox · seed keyword: "leaky gut fatigue"
+
+==============================================================================
+1. BEFORE state (scratch DB)
+==============================================================================
+  research_jobs        1
+  content_patterns     0
+  yt_transcripts       0
+  yt_video_outliers    0
+  claims_reviews       0
+  suggested_ideas      24
+
+==============================================================================
+2. Discovery source comparison for the SAME seed — outliers vs trending
+==============================================================================
+  (3C mines hook references from whichever source wins; the spec makes
+   outliers primary. Judge topical relevance from the real titles below.)
+
+  --- vidiq_outliers (spec: PRIMARY) — "leaky gut fatigue" ---
+   THREW: Error: VIDIQ_API_KEY is not configured
+
+  --- vidiq_trending_videos (spec: FALLBACK) — "leaky gut fatigue" ---
+   THREW: Error: VIDIQ_API_KEY is not configured
+
+==============================================================================
+3. Deep Research end-to-end via the real tRPC procedure
+==============================================================================
+  POST scriptFactory.runDeepResearch (this spends real credits/quota)...
+  HTTP 200 after 30.6s
+  body: {"result":{"data":{"json":{"jobId":2,"status":"complete","outlierCount":10,"transcriptsFetched":3,"transcriptsCached":0,"transcriptsFailed":0,"quotaBlocked":false,"patternCount":15,"error":null}}}}
+
+==============================================================================
+4. Did the pipeline actually persist? (raw rows)
+==============================================================================
+  research_jobs (latest 3):
+   id=2 status=complete
+     seed="leaky gut fatigue" fetched=3 cached=0 failed=0 quotaBlocked=0
+     notes: discovery=vidiq_outliers; seed="leaky gut fatigue"; outliers=10; transcripts=3; patterns=15
+     error: (null)
+   id=1 status=failed
+     seed="unlock your energy the ancient wisdom" fetched=0 cached=0 failed=0 quotaBlocked=0
+     notes: discovery=vidiq_outliers; seed="unlock your energy the ancient wisdom"
+     error: No outlier or trending videos found for this keyword
+
+  content_patterns: 0 -> 15  (spec requires > 0)
+   sample 1: id=15 type=key_phrase eff=0.9 video=CREAfc5QvuE
+     tags: ["research_job_2","competitor_research"]
+     text: Mhm, good tasty.
+   sample 2: id=14 type=pain_point eff=0.9 video=CREAfc5QvuE
+     tags: ["research_job_2","competitor_research"]
+     text: And that's why you don't eat elongated eggs, kids. Cuz it'll break your game.
+   sample 3: id=13 type=open_loop eff=0.9 video=CREAfc5QvuE
+     tags: ["research_job_2","competitor_research"]
+     text: What's this? What's this pink stuff? Is this like an egg? An elongated egg? WHAT THE AH, I THOUGHT IT WAS NORMAL. WHAT THE HECK?
+
+  yt_transcripts: 0 -> 3
+   CREAfc5QvuE · status=fetched · 1787 words / 9016 chars · Sat Aug 01 2026 18:34:38 GMT+0000 (Coordinated Universal Time) · Brud Sprunki EATS EVERYTHING, Then throws up... it's his hob
+   RBy_vRtRPug · status=fetched · 481 words / 2692 chars · Sat Aug 01 2026 18:34:36 GMT+0000 (Coordinated Universal Time) · A billion year old water supply may help save Corpus Christi
+   SWVjRj3C_aw · status=fetched · 15988 words / 83041 chars · Sat Aug 01 2026 18:34:32 GMT+0000 (Coordinated Universal Time) · Why You Keep Repeating the Same Problems- Healing Explained 
+
+==============================================================================
+5. Supercharge on >=3 un-enriched ideas
+==============================================================================
+  un-enriched candidates: 24, 23, 22
+  HTTP 200
+  body: {"result":{"data":{"json":{"requested":3,"enrichedIds":[22,23,24],"failedIds":[],"skippedForTime":[],"alreadyEnriched":[],"creditsSpent":15,"balanceBefore":5851,"elapsedMs":5816,"errors":[]}}}}
+  persisted vidiqData (re-read from DB, i.e. survives reload):
+   id=22 hasData=1 {"keyword":"your vagus nerve the gut brain","volume":86.4911865517905,"competition":null,"opportunityScore":70.2947119310743,"estimatedMonthlySearch":622327,"topRelatedKeywords":[{"keyword":"mental health","overall":70.2
+   id=23 hasData=1 {"keyword":"beyond probiotics how lps toxins drive","volume":0,"competition":null,"opportunityScore":0,"estimatedMonthlySearch":0,"topRelatedKeywords":[]}
+   id=24 hasData=1 {"keyword":"why your healthy diet still causes","volume":81.18761153917207,"competition":null,"opportunityScore":72.31256692350324,"estimatedMonthlySearch":274621,"topRelatedKeywords":[{"keyword":"healthy food","overall"
+
+==============================================================================
+6. Claims-review insert via the existing creation path
+==============================================================================
+  using script id=30003 "The Vagus Nerve: Your Gut-Brain Highway to Anxiety"
+  [3E baseline] contentType="youtube_script" → HTTP 400
+    {"error":{"json":{"message":"[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"wordpress_post\",\n      \"meta_ad\",\n      \"advertorial\",\n      \"email_sequence\",\n      \"landing_page\",\n      \"other\"\n    ],\n    \"path\": [\n     
+  POST claimsReview.reviewContent (contentType="other") → HTTP 200
+  body: {"result":{"data":{"json":{"verdicts":[{"ruleId":"disease_treatment_claim","ruleName":"Disease Treatment Claim","passed":false,"flaggedText":"cures leaky gut","explanation":"The content uses the term 'cures leaky gut' which is a disease treatment claim."},{"ruleId":"guaranteed_outcome","ruleName":"Guaranteed Outcome","passed":true,"flaggedText":null,"explanation":"No guaranteed outcome claims were found."},{"ruleId":"undisclosed_testimonial","ruleName":"Undisclosed Testimonial","passed":false,"f
+  claims_reviews: 0 -> 1
+   id=3 content_type=other content_id=30003 status=pending flags=4 overallFlag=1
+  removed probe row id=3; claims_reviews now 0
+
+DONE.

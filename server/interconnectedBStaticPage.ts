@@ -1,4 +1,4 @@
-const CDN = "https://d36hbw14aib5lz.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/";
+const CDN = "/manus-storage/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/";
 
 export function renderInterconnectedBPage(): string {
   const experts = [

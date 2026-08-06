@@ -1,0 +1,37 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides", "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+
+> lights-on-optin@1.0.0 check /home/ubuntu/chfresh-plan
+> tsc --noEmit
+
+client/src/pages/YouTubeAnalytics.tsx(318,20): error TS2345: Argument of type 'string | (TextContent | ImageContent | FileContent)[]' is not assignable to parameter of type 'SetStateAction<string>'.
+  Type '(TextContent | ImageContent | FileContent)[]' is not assignable to type 'SetStateAction<string>'.
+client/src/pages/YouTubeAnalytics.tsx(767,32): error TS18048: 'h.thumbnail' is possibly 'undefined'.
+server/ga4Router.ts(133,51): error TS2769: No overload matches this call.
+  Overload 1 of 6, '(params?: Params$Resource$Properties$Runreport | undefined, options?: MethodOptions | undefined): Promise<GaxiosResponseWithHTTP2<Schema$RunReportResponse>>', gave the following error.
+    Type 'number' is not assignable to type 'string'.
+  Overload 2 of 6, '(callback: BodyResponseCallback<Schema$RunReportResponse>): void', gave the following error.
+    Object literal may only specify known properties, and 'property' does not exist in type 'BodyResponseCallback<Schema$RunReportResponse>'.
+server/ga4Router.ts(144,25): error TS2339: Property 'data' does not exist on type 'Promise<GaxiosResponseWithHTTP2<Readable>> & Promise<GaxiosResponseWithHTTP2<Schema$RunReportResponse>> & void'.
+server/ga4Router.ts(145,31): error TS2339: Property 'data' does not exist on type 'Promise<GaxiosResponseWithHTTP2<Readable>> & Promise<GaxiosResponseWithHTTP2<Schema$RunReportResponse>> & void'.
+server/ga4Router.ts(145,59): error TS7006: Parameter 'h' implicitly has an 'any' type.
+server/ga4Router.ts(146,31): error TS2339: Property 'data' does not exist on type 'Promise<GaxiosResponseWithHTTP2<Readable>> & Promise<GaxiosResponseWithHTTP2<Schema$RunReportResponse>> & void'.
+server/ga4Router.ts(146,56): error TS7006: Parameter 'h' implicitly has an 'any' type.
+server/ga4Router.ts(148,20): error TS7006: Parameter 'row' implicitly has an 'any' type.
+server/ga4Router.ts(150,42): error TS7006: Parameter 'v' implicitly has an 'any' type.
+server/ga4Router.ts(150,45): error TS7006: Parameter 'i' implicitly has an 'any' type.
+server/ga4Router.ts(153,39): error TS7006: Parameter 'v' implicitly has an 'any' type.
+server/ga4Router.ts(153,42): error TS7006: Parameter 'i' implicitly has an 'any' type.
+server/patternExtractorRouter.ts(111,65): error TS2345: Argument of type 'string | (TextContent | ImageContent | FileContent)[]' is not assignable to parameter of type 'string | null | undefined'.
+  Type '(TextContent | ImageContent | FileContent)[]' is not assignable to type 'string'.
+server/transcriptRouter.ts(457,50): error TS2339: Property 'nextPageToken' does not exist on type '{ videoId: string; title: string; publishedAt: string | null; }'.
+server/transcriptRouter.ts(457,66): error TS2339: Property 'nextPageToken' does not exist on type '{ videoId: string; title: string; publishedAt: string | null; }'.
+server/ytAnalyticsRouter.ts(412,9): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+server/ytAnalyticsRouter.ts(421,18): error TS2322: Type 'string | (TextContent | ImageContent | FileContent)[]' is not assignable to type 'string | SQL<unknown> | null | undefined'.
+  Type '(TextContent | ImageContent | FileContent)[]' is not assignable to type 'string | SQL<unknown> | null | undefined'.
+server/ytAnalyticsRouter.ts(544,9): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+server/ytAnalyticsRouter.ts(565,29): error TS2345: Argument of type 'string | (TextContent | ImageContent | FileContent)[]' is not assignable to parameter of type 'string'.
+  Type '(TextContent | ImageContent | FileContent)[]' is not assignable to type 'string'.
+server/ytAnalyticsRouter.ts(693,9): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+server/ytAnalyticsRouter.ts(708,29): error TS2345: Argument of type 'string | (TextContent | ImageContent | FileContent)[]' is not assignable to parameter of type 'string'.
+  Type '(TextContent | ImageContent | FileContent)[]' is not assignable to type 'string'.
+ ELIFECYCLE  Command failed with exit code 1.

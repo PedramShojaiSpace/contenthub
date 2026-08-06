@@ -1,0 +1,87 @@
+================================================================================================
+SCHEMA DRIFT AUDIT — resolved schema.ts vs live production
+================================================================================================
+tables declared in schema.ts : 143
+tables checked against live  : 143
+
+apollo_sync_runs  (declared 11 / live 11)
+   MISSING IN DB (app expects, DB lacks): asr_status
+   EXTRA IN DB   (DB has, app ignores)  : status
+backlink_prospects  (declared 27 / live 28)
+   EXTRA IN DB   (DB has, app ignores)  : backlink_prospect_status
+blog_to_youtube_items  (declared 30 / live 31)
+   EXTRA IN DB   (DB has, app ignores)  : blogToYoutubeStatus
+book_snippets  (declared 38 / live 40)
+   EXTRA IN DB   (DB has, app ignores)  : snippetPlatform, titleCardStatus
+collective_sourcing_candidates  (declared 18 / live 19)
+   MISSING IN DB (app expects, DB lacks): status, notes, created_at, updated_at
+   EXTRA IN DB   (DB has, app ignores)  : collective_product_handle, csc_createdAt, csc_status, imported_at, reviewed_at
+content_items  (declared 48 / live 52)
+   EXTRA IN DB   (DB has, app ignores)  : contentGoal, funnel_id, platform, status
+ebook_chapters  (declared 13 / live 14)
+   EXTRA IN DB   (DB has, app ignores)  : ebookChapterStatus
+email_sequences  (declared 19 / live 29)
+   EXTRA IN DB   (DB has, app ignores)  : email1_sent_at, email1_thread_id, email2_send_at, email2_sent_at, email2_thread_id, email3_send_at, email3_sent_at, email3_thread_id, funnel_id, send_error
+generated_images  (declared 7 / live 8)
+   EXTRA IN DB   (DB has, app ignores)  : platform
+hosted_landing_pages  (declared 35 / live 38)
+   EXTRA IN DB   (DB has, app ignores)  : hlp_campaign, hlp_status, hlp_template
+kajabi_live_sessions  (declared 18 / live 27)
+   EXTRA IN DB   (DB has, app ignores)  : best_clip_end, best_clip_reason, best_clip_start, buffer_channel_ids, buffer_pushed_at, recording_url, s3_key, share_post_draft, transcript
+keyword_campaigns  (declared 9 / live 10)
+   EXTRA IN DB   (DB has, app ignores)  : funnel_id
+landing_pages  (declared 15 / live 18)
+   EXTRA IN DB   (DB has, app ignores)  : funnel_id, landingPageStatus, offer
+lead_prospects  (declared 16 / live 18)
+   EXTRA IN DB   (DB has, app ignores)  : lp_source, lp_status
+llm_assets  (declared 14 / live 17)
+   EXTRA IN DB   (DB has, app ignores)  : llm_asset_priority, llm_asset_status, llm_asset_type
+llm_projects  (declared 8 / live 9)
+   EXTRA IN DB   (DB has, app ignores)  : llm_project_status
+media_assets  (declared 15 / live 16)
+   EXTRA IN DB   (DB has, app ignores)  : mediaAssetType
+podcast_episodes  (declared 27 / live 28)
+   EXTRA IN DB   (DB has, app ignores)  : podcastEpisodeStatus
+reddit_campaigns  (declared 12 / live 13)
+   EXTRA IN DB   (DB has, app ignores)  : source
+reddit_conversions  (declared 17 / live 17)
+   MISSING IN DB (app expects, DB lacks): redditAttributionType
+   EXTRA IN DB   (DB has, app ignores)  : attributionType
+reddit_personas  (declared 20 / live 21)
+   EXTRA IN DB   (DB has, app ignores)  : phase
+reddit_post_queue  (declared 15 / live 16)
+   EXTRA IN DB   (DB has, app ignores)  : status
+reddit_warmup_tasks  (declared 9 / live 11)
+   EXTRA IN DB   (DB has, app ignores)  : status, task_type
+retreat_events  (declared 12 / live 12)
+   MISSING IN DB (app expects, DB lacks): retreat_status
+   EXTRA IN DB   (DB has, app ignores)  : status
+scripts  (declared 12 / live 16)
+   EXTRA IN DB   (DB has, app ignores)  : contentGoal, platform, scriptStatus, scriptType
+seo_content_tracker  (declared 4 / live 5)
+   EXTRA IN DB   (DB has, app ignores)  : seoContentType
+syndication_jobs  (declared 16 / live 18)
+   EXTRA IN DB   (DB has, app ignores)  : syndication_platform, syndication_status
+testimonials  (declared 11 / live 12)
+   EXTRA IN DB   (DB has, app ignores)  : testimonial_campaign
+uploaded_books  (declared 13 / live 14)
+   EXTRA IN DB   (DB has, app ignores)  : uploadedBookStatus
+urban_monk_chat_messages  (declared 4 / live 5)
+   EXTRA IN DB   (DB has, app ignores)  : umcm_role
+va_tasks  (declared 14 / live 18)
+   EXTRA IN DB   (DB has, app ignores)  : category, channel, priority, status
+video_jobs  (declared 34 / live 37)
+   EXTRA IN DB   (DB has, app ignores)  : video_job_status, video_production_path, vj_production_path
+webinar_intelligence  (declared 15 / live 16)
+   EXTRA IN DB   (DB has, app ignores)  : surveyType
+webinar_sessions  (declared 24 / live 25)
+   EXTRA IN DB   (DB has, app ignores)  : webinarStatus
+weekly_deep_dives  (declared 18 / live 19)
+   EXTRA IN DB   (DB has, app ignores)  : status
+youtube_pipeline_videos  (declared 24 / live 27)
+   MISSING IN DB (app expects, DB lacks): yt_status
+   EXTRA IN DB   (DB has, app ignores)  : action_applied_at, day30_date, day7_date, yt_pipeline_status
+
+------------------------------------------------------------------------------------------------
+TOTAL MISSING IN DB : 8   <-- non-zero means the app would break on those columns
+TOTAL EXTRA IN DB   : 81   <-- informational; DDL applied outside the schema file

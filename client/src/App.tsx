@@ -83,6 +83,8 @@ const DeepDive = lazy(() => import("./pages/DeepDive"));
 const TantraQuiz = lazy(() => import("./pages/TantraQuiz"));
 const Interconnected = lazy(() => import("./pages/Interconnected"));
 const InterconnectedThankYou = lazy(() => import("./pages/InterconnectedThankYou"));
+const InterconnectedThankYouB = lazy(() => import("./pages/InterconnectedThankYouB"));
+const InterconnectedThankYouSplitter = lazy(() => import("./pages/InterconnectedThankYouSplitter"));
 const InterconnectedPurchased = lazy(() => import("./pages/InterconnectedPurchased"));
 const InterconnectedB = lazy(() => import("./pages/InterconnectedB"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
@@ -99,6 +101,11 @@ const CorpusBuilder = lazy(() => import("./pages/CorpusBuilder"));
 const PatternExtractor = lazy(() => import("./pages/PatternExtractor"));
 const ScriptFactory = lazy(() => import("./pages/ScriptFactory"));
 const PerformanceLoop = lazy(() => import("./pages/PerformanceLoop"));
+const FunnelEconomics = lazy(() => import("./pages/FunnelEconomics"));
+const FunnelAdvisor = lazy(() => import("./pages/FunnelAdvisor"));
+const MofContentEngine = lazy(() => import("./pages/MofContentEngine"));
+const Reconciliation = lazy(() => import("./pages/Reconciliation"));
+const InterconnectedCommandCenter = lazy(() => import("./pages/InterconnectedCommandCenter"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -189,7 +196,9 @@ function Router() {
         <Route path={"/deep-dive"} component={DeepDive} />
         <Route path={"/quiz/tantra"} component={TantraQuiz} />
         <Route path={"/interconnected"} component={Interconnected} />
-        <Route path={"/interconnected/thank-you"} component={InterconnectedThankYou} />
+        <Route path={"/interconnected/thank-you"} component={InterconnectedThankYouSplitter} />
+        <Route path={"/interconnected/thank-you-b"} component={InterconnectedThankYouB} />
+        <Route path={"/interconnected/thank-you-a"} component={InterconnectedThankYou} />
         <Route path={"/interconnected/purchased"} component={InterconnectedPurchased} />
         <Route path={"/interconnected-b"} component={InterconnectedB} />
         <Route path={"/system-health"} component={SystemHealth} />
@@ -206,6 +215,11 @@ function Router() {
         <Route path={"/pattern-extractor"} component={PatternExtractor} />
         <Route path={"/script-factory"} component={ScriptFactory} />
         <Route path={"/performance-loop"} component={PerformanceLoop} />
+        <Route path={"/funnel-economics"} component={FunnelEconomics} />
+        <Route path={"/funnel-advisor"} component={FunnelAdvisor} />
+        <Route path={"/mof-content"} component={MofContentEngine} />
+        <Route path={"/reconciliation"} component={Reconciliation} />
+        <Route path={"/interconnected-command"} component={InterconnectedCommandCenter} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

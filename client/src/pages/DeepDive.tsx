@@ -91,6 +91,7 @@ function DeepDiveCard({
   const [editProtocol, setEditProtocol] = useState(dive.protocolBody ?? "");
   const [editNotes, setEditNotes] = useState(dive.notes ?? "");
   const [sendEmail, setSendEmail] = useState(true);
+  const [publishAsPaid, setPublishAsPaid] = useState(dive.paidOnly ?? true);
 
   const utils = trpc.useUtils();
 
@@ -327,28 +328,55 @@ function DeepDiveCard({
                   </Button>
                 )}
                 {dive.status !== "published" && (
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={sendEmail}
-                        onChange={(e) => setSendEmail(e.target.checked)}
-                        className="rounded"
-                      />
-                      Send email
-                    </label>
+                  <div className="flex flex-col gap-2 w-full">
+                    {/* Audience toggle */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground font-medium">Audience:</span>
+                      <div className="flex rounded-md border border-border overflow-hidden text-xs">
+                        <button
+                          onClick={() => setPublishAsPaid(false)}
+                          className={`px-3 py-1.5 font-medium transition-colors ${
+                            !publishAsPaid
+                              ? "bg-emerald-600 text-white"
+                              : "bg-transparent text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <Eye className="w-3 h-3 inline mr-1" />Free (Everyone)
+                        </button>
+                        <button
+                          onClick={() => setPublishAsPaid(true)}
+                          className={`px-3 py-1.5 font-medium transition-colors ${
+                            publishAsPaid
+                              ? "bg-amber-600 text-white"
+                              : "bg-transparent text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <Lock className="w-3 h-3 inline mr-1" />Paid Only
+                        </button>
+                      </div>
+                      <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer ml-auto">
+                        <input
+                          type="checkbox"
+                          checked={sendEmail}
+                          onChange={(e) => setSendEmail(e.target.checked)}
+                          className="rounded"
+                        />
+                        Send email
+                      </label>
+                    </div>
+                    {/* Publish button */}
                     <Button
                       size="sm"
-                      onClick={() => publishMutation.mutate({ id: dive.id, sendEmail })}
+                      onClick={() => publishMutation.mutate({ id: dive.id, sendEmail, paidOnly: publishAsPaid })}
                       disabled={publishMutation.isPending}
-                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      className={publishAsPaid ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}
                     >
                       {publishMutation.isPending ? (
                         <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
                       ) : (
                         <Send className="w-3 h-3 mr-1" />
                       )}
-                      Publish to Paid Subscribers
+                      {publishAsPaid ? "Publish to Paid Subscribers" : "Publish Free to Everyone"}
                     </Button>
                   </div>
                 )}

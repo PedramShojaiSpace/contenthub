@@ -4539,3 +4539,33 @@ Pricing model (corrected):
 - [ ] Frontend: History table of all generated deep dives with status
 - [ ] Heartbeat: Weekly Monday 8am job to auto-generate a deep dive and notify owner for review
 - [ ] Wire Substack paid-only flag (audience: "paid_subscribers") on post creation
+
+## Watchdog Fixes
+- [x] Fix watchdog false alerts during overnight low-traffic windows (10pm–6am CT uses 3-hour window instead of 65-min)
+
+## A/B Test Tracking Fixes
+- [x] Fix splitter: utmContent field not in assignVariant schema — causes silent tRPC validation error, no exposure recorded
+- [x] Fix splitter: cached visitors skip assignVariant entirely — no exposure re-recorded on return visits (correct behavior but means only first-time visitors are tracked)
+- [x] Fix TY pages A and B: both call assignVariant redundantly after splitter already called it — remove duplicate calls from individual pages
+- [x] Verify: after fix, ab_exposures table accumulates rows matching real traffic
+
+## Shopify Commerce Infrastructure (Prep for Funnel Migration)
+- [x] Create server/shopify.ts — FUNNEL_PRODUCTS SKU map, buildCheckoutUrl, tagKlaviyoPurchaser, createStorefrontCheckout, detectFunnelProduct
+- [x] Create server/shopifyRouter.ts — tRPC: listFunnelProducts, getCheckoutUrl, createCheckout, getWebhookConfig, testConnection
+- [x] Register shopifyRouter in appRouter
+- [x] Upgrade handleShopifyOrderPaid — CAPI fires for ALL orders (not just attributed), Klaviyo "Placed Order" event + buyer tagging
+- [ ] Register Shopify orders/paid webhook in Shopify Admin (URL: https://content.theurbanmonk.com/api/shopify/order-paid)
+- [ ] Add SHOPIFY_WEBHOOK_SECRET to project secrets after registering webhook
+- [ ] Create Urban Monk Academy $297/yr Shopify product and update upstream_academy variantId in FUNNEL_PRODUCTS
+- [ ] Update thank-you page buy buttons to use trpc.shopify.getCheckoutUrl when funnel switches to Shopify
+
+## Lead Notification & Kajabi Spot-Check
+- [x] Add instant notifyOwner email on every new Interconnected opt-in (name, email, phone, UTM source, Kajabi tag status)
+- [x] Upgrade hourly watchdog to also spot-check Kajabi: query contacts with "Interconnected Opt In" tag, compare count vs DB, alert if gap > threshold
+
+## Meta Pixel & Opt-in Rate Fix (Aug 5 — URGENT)
+- [x] Remove Lead pixel from opt-in page form submit handler (fires before server confirms)
+- [x] Keep Lead pixel ONLY on thank-you page load (confirmed conversion)
+- [x] Remove duplicate Lead pixel from opt-in page entirely
+- [ ] Investigate why 439 LP views → only 26 leads (5.9%) when Aug 3 was 36%
+- [ ] Check if form is silently failing for most visitors today

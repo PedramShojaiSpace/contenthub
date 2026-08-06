@@ -103,7 +103,7 @@ async function patchProfile(profileId: string, profile: KlaviyoProfile): Promise
  * Subscribe a profile to SMS on a specific list.
  * This records explicit SMS consent in Klaviyo (TCPA-compliant).
  */
-async function subscribeToSmsList(profileId: string, listId: string): Promise<void> {
+async function subscribeToSmsList(profileId: string, listId: string, phone?: string): Promise<void> {
   const body = {
     data: {
       type: "profile-subscription-bulk-create-job",
@@ -114,6 +114,8 @@ async function subscribeToSmsList(profileId: string, listId: string): Promise<vo
               type: "profile",
               id: profileId,
               attributes: {
+                // Klaviyo requires phone_number in the subscription payload itself
+                ...(phone ? { phone_number: normalizePhone(phone) } : {}),
                 subscriptions: {
                   sms: {
                     marketing: {
@@ -197,7 +199,7 @@ export async function pushInterconnectedOptIn(opts: {
   let smsSubscribed = false;
 
   if (opts.smsConsent && opts.phone && INTERCONNECTED_SMS_LIST_ID) {
-    await subscribeToSmsList(profileId, INTERCONNECTED_SMS_LIST_ID);
+    await subscribeToSmsList(profileId, INTERCONNECTED_SMS_LIST_ID, opts.phone);
     smsSubscribed = true;
   }
 

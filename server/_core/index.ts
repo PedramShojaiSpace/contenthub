@@ -2,6 +2,9 @@ import "dotenv/config";
 import express from "express";
 import { ENV } from "./env";
 import { createServer } from "http";
+import { renderInterconnectedPage } from "../interconnectedStaticPage";
+import { renderInterconnectedBPage } from "../interconnectedBStaticPage";
+import { renderInterconnectedThankYouPage } from "../interconnectedThankYouStaticPage";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
@@ -1258,7 +1261,6 @@ async function startServer() {
   // /interconnected now serves Page A directly — NO server-side redirect to B.
   app.get("/interconnected", async (_req, res) => {
     try {
-      const { renderInterconnectedPage } = await import("../interconnectedStaticPage");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       // MUST be no-store: page captures fbclid/UTM params from URL on load — caching breaks attribution
       res.setHeader("Cache-Control", "no-store");
@@ -1272,7 +1274,6 @@ async function startServer() {
 
   app.get("/interconnected/thank-you", async (_req, res) => {
     try {
-      const { renderInterconnectedThankYouPage } = await import("../interconnectedThankYouStaticPage");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       // MUST be no-store: fires Lead pixel on load — caching would fire duplicate Lead events
       res.setHeader("Cache-Control", "no-store");
@@ -1286,7 +1287,6 @@ async function startServer() {
 
   app.get("/interconnected-b", async (_req, res) => {
     try {
-      const { renderInterconnectedBPage } = await import("../interconnectedBStaticPage");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       // MUST be no-store: page captures fbclid/UTM params from URL on load — caching breaks attribution
       res.setHeader("Cache-Control", "no-store");

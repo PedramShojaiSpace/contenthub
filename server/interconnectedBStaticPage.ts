@@ -1,4 +1,4 @@
-const CDN = "/manus-storage/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/";
+const CDN = "/manus-storage/";
 
 export function renderInterconnectedBPage(): string {
   const experts = [

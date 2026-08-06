@@ -365,6 +365,11 @@ export function renderInterconnectedPage(): string {
       <form id="optin-form-mid" onsubmit="submitForm(event,'mid')">
         <input type="text" name="name" placeholder="First Name" required autocomplete="given-name" />
         <input type="email" name="email" placeholder="Email" required autocomplete="email" />
+        <input type="tel" name="phone" placeholder="Mobile Phone (optional — episode reminders)" autocomplete="tel" />
+        <label class="sms-consent">
+          <input type="checkbox" name="smsConsent" />
+          <span>By checking this box you agree to receive recurring, automated marketing text messages from The Urban Monk and select third-party partners, at the phone number you provide, even if it is on a Do Not Call list. Consent is not required to purchase. Msg frequency varies. Msg&amp;Data rates may apply. Reply HELP for support or STOP to cancel. <a href="https://theurbanmonk.com/sms-terms" target="_blank" rel="noopener">SMS Terms</a> | <a href="https://theurbanmonk.com/privacy" target="_blank" rel="noopener">Privacy Policy</a></span>
+        </label>
         <button type="submit" class="submit-btn" id="submit-mid">REGISTER NOW!</button>
         <p class="form-note">100% free. No credit card required.</p>
       </form>
@@ -403,6 +408,11 @@ export function renderInterconnectedPage(): string {
       <form id="optin-form-bottom" onsubmit="submitForm(event,'bottom')">
         <input type="text" name="name" placeholder="First Name" required autocomplete="given-name" />
         <input type="email" name="email" placeholder="Email" required autocomplete="email" />
+        <input type="tel" name="phone" placeholder="Mobile Phone (optional — episode reminders)" autocomplete="tel" />
+        <label class="sms-consent">
+          <input type="checkbox" name="smsConsent" />
+          <span>By checking this box you agree to receive recurring, automated marketing text messages from The Urban Monk and select third-party partners, at the phone number you provide, even if it is on a Do Not Call list. Consent is not required to purchase. Msg frequency varies. Msg&amp;Data rates may apply. Reply HELP for support or STOP to cancel. <a href="https://theurbanmonk.com/sms-terms" target="_blank" rel="noopener">SMS Terms</a> | <a href="https://theurbanmonk.com/privacy" target="_blank" rel="noopener">Privacy Policy</a></span>
+        </label>
         <button type="submit" class="submit-btn" id="submit-bottom">REGISTER NOW!</button>
         <p class="form-note">100% free. No credit card required.</p>
       </form>

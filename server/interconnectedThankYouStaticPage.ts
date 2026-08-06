@@ -6,7 +6,7 @@
  */
 
 export function renderInterconnectedThankYouPage(): string {
-  const CDN = "/manus-storage/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/";
+  const CDN = "/manus-storage/";
   const LOGO = CDN + "urban-monk-logo-white_bea7991f.png";
   const OTO_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
   const year = new Date().getFullYear();
@@ -119,7 +119,7 @@ export function renderInterconnectedThankYouPage(): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Thank You — Interconnected | The Urban Monk</title>
-  <link rel="icon" type="image/x-icon" href="/manus-storage/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/urban-monk-favicon_27ae5d07.ico" />
+  <link rel="icon" type="image/x-icon" href="/manus-storage/urban-monk-favicon_27ae5d07.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=optional" rel="stylesheet" />

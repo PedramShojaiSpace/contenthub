@@ -178,6 +178,8 @@ export function renderInterconnectedThankYouPage(): string {
     .video-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;border:2px solid var(--blue);box-shadow:0 0 40px var(--blue-glow);margin-bottom:32px}
     .video-ratio{padding:56.25% 0 0;position:relative}
     .video-ratio iframe{position:absolute;top:0;left:0;width:100%;height:100%}
+    .wistia-container{width:100%;border-radius:12px;overflow:hidden;border:2px solid var(--blue);box-shadow:0 0 40px var(--blue-glow);margin-bottom:32px}
+    .wistia_embed{width:100%!important}
 
     /* countdown block */
     .countdown-block{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:32px 0}
@@ -245,6 +247,10 @@ export function renderInterconnectedThankYouPage(): string {
     footer img{width:96px;opacity:.5;margin:0 auto 16px;display:block}
     .footer-legal{color:#4b5563;font-size:.75rem;max-width:672px;margin:0 auto 8px;line-height:1.6}
   </style>
+  <!-- Wistia player library — loaded early so thumbnail appears immediately -->
+  <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
+  <script src="https://fast.wistia.com/embed/medias/hobj7srg3q.jsonp" async></script>
+  <script src="https://fast.wistia.com/embed/medias/10cdtpm3il.jsonp" async></script>
 </head>
 <body>
 
@@ -272,18 +278,9 @@ export function renderInterconnectedThankYouPage(): string {
     <p style="text-align:center;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:8px">⚠️ IMPORTANT — Read This Before You Leave</p>
     <h1 class="section-title" style="margin-bottom:8px">You're In. But You're About to Miss the Most Important Part.</h1>
     <p style="text-align:center;color:#fca5a5;font-weight:600;font-size:1rem;margin-bottom:24px">This offer only appears once — and it disappears when you close this tab.</p>
-    <!-- Wistia click-to-play facade: zero network cost until user taps play -->
-    <div class="video-wrap" id="wistia-facade" onclick="loadWistia()" style="cursor:pointer;position:relative">
-     <div class="video-ratio" style="background:#020d18">
-        <!-- Wistia serves its own poster/thumbnail — no custom image needed -->
-        <div id="wistia-thumb" style="position:absolute;top:0;left:0;width:100%;height:100%;background:#020d18"></div>
-        <!-- Play button overlay -->
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:72px;height:72px;background:rgba(46,145,252,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 32px rgba(46,145,252,0.5);pointer-events:none">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
-        </div>
-        <!-- Actual iframe — injected on click only -->
-        <div id="wistia-player" style="position:absolute;top:0;left:0;width:100%;height:100%;display:none"></div>
-      </div>
+    <!-- Wistia native embed — Wistia handles its own thumbnail, play button, and controls -->
+    <div class="wistia-container">
+      <div id="wistia-embed-container" class="wistia_embed wistia_async_hobj7srg3q videoFoam=true" style="height:360px;position:relative">&nbsp;</div>
     </div>
     <p style="color:#d1d5db;font-size:1.1rem;line-height:1.7;margin-bottom:20px;text-align:center">
       ✅ You're confirmed for <strong style="color:var(--blue)">Interconnected: The Power to Heal From Within</strong>. Your first episode drops tomorrow.
@@ -498,8 +495,8 @@ function getCachedTyVariant() {
     localStorage.setItem('ty_ab_variant', variant);
     sessionStorage.setItem('__ab_variant_id', String(variantId));
     currentVideoId = variant === 'B' ? VIDEO_B : VIDEO_A;
-   // Update the thumb src if Wistia hasn't loaded yet
-    // Thumbnail removed — Wistia serves its own poster on load
+    // Swap the Wistia embed to the correct video for this variant
+    if (typeof initWistiaEmbed === 'function') initWistiaEmbed();
   }
 
   if (cached) {
@@ -544,28 +541,18 @@ function getCachedTyVariant() {
   });
 })();
 
-// ── Wistia click-to-play facade ─────────────────────────────────────────────
-var wistiaLoaded = false;
-function loadWistia() {
-  if (wistiaLoaded) return;
-  wistiaLoaded = true;
-  var thumb = document.getElementById('wistia-thumb');
-  var player = document.getElementById('wistia-player');
-  var facade = document.getElementById('wistia-facade');
-  if (thumb) thumb.style.display = 'none';
-  if (player) player.style.display = 'block';
-  if (facade) facade.onclick = null;
-  var iframe = document.createElement('iframe');
-  // Use the variant-assigned video ID (set by initAbTracking above)
-  iframe.src = 'https://fast.wistia.net/embed/iframe/' + currentVideoId + '?seo=true&videoFoam=true&autoPlay=true';
-  iframe.title = 'Interconnected Thank You Video';
-  iframe.allow = 'autoplay; fullscreen';
-  iframe.setAttribute('allowtransparency', 'true');
-  iframe.setAttribute('frameborder', '0');
-  iframe.setAttribute('scrolling', 'no');
-  iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%';
-  if (player) player.appendChild(iframe);
+// ── Wistia native embed — A/B variant swap ───────────────────────────────────
+// applyVariant (above) sets currentVideoId; we swap the embed class so Wistia
+// re-initialises with the correct video. Called once on DOMContentLoaded.
+function initWistiaEmbed() {
+  var container = document.getElementById('wistia-embed-container');
+  if (!container) return;
+  // Remove any existing wistia_async_* class and set the correct video
+  container.className = container.className.replace(/wistia_async_\S+/, '').trim();
+  container.className += ' wistia_embed wistia_async_' + currentVideoId + ' videoFoam=true';
 }
+// Run after A/B tracking has set currentVideoId (initAbTracking is synchronous for cached variants)
+document.addEventListener('DOMContentLoaded', function() { initWistiaEmbed(); });
 
 // ── Pixel fire on buy click ──────────────────────────────────────────────────
 function firePixel() {

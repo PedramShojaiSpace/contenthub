@@ -359,6 +359,83 @@ Stop cycling through diets. Start eating for your actual metabolism.`,
       },
     ],
   },
+  // TANTRA QUIZ CAMPAIGN: Sexual vitality quiz funnel — ads go directly to quiz
+  {
+    variantNum: 7,
+    variantSlug: "tantra",
+    variantName: "Tantra — Sexual Vitality Quiz",
+    ads: [
+      {
+        adId: "tantra-a",
+        adName: 'Ad T-A — "Is Your Life Force Running on Empty?"',
+        imageFile: "tantra-ad-a-1x1.jpg",
+        imageHash: "7209ffde013d2c4f8e380b202251753b",
+        headline: "Is Your Life Force Running on Empty?",
+        primaryText: `I spent 10 years as a Taoist monk studying the traditions that treat sexual energy as the root of all vitality.
+
+What I found changed everything I knew about medicine.
+
+Most people think low libido is about age. Or stress. Or just "how it is now."
+
+It isn't.
+
+It's a signal — your body's way of telling you that the root system is depleted. And when the root is depleted, everything suffers: energy, mood, drive, connection, aliveness.
+
+The good news? It's reversible. But you have to know what's actually depleting you first.
+
+Take this free 2-minute quiz. I'll show you exactly what's draining your life force — and what to do about it.`,
+        description: "Free 2-minute quiz — personalized results from Dr. Pedram Shojai, OMD",
+        cta: "LEARN_MORE",
+        landingUrl: "https://content.theurbanmonk.com/quiz/tantra",
+      },
+      {
+        adId: "tantra-b",
+        adName: 'Ad T-B — "Why Don\'t I Want to Anymore?"',
+        imageFile: "tantra-ad-b-1x1.jpg",
+        imageHash: "6010d473874a5ea927ad3676024cfa13",
+        headline: "Why Don't I Want to Anymore?",
+        primaryText: `It's one of the most common questions I hear in my practice — and almost nobody talks about it out loud.
+
+"I used to want to. Now I just... don't."
+
+This isn't a relationship problem. It isn't a willpower problem. It isn't even an aging problem.
+
+It's a biology problem — specifically, the depletion of three neurochemicals that drive desire, connection, and aliveness.
+
+Modern life systematically strips them out. Chronic stress. Poor sleep. Environmental toxins. The wrong foods. Years of running on cortisol.
+
+The result? A flatness that feels permanent but isn't.
+
+I built a 2-minute quiz that identifies exactly which pathway is depleted in your body — and gives you a personalized East-West protocol to restore it.
+
+No credit card. No email required to start. Just answers.`,
+        description: "Find out what's actually depleting your desire — free quiz from Dr. Pedram Shojai",
+        cta: "LEARN_MORE",
+        landingUrl: "https://content.theurbanmonk.com/quiz/tantra",
+      },
+      {
+        adId: "tantra-c",
+        adName: 'Ad T-C — "The Taoist Secret to Sexual Vitality"',
+        imageFile: "tantra-ad-c-1x1.jpg",
+        imageHash: "756cc9bab2a3388507b94f83b4301d2d",
+        headline: "The Taoist Secret to Sexual Vitality (It's Not What You Think)",
+        primaryText: `In Taoist medicine, sexual energy isn't separate from health — it IS health.
+
+The ancient masters called it Jing: the root essence that powers your immune system, your brain, your hormones, and your will to live.
+
+When Jing is full, everything works. When it's depleted — and modern life depletes it relentlessly — you feel it everywhere. Low drive. Brain fog. Emotional flatness. The spark gone from your relationship.
+
+I spent 10 years as a Taoist monk and 20 years as a doctor of Oriental medicine studying how to restore it.
+
+What I found is that the ancient approach and modern clinical science point to the same three compounds — and when you combine them in the right ratios, the results are remarkable.
+
+Take this free 2-minute quiz to find out which formula is right for your body.`,
+        description: "Ancient wisdom + modern science — free personalized quiz from Dr. Pedram Shojai, OMD",
+        cta: "LEARN_MORE",
+        landingUrl: "https://content.theurbanmonk.com/quiz/tantra",
+      },
+    ],
+  },
   // INTERCONNECTED CAMPAIGN: Documentary series opt-in ads
   {
     variantNum: 6,

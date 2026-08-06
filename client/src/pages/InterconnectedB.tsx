@@ -45,6 +45,40 @@ const FEATURED = [
   { name: "Izabella Wentz, PharmD", img: K + "izabella-wentz-pharm-d_88697c7e.jpg" },
 ];
 
+// ─── UTM capture helper ──────────────────────────────────────────────────────
+function getUtmAttribution() {
+  const stored = sessionStorage.getItem('__utm_attrib');
+  if (stored) { try { return JSON.parse(stored) as Record<string, string | undefined>; } catch {} }
+  const params = new URLSearchParams(window.location.search);
+  const fbclid = params.get('fbclid') ?? undefined;
+  const getCookie = (name: string) => {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : undefined;
+  };
+  const fbp = getCookie('_fbp');
+  const fbc = getCookie('_fbc') ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : undefined);
+  const attrib: Record<string, string | undefined> = {
+    utmSource: params.get('utm_source') ?? undefined,
+    utmMedium: params.get('utm_medium') ?? undefined,
+    utmCampaign: params.get('utm_campaign') ?? undefined,
+    utmContent: params.get('utm_content') ?? params.get('utm_term') ?? undefined,
+    referrer: document.referrer || undefined,
+    fbclid,
+    fbp,
+    fbc,
+  };
+  if (fbclid && !attrib.utmSource) {
+    attrib.utmSource = 'meta';
+    attrib.utmMedium = attrib.utmMedium ?? 'paid';
+  }
+  if (!attrib.utmSource && attrib.referrer) {
+    if (/facebook\.com|fb\.com/i.test(attrib.referrer)) attrib.utmSource = 'meta';
+    else if (/instagram\.com/i.test(attrib.referrer)) attrib.utmSource = 'instagram';
+  }
+  sessionStorage.setItem('__utm_attrib', JSON.stringify(attrib));
+  return attrib;
+}
+
 // ─── Opt-In Form ──────────────────────────────────────────────────────────────
 function OptInFormB() {
   const [, navigate] = useLocation();
@@ -55,7 +89,14 @@ function OptInFormB() {
   const [error, setError] = useState("");
 
   const submit = trpc.interconnected.register.useMutation({
-    onSuccess: () => navigate("/interconnected/thank-you"),
+    onSuccess: (data) => {
+      if (data?.capiLeadEventId) {
+        sessionStorage.setItem('__capi_lead_event_id', data.capiLeadEventId);
+      }
+      // Tell the TY splitter which LP variant this visitor came from (for cross-tabulation)
+      localStorage.setItem('ic_lp_variant', 'B');
+      navigate("/interconnected/thank-you");
+    },
     onError: (e) => setError(e.message),
   });
 
@@ -66,7 +107,22 @@ function OptInFormB() {
       setError("Please enter your name and email.");
       return;
     }
-    submit.mutate({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, smsConsent });
+    const attrib = getUtmAttribution();
+    submit.mutate({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+      smsConsent,
+      utmSource: attrib.utmSource,
+      utmMedium: attrib.utmMedium,
+      utmCampaign: attrib.utmCampaign,
+      utmContent: attrib.utmContent,
+      referrer: attrib.referrer,
+      fbclid: attrib.fbclid,
+      fbp: attrib.fbp,
+      fbc: attrib.fbc,
+      pageVariant: 'B',
+    });
   };
 
   return (

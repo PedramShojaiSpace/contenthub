@@ -3128,7 +3128,7 @@ export const abTests = mysqlTable("ab_tests", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   pageUrl: varchar("page_url", { length: 500 }),
-  status: mysqlEnum("ab_test_status", ["draft", "running", "paused", "concluded"])
+  status: mysqlEnum("status", ["draft", "running", "paused", "concluded"])
     .notNull()
     .default("draft"),
   minExposures: int("min_exposures").notNull().default(300),
@@ -3178,7 +3178,7 @@ export const abConversions = mysqlTable("ab_conversions", {
   testId: int("test_id").notNull(),
   variantId: int("variant_id").notNull(),
   visitorId: varchar("visitor_id", { length: 128 }).notNull(),
-  conversionType: mysqlEnum("ab_conversion_type", [
+  conversionType: mysqlEnum("conversion_type", [
     "purchase",
     "email_capture",
     "quiz_start",
@@ -4105,3 +4105,100 @@ export type InsertResearchJob = typeof researchJobs.$inferInsert;
  *
  * See migration 0124_script_factory_v2.sql.
  */
+
+// ─── Interconnected Documentary Opt-In Leads ─────────────────────────────────
+// Safety backup of every lead that submits the /interconnected opt-in form.
+// Stored locally so leads are never lost even if Kajabi or Klaviyo is down.
+export const interconnectedLeads = mysqlTable("interconnected_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 30 }),
+  smsConsent: boolean("sms_consent").notNull().default(false),
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmMedium: varchar("utm_medium", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 128 }),
+  utmContent: varchar("utm_content", { length: 128 }),
+  referrer: varchar("referrer", { length: 512 }),
+  pageVariant: varchar("page_variant", { length: 10 }).default("A"),
+  kajabiTagged: boolean("kajabi_tagged").notNull().default(false),
+  kajabiTaggedAt: bigint("kajabi_tagged_at", { mode: "number" }),
+  klaviyoSynced: boolean("klaviyo_synced").notNull().default(false),
+  klaviyoSyncedAt: bigint("klaviyo_synced_at", { mode: "number" }),
+  // CAPI tracking — Lead event
+  capiLeadEventId: varchar("capi_lead_event_id", { length: 64 }),
+  capiLeadSent: boolean("capi_lead_sent").notNull().default(false),
+  capiLeadSentAt: bigint("capi_lead_sent_at", { mode: "number" }),
+  // Client-side signals for CAPI user matching
+  fbclid: varchar("fbclid", { length: 256 }),
+  fbp: varchar("fbp", { length: 256 }),
+  fbc: varchar("fbc", { length: 256 }),
+  clientIp: varchar("client_ip", { length: 64 }),
+  userAgent: varchar("user_agent", { length: 512 }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type InterconnectedLead = typeof interconnectedLeads.$inferSelect;
+export type InsertInterconnectedLead = typeof interconnectedLeads.$inferInsert;
+
+// ─── Funnel Economics Scenarios ───────────────────────────────────────────────
+export const funnelEconomicsScenarios = mysqlTable("funnel_economics_scenarios", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),
+  leadsPerMonth: int("leads_per_month").notNull(),
+  cpl: double("cpl").notNull(),
+  cr67: double("cr_67").notNull(),
+  crBump: double("cr_bump").notNull(),
+  crOto: double("cr_oto").notNull(),
+  crMid: double("cr_mid").notNull(),
+  midPrice: int("mid_price").notNull(),
+  crHighTicket: double("cr_high_ticket").notNull(),
+  totalRevenue: double("total_revenue").notNull(),
+  netProfit: double("net_profit").notNull(),
+  roas: double("roas").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type FunnelEconomicsScenario = typeof funnelEconomicsScenarios.$inferSelect;
+export type InsertFunnelEconomicsScenario = typeof funnelEconomicsScenarios.$inferInsert;
+
+// ─── Kajabi Purchases (webhook-captured, funnel-attributed) ───────────────────
+// Populated by the /api/kajabi/purchase webhook handler.
+// funnel_source tags which funnel the purchase came from (e.g. 'interconnected').
+// is_email_list_buyer flags purchases confirmed as pre-existing email subscribers
+// (not Meta leads) so they can be excluded from Meta ROAS calculations.
+// is_meta_attributed is set when the buyer's email matches an interconnected_leads record.
+export const kajabiPurchases = mysqlTable("kajabi_purchases", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 256 }).notNull(),
+  amountCents: int("amount_cents").notNull(),
+  offerName: varchar("offer_name", { length: 256 }),
+  funnelSource: varchar("funnel_source", { length: 64 }).default("interconnected"),
+  kajabiOrderId: varchar("kajabi_order_id", { length: 128 }),
+  isEmailListBuyer: tinyint("is_email_list_buyer").default(0),
+  isMetaAttributed: tinyint("is_meta_attributed").default(0),
+  notes: text("notes"),
+  purchasedAt: bigint("purchased_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type KajabiPurchase = typeof kajabiPurchases.$inferSelect;
+export type InsertKajabiPurchase = typeof kajabiPurchases.$inferInsert;
+
+// ─── Kajabi Retry Queue ────────────────────────────────────────────────────────
+// Dead letter queue for Kajabi tagging failures.
+// When kajabiAddTagByName fails all retries during opt-in, a row is inserted here.
+// A background worker (every 15 minutes) picks up 'pending' rows and retries.
+// After 3 more background attempts, status moves to 'failed' and owner is notified.
+export const kajabiRetryQueue = mysqlTable("kajabi_retry_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  leadId: int("lead_id"),  // FK to interconnected_leads.id (nullable)
+  tagName: varchar("tag_name", { length: 128 }).notNull(),
+  attempts: int("attempts").notNull().default(0),
+  lastAttemptAt: bigint("last_attempt_at", { mode: "number" }),
+  status: mysqlEnum("status", ["pending", "success", "failed"]).notNull().default("pending"),
+  errorMessage: text("error_message"),
+  createdAt: bigint("created_at_retry", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type KajabiRetryQueueItem = typeof kajabiRetryQueue.$inferSelect;
+export type InsertKajabiRetryQueueItem = typeof kajabiRetryQueue.$inferInsert;

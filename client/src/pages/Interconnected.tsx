@@ -204,6 +204,48 @@ const ALL_EXPERTS = [
   "Magdalena Wszelaki", "Eric Zielinski, DC",
 ];
 
+// ─── UTM capture helper ──────────────────────────────────────────────────────
+function getUtmAttribution() {
+  // Try sessionStorage first (persists across same-session page navigations)
+  const stored = sessionStorage.getItem('__utm_attrib');
+  if (stored) {
+    try { return JSON.parse(stored) as Record<string, string | undefined>; } catch {}
+  }
+  // Read from current URL
+  const params = new URLSearchParams(window.location.search);
+  const fbclid = params.get('fbclid') ?? undefined;
+  // Read _fbp and _fbc cookies
+  const getCookie = (name: string) => {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : undefined;
+  };
+  const fbp = getCookie('_fbp');
+  const fbc = getCookie('_fbc') ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : undefined);
+  const attrib: Record<string, string | undefined> = {
+    utmSource: params.get('utm_source') ?? undefined,
+    utmMedium: params.get('utm_medium') ?? undefined,
+    utmCampaign: params.get('utm_campaign') ?? undefined,
+    utmContent: params.get('utm_content') ?? params.get('utm_term') ?? undefined,
+    referrer: document.referrer || undefined,
+    fbclid,
+    fbp,
+    fbc,
+  };
+  // If fbclid present but no utm_source, infer source=meta
+  if (fbclid && !attrib.utmSource) {
+    attrib.utmSource = 'meta';
+    attrib.utmMedium = attrib.utmMedium ?? 'paid';
+  }
+  // If referrer is facebook/instagram and no utm_source, infer source
+  if (!attrib.utmSource && attrib.referrer) {
+    if (/facebook\.com|fb\.com/i.test(attrib.referrer)) attrib.utmSource = 'meta';
+    else if (/instagram\.com/i.test(attrib.referrer)) attrib.utmSource = 'instagram';
+  }
+  // Persist for this session
+  sessionStorage.setItem('__utm_attrib', JSON.stringify(attrib));
+  return attrib;
+}
+
 // ─── Opt-In Form ──────────────────────────────────────────────────────────────
 function OptInForm({ compact = false }: { compact?: boolean }) {
   const [, navigate] = useLocation();
@@ -214,7 +256,15 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState("");
 
   const submit = trpc.interconnected.register.useMutation({
-    onSuccess: () => navigate("/interconnected/thank-you"),
+    onSuccess: (data) => {
+      // Store the CAPI lead event_id so the TY page pixel call can use it for deduplication
+      if (data?.capiLeadEventId) {
+        sessionStorage.setItem('__capi_lead_event_id', data.capiLeadEventId);
+      }
+      // Tell the TY splitter which LP variant this visitor came from (for cross-tabulation)
+      localStorage.setItem('ic_lp_variant', 'A');
+      navigate("/interconnected/thank-you");
+    },
     onError: (e) => setError(e.message),
   });
 
@@ -225,7 +275,22 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
       setError("Please enter your name and email.");
       return;
     }
-    submit.mutate({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, smsConsent });
+    const attrib = getUtmAttribution();
+    submit.mutate({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+      smsConsent,
+      utmSource: attrib.utmSource,
+      utmMedium: attrib.utmMedium,
+      utmCampaign: attrib.utmCampaign,
+      utmContent: attrib.utmContent,
+      referrer: attrib.referrer,
+      fbclid: attrib.fbclid,
+      fbp: attrib.fbp,
+      fbc: attrib.fbc,
+      pageVariant: 'A',
+    });
   };
 
   return (
@@ -305,9 +370,57 @@ function OptInForm({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// ─── Isolated Countdown Components (prevent full-page rerenders) ─────────────────
+function StickyBar({ scrollToForm }: { scrollToForm: () => void }) {
+  const countdown = useCountdown(47);
+  return (
+    <div
+      className="sticky top-0 z-50 text-white text-center py-2 px-4 text-sm font-semibold"
+      style={{ background: "#161E2A", borderBottom: "1px solid rgba(1,141,177,0.4)" }}
+    >
+      Free viewing period closes in:&nbsp;
+      <span className="font-mono font-black" style={{ color: "#2E91FC" }}>
+        {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
+      </span>
+      &nbsp;&mdash;&nbsp;
+      <button onClick={scrollToForm} className="underline font-bold hover:opacity-80" style={{ color: "#7ecfdf" }}>
+        Claim your free access now
+      </button>
+    </div>
+  );
+}
+
+function HeroCountdownBox() {
+  const countdown = useCountdown(47);
+  return (
+    <div
+      className="flex items-center gap-3 rounded-lg p-3"
+      style={{ background: "rgba(10,20,30,0.7)", border: "1px solid rgba(46,145,252,0.3)" }}
+    >
+      <span className="text-yellow-400 text-xl">⚠</span>
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#7ecfdf" }}>
+          Free viewing period closes in:
+        </p>
+        <p className="font-mono font-black text-2xl text-white leading-none">
+          {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BottomCountdown() {
+  const countdown = useCountdown(47);
+  return (
+    <p className="font-mono font-black text-5xl mb-6 text-white">
+      {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
+    </p>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Interconnected() {
-  const countdown = useCountdown(47);
   const formRef = useRef<HTMLDivElement>(null);
 
   const scrollToForm = () => {
@@ -317,20 +430,8 @@ export default function Interconnected() {
   return (
     <div className="min-h-screen text-white font-sans" style={{ background: "#0a1520" }}>
 
-      {/* STICKY URGENCY BAR */}
-      <div
-        className="sticky top-0 z-50 text-white text-center py-2 px-4 text-sm font-semibold"
-        style={{ background: "#161E2A", borderBottom: "1px solid rgba(1,141,177,0.4)" }}
-      >
-        Free viewing period closes in:&nbsp;
-        <span className="font-mono font-black" style={{ color: "#2E91FC" }}>
-          {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
-        </span>
-        &nbsp;&mdash;&nbsp;
-        <button onClick={scrollToForm} className="underline font-bold hover:opacity-80" style={{ color: "#7ecfdf" }}>
-          Claim your free access now
-        </button>
-      </div>
+      {/* STICKY URGENCY BAR — isolated, only this re-renders on tick */}
+      <StickyBar scrollToForm={scrollToForm} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
@@ -339,15 +440,15 @@ export default function Interconnected() {
           background: "linear-gradient(135deg, #020d18 0%, #051e2e 50%, #020d18 100%)",
         }}
       >
-        {/* Microbiome background texture */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url(${POSTER})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: 0.2,
-          }}
+        {/* Microbiome background texture — img tag for LCP preloadability */}
+        <img
+          src={POSTER}
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          decoding="sync"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ opacity: 0.2, pointerEvents: "none" }}
         />
         <div
           className="absolute inset-0"
@@ -404,21 +505,8 @@ export default function Interconnected() {
                   ))}
                 </div>
 
-                {/* Countdown box */}
-                <div
-                  className="flex items-center gap-3 rounded-lg p-3"
-                  style={{ background: "rgba(10,20,30,0.7)", border: "1px solid rgba(46,145,252,0.3)" }}
-                >
-                  <span className="text-yellow-400 text-xl">⚠</span>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#7ecfdf" }}>
-                      Free viewing period closes in:
-                    </p>
-                    <p className="font-mono font-black text-2xl text-white leading-none">
-                      {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
-                    </p>
-                  </div>
-                </div>
+                {/* Countdown box — isolated component */}
+                <HeroCountdownBox />
               </div>
 
               {/* RIGHT — Opt-in form */}
@@ -442,11 +530,11 @@ export default function Interconnected() {
       </section>
 
       {/* ── TAKE ADVANTAGE ──────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#0d1e2e" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0d1e2e" }}>
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
-              <img src={POSTER} alt="Interconnected Documentary" className="rounded-xl w-full object-cover shadow-2xl" style={{ maxHeight: "340px" }} />
+              <img src={POSTER} alt="Interconnected Documentary" className="rounded-xl w-full object-cover shadow-2xl" style={{ maxHeight: "340px" }} loading="lazy" decoding="async" />
             </div>
             <div>
               <h2 className="text-3xl font-black uppercase mb-4" style={{ color: "#f0f4f8" }}>
@@ -467,7 +555,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── MARK HYMAN FEATURED QUOTE ────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#161E2A" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#161E2A" }}>
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8 items-center">
             <div className="flex justify-center">
@@ -479,6 +567,8 @@ export default function Interconnected() {
                   src={K + "mark-hyman-md_59f25bf6.jpg"}
                   alt="Mark Hyman, MD"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             </div>
@@ -496,7 +586,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── FEATURED EXPERTS GRID ────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#0a1520" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0a1520" }}>
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-black text-center uppercase mb-2" style={{ color: "#f0f4f8" }}>
             Meet the All-Star Lineup
@@ -522,6 +612,8 @@ export default function Interconnected() {
                     src={expert.img}
                     alt={expert.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                       (e.target as HTMLImageElement).parentElement!.style.background = "#1a3a5a";
@@ -555,7 +647,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── EPISODES ─────────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#0d1e2e" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0d1e2e" }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-black text-center uppercase mb-2" style={{ color: "#f0f4f8" }}>
             Here's a Peek at What You'll Discover Inside
@@ -594,7 +686,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── MID-PAGE CTA ─────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#161E2A" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#161E2A" }}>
         <div className="max-w-xl mx-auto text-center">
           <h2 className="text-3xl font-black uppercase mb-3" style={{ color: "#f0f4f8" }}>
             Discover the Secret to Reversing Chronic Disease
@@ -612,7 +704,7 @@ export default function Interconnected() {
       </section>
 
       {/* ── HOST BIO ─────────────────────────────────────────────────────── */}
-      <section className="py-14 px-4" style={{ background: "#0a1520" }}>
+      <section className="py-14 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0a1520" }}>
         <div className="max-w-4xl mx-auto">
           <p className="text-center text-xs font-black uppercase tracking-widest mb-6" style={{ color: "#2E91FC" }}>
             Meet Your Host
@@ -628,6 +720,8 @@ export default function Interconnected() {
                   alt="Dr. Pedram Shojai, OMD"
                   className="w-full object-cover object-top"
                   style={{ maxHeight: "280px" }}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             </div>
@@ -653,15 +747,13 @@ export default function Interconnected() {
       </section>
 
       {/* ── BOTTOM CTA ───────────────────────────────────────────────────── */}
-      <section className="py-16 px-4" style={{ background: "#0d1e2e" }}>
+      <section className="py-16 px-4" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px", background: "#0d1e2e" }}>
         <div className="max-w-xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-black uppercase mb-3" style={{ color: "#f0f4f8" }}>
             Don't Miss the Free Viewing Period
           </h2>
           <p className="mb-2" style={{ color: "#7ecfdf" }}>Access closes in:</p>
-          <p className="font-mono font-black text-5xl mb-6 text-white">
-            {pad(countdown.h)}:{pad(countdown.m)}:{pad(countdown.s)}
-          </p>
+          <BottomCountdown />
           <div
             className="rounded-xl p-6"
             style={{ background: "rgba(5,20,35,0.95)", border: "1px solid rgba(46,145,252,0.3)" }}
@@ -676,7 +768,7 @@ export default function Interconnected() {
         className="py-8 px-4 text-center"
         style={{ background: "#020d18", borderTop: "1px solid rgba(46,145,252,0.1)" }}
       >
-        <img src={LOGO} alt="The Urban Monk" className="w-28 mx-auto mb-4 opacity-50" />
+        <img src={LOGO} alt="The Urban Monk" className="w-28 mx-auto mb-4 opacity-50" loading="lazy" decoding="async" />
         <p className="text-gray-600 text-xs max-w-2xl mx-auto mb-2 leading-relaxed">
           THE INFORMATION ON THIS SITE IS FOR EDUCATIONAL PURPOSES ONLY AND SHOULD NOT BE CONSTRUED AS MEDICAL ADVICE.
           READERS ARE ADVISED TO CONSULT A QUALIFIED PROFESSIONAL ABOUT ANY ISSUE REGARDING THEIR HEALTH AND WELL-BEING.

@@ -2,6 +2,9 @@ import "dotenv/config";
 import express from "express";
 import { ENV } from "./env";
 import { createServer } from "http";
+import { renderInterconnectedPage } from "../interconnectedStaticPage";
+import { renderInterconnectedBPage } from "../interconnectedBStaticPage";
+import { renderInterconnectedThankYouPage } from "../interconnectedThankYouStaticPage";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
@@ -30,6 +33,7 @@ import { apolloDailyDrawHandler, apolloAudienceValidationHandler } from "../apol
 import { videoVariants } from "../../drizzle/schema";
 import { getDriveAuthUrl, exchangeCodeForTokens, exportVariantsToDrive, isDriveAuthorized } from "../googleDrive";
 import { sdk } from "./sdk";
+import { startKajabiRetryWorker } from "../kajabiRetryWorker";
 import { getDb } from "../db";
 import { videoVariantJobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -842,6 +846,32 @@ async function startServer() {
     }
   });
 
+  // ── Keep-Alive Ping ──────────────────────────────────────────────────────
+  // POST /api/scheduled/keepalive — fires every 5 min to prevent cold starts on Autoscale
+  // No auth required — just a lightweight heartbeat to keep the container warm
+  app.post("/api/scheduled/keepalive", (_req, res) => {
+    return res.json({ ok: true, ts: Date.now(), uptime: Math.round(process.uptime()) });
+  });
+
+  // ── Lead Watchdog ─────────────────────────────────────────────────────────
+  // POST /api/scheduled/lead-watchdog — fires every 60 min, alerts only if zero leads in 65 min
+  app.post("/api/scheduled/lead-watchdog", async (req, res) => {
+    const { leadWatchdogHandler } = await import("../leadWatchdogHandler");
+    return leadWatchdogHandler(req, res);
+  });
+
+  // POST /api/scheduled/day0-verification — one-time check 60 min after form-submission fix deployment
+  app.post("/api/scheduled/day0-verification", async (req, res) => {
+    const { day0VerificationHandler } = await import("../day0VerificationHandler");
+    return day0VerificationHandler(req, res);
+  });
+
+  // POST /api/scheduled/ab-significance-check — fires every 6 hours, notifies owner when A/B test reaches significance
+  app.post("/api/scheduled/ab-significance-check", async (req, res) => {
+    const { abSignificanceWatchdog } = await import("../abSignificanceWatchdog");
+    return abSignificanceWatchdog(req, res);
+  });
+
   // ── Email Sequence Scheduler ──────────────────────────────────────────────
   // POST /api/scheduled/email-sequence-send — fires hourly, sends queued Emails 2 & 3
   app.post("/api/scheduled/email-sequence-send", async (req, res) => {
@@ -1225,6 +1255,58 @@ async function startServer() {
     }
   });
 
+  // ── Interconnected Static HTML Pages (bypasses React SPA bundle for speed) ──
+  //
+  // SPLIT TEST ARCHITECTURE (updated):
+  //   FRONT-END SPLIT (Landing Page A vs B) — managed externally by Curt's ad campaigns:
+  //     /interconnected   → Page A (Curt points some ads here)
+  //     /interconnected-b → Page B (Curt points other ads here)
+  //   Both pages tag the lead with pageVariant 'A' or 'B' on form submit.
+  //
+  //   BACK-END SPLIT (Thank You Page A vs B) — managed by our server:
+  //     /interconnected/thank-you → InterconnectedThankYouSplitter (50/50 random, DB-sticky)
+  //     Variant A: Wistia hobj7srg3q  |  Variant B: Wistia 10cdtpm3il
+  //
+  // /interconnected now serves Page A directly — NO server-side redirect to B.
+  app.get("/interconnected", async (_req, res) => {
+    try {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      // MUST be no-store: page captures fbclid/UTM params from URL on load — caching breaks attribution
+      res.setHeader("Cache-Control", "no-store");
+      return res.send(renderInterconnectedPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[interconnected] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  app.get("/interconnected/thank-you", async (_req, res) => {
+    try {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      // MUST be no-store: fires Lead pixel on load — caching would fire duplicate Lead events
+      res.setHeader("Cache-Control", "no-store");
+      return res.send(renderInterconnectedThankYouPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[interconnected-ty] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  app.get("/interconnected-b", async (_req, res) => {
+    try {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      // MUST be no-store: page captures fbclid/UTM params from URL on load — caching breaks attribution
+      res.setHeader("Cache-Control", "no-store");
+      return res.send(renderInterconnectedBPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[interconnected-b] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // ── Hosted Landing Pages (ch.theurbanmonk.com) ────────────────────────────
   // Public routes: /{campaign}/{slug} — serves full HTML pages
   // Campaigns: lo | gut | sleep | webinar | upstream
@@ -1428,6 +1510,174 @@ async function startServer() {
   app.post("/api/shopify/order-paid", async (req, res) => {
     const { handleShopifyOrderPaid } = await import("../attributionRouter");
     return handleShopifyOrderPaid(req, res);
+  });
+
+  // POST /api/kajabi/purchase — Kajabi webhook: member_purchase event
+  // Configure in Kajabi Admin → Settings → Integrations → Webhooks
+  // URL: https://content.theurbanmonk.com/api/kajabi/purchase
+  // Fires on every successful purchase; we use it to send CAPI Purchase event to Meta
+  app.post("/api/kajabi/purchase", async (req, res) => {
+    try {
+      const secret = process.env.INGEST_SECRET;
+      // Kajabi sends a signature header — verify if secret is configured
+      if (secret) {
+        const sig = req.headers["x-kajabi-signature"] as string | undefined;
+        if (sig) {
+          const { createHmac } = await import("crypto");
+          const expected = createHmac("sha256", secret).update(JSON.stringify(req.body)).digest("hex");
+          if (sig !== expected) {
+            console.warn("[kajabi/purchase] Invalid signature — ignoring");
+            return res.status(401).json({ error: "Invalid signature" });
+          }
+        }
+      }
+      const payload = req.body as Record<string, unknown>;
+      const event = payload.event as string | undefined;
+      // Only process purchase events
+      if (event && !event.toLowerCase().includes("purchase") && !event.toLowerCase().includes("payment")) {
+        return res.json({ ok: true, skipped: true, event });
+      }
+      const email = (payload.email ?? (payload.member as any)?.email ?? "") as string;
+      const name = (payload.name ?? (payload.member as any)?.name ?? "") as string;
+      const rawAmount = parseFloat(String(payload.amount ?? payload.total ?? payload.price ?? 0));
+      const orderId = String(payload.id ?? payload.order_id ?? payload.purchase_id ?? Date.now());
+      const offerName = String(payload.offer_name ?? payload.product_name ?? payload.title ?? "Kajabi Purchase");
+      const offerId = String(payload.offer_id ?? payload.product_id ?? "");
+      if (!email) {
+        console.warn("[kajabi/purchase] No email in payload — cannot send CAPI");
+        return res.json({ ok: false, reason: "no_email" });
+      }
+
+      // ── Known offer price map: offer ID → price in cents ──────────────────
+      // Kajabi sometimes sends amount=0 in webhooks; use this map as authoritative fallback
+      const OFFER_PRICE_MAP: Record<string, number> = {
+        "2150211911": 39900,  // Gut Permeability Test ($399) — Interconnected upsell
+        "2151031660": 29700,  // Upstream: Complete Microbiome Solution ($297)
+        "57E3XFtT":   6700,   // Interconnected All-Access Bundle ($67) — slug-based ID
+      };
+      // Also map by offer name patterns
+      const offerNameLower_pre = String(offerName).toLowerCase();
+      let knownPriceCents = 0;
+      if (offerId && OFFER_PRICE_MAP[offerId]) {
+        knownPriceCents = OFFER_PRICE_MAP[offerId];
+      } else if (offerNameLower_pre.includes("interconnected") || offerNameLower_pre.includes("all-access") || offerNameLower_pre.includes("all access")) {
+        knownPriceCents = 6700; // $67 bundle
+      } else if (offerNameLower_pre.includes("gut permeability") || offerNameLower_pre.includes("food sensitivity")) {
+        knownPriceCents = 39900; // $399
+      } else if (offerNameLower_pre.includes("upstream") || offerNameLower_pre.includes("microbiome solution")) {
+        knownPriceCents = 29700; // $297
+      } else if (offerNameLower_pre.includes("ocus") || offerNameLower_pre.includes("online course")) {
+        knownPriceCents = 29900; // $299 OCUS
+      }
+      // Use rawAmount if non-zero, otherwise fall back to known price map
+      const rawAmountCents = Math.round(rawAmount * 100);
+      const amount = rawAmountCents > 0 ? rawAmount : knownPriceCents / 100;
+      if (rawAmountCents === 0 && knownPriceCents > 0) {
+        console.log(`[kajabi/purchase] amount=0 in webhook — using known price $${knownPriceCents/100} for offer "${offerName}" (ID: ${offerId})`);
+      }
+
+      // ── Detect funnel from offer ID, offer name, or amount ─────────────────
+      // Offer ID 2150211911 = Gut Permeability Test ($399) → interconnected
+      // Offer ID 2151031660 = Upstream: Complete Microbiome Solution ($100/$297) → upstream_webinar
+      // Amount-based fallback: $67/$299/$399/$499/$1450/$1650 → interconnected
+      //                        $100/$297 → upstream_webinar
+      const amountCents = Math.round(amount * 100);
+      let funnelSource = "unknown";
+      const offerNameLower = offerName.toLowerCase();
+      if (offerId === "2150211911" || offerId === "2151031660") {
+        funnelSource = offerId === "2151031660" ? "upstream_webinar" : "interconnected";
+      } else if (offerNameLower.includes("upstream") || offerNameLower.includes("microbiome") || offerNameLower.includes("gut check")) {
+        funnelSource = "upstream_webinar";
+      } else if (offerNameLower.includes("deep sleep") || offerNameLower.includes("dss")) {
+        funnelSource = "dss_webinar";
+      } else if (offerNameLower.includes("gateway")) {
+        funnelSource = "gateway_health";
+      } else if (offerNameLower.includes("lights on") || offerNameLower.includes("lights-on")) {
+        funnelSource = "lights_on";
+      } else if (offerNameLower.includes("reboot") || offerNameLower.includes("7 day") || offerNameLower.includes("7-day")) {
+        funnelSource = "reboot_7day";
+      } else if ([6700, 29900, 39900, 49900, 145000, 165000].includes(amountCents) ||
+                 offerNameLower.includes("interconnected") || offerNameLower.includes("gut permeability") ||
+                 offerNameLower.includes("food sensitivity") || offerNameLower.includes("agora")) {
+        funnelSource = "interconnected";
+      }
+      console.log(`[kajabi/purchase] Detected funnel: ${funnelSource} for offer "${offerName}" (ID: ${offerId}, amount: $${amount})`);
+
+      // ── Look up the lead in our DB to get fbclid/fbp/fbc/ip/ua for CAPI ────
+      const { getDb } = await import("../db");
+      const { interconnectedLeads } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { sendCapiEvent, generateEventId } = await import("../capiHelper");
+      const db = await getDb();
+      let lead: typeof interconnectedLeads.$inferSelect | undefined;
+      if (db) {
+        // Check interconnected_leads first (covers Interconnected funnel)
+        const rows = await db.select().from(interconnectedLeads)
+          .where(eq(interconnectedLeads.email, email.toLowerCase().trim()))
+          .limit(1);
+        lead = rows[0];
+        // Future: add lookup in upstream_leads, dss_leads etc. as those tables are created
+      }
+      const isMetaAttributed = lead ? 1 : 0;
+
+      // ── Save purchase to local DB for funnel attribution tracking ──────────
+      if (db) {
+        try {
+          const { kajabiPurchases } = await import("../../drizzle/schema");
+          await db.insert(kajabiPurchases).values({
+            email: email.toLowerCase().trim(),
+            amountCents,
+            offerName,
+            funnelSource,
+            kajabiOrderId: orderId,
+            isEmailListBuyer: 0,
+            isMetaAttributed,
+            notes: `offer_id:${offerId}`,
+            purchasedAt: Date.now(),
+          });
+          console.log(`[kajabi/purchase] DB record saved for ${email} — funnel: ${funnelSource}, amount: $${amount}, meta_attributed: ${isMetaAttributed}`);
+        } catch (dbErr: any) {
+          // Don't block CAPI on DB error — log and continue
+          console.warn("[kajabi/purchase] DB insert failed:", dbErr?.message);
+        }
+      }
+
+      // ── Determine event source URL per funnel ──────────────────────────────
+      const eventSourceUrls: Record<string, string> = {
+        interconnected:  "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout",
+        upstream_webinar: "https://theacademy.theurbanmonk.com/upstream/checkout",
+        dss_webinar:     "https://theacademy.theurbanmonk.com/dss/checkout",
+        gateway_health:  "https://theacademy.theurbanmonk.com/gateway/checkout",
+        lights_on:       "https://theacademy.theurbanmonk.com/lights-on/checkout",
+        reboot_7day:     "https://theacademy.theurbanmonk.com/reboot/checkout",
+      };
+      const eventSourceUrl = eventSourceUrls[funnelSource] ?? "https://theacademy.theurbanmonk.com/checkout";
+
+      const purchaseEventId = generateEventId(email, "Purchase", orderId);
+      const capiSent = await sendCapiEvent({
+        eventName: "Purchase",
+        eventId: purchaseEventId,
+        eventSourceUrl,
+        email,
+        phone: lead?.phone ?? null,
+        fbclid: lead?.fbclid ?? null,
+        fbp: lead?.fbp ?? null,
+        fbc: lead?.fbc ?? null,
+        clientIpAddress: lead?.clientIp ?? null,
+        clientUserAgent: lead?.userAgent ?? null,
+        value: amount,
+        currency: "USD",
+        contentName: offerName,
+        orderId,
+        utmCampaign: lead?.utmCampaign ?? null,
+        utmSource: lead?.utmSource ?? null,
+      });
+      console.log(`[kajabi/purchase] CAPI Purchase sent for ${email} — funnel: ${funnelSource}, amount: $${amount}, event_id: ${purchaseEventId}, ok: ${capiSent}`);
+      res.json({ ok: true, capiSent, purchaseEventId, email, amount, funnelSource, isMetaAttributed });
+    } catch (err: any) {
+      console.error("[kajabi/purchase] Error:", err);
+      res.status(500).json({ error: err?.message });
+    }
   });
 
   // POST /api/scheduled/daily-ads-sync — Daily 8am UTC: Meta Ads Insights sync + AI briefing
@@ -1685,6 +1935,16 @@ async function startServer() {
       setInterval(runUploadWatchdog, 10 * 60 * 1000);
     } else {
       console.log("[Sandbox] Upload watchdog skipped (SANDBOX_MODE=1).");
+    }
+
+    // From main: Kajabi retry worker processes the dead letter queue every 15
+    // minutes. It serves the live Interconnected funnel, so it must keep running.
+    // Gated by SANDBOX_MODE for the same reason as the watchdog above — it calls
+    // the real Kajabi API and would enroll real leads from a test environment.
+    if (!SANDBOX_MODE) {
+      startKajabiRetryWorker();
+    } else {
+      console.log("[Sandbox] Kajabi retry worker skipped (SANDBOX_MODE=1).");
     }
   });
 

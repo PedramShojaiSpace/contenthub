@@ -136,6 +136,7 @@ import { vaTasksRouter } from "./vaTasksRouter";
 import { kajabiLiveRouter } from "./kajabiLiveRouter";
 import { advertorialRouter } from "./advertorialRouter";
 import { attributionRouter } from "./attributionRouter";
+import { shopifyRouter } from "./shopifyRouter";
 import { attributionPanelRouter } from "./attributionPanelRouter";
 import { funnelCommandRouter } from "./funnelCommandRouter";
 import { adsMonitorRouter } from "./adsMonitorRouter";
@@ -158,6 +159,12 @@ import { scriptFactoryRouter } from "./scriptFactoryRouter";
 import { topicTreeRouter } from "./topicTreeRouter";
 import { performanceLoopRouter } from "./performanceLoopRouter";
 import { funnelsRouter } from "./funnelsRouter";
+import { funnelEconomicsRouter } from "./funnelEconomicsRouter";
+import { metaFunnelMetricsRouter } from "./metaFunnelMetricsRouter";
+import { kajabiSalesRouter } from "./kajabiSalesRouter";
+import { funnelAdvisorRouter } from "./funnelAdvisorRouter";
+import { funnelReconciliationRouter } from "./funnelReconciliationRouter";
+import { mofContentRouter } from "./mofContentRouter";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { runInternalLinkOptimizer } from "./internalLinkOptimizer";
@@ -529,10 +536,17 @@ export const appRouter = router({
   kajabiLive: kajabiLiveRouter,
   advertorial: advertorialRouter,
   attribution: attributionRouter,
+  shopify: shopifyRouter,
   attributionPanel: attributionPanelRouter,
   adsMonitor: adsMonitorRouter,
   funnelCommand: funnelCommandRouter,
   funnels: funnelsRouter,
+  funnelEconomics: funnelEconomicsRouter,
+  metaFunnelMetrics: metaFunnelMetricsRouter,
+  kajabiSales: kajabiSalesRouter,
+  funnelAdvisor: funnelAdvisorRouter,
+  funnelRecon: funnelReconciliationRouter,
+  mofContent: mofContentRouter,
   ascension: ascensionRouter,
   quiz: quizRouter,
   abTest: abTestRouter,

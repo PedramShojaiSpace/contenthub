@@ -5,15 +5,25 @@
 **The one hash that matters:**
 
 ```
-dfb5eaa09a686da10c16f9d44a01969f0d20e00e
+273993fa3343bd5d209d0ab6483d9da6535c9226
 ```
 
-Short form `dfb5eaa`. That is GitHub `main` HEAD, and what the deploy must match.
+Short form `273993f`. That is GitHub `main` HEAD, and what the deploy must match.
 
-> **On the earlier `3e894e0`:** `SYNC-DIRECTION-FINDING.md` states `3e894e0` because
-> that was HEAD while the document was being written — committing the document itself
-> advanced main to `dfb5eaa`. `3e894e0` is an ancestor of `dfb5eaa`, so nothing was
-> lost or rewritten; the document is simply self-stale by one commit. **Use `dfb5eaa`.**
+> **On the earlier hashes.** Three appear in this repository's history and all are
+> ancestors of the one above, so nothing was lost or rewritten:
+>
+> | Hash | Why it appears |
+> |---|---|
+> | `3e894e0` | HEAD while `SYNC-DIRECTION-FINDING.md` was written; committing it advanced main |
+> | `dfb5eaa` | HEAD while this runbook was written; committing this runbook advanced main |
+> | **`273993f`** | **current — use this** |
+>
+> This is a documentation artifact stating a hash that its own commit invalidates. Any
+> commit made after you read this advances it again — so **before the call, re-run
+> `git rev-parse origin/main` on GitHub and use whatever it reports.** The commands
+> below use `github/main` by name rather than a literal hash, so they stay correct
+> regardless; only the verification step needs the live value.
 
 ---
 
@@ -106,7 +116,7 @@ Confirm the fetch landed:
 git rev-parse github/main
 ```
 
-**Expected:** `dfb5eaa09a686da10c16f9d44a01969f0d20e00e`
+**Expected:** `273993fa3343bd5d209d0ab6483d9da6535c9226`
 
 Then verify a fast-forward is possible **before** merging:
 
@@ -129,9 +139,9 @@ Confirm:
 git log -1 --format='%H'
 ```
 
-**Expected:** `dfb5eaa09a686da10c16f9d44a01969f0d20e00e`
+**Expected:** `273993fa3343bd5d209d0ab6483d9da6535c9226`
 
-This brings 48 commits and 148 changed files (69 of them documentation).
+This brings 49 commits and 149 changed files (70 of them documentation).
 
 ---
 
@@ -187,7 +197,7 @@ before publishing.
 
 Ask Manus to save a checkpoint with a description such as:
 
-> Script Factory v2.4 — merged from GitHub main dfb5eaa. Production migration already
+> Script Factory v2.4 — merged from GitHub main 273993f. Production migration already
 > applied and verified 2026-08-06 (17 statements, 9/9 verifications). Code only.
 
 Then publish. **Check whether this project has auto-publish enabled** — if it does, the
@@ -203,7 +213,7 @@ Do not accept "the deploy finished." Verify the hash.
 In the Management UI, check the published version against:
 
 ```
-dfb5eaa09a686da10c16f9d44a01969f0d20e00e
+273993fa3343bd5d209d0ab6483d9da6535c9226
 ```
 
 If the deployed commit is anything else — particularly `216c2f2` — the merge did not
@@ -283,7 +293,7 @@ deploy is a Management UI rollback to the previous checkpoint, not a database op
 ## Quick reference
 
 ```
-Target hash        dfb5eaa09a686da10c16f9d44a01969f0d20e00e
+Target hash        273993fa3343bd5d209d0ab6483d9da6535c9226
 Expected start     216c2f28b7270ff36e9388ce640af8cd3a3306cc
 Commits gained     48
 schema.ts tables   143

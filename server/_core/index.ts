@@ -8,6 +8,7 @@ import { renderInterconnectedThankYouPage } from "../interconnectedThankYouStati
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerDevLoginRoute } from "./devLogin";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -21,6 +22,7 @@ import { rankSnapshotHandler } from "../rankSnapshotHandler";
 import { scoreboardDigestHandler } from "../scoreboardDigestHandler";
 import { gscBackfillHandler } from "../gscBackfillHandler";
 import { transcriptBackfillHandler } from "../transcriptBackfillHandler";
+import { weeklyIdeaGenerationHandler } from "../weeklyIdeaGenerationHandler";
 import { videoUploadMiddleware, videoChunkMiddleware, handleVideoChunkUpload, handleVideoChunkFinalize, handleVideoChunkConfirm } from "../videoUploadHandler";
 import multer from "multer";
 import { PDFParse } from "pdf-parse";
@@ -95,6 +97,8 @@ async function startServer() {
   registerStorageProxy(app);
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // Dev-only local session minting (no-op unless NODE_ENV=development && ALLOW_DEV_LOGIN=true)
+  registerDevLoginRoute(app);
   // Ingest endpoint — accepts research reports from external apps
   // POST /api/ingest/research-report (authenticated via INGEST_SECRET header)
   app.post("/api/ingest/research-report", handleIngestResearchReport);
@@ -110,6 +114,11 @@ async function startServer() {
   app.post("/api/scheduled/gsc-backfill", gscBackfillHandler);
   // Daily transcript backfill — fetches up to 25 YouTube transcripts via Supadata
   app.post("/api/scheduled/transcript-backfill", transcriptBackfillHandler);
+
+  // POST /api/scheduled/weekly-idea-generation — fires weekly (Monday 08:00 UTC)
+  // Script Factory v2: runs the research-blended suggestIdeas pipeline with
+  // count=8 / source='weekly_auto'. Idempotent per ISO week.
+  app.post("/api/scheduled/weekly-idea-generation", weeklyIdeaGenerationHandler);
 
   // ── WordPress publish webhook — real-time Google indexing ──────────────────
   // WordPress calls this endpoint immediately when a post is published or updated.
@@ -1841,7 +1850,24 @@ async function startServer() {
     })();
 
     // Start the weekly Monday digest cron
-    startWeeklyDigestCron();
+    // ── v2.2 sandbox safety gate ────────────────────────────────────────────
+    // SANDBOX_MODE=1 suppresses every background job that can reach the outside
+    // world. This exists because the v2.2 sandbox necessarily runs with the REAL
+    // production credentials — there is no separate test key set — so without
+    // the gate the upload watchdog would resume a genuine YouTube upload to the
+    // live channel, and the digest cron would email real recipients, while the
+    // operator is only meant to be clicking around a test build.
+    //
+    // With SANDBOX_MODE unset, behaviour is exactly what it was before.
+    const SANDBOX_MODE = process.env.SANDBOX_MODE === "1";
+    if (SANDBOX_MODE) {
+      console.log(
+        "[Sandbox] SANDBOX_MODE=1 — weekly digest cron and upload watchdog DISABLED. " +
+          "No email will be sent, no YouTube upload will be resumed."
+      );
+    }
+
+    if (!SANDBOX_MODE) startWeeklyDigestCron();
 
     // ── Upload Watchdog: runs every 10 minutes ────────────────────────────────
     // Auto-recovers video jobs stuck in 'uploading' after a server restart.
@@ -1901,12 +1927,25 @@ async function startServer() {
       }
     };
     // Run immediately on startup (catches jobs stuck from before this deploy)
-    runUploadWatchdog();
-    // Then every 10 minutes
-    setInterval(runUploadWatchdog, 10 * 60 * 1000);
+    // Gated by SANDBOX_MODE: this path can resume a real upload to the live
+    // channel, which must never happen from a throwaway test environment.
+    if (!SANDBOX_MODE) {
+      runUploadWatchdog();
+      // Then every 10 minutes
+      setInterval(runUploadWatchdog, 10 * 60 * 1000);
+    } else {
+      console.log("[Sandbox] Upload watchdog skipped (SANDBOX_MODE=1).");
+    }
 
-    // Start Kajabi retry worker — processes dead letter queue every 15 minutes
-    startKajabiRetryWorker();
+    // From main: Kajabi retry worker processes the dead letter queue every 15
+    // minutes. It serves the live Interconnected funnel, so it must keep running.
+    // Gated by SANDBOX_MODE for the same reason as the watchdog above — it calls
+    // the real Kajabi API and would enroll real leads from a test environment.
+    if (!SANDBOX_MODE) {
+      startKajabiRetryWorker();
+    } else {
+      console.log("[Sandbox] Kajabi retry worker skipped (SANDBOX_MODE=1).");
+    }
   });
 
 }

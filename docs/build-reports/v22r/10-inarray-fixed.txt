@@ -1,0 +1,29 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides", "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+[probe] DATABASE_URL -> chstaging@127.0.0.1:3306/contenthub_v22_sandbox (scratch)
+========================================================================
+RUNTIME TYPE OF transcriptVideoIds AS READ FROM THE DB
+========================================================================
+typeof            : object
+Array.isArray     : true
+constructor       : Array
+JSON.stringify    : ["lHEg6dNHTBk","-orMGt5tzuY"]
+value             : [ 'lHEg6dNHTBk', '-orMGt5tzuY' ]
+
+after `(raw ?? []) as string[]` cast:
+  Array.isArray   : true
+  length          : 2
+
+========================================================================
+SQL THE APP ACTUALLY BUILDS
+========================================================================
+sql   : select `video_id`, `video_title`, `raw_text` from `yt_transcripts` where (`yt_transcripts`.`video_id` in (?, ?) and `yt_transcripts`.`status` = ?)
+params: ["lHEg6dNHTBk","-orMGt5tzuY","fetched"]
+EXECUTED OK — 2 rows
+  -orMGt5tzuY — The 10-Minute Morning Routine That Starts Killing Cortisol Belly
+  lHEg6dNHTBk — 10 Minutes Every Morning Kills Cortisol Belly Fast
+
+========================================================================
+CONTROL: same query with a HARD-CODED literal array
+========================================================================
+sql   : select `video_id` from `yt_transcripts` where (`yt_transcripts`.`video_id` in (?, ?) and `yt_transcripts`.`status` = ?)
+EXECUTED OK — 2 rows

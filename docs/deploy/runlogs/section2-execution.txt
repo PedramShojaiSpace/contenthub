@@ -1,0 +1,151 @@
+APPROVED DEVIATION: single 14-clause ALTER split into 14 ADD COLUMN statements.
+DDL content identical to reviewed file; statement boundaries only.
+Started 2026-08-06T17:50:43Z
+
+######## STATEMENT 1/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `persona_id` INT NULL;
+exit=0
++-------------+-------------+-------------+---------+-------------+------------------+
+| column_name | column_type | is_nullable | charset | col_default | ordinal_position |
++-------------+-------------+-------------+---------+-------------+------------------+
+| persona_id  | int         | YES         | -       | NULL        |               16 |
++-------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 2/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `analog_data_entry_ids` LONGTEXT CHARACTER SET utf8mb4 NULL;
+exit=0
++-----------------------+-------------+-------------+---------+-------------+------------------+
+| column_name           | column_type | is_nullable | charset | col_default | ordinal_position |
++-----------------------+-------------+-------------+---------+-------------+------------------+
+| analog_data_entry_ids | longtext    | YES         | utf8mb4 | NULL        |               17 |
++-----------------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 3/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `target_length_minutes` INT NULL;
+exit=0
++-----------------------+-------------+-------------+---------+-------------+------------------+
+| column_name           | column_type | is_nullable | charset | col_default | ordinal_position |
++-----------------------+-------------+-------------+---------+-------------+------------------+
+| target_length_minutes | int         | YES         | -       | NULL        |               18 |
++-----------------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 4/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `source_idea_id` INT NULL;
+exit=0
++----------------+-------------+-------------+---------+-------------+------------------+
+| column_name    | column_type | is_nullable | charset | col_default | ordinal_position |
++----------------+-------------+-------------+---------+-------------+------------------+
+| source_idea_id | int         | YES         | -       | NULL        |               19 |
++----------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 5/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `research_job_id` INT NULL;
+exit=0
++-----------------+-------------+-------------+---------+-------------+------------------+
+| column_name     | column_type | is_nullable | charset | col_default | ordinal_position |
++-----------------+-------------+-------------+---------+-------------+------------------+
+| research_job_id | int         | YES         | -       | NULL        |               20 |
++-----------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 6/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `word_count` INT NULL;
+exit=0
++-------------+-------------+-------------+---------+-------------+------------------+
+| column_name | column_type | is_nullable | charset | col_default | ordinal_position |
++-------------+-------------+-------------+---------+-------------+------------------+
+| word_count  | int         | YES         | -       | NULL        |               21 |
++-------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 7/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `production_script_id` INT NULL;
+exit=0
++----------------------+-------------+-------------+---------+-------------+------------------+
+| column_name          | column_type | is_nullable | charset | col_default | ordinal_position |
++----------------------+-------------+-------------+---------+-------------+------------------+
+| production_script_id | int         | YES         | -       | NULL        |               22 |
++----------------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 8/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `pattern_composition` LONGTEXT CHARACTER SET utf8mb4 NULL;
+exit=0
++---------------------+-------------+-------------+---------+-------------+------------------+
+| column_name         | column_type | is_nullable | charset | col_default | ordinal_position |
++---------------------+-------------+-------------+---------+-------------+------------------+
+| pattern_composition | longtext    | YES         | utf8mb4 | NULL        |               23 |
++---------------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 9/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `parent_script_id` INT NULL;
+exit=0
++------------------+-------------+-------------+---------+-------------+------------------+
+| column_name      | column_type | is_nullable | charset | col_default | ordinal_position |
++------------------+-------------+-------------+---------+-------------+------------------+
+| parent_script_id | int         | YES         | -       | NULL        |               24 |
++------------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 10/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `variant_label` VARCHAR(120) CHARACTER SET utf8mb4 NULL;
+exit=0
++---------------+--------------+-------------+---------+-------------+------------------+
+| column_name   | column_type  | is_nullable | charset | col_default | ordinal_position |
++---------------+--------------+-------------+---------+-------------+------------------+
+| variant_label | varchar(120) | YES         | utf8mb4 | NULL        |               25 |
++---------------+--------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 11/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `variant_of_root_id` INT NULL;
+exit=0
++--------------------+-------------+-------------+---------+-------------+------------------+
+| column_name        | column_type | is_nullable | charset | col_default | ordinal_position |
++--------------------+-------------+-------------+---------+-------------+------------------+
+| variant_of_root_id | int         | YES         | -       | NULL        |               26 |
++--------------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 12/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `generation_params` LONGTEXT CHARACTER SET utf8mb4 NULL;
+exit=0
++-------------------+-------------+-------------+---------+-------------+------------------+
+| column_name       | column_type | is_nullable | charset | col_default | ordinal_position |
++-------------------+-------------+-------------+---------+-------------+------------------+
+| generation_params | longtext    | YES         | utf8mb4 | NULL        |               27 |
++-------------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 13/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `section_history` LONGTEXT CHARACTER SET utf8mb4 NULL;
+exit=0
++-----------------+-------------+-------------+---------+-------------+------------------+
+| column_name     | column_type | is_nullable | charset | col_default | ordinal_position |
++-----------------+-------------+-------------+---------+-------------+------------------+
+| section_history | longtext    | YES         | utf8mb4 | NULL        |               28 |
++-----------------+-------------+-------------+---------+-------------+------------------+
+
+######## STATEMENT 14/14 ########
+ALTER TABLE `script_factory_outputs` ADD COLUMN `metric_version` VARCHAR(16) CHARACTER SET utf8mb4 NULL;
+exit=0
++----------------+-------------+-------------+---------+-------------+------------------+
+| column_name    | column_type | is_nullable | charset | col_default | ordinal_position |
++----------------+-------------+-------------+---------+-------------+------------------+
+| metric_version | varchar(16) | YES         | utf8mb4 | NULL        |               29 |
++----------------+-------------+-------------+---------+-------------+------------------+
+
+All 14 ADD COLUMN statements applied and read back.
+Finished 2026-08-06T17:50:55Z
+######## SECTION 2 INDEX 1/2 ########
+CREATE INDEX `sfo_parent_idx` ON `script_factory_outputs` (`parent_script_id`);
+exit=
+######## SECTION 2 INDEX 2/2 ########
+CREATE INDEX `sfo_variant_root_idx` ON `script_factory_outputs` (`variant_of_root_id`);
+exit=
+--- INDEX READ-BACK from information_schema.statistics ---
++----------------------+--------------------+------------+
+| index_name           | cols               | non_unique |
++----------------------+--------------------+------------+
+| PRIMARY              | id                 | 0          |
+| idx_created_at       | created_at         | 1          |
+| idx_format           | format             | 1          |
+| idx_status           | status             | 1          |
+| sfo_parent_idx       | parent_script_id   | 1          |
+| sfo_variant_root_idx | variant_of_root_id | 1          |
++----------------------+--------------------+------------+
+-- EXPECT: sfo_parent_idx(parent_script_id), sfo_variant_root_idx(variant_of_root_id),
+--         plus pre-existing PRIMARY, idx_format, idx_status, idx_created_at

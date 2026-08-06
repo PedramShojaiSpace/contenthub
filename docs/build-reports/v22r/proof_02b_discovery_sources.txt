@@ -1,0 +1,102 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.patchedDependencies", "pnpm.overrides", "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+Discovery-source comparison — 2026-08-01T18:36:18.319Z
+VIDIQ_API_KEY resolved: yes
+
+==============================================================================
+SEED: "leaky gut fatigue"
+==============================================================================
+
+  vidiq_outliers   (spec: PRIMARY) 
+    1. [OFF-TOPIC] Brud Sprunki EATS EVERYTHING, Then throws up... it's his hobby
+       Ashimation · views=329197 · outlierScore=27.37
+    2. [OFF-TOPIC] You Won’t Believe How Old Engine oil Drums Become Heavy-Duty O
+       LOGIC CREATIONS · views=51665 · outlierScore=8.23
+    3. [OFF-TOPIC] '36 days left': Labor considering fuel rationing for Australia
+       News24 · views=76572 · outlierScore=14.76
+    4. [OFF-TOPIC] Massive Cleanup Restores a Completely Clogged Drain
+       Dam Pop · views=104864 · outlierScore=23.43
+    5. [ON-TOPIC ] Why You Keep Repeating the Same Problems- Healing Explained | 
+       Neha Ranglani · views=44650 · outlierScore=330.3
+
+  vidiq_trending   (spec: FALLBACK)
+    1. [ON-TOPIC ] This is Why Black Fatigue is Impossible to Ignore
+       Angry Unc  · views=56048 · outlierScore=n/a
+    2. [ON-TOPIC ] Spider-Man: Brand New Day PROVES Superhero Fatigue is BULLSH**
+       Geeks + Gamers 2 · views=6749 · outlierScore=n/a
+    3. [ON-TOPIC ] Is Poor Lymph Flow the Hidden Cause of Your Chronic Fatigue? (
+       The Energy Blueprint · views=583 · outlierScore=n/a
+    4. [ON-TOPIC ] How To Heal 20 Years of Gut Damage in 30 Days
+       Nick Norwitz MD PhD · views=182413 · outlierScore=n/a
+    5. [ON-TOPIC ] You Don't Need Fiber - 1 Scoop Stops Wrinkles and Repairs Gut 
+       Thomas DeLauer · views=52819 · outlierScore=n/a
+
+==============================================================================
+SEED: "vagus nerve anxiety"
+==============================================================================
+
+  vidiq_outliers   (spec: PRIMARY) 
+    1. [ON-TOPIC ] Here Is What You Need To Know About The Vagus Nerve (Nerve Flo
+       ZHealthPerformance · views=182542 · outlierScore=62.49
+    2. [OFF-TOPIC] I GOT CURSED INTO A POCONG?! — Pocong: Cursed Hospital | Roblo
+       FrostBlox · views=351424 · outlierScore=71.42
+    3. [ON-TOPIC ] Mind-Body Healing Sleep Hypnosis | Vagus Nerve Relaxation for 
+       Chibs Okereke Sleep Meditations · views=74411 · outlierScore=2.03
+    4. [OFF-TOPIC] Creepy Medical Museum
+       Mobile Instinct 2 · views=590914 · outlierScore=53.7
+    5. [OFF-TOPIC] People Who Think Too Much | Psychology explain 
+       Psychology Insight · views=846258 · outlierScore=180.44
+
+  vidiq_trending   (spec: FALLBACK)
+    1. [ON-TOPIC ] What the Vagus Nerve Can & Can't Do
+       Institute of Human Anatomy · views=205597 · outlierScore=n/a
+    2. [ON-TOPIC ] I Stimulated My Vagus Nerve for 60 Days… Here's What Happened
+       Jenny Mitich · views=2047 · outlierScore=n/a
+    3. [ON-TOPIC ] Release Tension 💤 432Hz - Deep Sleep & VAGUS NERVE REST - Hea
+       Irene Athanasiou · views=548 · outlierScore=n/a
+    4. [ON-TOPIC ] Why Your Heart Depends on a Healthy Vagus Nerve & What You Can
+       Dr. Pradip Jamnadas, MD · views=15262 · outlierScore=n/a
+    5. [ON-TOPIC ] ASMR Cranial Nerve Exam For Sleep (Olfactory, Optic Nerve, Mot
+       ASMR Kenshi · views=11365 · outlierScore=n/a
+
+==============================================================================
+SEED: "gut health sleep"
+==============================================================================
+
+  vidiq_outliers   (spec: PRIMARY) 
+    1. [ON-TOPIC ] 31 Biblical Foods That Actually Heal Your Body - Organized by 
+       The Temple Lifestyle · views=277295 · outlierScore=47.39
+    2. [ON-TOPIC ] 🌙 When You Can’t Sleep, Pray This and Rest in God’s Peace | P
+       Divine Sleep Prayers · views=307583 · outlierScore=93.39
+    3. [ON-TOPIC ] This 60lb Husky REFUSES to Let Anyone Put This Baby to Sleep—E
+       Loyal Dog Hero · views=1241184 · outlierScore=236.43
+    4. [ON-TOPIC ] Sleep Trackers Are Keeping You Awake
+       Nick Espinosa · views=37693 · outlierScore=37.35
+    5. [ON-TOPIC ] Drift Into Deep Sleep (NO ADS) • Melatonin Release, Remove Neg
+       Quiet Night · views=626841 · outlierScore=30.49
+
+  vidiq_trending   (spec: FALLBACK)
+    1. [ON-TOPIC ] Japanese People Use This #1 Oil for Gut Health — Here's Why It
+       Health Book · views=3887 · outlierScore=n/a
+    2. [ON-TOPIC ] Future Benefits In the Balance - the Bill & VA's Plan to Elimi
+       Veterans InfoTap · views=5009 · outlierScore=n/a
+    3. [ON-TOPIC ] ASMR Sleep Clinic | Sleep Sounds
+       Mr Phoenix ASMR · views=772 · outlierScore=n/a
+    4. [ON-TOPIC ] Ranking INSANE health fads
+       Big Tugg · views=90094 · outlierScore=n/a
+    5. [ON-TOPIC ] 99% DEEP SLEEP in 3 Minutes (NO ADS) • Relieves Stress • Incre
+       Serene Dreams Night · views=284624 · outlierScore=n/a
+
+==============================================================================
+TALLY — topical hit rate by source
+==============================================================================
+  outliers   8/15 on-topic (53%)
+  trending   15/15 on-topic (100%)
+
+==============================================================================
+outlierScore distribution vs the pipeline's effectiveness mapping
+==============================================================================
+  pipeline: effectiveness = min(0.9, max(0.5, outlierScore / 10))
+  outliers: raw scores    = 27.4, 8.2, 14.8, 23.4, 330.3, 62.5, 71.4, 2.0, 53.7, 180.4, 47.4, 93.4, 236.4, 37.4, 30.5
+  outliers   mapped eff   = 0.90, 0.82, 0.90, 0.90, 0.90, 0.90, 0.90, 0.50, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90
+  outliers   distinct eff = 3 value(s) -> has variance
+  trending: no positive scores returned

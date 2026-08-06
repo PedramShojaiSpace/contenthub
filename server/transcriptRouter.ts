@@ -123,6 +123,172 @@ async function fetchSupadataTranscript(videoId: string): Promise<{ text: string;
   return { text, lang };
 }
 
+// ─── Shared quota-ledgered transcript acquisition ────────────────────────────
+
+/**
+ * The outcome of one transcript acquisition attempt.
+ *
+ * `cached`        — already in `yt_transcripts` as `fetched`; ZERO API cost.
+ * `fetched`       — newly retrieved from Supadata; one ledger unit consumed.
+ * `quota_blocked` — the daily cap was already reached; nothing was fetched.
+ * `no_transcript` — the video genuinely has no transcript; NO ledger charge.
+ * `error`         — API/network failure; charged against the ledger.
+ */
+export type TranscriptFetchOutcome =
+  | "cached"
+  | "fetched"
+  | "quota_blocked"
+  | "no_transcript"
+  | "error";
+
+export interface TranscriptFetchResult {
+  videoId: string;
+  outcome: TranscriptFetchOutcome;
+  /** Full transcript text when available (cached or freshly fetched). */
+  text: string | null;
+  wordCount: number | null;
+  lang: string | null;
+  error: string | null;
+}
+
+/**
+ * Acquire one YouTube transcript, respecting the Supadata daily ledger.
+ *
+ * This is THE single entry point for transcript acquisition. Both the
+ * `fetchTranscript` procedure and the Script Factory's deep-research pipeline
+ * call it, which guarantees the 25/day cap can never be bypassed and that a
+ * transcript already in `yt_transcripts` is never re-fetched.
+ *
+ * Order of operations:
+ *   1. Cache check   — return immediately if already `fetched` (no quota spend).
+ *   2. Quota check   — return `quota_blocked` if nothing remains (never throws,
+ *                      so batch callers can degrade to a partial result).
+ *   3. Fetch         — call Supadata, persist FULL raw text, increment ledger.
+ *
+ * Unlike the tRPC procedure this never throws on quota exhaustion; callers that
+ * want an error (like `fetchTranscript`) translate the outcome themselves.
+ */
+export async function fetchTranscriptWithQuota(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  input: {
+    videoId: string;
+    videoTitle?: string | null;
+    channelId?: string | null;
+    publishedAt?: string | Date | null;
+  }
+): Promise<TranscriptFetchResult> {
+  const base = { videoId: input.videoId, text: null, wordCount: null, lang: null, error: null };
+
+  // ── 1. Cache check — a transcript we already own costs nothing ──────────────
+  const [existing] = await db
+    .select({
+      id: ytTranscripts.id,
+      status: ytTranscripts.status,
+      rawText: ytTranscripts.rawText,
+      wordCount: ytTranscripts.wordCount,
+      lang: ytTranscripts.lang,
+    })
+    .from(ytTranscripts)
+    .where(eq(ytTranscripts.videoId, input.videoId))
+    .limit(1);
+
+  if (existing?.status === "fetched") {
+    return {
+      ...base,
+      outcome: "cached",
+      text: existing.rawText ?? null,
+      wordCount: existing.wordCount ?? null,
+      lang: existing.lang ?? null,
+    };
+  }
+
+  // ── 2. Quota check — degrade gracefully rather than throwing ────────────────
+  const quota = await getOrCreateQuota(db);
+  if (quota.remaining <= 0) {
+    return {
+      ...base,
+      outcome: "quota_blocked",
+      error: `Daily Supadata quota exhausted (${quota.unitsUsed}/${quota.dailyLimit}). Resets tomorrow.`,
+    };
+  }
+
+  // Resolve a channel id — the column is NOT NULL, so fall back to "unknown".
+  let channelId = input.channelId ?? undefined;
+  if (!channelId) {
+    try {
+      channelId = await getOwnerChannelId();
+    } catch {
+      channelId = "unknown";
+    }
+  }
+
+  const publishedAt = input.publishedAt
+    ? (input.publishedAt instanceof Date ? input.publishedAt : new Date(input.publishedAt))
+    : null;
+
+  if (!existing) {
+    await db.insert(ytTranscripts).values({
+      videoId: input.videoId,
+      channelId,
+      videoTitle: input.videoTitle ?? null,
+      publishedAt: publishedAt && !isNaN(publishedAt.getTime()) ? publishedAt : null,
+      status: "pending",
+      provider: "supadata",
+    });
+  }
+
+  // ── 3. Fetch and persist the FULL text (no truncation) ─────────────────────
+  try {
+    const { text, lang } = await fetchSupadataTranscript(input.videoId);
+    const wordCount = text.trim().split(/\s+/).length;
+
+    await db
+      .update(ytTranscripts)
+      .set({
+        rawText: text,
+        wordCount,
+        lang,
+        status: "fetched",
+        fetchedAt: new Date(),
+        errorMessage: null,
+        // Backfill the title if we learned it from the caller this time.
+        ...(input.videoTitle ? { videoTitle: input.videoTitle } : {}),
+      })
+      .where(eq(ytTranscripts.videoId, input.videoId));
+
+    await incrementQuota(db);
+
+    return { ...base, outcome: "fetched", text, wordCount, lang };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    const isMissing = msg === "NO_TRANSCRIPT";
+
+    await db
+      .update(ytTranscripts)
+      .set({
+        status: isMissing ? "no_transcript" : "error",
+        errorMessage: isMissing ? null : msg,
+      })
+      .where(eq(ytTranscripts.videoId, input.videoId));
+
+    // A missing transcript isn't an API failure, so it isn't charged.
+    if (!isMissing) await incrementQuota(db);
+
+    return {
+      ...base,
+      outcome: isMissing ? "no_transcript" : "error",
+      error: msg,
+    };
+  }
+}
+
+/** Exposed so batch callers can pre-flight the ledger before looping. */
+export async function getTranscriptQuota(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>
+) {
+  return getOrCreateQuota(db);
+}
+
 /**
  * Get the owner's YouTube channel ID using the Data API.
  */
@@ -198,83 +364,43 @@ export const transcriptRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      // Check if already fetched
-      const [existing] = await db
-        .select({ id: ytTranscripts.id, status: ytTranscripts.status })
-        .from(ytTranscripts)
-        .where(eq(ytTranscripts.videoId, input.videoId))
-        .limit(1);
+      // All acquisition logic (cache → quota → fetch → persist → ledger) lives in
+      // the shared helper so it cannot drift between callers.
+      const result = await fetchTranscriptWithQuota(db, {
+        videoId: input.videoId,
+        videoTitle: input.videoTitle ?? null,
+        channelId: input.channelId ?? null,
+        publishedAt: input.publishedAt ?? null,
+      });
 
-      if (existing?.status === "fetched") {
+      // This procedure's original contract surfaced quota exhaustion as an error.
+      if (result.outcome === "quota_blocked") {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: result.error ?? "Daily quota exhausted. Resets tomorrow.",
+        });
+      }
+
+      if (result.outcome === "cached") {
         return { success: true, status: "already_fetched", videoId: input.videoId };
       }
 
-      // Check quota
-      const quota = await getOrCreateQuota(db);
-      if (quota.remaining <= 0) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Daily quota exhausted (${quota.unitsUsed}/${quota.dailyLimit}). Resets tomorrow.`,
-        });
-      }
-
-      // Resolve channel ID
-      let channelId = input.channelId;
-      if (!channelId) {
-        try {
-          channelId = await getOwnerChannelId();
-        } catch {
-          channelId = "unknown";
-        }
-      }
-
-      // Upsert a pending row first
-      if (!existing) {
-        await db.insert(ytTranscripts).values({
+      if (result.outcome === "fetched") {
+        return {
+          success: true,
+          status: "fetched",
           videoId: input.videoId,
-          channelId,
-          videoTitle: input.videoTitle ?? null,
-          publishedAt: input.publishedAt ? new Date(input.publishedAt) : null,
-          status: "pending",
-          provider: "supadata",
-        });
+          wordCount: result.wordCount ?? undefined,
+          lang: result.lang ?? undefined,
+        };
       }
 
-      // Fetch from Supadata
-      try {
-        const { text, lang } = await fetchSupadataTranscript(input.videoId);
-        const wordCount = text.trim().split(/\s+/).length;
-
-        await db
-          .update(ytTranscripts)
-          .set({
-            rawText: text,
-            wordCount,
-            lang,
-            status: "fetched",
-            fetchedAt: new Date(),
-            errorMessage: null,
-          })
-          .where(eq(ytTranscripts.videoId, input.videoId));
-
-        await incrementQuota(db);
-
-        return { success: true, status: "fetched", videoId: input.videoId, wordCount, lang };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        const status = msg === "NO_TRANSCRIPT" ? "no_transcript" : "error";
-
-        await db
-          .update(ytTranscripts)
-          .set({ status, errorMessage: msg === "NO_TRANSCRIPT" ? null : msg })
-          .where(eq(ytTranscripts.videoId, input.videoId));
-
-        if (msg !== "NO_TRANSCRIPT") {
-          await incrementQuota(db); // Count failed API calls against quota too
-        }
-
-        return { success: false, status, videoId: input.videoId, error: msg };
-      }
+      return {
+        success: false,
+        status: result.outcome,
+        videoId: input.videoId,
+        error: result.error ?? "Unknown error",
+      };
     }),
 
   // ─── Backfill channel (25/day cap) ───────────────────────────────────────────

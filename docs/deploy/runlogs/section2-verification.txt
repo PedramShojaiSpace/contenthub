@@ -1,0 +1,83 @@
+=== COLUMN COUNT: 15 -> ? ===
++-------------+
+| columns_now |
++-------------+
+|          29 |
++-------------+
+-- EXPECT: 29
+=== ALL 14 NEW COLUMNS: type, nullability, charset ===
++------+-----------------------+--------------+-------------+---------+-------------+
+| pos  | column_name           | column_type  | is_nullable | charset | col_default |
++------+-----------------------+--------------+-------------+---------+-------------+
+|   16 | persona_id            | int          | YES         | -       | NULL        |
+|   17 | analog_data_entry_ids | longtext     | YES         | utf8mb4 | NULL        |
+|   18 | target_length_minutes | int          | YES         | -       | NULL        |
+|   19 | source_idea_id        | int          | YES         | -       | NULL        |
+|   20 | research_job_id       | int          | YES         | -       | NULL        |
+|   21 | word_count            | int          | YES         | -       | NULL        |
+|   22 | production_script_id  | int          | YES         | -       | NULL        |
+|   23 | pattern_composition   | longtext     | YES         | utf8mb4 | NULL        |
+|   24 | parent_script_id      | int          | YES         | -       | NULL        |
+|   25 | variant_label         | varchar(120) | YES         | utf8mb4 | NULL        |
+|   26 | variant_of_root_id    | int          | YES         | -       | NULL        |
+|   27 | generation_params     | longtext     | YES         | utf8mb4 | NULL        |
+|   28 | section_history       | longtext     | YES         | utf8mb4 | NULL        |
+|   29 | metric_version        | varchar(16)  | YES         | utf8mb4 | NULL        |
++------+-----------------------+--------------+-------------+---------+-------------+
+=== nullability assertion: any NOT NULL among the 14? ===
++--------------------+
+| not_nullable_count |
++--------------------+
+|                  0 |
++--------------------+
+-- EXPECT: 0
+=== utf8mb4 assertion: the 5 text-bearing new columns ===
++-----------------------+--------------------+----------------+
+| column_name           | character_set_name | collation_name |
++-----------------------+--------------------+----------------+
+| analog_data_entry_ids | utf8mb4            | utf8mb4_bin    |
+| generation_params     | utf8mb4            | utf8mb4_bin    |
+| metric_version        | utf8mb4            | utf8mb4_bin    |
+| pattern_composition   | utf8mb4            | utf8mb4_bin    |
+| section_history       | utf8mb4            | utf8mb4_bin    |
+| variant_label         | utf8mb4            | utf8mb4_bin    |
++-----------------------+--------------------+----------------+
+-- EXPECT: all utf8mb4
+=== THE 5 EXISTING ROWS: intact, bodies non-empty, every new column NULL ===
++------------+--------------+---------------------+------------------------+-----------------+-----------------+----------------------+-----------------------+--------------------+-------------------------+
+| rows_total | empty_bodies | null_metric_version | null_generation_params | null_persona_id | null_word_count | null_section_history | null_parent_script_id | null_variant_label | null_variant_of_root_id |
++------------+--------------+---------------------+------------------------+-----------------+-----------------+----------------------+-----------------------+--------------------+-------------------------+
+|          5 |            0 |                   5 |                      5 |               5 |               5 |                    5 |                     5 |                  5 |                       5 |
++------------+--------------+---------------------+------------------------+-----------------+-----------------+----------------------+-----------------------+--------------------+-------------------------+
+-- EXPECT: 5 rows, empty_bodies=0, every null_* = 5
+=== remaining 4 new columns, same assertion ===
++-----------------+-----------------+------------------+-------------------+------------------+-------------------+
+| null_analog_ids | null_target_len | null_source_idea | null_research_job | null_prod_script | null_pattern_comp |
++-----------------+-----------------+------------------+-------------------+------------------+-------------------+
+|               5 |               5 |                5 |                 5 |                5 |                 5 |
++-----------------+-----------------+------------------+-------------------+------------------+-------------------+
+-- EXPECT: all 5
+=== the original 15 columns' data, unchanged ===
++----+----------------------------------------------+------------+----------------+----------------+------------------+----------+---------------------+
+| id | title                                        | body_bytes | verified_count | total_elements | verification_pct | status   | created_at          |
++----+----------------------------------------------+------------+----------------+----------------+------------------+----------+---------------------+
+|  1 | Beyond "Normal" Labs: The Hidden Truth About |       6053 |             20 |             29 |               69 | draft    | 2026-07-21 14:06:27 |
+|  2 | Stop Whac-A-Mole: Uncover Root Causes of Chr |       5211 |             25 |             34 |               74 | approved | 2026-07-21 14:11:51 |
+|  3 | Beyond "Normal" Labs: Uncovering Hidden Heal |       6835 |             24 |             34 |               71 | draft    | 2026-07-21 14:32:34 |
+|  4 | Stop Playing Whac-A-Mole: End Fatigue & Brai |       4876 |             23 |             33 |               70 | draft    | 2026-07-21 14:40:29 |
+|  5 | Reclaim Your Rest: The Gut-Sleep Connection  |       5786 |             25 |             37 |               68 | draft    | 2026-07-21 14:43:00 |
++----+----------------------------------------------+------------+----------------+----------------+------------------+----------+---------------------+
+-- COMPARE to the backup: 6053/5211/6835/4876/5786 bytes, pct 69/74/71/70/68
+=== metric_version specifically: NULL, not backfilled ===
++----+----------------+------------------+
+| id | metric_version | verification_pct |
++----+----------------+------------------+
+|  1 | <NULL>         |               69 |
+|  2 | <NULL>         |               74 |
+|  3 | <NULL>         |               71 |
+|  4 | <NULL>         |               70 |
+|  5 | <NULL>         |               68 |
++----+----------------+------------------+
+-- EXPECT: all <NULL>. A backfilled 'v2.2-instance' would relabel a marker-ratio
+--         number as a section-ratio number — the column would lie about the very
+--         rows it exists to disambiguate.

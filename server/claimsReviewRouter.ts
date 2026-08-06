@@ -194,6 +194,66 @@ export async function runMetaComplianceCheck(
   };
 }
 
+/**
+ * v2.2 Part 3E — the content types a claims review may be created for.
+ *
+ * `claims_reviews.content_type` is varchar(64) in the live schema (Part 0
+ * SHOW COLUMNS; a scratch-DB insert of 'youtube_script' succeeded), so adding a
+ * value needs NO DDL. The only thing rejecting scripts before this change was
+ * the zod enum below, which returned HTTP 400 in the Part 2b probe.
+ */
+export const CLAIMS_CONTENT_TYPES = [
+  "wordpress_post",
+  "meta_ad",
+  "advertorial",
+  "email_sequence",
+  "landing_page",
+  "youtube_script",
+  "other",
+] as const;
+
+export type ClaimsContentType = (typeof CLAIMS_CONTENT_TYPES)[number];
+
+/**
+ * Create a claims review through the ONE canonical path.
+ *
+ * Extracted from `reviewContent` so the Script Factory can route through the
+ * same rubric, the same verdict shape and the same table, instead of growing a
+ * parallel claims engine. A second engine would mean the Claims Review page
+ * shows some reviews and not others — which is worse than no review at all,
+ * because it looks complete.
+ *
+ * Throws on rubric or DB failure. Callers that must not fail because of a
+ * claims problem (script generation, notably) are responsible for wrapping this
+ * in try/catch — see the post-commit call in scriptFactoryRouter.
+ */
+export async function createClaimsReview(input: {
+  contentType: ClaimsContentType;
+  contentId?: string | null;
+  contentTitle?: string | null;
+  contentText: string;
+}): Promise<ReviewResult & { reviewId: number | null }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+
+  const result = await runRubricOnContent(input.contentText);
+
+  const [inserted] = await db.insert(claimsReviews).values({
+    contentType: input.contentType,
+    contentId: input.contentId ?? null,
+    contentTitle: input.contentTitle ?? null,
+    contentText: input.contentText,
+    verdicts: result.verdicts,
+    overallFlag: result.overallFlag ? 1 : 0,
+    flagCount: result.flagCount,
+    status: result.status,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  return { ...result, reviewId: (inserted as any)?.insertId ?? null };
+}
+
 export const claimsReviewRouter = router({
   /**
    * Run the AI rubric on a piece of content and save the review record.
@@ -201,39 +261,54 @@ export const claimsReviewRouter = router({
   reviewContent: protectedProcedure
     .input(
       z.object({
-        contentType: z.enum([
-          "wordpress_post",
-          "meta_ad",
-          "advertorial",
-          "email_sequence",
-          "landing_page",
-          "other",
-        ]),
+        contentType: z.enum(CLAIMS_CONTENT_TYPES),
         contentId: z.string().optional(),
         contentTitle: z.string().optional(),
         contentText: z.string().min(10),
       })
     )
     .mutation(async ({ input }) => {
+      // Same helper the Script Factory uses — one creation path, by construction.
+      return createClaimsReview(input);
+    }),
+
+  /**
+   * v2.2 Part 3E — claims status for one piece of content, by type + id.
+   *
+   * Powers the script-detail badge. Returns the NEWEST review for the content,
+   * because a regenerated or edited script is reviewed again and the stale
+   * verdict must not be the one on display.
+   */
+  getForContent: protectedProcedure
+    .input(
+      z.object({
+        contentType: z.enum(CLAIMS_CONTENT_TYPES),
+        contentId: z.string().min(1),
+      })
+    )
+    .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new Error("Database unavailable");
+      if (!db) return null;
 
-      const result = await runRubricOnContent(input.contentText);
+      const [row] = await db
+        .select({
+          id: claimsReviews.id,
+          status: claimsReviews.status,
+          flagCount: claimsReviews.flagCount,
+          overallFlag: claimsReviews.overallFlag,
+          createdAt: claimsReviews.createdAt,
+        })
+        .from(claimsReviews)
+        .where(
+          and(
+            eq(claimsReviews.contentType, input.contentType as any),
+            eq(claimsReviews.contentId, input.contentId)
+          )
+        )
+        .orderBy(desc(claimsReviews.createdAt))
+        .limit(1);
 
-      const [inserted] = await db.insert(claimsReviews).values({
-        contentType: input.contentType,
-        contentId: input.contentId ?? null,
-        contentTitle: input.contentTitle ?? null,
-        contentText: input.contentText,
-        verdicts: result.verdicts,
-        overallFlag: result.overallFlag ? 1 : 0,
-        flagCount: result.flagCount,
-        status: result.status,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-
-      return { ...result, reviewId: (inserted as any).insertId ?? null };
+      return row ?? null;
     }),
 
   /**

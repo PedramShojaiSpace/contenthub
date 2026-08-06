@@ -1,0 +1,145 @@
+############ STATEMENT 1/12 — CREATE TABLE research_jobs ############
+--- executing ---
+EXIT: 
+--- read back: does the table exist, and with how many columns? ---
++---------------+-----------------+
+| table_name    | table_collation |
++---------------+-----------------+
+| research_jobs | utf8mb4_bin     |
++---------------+-----------------+
++-----------------+
+| columns_created |
++-----------------+
+|              16 |
++-----------------+
+-- EXPECT: table present, 16 columns
+############ STATEMENT 2/12 ############
+CREATE INDEX `research_jobs_topic_idx` ON `research_jobs` (`topic`);
+EXIT: 
+############ STATEMENT 3/12 ############
+CREATE INDEX `research_jobs_status_idx` ON `research_jobs` (`research_status`);
+EXIT: 
+--- INDEX READ-BACK from information_schema.statistics ---
++--------------------------+-----------------+------------+
+| index_name               | cols            | non_unique |
++--------------------------+-----------------+------------+
+| PRIMARY                  | id              | 0          |
+| research_jobs_status_idx | research_status | 1          |
+| research_jobs_topic_idx  | topic           | 1          |
++--------------------------+-----------------+------------+
+-- EXPECT: PRIMARY(id), research_jobs_topic_idx(topic), research_jobs_status_idx(research_status)
+############ STATEMENT 4/12 — CREATE TABLE suggested_ideas ############
+EXIT: 
++-----------------+
+| columns_created |
++-----------------+
+|              20 |
++-----------------+
+-- EXPECT: 20
+############ STATEMENT 5/12 ############
+CREATE INDEX `suggested_ideas_week_idx`    ON `suggested_ideas` (`week_label`);
+EXIT: 
+############ STATEMENT 6/12 ############
+CREATE INDEX `suggested_ideas_batch_idx`   ON `suggested_ideas` (`batch_id`);
+EXIT: 
+############ STATEMENT 7/12 ############
+CREATE INDEX `suggested_ideas_status_idx`  ON `suggested_ideas` (`idea_status`);
+EXIT: 
+############ STATEMENT 8/12 ############
+CREATE INDEX `suggested_ideas_created_idx` ON `suggested_ideas` (`created_at`);
+EXIT: 
+--- INDEX READ-BACK: suggested_ideas ---
++-----------------------------+-------------+------------+
+| index_name                  | cols        | non_unique |
++-----------------------------+-------------+------------+
+| PRIMARY                     | id          | 0          |
+| suggested_ideas_batch_idx   | batch_id    | 1          |
+| suggested_ideas_created_idx | created_at  | 1          |
+| suggested_ideas_status_idx  | idea_status | 1          |
+| suggested_ideas_week_idx    | week_label  | 1          |
++-----------------------------+-------------+------------+
+-- EXPECT: PRIMARY + 4 named indexes = 5 rows
+############ STATEMENT 9/12 — CREATE TABLE topic_nodes ############
+EXIT: 
++-----------------+
+| columns_created |
++-----------------+
+|              14 |
++-----------------+
+-- EXPECT: 14
+############ STATEMENT 10/12 ############
+CREATE INDEX `topic_nodes_parent_idx` ON `topic_nodes` (`parent_id`);
+EXIT: 
+############ STATEMENT 11/12 ############
+CREATE INDEX `topic_nodes_path_idx`   ON `topic_nodes` (`path`);
+EXIT: 
+############ STATEMENT 12/12 ############
+CREATE INDEX `topic_nodes_status_idx` ON `topic_nodes` (`topic_status`);
+EXIT: 
+--- INDEX READ-BACK: topic_nodes ---
++------------------------+--------------+------------+
+| index_name             | cols         | non_unique |
++------------------------+--------------+------------+
+| PRIMARY                | id           | 0          |
+| topic_nodes_parent_idx | parent_id    | 1          |
+| topic_nodes_path_idx   | path         | 1          |
+| topic_nodes_status_idx | topic_status | 1          |
++------------------------+--------------+------------+
+-- EXPECT: PRIMARY + 3 named = 4 rows
+=== WATCH ITEM 2: the JSON-vs-longtext columns. Must report longtext, NOT json ===
++-----------------+----------------------+-----------+--------------------+----------------+
+| table_name      | column_name          | data_type | character_set_name | collation_name |
++-----------------+----------------------+-----------+--------------------+----------------+
+| research_jobs   | outlier_videos       | longtext  | utf8mb4            | utf8mb4_bin    |
+| research_jobs   | pattern_ids          | longtext  | utf8mb4            | utf8mb4_bin    |
+| research_jobs   | structure_summary    | longtext  | utf8mb4            | utf8mb4_bin    |
+| research_jobs   | transcript_video_ids | longtext  | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas | recommended_patterns | longtext  | utf8mb4            | utf8mb4_bin    |
+| suggested_ideas | vidiq_data           | longtext  | utf8mb4            | utf8mb4_bin    |
+| topic_nodes     | vidiq_data           | longtext  | utf8mb4            | utf8mb4_bin    |
++-----------------+----------------------+-----------+--------------------+----------------+
+-- EXPECT: every row data_type=longtext (never json), charset utf8mb4
+=== any json columns leak in by accident? ===
++--------------------+
+| json_columns_found |
++--------------------+
+|                  0 |
++--------------------+
+-- EXPECT: 0
+=== enum members + defaults — the .default() bug's subject matter, verified live ===
++-----------------+-------------------+---------------------------------------------------------------------------------------------------------+-----------------+-------------+
+| table_name      | column_name       | column_type                                                                                             | column_default  | is_nullable |
++-----------------+-------------------+---------------------------------------------------------------------------------------------------------+-----------------+-------------+
+| research_jobs   | research_status   | enum('pending','researching_outliers','fetching_transcripts','extracting_patterns','complete','failed') | pending         | NO          |
+| suggested_ideas | idea_source       | enum('weekly_auto','manual_generate','manual')                                                          | manual_generate | NO          |
+| suggested_ideas | idea_status       | enum('suggested','shortlisted','dismissed','generated')                                                 | suggested       | NO          |
+| topic_nodes     | topic_source_type | enum('analog_extraction','llm_expansion','manual')                                                      | manual          | NO          |
+| topic_nodes     | topic_status      | enum('active','archived')                                                                               | active          | NO          |
++-----------------+-------------------+---------------------------------------------------------------------------------------------------------+-----------------+-------------+
+=== topic_nodes.path default must be empty string, and depth default 0 ===
++---------------+--------------+----------------+
+| column_name   | column_type  | column_default |
++---------------+--------------+----------------+
+| path          | varchar(255) |                |
+| depth         | int          | 0              |
+| last_mined_at | datetime     | NULL           |
++---------------+--------------+----------------+
+=== TABLE COUNT: 146 -> ? ===
++------------+
+| tables_now |
++------------+
+|        149 |
++------------+
+-- EXPECT: 149
+=== existing data untouched? ===
++--------------------------------+---+
+| tbl                            | n |
++--------------------------------+---+
+| research_jobs (new)            | 0 |
+| collective_sourcing_candidates | 0 |
+| script_factory_outputs         | 5 |
+| suggested_ideas (new)          | 0 |
+| analog_data_entries            | 1 |
+| topic_nodes (new)              | 0 |
++--------------------------------+---+
+-- EXPECT: 5 / 1 / 0 / 0 / 0 / 0

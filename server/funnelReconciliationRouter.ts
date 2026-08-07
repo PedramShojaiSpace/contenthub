@@ -139,6 +139,21 @@ export const FUNNELS: FunnelDef[] = [
     shopifyActive: true,
     metaActive: false,
   },
+  {
+    id: "tantra_quiz",
+    label: "Tantra Quiz — Sexual Vitality",
+    metaKeywords: ["tantra"],
+    kajabSkus: {},
+    shopifyProducts: [
+      { productId: "9068203376794", label: "Tantra Him ($185/mo)" },
+      { productId: "9068203442330", label: "Tantra Her ($185/mo)" },
+      { productId: "9068203540634", label: "Tantra Bundle — Him & Her ($369/mo)" },
+    ],
+    kajabiActive: false,
+    shopifyActive: true,
+    metaActive: true,
+  },
+];
 ];
 
 // ── Kajabi auth ───────────────────────────────────────────────────────────────

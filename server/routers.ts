@@ -451,6 +451,7 @@ ABSOLUTE RULES — NEVER VIOLATE:
 - NEVER add hashtags anywhere in the article — this is a blog post, not a social media post
 - NEVER include a TL;DR block or summary box — the article should flow naturally without summary callouts
 - NEVER use markdown link syntax to create a link where the display text says one URL but the href is a different URL (e.g. [urbanmonk.com/academy](https://theurbanmonk.com) is FORBIDDEN)
+- NEVER include Mermaid diagrams, flowcharts, or any fenced code blocks (no \`\`\`mermaid, no \`\`\`diagram, no \`\`\`flow, no \`\`\` blocks of any kind). WordPress does not render these — they appear as raw broken code on the live page. To show a process or sequence, write it as plain prose or use a simple bold inline arrow: **Morning Sunlight → Cellular Transcription → Melatonin Release**
 
 TOTAL ARTICLE LENGTH: 1,600-2,200 words (body only, not counting FAQ). Do not stop short. Every section must be fully developed.
 

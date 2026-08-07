@@ -33,6 +33,8 @@ import { eq, desc } from "drizzle-orm";
 import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
 import { sendGmailOutreach, isGmailAuthorized } from "./gmail";
 import crypto from "crypto";
+import { notifyOwner } from "./_core/notification";
+import { count, sql } from "drizzle-orm";
 
 // ─── Quiz Questions ───────────────────────────────────────────────────────────
 
@@ -462,6 +464,23 @@ export const tantraQuizRouter = router({
         }
       }
 
+      // Notify owner on quiz completion (non-fatal)
+      try {
+        const productName = product?.name ?? session.result ?? "unknown";
+        const firstName = input.name ? input.name.split(" ")[0] : "Anonymous";
+        const flags = [
+          session.gutFlag ? "Gut" : null,
+          session.sleepFlag ? "Sleep" : null,
+          session.oralFlag ? "Oral" : null,
+        ].filter(Boolean).join(", ") || "None";
+        await notifyOwner({
+          title: `🌿 Tantra Quiz Complete — ${productName}`,
+          content: `${firstName} (${input.email}) completed the Tantra Vitality Quiz.\n\nRecommendation: ${productName}\nGender: ${session.gender}\nUpsell flags: ${flags}\nKajabi tagged: ${kajabiTagged ? "✅" : "❌"}\nUTM: ${session.utmCampaign ?? "direct"}`,
+        });
+      } catch (e) {
+        console.warn("[tantraQuiz] notifyOwner failed (non-fatal):", e);
+      }
+
       return {
         success: true,
         kajabiTagged,
@@ -487,6 +506,45 @@ export const tantraQuizRouter = router({
         .limit(input.limit)
         .offset(input.offset);
       return { leads };
+    }),
+
+  // Admin: funnel drop-off stats
+  getFunnelStats: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [totals] = await db.select({
+        started:   count(),
+        completed: sql<number>`SUM(CASE WHEN ${tantraQuizLeads.completedAt} IS NOT NULL THEN 1 ELSE 0 END)`,
+        emailCaptured: sql<number>`SUM(CASE WHEN ${tantraQuizLeads.email} IS NOT NULL THEN 1 ELSE 0 END)`,
+        kajabiTagged:  sql<number>`SUM(CASE WHEN ${tantraQuizLeads.kajabiTagged} = 1 THEN 1 ELSE 0 END)`,
+        tantraHim:  sql<number>`SUM(CASE WHEN ${tantraQuizLeads.result} = 'tantra_him' THEN 1 ELSE 0 END)`,
+        tantraHer:  sql<number>`SUM(CASE WHEN ${tantraQuizLeads.result} = 'tantra_her' THEN 1 ELSE 0 END)`,
+        gutFlag:    sql<number>`SUM(CASE WHEN ${tantraQuizLeads.gutFlag} = 1 THEN 1 ELSE 0 END)`,
+        sleepFlag:  sql<number>`SUM(CASE WHEN ${tantraQuizLeads.sleepFlag} = 1 THEN 1 ELSE 0 END)`,
+        oralFlag:   sql<number>`SUM(CASE WHEN ${tantraQuizLeads.oralFlag} = 1 THEN 1 ELSE 0 END)`,
+      }).from(tantraQuizLeads);
+
+      // Recent completions (last 20)
+      const recent = await db.select({
+        id: tantraQuizLeads.id,
+        name: tantraQuizLeads.name,
+        email: tantraQuizLeads.email,
+        result: tantraQuizLeads.result,
+        gender: tantraQuizLeads.gender,
+        gutFlag: tantraQuizLeads.gutFlag,
+        sleepFlag: tantraQuizLeads.sleepFlag,
+        oralFlag: tantraQuizLeads.oralFlag,
+        completedAt: tantraQuizLeads.completedAt,
+        emailCapturedAt: tantraQuizLeads.emailCapturedAt,
+        utmCampaign: tantraQuizLeads.utmCampaign,
+        createdAt: tantraQuizLeads.createdAt,
+      }).from(tantraQuizLeads)
+        .where(sql`${tantraQuizLeads.email} IS NOT NULL`)
+        .orderBy(desc(tantraQuizLeads.emailCapturedAt))
+        .limit(20);
+
+      return { totals, recent };
     }),
 });
 // tantra-quiz-fix-v2 Thu Jul 30 21:01:45 UTC 2026

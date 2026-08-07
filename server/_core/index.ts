@@ -1569,8 +1569,35 @@ async function startServer() {
       } else if (offerNameLower_pre.includes("ocus") || offerNameLower_pre.includes("online course")) {
         knownPriceCents = 29900; // $299 OCUS
       }
-      // Use rawAmount if non-zero, otherwise fall back to known price map
       const rawAmountCents = Math.round(rawAmount * 100);
+      // ── Smart fallback for Kajabi upsell webhooks ────────────────────────
+      // Kajabi's one-click upsell sends offer_name="Kajabi Purchase", offer_id="", amount=0
+      // When we see this pattern, look up the buyer in our leads DB:
+      //   - If they opted in within 60 days → treat as $299 OCUS (the only active upsell)
+      //   - Log the inference so we can audit it
+      if (rawAmountCents === 0 && knownPriceCents === 0 && 
+          (offerName === "Kajabi Purchase" || offerName === "") && email) {
+        try {
+          const { getDb } = await import("../db");
+          const { interconnectedLeads } = await import("../../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          const db = getDb();
+          const sixtyDaysAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
+          const [lead] = await db.select({ id: interconnectedLeads.id, createdAt: interconnectedLeads.createdAt })
+            .from(interconnectedLeads)
+            .where(eq(interconnectedLeads.email, email.toLowerCase()))
+            .limit(1);
+          if (lead && lead.createdAt && lead.createdAt > sixtyDaysAgo) {
+            knownPriceCents = 29900; // $299 OCUS — only active upsell in this funnel
+            console.log(`[kajabi/purchase] Generic upsell payload for ${email} — inferred $299 OCUS (lead found, opted in ${Math.round((Date.now()-lead.createdAt)/86400000)}d ago)`);
+          } else {
+            console.log(`[kajabi/purchase] Generic upsell payload for ${email} — no recent lead found, cannot infer price`);
+          }
+        } catch (inferErr) {
+          console.warn(`[kajabi/purchase] Price inference failed for ${email}:`, inferErr);
+        }
+      }
+      // Use rawAmount if non-zero, otherwise fall back to known price map
       const amount = rawAmountCents > 0 ? rawAmount : knownPriceCents / 100;
       if (rawAmountCents === 0 && knownPriceCents > 0) {
         console.log(`[kajabi/purchase] amount=0 in webhook — using known price $${knownPriceCents/100} for offer "${offerName}" (ID: ${offerId})`);

@@ -918,13 +918,6 @@ function ResultsScreen({
   result,
   tantraCourse,
   lightsOn,
-}: {
-  product: ProductInfo;
-  upsells: UpsellInfo[];
-  result: string | null;
-  tantraCourse: CourseInfo | null;
-  lightsOn: CourseInfo | null;
-}) {
   coupleProducts,
 }: {
   product: ProductInfo;

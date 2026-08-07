@@ -144,6 +144,8 @@ function analyzeHtml(html: string): { score: number; signals: SpamSignal[] } {
     if (
       href.includes("s3.amazonaws.com") ||
       href.includes("kajabi-storefronts-production") ||
+      href.includes("klaviyo-images.s3") ||
+      href.includes("d3k81ch9hvuctq.cloudfront.net") ||
       href.includes("cloudfront.net/") ||
       href.includes("s3-us-west") ||
       href.includes("s3-eu")
@@ -156,7 +158,7 @@ function analyzeHtml(html: string): { score: number; signals: SpamSignal[] } {
       name: "Raw S3/CDN links",
       value: s3Links.length,
       severity: "bad",
-      tip: "Direct S3/CDN links are a major spam trigger. Host the file on your own domain and redirect (e.g. theurbanmonk.com/download/upstream-health).",
+      tip: "Direct S3/CDN links (including Kajabi and Klaviyo CDN URLs) are a major spam trigger. Host files on your own domain and redirect (e.g. theurbanmonk.com/download/upstream-health → 301 to S3).",
     });
     score += 4;
   }
@@ -359,6 +361,8 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
     if (
       href.includes("s3.amazonaws.com") ||
       href.includes("kajabi-storefronts-production") ||
+      href.includes("klaviyo-images.s3") ||
+      href.includes("d3k81ch9hvuctq.cloudfront.net") ||
       href.includes("cloudfront.net/") ||
       href.includes("s3-us-west") ||
       href.includes("s3-eu")
@@ -368,10 +372,11 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
   });
   if (s3Links.length > 0) {
     warnings.push(
-      "RAW S3 LINK DETECTED — this is the #1 reason this email is going to Promotions. " +
-      "Replace the S3 URL with a redirect on your own domain " +
+      "RAW S3/CDN LINK DETECTED — this is the #1 reason this email is going to Promotions. " +
+      "This includes Kajabi CDN (kajabi-storefronts-production) and Klaviyo CDN (klaviyo-images.s3) URLs. " +
+      "Replace with a redirect on your own domain " +
       "(e.g. https://theurbanmonk.com/download/upstream-health → 301 redirect to the S3 PDF). " +
-      "Affected link: " + s3Links.join(", ")
+      "Affected links: " + s3Links.join(", ")
     );
   }
 

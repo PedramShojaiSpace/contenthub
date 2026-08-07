@@ -154,7 +154,6 @@ export const FUNNELS: FunnelDef[] = [
     metaActive: true,
   },
 ];
-];
 
 // ── Kajabi auth ───────────────────────────────────────────────────────────────
 

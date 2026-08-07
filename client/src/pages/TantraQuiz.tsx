@@ -61,6 +61,12 @@ interface QuizState {
   progress: number; // 0-100
 }
 
+// Couple result carries both individual SKUs
+interface CoupleProducts {
+  him: ProductInfo;
+  her: ProductInfo;
+}
+
 interface ProductInfo {
   name: string;
   tagline: string;
@@ -142,6 +148,9 @@ export default function TantraQuiz() {
     progress: 0,
   });
 
+  // Couple products — set when q_who === "couple"
+  const [coupleProducts, setCoupleProducts] = useState<CoupleProducts | null>(null);
+
   const topRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to top on screen change
@@ -213,13 +222,18 @@ export default function TantraQuiz() {
         sessionId: state.sessionId,
         answers: state.answers,
       });
-      setState(s => ({
-        ...s,
-        result: res.result,
-        product: res.product as ProductInfo,
-        upsells: res.upsells as UpsellInfo[],
-      }));
-      goToScreen("email_capture");
+        setState(s => ({
+          ...s,
+          result: res.result,
+          product: res.product as ProductInfo,
+          upsells: res.upsells as UpsellInfo[],
+        }));
+        // If couple, also store both individual SKUs
+        const r = res as any;
+        if (r.isCouple && r.himProduct && r.herProduct) {
+          setCoupleProducts({ him: r.himProduct as ProductInfo, her: r.herProduct as ProductInfo });
+        }
+        goToScreen("email_capture");
     } catch (err: unknown) {
       // If submitAnswers fails, still allow progression with client-side routing
       // Use the answers we have to determine product client-side
@@ -531,6 +545,7 @@ export default function TantraQuiz() {
           result={state.result}
           tantraCourse={state.tantraCourse}
           lightsOn={state.lightsOn}
+          coupleProducts={coupleProducts}
         />
       )}
     </div>
@@ -910,6 +925,16 @@ function ResultsScreen({
   tantraCourse: CourseInfo | null;
   lightsOn: CourseInfo | null;
 }) {
+  coupleProducts,
+}: {
+  product: ProductInfo;
+  upsells: UpsellInfo[];
+  result: string | null;
+  tantraCourse: CourseInfo | null;
+  lightsOn: CourseInfo | null;
+  coupleProducts: CoupleProducts | null;
+}) {
+  const isCouple = !!coupleProducts;
   const accentColor = result === "tantra_her" ? "#9B59B6" : "#B8860B";
 
   return (
@@ -936,53 +961,101 @@ function ResultsScreen({
           </p>
 
           {/* Product card */}
-          <div className="bg-white/5 border rounded-2xl p-6 text-left max-w-lg mx-auto mb-8" style={{ borderColor: `${accentColor}60` }}>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">{product.name}</h2>
-                <p className="text-white/75 text-sm">{product.tagline}</p>
+          {isCouple && coupleProducts ? (
+            /* ── COUPLE: show Him + Her as two separate cards ── */
+            <div className="max-w-2xl mx-auto mb-8">
+              <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl px-5 py-3 mb-5 text-sm text-amber-200 text-center">
+                ⚕️ <strong>Each person completes their own intake separately</strong> — required for HIPAA-compliant telemedicine prescribing.
               </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold" style={{ color: accentColor }}>{product.price}</p>
-                <p className="text-white/65 text-xs">per month</p>
-              </div>
-            </div>
-            <p className="text-white/90 text-sm leading-relaxed mb-5">{product.description}</p>
-
-            {/* Key ingredients */}
-            <div className="space-y-2 mb-5">
-              {[
-                { name: "Oxytocin 40IU", role: "The bonding molecule — restores emotional connection and trust" },
-                { name: "Bremelanotide 2mg", role: "The arousal activator — reawakens desire at the neurological level" },
-                { name: result === "tantra_her" ? "Tadalafil 5mg" : "Tadalafil 20mg", role: "The circulation enhancer — supports physical response and sensitivity" },
-              ].map((ingredient, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: accentColor }} />
-                  <div>
-                    <span className="text-white text-sm font-semibold">{ingredient.name}</span>
-                    <span className="text-white/75 text-sm"> — {ingredient.role}</span>
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  { p: coupleProducts.him, accent: "#B8860B", tadalafil: "Tadalafil 20mg" },
+                  { p: coupleProducts.her, accent: "#9B59B6", tadalafil: "Tadalafil 5mg" },
+                ].map(({ p, accent, tadalafil }) => (
+                  <div key={p.name} className="bg-white/5 border rounded-2xl p-5 text-left" style={{ borderColor: `${accent}60` }}>
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h2 className="text-lg font-bold text-white">{p.name}</h2>
+                        <p className="text-white/70 text-xs">{p.tagline}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold" style={{ color: accent }}>{p.price}</p>
+                        <p className="text-white/55 text-xs">per month</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-4">
+                      {[
+                        { name: "Oxytocin 40IU", role: "Bonding molecule" },
+                        { name: "Bremelanotide 2mg", role: "Arousal activator" },
+                        { name: tadalafil, role: "Circulation enhancer" },
+                      ].map((ing, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: accent }} />
+                          <span className="text-white/85 text-xs"><strong>{ing.name}</strong> — {ing.role}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-2.5 mb-4">
+                      <p className="text-white/65 text-xs">📦 Ships under <strong className="text-white/80">Olympus</strong> brand from Strive Pharmacy.</p>
+                    </div>
+                    <a
+                      href={p.shopifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center font-bold text-sm py-3.5 rounded-xl text-black"
+                      style={{ background: accent }}
+                    >
+                      Get {p.name} — {p.price}/mo →
+                    </a>
                   </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* ── SINGLE: standard individual product card ── */
+            <div className="bg-white/5 border rounded-2xl p-6 text-left max-w-lg mx-auto mb-8" style={{ borderColor: `${accentColor}60` }}>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">{product.name}</h2>
+                  <p className="text-white/75 text-sm">{product.tagline}</p>
                 </div>
-              ))}
+                <div className="text-right">
+                  <p className="text-2xl font-bold" style={{ color: accentColor }}>{product.price}</p>
+                  <p className="text-white/65 text-xs">per month</p>
+                </div>
+              </div>
+              <p className="text-white/90 text-sm leading-relaxed mb-5">{product.description}</p>
+              <div className="space-y-2 mb-5">
+                {[
+                  { name: "Oxytocin 40IU", role: "The bonding molecule — restores emotional connection and trust" },
+                  { name: "Bremelanotide 2mg", role: "The arousal activator — reawakens desire at the neurological level" },
+                  { name: result === "tantra_her" ? "Tadalafil 5mg" : "Tadalafil 20mg", role: "The circulation enhancer — supports physical response and sensitivity" },
+                ].map((ingredient, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: accentColor }} />
+                    <div>
+                      <span className="text-white text-sm font-semibold">{ingredient.name}</span>
+                      <span className="text-white/75 text-sm"> — {ingredient.role}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 mb-5">
+                <p className="text-white/75 text-xs">
+                  📦 <strong className="text-white/90">Shipping note:</strong> Your order ships under the <strong className="text-white/90">Olympus</strong> brand name from Strive Pharmacy — same formula, same quality.
+                </p>
+              </div>
+              <a
+                href={product.shopifyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center font-bold text-base py-4 rounded-xl transition-all duration-200 text-black"
+                style={{ background: accentColor }}
+              >
+                Get {product.name} — {product.price}/mo →
+              </a>
             </div>
-
-            {/* Shipping note */}
-            <div className="bg-white/5 rounded-lg p-3 mb-5">
-              <p className="text-white/75 text-xs">
-                📦 <strong className="text-white/90">Shipping note:</strong> Your order ships under the <strong className="text-white/90">Olympus</strong> brand name from Strive Pharmacy — same formula, same quality.
-              </p>
-            </div>
-
-            <a
-              href={product.shopifyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center font-bold text-base py-4 rounded-xl transition-all duration-200 text-black"
-              style={{ background: accentColor }}
-            >
-              Get {product.name} — {product.price}/mo →
-            </a>
-          </div>
+          )}
 
           {/* Doctor credibility */}
           <div className="text-center text-white/65 text-sm">

@@ -81,6 +81,7 @@ const SubstackPublisher = lazy(() => import("./pages/SubstackPublisher"));
 const SubstackSequence = lazy(() => import("./pages/SubstackSequence"));
 const DeepDive = lazy(() => import("./pages/DeepDive"));
 const TantraQuiz = lazy(() => import("./pages/TantraQuiz"));
+const TantraFunnelDashboard = lazy(() => import("./pages/TantraFunnelDashboard"));
 const Interconnected = lazy(() => import("./pages/Interconnected"));
 const InterconnectedThankYou = lazy(() => import("./pages/InterconnectedThankYou"));
 const InterconnectedThankYouB = lazy(() => import("./pages/InterconnectedThankYouB"));
@@ -195,6 +196,7 @@ function Router() {
         <Route path={"/substack-sequence"} component={SubstackSequence} />
         <Route path={"/deep-dive"} component={DeepDive} />
         <Route path={"/quiz/tantra"} component={TantraQuiz} />
+        <Route path={"/tantra-funnel"} component={TantraFunnelDashboard} />
         <Route path={"/interconnected"} component={Interconnected} />
         <Route path={"/interconnected/thank-you"} component={InterconnectedThankYouSplitter} />
         <Route path={"/interconnected/thank-you-b"} component={InterconnectedThankYouB} />

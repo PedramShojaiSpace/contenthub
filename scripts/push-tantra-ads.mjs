@@ -140,7 +140,7 @@ async function pushAd(ad) {
     billing_event: "IMPRESSIONS",
     optimization_goal: "LINK_CLICKS",
     bid_amount: "500",
-    daily_budget: "500",
+    daily_budget: "2000",
     targeting: JSON.stringify({
       geo_locations: { countries: ["US", "CA", "GB", "AU", "NZ"] },
       age_min: 35,

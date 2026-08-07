@@ -248,7 +248,7 @@ export function routeToProduct(
   let result: keyof typeof TANTRA_PRODUCTS;
   if (gender === "male") result = "tantra_him";
   else if (gender === "female") result = "tantra_her";
-  else result = "tantra_him"; // couple/unknown → default to tantra_him (EHR requires individual SKUs)
+  else result = "tantra_him"; // couple/unknown → tantra_him as primary; frontend detects couple gender and shows both SKUs
 
   // Symptom flags from q_symptoms (multi-select)
   const symptoms = (answers["q_symptoms"] as string[] | string) ?? [];
@@ -257,7 +257,7 @@ export function routeToProduct(
   const sleepFlag = symptomsArr.includes("poor_sleep");
   const oralFlag = symptomsArr.includes("oral_issues");
 
-  return { result, gender, gutFlag, sleepFlag, oralFlag };
+  return { result, gender, gutFlag, sleepFlag, oralFlag, isCouple: gender === "couple" };
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -321,13 +321,16 @@ export const tantraQuizRouter = router({
       if (sleepFlag) upsells.push(TANTRA_UPSELLS.sleep);
       if (oralFlag) upsells.push(TANTRA_UPSELLS.oral);
 
-      return {
-        result,
-        gender,
-        product,
-        upsells,
-        flags: { gutFlag, sleepFlag, oralFlag },
-      };
+        return {
+          result,
+          gender,
+          product,
+          upsells,
+          flags: { gutFlag, sleepFlag, oralFlag },
+          isCouple: gender === "couple",
+          himProduct: gender === "couple" ? TANTRA_PRODUCTS.tantra_him : null,
+          herProduct: gender === "couple" ? TANTRA_PRODUCTS.tantra_her : null,
+        };
     }),
 
   // Capture email after results shown (public)

@@ -3934,11 +3934,11 @@ Return BOTH in this exact format:
         }
 
         // Step 9d: YouTube Embed Auto-Trigger — fire-and-forget (non-blocking)
-        // PRIORITY ORDER:
-        // 1. If this content item has a specific YouTube video from the pipeline (videoJobs.youtubeVideoId
-        //    or contentItems.youtubeVideoId), use that exact video ID — no search needed.
-        // 2. Only fall back to a YouTube keyword search if no specific video ID is known.
-        // This prevents the wrong video from being embedded via fuzzy search.
+        // RULE: Only embed a YouTube video when a specific pipeline video ID is explicitly linked
+        // to this content item (contentItems.youtubeVideoId or videoJobs.youtubeVideoId).
+        // The keyword search fallback has been DISABLED — it was embedding wrong/dead videos
+        // on SEO blog posts that have no associated YouTube video. Only Video-to-Blog posts
+        // and Blog-to-YouTube pipeline posts should ever get a video embed.
         let youtubeEmbedResult: { embedded: boolean; videoId?: string; videoTitle?: string; message: string } = { embedded: false, message: "skipped" };
         if (newStatus !== "scheduled" && post.id && publishInput.focusKeyword) {
           try {
@@ -3975,23 +3975,9 @@ Return BOTH in this exact format:
               bestVideo = { id: pipelineVideoId, title: pipelineVideoTitle ?? publishInput.title ?? "Urban Monk Video" };
               console.log(`[YT Embed] Using pipeline video ${pipelineVideoId} for post ${post.id} (skipping YouTube search)`);
             } else {
-              // Fall back: search YouTube for a matching video
-              const searchQuery = publishInput.focusKeyword;
-              const { getSupadata } = await import("./youtubeRouter");
-              const supadata = getSupadata();
-              if (supadata) {
-                const searchResults = await supadata.youtube.search({
-                  query: `${searchQuery} Urban Monk Pedram Shojai`,
-                  limit: 5,
-                });
-                const videos = (searchResults as any)?.results ?? [];
-                const found = videos.find((v: any) =>
-                  v.channelId === "UCFjivNnMnVAMvHBvHJnBqRg" ||
-                  (v.channelTitle ?? "").toLowerCase().includes("urban monk") ||
-                  (v.channelTitle ?? "").toLowerCase().includes("pedram")
-                ) ?? videos[0];
-                if (found?.id) bestVideo = { id: found.id, title: found.title ?? "" };
-              }
+              // No pipeline video linked — skip embed entirely.
+              // Keyword search fallback disabled: it was embedding wrong/dead videos on SEO posts.
+              console.log(`[YT Embed] No pipeline video linked for content item ${publishInput.contentItemId} — skipping embed`);
             }
 
             // Wrap in the old if-block shape so the rest of the code is unchanged

@@ -191,6 +191,8 @@ export default function CreationStudio() {
   // Substack toggle: whether to cross-post this blog to Substack on WP publish
   const [sendToSubstack, setSendToSubstack] = useState(false);
   const [substackPublishResult, setSubstackPublishResult] = useState<{ postUrl: string; postId: string } | null>(null);
+  // Downstream syndication opt-in — controls Substack/Medium/Quora pipeline (off by default)
+  const [syndicateDownstream, setSyndicateDownstream] = useState(false);
 
   // TikTok 60-second script state
   const [tiktokScript60, setTiktokScript60] = useState<string | null>(null);
@@ -1575,6 +1577,7 @@ export default function CreationStudio() {
       heroImageUrl: blogContent.imageUrl,
       status,
       ctaBannerHtml: blogContent.ctaBannerHtml,
+      syndicateDownstream,
     });
   };
 
@@ -3268,19 +3271,40 @@ export default function CreationStudio() {
                     <Globe className="h-4 w-4 text-primary" />
                     <p className="text-sm font-medium text-foreground">Publish to theurbanmonk.com</p>
                   </div>
-                  {/* Substack cross-post toggle */}
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="substack-toggle"
-                      checked={sendToSubstack}
-                      onCheckedChange={setSendToSubstack}
-                      disabled={!!wpPublishResult}
-                    />
-                    <Label htmlFor="substack-toggle" className="text-xs text-muted-foreground cursor-pointer select-none">
-                      Also post to Substack
+                {/* Substack cross-post toggle */}
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="substack-toggle"
+                    checked={sendToSubstack}
+                    onCheckedChange={setSendToSubstack}
+                    disabled={!!wpPublishResult}
+                  />
+                  <Label htmlFor="substack-toggle" className="text-xs text-muted-foreground cursor-pointer select-none">
+                    Also post to Substack
+                  </Label>
+                </div>
+              </div>
+              {/* Downstream syndication opt-in — prominent, unchecked by default */}
+              {!wpPublishResult && (
+                <div className="flex items-start gap-3 px-3 py-2.5 rounded-md border border-amber-500/40 bg-amber-500/5">
+                  <input
+                    type="checkbox"
+                    id="syndicate-downstream"
+                    checked={syndicateDownstream}
+                    onChange={(e) => setSyndicateDownstream(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-amber-500 accent-amber-500 cursor-pointer flex-shrink-0"
+                  />
+                  <div className="flex flex-col gap-0.5">
+                    <Label htmlFor="syndicate-downstream" className="text-xs font-semibold text-amber-400 cursor-pointer select-none leading-snug">
+                      Send downstream to Substack, Medium &amp; Quora
                     </Label>
+                    <span className="text-[10px] text-muted-foreground leading-snug">Only for high-quality evergreen content — not SEO volume posts</span>
                   </div>
                 </div>
+              )}
+              {wpPublishResult && syndicateDownstream && (
+                <p className="text-xs text-amber-400">✓ Queued for Substack (24h), Medium (48h), Quora (72h)</p>
+              )}
                 {wpPublishResult ? (
                   <div className="space-y-2">
                     <p className="text-xs text-green-600 font-medium">

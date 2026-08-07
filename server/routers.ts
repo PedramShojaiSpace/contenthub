@@ -3312,6 +3312,7 @@ Return BOTH in this exact format:
           yoastMetaDescription: z.string().optional(), // Override for Yoast meta description
           ctaBannerHtml: z.string().optional(),        // CTA HTML block to inject before FAQ section
           wpCategoryOverride: z.number().optional(),    // Manual WP category ID override (subcategory)
+          syndicateDownstream: z.boolean().optional(),  // Opt-in: send to Substack/Medium/Quora (default OFF)
         })
       )
       .mutation(async ({ input, ctx }) => {
@@ -4069,8 +4070,8 @@ Return BOTH in this exact format:
         // Substack now receives a distinct founder letter (not a copy of the WP post) 24 hours after WP publish.
         // This ensures WordPress is indexed by Google first (canonical origin) and Substack subscribers
         // receive unique content that drives traffic back to the site.
-        let substackResult: { published: boolean; postUrl?: string; postId?: string; message: string } = { published: false, message: "queued_for_syndication" };
-        if (newStatus !== "scheduled") {
+        let substackResult: { published: boolean; postUrl?: string; postId?: string; message: string } = { published: false, message: "skipped" };
+        if (newStatus !== "scheduled" && input.syndicateDownstream === true) {
           try {
             const { syndicationRouter: syndicationRouterModule } = await import("./syndicationRouter");
             // Enqueue via direct DB insert (bypasses tRPC auth for server-side use)
@@ -7378,4 +7379,3 @@ https://www.youtube.com/watch?v=PFAaZMdoE34
   redditRoas: redditRoasRouter,
 });
 export type AppRouter = typeof appRouter;
-

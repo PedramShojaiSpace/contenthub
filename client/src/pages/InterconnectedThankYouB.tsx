@@ -245,7 +245,7 @@ const sectionStyle = (bg: string) => ({
 
 // ─── Isolated countdown components (prevent full-page rerenders) ─────────────────
 function TyStickyBar({ onBuyClick }: { onBuyClick: () => void }) {
-  const { timeLeft, expired } = useCountdown(6480);
+  const { timeLeft, expired } = useCountdown(900);
   if (expired) return null;
   return (
     <div
@@ -285,7 +285,7 @@ function TyStickyBar({ onBuyClick }: { onBuyClick: () => void }) {
 }
 
 function TyCountdownBlock() {
-  const { timeLeft, expired } = useCountdown(6480);
+  const { timeLeft, expired } = useCountdown(900);
   if (expired) return (
     <div className="text-center my-8">
       <p className="text-red-400 font-bold text-lg">This special offer has expired.</p>
@@ -428,6 +428,32 @@ export default function InterconnectedThankYouB() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* ── ABOVE-FOLD CTA — visible without scrolling ──────────────────── */}
+          <div className="mb-8 p-6 rounded-2xl" style={{ background: "rgba(30,80,160,0.15)", border: `1px solid ${BLUE}` }}>
+            <p className="text-yellow-300 font-bold text-sm uppercase tracking-widest mb-2">
+              ⚡ One-Time Offer — This Page Only
+            </p>
+            <p className="text-white text-xl font-bold mb-1" style={{ fontFamily: "Georgia, serif" }}>
+              Get All-Access to All 9 Episodes — Own Them Forever
+            </p>
+            <p className="text-gray-300 text-sm mb-4">
+              Watch at your own pace. Never miss an episode. Includes bonus interviews + transcripts.
+            </p>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <span className="text-gray-400 line-through text-lg">$97</span>
+              <span className="text-3xl font-bold text-white">$67</span>
+              <span className="text-yellow-300 text-sm font-semibold">TODAY ONLY</span>
+            </div>
+            <button
+              onClick={handleBuyClick}
+              className="w-full py-4 px-8 rounded-xl text-white font-bold text-lg transition-transform hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #e67e22, #f39c12)", boxShadow: "0 4px 20px rgba(230,126,34,0.5)" }}
+            >
+              YES — Get All-Access for $67 Now →
+            </button>
+            <p className="text-gray-500 text-xs mt-2">Secure checkout · Instant access · 30-day guarantee</p>
           </div>
 
           {/* Confirmation */}

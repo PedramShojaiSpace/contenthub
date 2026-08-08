@@ -44,7 +44,14 @@ function firePixel(eventName: string, params?: Record<string, unknown>, eventId?
 }
 
 function useCountdown(initialSeconds: number) {
-  const endRef = useRef(Date.now() + initialSeconds * 1000);
+  // Persist end time in localStorage so back button / refresh don't reset the timer
+  const STORAGE_KEY = "ty_offer_end_time";
+  const storedEnd = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+  const endRef = useRef(storedEnd ? parseInt(storedEnd, 10) : (() => {
+    const end = Date.now() + initialSeconds * 1000;
+    try { localStorage.setItem(STORAGE_KEY, String(end)); } catch (_) {}
+    return end;
+  })());
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
   const [expired, setExpired] = useState(false);
 

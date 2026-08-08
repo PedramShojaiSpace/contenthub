@@ -569,6 +569,10 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
             alt="Dr. Pedram Shojai, OMD"
             className="w-full h-full object-cover object-top"
           />
+          {/* INTRO VIDEO: Once recorded, replace photo above with Wistia embed.
+              Set TANTRA_INTRO_VIDEO_ID to your Wistia media ID and swap the img for:
+              <div className="wistia_embed wistia_async_TANTRA_INTRO_VIDEO_ID videoFoam=true h-full" />
+          */}
           {/* Dark gradient overlay at bottom for text legibility */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/30 to-transparent" />
 
@@ -608,6 +612,16 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
         <p className="text-white/75 text-sm md:text-base leading-relaxed mb-8 max-w-lg">
           This 2-minute quiz will identify exactly what's depleting your life force — and show you the East-West prescription formula I developed to restore it.
         </p>
+
+        {/* ── INTRO VIDEO EMBED (activate when ready) ──
+            1. Upload intro video to Wistia
+            2. Replace TANTRA_INTRO_VIDEO_ID with your media ID (e.g. "abc123xyz")
+            3. Uncomment the block below and delete this comment
+
+        <div className="mb-8 rounded-xl overflow-hidden border border-amber-700/30" style={{aspectRatio:'16/9',maxWidth:'480px'}}>
+          <div className="wistia_embed wistia_async_TANTRA_INTRO_VIDEO_ID videoFoam=true" style={{height:'100%',position:'relative'}}>&nbsp;</div>
+        </div>
+        ── */}
 
         {/* Credential pills */}
         <div className="flex flex-wrap gap-2 mb-8">
@@ -1028,6 +1042,30 @@ function ResultsScreen({
           <p className="text-white/90 text-lg mb-8 max-w-xl mx-auto">
             {product.subheadline}
           </p>
+
+          {/* ── PERSONALIZED RESULTS VIDEO ──
+              Shows a different video for Tantra Him vs Tantra Her vs Couple.
+              To activate:
+                1. Record 2 videos (one for men, one for women) and upload to Wistia
+                2. Replace the placeholder IDs below with your real Wistia media IDs:
+                     TANTRA_HIM_VIDEO_ID  → e.g. "abc123him"
+                     TANTRA_HER_VIDEO_ID  → e.g. "xyz789her"
+                3. Delete the comment tags around the block below
+
+          {(() => {
+            const videoId = isCouple
+              ? "TANTRA_HIM_VIDEO_ID"
+              : result === "tantra_her"
+              ? "TANTRA_HER_VIDEO_ID"
+              : "TANTRA_HIM_VIDEO_ID";
+            return (
+              <div className="mb-8 rounded-2xl overflow-hidden border border-white/10 max-w-2xl mx-auto" style={{aspectRatio:'16/9'}}>
+                <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
+                <div className={`wistia_embed wistia_async_${videoId} videoFoam=true`} style={{height:'100%',position:'relative'}}>&nbsp;</div>
+              </div>
+            );
+          })()}
+          ── */}
 
           {/* Product card */}
           {isCouple && coupleProducts ? (

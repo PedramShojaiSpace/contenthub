@@ -30,6 +30,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { tantraQuizLeads } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
+import { pushTantraQuizLead } from "./klaviyo";
 import { kajabiCreateContact, kajabiAddTagByName } from "./kajabiApi";
 import { sendGmailOutreach, isGmailAuthorized } from "./gmail";
 import crypto from "crypto";
@@ -479,6 +480,20 @@ export const tantraQuizRouter = router({
         });
       } catch (e) {
         console.warn("[tantraQuiz] notifyOwner failed (non-fatal):", e);
+      }
+
+      // Push to Klaviyo autoresponder list (non-fatal)
+      try {
+        await pushTantraQuizLead({
+          email: input.email,
+          firstName: input.name ? input.name.split(" ")[0] : undefined,
+          result: session.result as "tantra_him" | "tantra_her" | "tantra_bundle" | "pending" | null,
+          gutFlag: session.gutFlag ?? false,
+          sleepFlag: session.sleepFlag ?? false,
+          oralFlag: session.oralFlag ?? false,
+        });
+      } catch (e) {
+        console.warn("[tantraQuiz] Klaviyo push failed (non-fatal):", e);
       }
 
       return {

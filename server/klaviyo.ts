@@ -177,6 +177,48 @@ async function addProfileToList(profileId: string, listId: string): Promise<void
  * - Always upserts the profile
  * - If smsConsent is true AND phone is provided, subscribes to SMS list
  */
+/**
+ * Push a Tantra quiz lead to Klaviyo.
+ * Upserts the profile with quiz result metadata and adds to the Tantra email list
+ * so the autoresponder sequence fires automatically.
+ */
+export async function pushTantraQuizLead(opts: {
+  email: string;
+  firstName?: string;
+  result: "tantra_him" | "tantra_her" | "tantra_bundle" | "pending" | null;
+  gutFlag?: boolean;
+  sleepFlag?: boolean;
+  oralFlag?: boolean;
+}): Promise<{ profileId: string }> {
+  if (!ENV.klaviyoPrivateKey) {
+    console.warn("[Klaviyo] KLAVIYO_PRIVATE_KEY not set — skipping Tantra push");
+    return { profileId: "" };
+  }
+
+  const profileId = await upsertProfile({
+    email: opts.email,
+    firstName: opts.firstName,
+    source: "tantra-quiz",
+  });
+
+  // Patch additional quiz-specific properties onto the profile
+  await patchProfile(profileId, {
+    tantra_quiz_result: opts.result ?? "unknown",
+    tantra_gut_flag: opts.gutFlag ?? false,
+    tantra_sleep_flag: opts.sleepFlag ?? false,
+    tantra_oral_flag: opts.oralFlag ?? false,
+    tantra_quiz_completed_at: new Date().toISOString(),
+  });
+
+  // Add to Tantra email list if configured
+  const tantraListId = process.env.KLAVIYO_TANTRA_LIST_ID ?? "";
+  if (tantraListId) {
+    await addProfileToList(profileId, tantraListId);
+  }
+
+  return { profileId };
+}
+
 export async function pushInterconnectedOptIn(opts: {
   email: string;
   firstName?: string;

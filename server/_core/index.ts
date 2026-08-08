@@ -1516,6 +1516,121 @@ async function startServer() {
   // Configure in Kajabi Admin → Settings → Integrations → Webhooks
   // URL: https://content.theurbanmonk.com/api/kajabi/purchase
   // Fires on every successful purchase; we use it to send CAPI Purchase event to Meta
+  // POST /api/kajabi/optin — Kajabi webhook: form_submission event
+  // Configure in Kajabi Admin → Settings → Integrations → Webhooks
+  // URL: https://content.theurbanmonk.com/api/kajabi/optin
+  // Event type: form_submission — fires when someone submits the Interconnected opt-in form
+  // Bridges Kajabi-page opt-ins into our CAPI + DB + Klaviyo pipeline
+  app.post("/api/kajabi/optin", async (req, res) => {
+    try {
+      const payload = req.body as Record<string, unknown>;
+      const event = payload.event as string | undefined;
+
+      // Accept form_submission and member_added events only
+      if (event && event !== "form_submission" && event !== "member_added" && event !== "contact_created") {
+        return res.json({ ok: true, skipped: true, reason: `event=${event}` });
+      }
+
+      // Extract contact fields — Kajabi sends nested under contact or at root
+      const contact = (payload.contact ?? payload) as Record<string, unknown>;
+      const email = ((contact.email ?? payload.email) as string | undefined)?.toLowerCase();
+      const firstName = ((contact.first_name ?? payload.first_name ?? "") as string).trim();
+      const lastName = ((contact.last_name ?? payload.last_name ?? "") as string).trim();
+      const name = `${firstName} ${lastName}`.trim() || (contact.name as string) || "Friend";
+      const phone = ((contact.phone ?? contact.phone_number ?? payload.phone ?? "") as string).trim();
+
+      if (!email) {
+        console.warn("[kajabi/optin] No email in payload — skipping");
+        return res.json({ ok: true, skipped: true, reason: "no_email" });
+      }
+
+      console.log(`[kajabi/optin] Received opt-in for ${email} via Kajabi page`);
+
+      // 1. Save to DB (upsert — don't duplicate if already in our system)
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "DB unavailable" });
+      const { interconnectedLeads } = await import("../../drizzle/schema");
+
+      const existing = await db
+        .select({ id: interconnectedLeads.id })
+        .from(interconnectedLeads)
+        .where(eq(interconnectedLeads.email, email))
+        .limit(1);
+
+      let leadId: number | null = null;
+      if (existing.length === 0) {
+        const result = await db.insert(interconnectedLeads).values({
+          name,
+          email,
+          phone: phone || null,
+          utmSource: "kajabi_page",
+          utmMedium: "webhook",
+          utmCampaign: ((payload.form_name ?? payload.landing_page_title ?? "interconnected_optin") as string),
+          kajabiTagged: 1,
+          createdAt: Date.now(),
+        });
+        leadId = (result as any)[0]?.insertId ?? null;
+        console.log(`[kajabi/optin] New lead saved — id: ${leadId}`);
+      } else {
+        leadId = existing[0].id;
+        // Update kajabiTagged flag if not set
+        await db.update(interconnectedLeads)
+          .set({ kajabiTagged: 1 })
+          .where(eq(interconnectedLeads.id, leadId));
+        console.log(`[kajabi/optin] Lead already in DB (id: ${leadId}) — updated kajabi flag`);
+      }
+
+      // 2. Fire Meta CAPI Lead event
+      try {
+        const { sendCapiEvent, generateEventId } = await import("../capiHelper");
+        const capiLeadEventId = generateEventId(email, "Lead");
+        await sendCapiEvent({
+          eventName: "Lead",
+          eventId: capiLeadEventId,
+          email,
+          phone: phone || undefined,
+          firstName,
+          lastName,
+          customData: {
+            content_name: "Interconnected Free Screening",
+            content_category: "opt_in",
+            source: "kajabi_page",
+          },
+        });
+        console.log(`[kajabi/optin] CAPI Lead fired — eventId: ${capiLeadEventId}`);
+      } catch (capiErr) {
+        console.error("[kajabi/optin] CAPI Lead failed:", capiErr);
+      }
+
+      // 3. Subscribe to Klaviyo SMS if phone provided
+      if (phone) {
+        try {
+          const { pushInterconnectedOptIn } = await import("../klaviyo");
+          await pushInterconnectedOptIn({ name, email, phone });
+          console.log(`[kajabi/optin] Klaviyo SMS subscribed for ${email}`);
+        } catch (klavErr) {
+          console.error("[kajabi/optin] Klaviyo SMS failed:", klavErr);
+        }
+      }
+
+      // 4. Notify owner
+      try {
+        const { notifyOwner } = await import("./notification");
+        await notifyOwner({
+          title: `New Lead (Kajabi page): ${name}`,
+          content: `📧 ${email}${phone ? ` | 📱 ${phone}` : ""}\nSource: Kajabi opt-in page\nTime: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })} CT`,
+        });
+      } catch (notifyErr) {
+        console.error("[kajabi/optin] notifyOwner failed:", notifyErr);
+      }
+
+      return res.json({ ok: true, email, leadId });
+    } catch (err) {
+      console.error("[kajabi/optin] Unhandled error:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/kajabi/purchase", async (req, res) => {
     try {
       const secret = process.env.INGEST_SECRET;

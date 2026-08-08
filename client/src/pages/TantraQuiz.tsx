@@ -21,7 +21,7 @@
  *   13 → Results page (product recommendation + upsells)
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -930,8 +930,84 @@ function ResultsScreen({
   const isCouple = !!coupleProducts;
   const accentColor = result === "tantra_her" ? "#9B59B6" : "#B8860B";
 
+  // ── Urgency timer (20 minutes) ──────────────────────────────────────────────
+  const [timeLeft, setTimeLeft] = useState(20 * 60); // 20 min in seconds
+  useEffect(() => {
+    const t = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const timerMins = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+  const timerSecs = String(timeLeft % 60).padStart(2, "0");
+  const timerExpired = timeLeft === 0;
+
+  // ── Exit intent popup ───────────────────────────────────────────────────────
+  const [showExitPopup, setShowExitPopup] = useState(false);
+  const exitFired = useRef(false);
+  const handleMouseLeave = useCallback((e: MouseEvent) => {
+    if (!exitFired.current && e.clientY <= 0) {
+      exitFired.current = true;
+      setShowExitPopup(true);
+    }
+  }, []);
+  useEffect(() => {
+    document.addEventListener("mouseleave", handleMouseLeave);
+    // Mobile: show after 45s of no interaction
+    const mobileTimer = setTimeout(() => {
+      if (!exitFired.current) {
+        exitFired.current = true;
+        setShowExitPopup(true);
+      }
+    }, 45000);
+    return () => {
+      document.removeEventListener("mouseleave", handleMouseLeave);
+      clearTimeout(mobileTimer);
+    };
+  }, [handleMouseLeave]);
+
   return (
-    <div className="min-h-screen bg-[#0d0d0d] pb-24">
+    <div className="min-h-screen bg-[#0d0d0d] pb-32">
+
+      {/* ── EXIT INTENT POPUP ── */}
+      {showExitPopup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.85)" }}>
+          <div className="bg-[#141414] border border-amber-700/40 rounded-2xl p-8 max-w-md w-full text-center relative shadow-2xl">
+            <button onClick={() => setShowExitPopup(false)} className="absolute top-4 right-4 text-white/40 hover:text-white/70 text-xl leading-none">✕</button>
+            <div className="w-14 h-14 rounded-full bg-amber-900/30 border border-amber-700/40 flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">🌿</span>
+            </div>
+            <h3 className="text-white font-bold text-xl mb-2">Before you go…</h3>
+            <p className="text-white/80 text-sm mb-4 leading-relaxed">
+              Dr. Shojai spent 10 years as a Taoist monk studying what depletes life force — and how to restore it. Your quiz results are personalized to your exact pattern.
+            </p>
+            <p className="text-amber-400 text-sm font-semibold mb-5">Your protocol is still reserved for the next {timerMins}:{timerSecs}.</p>
+            <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => setShowExitPopup(false)}
+              className="block w-full text-center font-bold text-base py-4 rounded-xl text-black mb-3" style={{ background: accentColor }}>
+              Start My Protocol — {product.price}/mo →
+            </a>
+            <button onClick={() => setShowExitPopup(false)} className="text-white/45 text-xs hover:text-white/65">
+              No thanks, I'll pass on restoring my vitality
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STICKY URGENCY BAR ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between gap-4"
+        style={{ background: "#0d0d0d", borderTop: `1px solid ${accentColor}40` }}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm"
+            style={{ background: `${accentColor}30`, border: `1px solid ${accentColor}60` }}>⏱</div>
+          <p className="text-white/85 text-xs">
+            {timerExpired
+              ? "Your results are still available — start your protocol today."
+              : <><span className="font-bold" style={{ color: accentColor }}>{timerMins}:{timerSecs}</span>{" — Your personalized protocol is reserved"}</>}
+          </p>
+        </div>
+        <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer"
+          className="flex-shrink-0 font-bold text-xs px-4 py-2 rounded-full text-black whitespace-nowrap"
+          style={{ background: accentColor }}>Start Now →</a>
+      </div>
+
       {/* Hero result banner */}
       <div
         className="py-16 px-6 text-center relative overflow-hidden"
@@ -1143,6 +1219,28 @@ function ResultsScreen({
           </div>
         </div>
 
+        {/* ── SOCIAL PROOF ── */}
+        <div className="mb-8">
+          <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest text-center mb-5">What others are experiencing</h3>
+          <div className="space-y-4">
+            {[
+              { name: "Michael R., 52", text: "I was skeptical — I've tried everything. Three weeks in and I feel like myself again. The difference is real.", stars: 5 },
+              { name: "Sandra K., 47", text: "I didn't realize how disconnected I'd become until I started feeling connected again. This changed something fundamental.", stars: 5 },
+              { name: "David T., 58", text: "My wife noticed before I did. That says everything.", stars: 5 },
+            ].map((t, i) => (
+              <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-1 mb-2">
+                  {Array.from({ length: t.stars }).map((_, j) => (
+                    <Star key={j} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-white/85 text-sm italic mb-2">"{t.text}"</p>
+                <p className="text-white/50 text-xs">— {t.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Final CTA */}
         <div className="text-center">
           <a
@@ -1152,11 +1250,10 @@ function ResultsScreen({
             className="inline-flex items-center gap-2 font-bold text-lg px-10 py-5 rounded-full text-black transition-all duration-200 shadow-lg"
             style={{ background: accentColor, boxShadow: `0 8px 32px ${accentColor}40` }}
           >
-            Start with {product.name} <ArrowRight className="w-5 h-5" />
+            Start My Protocol — {product.price}/mo <ArrowRight className="w-5 h-5" />
           </a>
-          <p className="text-white/85 text-xs mt-4">
-            Prescription required · Compounded by Strive Pharmacy · Ships discreetly
-          </p>
+          <p className="text-white/75 text-xs mt-3">Prescription required · Compounded by Strive Pharmacy · Ships discreetly</p>
+          <p className="text-white/50 text-xs mt-1">Your protocol expires in {timerMins}:{timerSecs}</p>
         </div>
       </div>
     </div>

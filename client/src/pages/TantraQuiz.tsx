@@ -246,7 +246,7 @@ export default function TantraQuiz() {
           tagline: "Maximum Strength Formula for Men",
           headline: "Your life force is ready to come back online.",
           subheadline: "The East-West formula designed for men who are ready to feel fully alive again.",
-          description: "Tantra Him combines Oxytocin (the bonding molecule), Bremelanotide (the arousal activator), and Tadalafil (the circulation enhancer) in a precision-compounded sublingual tablet — backed by 5,000 years of Taoist medicine and modern clinical science.",
+          description: "Tantra Him is the bed chamber formula — Oxytocin for deep bonding, Bremelanotide to reawaken desire at the neurological level, and Tadalafil for the circulation that makes it all possible. Precision-compounded, physician-prescribed, and rooted in 5,000 years of Taoist sexual medicine.",
           price: "$185",
           shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-him",
           primaryColor: "#B8860B",
@@ -256,7 +256,7 @@ export default function TantraQuiz() {
           tagline: "Maximum Strength Formula for Women",
           headline: "Your life force is ready to come back online.",
           subheadline: "The East-West formula designed for women who are ready to feel fully alive again.",
-          description: "Tantra Her combines Oxytocin (the bonding molecule), Bremelanotide (the arousal activator), and Tadalafil 5mg (the circulation enhancer) in a precision-compounded sublingual tablet — backed by 5,000 years of Taoist medicine and modern clinical science.",
+          description: "Tantra Her is the bed chamber formula for women — Oxytocin to open the heart and deepen connection, Bremelanotide to restore desire that modern life has dimmed, and Tadalafil 5mg for the circulation and sensitivity that makes intimacy feel the way it's supposed to. Precision-compounded, physician-prescribed, rooted in 5,000 years of Taoist sexual medicine.",
           price: "$185",
           shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-her",
           primaryColor: "#9B59B6",
@@ -381,7 +381,7 @@ export default function TantraQuiz() {
       {state.screen === "sexual_energy" && (
         <SingleChoiceScreen
           question="How has your sexual energy and desire felt over the past few months?"
-          subtext="In Taoist medicine, sexual energy is your life force — not just about sex. It powers creativity, motivation, and aliveness."
+          subtext="In Taoist medicine, sexual energy is the root of everything — your drive, your passion, your presence with the person you love. When it dims, everything dims with it."
           options={[
             { id: "much_lower", text: "Much lower than it used to be — I barely think about it" },
             { id: "desire_no_energy", text: "The desire is there but the energy to act on it isn't" },
@@ -399,7 +399,7 @@ export default function TantraQuiz() {
           icon={<Shield className="w-10 h-10 text-amber-400" />}
           headline="This is not a willpower problem."
           body={[
-            "Modern life systematically depletes the hormones and neurochemicals that drive desire, connection, and aliveness.",
+            "Modern life systematically depletes the hormones and neurochemicals that drive desire, passion, and the kind of intimacy that makes you feel truly alive with another person.",
             "Chronic stress floods your system with cortisol — which directly suppresses testosterone, estrogen, and oxytocin.",
             "Poor sleep, processed food, and constant overstimulation drain the root energy that Eastern medicine has called Jing for 5,000 years.",
             "You are not broken. Your biology is responding exactly as it was designed to — to a world it was never designed for.",
@@ -601,16 +601,16 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
         </p>
 
         <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-5">
-          Is Your Life Force<br />
-          <span className="text-amber-400">Running on Empty?</span>
+          The Ancient Secret to Desire,<br />
+          <span className="text-amber-400">Passion, and the Bed Chamber</span>
         </h1>
 
         <p className="text-white/85 text-base md:text-lg leading-relaxed mb-4 max-w-lg">
-          I spent 10 years as a Taoist monk studying the traditions that treat sexual energy as the root of all vitality. What I found changed everything I knew about medicine.
+          I spent 10 years as a Taoist monk studying the sacred traditions of the bed chamber — the ancient science of desire, connection, and what it means to truly come alive with the person you love.
         </p>
 
         <p className="text-white/75 text-sm md:text-base leading-relaxed mb-8 max-w-lg">
-          This 2-minute quiz will identify exactly what's depleting your life force — and show you the East-West prescription formula I developed to restore it.
+          This 2-minute quiz will identify exactly what's standing between you and the most passionate, connected intimacy of your life — and show you the East-West prescription formula I developed to restore it.
         </p>
 
         {/* ── INTRO VIDEO EMBED (activate when ready) ──
@@ -991,13 +991,14 @@ function ResultsScreen({
             </div>
             <h3 className="text-white font-bold text-xl mb-2">Before you go…</h3>
             <p className="text-white/80 text-sm mb-4 leading-relaxed">
-              Dr. Shojai spent 10 years as a Taoist monk studying what depletes life force — and how to restore it. Your quiz results are personalized to your exact pattern.
+              Dr. Shojai spent 10 years as a Taoist monk studying the ancient science of the bed chamber. Your quiz results point to exactly what's standing between you and the intimacy you remember — and want back.
             </p>
             <p className="text-amber-400 text-sm font-semibold mb-5">Your protocol is still reserved for the next {timerMins}:{timerSecs}.</p>
             <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => setShowExitPopup(false)}
               className="block w-full text-center font-bold text-base py-4 rounded-xl text-black mb-3" style={{ background: accentColor }}>
-              Start My Protocol — {product.price}/mo →
+             Start My First Month — {product.price} →
             </a>
+            <p className="text-white/50 text-xs mb-2">Try it for 30 days. If it's not the best decision you've made for your vitality, you never have to order again.</p>
             <button onClick={() => setShowExitPopup(false)} className="text-white/45 text-xs hover:text-white/65">
               No thanks, I'll pass on restoring my vitality
             </button>
@@ -1087,7 +1088,7 @@ function ResultsScreen({
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold" style={{ color: accent }}>{p.price}</p>
-                        <p className="text-white/55 text-xs">per month</p>
+                        <p className="text-white/55 text-xs">first month · cancel anytime</p>
                       </div>
                     </div>
                     <div className="space-y-1.5 mb-4">
@@ -1112,7 +1113,7 @@ function ResultsScreen({
                       className="block w-full text-center font-bold text-sm py-3.5 rounded-xl text-black"
                       style={{ background: accent }}
                     >
-                      Get {p.name} — {p.price}/mo →
+                      Start My First Month — {p.price} →
                     </a>
                   </div>
                 ))}
@@ -1128,7 +1129,7 @@ function ResultsScreen({
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold" style={{ color: accentColor }}>{product.price}</p>
-                  <p className="text-white/65 text-xs">per month</p>
+                  <p className="text-white/65 text-xs">first month · cancel anytime</p>
                 </div>
               </div>
               <p className="text-white/90 text-sm leading-relaxed mb-5">{product.description}</p>
@@ -1159,7 +1160,7 @@ function ResultsScreen({
                 className="block w-full text-center font-bold text-base py-4 rounded-xl transition-all duration-200 text-black"
                 style={{ background: accentColor }}
               >
-                Get {product.name} — {product.price}/mo →
+                Start My First Month — {product.price} →
               </a>
             </div>
           )}
@@ -1288,7 +1289,7 @@ function ResultsScreen({
             className="inline-flex items-center gap-2 font-bold text-lg px-10 py-5 rounded-full text-black transition-all duration-200 shadow-lg"
             style={{ background: accentColor, boxShadow: `0 8px 32px ${accentColor}40` }}
           >
-            Start My Protocol — {product.price}/mo <ArrowRight className="w-5 h-5" />
+            Start My First Month — {product.price} <ArrowRight className="w-5 h-5" />
           </a>
           <p className="text-white/75 text-xs mt-3">Prescription required · Compounded by Strive Pharmacy · Ships discreetly</p>
           <p className="text-white/50 text-xs mt-1">Your protocol expires in {timerMins}:{timerSecs}</p>

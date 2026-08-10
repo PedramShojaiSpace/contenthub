@@ -366,27 +366,6 @@ export const tantraQuizRouter = router({
         .set({ email: input.email, name: input.name, emailCapturedAt: now })
         .where(eq(tantraQuizLeads.sessionId, input.sessionId));
 
-      // Fire Kajabi tag (non-fatal)
-      let kajabiTagged = false;
-      if (session.result && session.result !== "pending") {
-        try {
-          const product = TANTRA_PRODUCTS[session.result as keyof typeof TANTRA_PRODUCTS];
-          const contact = await kajabiCreateContact({ email: input.email, name: input.name });
-          await kajabiAddTagByName({ contactId: contact.id, tagName: product.kajabi_tag });
-          await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-quiz-completed" });
-          // Flag-based tags for downstream sequences
-          if (session.gutFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-gut" });
-          if (session.sleepFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-sleep" });
-          if (session.oralFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-oral" });
-          await db.update(tantraQuizLeads)
-            .set({ kajabiTagged: true, kajabiTaggedAt: now })
-            .where(eq(tantraQuizLeads.sessionId, input.sessionId));
-          kajabiTagged = true;
-        } catch (e) {
-          console.warn("[tantraQuiz] Kajabi tag failed (non-fatal):", e);
-        }
-      }
-
       const product = session.result && session.result !== "pending"
         ? TANTRA_PRODUCTS[session.result as keyof typeof TANTRA_PRODUCTS]
         : null;
@@ -396,109 +375,97 @@ export const tantraQuizRouter = router({
       if (session.sleepFlag) upsells.push(TANTRA_UPSELLS.sleep);
       if (session.oralFlag) upsells.push(TANTRA_UPSELLS.oral);
 
-      // Send results email (non-fatal)
-      if (product && isGmailAuthorized()) {
+      // ── Fire all side effects in the background — do NOT block the response ──
+      // The user sees results instantly; Kajabi/Klaviyo/Gmail/notify run async.
+      const sessionSnapshot = { ...session };
+      const productSnapshot = product;
+      const upsellsSnapshot = [...upsells];
+      setImmediate(async () => {
+        let kajabiTagged = false;
+        // 1. Kajabi tagging
+        if (sessionSnapshot.result && sessionSnapshot.result !== "pending") {
+          try {
+            const p = TANTRA_PRODUCTS[sessionSnapshot.result as keyof typeof TANTRA_PRODUCTS];
+            const contact = await kajabiCreateContact({ email: input.email, name: input.name });
+            await kajabiAddTagByName({ contactId: contact.id, tagName: p.kajabi_tag });
+            await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-quiz-completed" });
+            if (sessionSnapshot.gutFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-gut" });
+            if (sessionSnapshot.sleepFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-sleep" });
+            if (sessionSnapshot.oralFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-oral" });
+            const db2 = await getDb();
+            if (db2) await db2.update(tantraQuizLeads)
+              .set({ kajabiTagged: true, kajabiTaggedAt: now })
+              .where(eq(tantraQuizLeads.sessionId, input.sessionId));
+            kajabiTagged = true;
+          } catch (e) {
+            console.warn("[tantraQuiz] Kajabi tag failed (non-fatal):", e);
+          }
+        }
+        // 2. Gmail results email
+        if (productSnapshot && isGmailAuthorized()) {
+          try {
+            const isFemale = sessionSnapshot.result === "tantra_her";
+            const firstName = input.name ? input.name.split(" ")[0] : "there";
+            const ingredientNote = isFemale ? "Tadalafil 5mg (circulation enhancer)" : "Tadalafil 20mg (circulation enhancer)";
+            const upsellLines = upsellsSnapshot.map(u =>
+              `* ${u.name} (${u.price}) - ${u.description.replace(/\u2014/g, '-').replace(/\u2013/g, '-')}\n  Order: ${u.shopifyUrl ?? "shop.theurbanmonk.com"}`
+            ).join("\n\n");
+            const emailBody = [
+              `Hi ${firstName},`,``,`Your Tantra Vitality Quiz results are ready.`,``,
+              `YOUR RECOMMENDATION: ${productSnapshot.name}`,``,`${productSnapshot.description}`,``,
+              `ACTIVE INGREDIENTS:`,
+              `* Oxytocin 40IU - the bonding molecule`,
+              `* Bremelanotide 2mg - reawakens desire`,
+              `* ${ingredientNote}`,``,
+              `Price: ${productSnapshot.price} per month`,`Order here: ${productSnapshot.shopifyUrl}`,``,
+              upsellLines,``,
+              `Dr. Pedram Shojai, OMD`,
+            ].join("\n");
+            await sendGmailOutreach({
+              to: input.email,
+              toName: input.name,
+              subject: `Your Tantra Vitality Results - ${productSnapshot.name} Recommended`,
+              body: emailBody,
+            });
+          } catch (e) {
+            console.warn("[tantraQuiz] Results email failed (non-fatal):", e);
+          }
+        }
+        // 3. Owner notification
         try {
-          const isFemale = session.result === "tantra_her";
-          const firstName = input.name ? input.name.split(" ")[0] : "there";
-          const ingredientNote = isFemale
-            ? "Tadalafil 5mg (circulation enhancer)"
-            : "Tadalafil 20mg (circulation enhancer)";
-
-          const upsellLines = upsells.map(u =>
-            `* ${u.name} (${u.price}) - ${u.description.replace(/\u2014/g, '-').replace(/\u2013/g, '-')}\n  Order: ${u.shopifyUrl ?? "shop.theurbanmonk.com"}`
-          ).join("\n\n");
-
-          const emailBody = [
-            `Hi ${firstName},`,
-            ``,
-            `Your Tantra Vitality Quiz results are ready.`,
-            ``,
-            `=====================================`,
-            `YOUR RECOMMENDATION: ${product.name}`,
-            `=====================================`,
-            ``,
-            `${product.description}`,
-            ``,
-            `ACTIVE INGREDIENTS:`,
-            `* Oxytocin 40IU - the bonding molecule. Restores emotional connection and trust.`,
-            `* Bremelanotide 2mg - the arousal activator. Reawakens desire at the neurological level.`,
-            `* ${ingredientNote} - supports physical response and sensitivity.`,
-            ``,
-            `Price: ${product.price} per month`,
-            `Order here: ${product.shopifyUrl}`,
-            ``,
-            `Shipping note: Your order ships under the Olympus brand name from Strive Pharmacy - same formula, same quality.`,
-            ``,
-            upsells.length > 0 ? `=====================================\nBASED ON YOUR SYMPTOMS, WE ALSO RECOMMEND:\n=====================================\n\n${upsellLines}\n` : ``,
-            `=====================================`,
-            `THE TANTRA COURSE - $199 value`,
-            `=====================================`,
-            ``,
-            `The ancient practices that amplify everything the formula does. Breathwork, meditation, and the Taoist principles of sexual vitality - taught by Dr. Shojai from 20 years of study.`,
-            `Learn more: ${TANTRA_COURSE.shopifyUrl}`,
-            ``,
-            `=====================================`,
-            `LIGHTS ON - $369/year`,
-            `=====================================`,
-            ``,
-            `Everything works better when your energy system is optimized. Lights On is Dr. Shojai's complete program for rebuilding your life force from the ground up.`,
-            `Learn more: ${LIGHTS_ON_COURSE.shopifyUrl}`,
-            ``,
-            `-------------------------------------`,
-            `Dr. Pedram Shojai, OMD`,
-            `Physician | Former Taoist Monk | Author of The Urban Monk`,
-            `Trained in Tantric Traditions`,
-            ``,
-            `This email was sent because you completed the Tantra Vitality Quiz at theurbanmonk.com.`,
-            `To unsubscribe, reply with "unsubscribe" in the subject line.`,
-          ].join("\n");
-
-          await sendGmailOutreach({
-            to: input.email,
-            toName: input.name,
-            subject: `Your Tantra Vitality Results - ${product.name} Recommended`,
-            body: emailBody,
+          const productName = productSnapshot?.name ?? sessionSnapshot.result ?? "unknown";
+          const firstName = input.name ? input.name.split(" ")[0] : "Anonymous";
+          const flags = [
+            sessionSnapshot.gutFlag ? "Gut" : null,
+            sessionSnapshot.sleepFlag ? "Sleep" : null,
+            sessionSnapshot.oralFlag ? "Oral" : null,
+          ].filter(Boolean).join(", ") || "None";
+          await notifyOwner({
+            title: `🌿 Tantra Quiz Complete — ${productName}`,
+            content: `${firstName} (${input.email}) completed the Tantra Vitality Quiz.\n\nRecommendation: ${productName}\nGender: ${sessionSnapshot.gender}\nUpsell flags: ${flags}\nKajabi tagged: ${kajabiTagged ? "✅" : "❌"}\nUTM: ${sessionSnapshot.utmCampaign ?? "direct"}`,
           });
         } catch (e) {
-          console.warn("[tantraQuiz] Results email failed (non-fatal):", e);
+          console.warn("[tantraQuiz] notifyOwner failed (non-fatal):", e);
         }
-      }
+        // 4. Klaviyo autoresponder
+        try {
+          await pushTantraQuizLead({
+            email: input.email,
+            firstName: input.name ? input.name.split(" ")[0] : undefined,
+            result: sessionSnapshot.result as "tantra_him" | "tantra_her" | "tantra_bundle" | "pending" | null,
+            gutFlag: sessionSnapshot.gutFlag ?? false,
+            sleepFlag: sessionSnapshot.sleepFlag ?? false,
+            oralFlag: sessionSnapshot.oralFlag ?? false,
+          });
+        } catch (e) {
+          console.warn("[tantraQuiz] Klaviyo push failed (non-fatal):", e);
+        }
+      });
 
-      // Notify owner on quiz completion (non-fatal)
-      try {
-        const productName = product?.name ?? session.result ?? "unknown";
-        const firstName = input.name ? input.name.split(" ")[0] : "Anonymous";
-        const flags = [
-          session.gutFlag ? "Gut" : null,
-          session.sleepFlag ? "Sleep" : null,
-          session.oralFlag ? "Oral" : null,
-        ].filter(Boolean).join(", ") || "None";
-        await notifyOwner({
-          title: `🌿 Tantra Quiz Complete — ${productName}`,
-          content: `${firstName} (${input.email}) completed the Tantra Vitality Quiz.\n\nRecommendation: ${productName}\nGender: ${session.gender}\nUpsell flags: ${flags}\nKajabi tagged: ${kajabiTagged ? "✅" : "❌"}\nUTM: ${session.utmCampaign ?? "direct"}`,
-        });
-      } catch (e) {
-        console.warn("[tantraQuiz] notifyOwner failed (non-fatal):", e);
-      }
-
-      // Push to Klaviyo autoresponder list (non-fatal)
-      try {
-        await pushTantraQuizLead({
-          email: input.email,
-          firstName: input.name ? input.name.split(" ")[0] : undefined,
-          result: session.result as "tantra_him" | "tantra_her" | "tantra_bundle" | "pending" | null,
-          gutFlag: session.gutFlag ?? false,
-          sleepFlag: session.sleepFlag ?? false,
-          oralFlag: session.oralFlag ?? false,
-        });
-      } catch (e) {
-        console.warn("[tantraQuiz] Klaviyo push failed (non-fatal):", e);
-      }
-
+      // Return immediately — side effects run in background
       return {
         success: true,
-        kajabiTagged,
+        kajabiTagged: false, // will be updated async
         result: session.result,
         product,
         upsells,

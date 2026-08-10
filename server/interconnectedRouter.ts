@@ -125,9 +125,24 @@ export const interconnectedRouter = router({
 
       // ── Step 2: Save to local DB immediately (safety backup) ──────────────────
       let localLeadId: number | null = null;
+      let isDuplicate = false;
       try {
         const db = await getDb();
         if (db) {
+          // Dedup check: if this email opted in within the last 24 hours, skip insert
+          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+          const [existing] = await db
+            .select({ id: interconnectedLeads.id })
+            .from(interconnectedLeads)
+            .where(
+              sql`${interconnectedLeads.email} = ${email.toLowerCase().trim()} AND ${interconnectedLeads.createdAt} >= ${oneDayAgo}`
+            )
+            .limit(1);
+          if (existing) {
+            isDuplicate = true;
+            localLeadId = existing.id;
+            console.log(`[interconnectedRouter] Duplicate opt-in within 24h — skipping DB insert: ${email} (existing id: ${localLeadId})`);
+          } else {
           const result = await db.insert(interconnectedLeads).values({
             email: email.toLowerCase().trim(),
             name: name.trim(),
@@ -152,6 +167,7 @@ export const interconnectedRouter = router({
           // insertId lives on result[0] in newer versions, fallback to result directly for older
           localLeadId = (result as any)?.[0]?.insertId ?? (result as any)?.insertId ?? null;
           console.log(`[interconnectedRouter] Lead saved to DB: ${email} (id: ${localLeadId})`);
+          }
         }
       } catch (err) {
         // Non-fatal — log but don't block the registration
@@ -279,6 +295,10 @@ export const interconnectedRouter = router({
 
       // ── Instant owner notification on every new opt-in ────────────────────────────────────────
       try {
+        // Skip notification for duplicate opt-ins — they already got one within 24h
+        if (isDuplicate) {
+          console.log(`[interconnectedRouter] Skipping owner notification for duplicate opt-in: ${email}`);
+        } else {
         const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
         const sourceLabel = utmSource ? `${utmSource}${utmCampaign ? ` / ${utmCampaign}` : ""}` : "organic";
         const phoneLabel = phone ? ` | Phone: ${phone}${smsConsent ? " (SMS ✅)" : ""}` : "";
@@ -293,6 +313,7 @@ export const interconnectedRouter = router({
             `Klaviyo synced: ${smsSubscribed ? "✅ SMS subscribed" : "email only"}\n` +
             `Time: ${nowStr} CT`,
         });
+        }
       } catch (notifyErr) {
         // Non-fatal
         console.warn("[interconnectedRouter] notifyOwner failed:", notifyErr);

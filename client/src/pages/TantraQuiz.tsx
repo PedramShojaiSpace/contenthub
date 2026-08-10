@@ -613,6 +613,14 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
           This 2-minute quiz will identify exactly what's dimming the campfire between you — and show you the East-West prescription formula I developed to bring it back.
         </p>
 
+        {/* ── Divorce angle hook ── */}
+        <div className="mb-6 max-w-lg border border-amber-700/30 bg-amber-900/10 rounded-xl px-5 py-4">
+          <p className="text-amber-400 text-xs font-semibold tracking-widest uppercase mb-2">Considering Divorce?</p>
+          <p className="text-white/80 text-sm leading-relaxed">
+            Before you make that call — the distance you feel may not be what you think it is. The loss of desire, the emotional disconnection, the sense that the person you married has become a stranger — these are often not signs that love is gone. They are signs that the neurochemistry of connection has been depleted. The campfire between you is still there. Let's find out what's dimming it.
+          </p>
+        </div>
+
         {/* ── INTRO VIDEO EMBED (activate when ready) ──
             1. Upload intro video to Wistia
             2. Replace TANTRA_INTRO_VIDEO_ID with your media ID (e.g. "abc123xyz")

@@ -155,38 +155,38 @@ export const TANTRA_QUIZ_QUESTIONS = [
 export const TANTRA_PRODUCTS = {
   tantra_him: {
     name: "Tantra Him",
-    tagline: "Maximum Strength Formula for Men",
-    headline: "Your life force is ready to come back online.",
-    subheadline: "The East-West formula designed for men who are ready to feel fully alive again.",
-    description: "Tantra Him combines Oxytocin (the bonding molecule), Bremelanotide (the arousal activator), and Tadalafil (the circulation enhancer) in a precision-compounded sublingual tablet - backed by 5,000 years of Taoist medicine and modern clinical science.",
+    tagline: "Reignite Desire. Deepen Connection. Come Home to Each Other.",
+    headline: "The campfire between you is still there. Let's bring it back.",
+    subheadline: "Tantra Him is the formula I developed to help men show up fully — with desire, presence, and the kind of connection that makes your partner feel truly seen.",
+    description: "Tantra Him combines Oxytocin (the bonding molecule that opens the heart), Bremelanotide (which reawakens desire at the neurological level), and Tadalafil (for the circulation that makes intimacy feel the way it's supposed to). Precision-compounded, physician-prescribed, and rooted in 5,000 years of Taoist wisdom about love and the sacred bed chamber.",
     price: "$185",
     shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-him",
     kajabi_tag: "tantra-quiz-him",
-    primaryColor: "#B8860B", // dark gold
+    primaryColor: "#B8860B",
     accentColor: "#1a1a1a",
   },
   tantra_her: {
     name: "Tantra Her",
-    tagline: "Maximum Strength Formula for Women",
-    headline: "Your life force is ready to come back online.",
-    subheadline: "The East-West formula designed for women who are ready to feel fully alive again.",
-    description: "Tantra Her combines Oxytocin (the bonding molecule), Bremelanotide (the arousal activator), and Tadalafil 5mg (the circulation enhancer) in a precision-compounded sublingual tablet - backed by 5,000 years of Taoist medicine and modern clinical science.",
+    tagline: "Reawaken Desire. Open the Heart. Come Back to Each Other.",
+    headline: "The warmth you remember — it's still there. Let's bring it back.",
+    subheadline: "Tantra Her is the formula I developed to help women feel fully present — with desire, openness, and the deep connection that makes love feel like coming home.",
+    description: "Tantra Her combines Oxytocin (the bonding molecule that opens the heart and deepens trust), Bremelanotide (which restores desire that modern life has quietly dimmed), and Tadalafil 5mg (for the sensitivity and circulation that makes intimacy feel the way it's supposed to). Precision-compounded, physician-prescribed, and rooted in 5,000 years of Taoist wisdom about love and the sacred bed chamber.",
     price: "$185",
     shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-her",
     kajabi_tag: "tantra-quiz-her",
-    primaryColor: "#9B59B6", // violet
+    primaryColor: "#9B59B6",
     accentColor: "#1a1a1a",
   },
   tantra_bundle: {
     name: "Tantra Bundle — Him & Her",
-    tagline: "For Couples Ready to Restore Everything",
-    headline: "The complete East-West life force restoration system for couples.",
-    subheadline: "Both formulas. The Tantra Course included free. Everything you need — together.",
-    description: "The Tantra Bundle includes Tantra Him + Tantra Her — both precision-compounded sublingual formulas — plus the complete Tantra Course ($199 value) included free. Designed for couples who want to do this together.",
+    tagline: "For Couples Ready to Come Back to Each Other",
+    headline: "The campfire of your love — let's build it back together.",
+    subheadline: "Both formulas. Designed for couples who want to do this side by side — and come out the other side closer than they've been in years.",
+    description: "The Tantra Bundle includes Tantra Him + Tantra Her — both precision-compounded sublingual formulas — designed for couples who want to rebuild desire, deepen connection, and rediscover the intimacy that brought them together. Each person completes their own telemedicine intake. Both formulas ship discreetly to your door.",
     price: "$369",
     shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-bundle-him-her",
     kajabi_tag: "tantra-quiz-bundle",
-    primaryColor: "#8B6914", // warm gold
+    primaryColor: "#8B6914",
     accentColor: "#1a1a1a",
   },
 };
@@ -196,21 +196,21 @@ export const TANTRA_PRODUCTS = {
 export const TANTRA_UPSELLS = {
   sleep: {
     name: "Sleep Test Kit",
-    description: "Jing restoration happens during deep sleep. This kit identifies exactly what's disrupting your recovery.",
+    description: "Deep, restorative sleep is when the body rebuilds the chemistry of desire and connection. This kit identifies exactly what's disrupting your recovery.",
     price: "$399",
     shopifyUrl: "https://shop.theurbanmonk.com/products/dss-testing-tier-dss-entry",
     flag: "sleep_flag" as const,
   },
   gut: {
     name: "Gut Health Test Kit",
-    description: "Your gut microbiome directly regulates hormonal production. This kit reveals what's blocking your vitality at the root.",
+    description: "Your gut microbiome directly regulates the hormones and neurochemicals behind desire and emotional connection. This kit reveals what's blocking you at the root.",
     price: "$399",
     shopifyUrl: "https://shop.theurbanmonk.com/products/kbmo-fit-22-gut-permeability-test-kit-with-consultation",
     flag: "gut_flag" as const,
   },
   oral: {
     name: "Oral Health Test Kit",
-    description: "Oral inflammation is the hidden driver of systemic hormone disruption. This kit finds it.",
+    description: "Oral inflammation quietly suppresses the hormones that drive desire and bonding. This kit finds the source.",
     price: "$399",
     shopifyUrl: "https://shop.theurbanmonk.com/products/orobiome-testing-package",
     flag: "oral_flag" as const,
@@ -221,16 +221,16 @@ export const TANTRA_UPSELLS = {
 
 export const TANTRA_COURSE = {
   name: "The Tantra Course",
-  tagline: "The Ancient Practice Behind the Formula",
-  description: "Dr. Pedram Shojai spent 10 years as a Taoist monk studying the traditions that treat sexual energy as the root of all vitality. This course is the complete East-West practice system - the philosophy, the breathwork, the rituals, and the science.",
+  tagline: "The Ancient Practice of the Bed Chamber",
+  description: "Dr. Pedram Shojai spent 10 years as a Taoist monk studying the sacred traditions of love, desire, and the bed chamber. This course is the complete East-West practice system — the philosophy, the breathwork, the rituals, and the science of coming back to each other.",
   price: "$199",
   shopifyUrl: "https://shop.theurbanmonk.com/products/1710780",
 };
 
 export const LIGHTS_ON_COURSE = {
   name: "Lights On",
-  tagline: "The Complete Vitality System",
-  description: "Everything works better when your energy system is optimized. Lights On is Dr. Shojai's complete program for rebuilding your life force from the ground up - sleep, gut, hormones, mindset, and sexual vitality all in one place.",
+  tagline: "The Complete Reconnection System",
+  description: "Everything works better when your energy and health are optimized. Lights On is Dr. Shojai's complete program for rebuilding from the ground up — sleep, gut, hormones, mindset, and the desire to truly connect with the person you love.",
   price: "$369/year",
   shopifyUrl: "https://shop.theurbanmonk.com/products/lights-on",
 };

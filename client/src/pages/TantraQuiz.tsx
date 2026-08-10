@@ -602,15 +602,15 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
 
         <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-5">
           The Ancient Secret to Desire,<br />
-          <span className="text-amber-400">Passion, and the Bed Chamber</span>
+          <span className="text-amber-400">Passion, and Coming Back to Each Other</span>
         </h1>
 
         <p className="text-white/85 text-base md:text-lg leading-relaxed mb-4 max-w-lg">
-          I spent 10 years as a Taoist monk studying the sacred traditions of the bed chamber — the ancient science of desire, connection, and what it means to truly come alive with the person you love.
+          I spent 10 years as a Taoist monk studying the sacred traditions of the bed chamber — the ancient science of desire, love, and what it means to truly come home to the person you chose.
         </p>
 
         <p className="text-white/75 text-sm md:text-base leading-relaxed mb-8 max-w-lg">
-          This 2-minute quiz will identify exactly what's standing between you and the most passionate, connected intimacy of your life — and show you the East-West prescription formula I developed to restore it.
+          This 2-minute quiz will identify exactly what's dimming the campfire between you — and show you the East-West prescription formula I developed to bring it back.
         </p>
 
         {/* ── INTRO VIDEO EMBED (activate when ready) ──
@@ -886,11 +886,11 @@ function EmailCaptureScreen({
         </h2>
         <p className="text-white/85 text-base mb-2">
           {product
-            ? `Based on your answers, we've identified the right formula for you.`
-            : `Based on your answers, we've personalized your recommendations.`}
+            ? `Based on your answers, we've identified the right formula to help you reconnect.`
+            : `Based on your answers, we've personalized your path back to each other.`}
         </p>
         <p className="text-white/65 text-sm mb-8 italic">
-          Enter your email to see your personalized results — and to receive Dr. Shojai's free guide on restoring your life force.
+          Enter your email to see your personalized results — and to receive Dr. Shojai's free guide on reigniting desire and coming back to each other.
         </p>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -991,16 +991,16 @@ function ResultsScreen({
             </div>
             <h3 className="text-white font-bold text-xl mb-2">Before you go…</h3>
             <p className="text-white/80 text-sm mb-4 leading-relaxed">
-              Dr. Shojai spent 10 years as a Taoist monk studying the ancient science of the bed chamber. Your quiz results point to exactly what's standing between you and the intimacy you remember — and want back.
+              The campfire between you is still there. Your quiz results show exactly what's dimming it — and the formula Dr. Shojai developed to bring it back. Don't leave without seeing what's possible.
             </p>
             <p className="text-amber-400 text-sm font-semibold mb-5">Your protocol is still reserved for the next {timerMins}:{timerSecs}.</p>
             <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => setShowExitPopup(false)}
               className="block w-full text-center font-bold text-base py-4 rounded-xl text-black mb-3" style={{ background: accentColor }}>
              Start My First Month — {product.price} →
             </a>
-            <p className="text-white/50 text-xs mb-2">Try it for 30 days. If it's not the best decision you've made for your vitality, you never have to order again.</p>
+            <p className="text-white/50 text-xs mb-2">Try it for 30 days. If it doesn't bring you closer, you never have to order again.</p>
             <button onClick={() => setShowExitPopup(false)} className="text-white/45 text-xs hover:text-white/65">
-              No thanks, I'll pass on restoring my vitality
+              No thanks, I'll pass on coming back to each other
             </button>
           </div>
         </div>
@@ -1015,7 +1015,7 @@ function ResultsScreen({
           <p className="text-white/85 text-xs">
             {timerExpired
               ? "Your results are still available — start your protocol today."
-              : <><span className="font-bold" style={{ color: accentColor }}>{timerMins}:{timerSecs}</span>{" — Your personalized protocol is reserved"}</>}
+              : <><span className="font-bold" style={{ color: accentColor }}>{timerMins}:{timerSecs}</span>{" — Your path back to each other is reserved"}</>}
           </p>
         </div>
         <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer"
@@ -1088,7 +1088,7 @@ function ResultsScreen({
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold" style={{ color: accent }}>{p.price}</p>
-                        <p className="text-white/55 text-xs">first month · cancel anytime</p>
+                        <p className="text-white/55 text-xs">first month · no commitment</p>
                       </div>
                     </div>
                     <div className="space-y-1.5 mb-4">

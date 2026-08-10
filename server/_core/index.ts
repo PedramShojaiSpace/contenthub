@@ -1688,14 +1688,15 @@ async function startServer() {
       // ── Smart fallback for Kajabi upsell webhooks ────────────────────────
       // Kajabi's one-click upsell sends offer_name="Kajabi Purchase", offer_id="", amount=0
       // When we see this pattern, look up the buyer in our leads DB:
-      //   - If they opted in within 60 days → treat as $299 OCUS (the only active upsell)
+      //   - If they have a prior $67 purchase → treat as $299 OCUS upsell
+      //   - If no prior purchase → treat as $67 All-Access Bundle (first purchase)
       //   - Log the inference so we can audit it
       if (rawAmountCents === 0 && knownPriceCents === 0 && 
           (offerName === "Kajabi Purchase" || offerName === "") && email) {
         try {
           const { getDb } = await import("../db");
-          const { interconnectedLeads } = await import("../../drizzle/schema");
-          const { eq } = await import("drizzle-orm");
+          const { interconnectedLeads, kajabiPurchases: kajabiPurchasesTable } = await import("../../drizzle/schema");
+          const { eq, and, gt } = await import("drizzle-orm");
           const db = getDb();
           const sixtyDaysAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
           const [lead] = await db.select({ id: interconnectedLeads.id, createdAt: interconnectedLeads.createdAt })
@@ -1703,10 +1704,25 @@ async function startServer() {
             .where(eq(interconnectedLeads.email, email.toLowerCase()))
             .limit(1);
           if (lead && lead.createdAt && lead.createdAt > sixtyDaysAgo) {
-            knownPriceCents = 29900; // $299 OCUS — only active upsell in this funnel
-            console.log(`[kajabi/purchase] Generic upsell payload for ${email} — inferred $299 OCUS (lead found, opted in ${Math.round((Date.now()-lead.createdAt)/86400000)}d ago)`);
+            // Check if they already have a $67 purchase — if so, this is the $299 OCUS upsell
+            const [priorBundle] = await db.select({ id: kajabiPurchasesTable.id })
+              .from(kajabiPurchasesTable)
+              .where(and(
+                eq(kajabiPurchasesTable.email, email.toLowerCase()),
+                gt(kajabiPurchasesTable.amountCents, 0)
+              ))
+              .limit(1);
+            if (priorBundle) {
+              knownPriceCents = 29900; // $299 OCUS — they already bought the $67 bundle
+              console.log(`[kajabi/purchase] Generic payload for ${email} — inferred $299 OCUS (has prior purchase, lead opted in ${Math.round((Date.now()-lead.createdAt)/86400000)}d ago)`);
+            } else {
+              knownPriceCents = 6700; // $67 All-Access Bundle — first purchase in funnel
+              console.log(`[kajabi/purchase] Generic payload for ${email} — inferred $67 Bundle (no prior purchase, lead opted in ${Math.round((Date.now()-lead.createdAt)/86400000)}d ago)`);
+            }
           } else {
-            console.log(`[kajabi/purchase] Generic upsell payload for ${email} — no recent lead found, cannot infer price`);
+            // Not in leads DB — infer $67 bundle as default (most common first purchase)
+            knownPriceCents = 6700;
+            console.log(`[kajabi/purchase] Generic payload for ${email} — no recent lead found, defaulting to $67 Bundle`);
           }
         } catch (inferErr) {
           console.warn(`[kajabi/purchase] Price inference failed for ${email}:`, inferErr);

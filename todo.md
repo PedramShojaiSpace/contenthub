@@ -4570,3 +4570,4 @@ Pricing model (corrected):
 - [ ] Investigate why 439 LP views → only 26 leads (5.9%) when Aug 3 was 36%
 - [ ] Check if form is silently failing for most visitors today
 - [x] Replace the Tantra quiz couple-path Wistia video with nxh6n82ax4
+- [x] Add Shopify Tantra SKU orders, revenue, and calculated ROAS to the Tantra funnel dashboard

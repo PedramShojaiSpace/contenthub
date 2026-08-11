@@ -1051,10 +1051,12 @@ function ResultsScreen({
 
           {/* ── PERSONALIZED RESULTS VIDEO ── */}
           {(() => {
-            // Him video: 89uaizbbp7 | Her video: 32lqci0nzk
+            // Intro: sq2gcr1ggd | Him: 89uaizbbp7 | Her: 32lqci0nzk | Both: hccen78w9l
             const videoId = result === "tantra_her"
               ? "32lqci0nzk"
-              : "89uaizbbp7"; // Him video (also used for couple path)
+              : isCouple
+              ? "hccen78w9l" // Both / couple path
+              : "89uaizbbp7"; // Him path
             return (
               <div className="mb-8 rounded-2xl overflow-hidden border border-white/10 max-w-2xl mx-auto" style={{aspectRatio:'16/9'}}>
                 <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>

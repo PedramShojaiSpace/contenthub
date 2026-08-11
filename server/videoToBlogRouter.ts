@@ -85,7 +85,7 @@ QUALITY GATE (self-check before outputting):
 - YOAST SEO CHECK #4: Are there at least 3 internal links to theurbanmonk.com URLs from the provided list?
 - YOAST SEO CHECK #4b (OUTBOUND LINKS — RED FAIL IF MISSING): Are there at least 2 [Outbound Link: ...] placeholders in the article? One in the body, one in the FAQ? If not, add them NOW before outputting.
 - YOAST SEO CHECK #5: Is the SEO title 48 characters or fewer AND starts with the focus keyword?
-- YOAST SEO CHECK #6: Is the meta description EXACTLY 140-150 characters? Must NOT end with '...'.
+- YOAST SEO CHECK #6: Is the meta description 120-135 characters? Must NOT end with '...'.
 - YOAST SEO CHECK #7: Are H2 headings varied — no more than 25% of H2s contain the exact focus keyword phrase?
 - YOAST READABILITY CHECK: Is every prose block under 300 words before the next heading?
 - YOAST READABILITY CHECK: Is every paragraph under 150 words?
@@ -488,7 +488,7 @@ export const videoToBlogRouter = router({
       } catch {}
 
       const focusKwNote = input.focusKeyword
-        ? `\n\nSEO NOTE: The target focus keyword is "${input.focusKeyword}". Use it naturally in the first or second sentence, in at least one H2 or H3, and 8–12 times throughout the finished article. Use normal title capitalization for every heading and sentence.`
+        ? `\n\nSEO NOTE: The target focus keyword is "${input.focusKeyword}". Use it naturally in the first or second sentence, in at least two H2 or H3 headings, and 8–12 times throughout the finished article. Use transition words or phrases in at least 32% of prose sentences. Use normal title capitalization for every heading and sentence.`
         : "";
 
       const userMessage = `Video title: ${input.videoTitle}${focusKwNote}${input.customInstructions ? `\n\nCustom instructions: ${input.customInstructions}` : ""}
@@ -602,7 +602,7 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
         messages: [
           {
             role: "system",
-            content: `You are an SEO specialist. Extract structured metadata from this blog article. Use normal title capitalization. The SEO title MUST start with the exact focus keyword and be 48 characters or fewer. The meta description MUST be 140-150 characters and NOT end with '...'.`,
+            content: `You are an SEO specialist. Extract structured metadata from this blog article. Use normal title capitalization. The SEO title MUST start with the exact focus keyword and be 48 characters or fewer. The meta description MUST be 120-135 characters and NOT end with '...'.`,
           },
           {
             role: "user",
@@ -619,7 +619,7 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
               properties: {
                 title: { type: "string", description: "SEO title: starts with focus keyword, max 48 chars" },
                 slug: { type: "string", description: "URL slug, lowercase, hyphens only, max 60 chars" },
-                metaDescription: { type: "string", description: "Meta description: 140-150 chars, no trailing ellipsis" },
+                metaDescription: { type: "string", description: "Meta description: 120-135 chars, no trailing ellipsis" },
                 focusKeyword: { type: "string", description: "Primary focus keyphrase, 2-4 words" },
                 semanticKeywords: { type: "string", description: "5-8 related keywords, comma-separated" },
               },
@@ -656,9 +656,9 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
       }
       meta.title = toHeadlineCase(meta.title);
 
-      // ── Hard-cap meta description at 155 chars (Yoast max is 156) ─────────────────
-      if (meta.metaDescription && meta.metaDescription.length > 155) {
-        let md = meta.metaDescription.slice(0, 152);
+      // ── Conservative snippet cap avoids Yoast truncating the displayed description ─
+      if (meta.metaDescription && meta.metaDescription.length > 135) {
+        let md = meta.metaDescription.slice(0, 135);
         const lastSpace = md.lastIndexOf(" ");
         if (lastSpace > 80) md = md.slice(0, lastSpace);
         meta.metaDescription = md.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
@@ -855,17 +855,17 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
         const kwLower = input.focusKeyword.toLowerCase();
         if (!metaDesc.toLowerCase().includes(kwLower)) {
           const prefix = `${input.focusKeyword}: `;
-          const maxBodyLen = 148 - prefix.length;
+          const maxBodyLen = 135 - prefix.length;
           metaDesc = (prefix + trimToWordBoundary(metaDesc, maxBodyLen)).trimEnd().replace(/[,;:\-–—]$/, "").trimEnd();
         } else {
-          metaDesc = trimToWordBoundary(metaDesc, 148);
+          metaDesc = trimToWordBoundary(metaDesc, 135);
         }
       } else {
-        metaDesc = trimToWordBoundary(metaDesc, 148);
+        metaDesc = trimToWordBoundary(metaDesc, 135);
       }
-      if (metaDesc.length > 155) {
-        const sp = metaDesc.slice(0, 148).lastIndexOf(" ");
-        metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 148)).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+      if (metaDesc.length > 135) {
+        const sp = metaDesc.slice(0, 135).lastIndexOf(" ");
+        metaDesc = (sp > 0 ? metaDesc.slice(0, sp) : metaDesc.slice(0, 135)).trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
       }
 
       // ── Step 6: Resolve WP categories and tags ────────────────────────────────

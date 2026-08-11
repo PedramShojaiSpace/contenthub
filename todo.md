@@ -4579,3 +4579,4 @@ Pricing model (corrected):
 - [x] Verify $199 Kajabi one-click upsell classification, attribution, and inclusion in Interconnected ROAS
 - [x] Add DataForSEO and vidIQ-informed keyword recommendations before YouTube-to-blog generation
 - [x] Repair WordPress post 11129 capitalization and Yoast SEO gaps; enforce the relevant generator quality gates
+- [x] Resolve WordPress post 11129 Yoast subheading, meta-length, and transition-word findings; enforce matching generator checks

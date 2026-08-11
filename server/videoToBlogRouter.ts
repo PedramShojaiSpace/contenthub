@@ -27,6 +27,7 @@ import { getYouTubeAuthUrl, isYouTubeAuthorized, getYouTubeClient } from "./yout
 import { getKeywordOverview } from "./dataForSeo";
 import { vidiqKeywordResearch } from "./vidiq";
 import { cleanKeywordCandidates, rankKeywordRecommendations } from "./videoKeywordRecommendations";
+import { auditBlogSeo, buildSeoRepairInstructions, toHeadlineCase } from "./blogSeoPreflight";
 
 // ── Full Yoast-optimized blog system prompt (identical to BLOG_CONTENT_RULES in routers.ts) ──
 const BLOG_CONTENT_RULES = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
@@ -487,7 +488,7 @@ export const videoToBlogRouter = router({
       } catch {}
 
       const focusKwNote = input.focusKeyword
-        ? `\n\nSEO NOTE: The target focus keyword is "${input.focusKeyword}". Use it in the opening paragraph, at least one H2, and 3–5 times throughout.`
+        ? `\n\nSEO NOTE: The target focus keyword is "${input.focusKeyword}". Use it naturally in the first or second sentence, in at least one H2 or H3, and 8–12 times throughout the finished article. Use normal title capitalization for every heading and sentence.`
         : "";
 
       const userMessage = `Video title: ${input.videoTitle}${focusKwNote}${input.customInstructions ? `\n\nCustom instructions: ${input.customInstructions}` : ""}
@@ -601,7 +602,7 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
         messages: [
           {
             role: "system",
-            content: `You are an SEO specialist. Extract structured metadata from this blog article. The SEO title MUST start with the focus keyword and be 48 characters or fewer. The meta description MUST be 140-150 characters and NOT end with '...'.`,
+            content: `You are an SEO specialist. Extract structured metadata from this blog article. Use normal title capitalization. The SEO title MUST start with the exact focus keyword and be 48 characters or fewer. The meta description MUST be 140-150 characters and NOT end with '...'.`,
           },
           {
             role: "user",
@@ -643,12 +644,69 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
         meta = { ...meta, ...parsed };
       } catch {}
 
+      // The selected keyword is authoritative. Do not allow a later metadata
+      // extraction pass to quietly replace the user-approved research target.
+      if (input.focusKeyword) {
+        meta.focusKeyword = input.focusKeyword;
+        const keywordTitle = toHeadlineCase(input.focusKeyword);
+        meta.title = meta.title.toLowerCase().startsWith(input.focusKeyword.toLowerCase())
+          ? toHeadlineCase(meta.title)
+          : keywordTitle;
+        if (meta.title.length > 48) meta.title = keywordTitle.slice(0, 48).trimEnd();
+      }
+      meta.title = toHeadlineCase(meta.title);
+
       // ── Hard-cap meta description at 155 chars (Yoast max is 156) ─────────────────
       if (meta.metaDescription && meta.metaDescription.length > 155) {
         let md = meta.metaDescription.slice(0, 152);
         const lastSpace = md.lastIndexOf(" ");
         if (lastSpace > 80) md = md.slice(0, lastSpace);
         meta.metaDescription = md.trimEnd().replace(/[,;:\-\u2013\u2014]$/, "").trimEnd();
+      }
+
+      // ── Final Yoast preflight and bounded repair pass ─────────────────────────
+      // The prompt instructs these rules, but this guard prevents a draft from
+      // silently carrying the same title/density/capitalization gaps seen in post 11129.
+      if (meta.focusKeyword) {
+        let preflight = auditBlogSeo({
+          article: articleBody,
+          focusKeyword: meta.focusKeyword,
+          seoTitle: meta.title,
+          metaDescription: meta.metaDescription,
+        });
+        const articleOnlyIssues = preflight.issues.filter((issue) =>
+          issue.includes("first two sentences") || issue.includes("appears") || issue.includes("H2 or H3")
+        );
+        if (articleOnlyIssues.length) {
+          try {
+            const repairResponse = await invokeLLM({
+              model: "gpt-5-mini",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a meticulous copy editor repairing a draft for Yoast SEO. Return only the complete revised Markdown article. Never invent clinical facts, statistics, citations, URLs, product claims, or testimonials.",
+                },
+                {
+                  role: "user",
+                  content: `${buildSeoRepairInstructions(preflight, meta.focusKeyword)}\n\nARTICLE:\n${articleBody}`,
+                },
+              ],
+            });
+            const repaired = String(repairResponse.choices?.[0]?.message?.content ?? "").trim();
+            if (repaired.length >= 400) articleBody = repaired;
+          } catch (error) {
+            console.warn("[VideoToBlog] Yoast repair pass failed:", (error as Error).message);
+          }
+          preflight = auditBlogSeo({
+            article: articleBody,
+            focusKeyword: meta.focusKeyword,
+            seoTitle: meta.title,
+            metaDescription: meta.metaDescription,
+          });
+        }
+        if (preflight.issues.length) {
+          throw new Error(`Blog failed the Yoast preflight: ${preflight.issues.join(" ")}`);
+        }
       }
 
       // Prepend the YouTube embed to the article body
@@ -763,25 +821,24 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
         }
       }
 
-      // ── Step 4: Build SEO title (keyphrase-first, ≤60 chars) ─────────────────
+      // ── Step 4: Build SEO title (keyphrase-first, ≤48 chars) ─────────────────
       let seoTitle: string;
       if (input.focusKeyword) {
         const kw = input.focusKeyword;
-        const kwCapitalised = kw.charAt(0).toUpperCase() + kw.slice(1);
+        const kwCapitalised = toHeadlineCase(kw);
         seoTitle = input.title.toLowerCase().startsWith(kw.toLowerCase())
-          ? `${input.title} | The Urban Monk`
-          : `${kwCapitalised}: ${input.title} | The Urban Monk`;
-        if (seoTitle.length > 60) {
-          const shortTitle = `${kwCapitalised} | The Urban Monk`;
-          seoTitle = shortTitle.length <= 60 ? shortTitle : `${kwCapitalised.slice(0, 60 - " | The Urban Monk".length)} | The Urban Monk`;
+          ? toHeadlineCase(input.title)
+          : `${kwCapitalised}: ${toHeadlineCase(input.title)}`;
+        if (seoTitle.length > 48) {
+          seoTitle = kwCapitalised.length <= 48 ? kwCapitalised : kwCapitalised.slice(0, 48).trimEnd();
         }
       } else {
-        seoTitle = `${input.title} | The Urban Monk`;
-        if (seoTitle.length > 60) {
-          let trimmed = seoTitle.slice(0, 57);
+        seoTitle = toHeadlineCase(input.title);
+        if (seoTitle.length > 48) {
+          let trimmed = seoTitle.slice(0, 48);
           const lastSpace = trimmed.lastIndexOf(" ");
           if (lastSpace > 20) trimmed = trimmed.slice(0, lastSpace);
-          seoTitle = trimmed.trimEnd() + "...";
+          seoTitle = trimmed.trimEnd();
         }
       }
 

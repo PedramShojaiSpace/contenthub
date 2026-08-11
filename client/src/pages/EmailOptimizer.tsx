@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  Lightbulb,
 } from "lucide-react";
 
 type Severity = "ok" | "warning" | "bad";
@@ -36,6 +37,12 @@ interface SpamSignal {
   tip: string;
 }
 
+interface CopyPatternReview {
+  name: string;
+  status: "present" | "consider";
+  detail: string;
+}
+
 interface OptResult {
   optimizedHtml: string;
   originalBytes: number;
@@ -43,6 +50,7 @@ interface OptResult {
   reductionPercent: number;
   changes: string[];
   warnings: string[];
+  copyReview: CopyPatternReview[];
   spamScore: {
     before: number;
     after: number;
@@ -92,6 +100,85 @@ function ScoreBar({ score, max = 15 }: { score: number; max?: number }) {
       </div>
       <div className="h-2 rounded-full bg-border overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+const WINNING_COPY_PATTERNS = [
+  {
+    title: "Open inside a recognizable moment",
+    body: "Lead with a scene the reader can feel—at dinner, in a meeting, in bed, or on a call—before explaining the issue.",
+  },
+  {
+    title: "Reframe without blame",
+    body: "Release shame first: the reader may not be lazy, broken, or failing. Then offer a grounded mechanism or new frame.",
+  },
+  {
+    title: "Give context before the link",
+    body: "Teach, empathize, or make the problem intelligible before asking for the click. Let the offer feel like the next logical step.",
+  },
+  {
+    title: "Keep one clear next step",
+    body: "Use a direct, low-friction CTA such as “Watch the video,” “Read the breakdown,” or “See what testing reveals.”",
+  },
+  {
+    title: "Use the P.S. as a conversion assist",
+    body: "Add one final detail, objection answer, or invitation to reply—not a second sales pitch.",
+  },
+];
+
+function WinningCopyPlaybook() {
+  return (
+    <section className="rounded-xl border border-violet-200 bg-violet-50 p-5">
+      <div className="flex gap-3">
+        <Lightbulb className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-violet-950">Winning Copy Playbook</h2>
+          <p className="text-xs text-violet-900/75 mt-1 leading-relaxed">
+            Patterns observed in the winning variants you supplied. Use these as a writing guide, not as a promise that any single pattern causes performance.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            {WINNING_COPY_PATTERNS.map((pattern, index) => (
+              <div key={pattern.title} className="rounded-lg border border-violet-200/80 bg-white/75 p-3">
+                <div className="flex gap-2">
+                  <span className="w-5 h-5 shrink-0 rounded-full bg-violet-100 text-violet-700 text-[11px] font-semibold flex items-center justify-center">{index + 1}</span>
+                  <div>
+                    <h3 className="text-xs font-semibold text-foreground">{pattern.title}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-1">{pattern.body}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CopyReviewPanel({ reviews }: { reviews: CopyPatternReview[] }) {
+  if (!reviews.length) return null;
+  return (
+    <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Lightbulb className="w-4 h-4 text-violet-600" />
+        <h3 className="text-sm font-semibold text-violet-950">Winning Copy Review</h3>
+      </div>
+      <p className="text-xs text-violet-900/75">Editorial guidance from your supplied winning variants—not a deliverability or revenue score.</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {reviews.map((review) => {
+          const present = review.status === "present";
+          return (
+            <div key={review.name} className="flex gap-2 rounded-lg border border-violet-200/80 bg-white/75 p-3">
+              {present ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" /> : <Lightbulb className="w-4 h-4 shrink-0 text-violet-600 mt-0.5" />}
+              <div>
+                <div className="text-xs font-semibold text-foreground">{review.name}</div>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{review.detail}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -241,6 +328,8 @@ export default function EmailOptimizer() {
       </div>
 
       <div className="max-w-6xl mx-auto px-8 py-8 space-y-8">
+
+        <WinningCopyPlaybook />
 
         {/* Tab switcher */}
         <div className="flex gap-2 border-b border-border pb-0">
@@ -629,6 +718,8 @@ export default function EmailOptimizer() {
                             </ul>
                           </div>
 
+                          <CopyReviewPanel reviews={res.copyReview} />
+
                           {/* Optimized HTML preview */}
                           <div className="space-y-2">
                             <p className="text-xs text-muted-foreground font-medium">Optimized HTML</p>
@@ -766,6 +857,8 @@ export default function EmailOptimizer() {
                     ))}
                   </div>
                 </div>
+
+                <CopyReviewPanel reviews={result.copyReview} />
 
                 {result.warnings && result.warnings.length > 0 && (
                   <div className="rounded-xl border border-red-200 bg-red-50 p-5 space-y-2">

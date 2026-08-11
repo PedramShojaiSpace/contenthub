@@ -21,6 +21,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { minify } from "html-minifier-terser";
 import juice from "juice";
 import * as cheerio from "cheerio";
+import { reviewWinningCopyPatterns, type CopyPatternReview } from "./emailCopyPatterns";
 
 interface OptimizationResult {
   optimizedHtml: string;
@@ -29,6 +30,7 @@ interface OptimizationResult {
   reductionPercent: number;
   changes: string[];
   warnings: string[];
+  copyReview: CopyPatternReview[];
   spamScore: {
     before: number;
     after: number;
@@ -280,6 +282,14 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
   // decodeEntities option removed — not supported in this cheerio version; entities preserved by default
   const $ = cheerio.load(html);
 
+  // The supplied email exports contained legacy hidden boost-data blocks. They
+  // can surface in plain-text readers, so remove them before any other cleanup.
+  const boostDataBlocks = $("#boostData, [data-id='boostData']").length;
+  if (boostDataBlocks > 0) {
+    $("#boostData, [data-id='boostData']").remove();
+    changes.push("Removed " + boostDataBlocks + " legacy hidden boost-data block(s)");
+  }
+
   // Remove class and id attributes (marketing template signals)
   let classIdCount = 0;
   $("[class], [id]").each((_, el) => {
@@ -434,6 +444,7 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
   // Analyze before and after
   const beforeAnalysis = analyzeHtml(rawHtml);
   const afterAnalysis = analyzeHtml(html);
+  const copyReview = reviewWinningCopyPatterns(html);
 
   return {
     optimizedHtml: html,
@@ -442,6 +453,7 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
     reductionPercent,
     changes,
     warnings,
+    copyReview,
     spamScore: {
       before: beforeAnalysis.score,
       after: afterAnalysis.score,
@@ -487,6 +499,7 @@ export const emailOptimizerRouter = router({
               reductionPercent: 0,
               changes: [],
               warnings: [],
+              copyReview: [],
               spamScore: { before: 0, after: 0, signals: [] },
               error: err instanceof Error ? err.message : "Unknown error",
             };

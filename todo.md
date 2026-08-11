@@ -4580,3 +4580,9 @@ Pricing model (corrected):
 - [x] Add DataForSEO and vidIQ-informed keyword recommendations before YouTube-to-blog generation
 - [x] Repair WordPress post 11129 capitalization and Yoast SEO gaps; enforce the relevant generator quality gates
 - [x] Resolve WordPress post 11129 Yoast subheading, meta-length, and transition-word findings; enforce matching generator checks
+- [ ] Add custom date ranges, daily unique lead totals, and UTM-attributed downstream email revenue to reconciliation
+- [ ] Define and display the separate Meta lead, new-customer, returning-customer, and email-attributed purchase counts in reconciliation
+- [ ] Audit and align Tantra quiz completion, lead, and purchase events with the live Meta optimization objective
+- [x] Fire CompleteRegistration after Tantra survey completion and InitiateCheckout only on Tantra checkout clicks
+- [x] Fire a Tantra Purchase event only after confirmed Shopify payment and return it to Meta for conversion optimization
+- [ ] Separate Kajabi and Klaviyo/SMS cohorts with distinct UTMs, conversion events, purchase paths, and 14-day reconciliation metrics

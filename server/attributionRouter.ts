@@ -15,6 +15,7 @@ import { getDb } from "./db";
 import { adClicks, attributedSales } from "../drizzle/schema";
 import { eq, desc, gte, sql, and, isNotNull } from "drizzle-orm";
 import { ENV } from "./_core/env";
+import { isAuthorizedShopifyWebhook } from "./shopifyWebhookAuth";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -398,18 +399,18 @@ export async function handleAttributionClick(req: any, res: any) {
 export async function handleShopifyOrderPaid(req: any, res: any) {
   try {
     // Verify Shopify HMAC signature
-    const hmacHeader = req.headers["x-shopify-hmac-sha256"] as string;
-    const shopifySecret = process.env.SHOPIFY_WEBHOOK_SECRET || ENV.ingestSecret;
-    if (hmacHeader && shopifySecret) {
-      const rawBody: string = req.rawBody || JSON.stringify(req.body);
-      const computedHmac = crypto
-        .createHmac("sha256", shopifySecret)
-        .update(rawBody, "utf8")
-        .digest("base64");
-      if (computedHmac !== hmacHeader) {
-        console.warn("[shopify/order-paid] HMAC mismatch — rejecting");
-        return res.status(401).json({ error: "Unauthorized" });
-      }
+    const hmacHeader = req.headers["x-shopify-hmac-sha256"] as string | undefined;
+    const ingestKey = typeof req.query.ingest_key === "string" ? req.query.ingest_key : undefined;
+    const rawBody: string = req.rawBody || JSON.stringify(req.body);
+    if (!isAuthorizedShopifyWebhook({
+      hmacHeader,
+      rawBody,
+      shopifyAppSecret: process.env.SHOPIFY_WEBHOOK_SECRET,
+      ingestKey,
+      ingestSecret: ENV.ingestSecret,
+    })) {
+      console.warn("[shopify/order-paid] Unauthorized webhook — rejecting");
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     const order = req.body as any;

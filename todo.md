@@ -4577,3 +4577,4 @@ Pricing model (corrected):
 - [x] Deliver precise VA operating instructions for the managed Klaviyo Flow Optimizer
 - [x] Audit and prepare the Tantra divorce/reconnection Meta campaigns for controlled activation
 - [x] Verify $199 Kajabi one-click upsell classification, attribution, and inclusion in Interconnected ROAS
+- [x] Add DataForSEO and vidIQ-informed keyword recommendations before YouTube-to-blog generation

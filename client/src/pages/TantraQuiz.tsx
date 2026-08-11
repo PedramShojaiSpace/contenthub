@@ -556,30 +556,20 @@ export default function TantraQuiz() {
 
 function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading: boolean }) {
   return (
-    <div className="min-h-[calc(100vh-73px)] flex flex-col md:flex-row relative overflow-hidden">
+    <div className="min-h-[calc(100vh-73px)] flex flex-col md:flex-row relative overflow-hidden bg-[#0d0d0d]">
       {/* Ambient glow */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-900/15 rounded-full blur-[140px] pointer-events-none" />
 
-      {/* LEFT: Doctor photo column */}
-      <div className="relative md:w-[42%] flex-shrink-0 flex flex-col">
-        {/* ── Intro video — no overlays so audio/controls are fully accessible ── */}
-        <div className="bg-black w-full" style={{ aspectRatio: '16/9' }}>
-          <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
-          <div
-            className="wistia_embed wistia_async_sq2gcr1ggd videoFoam=true"
-            style={{ height: '100%', width: '100%', position: 'relative' }}
-          >&nbsp;</div>
-        </div>
-
-        {/* ── Headshot + credential badge below the video ── */}
-        <div className="relative flex-1 overflow-hidden hidden md:block" style={{ minHeight: '220px' }}>
+      {/* LEFT: Narrower headshot column */}
+      <div className="relative md:w-[30%] flex-shrink-0 hidden md:flex flex-col">
+        <div className="relative flex-1 overflow-hidden">
           <img
             src="/manus-storage/pedram-shojai-doctor_657618c7.webp"
             alt="Dr. Pedram Shojai, OMD"
             className="w-full h-full object-cover object-top"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/20 to-transparent pointer-events-none" />
-          <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className="absolute bottom-0 left-0 right-0 p-3">
             <div className="bg-[#0d0d0d]/85 backdrop-blur-sm border border-amber-700/40 rounded-xl px-4 py-3">
               <p className="text-white font-bold text-base leading-tight">Dr. Pedram Shojai, OMD</p>
               <p className="text-amber-400 text-xs font-semibold tracking-wide mt-0.5">Doctor of Oriental Medicine</p>
@@ -595,46 +585,37 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
         </div>
       </div>
 
-      {/* RIGHT: Copy + CTA column */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center px-8 md:px-12 py-12 md:py-16">
+      {/* RIGHT: Video + copy + CTA column */}
+      <div className="relative z-10 flex-1 flex flex-col justify-start px-6 md:px-10 py-8 md:py-10 overflow-y-auto">
         {/* "From the desk of" label */}
-        <p className="text-amber-500/80 text-xs font-semibold tracking-[0.15em] uppercase mb-5">
+        <p className="text-amber-500/80 text-xs font-semibold tracking-[0.15em] uppercase mb-3">
           A Message From Dr. Shojai
         </p>
 
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-5">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight mb-4">
           The Ancient Secret to Desire,<br />
           <span className="text-amber-400">Passion, and Coming Back to Each Other</span>
         </h1>
 
-        <p className="text-white/85 text-base md:text-lg leading-relaxed mb-4 max-w-lg">
+        {/* ── Intro video — above the fold in right column ── */}
+        <div className="w-full mb-4 rounded-xl overflow-hidden border border-amber-700/20 bg-black" style={{ aspectRatio: '16/9', maxWidth: '560px' }}>
+          <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
+          <div
+            className="wistia_embed wistia_async_sq2gcr1ggd videoFoam=true"
+            style={{ height: '100%', width: '100%', position: 'relative' }}
+          >&nbsp;</div>
+        </div>
+
+        <p className="text-white/85 text-sm md:text-base leading-relaxed mb-3 max-w-lg">
           I spent 10 years as a Taoist monk studying the sacred traditions of the bed chamber — the ancient science of desire, love, and what it means to truly come home to the person you chose.
         </p>
 
-        <p className="text-white/75 text-sm md:text-base leading-relaxed mb-8 max-w-lg">
+        <p className="text-white/75 text-sm leading-relaxed mb-5 max-w-lg">
           This 2-minute quiz will identify exactly what's dimming the campfire between you — and show you the East-West prescription formula I developed to bring it back.
         </p>
 
-        {/* ── Divorce angle hook ── */}
-        <div className="mb-6 max-w-lg border border-amber-700/30 bg-amber-900/10 rounded-xl px-5 py-4">
-          <p className="text-amber-400 text-xs font-semibold tracking-widest uppercase mb-2">Considering Divorce?</p>
-          <p className="text-white/80 text-sm leading-relaxed">
-            Before you make that call — the distance you feel may not be what you think it is. The loss of desire, the emotional disconnection, the sense that the person you married has become a stranger — these are often not signs that love is gone. They are signs that the neurochemistry of connection has been depleted. The campfire between you is still there. Let's find out what's dimming it.
-          </p>
-        </div>
-
-        {/* ── INTRO VIDEO EMBED (activate when ready) ──
-            1. Upload intro video to Wistia
-            2. Replace TANTRA_INTRO_VIDEO_ID with your media ID (e.g. "abc123xyz")
-            3. Uncomment the block below and delete this comment
-
-        <div className="mb-8 rounded-xl overflow-hidden border border-amber-700/30" style={{aspectRatio:'16/9',maxWidth:'480px'}}>
-          <div className="wistia_embed wistia_async_TANTRA_INTRO_VIDEO_ID videoFoam=true" style={{height:'100%',position:'relative'}}>&nbsp;</div>
-        </div>
-        ── */}
-
         {/* Credential pills */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 mb-5">
           <span className="inline-flex items-center gap-1.5 bg-amber-900/25 border border-amber-700/35 rounded-full px-3 py-1 text-amber-300/90 text-xs font-medium">
             <CheckCircle2 className="w-3 h-3" /> Physician-Formulated
           </span>

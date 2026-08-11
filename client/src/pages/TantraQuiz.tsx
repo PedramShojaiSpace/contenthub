@@ -563,17 +563,14 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
       {/* LEFT: Doctor photo column */}
       <div className="relative md:w-[42%] flex-shrink-0 flex flex-col">
         {/* Photo fills the column */}
-        <div className="relative h-[380px] md:h-full overflow-hidden">
-          <img
-            src="/manus-storage/pedram-shojai-doctor_657618c7.webp"
-            alt="Dr. Pedram Shojai, OMD"
-            className="w-full h-full object-cover object-top"
-          />
-          {/* INTRO VIDEO: Once recorded, replace photo above with Wistia embed.
-              Set TANTRA_INTRO_VIDEO_ID to your Wistia media ID and swap the img for:
-              <div className="wistia_embed wistia_async_TANTRA_INTRO_VIDEO_ID videoFoam=true h-full" />
-          */}
-          {/* Dark gradient overlay at bottom for text legibility */}
+        <div className="relative h-[380px] md:h-full overflow-hidden bg-black">
+          {/* Intro video embed */}
+          <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
+          <div
+            className="wistia_embed wistia_async_sq2gcr1ggd videoFoam=true"
+            style={{ height: '100%', position: 'relative', minHeight: '380px' }}
+          >&nbsp;</div>
+          {/* Dark gradient overlay at bottom for credential badge legibility */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/30 to-transparent" />
 
           {/* Credential badge pinned to bottom of photo */}
@@ -1052,21 +1049,14 @@ function ResultsScreen({
             {product.subheadline}
           </p>
 
-          {/* ── PERSONALIZED RESULTS VIDEO ──
-              Shows a different video for Tantra Him vs Tantra Her vs Couple.
-              To activate:
-                1. Record 2 videos (one for men, one for women) and upload to Wistia
-                2. Replace the placeholder IDs below with your real Wistia media IDs:
-                     TANTRA_HIM_VIDEO_ID  → e.g. "abc123him"
-                     TANTRA_HER_VIDEO_ID  → e.g. "xyz789her"
-                3. Delete the comment tags around the block below
-
+          {/* ── PERSONALIZED RESULTS VIDEO ── */}
           {(() => {
-            const videoId = isCouple
-              ? "TANTRA_HIM_VIDEO_ID"
-              : result === "tantra_her"
+            // Him video: 89uaizbbp7 | Her video: TBD (swap TANTRA_HER_VIDEO_ID when ready)
+            const videoId = result === "tantra_her"
               ? "TANTRA_HER_VIDEO_ID"
-              : "TANTRA_HIM_VIDEO_ID";
+              : "89uaizbbp7"; // Him video (also used for couple path)
+            // Skip render if Her video not yet available
+            if (videoId === "TANTRA_HER_VIDEO_ID") return null;
             return (
               <div className="mb-8 rounded-2xl overflow-hidden border border-white/10 max-w-2xl mx-auto" style={{aspectRatio:'16/9'}}>
                 <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
@@ -1074,7 +1064,6 @@ function ResultsScreen({
               </div>
             );
           })()}
-          ── */}
 
           {/* Product card */}
           {isCouple && coupleProducts ? (

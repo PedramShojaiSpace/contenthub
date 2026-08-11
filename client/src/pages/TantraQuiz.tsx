@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { CheckCircle2, ArrowRight, ChevronRight, Shield, Star, Leaf, Zap, Moon, Heart } from "lucide-react";
+import { buildTantraCheckoutParams, type TantraTrackableOffer } from "@shared/tantraMetaEvents";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,6 +131,13 @@ const SCREEN_ORDER: QuizScreen[] = [
   "results",
 ];
 
+type FacebookPixel = (command: "track", eventName: string, parameters?: Record<string, unknown>) => void;
+
+function trackTantraPixel(eventName: string, parameters?: Record<string, unknown>) {
+  const fbq = (window as Window & { fbq?: FacebookPixel }).fbq;
+  if (typeof fbq === "function") fbq("track", eventName, parameters);
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TantraQuiz() {
@@ -152,6 +160,8 @@ export default function TantraQuiz() {
   const [coupleProducts, setCoupleProducts] = useState<CoupleProducts | null>(null);
 
   const topRef = useRef<HTMLDivElement>(null);
+  const completionEventFired = useRef(false);
+  const leadEventFired = useRef(false);
 
   // Auto-scroll to top on screen change
   useEffect(() => {
@@ -233,6 +243,13 @@ export default function TantraQuiz() {
         if (r.isCouple && r.himProduct && r.herProduct) {
           setCoupleProducts({ him: r.himProduct as ProductInfo, her: r.herProduct as ProductInfo });
         }
+        if (!completionEventFired.current) {
+          completionEventFired.current = true;
+          trackTantraPixel("CompleteRegistration", {
+            content_name: "Tantra Quiz Completed",
+            content_category: "tantra_quiz",
+          });
+        }
         goToScreen("email_capture");
     } catch (err: unknown) {
       // If submitAnswers fails, still allow progression with client-side routing
@@ -268,6 +285,13 @@ export default function TantraQuiz() {
         product: PRODUCTS[result],
         upsells: [],
       }));
+      if (!completionEventFired.current) {
+        completionEventFired.current = true;
+        trackTantraPixel("CompleteRegistration", {
+          content_name: "Tantra Quiz Completed",
+          content_category: "tantra_quiz",
+        });
+      }
       goToScreen("email_capture");
     }
   };
@@ -289,6 +313,13 @@ export default function TantraQuiz() {
         tantraCourse: (res as any).tantraCourse ?? null,
         lightsOn: (res as any).lightsOn ?? null,
       }));
+      if (!leadEventFired.current) {
+        leadEventFired.current = true;
+        trackTantraPixel("Lead", {
+          content_name: "Tantra Quiz Results",
+          content_category: "tantra_quiz",
+        });
+      }
       goToScreen("results");
     } catch {
       toast.error("Could not save your email. Please try again.");
@@ -546,6 +577,7 @@ export default function TantraQuiz() {
           tantraCourse={state.tantraCourse}
           lightsOn={state.lightsOn}
           coupleProducts={coupleProducts}
+          onCheckoutIntent={(offer) => trackTantraPixel("InitiateCheckout", buildTantraCheckoutParams(offer))}
         />
       )}
     </div>
@@ -924,6 +956,7 @@ function ResultsScreen({
   tantraCourse,
   lightsOn,
   coupleProducts,
+  onCheckoutIntent,
 }: {
   product: ProductInfo;
   upsells: UpsellInfo[];
@@ -931,6 +964,7 @@ function ResultsScreen({
   tantraCourse: CourseInfo | null;
   lightsOn: CourseInfo | null;
   coupleProducts: CoupleProducts | null;
+  onCheckoutIntent: (offer: TantraTrackableOffer) => void;
 }) {
   const isCouple = !!coupleProducts;
   const accentColor = result === "tantra_her" ? "#9B59B6" : "#B8860B";
@@ -985,7 +1019,7 @@ function ResultsScreen({
               The campfire between you is still there. Your quiz results show exactly what's dimming it — and the formula Dr. Shojai developed to bring it back. Don't leave without seeing what's possible.
             </p>
             <p className="text-amber-400 text-sm font-semibold mb-5">Your protocol is still reserved for the next {timerMins}:{timerSecs}.</p>
-            <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => setShowExitPopup(false)}
+            <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => { onCheckoutIntent(product); setShowExitPopup(false); }}
               className="block w-full text-center font-bold text-base py-4 rounded-xl text-black mb-3" style={{ background: accentColor }}>
              Start My First Month — {product.price} →
             </a>
@@ -1009,7 +1043,7 @@ function ResultsScreen({
               : <><span className="font-bold" style={{ color: accentColor }}>{timerMins}:{timerSecs}</span>{" — Your path back to each other is reserved"}</>}
           </p>
         </div>
-        <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer"
+        <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => onCheckoutIntent(product)}
           className="flex-shrink-0 font-bold text-xs px-4 py-2 rounded-full text-black whitespace-nowrap"
           style={{ background: accentColor }}>Start Now →</a>
       </div>
@@ -1093,6 +1127,7 @@ function ResultsScreen({
                       href={p.shopifyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => onCheckoutIntent(p)}
                       className="block w-full text-center font-bold text-sm py-3.5 rounded-xl text-black"
                       style={{ background: accent }}
                     >
@@ -1140,6 +1175,7 @@ function ResultsScreen({
                 href={product.shopifyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => onCheckoutIntent(product)}
                 className="block w-full text-center font-bold text-base py-4 rounded-xl transition-all duration-200 text-black"
                 style={{ background: accentColor }}
               >
@@ -1175,6 +1211,7 @@ function ResultsScreen({
                 href={(tantraCourse?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/1710780"}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => onCheckoutIntent(tantraCourse ?? { name: "Tantra Course", price: "$199" })}
                 className="inline-flex items-center gap-2 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
               >
                 Learn more about The Tantra Course <ChevronRight className="w-4 h-4" />
@@ -1200,6 +1237,7 @@ function ResultsScreen({
                           href={upsell.shopifyUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={() => onCheckoutIntent(upsell)}
                           className="inline-flex items-center gap-1 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
                         >
                           Order {upsell.name} <ChevronRight className="w-4 h-4" />
@@ -1233,6 +1271,7 @@ function ResultsScreen({
                 href={(lightsOn?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/lights-on"}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => onCheckoutIntent(lightsOn ?? { name: "Lights On", price: "$369/year" })}
                 className="inline-flex items-center gap-2 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
               >
                 Learn more about Lights On <ChevronRight className="w-4 h-4" />
@@ -1269,6 +1308,7 @@ function ResultsScreen({
             href={product.shopifyUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => onCheckoutIntent(product)}
             className="inline-flex items-center gap-2 font-bold text-lg px-10 py-5 rounded-full text-black transition-all duration-200 shadow-lg"
             style={{ background: accentColor, boxShadow: `0 8px 32px ${accentColor}40` }}
           >

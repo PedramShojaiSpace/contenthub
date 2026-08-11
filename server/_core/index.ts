@@ -1512,7 +1512,8 @@ async function startServer() {
   // POST /api/shopify/order-paid — Shopify webhook: orders/paid
   // Configure in Shopify Admin → Settings → Notifications → Webhooks
   // URL: https://content.theurbanmonk.com/api/shopify/order-paid
-  // Secret: use INGEST_SECRET or set SHOPIFY_WEBHOOK_SECRET env var
+  // Auth: signed Shopify HMAC when SHOPIFY_WEBHOOK_SECRET is configured, or the
+  // managed callback URL with ?ingest_key=<INGEST_SECRET>.
   app.post("/api/shopify/order-paid", async (req, res) => {
     const { handleShopifyOrderPaid } = await import("../attributionRouter");
     return handleShopifyOrderPaid(req, res);

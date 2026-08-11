@@ -562,19 +562,24 @@ function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading:
 
       {/* LEFT: Doctor photo column */}
       <div className="relative md:w-[42%] flex-shrink-0 flex flex-col">
-        {/* Photo fills the column */}
-        <div className="relative h-[380px] md:h-full overflow-hidden bg-black">
-          {/* Intro video embed */}
+        {/* ── Intro video — no overlays so audio/controls are fully accessible ── */}
+        <div className="bg-black w-full" style={{ aspectRatio: '16/9' }}>
           <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
           <div
             className="wistia_embed wistia_async_sq2gcr1ggd videoFoam=true"
-            style={{ height: '100%', position: 'relative', minHeight: '380px' }}
+            style={{ height: '100%', width: '100%', position: 'relative' }}
           >&nbsp;</div>
-          {/* Dark gradient overlay at bottom for credential badge legibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/30 to-transparent" />
+        </div>
 
-          {/* Credential badge pinned to bottom of photo */}
-          <div className="absolute bottom-0 left-0 right-0 p-5">
+        {/* ── Headshot + credential badge below the video ── */}
+        <div className="relative flex-1 overflow-hidden hidden md:block" style={{ minHeight: '220px' }}>
+          <img
+            src="/manus-storage/pedram-shojai-doctor_657618c7.webp"
+            alt="Dr. Pedram Shojai, OMD"
+            className="w-full h-full object-cover object-top"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/20 to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 p-4">
             <div className="bg-[#0d0d0d]/85 backdrop-blur-sm border border-amber-700/40 rounded-xl px-4 py-3">
               <p className="text-white font-bold text-base leading-tight">Dr. Pedram Shojai, OMD</p>
               <p className="text-amber-400 text-xs font-semibold tracking-wide mt-0.5">Doctor of Oriental Medicine</p>

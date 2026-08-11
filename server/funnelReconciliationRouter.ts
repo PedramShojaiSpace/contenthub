@@ -50,6 +50,7 @@ export const FUNNELS: FunnelDef[] = [
     metaKeywords: ["agora"],
     kajabSkus: {
       6700:   { tier: "67",   label: "Interconnected $67 Bundle OTO" },
+      19900:  { tier: "199",  label: "Gut Permeability + Food Sensitivity Test ($199 OCU)" },
       29900:  { tier: "299",  label: "Gut Permeability + Food Sensitivity Test ($299)" },
       39900:  { tier: "399",  label: "Gut Test + Health Coach Consultation ($399)" },
       49900:  { tier: "499",  label: "Supported Package ($499)" },

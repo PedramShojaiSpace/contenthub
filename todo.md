@@ -4574,3 +4574,6 @@ Pricing model (corrected):
 - [x] Extract repeatable patterns from winning-mailing-email examples and add them to the Kajabi email optimizer
 - [x] Scope Klaviyo campaign and flow support for the Email Optimizer bookmarklet workflow
 - [x] Build a backup-first Klaviyo flow email optimizer with review, copy guidance, and deliberate update controls
+- [x] Deliver precise VA operating instructions for the managed Klaviyo Flow Optimizer
+- [x] Audit and prepare the Tantra divorce/reconnection Meta campaigns for controlled activation
+- [x] Verify $199 Kajabi one-click upsell classification, attribution, and inclusion in Interconnected ROAS

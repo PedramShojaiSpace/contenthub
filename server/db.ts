@@ -12,6 +12,10 @@ import {
   platformStrategies,
   users,
 } from "../drizzle/schema";
+import {
+  klaviyoFlowEmailBackups,
+  type KlaviyoFlowEmailBackup,
+} from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -114,6 +118,62 @@ export async function updateContentItem(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(contentItems).set(data).where(eq(contentItems.id, id));
+}
+
+// ─── Klaviyo Flow Email Backups ──────────────────────────────────────────────
+
+export type KlaviyoFlowEmailBackupInput = Omit<
+  typeof klaviyoFlowEmailBackups.$inferInsert,
+  "id" | "createdAt" | "appliedAt" | "errorMessage"
+> & {
+  appliedAt?: Date | null;
+  errorMessage?: string | null;
+};
+
+export async function createKlaviyoFlowEmailBackup(
+  data: KlaviyoFlowEmailBackupInput
+): Promise<KlaviyoFlowEmailBackup> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(klaviyoFlowEmailBackups).values(data);
+  const insertedId = Number((result as unknown as { insertId?: number }).insertId ?? 0);
+  const rows = await db
+    .select()
+    .from(klaviyoFlowEmailBackups)
+    .where(eq(klaviyoFlowEmailBackups.id, insertedId))
+    .limit(1);
+  if (!rows[0]) throw new Error("Could not read created Klaviyo email backup");
+  return rows[0];
+}
+
+export async function getKlaviyoFlowEmailBackup(id: number): Promise<KlaviyoFlowEmailBackup | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select()
+    .from(klaviyoFlowEmailBackups)
+    .where(eq(klaviyoFlowEmailBackups.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listKlaviyoFlowEmailBackups(limit = 50): Promise<KlaviyoFlowEmailBackup[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(klaviyoFlowEmailBackups)
+    .orderBy(desc(klaviyoFlowEmailBackups.id))
+    .limit(limit);
+}
+
+export async function updateKlaviyoFlowEmailBackup(
+  id: number,
+  data: Partial<Pick<KlaviyoFlowEmailBackup, "operation" | "status" | "errorMessage" | "appliedAt">>
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(klaviyoFlowEmailBackups).set(data).where(eq(klaviyoFlowEmailBackups.id, id));
 }
 
 export async function deleteContentItem(id: number): Promise<void> {

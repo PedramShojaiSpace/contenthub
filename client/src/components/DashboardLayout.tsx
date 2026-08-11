@@ -143,6 +143,7 @@ const vaProductionItems = [
   { icon: Film, label: "Script Library", path: "/scripts" },
   { icon: Mic, label: "Podcast Production", path: "/podcast-production" },
   { icon: Mail, label: "Email Optimizer", path: "/email-optimizer" },
+  { icon: MailCheck, label: "Klaviyo Flow Optimizer", path: "/klaviyo-flow-optimizer" },
   { icon: MailCheck, label: "Plain Text Email", path: "/plain-text-email" },
   { icon: FileText, label: "E-Book Generator", path: "/ebook-generator" },
   { icon: Video, label: "Create Webinar", path: "/webinar" },

@@ -4572,3 +4572,5 @@ Pricing model (corrected):
 - [x] Replace the Tantra quiz couple-path Wistia video with nxh6n82ax4
 - [x] Add Shopify Tantra SKU orders, revenue, and calculated ROAS to the Tantra funnel dashboard
 - [x] Extract repeatable patterns from winning-mailing-email examples and add them to the Kajabi email optimizer
+- [x] Scope Klaviyo campaign and flow support for the Email Optimizer bookmarklet workflow
+- [x] Build a backup-first Klaviyo flow email optimizer with review, copy guidance, and deliberate update controls

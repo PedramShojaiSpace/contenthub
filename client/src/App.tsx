@@ -58,6 +58,7 @@ const VADashboard = lazy(() => import("./pages/VADashboard"));
 const AdsManager = lazy(() => import("./pages/AdsManager"));
 const LeadScrubber = lazy(() => import("./pages/LeadScrubber"));
 const EmailOptimizer = lazy(() => import("./pages/EmailOptimizer"));
+const KlaviyoFlowOptimizer = lazy(() => import("./pages/KlaviyoFlowOptimizer"));
 const KidsResearch = lazy(() => import("./pages/KidsResearch"));
 const KidsReview = lazy(() => import("./pages/KidsReview"));
 const CollectiveSourcing = lazy(() => import("./pages/CollectiveSourcing"));
@@ -172,6 +173,7 @@ function Router() {
         <Route path={"/ads"} component={AdsManager} />
         <Route path={"/lead-scrubber"} component={LeadScrubber} />
         <Route path={"/email-optimizer"} component={EmailOptimizer} />
+        <Route path={"/klaviyo-flow-optimizer"} component={KlaviyoFlowOptimizer} />
         <Route path={"/kids-research"} component={KidsResearch} />
         <Route path={"/kids-review"} component={KidsReview} />
         <Route path={"/collective-sourcing"} component={CollectiveSourcing} />

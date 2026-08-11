@@ -24,6 +24,9 @@ import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
 import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
 import { getYouTubeAuthUrl, isYouTubeAuthorized, getYouTubeClient } from "./youtubeOAuth";
+import { getKeywordOverview } from "./dataForSeo";
+import { vidiqKeywordResearch } from "./vidiq";
+import { cleanKeywordCandidates, rankKeywordRecommendations } from "./videoKeywordRecommendations";
 
 // ── Full Yoast-optimized blog system prompt (identical to BLOG_CONTENT_RULES in routers.ts) ──
 const BLOG_CONTENT_RULES = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
@@ -180,6 +183,123 @@ async function fetchTranscript(videoId: string): Promise<string> {
   }
 }
 
+async function buildKeywordRecommendations(input: {
+  videoTitle: string;
+  videoDescription: string;
+  transcript: string;
+}) {
+  const sourceText = input.transcript.length > 300
+    ? input.transcript.slice(0, 6000)
+    : input.videoDescription.slice(0, 1200);
+  let candidates: Array<{ keyword: string; rationale: string }> = [];
+
+  try {
+    const response = await invokeLLM({
+      model: "gpt-5-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a precise SEO research assistant for The Urban Monk. Extract 4 to 6 distinct Google search keyphrases from a YouTube topic. Each phrase must be 2 to 6 words, match the actual educational subject, reflect plausible search language, and avoid brand names, unsupported medical claims, vague self-help phrasing, and sales copy. Return only structured data.",
+        },
+        {
+          role: "user",
+          content: `Video title: ${input.videoTitle}\n\nVideo description: ${input.videoDescription}\n\nTranscript excerpt:\n${sourceText}`,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "youtube_keyword_candidates",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              candidates: {
+                type: "array",
+                minItems: 4,
+                maxItems: 6,
+                items: {
+                  type: "object",
+                  properties: {
+                    keyword: { type: "string" },
+                    rationale: { type: "string" },
+                  },
+                  required: ["keyword", "rationale"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["candidates"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+    const raw = String(response.choices?.[0]?.message?.content ?? "{}");
+    candidates = cleanKeywordCandidates(JSON.parse(raw).candidates ?? []);
+  } catch (error) {
+    console.warn("[VideoToBlog] Keyword candidate extraction failed:", (error as Error).message);
+  }
+
+  if (candidates.length < 3) {
+    const titlePhrase = input.videoTitle
+      .replace(/\s*[|\-–—].*$/, "")
+      .replace(/[^a-zA-Z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .slice(0, 5)
+      .join(" ")
+      .toLowerCase();
+    candidates = cleanKeywordCandidates([
+      ...candidates,
+      { keyword: titlePhrase, rationale: "Derived from the video title because richer topic extraction was unavailable." },
+    ]);
+  }
+
+  if (!candidates.length) {
+    return { recommendations: [], researchStatus: { dataForSeo: "unavailable", vidiq: "unavailable" } };
+  }
+
+  let googleMetrics: Awaited<ReturnType<typeof getKeywordOverview>> = [];
+  let dataForSeoStatus: "connected" | "unavailable" = "connected";
+  try {
+    googleMetrics = await getKeywordOverview(candidates.map((candidate) => candidate.keyword));
+  } catch (error) {
+    dataForSeoStatus = "unavailable";
+    console.warn("[VideoToBlog] DataForSEO keyword metrics unavailable:", (error as Error).message);
+  }
+  const googleByKeyword = new Map(googleMetrics.map((metric) => [metric.keyword.toLowerCase(), metric]));
+
+  // Validate only the three strongest Google candidates in vidIQ to preserve paid
+  // credits while still measuring YouTube-specific opportunity separately.
+  const vidiqTargets = [...candidates]
+    .sort((a, b) => (googleByKeyword.get(b.keyword)?.search_volume ?? 0) - (googleByKeyword.get(a.keyword)?.search_volume ?? 0))
+    .slice(0, 3);
+  const vidiqResults = await Promise.allSettled(vidiqTargets.map((candidate) => vidiqKeywordResearch(candidate.keyword, false)));
+  const vidiqByKeyword = new Map<string, Awaited<ReturnType<typeof vidiqKeywordResearch>>>();
+  vidiqResults.forEach((result, index) => {
+    if (result.status === "fulfilled") vidiqByKeyword.set(vidiqTargets[index].keyword, result.value);
+  });
+  const vidiqStatus: "connected" | "unavailable" = vidiqByKeyword.size ? "connected" : "unavailable";
+
+  const recommendations = rankKeywordRecommendations(candidates.map((candidate) => {
+    const google = googleByKeyword.get(candidate.keyword);
+    const youtube = vidiqByKeyword.get(candidate.keyword);
+    return {
+      keyword: candidate.keyword,
+      rationale: candidate.rationale,
+      searchVolume: google?.search_volume ?? null,
+      keywordDifficulty: google?.keyword_difficulty ?? null,
+      cpc: google?.cpc ?? null,
+      intent: google?.search_intent_info?.main_intent ?? null,
+      vidiqOpportunity: youtube?.overall ?? null,
+      vidiqVolume: youtube?.volume ?? null,
+      vidiqCompetition: youtube?.competition ?? null,
+    };
+  }));
+
+  return { recommendations, researchStatus: { dataForSeo: dataForSeoStatus, vidiq: vidiqStatus } };
+}
+
 /**
  * Update a YouTube video description by prepending the blog URL.
  * Requires a valid YouTube OAuth refresh token stored in userCredentials.youtubeRefreshToken.
@@ -298,30 +418,6 @@ export const videoToBlogRouter = router({
       await new Promise((r) => setTimeout(r, 300));
       const transcript = await fetchTranscript(videoId);
 
-      // Use LLM to suggest a clean SEO focus keyword from the transcript + title
-      let suggestedKeyword = "";
-      try {
-        const kwSource = transcript.length > 200
-          ? transcript.slice(0, 1500)
-          : metadata.title;
-        const kwResponse = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: "You are an SEO expert for The Urban Monk (Dr. Pedram Shojai). Given a video title and transcript excerpt, suggest ONE concise focus keyword phrase (2-4 words) that is: (a) the core topic of the video, (b) searchable on Google, (c) relevant to health/wellness/spirituality. Respond with ONLY the keyword phrase — no explanation, no punctuation, no quotes.",
-            },
-            {
-              role: "user",
-              content: `Video title: ${metadata.title}\n\nTranscript excerpt:\n${kwSource}`,
-            },
-          ],
-        });
-        suggestedKeyword = ((kwResponse.choices?.[0]?.message?.content as string) ?? "").trim().toLowerCase();
-      } catch {
-        // Fall back to title-based suggestion on the frontend
-        suggestedKeyword = "";
-      }
-
       return {
         videoId,
         title: metadata.title,
@@ -331,9 +427,22 @@ export const videoToBlogRouter = router({
         transcript: transcript.slice(0, 8000), // cap for display
         transcriptLength: transcript.length,
         hasTranscript: transcript.length > 100,
-        suggestedKeyword,
+        suggestedKeyword: "",
       };
     }),
+
+  /**
+   * Step 1b: present keyword options before a blog is generated. Candidate
+   * phrases come from the actual video topic, then DataForSEO and vidIQ rank
+   * them with paid Google and YouTube opportunity signals.
+   */
+  recommendKeywords: protectedProcedure
+    .input(z.object({
+      videoTitle: z.string().min(1),
+      videoDescription: z.string().default(""),
+      transcript: z.string().default(""),
+    }))
+    .mutation(async ({ input }) => buildKeywordRecommendations(input)),
 
   /**
    * Step 2: Generate a full SEO blog post from the video transcript.

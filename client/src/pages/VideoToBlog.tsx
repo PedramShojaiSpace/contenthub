@@ -31,11 +31,28 @@ import {
   Upload,
   FileUp,
   X,
+  Search,
+  Sparkles,
 } from "lucide-react";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
 type StepStatus = "pending" | "active" | "done" | "error";
+
+type KeywordRecommendation = {
+  keyword: string;
+  rationale: string;
+  searchVolume: number | null;
+  keywordDifficulty: number | null;
+  cpc: number | null;
+  intent: string | null;
+  vidiqOpportunity: number | null;
+  vidiqVolume: number | null;
+  vidiqCompetition: number | null;
+  googleOpportunity: number | null;
+  combinedOpportunity: number | null;
+  sources: Array<"dataforseo" | "vidiq">;
+};
 
 function StepBadge({ step, status }: { step: number; status: StepStatus }) {
   const base = "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0";
@@ -98,6 +115,9 @@ export default function VideoToBlog() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [customInstructions, setCustomInstructions] = useState("");
   const [focusKeyword, setFocusKeyword] = useState("");
+  const [keywordSelectionConfirmed, setKeywordSelectionConfirmed] = useState(false);
+  const [keywordRecommendations, setKeywordRecommendations] = useState<KeywordRecommendation[]>([]);
+  const [keywordResearchStatus, setKeywordResearchStatus] = useState<{ dataForSeo: string; vidiq: string } | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Manual transcript upload state (fallback when YouTube has no transcript)
@@ -276,29 +296,20 @@ export default function VideoToBlog() {
   const fetchVideoInfo = trpc.videoToBlog.fetchVideoInfo.useMutation({
     onSuccess: (data) => {
       setVideoInfo(data);
-      // Use LLM-suggested keyword from server if available; fall back to title-based suggestion
-      if (!focusKeyword) {
-        if (data.suggestedKeyword && data.suggestedKeyword.length > 2) {
-          setFocusKeyword(data.suggestedKeyword);
-        } else if (data.title) {
-          // Strip channel suffix (" | The Urban Monk", " | Urban Monk", etc.) and take first 4 words
-          const cleanTitle = data.title.replace(/\s*[|\-–—].*$/, "").trim();
-          const words = cleanTitle.split(/\s+/).slice(0, 4).join(" ").toLowerCase();
-          setFocusKeyword(words);
-        }
-      }
+      setFocusKeyword("");
+      setKeywordSelectionConfirmed(false);
+      setKeywordRecommendations([]);
+      setKeywordResearchStatus(null);
       if (!data.hasTranscript) {
         toast.warning("No transcript found for this video. The blog will be generated from the title and description only.");
       } else {
         toast.success(`Transcript fetched — ${data.transcriptLength.toLocaleString()} characters`);
-        // Kick off vidIQ keyword optimization using the LLM-suggested keyword
-        if (data.suggestedKeyword && data.suggestedKeyword.length > 2) {
-          vidiqSuggest.mutate({
-            videoTitle: data.title,
-            suggestedKeyword: data.suggestedKeyword,
-          });
-        }
       }
+      keywordRecommendationsMutation.mutate({
+        videoTitle: data.title,
+        videoDescription: data.description,
+        transcript: data.transcript,
+      });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -342,19 +353,17 @@ export default function VideoToBlog() {
     { enabled: vidiqKeyword.length > 2, staleTime: 5 * 60 * 1000 }
   );
 
-  // vidIQ suggest best focus keyword from transcript
-  const vidiqSuggest = trpc.vidiq.suggestFocusKeyword.useMutation({
+  const keywordRecommendationsMutation = trpc.videoToBlog.recommendKeywords.useMutation({
     onSuccess: (data) => {
-      if (data.recommended.keyword) {
-        setFocusKeyword(data.recommended.keyword);
-        setVidiqKeyword(data.recommended.keyword);
-        setShowVidiqPanel(true);
-        toast.success(`vidIQ: best keyword is "${data.recommended.keyword}" (score ${Math.round(data.recommended.overall)}/100)`);
+      setKeywordRecommendations(data.recommendations as KeywordRecommendation[]);
+      setKeywordResearchStatus(data.researchStatus);
+      if (data.recommendations.length) {
+        toast.success("Keyword research is ready — choose a target before generating.");
+      } else {
+        toast.warning("Keyword research returned no usable terms. Enter a carefully chosen focus keyword manually.");
       }
     },
-    onError: () => {
-      // silently fall back — LLM suggestion already set
-    },
+    onError: (err) => toast.error(`Keyword research failed: ${err.message}`),
   });
 
   const generateYtDesc = trpc.videoToBlog.generateYouTubeDescription.useMutation({
@@ -401,6 +410,9 @@ export default function VideoToBlog() {
     setYtDescResult(null);
     setCustomInstructions("");
     setFocusKeyword("");
+    setKeywordSelectionConfirmed(false);
+    setKeywordRecommendations([]);
+    setKeywordResearchStatus(null);
     setManualTranscript("");
     setShowTranscriptUpload(false);
     setPendingRetryAfterAuth(false);
@@ -741,21 +753,102 @@ export default function VideoToBlog() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">
-                  Focus Keyword
-                  <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">(required for Yoast SEO)</span>
+                  Select SEO Focus Keyword
+                  <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">(required before generation)</span>
                 </label>
-                {vidiqSuggest.isPending && (
+                {keywordRecommendationsMutation.isPending && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Checking vidIQ…
+                    <Loader2 className="w-3 h-3 animate-spin" /> Researching Google + YouTube…
                   </span>
                 )}
               </div>
+
+              {keywordRecommendationsMutation.isPending && (
+                <div className="rounded-lg border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 p-4 text-sm text-sky-900 dark:text-sky-200 flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Building transcript-grounded options and checking DataForSEO and vidIQ…
+                </div>
+              )}
+
+              {keywordRecommendations.length > 0 && (
+                <div className="rounded-lg border border-sky-200 bg-sky-50/70 dark:border-sky-900 dark:bg-sky-950/20 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-sky-950 dark:text-sky-100">
+                        <Sparkles className="w-4 h-4 text-sky-600 dark:text-sky-400" /> Topic-Focused Keyword Options
+                      </div>
+                      <p className="text-xs text-sky-800/75 dark:text-sky-200/70 mt-1">
+                        Select one target. Rankings blend Google search demand/difficulty with YouTube opportunity when each source returns data.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-xs"
+                      disabled={keywordRecommendationsMutation.isPending}
+                      onClick={() => keywordRecommendationsMutation.mutate({
+                        videoTitle: videoInfo.title,
+                        videoDescription: videoInfo.description,
+                        transcript: manualTranscript || videoInfo.transcript,
+                      })}
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" /> Refresh research
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {keywordRecommendations.slice(0, 5).map((recommendation, index) => {
+                      const selected = focusKeyword === recommendation.keyword && keywordSelectionConfirmed;
+                      return (
+                        <button
+                          type="button"
+                          key={recommendation.keyword}
+                          onClick={() => {
+                            setFocusKeyword(recommendation.keyword);
+                            setKeywordSelectionConfirmed(true);
+                            setVidiqKeyword(recommendation.keyword);
+                          }}
+                          className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                            selected
+                              ? "border-emerald-500 bg-emerald-500/10"
+                              : "border-border bg-background hover:border-sky-400 hover:bg-sky-50/40 dark:hover:bg-sky-950/30"
+                          }`}
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-200 text-[11px] font-bold inline-flex items-center justify-center">{index + 1}</span>
+                                <span className="font-semibold text-sm">{recommendation.keyword}</span>
+                                {selected && <Badge className="bg-emerald-600 text-xs">Selected</Badge>}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1.5 pl-7">{recommendation.rationale}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 shrink-0 sm:justify-end">
+                              {recommendation.searchVolume !== null && <Badge variant="secondary" className="text-[11px]">Google vol. {recommendation.searchVolume.toLocaleString()}</Badge>}
+                              {recommendation.keywordDifficulty !== null && <Badge variant="secondary" className="text-[11px]">KD {Math.round(recommendation.keywordDifficulty)}</Badge>}
+                              {recommendation.vidiqOpportunity !== null && <Badge variant="secondary" className="text-[11px]">vidIQ {Math.round(recommendation.vidiqOpportunity)}</Badge>}
+                              {recommendation.combinedOpportunity !== null && <Badge className="bg-sky-700 text-[11px]">Fit {Math.round(recommendation.combinedOpportunity)}</Badge>}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {keywordResearchStatus && (
+                    <p className="text-[11px] text-sky-800/65 dark:text-sky-200/60">
+                      Sources: DataForSEO {keywordResearchStatus.dataForSeo === "connected" ? "connected" : "unavailable"} · vidIQ {keywordResearchStatus.vidiq === "connected" ? "connected" : "unavailable"}. “Fit” is a decision aid, not a promise of rankings.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <Input
-                  placeholder="e.g. kung fu philosophy, intermittent fasting benefits"
+                  placeholder="Or enter a specific focus keyword manually"
                   value={focusKeyword}
                   onChange={(e) => {
                     setFocusKeyword(e.target.value);
+                    setKeywordSelectionConfirmed(e.target.value.trim().length > 2);
                     setVidiqKeyword(e.target.value);
                   }}
                   disabled={generateBlog.isPending || !!blogResult}
@@ -779,10 +872,7 @@ export default function VideoToBlog() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                2–4 words. Used by Yoast to check your intro, subheadings, and meta description.
-                {videoInfo && focusKeyword && !vidiqSuggest.isPending && (
-                  <span className="text-green-600 dark:text-green-400 font-medium"> — vidIQ-optimized keyword.</span>
-                )}
+                Pick an option above or enter a 2–6 word phrase manually. The chosen target is used by Yoast in the intro, subheadings, and metadata.
               </p>
 
               {/* vidIQ Keyword Research Panel */}
@@ -880,8 +970,9 @@ export default function VideoToBlog() {
             {!blogResult ? (
               <Button
                 onClick={() => {
-                  if (!focusKeyword.trim()) {
-                    toast.warning("No focus keyword set — Yoast SEO checks will be skipped. Add a 2–4 word keyword for best results.");
+                  if (!focusKeyword.trim() || !keywordSelectionConfirmed) {
+                    toast.warning("Choose a researched keyword or enter and confirm a deliberate focus keyword before generating.");
+                    return;
                   }
                   generateBlog.mutate({
                     videoId: videoInfo.videoId,
@@ -891,7 +982,7 @@ export default function VideoToBlog() {
                     focusKeyword: focusKeyword.trim() || undefined,
                   });
                 }}
-                disabled={generateBlog.isPending}
+                disabled={generateBlog.isPending || keywordRecommendationsMutation.isPending || !focusKeyword.trim() || !keywordSelectionConfirmed}
                 className="w-full"
               >
                 {generateBlog.isPending ? (

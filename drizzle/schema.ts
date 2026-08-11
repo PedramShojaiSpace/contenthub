@@ -2315,6 +2315,30 @@ export const adsOptimizationLogs = mysqlTable("ads_optimization_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── Klaviyo Flow Email Backups ──────────────────────────────────────────────
+// Immutable snapshot created before any managed Klaviyo template update. This
+// makes each apply/restore operation attributable and reversible from the app.
+export const klaviyoFlowEmailBackups = mysqlTable("klaviyo_flow_email_backups", {
+  id: int("id").primaryKey().autoincrement(),
+  flowId: varchar("flow_id", { length: 64 }).notNull(),
+  flowName: varchar("flow_name", { length: 255 }).notNull(),
+  flowActionId: varchar("flow_action_id", { length: 64 }).notNull(),
+  templateId: varchar("template_id", { length: 64 }).notNull(),
+  templateName: varchar("template_name", { length: 255 }).notNull(),
+  subjectLine: text("subject_line"),
+  originalHtml: longtext("original_html").notNull(),
+  optimizedHtml: longtext("optimized_html").notNull(),
+  originalHash: varchar("original_hash", { length: 64 }).notNull(),
+  optimizedHash: varchar("optimized_hash", { length: 64 }).notNull(),
+  operation: varchar("operation", { length: 32 }).notNull().default("backup"), // backup | apply | restore
+  status: varchar("status", { length: 32 }).notNull().default("created"), // created | applied | restored | failed
+  appliedByOpenId: varchar("applied_by_open_id", { length: 255 }),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  appliedAt: timestamp("applied_at"),
+});
+export type KlaviyoFlowEmailBackup = typeof klaviyoFlowEmailBackups.$inferSelect;
+
 // ─── Weekly Digest History ───────────────────────────────────────────────────
 export const adsWeeklyDigests = mysqlTable("ads_weekly_digests", {
   id: int("id").primaryKey().autoincrement(),

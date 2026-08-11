@@ -2,7 +2,7 @@
  * Reconciliation — per-funnel ad spend vs. Kajabi + Shopify sales
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Loader2, RefreshCw, TrendingUp, DollarSign, Users, Zap,
   ChevronDown, Lock, CheckCircle2, ShoppingCart, BookOpen, Filter,
+  CalendarDays, Mail, Target, Copy, Link2,
 } from "lucide-react";
 
 type AttributionFilter = "all" | "meta_only" | "non_meta";
@@ -18,12 +19,12 @@ type AttributionFilter = "all" | "meta_only" | "non_meta";
 function CustomerTypeBadge({ type }: { type: string }) {
   if (type === "meta_lead") return (
     <Badge className="text-xs bg-green-500/10 text-green-700 border-green-500/20 gap-1">
-      <Zap className="h-2.5 w-2.5" /> Meta Lead
+      <Zap className="h-2.5 w-2.5" /> Lead Matched
     </Badge>
   );
   if (type === "returning") return (
     <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/30 gap-1">
-      ↩ Returning
+      ↩ Not Lead-Matched
     </Badge>
   );
   return (
@@ -59,6 +60,10 @@ export default function Reconciliation() {
   const [menuOpen, setMenuOpen]         = useState(false);
   const [newCustOnly, setNewCustOnly]   = useState(false);
   const [attrFilter, setAttrFilter]     = useState<AttributionFilter>("all");
+  const [trackingSource, setTrackingSource] = useState<"kajabi" | "klaviyo">("kajabi");
+  const [trackingMedium, setTrackingMedium] = useState<"email" | "sms">("email");
+  const [trackingDestination, setTrackingDestination] = useState("https://shop.theurbanmonk.com/cart/48994340077722:1");
+  const [trackingContent, setTrackingContent] = useState("d01_episode");
 
   const { data: funnels = [] } = trpc.funnelRecon.listFunnels.useQuery();
 
@@ -69,7 +74,25 @@ export default function Reconciliation() {
 
   const loading = isLoading || isRefetching;
   const activeFunnel = funnels.find(f => f.id === funnelId);
-  const { summary, meta, kajabi, shopify, individualSales } = data ?? {};
+  const { summary, meta, kajabi, shopify, individualSales, cohortAnalytics } = data ?? {};
+  const cohortDay0Revenue = cohortAnalytics?.cohorts.reduce((sum, cohort) => sum + cohort.day0RevenueCents, 0) ?? 0;
+  const cohortDownstreamRevenue = cohortAnalytics?.cohorts.reduce((sum, cohort) => sum + cohort.day1to14RevenueCents, 0) ?? 0;
+  const cohortTotalRevenue = cohortAnalytics?.cohorts.reduce((sum, cohort) => sum + cohort.total14DayRevenueCents, 0) ?? 0;
+  const trackedEmailLink = useMemo(() => {
+    if (!trackingDestination.trim()) return "";
+    const params = new URLSearchParams({
+      destination: trackingDestination.trim(),
+      utm_source: trackingSource,
+      utm_medium: trackingMedium,
+      utm_campaign: "interconnected_14day",
+      utm_content: trackingContent.trim() || "email_link",
+    });
+    return `${window.location.origin}/r/checkout?${params.toString()}`;
+  }, [trackingContent, trackingDestination, trackingMedium, trackingSource]);
+
+  const copyTrackedLink = async () => {
+    if (trackedEmailLink) await navigator.clipboard.writeText(trackedEmailLink);
+  };
 
   const isFullyPlaceholder = activeFunnel &&
     !activeFunnel.kajabiActive && !activeFunnel.shopifyActive && !activeFunnel.metaActive;
@@ -195,7 +218,7 @@ export default function Reconciliation() {
                       : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  {f === "all" ? "All Sales" : f === "meta_only" ? "⚡ Meta-Attributed Only" : "↩ Non-Meta Only"}
+                  {f === "all" ? "All Sales" : f === "meta_only" ? "⚡ Lead-Matched Only" : "↩ Not Lead-Matched"}
                 </button>
               ))}
               {(newCustOnly || attrFilter !== "all") && (
@@ -229,6 +252,29 @@ export default function Reconciliation() {
               <span className="text-xs text-muted-foreground ml-2">
                 {startDate === endDate ? startDate : `${startDate} → ${endDate}`}
               </span>
+              <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground">
+                <CalendarDays className="h-3.5 w-3.5" />
+                <label className="sr-only" htmlFor="recon-start-date">Custom start date</label>
+                <input
+                  id="recon-start-date"
+                  type="date"
+                  value={startDate}
+                  max={endDate}
+                  onChange={(event) => { setStartDate(event.target.value); setPreset("Custom"); }}
+                  className="h-8 rounded-md border border-border bg-background px-2 text-foreground"
+                />
+                <span>to</span>
+                <label className="sr-only" htmlFor="recon-end-date">Custom end date</label>
+                <input
+                  id="recon-end-date"
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  max={todayStr()}
+                  onChange={(event) => { setEndDate(event.target.value); setPreset("Custom"); }}
+                  className="h-8 rounded-md border border-border bg-background px-2 text-foreground"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -347,6 +393,152 @@ export default function Reconciliation() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Interconnected lead-acquisition cohort economics */}
+        {cohortAnalytics && !loading && (
+          <Card className="border-primary/25">
+            <CardHeader>
+              <CardTitle className="text-base flex flex-wrap gap-2 justify-between items-center">
+                <span className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" /> 14-Day Lead Cohort Economics
+                </span>
+                <Badge variant="outline" className="font-normal">{cohortAnalytics.totalUniqueLeads.toLocaleString()} unique leads acquired</Badge>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                These are lead-acquisition cohorts: a sale counts only when a matching lead buys within 14 days of opt-in. This separates the initial Kajabi page, the future Klaviyo/SMS path, paid Meta leads, and untagged traffic instead of blending them.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-lg border border-border p-3">
+                  <div className="text-xs text-muted-foreground">Day-Zero Revenue</div>
+                  <div className="text-xl font-bold text-foreground">{fmt(cohortDay0Revenue)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Same-calendar-day purchases</div>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <div className="text-xs text-muted-foreground">Days 1–14 Revenue</div>
+                  <div className="text-xl font-bold text-primary">{fmt(cohortDownstreamRevenue)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Downstream cohort revenue</div>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <div className="text-xs text-muted-foreground">14-Day Cohort Revenue</div>
+                  <div className="text-xl font-bold text-green-600">{fmt(cohortTotalRevenue)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Partial for cohorts younger than 14 days</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium mb-2"><Users className="h-4 w-4" /> Daily Unique Leads</div>
+                  <div className="rounded-md border border-border overflow-x-auto max-h-72 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 bg-muted">
+                        <tr className="text-muted-foreground">
+                          <th className="text-left p-2">Date</th>
+                          <th className="text-right p-2">Total</th>
+                          <th className="text-right p-2">Kajabi</th>
+                          <th className="text-right p-2">Klaviyo / SMS</th>
+                          <th className="text-right p-2">Meta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cohortAnalytics.dailyLeads.length === 0 ? (
+                          <tr><td colSpan={5} className="p-3 text-muted-foreground text-center">No unique Interconnected leads in this window.</td></tr>
+                        ) : cohortAnalytics.dailyLeads.map((row) => (
+                          <tr key={row.date} className="border-t border-border">
+                            <td className="p-2 font-medium">{row.date}</td>
+                            <td className="p-2 text-right font-semibold">{row.uniqueLeads}</td>
+                            <td className="p-2 text-right">{row.kajabiPage}</td>
+                            <td className="p-2 text-right">{row.klaviyoSms}</td>
+                            <td className="p-2 text-right">{row.metaPaid}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium mb-2"><Mail className="h-4 w-4" /> Cohort Path Performance</div>
+                  <div className="rounded-md border border-border overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted">
+                        <tr className="text-muted-foreground">
+                          <th className="text-left p-2">Path</th>
+                          <th className="text-right p-2">Leads</th>
+                          <th className="text-right p-2">D0</th>
+                          <th className="text-right p-2">D1–14</th>
+                          <th className="text-right p-2">14-Day Rev.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cohortAnalytics.cohorts.map((cohort) => (
+                          <tr key={cohort.path} className="border-t border-border">
+                            <td className="p-2 font-medium">{cohort.label}</td>
+                            <td className="p-2 text-right">{cohort.uniqueLeads}</td>
+                            <td className="p-2 text-right">{fmt(cohort.day0RevenueCents)}</td>
+                            <td className="p-2 text-right text-primary">{fmt(cohort.day1to14RevenueCents)}</td>
+                            <td className="p-2 text-right font-semibold text-green-600">{fmt(cohort.total14DayRevenueCents)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground border-t pt-3">
+                <strong>Definitions:</strong> “Meta” means a lead with Meta/Agora UTM or fbclid; “Kajabi Page” means the Kajabi webhook path; “Klaviyo / SMS” means explicit Klaviyo or SMS UTM labeling. This view is lead-cohort attribution, not a claim that a specific email click caused a purchase. Exact email-click attribution becomes available when outbound checkout links carry the tracked UTM/click token bridge.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {funnelId === "interconnected_agora" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><Link2 className="h-4 w-4 text-primary" /> Controlled Email Checkout Link Builder</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Use a different link for each Kajabi and Klaviyo/SMS message. The first-party bridge records the click, retains the UTM convention, and writes a Shopify order attribute for direct paid-order attribution.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <label className="text-xs text-muted-foreground space-y-1">
+                  <span>Sequence path</span>
+                  <select value={trackingSource} onChange={(event) => setTrackingSource(event.target.value as "kajabi" | "klaviyo")} className="w-full h-9 rounded-md border border-border bg-background px-2 text-foreground">
+                    <option value="kajabi">Kajabi sequence</option>
+                    <option value="klaviyo">Klaviyo sequence</option>
+                  </select>
+                </label>
+                <label className="text-xs text-muted-foreground space-y-1">
+                  <span>Channel</span>
+                  <select value={trackingMedium} onChange={(event) => setTrackingMedium(event.target.value as "email" | "sms")} className="w-full h-9 rounded-md border border-border bg-background px-2 text-foreground">
+                    <option value="email">Email</option>
+                    <option value="sms">SMS</option>
+                  </select>
+                </label>
+                <label className="text-xs text-muted-foreground space-y-1">
+                  <span>Message marker</span>
+                  <input value={trackingContent} onChange={(event) => setTrackingContent(event.target.value)} placeholder="d03_episode" className="w-full h-9 rounded-md border border-border bg-background px-2 text-foreground" />
+                </label>
+                <label className="text-xs text-muted-foreground space-y-1">
+                  <span>Shopify checkout destination</span>
+                  <input value={trackingDestination} onChange={(event) => setTrackingDestination(event.target.value)} className="w-full h-9 rounded-md border border-border bg-background px-2 text-foreground" />
+                </label>
+              </div>
+              <div className="rounded-md bg-muted p-3 flex gap-3 items-start">
+                <code className="text-xs text-foreground break-all flex-1">{trackedEmailLink || "Enter a checkout destination to create a tracked link."}</code>
+                <Button variant="outline" size="sm" className="gap-1 shrink-0" disabled={!trackedEmailLink} onClick={copyTrackedLink}>
+                  <Copy className="h-3.5 w-3.5" /> Copy
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Keep the campaign as <code>interconnected_14day</code> and vary only the message marker: for example, <code>d01_episode</code>, <code>d10_offer</code>, or <code>d12_last_call</code>. Do not use a Kajabi-generated link in the Klaviyo/SMS sequence, or vice versa.
+              </p>
+            </CardContent>
+          </Card>
         )}
 
         {/* Kajabi Tier Breakdown */}

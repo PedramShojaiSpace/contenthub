@@ -1508,6 +1508,11 @@ async function startServer() {
     const { handleAttributionClick } = await import("../attributionRouter");
     return handleAttributionClick(req, res);
   });
+  // GET /r/checkout — first-party tracked email checkout bridge for Kajabi and Klaviyo links
+  app.get("/r/checkout", async (req, res) => {
+    const { handleTrackedEmailCheckout } = await import("../attributionRouter");
+    return handleTrackedEmailCheckout(req, res);
+  });
 
   // POST /api/shopify/order-paid — Shopify webhook: orders/paid
   // Configure in Shopify Admin → Settings → Notifications → Webhooks

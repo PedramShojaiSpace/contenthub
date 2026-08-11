@@ -17,7 +17,14 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { kajabiPurchases, interconnectedLeads } from "../drizzle/schema";
-import { and, gte, lte, eq } from "drizzle-orm";
+import { and, gte, lte, eq, inArray } from "drizzle-orm";
+import {
+  classifyInterconnectedCohortPath,
+  dayOffsetFromLead,
+  isWithinFourteenDayWindow,
+  toUtcDateKey,
+  type InterconnectedCohortPath,
+} from "./interconnectedCohorts";
 
 // ── Funnel registry ───────────────────────────────────────────────────────────
 
@@ -244,6 +251,147 @@ async function buildKajabiPurchasesLookup(
     console.warn("[reconciliation] DB lookup failed:", (e as Error).message);
   }
   return map;
+}
+
+type CohortRevenueSummary = {
+  path: InterconnectedCohortPath;
+  label: string;
+  uniqueLeads: number;
+  maturedLeads: number;
+  day0Purchases: number;
+  day0RevenueCents: number;
+  day1to14Purchases: number;
+  day1to14RevenueCents: number;
+  total14DayRevenueCents: number;
+};
+
+const COHORT_LABELS: Record<InterconnectedCohortPath, string> = {
+  kajabi_page: "Kajabi Page Cohort",
+  klaviyo_sms: "Klaviyo / SMS Cohort",
+  meta_paid: "Meta-Paid Cohort",
+  other: "Other / Untagged Cohort",
+};
+
+/**
+ * Cohort economics are lead-acquisition based: leads are included by their
+ * opt-in date, and only purchases from those leads within 14 days count toward
+ * their cohort LTV. This deliberately differs from a purchase-date ROAS view.
+ */
+async function getInterconnectedCohortAnalytics(startDate: string, endDate: string) {
+  const empty = {
+    definition: "Lead-acquisition cohorts: revenue is counted only when the matching lead buys within 14 days of opt-in. Email-click UTMs are reported separately when a tracked checkout bridge is used.",
+    totalUniqueLeads: 0,
+    dailyLeads: [] as Array<{ date: string; uniqueLeads: number; kajabiPage: number; klaviyoSms: number; metaPaid: number; other: number }>,
+    cohorts: [] as CohortRevenueSummary[],
+    emailClickAttributionAvailable: false,
+  };
+  const db = await getDb();
+  if (!db) return empty;
+
+  const startMs = new Date(`${startDate}T00:00:00Z`).getTime();
+  const endMs = new Date(`${endDate}T23:59:59Z`).getTime();
+  const leadRows = await db.select({
+    email: interconnectedLeads.email,
+    createdAt: interconnectedLeads.createdAt,
+    utmSource: interconnectedLeads.utmSource,
+    utmMedium: interconnectedLeads.utmMedium,
+    utmCampaign: interconnectedLeads.utmCampaign,
+    fbclid: interconnectedLeads.fbclid,
+  }).from(interconnectedLeads).where(and(
+    gte(interconnectedLeads.createdAt, startMs),
+    lte(interconnectedLeads.createdAt, endMs)
+  ));
+
+  const uniqueLeads = new Map<string, {
+    email: string;
+    createdAt: number;
+    path: InterconnectedCohortPath;
+  }>();
+  for (const lead of leadRows) {
+    const email = lead.email.toLowerCase().trim();
+    const path = classifyInterconnectedCohortPath(lead);
+    const existing = uniqueLeads.get(email);
+    if (!existing || lead.createdAt < existing.createdAt) {
+      uniqueLeads.set(email, { email, createdAt: lead.createdAt, path });
+    }
+  }
+
+  const cohortMap = new Map<InterconnectedCohortPath, CohortRevenueSummary>();
+  const dailyMap = new Map<string, { date: string; uniqueLeads: number; kajabiPage: number; klaviyoSms: number; metaPaid: number; other: number }>();
+  for (const path of Object.keys(COHORT_LABELS) as InterconnectedCohortPath[]) {
+    cohortMap.set(path, {
+      path,
+      label: COHORT_LABELS[path],
+      uniqueLeads: 0,
+      maturedLeads: 0,
+      day0Purchases: 0,
+      day0RevenueCents: 0,
+      day1to14Purchases: 0,
+      day1to14RevenueCents: 0,
+      total14DayRevenueCents: 0,
+    });
+  }
+
+  const now = Date.now();
+  for (const lead of uniqueLeads.values()) {
+    const cohort = cohortMap.get(lead.path)!;
+    cohort.uniqueLeads++;
+    if (lead.createdAt <= now - 14 * 86_400_000) cohort.maturedLeads++;
+    const date = toUtcDateKey(lead.createdAt);
+    const daily = dailyMap.get(date) ?? { date, uniqueLeads: 0, kajabiPage: 0, klaviyoSms: 0, metaPaid: 0, other: 0 };
+    daily.uniqueLeads++;
+    if (lead.path === "kajabi_page") daily.kajabiPage++;
+    else if (lead.path === "klaviyo_sms") daily.klaviyoSms++;
+    else if (lead.path === "meta_paid") daily.metaPaid++;
+    else daily.other++;
+    dailyMap.set(date, daily);
+  }
+
+  const emails = [...uniqueLeads.keys()];
+  if (emails.length === 0) {
+    return { ...empty, cohorts: [...cohortMap.values()], dailyLeads: [...dailyMap.values()].sort((a, b) => a.date.localeCompare(b.date)) };
+  }
+
+  // Query purchases across the maximum cohort observation window. Dedup by
+  // email + value + minute because webhook retries should never inflate LTV.
+  const purchaseRows = await db.select({
+    email: kajabiPurchases.email,
+    amountCents: kajabiPurchases.amountCents,
+    purchasedAt: kajabiPurchases.purchasedAt,
+  }).from(kajabiPurchases).where(and(
+    inArray(kajabiPurchases.email, emails),
+    gte(kajabiPurchases.purchasedAt, startMs),
+    lte(kajabiPurchases.purchasedAt, endMs + 14 * 86_400_000)
+  ));
+
+  const processed = new Set<string>();
+  for (const purchase of purchaseRows) {
+    if (!purchase.email || !purchase.purchasedAt || !purchase.amountCents || purchase.amountCents <= 0) continue;
+    const email = purchase.email.toLowerCase().trim();
+    const lead = uniqueLeads.get(email);
+    if (!lead) continue;
+    const dedupeKey = `${email}:${purchase.amountCents}:${Math.round(purchase.purchasedAt / 60_000)}`;
+    if (processed.has(dedupeKey)) continue;
+    processed.add(dedupeKey);
+    if (!isWithinFourteenDayWindow(lead.createdAt, purchase.purchasedAt)) continue;
+    const cohort = cohortMap.get(lead.path)!;
+    const dayOffset = dayOffsetFromLead(lead.createdAt, purchase.purchasedAt)!;
+    cohort.total14DayRevenueCents += purchase.amountCents;
+    if (dayOffset === 0) {
+      cohort.day0Purchases++;
+      cohort.day0RevenueCents += purchase.amountCents;
+    } else {
+      cohort.day1to14Purchases++;
+      cohort.day1to14RevenueCents += purchase.amountCents;
+    }
+  }
+
+  return {
+    ...empty,
+    totalUniqueLeads: uniqueLeads.size,
+    cohorts: [...cohortMap.values()],
+    dailyLeads: [...dailyMap.values()].sort((a, b) => a.date.localeCompare(b.date)),
+  };
 }
 
 async function fetchKajabiForFunnel(
@@ -695,10 +843,13 @@ export const funnelReconciliationRouter = router({
       // Build DB lookup for attribution cross-reference
       const dbLookup = await buildKajabiPurchasesLookup(input.startDate, input.endDate);
 
-      const [kajabi, shopify, meta] = await Promise.all([
+      const [kajabi, shopify, meta, cohortAnalytics] = await Promise.all([
         fetchKajabiForFunnel(funnel, input.startDate, input.endDate, dbLookup),
         fetchShopifyForFunnel(funnel, input.startDate, input.endDate),
         fetchMetaForFunnel(funnel, input.startDate, input.endDate),
+        funnel.id === "interconnected_agora"
+          ? getInterconnectedCohortAnalytics(input.startDate, input.endDate)
+          : Promise.resolve(null),
       ]);
 
       // ── Cross-reference Kajabi sales with DB attribution data ──────────────
@@ -812,6 +963,7 @@ export const funnelReconciliationRouter = router({
           metaActive: funnel.metaActive,
         },
         dateRange: { startDate: input.startDate, endDate: input.endDate },
+        cohortAnalytics,
         meta: {
           spend: meta.spend,
           leads: meta.leads,

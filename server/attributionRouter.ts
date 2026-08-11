@@ -16,6 +16,7 @@ import { adClicks, attributedSales } from "../drizzle/schema";
 import { eq, desc, gte, sql, and, isNotNull } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { isAuthorizedShopifyWebhook } from "./shopifyWebhookAuth";
+import { buildTrackedCheckoutDestination } from "./emailCheckoutTracking";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -393,6 +394,55 @@ export async function handleAttributionClick(req: any, res: any) {
   } catch (err) {
     console.error("[attribution/click] Error:", err);
     return res.status(500).json({ error: "Internal error" });
+  }
+}
+
+/**
+ * Email-link bridge. It records a first-party click, then redirects to an
+ * allowed checkout destination with the cohort UTMs preserved. Shopify links
+ * also receive an order attribute for direct order-paid matching.
+ */
+export async function handleTrackedEmailCheckout(req: any, res: any) {
+  try {
+    const destination = typeof req.query.destination === "string" ? req.query.destination : "";
+    const utmSource = typeof req.query.utm_source === "string" ? req.query.utm_source : "";
+    const utmMedium = typeof req.query.utm_medium === "string" ? req.query.utm_medium : "";
+    const utmCampaign = typeof req.query.utm_campaign === "string" ? req.query.utm_campaign : "";
+    const utmContent = typeof req.query.utm_content === "string" ? req.query.utm_content : undefined;
+    const fbclid = typeof req.query.fbclid === "string" ? req.query.fbclid : undefined;
+    if (!destination || !utmSource || !utmMedium || !utmCampaign) {
+      return res.status(400).send("Missing checkout destination or required UTM parameters.");
+    }
+
+    const db = await getDb();
+    if (!db) return res.status(503).send("Attribution service unavailable.");
+    const clickToken = generateClickToken();
+    const ip = ((req.headers["x-forwarded-for"] as string) || req.socket?.remoteAddress || "").split(",")[0].trim();
+    const now = Date.now();
+    await db.insert(adClicks).values({
+      clickToken,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmContent: utmContent || null,
+      fbclid: fbclid || null,
+      userAgent: (req.headers["user-agent"] as string) || null,
+      ipHash: ip ? hashIp(ip) : null,
+      clickedAt: now,
+      expiresAt: now + 30 * 24 * 60 * 60 * 1000,
+    });
+    const trackedDestination = buildTrackedCheckoutDestination({
+      destination,
+      clickToken,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmContent,
+    });
+    return res.redirect(302, trackedDestination);
+  } catch (error) {
+    console.error("[attribution/email-checkout] Error:", error);
+    return res.status(400).send("Unable to create tracked checkout link.");
   }
 }
 

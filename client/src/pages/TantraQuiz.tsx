@@ -1037,11 +1037,11 @@ function ResultsScreen({
 
           {/* ── PERSONALIZED RESULTS VIDEO ── */}
           {(() => {
-            // Intro: sq2gcr1ggd | Him: 89uaizbbp7 | Her: 32lqci0nzk | Both: hccen78w9l
+            // Intro: sq2gcr1ggd | Him: 89uaizbbp7 | Her: 32lqci0nzk | Both: nxh6n82ax4
             const videoId = result === "tantra_her"
               ? "32lqci0nzk"
               : isCouple
-              ? "hccen78w9l" // Both / couple path
+              ? "nxh6n82ax4" // Both / couple path
               : "89uaizbbp7"; // Him path
             return (
               <div className="mb-8 rounded-2xl overflow-hidden border border-white/10 max-w-2xl mx-auto" style={{aspectRatio:'16/9'}}>

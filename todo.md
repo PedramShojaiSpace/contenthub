@@ -4569,3 +4569,4 @@ Pricing model (corrected):
 - [x] Remove duplicate Lead pixel from opt-in page entirely
 - [ ] Investigate why 439 LP views → only 26 leads (5.9%) when Aug 3 was 36%
 - [ ] Check if form is silently failing for most visitors today
+- [x] Replace the Tantra quiz couple-path Wistia video with nxh6n82ax4

@@ -4578,3 +4578,4 @@ Pricing model (corrected):
 - [x] Audit and prepare the Tantra divorce/reconnection Meta campaigns for controlled activation
 - [x] Verify $199 Kajabi one-click upsell classification, attribution, and inclusion in Interconnected ROAS
 - [x] Add DataForSEO and vidIQ-informed keyword recommendations before YouTube-to-blog generation
+- [x] Repair WordPress post 11129 capitalization and Yoast SEO gaps; enforce the relevant generator quality gates

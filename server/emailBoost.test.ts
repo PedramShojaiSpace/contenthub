@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest";
 import { buildEmailHtml, buildMimeMessage } from "./emailBoost";
 
 describe("emailBoost", () => {
-  it("wraps plain text body in HTML with boostData block", () => {
+  it("wraps plain text body in a readable, responsive email frame", () => {
     const html = buildEmailHtml("Hello world.\n\nThis is a test.", "Pedram");
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("Hello world.");
-    expect(html).toContain("boostData");
-    expect(html).toContain("display: none");
-    expect(html).toContain("DKIM");
-    expect(html).toContain("SPF");
+    expect(html).toContain('role="presentation"');
+    expect(html).toContain("background-color:#f3f0e9");
+    expect(html).toContain("The Urban Monk");
+    expect(html).toContain("@media only screen and (max-width: 620px)");
   });
 
   it("passes through existing HTML body without double-wrapping paragraphs", () => {
@@ -35,7 +35,7 @@ describe("emailBoost", () => {
     expect(mime).toContain("multipart/alternative");
     expect(mime).toContain("text/plain");
     expect(mime).toContain("text/html");
-    expect(mime).toContain("boostData");
+    expect(mime).toContain("The Urban Monk");
     expect(mime).toContain("Hello there.");
   });
 
@@ -52,32 +52,10 @@ describe("emailBoost", () => {
     expect(mime).toContain("References: <original-message-id@mail.gmail.com>");
   });
 
-  it("boostData block contains deliverability vocabulary", () => {
+  it("does not add hidden deliverability payloads or quoted-printable artifacts", () => {
     const html = buildEmailHtml("Test body.", "User");
-    const boostKeywords = ["DKIM", "SPF", "deliverability", "inbox", "authentication"];
-    for (const kw of boostKeywords) {
-      expect(html).toContain(kw);
-    }
-  });
-
-  it("boostData uses double-encoded HTML entities (Technique 4)", () => {
-    const html = buildEmailHtml("Test.", "User");
-    // Inner HTML should be entity-encoded, not raw tags
-    expect(html).toContain("&lt;div");
-    expect(html).toContain("=3D");
-  });
-
-  it("boostData contains quoted-printable artifacts (Technique 5)", () => {
-    const html = buildEmailHtml("Test.", "User");
-    expect(html).toContain("=E2=80=8B"); // zero-width space
-    expect(html).toContain("=E2=80=93"); // em dash
-  });
-
-  it("boostData block is identical across multiple calls (Technique 6)", () => {
-    const html1 = buildEmailHtml("Email one body.", "Alice");
-    const html2 = buildEmailHtml("Email two body.", "Bob");
-    // Extract boostData blocks
-    const extract = (h: string) => h.slice(h.indexOf('id="boostData"'));
-    expect(extract(html1)).toBe(extract(html2));
+    expect(html).not.toContain("boostData");
+    expect(html).not.toContain("=E2=80=8B");
+    expect(html).not.toContain("=E2=80=93");
   });
 });

@@ -728,6 +728,12 @@
 - [x] Prepare the exact SPF consolidation, DMARC monitoring, and Gmail seed-test instructions for the domain administrator.
 - [ ] Obtain explicit approval before replacing the current live Day 0 email or activating any new email action.
 
+## Day 0 Email Layout and Reusable Template Quality
+
+- [x] Replace the sparse Day 0 draft layout with a readable, polished email treatment using balanced margins, a warm neutral background, stronger text contrast, and a compact content frame.
+- [x] Update the reusable content-optimizer email layout pattern so generated emails avoid excessive white space and weak visual hierarchy — the shared direct-email builder now applies the same responsive reading frame.
+- [x] Verify the revised Day 0 draft remains non-promotional and non-sending while displaying correctly across typical email widths — focused layout and non-promotional draft tests passed; Klaviyo draft updated in place only.
+
 ## $199 Member-Offer Layout Refinement
 
 - [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.

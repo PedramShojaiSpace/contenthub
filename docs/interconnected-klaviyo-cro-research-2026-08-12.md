@@ -71,6 +71,8 @@ Validated locally: the isolated treatment page rendered separately from the cham
 
 Immediately after the checkpoint, the local development route rendered correctly, but the public custom and managed domains returned the prior client bundle and displayed a route-level 404 for the new treatment URL. Public response headers were correctly no-cache, while the served `index-BhUBYoW0.js` bundle did not contain the treatment route; the local production build did. This is a deployment-propagation mismatch, not a treatment-page implementation error. The route remains disconnected from all live traffic until the deployed bundle is verified.
 
+The subsequent automatic deployment refresh served `index-CZ6MCa2l.js`, which contains the Klaviyo treatment route. The published page was then verified at the production Content Hub domain with the $67 offer, Version B layout, persistent timer, and direct-Shopify-checkout microcopy visible. The current Kajabi champion route remained unchanged.
+
 ## Proposed Klaviyo Treatment Architecture
 
 ### Cohort Design

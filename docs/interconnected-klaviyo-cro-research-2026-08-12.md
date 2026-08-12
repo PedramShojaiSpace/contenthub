@@ -173,3 +173,13 @@ This experiment begins only after K67-1 has been held stable. The test changes t
 ## Implementation Preconditions
 
 The $199 Shopify treatment must be purchasable before it can be tested. It may stay excluded from storefront navigation, search, and collections, but a Draft Shopify product cannot support a live treatment checkout. The correct implementation is an approved, controlled purchase path with explicit storefront-visibility protections; no Shopify visibility or URL change should be made without separate approval.
+
+## End-of-Page CTA Audit
+
+The screenshot is the **Final Offer Card** at the bottom of the Klaviyo-only page. It is an ordinary repeated CTA, not an exit-intent experience. The page currently contains repeated purchase prompts above the fold, after the value stack, in the offer card, after the episode section, after reviews, in a second offer card, after the FAQ, and in the final-card area. The final card repeats the same offer, price, guarantee, and CTA immediately after the FAQ without adding decision-support content.
+
+No exit-intent logic, modal state, mouse-leave listener, mobile fallback, or one-time display guard exists in the current treatment source. The recommended treatment is to remove the redundant final-card CTA and replace it with one desktop-only, one-time exit-intent overlay. The overlay should offer a short decision reframe and a single existing checkout CTA; it should not add a discount, fabricate scarcity, or display on mobile, where pointer-leave intent is unreliable. The current sticky bar and in-page CTAs remain the mobile recovery path.
+
+### Implemented Treatment
+
+The redundant final-card CTA has been removed from `/interconnected/thank-you-klaviyo`. A recovery overlay now appears only after 12 seconds, only on devices reporting a fine hover pointer, only when the pointer leaves through the top edge of the document, and only once per session. It is suppressed if checkout has already begun, can be dismissed by the secondary choice or Escape key, and reuses the existing tracked Shopify checkout CTA. The overlay is hidden at mobile breakpoints; the sticky bar and in-page CTA path are unchanged for mobile visitors.

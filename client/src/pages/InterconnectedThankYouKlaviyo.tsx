@@ -317,6 +317,8 @@ const StarRating = ({ count = 5 }: { count?: number }) => (
 
 export default function InterconnectedThankYouKlaviyo() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [showExitIntent, setShowExitIntent] = useState(false);
+  const checkoutStartedRef = useRef(false);
 
   useEffect(() => {
     sessionStorage.setItem("__interconnected_treatment", "klaviyo_ty_b_v1");
@@ -324,7 +326,34 @@ export default function InterconnectedThankYouKlaviyo() {
     firePixel("Lead", {}, leadEventId);
   }, []);
 
+  useEffect(() => {
+    const DISPLAY_KEY = "__ic_klaviyo_exit_intent_shown";
+    const desktopPointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    if (!desktopPointer.matches || sessionStorage.getItem(DISPLAY_KEY)) return;
+
+    let eligible = false;
+    const eligibleTimer = window.setTimeout(() => { eligible = true; }, 12_000);
+    const onMouseOut = (event: MouseEvent) => {
+      if (!eligible || checkoutStartedRef.current || event.clientY > 0 || sessionStorage.getItem(DISPLAY_KEY)) return;
+      sessionStorage.setItem(DISPLAY_KEY, "1");
+      setShowExitIntent(true);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowExitIntent(false);
+    };
+
+    document.addEventListener("mouseout", onMouseOut);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.clearTimeout(eligibleTimer);
+      document.removeEventListener("mouseout", onMouseOut);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
   const handleBuyClick = () => {
+    checkoutStartedRef.current = true;
+    setShowExitIntent(false);
     const checkoutEventId = `ic_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     sessionStorage.setItem('__capi_checkout_event_id', checkoutEventId);
     firePixel("InitiateCheckout", {
@@ -713,20 +742,6 @@ export default function InterconnectedThankYouKlaviyo() {
         </div>
       </section>
 
-      {/* ── FINAL OFFER CARD ────────────────────────────────────────────────────── */}
-      <section className="px-4 py-16" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px",  background: BG_DARK  }}>
-        <div className="max-w-2xl mx-auto text-center">
-          <p className="text-gray-400 text-sm mb-4 uppercase tracking-widest">Last chance</p>
-          <h2 className="text-3xl font-bold text-white mb-8" style={{ fontFamily: "Georgia, serif" }}>
-            Don't Miss Your Chance to Own the Entire Series
-          </h2>
-          <BuyButton label="YES — Give Me Instant Access to All 9 Episodes" />
-          <p className="text-gray-600 text-xs mt-6 max-w-lg mx-auto">
-            30-day money-back guarantee. No questions asked. Instant access delivered to your inbox.
-          </p>
-        </div>
-      </section>
-
       {/* ── FOOTER ──────────────────────────────────────────────────────────────── */}
       <footer className="py-8 px-4 text-center" style={{ background: BG_MID, borderTop: `1px solid rgba(46,145,252,0.1)` }}>
         <img src={LOGO} alt="The Urban Monk" className="w-24 mx-auto mb-4 opacity-60" loading="lazy" decoding="async" />
@@ -737,6 +752,44 @@ export default function InterconnectedThankYouKlaviyo() {
           © {new Date().getFullYear()} The Urban Monk · All Rights Reserved
         </p>
       </footer>
+
+      {showExitIntent && (
+        <div
+          className="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 p-4 backdrop-blur-sm md:flex"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="exit-intent-title"
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl p-7 text-center shadow-2xl"
+            style={{ background: BG_CARD, border: `2px solid ${BLUE}`, boxShadow: `0 0 60px ${BLUE_GLOW}` }}
+          >
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em]" style={{ color: GOLD }}>
+              Before you go
+            </p>
+            <h2 id="exit-intent-title" className="mb-4 text-3xl font-bold text-white" style={{ fontFamily: "Georgia, serif" }}>
+              Keep every episode when you need it most.
+            </h2>
+            <p className="mb-6 text-gray-300">
+              Get permanent access to all 9 episodes, the companion guide, and the healing community for the private $67 member offer.
+            </p>
+            <button
+              onClick={handleBuyClick}
+              className="w-full rounded-xl px-6 py-4 text-base font-black uppercase tracking-wide transition-transform hover:scale-[1.02]"
+              style={{ background: `linear-gradient(135deg, ${GOLD} 0%, #e8b800 100%)`, color: "#0a0a0a", boxShadow: `0 8px 32px rgba(245,200,66,0.35)` }}
+            >
+              Yes — Unlock All 9 Episodes for $67
+            </button>
+            <button
+              onClick={() => setShowExitIntent(false)}
+              className="mt-4 text-sm text-gray-400 underline underline-offset-4"
+            >
+              No thanks, I’ll watch one episode at a time
+            </button>
+            <p className="mt-5 text-xs text-gray-500">Secure Shopify checkout · 30-day money-back guarantee · Instant access</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

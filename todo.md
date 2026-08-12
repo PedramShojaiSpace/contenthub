@@ -691,6 +691,11 @@
 - [x] Configure the Klaviyo Placed Order flow specification for confirmed $67 Shopify buyers and suppress $199 buyers from future sends — created and verified as Draft flow `RQn35Z`.
 - [x] Validate the live $199 landing-page CTA, first-party click token, order attribution, and documented post-purchase activation URL.
 
+## $199 Klaviyo Email Activation
+
+- [x] Activate the approved Draft email in the $67-to-$199 Klaviyo flow for future eligible Shopify buyers only — activated corrected flow `ThkCXz` with one live email action.
+- [x] Verify the live flow/action status, $67 trigger condition, $199 destination URL, and Kajabi-control isolation — Live flow and action confirmed; trigger and $199-purchaser exclusion verified; Kajabi unchanged.
+
 ## $199 Member-Offer Layout Refinement
 
 - [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.

@@ -734,6 +734,12 @@
 - [x] Update the reusable content-optimizer email layout pattern so generated emails avoid excessive white space and weak visual hierarchy — the shared direct-email builder now applies the same responsive reading frame.
 - [x] Verify the revised Day 0 draft remains non-promotional and non-sending while displaying correctly across typical email widths — focused layout and non-promotional draft tests passed; Klaviyo draft updated in place only.
 
+## Day 0 Active Template Mobile Preview Repair
+
+- [x] Compare the visible Klaviyo mobile preview with the intended Day 0 draft and identify the active template record being previewed — screenshot was from active code template `XTHuPY` (Day 0 opt in EG sp26), not draft template `Smbiqi`.
+- [x] Replace the active draft template HTML with the mobile-first readable layout rather than the legacy dense markup — guarded in-place repair preserved copy, text version, and flow linkage.
+- [ ] Verify the corrected template in Klaviyo mobile preview while preserving its non-sending, non-flow state.
+
 ## $199 Member-Offer Layout Refinement
 
 - [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.

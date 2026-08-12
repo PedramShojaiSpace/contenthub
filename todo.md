@@ -715,6 +715,12 @@
 - [x] Retire internal Thank You A/B routing so Kajabi has one stable control route for the Klaviyo-versus-Kajabi test.
 - [ ] Validate the stable Kajabi control and Klaviyo treatment URLs, their tracking labels, and no unintended route changes.
 
+## Interconnected Day 0 Gmail Deliverability Diagnosis
+
+- [x] Retrieve and compare the supplied original and enhanced Day 0 HTML for structural, link, image, and promotional-signal differences — the visible content, links, images, and promotional text are materially identical; the Content Hub file only minifies markup.
+- [x] Separate content-level Promotions risk factors from sender-reputation, authentication, and recipient-engagement factors — the offer content correctly classifies as promotional; two SPF records and no public DMARC record are meaningful authentication risks.
+- [x] Prepare a lower-risk Day 0 HTML and measurable inbox-placement test plan without editing the live Klaviyo flow until approved.
+
 ## $199 Member-Offer Layout Refinement
 
 - [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.

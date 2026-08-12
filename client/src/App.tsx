@@ -88,7 +88,6 @@ const InterconnectedThankYou = lazy(() => import("./pages/InterconnectedThankYou
 const InterconnectedThankYouB = lazy(() => import("./pages/InterconnectedThankYouB"));
 const InterconnectedThankYouKlaviyo = lazy(() => import("./pages/InterconnectedThankYouKlaviyo"));
 const Interconnected199PostPurchaseKlaviyo = lazy(() => import("./pages/Interconnected199PostPurchaseKlaviyo"));
-const InterconnectedThankYouSplitter = lazy(() => import("./pages/InterconnectedThankYouSplitter"));
 const InterconnectedPurchased = lazy(() => import("./pages/InterconnectedPurchased"));
 const InterconnectedB = lazy(() => import("./pages/InterconnectedB"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
@@ -202,7 +201,7 @@ function Router() {
         <Route path={"/quiz/tantra"} component={TantraQuiz} />
         <Route path={"/tantra-funnel"} component={TantraFunnelDashboard} />
         <Route path={"/interconnected"} component={Interconnected} />
-        <Route path={"/interconnected/thank-you"} component={InterconnectedThankYouSplitter} />
+        <Route path={"/interconnected/thank-you"} component={InterconnectedThankYouB} />
         <Route path={"/interconnected/thank-you-b"} component={InterconnectedThankYouB} />
         <Route path={"/interconnected/thank-you-klaviyo"} component={InterconnectedThankYouKlaviyo} />
         <Route path={"/interconnected/post-purchase-199-klaviyo"} component={Interconnected199PostPurchaseKlaviyo} />

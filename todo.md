@@ -676,6 +676,14 @@
 - [x] Validate the treatment page, timer persistence, Meta checkout event, UTMs/click token, Shopify checkout handoff, and mobile rendering — published route renders separately, checkout URL builder regression coverage passed, and the champion remained unchanged.
 - [x] Deliver the treatment URL and exact Klaviyo activation requirements while leaving it disconnected from live traffic.
 
+## $199 Shopify Post-Purchase Landing-Page Treatment
+
+- [x] Audit the existing $199 product, current offer page, and confirmed-$67 buyer handoff — the $199 Shopify product is Draft and non-purchasable; the Kajabi OCU returned a 500 during review; Shopify’s native post-purchase extension is not a redirect substitute.
+- [x] Design the $199 dedicated landing-page treatment, buyer-eligibility rule, tracked checkout handoff, and Klaviyo post-purchase trigger.
+- [x] Build an unpublished $199 landing page that is only intended for confirmed $67 Shopify buyers and does not alter the $67 champion or Kajabi control.
+- [x] Validate eligibility, checkout attribution, mobile rendering, and all buyer-facing offer details before activation — treatment route, $199 checkout-link regression test, 14-day cohort attribution, medical framing, and opened-kit disclosure are validated; final checkout activation remains blocked by the Shopify product’s Draft status.
+- [ ] Deliver the isolated $199 treatment URL and exact Klaviyo post-purchase activation instructions.
+
 ## v21 Features — Enrichment Badges & Segment Comparison
 
 - [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona

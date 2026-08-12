@@ -22,6 +22,43 @@ Klaviyo automatically appends `_kx` to message links for known-browser tracking.
 [3] https://help.klaviyo.com/hc/en-us/articles/115005248128 — Understanding message conversion tracking.
 [4] https://help.klaviyo.com/hc/en-us/articles/115005247808 — Understanding UTM tracking in Klaviyo.
 
+## Shopify Checkout Handoff Evidence
+
+Shopify officially supports cart permalinks that pre-load a selected variant and take buyers directly to a store cart or checkout. The URL may also carry `attributes`, `note`, or `ref` conversion-tracking parameters; these values are retained on the order. This allows the $67 Thank You B decision page to send a buyer directly into a pre-filled Shopify checkout rather than detouring through a generic product page. [5] [6]
+
+For the mapped $67 variant, the intended format is `https://shop.theurbanmonk.com/cart/48959577653402:1`, wrapped by the existing first-party checkout bridge so the UTM values and `_um_click_token` order attribute are preserved. Do not use `storefront=true`, which deliberately redirects a buyer to the cart page instead of checkout. A paid product and live Online Store availability remain prerequisites for checkout completion.
+
+[5] https://shopify.dev/docs/apps/build/checkout/create-cart-permalinks — Create cart permalinks.
+[6] https://help.shopify.com/en/manual/checkout-settings/cart-permalink — Cart permalinks.
+
+## Correction: Thank You B Is the $67 Decision Page
+
+The verified live decision page is `https://content.theurbanmonk.com/interconnected/thank-you-b`, not the Shopify product page. It currently contains the $67 all-access offer, a 15-minute persistent timer, the Version B Wistia video, the documented value stack, above-fold CTA, Meta `InitiateCheckout`, and internal A/B checkout-start tracking. Its present CTA redirects to the Kajabi offer checkout at `https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout`.
+
+Therefore, the **Klaviyo treatment must preserve Thank You B as the sales page**. It should be a separately labeled Klaviyo treatment clone or route that retains the current decision-page structure and changes only the checkout handoff after approval. Kajabi stays completely unchanged as the control.
+
+### Corrected $67 Treatment Flow
+
+```text
+Klaviyo opt-in → Klaviyo Thank You B treatment page → tracked Shopify cart permalink → native Shopify checkout → confirmed Shopify paid order
+Kajabi opt-in  → existing Kajabi Thank You B/control page → existing Kajabi checkout → existing Kajabi order
+```
+
+The treatment checkout should **not** send the buyer to a Shopify product-detail page. It should use a pre-filled direct Shopify checkout link for the $67 variant, wrapped in the Content Hub's existing `/r/checkout` tracking bridge. This gives the buyer one product, one quantity, and native checkout, with no product-page navigation, search, collection, or cart detour. Shopify documents cart permalinks specifically for curated checkout experiences with preloaded variants and conversion attributes. [5] [6]
+
+### Corrected Experiment Sequence
+
+| Priority | What changes | What does not change | Success measure |
+|---:|---|---|---|
+| 1 | Create a Klaviyo-only Thank You B treatment route that sends its $67 CTA to a tracked direct Shopify checkout | Current Kajabi Thank You B page, Kajabi checkout, price, value stack, timer length, and paid traffic to Kajabi control | Confirmed $67 Shopify orders per eligible Klaviyo lead |
+| 2 | Test one Thank You B decision-page variable, beginning with the above-fold video/CTA framing or placement | Checkout handoff, price, value stack, email cadence | Confirmed $67 order rate and checkout-start-to-paid rate |
+| 3 | Add a Klaviyo clicked-but-not-paid recovery message that returns to the same treatment route | Offer, price, and Kajabi control | Recovered $67 orders per clicked non-buyer |
+| 4 | After a confirmed Shopify $67 order, begin the $199 post-purchase treatment | $67 treatment and Kajabi control | $199 paid orders per confirmed $67 buyer |
+
+### Page-Integrity Guardrails
+
+The first Klaviyo treatment does **not** rewrite Thank You B wholesale. It preserves the proven decision-page architecture, then isolates one page variable at a time. The current testimonial/review section should not be copied into a new treatment variation unless the underlying viewer ratings and named statements are verified and authorized; no new testimonials, reviews, ratings, or customer outcomes will be created. The first Shopify test will not alter public product-page visibility, collections, navigation, or the existing Kajabi destination.
+
 ## Proposed Klaviyo Treatment Architecture
 
 ### Cohort Design

@@ -662,6 +662,12 @@
 - [x] Draft a prioritized CRO experiment plan for the $67 entry offer and $199 post-purchase upsell, including success thresholds and stop rules.
 - [ ] Obtain approval before changing any live Klaviyo flow, Shopify product page, checkout, or paid-traffic destination.
 
+## Interconnected Thank You B and Checkout CRO Correction
+
+- [x] Audit the existing Thank You B page, including its $67 CTA, timer, and precise checkout destination — Version B is the current decision page and presently directs to Kajabi, not Shopify.
+- [x] Revise the Klaviyo CRO treatment so Thank You B remains the $67 decision page and Shopify is optimized only for checkout completion.
+- [x] Propose separate Thank You B and Shopify checkout experiments without changing either live page until explicitly approved.
+
 ## v21 Features — Enrichment Badges & Segment Comparison
 
 - [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona

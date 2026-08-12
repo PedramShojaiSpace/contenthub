@@ -627,6 +627,14 @@
 - [x] Add Typeform insights badge/panel on persona profiles in Strategy Brain (implemented in IntelligenceDashboard)
 - [x] All tests passing, TypeScript clean
 
+## OuterSignal Shopify, Klaviyo, and Content Hub Pilot
+
+- [x] Verify OuterSignal plan-level API, webhook, export, and historical-enrichment capabilities from official documentation before purchase.
+- [x] Inspect current connector configuration and identify the safe credential path for OuterSignal API access.
+- [x] Design a minimum-data Shopify buyer enrichment schema for Interconnected and Tantra purchases, preserving the Content Hub as the source of truth for attribution and consent.
+- [x] Specify the Klaviyo profile-tag and conditional-flow activation rules for Interconnected and Tantra, with manual approval controls.
+- [x] Propose a 30-day controlled pilot, including a holdout, activation metrics, privacy review gate, and stop criteria before implementation.
+
 ## v21 Features — Enrichment Badges & Segment Comparison
 
 - [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona
@@ -4590,3 +4598,4 @@ Pricing model (corrected):
 - [x] Repair the specific WordPress draft whose persisted H2/H3 headings still fail Yoast’s keyphrase-subheading check
 - [ ] Analyze Interconnected launch-to-yesterday funnel conversion and propose $67/$199 CRO tests without changing the live funnel
 - [x] Reconcile the Content Hub Interconnected dashboard against exact Agora Meta spend and verified Kajabi/Shopify revenue before further CRO analysis
+- [ ] Assess OuterSignal for Content Hub client and prospect intelligence enrichment and propose a phased integration

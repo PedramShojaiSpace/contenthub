@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   INTERCONNECTED_67_CART_PERMALINK,
+  INTERCONNECTED_199_CART_PERMALINK,
+  INTERCONNECTED_KLAVIYO_199_CONTENT,
   INTERCONNECTED_KLAVIYO_TREATMENT_CONTENT,
+  buildInterconnectedKlaviyo199CheckoutUrl,
   buildInterconnectedKlaviyoCheckoutUrl,
 } from "../client/src/lib/interconnectedKlaviyoCheckout";
 
@@ -22,5 +25,16 @@ describe("Klaviyo Thank You B treatment checkout handoff", () => {
     const unsupported = new URL(buildInterconnectedKlaviyoCheckoutUrl("?utm_medium=paid_social"), "https://content.theurbanmonk.com");
     expect(sms.searchParams.get("utm_medium")).toBe("sms");
     expect(unsupported.searchParams.get("utm_medium")).toBe("email");
+  });
+
+  it("keeps the $199 post-purchase path distinct and routes it to the approved member-offer variant", () => {
+    const url = new URL(buildInterconnectedKlaviyo199CheckoutUrl("?utm_medium=sms&fbclid=post-purchase-click"), "https://content.theurbanmonk.com");
+    expect(url.pathname).toBe("/r/checkout");
+    expect(url.searchParams.get("destination")).toBe(INTERCONNECTED_199_CART_PERMALINK);
+    expect(url.searchParams.get("utm_source")).toBe("klaviyo");
+    expect(url.searchParams.get("utm_medium")).toBe("sms");
+    expect(url.searchParams.get("utm_campaign")).toBe("interconnected_14day");
+    expect(url.searchParams.get("utm_content")).toBe(INTERCONNECTED_KLAVIYO_199_CONTENT);
+    expect(url.searchParams.get("fbclid")).toBe("post-purchase-click");
   });
 });

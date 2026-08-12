@@ -635,6 +635,14 @@
 - [x] Specify the Klaviyo profile-tag and conditional-flow activation rules for Interconnected and Tantra, with manual approval controls.
 - [x] Propose a 30-day controlled pilot, including a holdout, activation metrics, privacy review gate, and stop criteria before implementation.
 
+## Tantra Shopify Product-Page Evidence Upgrade
+
+- [x] Verify the published Tantra Him and Tantra Her product-page content and current ingredient disclosures.
+- [x] Review the supplied PT-141 sources and collect authoritative tadalafil and oxytocin evidence appropriate for consumer-facing medical-product content.
+- [x] Draft product-specific, evidence-led Shopify sections with qualified claims, safety context, and citations.
+- [ ] Obtain explicit approval of the proposed Tantra Him and Tantra Her copy before changing either published Shopify product page.
+- [ ] Apply the approved product-page content and validate the published storefront rendering.
+
 ## v21 Features — Enrichment Badges & Segment Comparison
 
 - [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona

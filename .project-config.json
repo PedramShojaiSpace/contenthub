@@ -16,12 +16,15 @@
   ],
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZPI4CANWJ",
-    "secret_access_key": "6MX1UQr7X804hXWVYasenn+OI0az0k+agy8YEqHy",
-    "session_token": "IQoJb3JpZ2luX2VjELD//////////wEaCXVzLWVhc3QtMSJGMEQCIDEF6PucW6U4ObXD5SO4KeFJQyxKb7w3Azt7+KE+Z4xgAiAk2Apx2mtejggO9GcG/aPCwlWQMahICP+5nMtmgs0zxCr1Awh5EAQaDDY2NTM4NjA5ODg2NiIMWQW1cuBZgm4Gsb/2KtIDibrRzBK595ap4NaLra7qppHWPLy1THOTxEH/3v+1xSEFia37QnS/CHcnj5983HiW6g+NAXWPwx0qjCAklgeFxb88tmUzdjJloej36W9hsXIFc5kUQjzNthl+VTDcaU3BnfrXjuImP6r3FEUTv4Dp1qHTVXSovZLcm9C7oc4fY10D7dKgxtrWUkCZ3JxjxG+BPzsxO/XTTwbyY4ppOsGoa8MUmURjDbE5dRl0Fu2Az2HzRc8kte7/fxhBvuiR6EonPr0VOXuNl/EreaeGLEpDFzvUnbMZna9G/6LpM9IMiGc2XmyeYOp5yKgcG/VZJP4yD8B7d+OLrnk6hsxKCMbsMu0Q+c/G6149+3W3aFcAqhbmKaen+EpqpO7H5FDi2jPSgiX6lDoVltwCgaRK8gPXUJxmhRgc+rsM/9L8lrIJPShYOR9RkKoEyDrsRysbcoBxDb1uPSaxrPaANgaKfcI/uEgUJ3StUsPVyGunPX4JdqOMQ4p0wQvQTNUxDypwnhd1GnB3fyGU9EOrYEPHKb8gVP3ymHPQjy6ptao8P4SNEeOcF7mXYXj9KFFBjpMslOPOXtcSHosjdXNV+lyBtBGmH20Vwb1pfdpTW+WRNHItYQ8GGTDk9t7TBjqeAcFUdupCJ2cnLRkz1++hIJPSAgvfY5018P9+xKXsEdjpURteeWKgwFU8psK1G6ZkfgzuF8Gd3HcUb3ZF0b8PVmx/GqQIFgUgkFIDlho0lsoVJC1phxmXBglA0kjmnOgsJ4CYsinVqlNZISR+GKFD+Yl39a0267RdkcZZLaOkrQIiTJUZeMhg1n5dcW3FoQ3AoSWsOqqKECJv6CXZvOta",
-    "expiration": "2026-08-09T11:27:32.000Z",
+    "access_key_id": "ASIAZV3A2ECZE6R7SXNE",
+    "secret_access_key": "pPSnHa5WTXLyR4zjmwSNMn04sADTAD1v2/1zkM5e",
+    "session_token": "IQoJb3JpZ2luX2VjEAYaCXVzLWVhc3QtMSJHMEUCIQCOAmLpUKJsXDEMfpYT22HLzaYBGmR8D3yYDYaN/YkUsQIgDh6whXG3yGNeUbIYVcSkaPDxlxPYY16BFL3mQ022zWIq/gMIzv//////////ARAEGgw2NjUzODYwOTg4NjYiDNAtruXbI+cNo8qimyrSA2x3UaAan7sTt5AGIHfXPBwNyYigFjV39H63j4rOqvBlmv34RjibFpJMctKIKpxlH0XlMJtuQyPBWuO2xb8lCTixrRsIMuevfW7+20xOdLipMXKAzUN3UfXdz0Ah/ilmUNkJ8hiM9ZEu10yRLvFv4yT7noSlMBe6rxBc4H0iH0e+B0cIxBmJEUvh47fn35mfjjMX8rKBB7qzk8koYeQaCHkpHRDJT2SJ1G3+yi0SH01ao36AKfIKWIYVLObYYqndRugflw0iyyYVvvHkIt9nCN6iqtBoSNiFyH/ARxM+0uAsc6dKLXuLRG18NhE6dxqyIYtm0eSUN13uIWXU30WuG+ZA8qA4dvxJsn5SttGK8OyUAUoG7RfFO6DQknF3aHPpyJFQlMzx3MQf1paIM1bWCOjuzCPH4KwP+pN5JmVg1YKQG+n9QwcYspgVETJLpzMKfZzY2UYofHt3bJr49J2U6BK46BO6pue9c0SLHcqZvxPi8zFqjzDI250R5qpvQsVwfM+RaxG2r7MGUcUf7NQRGvNaZ0Y3si3bJNZBwkfTaQJ8Y3Y0smniEEwPiihqN4m1dqxRXJUPv/P22rrLUtfFh+xXHjyOz1xlsLrWYvKvCL4lo/Iwjebx0wY6nQGl4xnJNYYYOQJInZ4XE1agLsMhhEfrKOOX2Ilet6oHeCQoyVK4XYemSnrxprfXbx6mfDzBklr0FeJstwO6iM/phGIUsdrhLhYZndIngVdkkV80IGCCnjhFqDUW+3aMDD/+Uj1oLDsz24zxVewdts3vq0vxhimB8e/xGjGduAubZ8YpCLLfDyQWWNimoKKR6tsVTOtj+6Q6jUCrEOP5",
+    "expiration": "2026-08-13T01:20:13.000Z",
     "backend": "GIT_BACKEND_S3"
   },
+  "injected_features": [
+    "shopify"
+  ],
   "name": "lights-on-optin",
   "path": "/home/ubuntu/lights-on-optin",
   "port": 3000,
@@ -60,7 +63,7 @@
     "OWNER_NAME": "Pedram Shojai",
     "OWNER_OPEN_ID": "6Efk5Rs3uA46PG9TgoeUmf",
     "PEXELS_API_KEY": "WC0ZHUE8kH89dkF9HyVbB907v9rsAb3Q6IUHXFiMURuQBxQteKhONkyv",
-    "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN": "d18249aabf07f191340e22dc1085e5ad",
+    "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN": "8491fc476f1ad8d87b471ffc63a5147a",
     "SHOPIFY_STORE_DOMAIN": "theurbanmonkstore.myshopify.com",
     "SUBSTACK_PUBLICATION_URL": "https://drpedramshojai.substack.com",
     "SUBSTACK_SESSION_COOKIE": "s%3ARlYZ3ctEodu-laiISUqjh196yA_Ss3fM.9Kdc0EIXu8NAG6UIzQ%2BKvA6LMXh0QsBN7u0pW8SvFi4",

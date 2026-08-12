@@ -59,6 +59,14 @@ The treatment checkout should **not** send the buyer to a Shopify product-detail
 
 The first Klaviyo treatment does **not** rewrite Thank You B wholesale. It preserves the proven decision-page architecture, then isolates one page variable at a time. The current testimonial/review section should not be copied into a new treatment variation unless the underlying viewer ratings and named statements are verified and authorized; no new testimonials, reviews, ratings, or customer outcomes will be created. The first Shopify test will not alter public product-page visibility, collections, navigation, or the existing Kajabi destination.
 
+## Klaviyo Treatment Implementation — Unpublished
+
+An isolated Manus route has been created at `/interconnected/thank-you-klaviyo`. It is a copy of the reigning Thank You B page, maintains the 15-minute persistent timer and Version B video, and does not participate in the existing Thank You A/B experiment. The champion remains unchanged at `/interconnected/thank-you-b` and continues to redirect to its Kajabi checkout.
+
+Only the treatment route’s CTA handoff has changed. It fires the same browser-side `InitiateCheckout` event, then routes through the existing first-party `/r/checkout` bridge with `utm_source=klaviyo`, channel-specific `utm_medium`, `utm_campaign=interconnected_14day`, and `utm_content=ty_b_klaviyo_v1_67_checkout`. The bridge sends the buyer to a preloaded $67 Shopify cart permalink and records the matching click token as a Shopify order attribute. No product page, collection, public navigation, or live traffic source has been changed.
+
+Validated locally: the isolated treatment page rendered separately from the champion and displayed the Shopify direct-checkout microcopy. Unit and live Shopify reconciliation regression coverage passed before publishing.
+
 ## Proposed Klaviyo Treatment Architecture
 
 ### Cohort Design

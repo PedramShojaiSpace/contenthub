@@ -668,6 +668,14 @@
 - [x] Revise the Klaviyo CRO treatment so Thank You B remains the $67 decision page and Shopify is optimized only for checkout completion.
 - [x] Propose separate Thank You B and Shopify checkout experiments without changing either live page until explicitly approved.
 
+## Klaviyo-Only Thank You B Treatment Build
+
+- [x] Duplicate the reigning Thank You B page to an isolated Klaviyo-only Manus route without changing the Kajabi champion.
+- [x] Apply controlled $67 decision-page CRO improvements only to the Klaviyo treatment route.
+- [x] Route the Klaviyo treatment CTA through a tracked direct Shopify checkout for the existing $67 variant, without changing public Shopify navigation or product visibility.
+- [ ] Validate the treatment page, timer persistence, Meta checkout event, UTMs/click token, Shopify checkout handoff, and mobile rendering.
+- [ ] Deliver the treatment URL and exact Klaviyo activation requirements while leaving it disconnected from live traffic.
+
 ## v21 Features — Enrichment Badges & Segment Comparison
 
 - [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona

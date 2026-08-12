@@ -25,6 +25,7 @@ import {
   toUtcDateKey,
   type InterconnectedCohortPath,
 } from "./interconnectedCohorts";
+import { getShopifyAdminAccessToken, getShopifyAdminStoreDomain } from "./shopifyAdminAuth";
 
 // ── Funnel registry ───────────────────────────────────────────────────────────
 
@@ -543,7 +544,7 @@ interface ShopifyTierSummary {
   revenueCents: number;
 }
 
-async function fetchShopifyForFunnel(
+export async function fetchShopifyForFunnel(
   funnel: FunnelDef,
   startDate: string,
   endDate: string
@@ -558,100 +559,24 @@ async function fetchShopifyForFunnel(
     return { tiers: [], totalRevenueCents: 0, totalOrders: 0, individualSales: [], note: "placeholder" };
   }
 
-  const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
-  const accessToken = process.env.SHOPIFY_STOREFRONT_API_ACCESS_TOKEN;
-  if (!storeDomain || !accessToken) {
-    return { tiers: [], totalRevenueCents: 0, totalOrders: 0, individualSales: [], note: "credentials_missing" };
-  }
-
-  // Build a set of product IDs for fast lookup
-  const productIdSet = new Set(funnel.shopifyProducts.map(p => p.productId));
-  const productLabelMap: Record<string, string> = {};
-  for (const p of funnel.shopifyProducts) productLabelMap[p.productId] = p.label;
-
-  const tierMap: Record<string, ShopifyTierSummary> = {};
-  const individualSales: IndividualSale[] = [];
-
-  // Use Shopify Admin REST API — orders endpoint with date filter
-  // We need Admin API token, not Storefront token
-  const adminToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || process.env.SHOPIFY_STOREFRONT_API_ACCESS_TOKEN;
-  const baseUrl = `https://${storeDomain}/admin/api/2024-01/orders.json`;
-
-  let pageUrl: string | null =
-    `${baseUrl}?status=paid&created_at_min=${startDate}T00:00:00-06:00&created_at_max=${endDate}T23:59:59-06:00&limit=250&fields=id,created_at,line_items,financial_status,total_price`;
-
-  let pagesScanned = 0;
-
-  while (pageUrl && pagesScanned < 20) {
-    const res = await fetch(pageUrl, {
-      headers: {
-        "X-Shopify-Access-Token": adminToken || "",
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      // If Admin token doesn't work, fall back to GraphQL
-      break;
-    }
-
-    pagesScanned++;
-    const data = await res.json() as {
-      orders?: Array<{
-        id: number;
-        created_at: string;
-        financial_status: string;
-        line_items: Array<{
-          product_id: number;
-          title: string;
-          quantity: number;
-          price: string;
-        }>;
-      }>;
+  try {
+    const adminToken = await getShopifyAdminAccessToken();
+    return fetchShopifyOrdersViaGraphQL(
+      funnel,
+      startDate,
+      endDate,
+      getShopifyAdminStoreDomain(),
+      adminToken
+    );
+  } catch (error) {
+    return {
+      tiers: [],
+      totalRevenueCents: 0,
+      totalOrders: 0,
+      individualSales: [],
+      note: `order_access_unavailable: ${(error as Error).message}`,
     };
-
-    const orders = data.orders || [];
-    if (orders.length === 0) break;
-
-    for (const order of orders) {
-      if (order.financial_status !== "paid" && order.financial_status !== "partially_paid") continue;
-
-      for (const item of order.line_items) {
-        const pid = String(item.product_id);
-        if (!productIdSet.has(pid)) continue;
-
-        const label = productLabelMap[pid] || item.title;
-        const priceCents = Math.round(parseFloat(item.price) * 100) * item.quantity;
-        if (priceCents <= 0) continue;
-
-        if (!tierMap[pid]) {
-          tierMap[pid] = { productId: pid, label, count: 0, revenueCents: 0 };
-        }
-        tierMap[pid].count += item.quantity;
-        tierMap[pid].revenueCents += priceCents;
-        individualSales.push({ time: order.created_at, amountCents: priceCents, label, source: "shopify" });
-      }
-    }
-
-    // Check for next page via Link header
-    const linkHeader = res.headers.get("Link") || "";
-    const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-    pageUrl = nextMatch ? nextMatch[1] : null;
   }
-
-  // If REST didn't work (no admin token), try GraphQL Admin API
-  if (pagesScanned === 0) {
-    const gqlResult = await fetchShopifyOrdersViaGraphQL(funnel, startDate, endDate, storeDomain, adminToken || "");
-    return gqlResult;
-  }
-
-  const tiers = Object.values(tierMap).sort((a, b) => b.revenueCents - a.revenueCents);
-  return {
-    tiers,
-    totalRevenueCents: tiers.reduce((s, t) => s + t.revenueCents, 0),
-    totalOrders: tiers.reduce((s, t) => s + t.count, 0),
-    individualSales: individualSales.sort((a, b) => b.time.localeCompare(a.time)),
-  };
 }
 
 async function fetchShopifyOrdersViaGraphQL(
@@ -707,7 +632,7 @@ async function fetchShopifyOrdersViaGraphQL(
   let pages = 0;
 
   while (pages < 20) {
-    const res = await fetch(`https://${storeDomain}/admin/api/2024-01/graphql.json`, {
+    const res = await fetch(`https://${storeDomain}/admin/api/2026-07/graphql.json`, {
       method: "POST",
       headers: {
         "X-Shopify-Access-Token": accessToken,
@@ -716,10 +641,16 @@ async function fetchShopifyOrdersViaGraphQL(
       body: JSON.stringify({ query, variables: { cursor } }),
     });
 
-    if (!res.ok) break;
+    const responseText = await res.text();
+    if (!res.ok) {
+      return {
+        tiers: [], totalRevenueCents: 0, totalOrders: 0, individualSales: [],
+        note: `order_access_unavailable: Shopify Admin query returned HTTP ${res.status}`,
+      };
+    }
     pages++;
 
-    const json = await res.json() as {
+    let json: {
       data?: {
         orders?: {
           pageInfo: { hasNextPage: boolean; endCursor: string };
@@ -744,8 +675,21 @@ async function fetchShopifyOrdersViaGraphQL(
       };
       errors?: any[];
     };
+    try {
+      json = JSON.parse(responseText) as typeof json;
+    } catch {
+      return {
+        tiers: [], totalRevenueCents: 0, totalOrders: 0, individualSales: [],
+        note: "order_access_unavailable: Shopify Admin query returned an invalid response",
+      };
+    }
 
-    if (json.errors || !json.data?.orders) break;
+    if (json.errors || !json.data?.orders) {
+      return {
+        tiers: [], totalRevenueCents: 0, totalOrders: 0, individualSales: [],
+        note: "order_access_unavailable: Shopify Admin query was not authorized",
+      };
+    }
 
     for (const edge of json.data.orders.edges) {
       const order = edge.node;

@@ -134,14 +134,19 @@ export default function TantraFunnelDashboard() {
   const gutFlag = Number(t?.gutFlag ?? 0);
   const sleepFlag = Number(t?.sleepFlag ?? 0);
   const oralFlag = Number(t?.oralFlag ?? 0);
-  const shopifyRevenue = financials?.shopify.totalRevenueCents
-    ? financials.shopify.totalRevenueCents / 100
-    : 0;
+  const shopifyDataUnavailable = Boolean(
+    financials?.shopify.note && financials.shopify.note !== "placeholder"
+  );
+  const shopifyRevenue = shopifyDataUnavailable
+    ? null
+    : financials?.shopify.totalRevenueCents
+      ? financials.shopify.totalRevenueCents / 100
+      : 0;
   const shopifyUnits = Number(financials?.shopify.totalOrders ?? 0);
   const metaSpend = Number(financials?.meta.spend ?? 0);
-  const skuRoas = metaSpend > 0 ? shopifyRevenue / metaSpend : null;
-  const costPerPurchase = shopifyUnits > 0 ? metaSpend / shopifyUnits : null;
-  const purchaseRate = emailCaptured > 0 ? (shopifyUnits / emailCaptured) * 100 : null;
+  const skuRoas = shopifyRevenue !== null && metaSpend > 0 ? shopifyRevenue / metaSpend : null;
+  const costPerPurchase = !shopifyDataUnavailable && shopifyUnits > 0 ? metaSpend / shopifyUnits : null;
+  const purchaseRate = !shopifyDataUnavailable && emailCaptured > 0 ? (shopifyUnits / emailCaptured) * 100 : null;
 
   const refreshAll = () => {
     void refetch();
@@ -220,8 +225,8 @@ export default function TantraFunnelDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <MetricCard
                     label="Shopify Tantra Revenue"
-                    value={usd(shopifyRevenue)}
-                    detail={`${shopifyUnits} paid Tantra ${shopifyUnits === 1 ? "unit" : "units"} · ${dateRange.label}`}
+                    value={shopifyRevenue === null ? "Unavailable" : usd(shopifyRevenue)}
+                    detail={shopifyDataUnavailable ? "Shopify Admin order data is unavailable" : `${shopifyUnits} paid Tantra ${shopifyUnits === 1 ? "unit" : "units"} · ${dateRange.label}`}
                     accent="text-emerald-400"
                   />
                   <MetricCard
@@ -274,7 +279,9 @@ export default function TantraFunnelDashboard() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-white/35 text-sm px-4 py-7 text-center">No paid Tantra SKU sales in this period.</div>
+                      <div className="text-white/35 text-sm px-4 py-7 text-center">
+                        {shopifyDataUnavailable ? "Shopify paid-order data is temporarily unavailable." : "No paid Tantra SKU sales in this period."}
+                      </div>
                     )}
                   </div>
 

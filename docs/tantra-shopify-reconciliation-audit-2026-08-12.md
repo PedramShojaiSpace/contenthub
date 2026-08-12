@@ -19,3 +19,20 @@ The live Tantra dashboard is currently not a verified Shopify-order feed. Its se
 ## Required Repair
 
 Create or connect a Shopify custom app with the minimum `read_orders` scope, store the resulting Admin API access token securely as `SHOPIFY_ADMIN_API_ACCESS_TOKEN`, update the reconciliation fetcher to treat missing or unauthorized Admin access as an explicit unavailable-data state rather than `$0`, and validate the dashboard against the confirmed Tantra Him order.
+
+## Repair Applied
+
+The installed **Content Hub Order Read** Shopify app is now active with `read_orders` only. The Content Hub securely exchanges its app credentials for a short-lived Shopify Admin token at runtime and reads paid orders through the Admin GraphQL API. The previous Storefront-token fallback has been removed from the paid-order reporting path.
+
+The dashboard now:
+
+1. Uses mapped **line-item value**, not total order value, for Tantra product revenue.
+2. Displays `Unavailable` with a clear Shopify reporting note if Admin order data cannot be read, rather than displaying an untrustworthy `$0`.
+3. Uses the current 2026-07 Shopify Admin API endpoint.
+
+## Validation
+
+- Live credentials and `read_orders` scope: passed.
+- Live Admin GraphQL paid-order query: passed.
+- Regression tests for a rejected order-read credential and mapped line-item revenue: passed.
+- Production build: passed.

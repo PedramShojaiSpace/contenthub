@@ -45,6 +45,10 @@ The Klaviyo activation design is a **Placed Order** flow: trigger on a confirmed
 
 Immediately after the first treatment checkpoint, the local production bundle contained the new route while the public custom domain was still serving a prior application bundle. A fresh source checkpoint is required before public review; no buyer traffic has been connected while this propagation check is in progress.
 
+## Desktop Layout Verification
+
+The live treatment page was reviewed after the desktop alignment update. The $199 member-offer panel now spans the hero grid and is centered beneath the left copy and right video rather than remaining in the left column. The Shopify checkout CTA, price anchoring, separate-purchase statement, and opened-kit final-sale disclosure remained visible and unchanged.
+
 ## References
 
 [1] Shopify, “About product offers,” https://shopify.dev/docs/apps/build/checkout/product-offers

@@ -694,7 +694,7 @@
 ## $199 Member-Offer Layout Refinement
 
 - [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.
-- [ ] Validate the adjusted live treatment layout before delivering the updated review link.
+- [x] Validate the adjusted live treatment layout before delivering the updated review link.
 
 ## v21 Features — Enrichment Badges & Segment Comparison
 

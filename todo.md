@@ -643,6 +643,11 @@
 - [ ] Obtain explicit approval of the proposed Tantra Him and Tantra Her copy before changing either published Shopify product page.
 - [ ] Apply the approved product-page content and validate the published storefront rendering.
 
+## Reconciliation Dashboard Availability
+
+- [x] Diagnose the reported DNS error for the Content Hub reconciliation dashboard across the custom domain and current deployment — not reproducible; all configured domains resolved and returned HTTP 200 on 2026-08-12.
+- [x] Restore and externally validate a reliable reconciliation-dashboard URL without disrupting live funnels — no repair was required; canonical and fallback URLs were validated externally.
+
 ## v21 Features — Enrichment Badges & Segment Comparison
 
 - [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona

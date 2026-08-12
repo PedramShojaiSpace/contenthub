@@ -686,10 +686,10 @@
 
 ## $199 Treatment Activation
 
-- [ ] Change the approved $199 Gut Permeability Test + Health Coach Shopify product to purchasable status while keeping it out of menus, collections, and general product merchandising.
-- [ ] Verify the $199 direct cart checkout accepts the approved variant without exposing it through normal storefront navigation.
-- [ ] Configure the Klaviyo Placed Order flow specification for confirmed $67 Shopify buyers and suppress $199 buyers from future sends.
-- [ ] Validate the live $199 landing-page CTA, first-party click token, order attribution, and documented post-purchase activation URL.
+- [x] Change the approved $199 Gut Permeability Test + Health Coach Shopify product to purchasable status while keeping it out of menus, collections, and general product merchandising.
+- [x] Verify the $199 direct cart checkout accepts the approved variant without exposing it through normal storefront navigation.
+- [x] Configure the Klaviyo Placed Order flow specification for confirmed $67 Shopify buyers and suppress $199 buyers from future sends — created and verified as Draft flow `RQn35Z`.
+- [x] Validate the live $199 landing-page CTA, first-party click token, order attribution, and documented post-purchase activation URL.
 
 ## $199 Member-Offer Layout Refinement
 

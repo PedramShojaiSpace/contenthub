@@ -696,6 +696,18 @@
 - [x] Activate the approved Draft email in the $67-to-$199 Klaviyo flow for future eligible Shopify buyers only — activated corrected flow `ThkCXz` with one live email action.
 - [x] Verify the live flow/action status, $67 trigger condition, $199 destination URL, and Kajabi-control isolation — Live flow and action confirmed; trigger and $199-purchaser exclusion verified; Kajabi unchanged.
 
+## Shopify and Content Hub Meta Pixel Architecture
+
+- [x] Verify Shopify’s current primary Meta pixel limitations and the impact of changing it on the other agency’s Shopify cart attribution.
+- [x] Audit the Content Hub’s browser and server-side Meta event coverage for the Klaviyo $67 and $199 Shopify checkout paths.
+- [ ] Recommend the lowest-risk parallel-tracking plan and a test protocol before changing any Shopify pixel configuration.
+
+## Klaviyo $67 Treatment End-of-Page Refinement
+
+- [x] Audit the redundant bottom CTA and confirm whether an exit-intent recovery experience already exists on the Klaviyo-only Thank You page — final card is redundant; no exit-intent behavior currently exists.
+- [x] Replace the redundant bottom CTA with a minimum-friction end-of-page treatment and a controlled desktop exit-intent recovery option, without changing the Kajabi champion.
+- [x] Validate the treatment-only page behavior, checkout tracking, and mobile-safe fallback before publishing — targeted exit-intent and checkout-link regression tests passed; desktop-only and one-time guards are enforced in the treatment source.
+
 ## $199 Member-Offer Layout Refinement
 
 - [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.

@@ -476,7 +476,10 @@ async function fetchKajabiForFunnel(
   let hitOldData = false;
 
   for (let page = 1; page <= 60 && !hitOldData; page++) {
-    const url = `${KAJABI_API_BASE}/transactions?filter[site_id]=${SITE_ID}&page[number]=${page}`;
+    // Kajabi's default transaction page is too small for the launch window and
+    // can omit the current range before the scan reaches it. Request the
+    // documented maximum page size so this matches the direct source audit.
+    const url = `${KAJABI_API_BASE}/transactions?filter[site_id]=${SITE_ID}&page[size]=100&page[number]=${page}`;
     const res = await fetch(url, { headers });
     if (!res.ok) break;
 

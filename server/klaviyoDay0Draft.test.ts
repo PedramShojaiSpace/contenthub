@@ -15,4 +15,15 @@ describe("Interconnected Day 0 deliverability draft", () => {
     expect(source).not.toContain("$67");
     expect(source).not.toContain("2 hours");
   });
+
+  it("uses the readable shared email frame for direct email delivery", () => {
+    const source = readFileSync(
+      new URL("./emailBoost.ts", import.meta.url),
+      "utf8"
+    );
+
+    expect(source).toContain("background-color:#f3f0e9");
+    expect(source).toContain("The Urban Monk");
+    expect(source).toContain("@media only screen and (max-width: 620px)");
+  });
 });

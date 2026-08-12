@@ -41,6 +41,10 @@ The page fires `ViewContent` and, on CTA selection, `InitiateCheckout` with a $1
 
 The Klaviyo activation design is a **Placed Order** flow: trigger on a confirmed Shopify $67 purchase, filter to the Interconnected $67 variant, suppress customers who have already purchased the $199 variant, and send the page URL through the email or SMS path. It does not attempt to force the browser away from Shopify’s standard order-status page and does not describe the purchase as one-click.
 
+## Deployment Propagation Note
+
+Immediately after the first treatment checkpoint, the local production bundle contained the new route while the public custom domain was still serving a prior application bundle. A fresh source checkpoint is required before public review; no buyer traffic has been connected while this propagation check is in progress.
+
 ## References
 
 [1] Shopify, “About product offers,” https://shopify.dev/docs/apps/build/checkout/product-offers

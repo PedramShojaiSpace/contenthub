@@ -43,6 +43,10 @@ The Klaviyo activation design is a **Placed Order** flow: trigger on a confirmed
 
 The following Klaviyo flow was created and independently verified in **Draft** status: `[DRAFT] Interconnected $67 → $199 Member Offer — Klaviyo Treatment` (`RQn35Z`). It uses the Shopify `Placed Order` metric and an `Items contains Interconnected: The Complete Healing Protocol` trigger condition, contains one Draft email action, and routes only to the dedicated Manus $199 treatment URL. The message uses `Dr. Pedram Shojai` / `support@theurbanmonk.com`, clearly presents the $199 offer as a separate purchase, and includes the opened-kit final-sale and no-diagnosis disclosures. It cannot send until a person with Klaviyo flow permissions explicitly turns the action Live.
 
+## Live Activation — Verified
+
+The initial Draft flow has been retained as a non-sending record. A corrected successor flow, `[READY] Interconnected $67 → $199 Member Offer — Klaviyo Treatment V2` (`ThkCXz`), is now Live with exactly one live email action (`114424510`). Before activation, the flow was verified to require the Shopify `Placed Order` event for `Interconnected: The Complete Healing Protocol`, require email marketing consent, and exclude any profile with a prior `Gut Permeability Test + Health Coach Call — $199 Member Offer` purchase. It sends only to future eligible $67 buyers; it does not modify Kajabi or backfill/send to prior purchasers.
+
 ## Deployment Propagation Note
 
 Immediately after the first treatment checkpoint, the local production bundle contained the new route while the public custom domain was still serving a prior application bundle. A fresh source checkpoint is required before public review; no buyer traffic has been connected while this propagation check is in progress.

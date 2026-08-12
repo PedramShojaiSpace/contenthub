@@ -67,6 +67,10 @@ Only the treatment route’s CTA handoff has changed. It fires the same browser-
 
 Validated locally: the isolated treatment page rendered separately from the champion and displayed the Shopify direct-checkout microcopy. Unit and live Shopify reconciliation regression coverage passed before publishing.
 
+### Deployment Validation Note
+
+Immediately after the checkpoint, the local development route rendered correctly, but the public custom and managed domains returned the prior client bundle and displayed a route-level 404 for the new treatment URL. Public response headers were correctly no-cache, while the served `index-BhUBYoW0.js` bundle did not contain the treatment route; the local production build did. This is a deployment-propagation mismatch, not a treatment-page implementation error. The route remains disconnected from all live traffic until the deployed bundle is verified.
+
 ## Proposed Klaviyo Treatment Architecture
 
 ### Cohort Design

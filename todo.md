@@ -682,7 +682,7 @@
 - [x] Design the $199 dedicated landing-page treatment, buyer-eligibility rule, tracked checkout handoff, and Klaviyo post-purchase trigger.
 - [x] Build an unpublished $199 landing page that is only intended for confirmed $67 Shopify buyers and does not alter the $67 champion or Kajabi control.
 - [x] Validate eligibility, checkout attribution, mobile rendering, and all buyer-facing offer details before activation — treatment route, $199 checkout-link regression test, 14-day cohort attribution, medical framing, and opened-kit disclosure are validated; final checkout activation remains blocked by the Shopify product’s Draft status.
-- [ ] Deliver the isolated $199 treatment URL and exact Klaviyo post-purchase activation instructions.
+- [x] Deliver the isolated $199 treatment URL and exact Klaviyo post-purchase activation instructions.
 
 ## $199 Treatment Activation
 

@@ -63,6 +63,8 @@
     "OWNER_NAME": "Pedram Shojai",
     "OWNER_OPEN_ID": "6Efk5Rs3uA46PG9TgoeUmf",
     "PEXELS_API_KEY": "WC0ZHUE8kH89dkF9HyVbB907v9rsAb3Q6IUHXFiMURuQBxQteKhONkyv",
+    "SHOPIFY_ADMIN_CLIENT_ID": "315a736972fffcbacbe3bb282e86b6a7",
+    "SHOPIFY_ADMIN_CLIENT_SECRET": "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",
     "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN": "8491fc476f1ad8d87b471ffc63a5147a",
     "SHOPIFY_STORE_DOMAIN": "theurbanmonkstore.myshopify.com",
     "SUBSTACK_PUBLICATION_URL": "https://drpedramshojai.substack.com",

@@ -651,9 +651,9 @@
 ## Tantra Funnel Shopify Reconciliation
 
 - [x] Verify paid Shopify orders for Tantra Him and Tantra Her against the live Tantra Funnel dashboard — Shopify Admin confirms one paid Tantra Him order (#3429, Jul 31, $191.90 order total); the dashboard incorrectly shows $0.
-- [ ] Trace and repair any confirmed Tantra Shopify order-ingestion, SKU-mapping, date-range, or dashboard-display defect.
-- [ ] Configure a Shopify Admin API credential with read_orders scope for deployed Tantra paid-order reconciliation; do not alter products, pricing, or storefront visibility.
-- [ ] Add and run regression coverage proving the dashboard reports an unavailable-admin-access note rather than a false $0 Shopify total.
+- [x] Trace and repair the confirmed Tantra Shopify order-ingestion and dashboard-display defect — replaced invalid Storefront-token order reads with authenticated Shopify Admin GraphQL queries and explicit unavailable-data handling.
+- [x] Configure a Shopify Admin API credential with read_orders scope for deployed Tantra paid-order reconciliation; do not alter products, pricing, or storefront visibility — Content Hub Order Read app installed with read_orders only and validated live.
+- [x] Add and run regression coverage proving the dashboard reports an unavailable-admin-access note rather than a false $0 Shopify total — 3 targeted tests passed, including live credential and paid-order query validation.
 
 ## v21 Features — Enrichment Badges & Segment Comparison
 

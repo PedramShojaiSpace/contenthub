@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { FUNNELS, fetchShopifyForFunnel } from "./funnelReconciliationRouter";
 
 const configuredStorefrontDomain = process.env.SHOPIFY_STORE_DOMAIN
   ?.replace(/^https?:\/\//, "")
@@ -63,6 +64,25 @@ describe.skipIf(!configured)("shopify admin orders credentials (live)", () => {
       expect(orderResponse.ok, `Shopify order query failed: ${orderResponse.status}`).toBe(true);
       expect(orderBody.errors ?? []).toHaveLength(0);
       expect(orderBody.data?.orders?.nodes).toBeInstanceOf(Array);
+    }
+  );
+
+  it(
+    "returns the verified Tantra Him line-item sale through the reconciliation reader",
+    { timeout: 30_000 },
+    async () => {
+      const tantraFunnel = FUNNELS.find((funnel) => funnel.id === "tantra_quiz");
+      expect(tantraFunnel).toBeDefined();
+
+      const result = await fetchShopifyForFunnel(
+        tantraFunnel!,
+        "2026-07-30",
+        "2026-08-12"
+      );
+      const tantraHim = result.tiers.find((tier) => tier.productId === "9068203376794");
+
+      expect(result.note).toBeUndefined();
+      expect(tantraHim).toMatchObject({ count: 1, revenueCents: 18_500 });
     }
   );
 });

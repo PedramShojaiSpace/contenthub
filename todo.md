@@ -655,6 +655,13 @@
 - [x] Configure a Shopify Admin API credential with read_orders scope for deployed Tantra paid-order reconciliation; do not alter products, pricing, or storefront visibility — Content Hub Order Read app installed with read_orders only and validated live.
 - [x] Add and run regression coverage proving the dashboard reports an unavailable-admin-access note rather than a false $0 Shopify total — 3 targeted tests passed, including live credential and paid-order query validation.
 
+## Interconnected Klaviyo CRO Treatment Plan
+
+- [x] Audit $67 and $199 funnel conversion, offer, page, checkout, and current email/SMS paths using the corrected source-of-truth data.
+- [x] Define a Klaviyo-only treatment architecture with Kajabi left unchanged as the control and independent UTM/cohort attribution.
+- [x] Draft a prioritized CRO experiment plan for the $67 entry offer and $199 post-purchase upsell, including success thresholds and stop rules.
+- [ ] Obtain approval before changing any live Klaviyo flow, Shopify product page, checkout, or paid-traffic destination.
+
 ## v21 Features — Enrichment Badges & Segment Comparison
 
 - [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona

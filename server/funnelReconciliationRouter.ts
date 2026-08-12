@@ -16,8 +16,8 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { kajabiPurchases, interconnectedLeads } from "../drizzle/schema";
-import { and, gte, lte, eq, inArray } from "drizzle-orm";
+import { kajabiPurchases, interconnectedLeads, leadPurchaseAttributions } from "../drizzle/schema";
+import { and, gte, lte, eq, inArray, sql } from "drizzle-orm";
 import {
   classifyInterconnectedCohortPath,
   dayOffsetFromLead,
@@ -279,11 +279,19 @@ const COHORT_LABELS: Record<InterconnectedCohortPath, string> = {
  */
 async function getInterconnectedCohortAnalytics(startDate: string, endDate: string) {
   const empty = {
-    definition: "Lead-acquisition cohorts: revenue is counted only when the matching lead buys within 14 days of opt-in. Email-click UTMs are reported separately when a tracked checkout bridge is used.",
+    definition: "Lead-acquisition cohorts: revenue is counted only when the matching lead buys within 14 days of opt-in. Ledger reporting separately assigns original acquisition credit and the later email/SMS closing touch; those two views must never be added together.",
     totalUniqueLeads: 0,
     dailyLeads: [] as Array<{ date: string; uniqueLeads: number; kajabiPage: number; klaviyoSms: number; metaPaid: number; other: number }>,
     cohorts: [] as CohortRevenueSummary[],
     emailClickAttributionAvailable: false,
+    attributionLedger: {
+      purchaseCount: 0,
+      creditedRevenueCents: 0,
+      directClosingRevenueCents: 0,
+      modeledClosingRevenueCents: 0,
+      acquisitionCredits: [] as Array<{ path: string; purchases: number; revenueCents: number }>,
+      closingTouches: [] as Array<{ label: string; confidence: string; purchases: number; revenueCents: number }>,
+    },
   };
   const db = await getDb();
   if (!db) return empty;
@@ -386,11 +394,59 @@ async function getInterconnectedCohortAnalytics(startDate: string, endDate: stri
     }
   }
 
+  // Forward-looking ledger: every confirmed purchase is credited once to its
+  // original opt-in cohort and reported separately by its checkout closing touch.
+  // The two reporting views are alternate lenses on the same revenue—not additive.
+  const ledgerRows = await db.select({
+    amountCents: leadPurchaseAttributions.purchaseAmountCents,
+    acquisitionPath: leadPurchaseAttributions.acquisitionPath,
+    closingSource: leadPurchaseAttributions.closingSource,
+    closingMedium: leadPurchaseAttributions.closingMedium,
+    closingMethod: leadPurchaseAttributions.closingMethod,
+    closingConfidence: leadPurchaseAttributions.closingConfidence,
+  }).from(leadPurchaseAttributions).where(and(
+    eq(leadPurchaseAttributions.funnelId, "interconnected_agora"),
+    eq(leadPurchaseAttributions.isWithin14Days, true),
+    gte(leadPurchaseAttributions.leadOptedInAt, startMs),
+    lte(leadPurchaseAttributions.leadOptedInAt, endMs)
+  ));
+
+  const acquisitionCreditMap = new Map<string, { path: string; purchases: number; revenueCents: number }>();
+  const closingTouchMap = new Map<string, { label: string; confidence: string; purchases: number; revenueCents: number }>();
+  let directClosingRevenueCents = 0;
+  let modeledClosingRevenueCents = 0;
+  for (const row of ledgerRows) {
+    const acquisitionPath = row.acquisitionPath || "other";
+    const acquisition = acquisitionCreditMap.get(acquisitionPath) ?? { path: acquisitionPath, purchases: 0, revenueCents: 0 };
+    acquisition.purchases++;
+    acquisition.revenueCents += row.amountCents;
+    acquisitionCreditMap.set(acquisitionPath, acquisition);
+
+    const label = row.closingSource
+      ? `${row.closingSource}${row.closingMedium ? ` / ${row.closingMedium}` : ""}${row.closingMethod === "direct_email_click" && row.closingSource ? " click" : ""}`
+      : row.closingMethod === "unknown" ? "Unresolved checkout touch" : row.closingMethod.replace(/_/g, " ");
+    const closing = closingTouchMap.get(label) ?? { label, confidence: row.closingConfidence, purchases: 0, revenueCents: 0 };
+    closing.purchases++;
+    closing.revenueCents += row.amountCents;
+    closingTouchMap.set(label, closing);
+    if (row.closingConfidence === "direct") directClosingRevenueCents += row.amountCents;
+    if (row.closingConfidence === "modeled") modeledClosingRevenueCents += row.amountCents;
+  }
+
   return {
     ...empty,
     totalUniqueLeads: uniqueLeads.size,
     cohorts: [...cohortMap.values()],
     dailyLeads: [...dailyMap.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    emailClickAttributionAvailable: ledgerRows.some((row) => row.closingConfidence === "direct"),
+    attributionLedger: {
+      purchaseCount: ledgerRows.length,
+      creditedRevenueCents: ledgerRows.reduce((sum, row) => sum + row.amountCents, 0),
+      directClosingRevenueCents,
+      modeledClosingRevenueCents,
+      acquisitionCredits: [...acquisitionCreditMap.values()].sort((a, b) => b.revenueCents - a.revenueCents),
+      closingTouches: [...closingTouchMap.values()].sort((a, b) => b.revenueCents - a.revenueCents),
+    },
   };
 }
 

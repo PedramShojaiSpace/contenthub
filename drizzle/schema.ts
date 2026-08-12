@@ -2827,6 +2827,37 @@ export const attributedSales = mysqlTable("attributed_sales", {
 export type AttributedSale = typeof attributedSales.$inferSelect;
 export type InsertAttributedSale = typeof attributedSales.$inferInsert;
 
+// ─── Lead-Cohort Purchase Attribution ───────────────────────────────────────
+// One immutable credit record per externally confirmed purchase. It separates
+// the original lead-acquisition cohort from the later email/SMS closing touch.
+export const leadPurchaseAttributions = mysqlTable("lead_purchase_attributions", {
+  id: int("id").autoincrement().primaryKey(),
+  funnelId: varchar("funnel_id", { length: 64 }).notNull(),
+  purchasePlatform: varchar("purchase_platform", { length: 24 }).notNull(),
+  externalPurchaseId: varchar("external_purchase_id", { length: 128 }).notNull(),
+  purchaseEmail: varchar("purchase_email", { length: 320 }).notNull(),
+  purchaseAmountCents: int("purchase_amount_cents").notNull(),
+  purchasedAt: bigint("purchased_at", { mode: "number" }).notNull(),
+  leadId: int("lead_id"),
+  leadOptedInAt: bigint("lead_opted_in_at", { mode: "number" }),
+  cohortDay: int("cohort_day"),
+  isWithin14Days: boolean("is_within_14_days").notNull().default(false),
+  acquisitionPath: varchar("acquisition_path", { length: 64 }),
+  acquisitionSource: varchar("acquisition_source", { length: 128 }),
+  acquisitionMedium: varchar("acquisition_medium", { length: 128 }),
+  acquisitionCampaign: varchar("acquisition_campaign", { length: 255 }),
+  closingSource: varchar("closing_source", { length: 128 }),
+  closingMedium: varchar("closing_medium", { length: 128 }),
+  closingCampaign: varchar("closing_campaign", { length: 255 }),
+  closingContent: varchar("closing_content", { length: 255 }),
+  closingMethod: varchar("closing_method", { length: 48 }).notNull(),
+  closingConfidence: varchar("closing_confidence", { length: 24 }).notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type LeadPurchaseAttribution = typeof leadPurchaseAttributions.$inferSelect;
+export type InsertLeadPurchaseAttribution = typeof leadPurchaseAttributions.$inferInsert;
+
 // ─── YouTube Pipeline (Operations Bible) ─────────────────────────────────────
 export const youtubePipelineVideos = mysqlTable("youtube_pipeline_videos", {
   id: int("id").autoincrement().primaryKey(),

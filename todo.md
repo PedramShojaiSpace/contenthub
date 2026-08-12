@@ -4586,3 +4586,4 @@ Pricing model (corrected):
 - [x] Fire CompleteRegistration after Tantra survey completion and InitiateCheckout only on Tantra checkout clicks
 - [x] Fire a Tantra Purchase event only after confirmed Shopify payment and return it to Meta for conversion optimization
 - [x] Separate Kajabi and Klaviyo/SMS cohorts with distinct UTMs, conversion events, purchase paths, and 14-day reconciliation metrics
+- [x] Credit downstream Kajabi and Klaviyo/SMS purchases to original lead cohorts while separately reporting the closing email or SMS touch

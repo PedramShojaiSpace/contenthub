@@ -4588,3 +4588,5 @@ Pricing model (corrected):
 - [x] Separate Kajabi and Klaviyo/SMS cohorts with distinct UTMs, conversion events, purchase paths, and 14-day reconciliation metrics
 - [x] Credit downstream Kajabi and Klaviyo/SMS purchases to original lead cohorts while separately reporting the closing email or SMS touch
 - [x] Repair the specific WordPress draft whose persisted H2/H3 headings still fail Yoast’s keyphrase-subheading check
+- [ ] Analyze Interconnected launch-to-yesterday funnel conversion and propose $67/$199 CRO tests without changing the live funnel
+- [x] Reconcile the Content Hub Interconnected dashboard against exact Agora Meta spend and verified Kajabi/Shopify revenue before further CRO analysis

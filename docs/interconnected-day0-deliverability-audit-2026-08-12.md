@@ -34,6 +34,12 @@ The public DNS response for `theurbanmonk.com` contains **two SPF TXT records**,
 
 `interconnected-day0-confirmation-draft.html` is a deliberately plain Day 0 confirmation draft. It uses no images, no offer price, no checkout link, no urgency, no social strip, no P.S., and no claim beyond the requested series delivery. It is not an attempt to disguise a promotion; the $67 offer belongs in a separate marketing message and can continue to be measured as promotional content. The draft has not been applied to Klaviyo.
 
+## Klaviyo Draft Created
+
+The draft-only Klaviyo code template `[DRAFT] Interconnected Day 0 — Plain Confirmation Deliverability Test` was created with template ID `Smbiqi`. Its subject is **“You’re in — Interconnected starts tomorrow”** and its preview is **“Your episode schedule and a note from Dr. Pedram.”** The template is not attached to a flow or a live email action, so no recipient can receive it without a separate explicit configuration change.
+
+The dedicated draft regression test passed. The broader suite retains unrelated legacy failures in `emailBoost.test.ts` and `metaAdPush.test.ts`; those failures predate this draft and do not involve the Day 0 email template.
+
 ## Sources
 
 [1] Google Workspace, “Making Gmail’s tabbed inbox work better for you,” https://workspace.google.com/blog/productivity-collaboration/how-gmail-sorts-your-email-based-on-your-preferences

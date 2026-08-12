@@ -721,6 +721,13 @@
 - [x] Separate content-level Promotions risk factors from sender-reputation, authentication, and recipient-engagement factors — the offer content correctly classifies as promotional; two SPF records and no public DMARC record are meaningful authentication risks.
 - [x] Prepare a lower-risk Day 0 HTML and measurable inbox-placement test plan without editing the live Klaviyo flow until approved.
 
+## Day 0 Draft-Only Deliverability Test
+
+- [x] Create the plain Interconnected Day 0 confirmation as a non-sending Klaviyo draft template or draft email, preserving the current live email — created template-only draft `Smbiqi`; no flow or live email was modified.
+- [x] Verify the new Day 0 draft has no promotional checkout CTA, urgency, social strip, or unapproved live action — verified from the template source and creation payload; dedicated regression test passed.
+- [x] Prepare the exact SPF consolidation, DMARC monitoring, and Gmail seed-test instructions for the domain administrator.
+- [ ] Obtain explicit approval before replacing the current live Day 0 email or activating any new email action.
+
 ## $199 Member-Offer Layout Refinement
 
 - [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.

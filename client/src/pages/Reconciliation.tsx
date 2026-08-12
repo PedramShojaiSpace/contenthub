@@ -488,8 +488,46 @@ export default function Reconciliation() {
                 </div>
               </div>
 
+              <div className="rounded-lg border border-primary/25 bg-primary/5 p-4 space-y-3">
+                <div className="flex flex-wrap gap-2 justify-between items-center">
+                  <div className="flex items-center gap-2 text-sm font-medium"><Link2 className="h-4 w-4 text-primary" /> Acquisition Credit vs. Closing Touch</div>
+                  <Badge variant="outline" className="font-normal">{cohortAnalytics.attributionLedger.purchaseCount} ledger-linked purchases</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Each confirmed purchase is credited once to the original opt-in cohort. The closing-touch table identifies the later email/SMS or checkout path that closed it. These are two views of the same revenue, so <strong>do not add the columns together.</strong>
+                </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="rounded-md border border-border bg-background overflow-x-auto">
+                    <div className="px-3 py-2 border-b text-xs font-medium">Original Acquisition Credit</div>
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted text-muted-foreground"><tr><th className="text-left p-2">Lead source</th><th className="text-right p-2">Purchases</th><th className="text-right p-2">Revenue</th></tr></thead>
+                      <tbody>
+                        {cohortAnalytics.attributionLedger.acquisitionCredits.length === 0 ? <tr><td colSpan={3} className="p-3 text-center text-muted-foreground">No new ledger credits in this cohort window.</td></tr> : cohortAnalytics.attributionLedger.acquisitionCredits.map((row) => (
+                          <tr key={row.path} className="border-t border-border"><td className="p-2">{row.path.replace(/_/g, " ")}</td><td className="p-2 text-right">{row.purchases}</td><td className="p-2 text-right font-semibold text-green-600">{fmt(row.revenueCents)}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="rounded-md border border-border bg-background overflow-x-auto">
+                    <div className="px-3 py-2 border-b text-xs font-medium">Closing Email / SMS / Checkout Touch</div>
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted text-muted-foreground"><tr><th className="text-left p-2">Touch</th><th className="text-right p-2">Purchases</th><th className="text-right p-2">Revenue</th></tr></thead>
+                      <tbody>
+                        {cohortAnalytics.attributionLedger.closingTouches.length === 0 ? <tr><td colSpan={3} className="p-3 text-center text-muted-foreground">No new ledger closing touches in this cohort window.</td></tr> : cohortAnalytics.attributionLedger.closingTouches.map((row) => (
+                          <tr key={`${row.label}-${row.confidence}`} className="border-t border-border"><td className="p-2">{row.label} <span className="text-muted-foreground">({row.confidence})</span></td><td className="p-2 text-right">{row.purchases}</td><td className="p-2 text-right font-semibold text-primary">{fmt(row.revenueCents)}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="rounded border border-border bg-background p-3"><span className="text-muted-foreground">Direct email/SMS click revenue:</span> <strong className="text-foreground">{fmt(cohortAnalytics.attributionLedger.directClosingRevenueCents)}</strong></div>
+                  <div className="rounded border border-border bg-background p-3"><span className="text-muted-foreground">Modeled Kajabi sequence revenue:</span> <strong className="text-foreground">{fmt(cohortAnalytics.attributionLedger.modeledClosingRevenueCents)}</strong></div>
+                </div>
+              </div>
+
               <p className="text-xs text-muted-foreground border-t pt-3">
-                <strong>Definitions:</strong> “Meta” means a lead with Meta/Agora UTM or fbclid; “Kajabi Page” means the Kajabi webhook path; “Klaviyo / SMS” means explicit Klaviyo or SMS UTM labeling. This view is lead-cohort attribution, not a claim that a specific email click caused a purchase. Exact email-click attribution becomes available when outbound checkout links carry the tracked UTM/click token bridge.
+                <strong>Definitions:</strong> “Meta” means a lead with Meta/Agora UTM or fbclid; “Kajabi Page” means the Kajabi webhook path; “Klaviyo / SMS” means explicit Klaviyo or SMS UTM labeling. Kajabi webhook purchases receive original-lead credit and a clearly marked <em>modeled</em> sequence close because Kajabi does not return a click token. Klaviyo/SMS or Kajabi links routed through the tracked Shopify bridge receive <em>direct</em> closing-touch credit on payment.
               </p>
             </CardContent>
           </Card>

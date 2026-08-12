@@ -1790,6 +1790,28 @@ async function startServer() {
             purchasedAt: Date.now(),
           });
           console.log(`[kajabi/purchase] DB record saved for ${email} — funnel: ${funnelSource}, amount: $${amount}, meta_attributed: ${isMetaAttributed}`);
+
+          // Kajabi's current purchase webhook does not supply a message-click
+          // token. Preserve the acquisition cohort exactly and make the closing
+          // touch explicitly modeled, rather than claiming click-level proof.
+          if (funnelSource === "interconnected") {
+            try {
+              const { inferKajabiClosingTouch, recordLeadCohortPurchaseCredit } = await import("../leadCohortAttribution");
+              await recordLeadCohortPurchaseCredit({
+                funnelId: "interconnected_agora",
+                purchasePlatform: "kajabi",
+                externalPurchaseId: orderId,
+                purchaseEmail: email,
+                purchaseAmountCents: amountCents,
+                purchasedAt: Date.now(),
+                closingTouch: inferKajabiClosingTouch({
+                  kajabiTagged: Boolean(lead?.kajabiTagged),
+                }),
+              });
+            } catch (creditErr: any) {
+              console.warn("[kajabi/purchase] Lead-cohort credit failed:", creditErr?.message);
+            }
+          }
         } catch (dbErr: any) {
           // Don't block CAPI on DB error — log and continue
           console.warn("[kajabi/purchase] DB insert failed:", dbErr?.message);

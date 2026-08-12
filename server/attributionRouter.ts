@@ -580,6 +580,44 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
         .where(eq(attributedSales.shopifyOrderId, shopifyOrderId));
     }
 
+    // Credit an Interconnected lead cohort independently of the checkout touch.
+    // A direct Kajabi/Klaviyo email click is exact; an untagged checkout remains
+    // an honest “unknown” close while still retaining its original acquisition lead.
+    if (matchedClick?.utmCampaign === "interconnected_14day") {
+      try {
+        const { recordLeadCohortPurchaseCredit } = await import("./leadCohortAttribution");
+        const emailChannel = ["kajabi", "klaviyo"].includes((matchedClick.utmSource || "").toLowerCase())
+          && ["email", "sms"].includes((matchedClick.utmMedium || "").toLowerCase());
+        await recordLeadCohortPurchaseCredit({
+          funnelId: "interconnected_agora",
+          purchasePlatform: "shopify",
+          externalPurchaseId: shopifyOrderId,
+          purchaseEmail: customerEmail,
+          purchaseAmountCents: orderTotal,
+          purchasedAt: orderCreatedAt,
+          closingTouch: emailChannel
+            ? {
+                source: matchedClick.utmSource,
+                medium: matchedClick.utmMedium,
+                campaign: matchedClick.utmCampaign,
+                content: matchedClick.utmContent,
+                method: "direct_email_click",
+                confidence: "direct",
+              }
+            : {
+                source: matchedClick.utmSource,
+                medium: matchedClick.utmMedium,
+                campaign: matchedClick.utmCampaign,
+                content: matchedClick.utmContent,
+                method: "checkout",
+                confidence: "direct",
+              },
+        });
+      } catch (creditErr: any) {
+        console.warn("[shopify/order-paid] Lead-cohort credit failed:", creditErr?.message);
+      }
+    }
+
     // ── Klaviyo post-purchase tagging + "Placed Order" event ─────────────────────
     try {
       const { tagKlaviyoPurchaser, detectFunnelProduct } = await import("../shopify");

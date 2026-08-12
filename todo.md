@@ -4587,3 +4587,4 @@ Pricing model (corrected):
 - [x] Fire a Tantra Purchase event only after confirmed Shopify payment and return it to Meta for conversion optimization
 - [x] Separate Kajabi and Klaviyo/SMS cohorts with distinct UTMs, conversion events, purchase paths, and 14-day reconciliation metrics
 - [x] Credit downstream Kajabi and Klaviyo/SMS purchases to original lead cohorts while separately reporting the closing email or SMS touch
+- [x] Repair the specific WordPress draft whose persisted H2/H3 headings still fail Yoast’s keyphrase-subheading check

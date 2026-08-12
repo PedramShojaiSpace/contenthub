@@ -20,7 +20,7 @@ describe("blog SEO preflight", () => {
     expect(toHeadlineCase("how to heal leaky gut naturally")).toBe("How to Heal Leaky Gut Naturally");
   });
 
-  it("requires two keyword headings, safe snippet length, and adequate transition coverage", () => {
+  it("requires three keyword headings, safe snippet length, and adequate transition coverage", () => {
     const keyword = "how to heal leaky gut naturally";
     const article = [
       "How to heal leaky gut naturally begins with a careful look at your individual symptoms and care plan.",
@@ -28,6 +28,8 @@ describe("blog SEO preflight", () => {
       "First, identify patterns that may be worth discussing with a qualified clinician. Therefore, focus on steady, sustainable habits rather than a quick fix.",
       "## How to Heal Leaky Gut Naturally: Daily Habits",
       "In addition, support sleep, stress regulation, and meals you tolerate well. Consequently, the approach can remain practical over time.",
+      "### How to Heal Leaky Gut Naturally: Practical Next Steps",
+      "Moreover, an incremental plan gives you a clearer way to evaluate what is helping.",
       `${keyword} is not a one-supplement answer. For many people, ${keyword} requires patience.`,
       `A thoughtful approach to ${keyword} includes context. Ultimately, ${keyword} is a question of overall digestive health.`,
       `In practice, ${keyword} should be individualized. Still, ${keyword} can guide a useful conversation.`,
@@ -40,7 +42,7 @@ describe("blog SEO preflight", () => {
       metaDescription: "Learn how to heal leaky gut naturally with practical guidance on food triggers, stress, nutrition, and gut-supporting daily habits.",
     });
 
-    expect(audit.keywordSubheadingCount).toBe(2);
+    expect(audit.keywordSubheadingCount).toBe(3);
     expect(audit.transitionWordRate).toBeGreaterThanOrEqual(32);
     expect(audit.metaDescriptionLength).toBeGreaterThanOrEqual(120);
     expect(audit.metaDescriptionLength).toBeLessThanOrEqual(135);

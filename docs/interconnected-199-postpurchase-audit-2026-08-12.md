@@ -5,7 +5,7 @@
 | Item | Verified state | Implication |
 |---|---|---|
 | $199 Shopify offer | **Gut Permeability Test + Health Coach Call — $199 Member Offer**, product `9096395620506`, variant `48994340077722` | The product is the appropriate checkout SKU for the treatment |
-| Product status | `DRAFT` with no Online Store URL and no description | It cannot currently accept a Shopify checkout; keep it unchanged until an explicit controlled-activation decision |
+| Product status | `ACTIVE`, published for direct Online Store checkout, no collection membership or storefront navigation placement | The product can complete the private tracked checkout while remaining unlisted from menus and collections |
 | Existing Kajabi $199 OCU URL | Returns an HTTP 500 during review | It is not a dependable page or control for this treatment |
 | Video | Existing member-offer Wistia video ID `vvvuj0gexg` | Use it near the primary decision point, with visible text value stack and support information |
 | Existing $67 route | `/interconnected/thank-you-klaviyo` | The page is a pre-purchase $67 decision page and must remain unchanged |
@@ -27,11 +27,9 @@ Confirmed $67 Shopify order
 
 This produces a complete post-purchase page experience without claiming a Shopify native one-click upsell. The landing page should accurately state that the $199 offer is a separate purchase and must use plain, verified value-stack language: a Gut Permeability Test kit and a private health-coach call. It must not promise diagnosis, treatment, or a particular health outcome. The page must also retain the no-refund rule for opened test kits.
 
-## Required Activation Choice
+## Controlled Activation Applied
 
-The page can be built now as an unpublished Manus route. It cannot safely hand a buyer into a working Shopify checkout until the $199 product becomes purchasable. The controlled production option is to change the product from `DRAFT` to `ACTIVE` while keeping it out of navigation, collections, search merchandising, and general campaign links, then use its private tracked cart link solely from the $199 landing page.
-
-Do not change the Shopify product status or public visibility without explicit approval because the current operating rule is that the OCUS product stays hidden and Draft.
+With explicit approval, the $199 product was changed from Draft to Active, its inventory policy was set to allow checkout for the member-offer variant, and it was made available to the Online Store checkout channel. Shopify catalog verification confirmed it has no collection membership; no menu, collection, or general product-campaign link was added. A direct first-party checkout-bridge test reached Shopify checkout without submitting payment.
 
 ## Treatment Design and Build
 
@@ -40,6 +38,10 @@ The isolated landing page is available at `/interconnected/post-purchase-199-kla
 The page fires `ViewContent` and, on CTA selection, `InitiateCheckout` with a $199 value. Its CTA uses the Content Hub’s first-party checkout bridge and the exact $199 Shopify variant. The checkout link retains the established `interconnected_14day` campaign so the existing 14-day acquisition cohort ledger can credit the original $67 lead correctly; the separate `$199` closing touch is identified by `utm_content=post_purchase_199_klaviyo_v1_checkout`.
 
 The Klaviyo activation design is a **Placed Order** flow: trigger on a confirmed Shopify $67 purchase, filter to the Interconnected $67 variant, suppress customers who have already purchased the $199 variant, and send the page URL through the email or SMS path. It does not attempt to force the browser away from Shopify’s standard order-status page and does not describe the purchase as one-click.
+
+## Klaviyo Draft Flow Created
+
+The following Klaviyo flow was created and independently verified in **Draft** status: `[DRAFT] Interconnected $67 → $199 Member Offer — Klaviyo Treatment` (`RQn35Z`). It uses the Shopify `Placed Order` metric and an `Items contains Interconnected: The Complete Healing Protocol` trigger condition, contains one Draft email action, and routes only to the dedicated Manus $199 treatment URL. The message uses `Dr. Pedram Shojai` / `support@theurbanmonk.com`, clearly presents the $199 offer as a separate purchase, and includes the opened-kit final-sale and no-diagnosis disclosures. It cannot send until a person with Klaviyo flow permissions explicitly turns the action Live.
 
 ## Deployment Propagation Note
 

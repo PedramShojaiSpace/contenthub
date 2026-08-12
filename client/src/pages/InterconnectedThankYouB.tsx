@@ -750,20 +750,6 @@ export default function InterconnectedThankYouB() {
         </div>
       </section>
 
-      {/* ── FINAL OFFER CARD ────────────────────────────────────────────────────── */}
-      <section className="px-4 py-16" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px",  background: BG_DARK  }}>
-        <div className="max-w-2xl mx-auto text-center">
-          <p className="text-gray-400 text-sm mb-4 uppercase tracking-widest">Last chance</p>
-          <h2 className="text-3xl font-bold text-white mb-8" style={{ fontFamily: "Georgia, serif" }}>
-            Don't Miss Your Chance to Own the Entire Series
-          </h2>
-          <BuyButton label="YES — Give Me Instant Access to All 9 Episodes" />
-          <p className="text-gray-600 text-xs mt-6 max-w-lg mx-auto">
-            30-day money-back guarantee. No questions asked. Instant access delivered to your inbox.
-          </p>
-        </div>
-      </section>
-
       {/* ── FOOTER ──────────────────────────────────────────────────────────────── */}
       <footer className="py-8 px-4 text-center" style={{ background: BG_MID, borderTop: `1px solid rgba(46,145,252,0.1)` }}>
         <img src={LOGO} alt="The Urban Monk" className="w-24 mx-auto mb-4 opacity-60" loading="lazy" decoding="async" />

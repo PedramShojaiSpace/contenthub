@@ -708,6 +708,13 @@
 - [x] Replace the redundant bottom CTA with a minimum-friction end-of-page treatment and a controlled desktop exit-intent recovery option, without changing the Kajabi champion.
 - [x] Validate the treatment-only page behavior, checkout tracking, and mobile-safe fallback before publishing — targeted exit-intent and checkout-link regression tests passed; desktop-only and one-time guards are enforced in the treatment source.
 
+## Interconnected Internal Split Conclusion
+
+- [x] Audit Thank You A/B page lineage, traffic allocation, checkout starts, and paid-sale evidence to determine the internal test winner — Version B was selected operationally at owner direction; 72 A exposures/7 checkout starts versus 47 B exposures/5 checkout starts, with no recorded purchases.
+- [x] Remove the redundant final CTA from the selected Kajabi control page without modifying the Klaviyo treatment page.
+- [x] Retire internal Thank You A/B routing so Kajabi has one stable control route for the Klaviyo-versus-Kajabi test.
+- [ ] Validate the stable Kajabi control and Klaviyo treatment URLs, their tracking labels, and no unintended route changes.
+
 ## $199 Member-Offer Layout Refinement
 
 - [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.

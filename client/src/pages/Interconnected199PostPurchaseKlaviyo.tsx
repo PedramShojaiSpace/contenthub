@@ -103,15 +103,6 @@ export default function Interconnected199PostPurchaseKlaviyo() {
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">
               Your all-access series gives you the framework. This member offer adds a Gut Permeability Test kit and a private one-hour health-coach call, so you can move from broad education to a more personal conversation about your next steps.
             </p>
-            <div className="mt-8 rounded-2xl border p-6" style={{ background: "rgba(13,30,46,0.9)", borderColor: "rgba(46,145,252,0.65)" }}>
-              <p className="text-xs font-black uppercase tracking-[0.16em]" style={{ color: GOLD }}>Post-purchase member offer</p>
-              <div className="mt-3 flex items-end gap-3">
-                <span className="text-xl text-slate-500 line-through">$399</span>
-                <span className="text-5xl font-black text-white">$199</span>
-              </div>
-              <p className="mt-2 text-sm text-slate-300">A separate purchase, offered privately after your $67 Interconnected order.</p>
-              <div className="mt-5"><Cta compact /></div>
-            </div>
           </div>
 
           <div className="overflow-hidden rounded-2xl border-2" style={{ borderColor: BLUE, boxShadow: "0 0 45px rgba(46,145,252,0.18)" }}>
@@ -128,6 +119,18 @@ export default function Interconnected199PostPurchaseKlaviyo() {
                   style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="mx-auto w-full max-w-2xl lg:col-span-2">
+            <div className="rounded-2xl border p-6" style={{ background: "rgba(13,30,46,0.9)", borderColor: "rgba(46,145,252,0.65)" }}>
+              <p className="text-xs font-black uppercase tracking-[0.16em]" style={{ color: GOLD }}>Post-purchase member offer</p>
+              <div className="mt-3 flex items-end gap-3">
+                <span className="text-xl text-slate-500 line-through">$399</span>
+                <span className="text-5xl font-black text-white">$199</span>
+              </div>
+              <p className="mt-2 text-sm text-slate-300">A separate purchase, offered privately after your $67 Interconnected order.</p>
+              <div className="mt-5"><Cta compact /></div>
             </div>
           </div>
         </div>

@@ -684,6 +684,18 @@
 - [x] Validate eligibility, checkout attribution, mobile rendering, and all buyer-facing offer details before activation — treatment route, $199 checkout-link regression test, 14-day cohort attribution, medical framing, and opened-kit disclosure are validated; final checkout activation remains blocked by the Shopify product’s Draft status.
 - [ ] Deliver the isolated $199 treatment URL and exact Klaviyo post-purchase activation instructions.
 
+## $199 Treatment Activation
+
+- [ ] Change the approved $199 Gut Permeability Test + Health Coach Shopify product to purchasable status while keeping it out of menus, collections, and general product merchandising.
+- [ ] Verify the $199 direct cart checkout accepts the approved variant without exposing it through normal storefront navigation.
+- [ ] Configure the Klaviyo Placed Order flow specification for confirmed $67 Shopify buyers and suppress $199 buyers from future sends.
+- [ ] Validate the live $199 landing-page CTA, first-party click token, order attribution, and documented post-purchase activation URL.
+
+## $199 Member-Offer Layout Refinement
+
+- [x] Center the $199 member-offer box on the desktop post-purchase landing-page layout without changing the mobile layout or checkout tracking.
+- [ ] Validate the adjusted live treatment layout before delivering the updated review link.
+
 ## v21 Features — Enrichment Badges & Segment Comparison
 
 - [x] Add `getEnrichmentSummary` tRPC query returning pain point count per persona

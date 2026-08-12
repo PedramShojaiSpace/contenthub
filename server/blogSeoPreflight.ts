@@ -76,7 +76,7 @@ export function auditBlogSeo(input: {
 
   if (!keywordInFirstTwoSentences) issues.push("Focus keyword is missing from the first two sentences.");
   if (keywordOccurrences < 8) issues.push(`Focus keyword appears ${keywordOccurrences} times; require at least 8 natural mentions.`);
-  if (keywordSubheadingCount < 2) issues.push(`Focus keyword appears in ${keywordSubheadingCount} H2/H3 subheading(s); require at least 2.`);
+  if (keywordSubheadingCount < 3) issues.push(`Focus keyword appears in ${keywordSubheadingCount} H2/H3 subheading(s); require at least 3.`);
   if (!seoTitleStartsWithKeyword) issues.push("SEO title must start with the focus keyword.");
   if (seoTitleLength === 0 || seoTitleLength > 48) issues.push("SEO title must be 1–48 characters.");
   if (metaDescriptionLength < 120 || metaDescriptionLength > 135) issues.push("Meta description must be 120–135 characters for safe Yoast snippet display.");
@@ -100,7 +100,7 @@ export function auditBlogSeo(input: {
 export function buildSeoRepairInstructions(audit: BlogSeoAudit, focusKeyword: string) {
   return [
     "Return only a revised Markdown article. Preserve every existing valid URL and the article’s substantive claims; do not add unverified citations, statistics, or medical promises.",
-    `Use the exact focus keyword “${focusKeyword}” naturally in the first or second sentence, in at least two H2/H3 headings, and 8–12 times in total.`,
+    `Use the exact focus keyword “${focusKeyword}” naturally in the first or second sentence, in at least three H2/H3 headings, and 8–12 times in total.`,
     "Use transition words or phrases in at least 32% of prose sentences, while keeping the writing natural and avoiding repetitive sentence openings.",
     "Use normal headline capitalization for headings and sentences; never begin a sentence or heading with a lowercase letter.",
     "Preserve the existing article structure, internal links, outbound links, FAQ, and approximate length.",

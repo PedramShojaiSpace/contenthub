@@ -53,7 +53,6 @@ describe("Tantra Shopify reconciliation", () => {
                     lineItems: {
                       edges: [{
                         node: {
-                          product: { id: "gid://shopify/Product/9068203376794" },
                           title: "Tantra Him",
                           quantity: 1,
                           originalUnitPriceSet: { shopMoney: { amount: "185.00" } },

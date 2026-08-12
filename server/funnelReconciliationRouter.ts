@@ -544,6 +544,13 @@ interface ShopifyTierSummary {
   revenueCents: number;
 }
 
+function normalizeShopifyLineItemTitle(value: string) {
+  return value
+    .replace(/\s*\([^)]*\)\s*$/, "")
+    .trim()
+    .toLowerCase();
+}
+
 export async function fetchShopifyForFunnel(
   funnel: FunnelDef,
   startDate: string,
@@ -592,9 +599,12 @@ async function fetchShopifyOrdersViaGraphQL(
   individualSales: IndividualSale[];
   note?: string;
 }> {
-  const productIdSet = new Set(funnel.shopifyProducts.map(p => p.productId));
-  const productLabelMap: Record<string, string> = {};
-  for (const p of funnel.shopifyProducts) productLabelMap[p.productId] = p.label;
+  const productByTitle = new Map(
+    funnel.shopifyProducts.map((product) => [
+      normalizeShopifyLineItemTitle(product.label),
+      product,
+    ])
+  );
 
   const tierMap: Record<string, ShopifyTierSummary> = {};
   const individualSales: IndividualSale[] = [];
@@ -611,11 +621,9 @@ async function fetchShopifyOrdersViaGraphQL(
           node {
             id
             createdAt
-            financialStatus
             lineItems(first: 20) {
               edges {
                 node {
-                  product { id }
                   title
                   quantity
                   originalUnitPriceSet { shopMoney { amount } }
@@ -658,11 +666,9 @@ async function fetchShopifyOrdersViaGraphQL(
             node: {
               id: string;
               createdAt: string;
-              financialStatus: string;
               lineItems: {
                 edges: Array<{
                   node: {
-                    product: { id: string } | null;
                     title: string;
                     quantity: number;
                     originalUnitPriceSet: { shopMoney: { amount: string } };
@@ -685,9 +691,11 @@ async function fetchShopifyOrdersViaGraphQL(
     }
 
     if (json.errors || !json.data?.orders) {
+      const reason = json.errors?.[0]?.message || "Shopify returned no order data";
+      console.warn("[reconciliation] Shopify Admin order query unavailable:", reason);
       return {
         tiers: [], totalRevenueCents: 0, totalOrders: 0, individualSales: [],
-        note: "order_access_unavailable: Shopify Admin query was not authorized",
+        note: `order_access_unavailable: ${reason}`,
       };
     }
 
@@ -695,12 +703,11 @@ async function fetchShopifyOrdersViaGraphQL(
       const order = edge.node;
       for (const liEdge of order.lineItems.edges) {
         const li = liEdge.node;
-        if (!li.product) continue;
-        // Extract numeric ID from GID
-        const pid = li.product.id.replace("gid://shopify/Product/", "");
-        if (!productIdSet.has(pid)) continue;
+        const matchedProduct = productByTitle.get(normalizeShopifyLineItemTitle(li.title));
+        if (!matchedProduct) continue;
 
-        const label = productLabelMap[pid] || li.title;
+        const pid = matchedProduct.productId;
+        const label = matchedProduct.label;
         const priceCents = Math.round(parseFloat(li.originalUnitPriceSet.shopMoney.amount) * 100) * li.quantity;
         if (priceCents <= 0) continue;
 

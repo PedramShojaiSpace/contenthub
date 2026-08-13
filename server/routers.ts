@@ -81,6 +81,7 @@ import { scriptsRouter } from "./scriptsRouter";
 import { landingPagesRouter } from "./landingPagesRouter";
 import { youtubeRouter } from "./youtubeRouter";
 import { typeformRouter } from "./typeformRouter";
+import { integrationHealthRouter } from "./integrationHealthRouter";
 import { pressRouter } from "./pressRouter";
 import { mediaRouter } from "./mediaRouter";
 import { avatarRouter } from "./avatarRouter";
@@ -6418,6 +6419,7 @@ Return ONLY a valid JSON array of 6 objects with keys: name, description, imageP
   landingPages: landingPagesRouter,
   youtube: youtubeRouter,
   typeform: typeformRouter,
+  integrationHealth: integrationHealthRouter,
   press: pressRouter,
   media: mediaRouter,
   avatar: avatarRouter,

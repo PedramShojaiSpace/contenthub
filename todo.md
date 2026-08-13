@@ -6,6 +6,14 @@
 
 ## Read-Only Content Hub Audit — 2026-08-13
 - [x] Conduct a read-only deep audit of the current Content Hub, including active product areas, integrations, measurement, code health, and operational gaps; deliver recommendations only with no implementation — report saved as `docs/content-hub-deep-audit-2026-08-13.md`.
+- [x] Protect the first high-risk internal management procedures while preserving intentionally public funnels and verified webhook entry points — UTM history, Typeform intelligence, YouTube pipeline, and YouTube analytics now require an authenticated operator.
+- [ ] Complete the remaining access-control matrix for legacy public procedures, explicitly isolating verified webhook and intentional public-funnel paths before any further conversion.
+- [x] Replace System Health placeholders with real credential, integration, and inbound-webhook freshness checks for critical revenue services — live checks now cover WordPress, Meta, Shopify Storefront, Shopify paid-order webhook freshness, Kajabi OAuth, and Klaviyo.
+- [ ] Extend System Health to remaining non-core services: Gmail, YouTube, Apollo, and Buffer.
+- [x] Add regression coverage that proves protected management procedures reject unauthenticated access while public funnel paths remain available — caller tests now cover UTM, Typeform, integration health, YouTube pipeline, and YouTube analytics; public funnel behavior was not changed.
+
+## Deferred Generated Blog Quality Remediation
+- [ ] Inspect the specified Content Hub-generated blog post for its missing embedded image and Yoast SEO deficiencies after the current foundation checkpoint, then correct the approved post and generation-path gaps.
 
 ## Database Schema
 - [x] Add content_items table (title, platform, status, text, image_url, scheduled_at, published_at)

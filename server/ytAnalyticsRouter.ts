@@ -12,7 +12,7 @@
  */
 
 import { z } from "zod";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { ytVideoSnapshots, ytComments, ytHeadlineGenerations } from "../drizzle/schema";
 import { desc, eq, and, sql } from "drizzle-orm";
@@ -92,7 +92,7 @@ async function getChannelVideos(maxResults = 50) {
 export const ytAnalyticsRouter = router({
 
   // ── Fetch & store analytics snapshot for all recent videos ─────────────────
-  fetchVideoAnalytics: publicProcedure
+  fetchVideoAnalytics: protectedProcedure
     .input(z.object({ maxVideos: z.number().min(1).max(50).default(25) }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -150,7 +150,7 @@ export const ytAnalyticsRouter = router({
     }),
 
   // ── List most recent snapshot per video ────────────────────────────────────
-  listVideoSnapshots: publicProcedure
+  listVideoSnapshots: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(100).default(50) }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -177,7 +177,7 @@ export const ytAnalyticsRouter = router({
     }),
 
   // ── Channel-level summary ──────────────────────────────────────────────────
-  getChannelSummary: publicProcedure.query(async () => {
+  getChannelSummary: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return null;
 
@@ -227,7 +227,7 @@ export const ytAnalyticsRouter = router({
   }),
 
   // ── Fetch & store comments for a video ────────────────────────────────────
-  listComments: publicProcedure
+  listComments: protectedProcedure
     .input(
       z.object({
         videoId: z.string().optional(),
@@ -310,7 +310,7 @@ export const ytAnalyticsRouter = router({
     }),
 
   // ── Post a reply to a comment via YouTube API ─────────────────────────────
-  postReply: publicProcedure
+  postReply: protectedProcedure
     .input(
       z.object({
         commentId: z.string(),
@@ -348,7 +348,7 @@ export const ytAnalyticsRouter = router({
     }),
 
   // ── Mark comment as read or ignored ───────────────────────────────────────
-  updateCommentStatus: publicProcedure
+  updateCommentStatus: protectedProcedure
     .input(
       z.object({
         commentId: z.string(),
@@ -368,7 +368,7 @@ export const ytAnalyticsRouter = router({
     }),
 
   // ── AI reply suggestion in Pedram's voice ─────────────────────────────────
-  suggestReply: publicProcedure
+  suggestReply: protectedProcedure
     .input(
       z.object({
         commentId: z.string(),
@@ -426,7 +426,7 @@ Write a reply in Pedram's voice:`,
     }),
 
   // ── Generate 5 headline variants for a topic ──────────────────────────────
-  generateHeadlines: publicProcedure
+  generateHeadlines: protectedProcedure
     .input(
       z.object({
         topic: z.string().min(3).max(300),
@@ -587,7 +587,7 @@ Return JSON in this exact format:
     }),
 
   // ── List past headline generations ────────────────────────────────────────
-  listHeadlineGenerations: publicProcedure
+  listHeadlineGenerations: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(50).default(20) }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -603,7 +603,7 @@ Return JSON in this exact format:
     }),
 
   // ── Regenerate thumbnail concept for a single headline ─────────────────────
-  regenerateThumbnail: publicProcedure
+  regenerateThumbnail: protectedProcedure
     .input(
       z.object({
         title: z.string().min(1).max(512),
@@ -732,7 +732,7 @@ Return JSON in this exact format:
     }),
 
   // ── Select a headline for a generation ────────────────────────────────────
-  selectHeadline: publicProcedure
+  selectHeadline: protectedProcedure
     .input(
       z.object({
         generationId: z.number(),

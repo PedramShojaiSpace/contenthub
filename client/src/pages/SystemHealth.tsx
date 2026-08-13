@@ -32,6 +32,7 @@ import {
   ShoppingBag,
   Mail,
   Youtube,
+  BookOpen,
   Users,
   Zap,
   Activity,
@@ -110,15 +111,29 @@ export default function SystemHealth() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Substack session
-  const { data: substackHealth, isLoading: substackLoading } = trpc.substack.validateSession.useQuery(undefined, {
+  const { data: substackHealth, isLoading: substackLoading, refetch: refetchSubstack } = trpc.substack.validateSession.useQuery(undefined, {
     queryKey: ["substack.validateSession", refreshKey],
     staleTime: 0,
   } as any);
+  const { data: criticalHealth, isLoading: criticalLoading, refetch: refetchCritical } = trpc.integrationHealth.critical.useQuery(undefined, {
+    staleTime: 0,
+  });
+  const service = (id: keyof NonNullable<typeof criticalHealth>["services"]) => criticalHealth?.services[id];
+  const healthStatus = (id: keyof NonNullable<typeof criticalHealth>["services"]): HealthStatus =>
+    criticalLoading ? "checking" : service(id)?.status ?? "unknown";
 
-  // WordPress, Meta, Shopify — no live ping procedures exist yet; show as unknown
-  const wpHealth: any = null;
-  const metaHealth: any = null;
-  const attrHealth: any = null;
+  const refreshAll = () => {
+    setRefreshKey((key) => key + 1);
+    void refetchSubstack();
+    void refetchCritical();
+  };
+
+  const wpHealth = service("wordpress");
+  const metaHealth = service("meta");
+  const shopifyHealth = service("shopify");
+  const webhookHealth = service("shopifyWebhook");
+  const kajabiHealth = service("kajabi");
+  const klaviyoHealth = service("klaviyo");
 
   const checks: HealthCheck[] = [
     {
@@ -136,8 +151,8 @@ export default function SystemHealth() {
       label: "WordPress Connection",
       description: "REST API used to publish blog posts and fetch Yoast scores",
       icon: <Globe className="w-4 h-4" />,
-      status: (wpHealth as any)?.connected ? "ok" : (wpHealth as any)?.error ? "error" : "unknown",
-      detail: (wpHealth as any)?.siteTitle ?? (wpHealth as any)?.error,
+      status: healthStatus("wordpress"),
+      detail: wpHealth?.detail,
       fixUrl: "/wordpress-setup",
       fixLabel: "Open WordPress Setup",
     },
@@ -146,22 +161,50 @@ export default function SystemHealth() {
       label: "Meta Ads API",
       description: "Access token for reading campaign insights and CAPI events",
       icon: <Megaphone className="w-4 h-4" />,
-      status: (metaHealth as any)?.connected ? "ok" : (metaHealth as any)?.error ? "error" : "unknown",
-      detail: (metaHealth as any)?.accountName ?? (metaHealth as any)?.error,
+      status: healthStatus("meta"),
+      detail: metaHealth?.detail,
       fixUrl: "https://business.facebook.com",
       fixLabel: "Refresh Meta access token",
     },
     {
       id: "shopify",
-      label: "Shopify Webhook",
-      description: "order/paid webhook for first-party attribution",
+      label: "Shopify Storefront API",
+      description: "Storefront API used for product and checkout experience",
       icon: <ShoppingBag className="w-4 h-4" />,
-      status: (attrHealth as any)?.configured ? "ok" : (attrHealth as any)?.lastOrderAt ? "degraded" : "unknown",
-      detail: (attrHealth as any)?.lastOrderAt
-        ? `Last order: ${new Date((attrHealth as any).lastOrderAt).toLocaleDateString()}`
-        : "No orders received yet",
+      status: healthStatus("shopify"),
+      detail: shopifyHealth?.detail,
       fixUrl: "https://admin.shopify.com",
       fixLabel: "Check Shopify webhook settings",
+    },
+    {
+      id: "shopify-webhook",
+      label: "Shopify Paid-Order Webhook",
+      description: "Inbound order/paid evidence used for first-party attribution",
+      icon: <Activity className="w-4 h-4" />,
+      status: healthStatus("shopifyWebhook"),
+      detail: webhookHealth?.detail,
+      fixUrl: "https://admin.shopify.com",
+      fixLabel: "Check Shopify webhook settings",
+    },
+    {
+      id: "kajabi",
+      label: "Kajabi OAuth",
+      description: "OAuth credential used for Kajabi sales and lifecycle operations",
+      icon: <BookOpen className="w-4 h-4" />,
+      status: healthStatus("kajabi"),
+      detail: kajabiHealth?.detail,
+      fixUrl: "https://app.kajabi.com",
+      fixLabel: "Check Kajabi credentials",
+    },
+    {
+      id: "klaviyo",
+      label: "Klaviyo API",
+      description: "Profile, list, flow, and email operations",
+      icon: <Mail className="w-4 h-4" />,
+      status: healthStatus("klaviyo"),
+      detail: klaviyoHealth?.detail,
+      fixUrl: "https://www.klaviyo.com",
+      fixLabel: "Check Klaviyo settings",
     },
     {
       id: "gmail",
@@ -228,7 +271,7 @@ export default function SystemHealth() {
             variant="ghost"
             size="sm"
             className="text-zinc-400 hover:text-zinc-200"
-            onClick={() => setRefreshKey((k) => k + 1)}
+            onClick={refreshAll}
           >
             <RefreshCw className="w-4 h-4" />
           </Button>

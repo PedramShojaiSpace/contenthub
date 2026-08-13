@@ -1,6 +1,8 @@
 import { desc } from "drizzle-orm";
 import { attributedSales } from "../drizzle/schema";
 import { getDb } from "./db";
+import { getBufferProfiles } from "./buffer";
+import { testGmailConnection } from "./gmail";
 import { testKlaviyoConnection } from "./klaviyo";
 import { protectedProcedure, router } from "./_core/trpc";
 
@@ -142,17 +144,64 @@ async function checkShopifyWebhookFreshness(): Promise<ServiceHealth> {
   }
 }
 
+async function checkGmail(): Promise<ServiceHealth> {
+  const result = await testGmailConnection();
+  return result.ok
+    ? nowHealth("ok", `Gmail OAuth connected as ${result.email ?? "authorized mailbox"}.`)
+    : nowHealth("error", `Gmail OAuth check failed: ${result.error ?? "unknown error"}`);
+}
+
+async function checkYouTube(): Promise<ServiceHealth> {
+  const apiKey = process.env.YOUTUBE_DATA_API_KEY;
+  if (!apiKey) return nowHealth("error", "YouTube Data API key is not configured.");
+  try {
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=id&id=dQw4w9WgXcQ&key=${encodeURIComponent(apiKey)}`, {
+      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+    });
+    if (!response.ok) return nowHealth("error", `YouTube Data API check failed: HTTP ${response.status}.`);
+    const oauthConfigured = Boolean(process.env.YOUTUBE_REFRESH_TOKEN);
+    return nowHealth(oauthConfigured ? "ok" : "degraded", oauthConfigured
+      ? "YouTube Data API and upload OAuth token are configured."
+      : "YouTube Data API is reachable; upload OAuth token has not been restored in this runtime.");
+  } catch (error) {
+    return nowHealth("error", `YouTube check failed: ${errorMessage(error)}`);
+  }
+}
+
+async function checkBuffer(): Promise<ServiceHealth> {
+  if (!process.env.BUFFER_ACCESS_TOKEN) return nowHealth("error", "Buffer access token is not configured.");
+  try {
+    const profiles = await getBufferProfiles();
+    return profiles.length
+      ? nowHealth("ok", `Buffer connected with ${profiles.length} social channel${profiles.length === 1 ? "" : "s"}.`)
+      : nowHealth("degraded", "Buffer token is present but no connected channels were returned.");
+  } catch (error) {
+    return nowHealth("error", `Buffer check failed: ${errorMessage(error)}`);
+  }
+}
+
+function checkApollo(): ServiceHealth {
+  // Apollo does not expose a documented, zero-cost account ping in the current integration.
+  // Make the limitation explicit rather than spending quota or guessing an endpoint.
+  return process.env.APOLLO_API_KEY
+    ? nowHealth("degraded", "Apollo API key is configured; live quota-safe validation is not available.")
+    : nowHealth("error", "Apollo API key is not configured.");
+}
+
 export const integrationHealthRouter = router({
   critical: protectedProcedure.query(async () => {
-    const [wordpress, shopify, meta, kajabi, klaviyo, shopifyWebhook] = await Promise.all([
+    const [wordpress, shopify, meta, kajabi, klaviyo, shopifyWebhook, gmail, youtube, buffer] = await Promise.all([
       checkWordPress(),
       checkShopify(),
       checkMeta(),
       checkKajabi(),
       checkKlaviyo(),
       checkShopifyWebhookFreshness(),
+      checkGmail(),
+      checkYouTube(),
+      checkBuffer(),
     ]);
 
-    return { checkedAt: Date.now(), services: { wordpress, shopify, meta, kajabi, klaviyo, shopifyWebhook } };
+    return { checkedAt: Date.now(), services: { wordpress, shopify, meta, kajabi, klaviyo, shopifyWebhook, gmail, youtube, buffer, apollo: checkApollo() } };
   }),
 });

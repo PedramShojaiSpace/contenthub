@@ -95,6 +95,17 @@ export function isGmailAuthorized(): boolean {
   return !!process.env.GMAIL_REFRESH_TOKEN;
 }
 
+/** Performs a read-only Gmail OAuth validation for internal health monitoring. */
+export async function testGmailConnection(): Promise<{ ok: boolean; email?: string; error?: string }> {
+  try {
+    const gmail = getGmailClient();
+    const profile = await gmail.users.getProfile({ userId: "me" });
+    return { ok: true, email: profile.data.emailAddress ?? undefined };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 export interface SendEmailParams {
   to: string;
   toName?: string;

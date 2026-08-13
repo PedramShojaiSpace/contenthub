@@ -57,3 +57,9 @@ After owner confirmation, the post was saved as a **Draft** with the approved fo
 ## Reusable Prevention Safeguards
 
 The shared Content Hub WordPress draft paths now prevent this same quality failure in future drafts: when an image source is available but the article has no body image, the image is inserted after the opening paragraph with descriptive alt text; existing links are retained while only missing internal or educational outbound links are appended; and empty focus/meta fields receive bounded fallbacks rather than being sent blank. The safeguards apply to the primary Content Hub publisher, YouTube-to-Blog, Blog-to-YouTube, the video-pipeline fallback, and batch WordPress draft publisher. Focused unit coverage passed after the change.
+
+## Published Sources and Citation Verification
+
+After owner approval, the post was published with a guarded **Sources** section linked from every article citation. The final published citation and bibliography set is `[2]`, `[4]`, `[9]`, `[14]`, and `[18]`. Source `[4]` was added at the existing guidance to replace plastic food containers with glass, which was the appropriate contextual location for the original manuscript’s microplastic food-exposure reference.
+
+The authenticated WordPress record confirms: `publish` status, the guarded source-section marker, all five in-text source anchors, and all five matching PubMed bibliography entries. The five sources correspond to the original manuscript’s citations and link directly to PubMed for reader verification.

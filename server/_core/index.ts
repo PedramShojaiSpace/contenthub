@@ -1513,6 +1513,18 @@ async function startServer() {
     const { handleTrackedEmailCheckout } = await import("../attributionRouter");
     return handleTrackedEmailCheckout(req, res);
   });
+  // GET /r/ic67 — concise, first-party tracked $67 Interconnected checkout link for SMS
+  app.get("/r/ic67", (req, res) => {
+    const destination = "https://shop.theurbanmonk.com/cart/48959577653402:1";
+    const trackingQuery = new URLSearchParams({
+      destination,
+      utm_source: "klaviyo",
+      utm_medium: "sms",
+      utm_campaign: "interconnected_14day",
+      utm_content: "day0_sms_one_time_67_offer",
+    });
+    return res.redirect(302, `/r/checkout?${trackingQuery.toString()}`);
+  });
 
   // POST /api/shopify/order-paid — Shopify webhook: orders/paid
   // Configure in Shopify Admin → Settings → Notifications → Webhooks

@@ -4774,6 +4774,7 @@ Pricing model (corrected):
 - [x] Separate Kajabi and Klaviyo/SMS cohorts with distinct UTMs, conversion events, purchase paths, and 14-day reconciliation metrics
 - [x] Credit downstream Kajabi and Klaviyo/SMS purchases to original lead cohorts while separately reporting the closing email or SMS touch
 - [x] Harden the Email Optimizer against avoidable marketing-template signals: remove social navigation, flatten button-style links, flag promotional language, preserve unsubscribe warnings, and explicitly state that Gmail Primary placement cannot be guaranteed.
+- [x] Audit the Klaviyo draft review flow against the current optimizer and provide the VA's proofread, seed-test, and traffic-readiness checklist before activation — findings and launch gates saved in `docs/interconnected-klaviyo-traffic-readiness-2026-08-13.md`; no traffic or message-status changes were made.
 - [x] Repair the specific WordPress draft whose persisted H2/H3 headings still fail Yoast’s keyphrase-subheading check
 - [ ] Analyze Interconnected launch-to-yesterday funnel conversion and propose $67/$199 CRO tests without changing the live funnel
 - [x] Reconcile the Content Hub Interconnected dashboard against exact Agora Meta spend and verified Kajabi/Shopify revenue before further CRO analysis

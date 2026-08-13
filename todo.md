@@ -4,6 +4,9 @@
 - [x] Upgrade project to full-stack (db, server, user)
 - [x] Run database migrations
 
+## Read-Only Content Hub Audit — 2026-08-13
+- [x] Conduct a read-only deep audit of the current Content Hub, including active product areas, integrations, measurement, code health, and operational gaps; deliver recommendations only with no implementation — report saved as `docs/content-hub-deep-audit-2026-08-13.md`.
+
 ## Database Schema
 - [x] Add content_items table (title, platform, status, text, image_url, scheduled_at, published_at)
 - [x] Add platform_strategies table (platform, voice_guidelines, prompt_template, document_url)

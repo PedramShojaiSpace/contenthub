@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const appSource = readFileSync(resolve(projectRoot, "client/src/App.tsx"), "utf8");
+const publicAppSource = readFileSync(resolve(projectRoot, "client/src/PublicApp.tsx"), "utf8");
 
 describe("Tantra content landing pages", () => {
   it("registers every content-first route with its intended page component", () => {
@@ -12,6 +13,14 @@ describe("Tantra content landing pages", () => {
     expect(appSource).toContain('path={"/tantra/sex-is-the-flower"} component={TantraContentFlower}');
     expect(appSource).toContain('path={"/tantra/why-he-stopped"} component={TantraContentHim}');
     expect(appSource).toContain('path={"/tantra/love-bank"} component={TantraContentLoveBank}');
+  });
+
+  it("keeps every content-first route in the compact public production bundle", () => {
+    expect(publicAppSource).toContain('path="/tantra/considering-divorce" component={TantraContentDivorce}');
+    expect(publicAppSource).toContain('path="/tantra/king-and-queen" component={TantraContentKingQueen}');
+    expect(publicAppSource).toContain('path="/tantra/sex-is-the-flower" component={TantraContentFlower}');
+    expect(publicAppSource).toContain('path="/tantra/why-he-stopped" component={TantraContentHim}');
+    expect(publicAppSource).toContain('path="/tantra/love-bank" component={TantraContentLoveBank}');
   });
 
   it("keeps the Love Bank page video-ready and quiz-first", () => {

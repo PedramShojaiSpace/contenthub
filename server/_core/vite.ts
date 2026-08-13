@@ -13,8 +13,22 @@ export async function setupVite(app: Express, server: Server) {
     allowedHosts: true as const,
   };
 
+  // The production configuration is mode-aware because it emits separate
+  // public and Hub bundles. Resolve that config function explicitly here;
+  // spreading the function itself loses `root` and makes dev look for
+  // `/src/main.tsx` outside the client directory.
+  const resolvedViteConfig =
+    typeof viteConfig === "function"
+      ? await viteConfig({
+          command: "serve",
+          mode: "development",
+          isSsrBuild: false,
+          isPreview: false,
+        })
+      : viteConfig;
+
   const vite = await createViteServer({
-    ...viteConfig,
+    ...resolvedViteConfig,
     configFile: false,
     server: serverOptions,
     appType: "custom",
@@ -59,6 +73,24 @@ export function serveStatic(app: Express) {
   }
 
   app.use(express.static(distPath));
+
+  // The internal Content Hub is compiled as four operator bundles under /hub
+  // so public landing-page builds do not carry every internal tool.
+  const hubRoutes: Array<[string, string]> = [
+    ["/hub/content", "content"],
+    ["/hub/growth", "growth"],
+    ["/hub/analytics", "analytics"],
+    ["/hub", "core"],
+  ];
+  for (const [routePrefix, bundleName] of hubRoutes) {
+    app.use(routePrefix, (_req, res) => {
+      res.sendFile(path.resolve(distPath, "hub", bundleName, "index.html"));
+    });
+  }
+
+  app.use("/hub", (_req, res) => {
+    res.sendFile(path.resolve(distPath, "hub", "core", "index.html"));
+  });
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {

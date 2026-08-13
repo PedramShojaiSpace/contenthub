@@ -150,7 +150,7 @@
     }
   },
   "scripts": {
-    "build": "vite build \u0026\u0026 esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "export NODE_OPTIONS=--max-old-space-size=2200; vite build --mode public \u0026\u0026 mv dist/public/public-index.html dist/public/index.html \u0026\u0026 vite build --mode hub-core \u0026\u0026 mv dist/public/hub/core/hub-core-index.html dist/public/hub/core/index.html \u0026\u0026 vite build --mode hub-content \u0026\u0026 mv dist/public/hub/content/hub-content-index.html dist/public/hub/content/index.html \u0026\u0026 vite build --mode hub-growth \u0026\u0026 mv dist/public/hub/growth/hub-growth-index.html dist/public/hub/growth/index.html \u0026\u0026 vite build --mode hub-analytics \u0026\u0026 mv dist/public/hub/analytics/hub-analytics-index.html dist/public/hub/analytics/index.html \u0026\u0026 esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "check": "tsc --noEmit",
     "db:push": "drizzle-kit generate \u0026\u0026 drizzle-kit migrate",
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",

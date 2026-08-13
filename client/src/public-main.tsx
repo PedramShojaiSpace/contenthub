@@ -1,11 +1,10 @@
-import { trpc } from "@/lib/trpc";
 import { createRoot } from "react-dom/client";
-import App from "./App";
 import { AppProviders } from "./AppProviders";
+import PublicApp from "./PublicApp";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <AppProviders>
-    <App />
+    <PublicApp />
   </AppProviders>,
 );

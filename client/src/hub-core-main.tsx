@@ -1,11 +1,9 @@
-import { trpc } from "@/lib/trpc";
 import { createRoot } from "react-dom/client";
-import App from "./App";
+import { Router } from "wouter";
 import { AppProviders } from "./AppProviders";
+import HubCoreApp from "./HubCoreApp";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
-  <AppProviders>
-    <App />
-  </AppProviders>,
+  <AppProviders><Router base="/hub"><HubCoreApp /></Router></AppProviders>,
 );

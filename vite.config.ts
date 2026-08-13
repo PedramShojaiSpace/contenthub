@@ -153,8 +153,13 @@ function vitePluginManusDebugCollector(): Plugin {
 const isDev = process.env.NODE_ENV === "development";
 const plugins = [react(), tailwindcss(), ...(isDev ? [jsxLocPlugin()] : []), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const hubEntry = mode.startsWith("hub-") ? mode : null;
+  const clientRoot = path.resolve(import.meta.dirname, "client");
+
+  return {
   plugins,
+  base: hubEntry ? "/hub/" : "/",
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
@@ -163,39 +168,28 @@ export default defineConfig({
     },
   },
   envDir: path.resolve(import.meta.dirname),
-  root: path.resolve(import.meta.dirname, "client"),
-  publicDir: path.resolve(import.meta.dirname, "client", "public"),
+  root: clientRoot,
+  publicDir: path.resolve(clientRoot, "public"),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
+    outDir: hubEntry
+      ? path.resolve(import.meta.dirname, "dist/public/hub", hubEntry.replace("hub-", ""))
+      : path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: !hubEntry,
     chunkSizeWarningLimit: 1000,
+    // The public app remains minified. The internal operator bundles prioritize
+    // build reliability; they are behind authenticated Hub routes and use lazy
+    // route chunks rather than one giant rendered output.
+    minify: hubEntry ? false : undefined,
+    reportCompressedSize: !hubEntry,
     rollupOptions: {
-      output: {
-        manualChunks(id) {
-          // Split large vendor libraries into separate chunks
-          if (id.includes("node_modules/@radix-ui")) return "vendor-radix";
-          if (id.includes("node_modules/@tanstack")) return "vendor-tanstack";
-          if (id.includes("node_modules/@trpc")) return "vendor-trpc";
-          if (id.includes("node_modules/@dnd-kit")) return "vendor-dnd";
-          // React and ReactDOM must NOT be split into separate chunks.
-          // The manus-runtime script (injected before the app) bundles its own React
-          // and initializes the Scheduler. Splitting React into a separate async chunk
-          // causes a second Scheduler initialization that conflicts with the first,
-          // resulting in a silent crash (Cannot set properties of undefined: 'unstable_now').
-          // By keeping React inline with the main entry chunk, it loads synchronously
-          // after the manus-runtime IIFE completes, avoiding the conflict.
-          if (id.includes("node_modules/react-dom") || (id.includes("node_modules/react") && !id.includes("react-dom"))) return undefined;
-          if (id.includes("node_modules/lucide-react")) return "vendor-lucide";
-          // recharts and d3 must NOT be split into a separate chunk.
-          // Splitting them causes a circular dependency / TDZ error:
-          // "Cannot access 'Sd' before initialization" in vendor-charts.js
-          // This is a known Rollup issue with recharts manualChunks splitting.
-          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3")) return undefined;
-          if (id.includes("node_modules/date-fns")) return "vendor-date-fns";
-          if (id.includes("node_modules/superjson") || id.includes("node_modules/zod")) return "vendor-utils";
-          if (id.includes("node_modules/")) return "vendor-misc";
-        },
+      input: {
+        // Stable output key: every independently served bundle must emit an
+        // `index.html` at its output root for Express SPA fallbacks.
+        index: hubEntry
+          ? path.resolve(clientRoot, `${hubEntry}-index.html`)
+          : path.resolve(clientRoot, "public-index.html"),
       },
+      output: {},
     },
   },
   server: {
@@ -214,4 +208,5 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+};
 });

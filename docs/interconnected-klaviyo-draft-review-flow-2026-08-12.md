@@ -16,6 +16,8 @@ The VA review flow is a complete separate clone of the live **[EG] Interconnecte
 
 The draft flow preserves the source trigger, sequence, delays, email/SMS pattern, and message structure. The live flow was not edited, paused, replaced, or deleted.
 
+On 2026-08-13, browser verification confirmed the owner had changed the review flow itself to **Live** and had made only its first email, **Day 0 opt in EG sp26**, Live. The adjacent Day 0 SMS remained Draft. This state change was owner-initiated; no other message status was changed by this task.
+
 Browser verification confirmed the direct review URL opens the separate flow with a visible **Draft** status. Its first visible email, **Day 0 opt in EG sp26**, also displays a **Draft** status in the flow canvas.
 
 ## Day 0 Revision in the Draft Flow

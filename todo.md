@@ -743,6 +743,7 @@
 - [x] Create the plain Interconnected Day 0 confirmation as a non-sending Klaviyo draft template or draft email, preserving the current live email — created template-only draft `Smbiqi`; no flow or live email was modified.
 - [x] Verify the new Day 0 draft has no promotional checkout CTA, urgency, social strip, or unapproved live action — verified from the template source and creation payload; dedicated regression test passed.
 - [x] Prepare the exact SPF consolidation, DMARC monitoring, and Gmail seed-test instructions for the domain administrator.
+- [x] Deliver a concise VA-ready SPF and DMARC remediation document for theurbanmonk.com, including current-state verification, DNS changes, evidence to return, and post-change email-header testing — documented in `docs/va-spf-dmarc-klaviyo-authentication-task-2026-08-13.md` with the exact current SPF union, monitoring-only DMARC record, branded-domain setup, and evidence checklist.
 - [ ] Obtain explicit approval before replacing the current live Day 0 email or activating any new email action.
 - [x] Revise the non-sending Day 0 draft to include one concise $67 redemption link and one-time-offer language, without repeated CTAs or P.S. sections — template `Smbiqi` now uses one first-party tracked checkout link with `utm_content=day0_one_time_67_offer`; Klaviyo API readback verified the copy and link.
 - [x] Create a separate complete draft clone of the live Interconnected Klaviyo flow for VA review, preserving the trigger, timing, email/SMS sequence, and all messages as Draft while leaving the live flow untouched — created Klaviyo flow `YyFZPu` with 66 actions and 40 draft email/SMS messages; Day 0’s embedded flow template has the approved one-link $67 content.
@@ -753,6 +754,8 @@
 - [x] Set every draft email in the Interconnected review flow to sender name `Interconnected Series by The Urban Monk`, preserving the live flow unchanged — API verification confirmed all 27 actions remain Draft and use the approved sender name.
 - [x] Add `Host of the Interconnected Series` beneath Dr. Pedram Shojai in every draft-email signature — API verification confirmed all 27 draft bodies contain the approved signature and title.
 - [x] Remove mistakenly inserted address/footer text from the draft email bodies while retaining only the required unsubscribe mechanism — API verification confirmed the visible boilerplate was removed and each draft retains `{% unsubscribe %}`.
+- [ ] Send a one-off test of the newly live first Interconnected email to pedram@theurbanmonk.com for owner inbox and HTML review, without enrolling the owner in the full sequence.
+- [ ] Provide the exact native Klaviyo content-editor path to Preview & test for the live Day 0 email and confirm the resulting owner test send.
 
 ## Day 0 Email Layout and Reusable Template Quality
 
